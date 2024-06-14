@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
@@ -98,6 +99,7 @@ void main() {
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
+    late ShorebirdValidator shorebirdValidator;
 
     late PatchCommand command;
 
@@ -114,6 +116,7 @@ void main() {
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -144,6 +147,7 @@ void main() {
       patcher = MockPatcher();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
@@ -276,6 +280,12 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
 
+      when(
+        () => shorebirdValidator.validateFlavors(
+          flavorArg: any(named: 'flavorArg'),
+        ),
+      ).thenAnswer((_) async => {});
+
       command = PatchCommand(resolvePatcher: (_) => patcher)
         ..testArgResults = argResults;
     });
@@ -298,6 +308,31 @@ void main() {
             patchArtifactBundles: patchArtifactBundles,
           ),
         ).called(1);
+      });
+
+      group('flavor validation', () {
+        group('when no flavors are present', () {
+          test('validates successfully', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(() => shorebirdValidator.validateFlavors(flavorArg: null))
+                .called(1);
+          });
+        });
+
+        group('when flavors are present', () {
+          const flavor = 'development';
+          setUp(() {
+            when(() => argResults['flavor']).thenReturn(flavor);
+          });
+
+          test('validates successfully', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(() => shorebirdValidator.validateFlavors(flavorArg: flavor))
+                .called(1);
+          });
+        });
       });
 
       group('correctly validates key pair', () {
@@ -542,6 +577,7 @@ void main() {
         verifyInOrder([
           () => patcher.assertPreconditions(),
           () => patcher.assertArgsAreValid(),
+          () => shorebirdValidator.validateFlavors(flavorArg: null),
           () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
           () => codePushClientWrapper.getRelease(
@@ -594,6 +630,7 @@ void main() {
         final verificationResult = verifyInOrder([
           () => patcher.assertPreconditions(),
           () => patcher.assertArgsAreValid(),
+          () => shorebirdValidator.validateFlavors(flavorArg: null),
           () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
           () => codePushClientWrapper.getReleases(appId: appId),

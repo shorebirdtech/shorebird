@@ -87,7 +87,7 @@ Android Toolchain
 
     logger.info(output.toString());
 
-    await doctor.runValidators(doctor.allValidators, applyFixes: shouldFix);
+    await doctor.runValidators(doctor.generalValidators, applyFixes: shouldFix);
 
     return ExitCode.success.code;
   }

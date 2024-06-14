@@ -97,7 +97,7 @@ environment:
       when(
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
       ).thenAnswer((_) async => {});
-      when(() => doctor.allValidators).thenReturn([]);
+      when(() => doctor.generalValidators).thenReturn([]);
       when(
         () => shorebirdEnv.getShorebirdYamlFile(cwd: any(named: 'cwd')),
       ).thenReturn(shorebirdYamlFile);

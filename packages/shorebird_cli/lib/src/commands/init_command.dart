@@ -231,7 +231,7 @@ Reference the following commands to get started:
 For more information about Shorebird, visit ${link(uri: Uri.parse('https://shorebird.dev'))}''',
     );
 
-    await doctor.runValidators(doctor.allValidators, applyFixes: true);
+    await doctor.runValidators(doctor.generalValidators, applyFixes: true);
 
     return ExitCode.success.code;
   }
