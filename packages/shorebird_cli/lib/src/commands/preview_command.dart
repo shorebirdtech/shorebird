@@ -213,41 +213,54 @@ class PreviewCommand extends ShorebirdCommand {
     String? deviceId,
   }) async {
     const platform = ReleasePlatform.android;
-    final aabFile = File(
-      getArtifactPath(
-        appId: appId,
-        release: release,
-        platform: platform,
-        extension: 'aab',
-      ),
-    );
 
-    if (!aabFile.existsSync()) {
-      aabFile.createSync(recursive: true);
-      final downloadArtifactProgress = logger.progress('Downloading release');
-      try {
-        final releaseAabArtifact =
-            await codePushClientWrapper.getReleaseArtifact(
+    final downloadArtifactProgress = logger.progress('Downloading release');
+    late File aabFile;
+    late ReleaseArtifact artifact;
+
+    try {
+      artifact = await codePushClientWrapper.getReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        arch: 'aab',
+        platform: platform,
+      );
+    } catch (e, s) {
+      logger
+        ..err('Error getting release artifact: $e')
+        ..detail('Stack trace: $s');
+      return ExitCode.software.code;
+    }
+
+    try {
+      aabFile = File(
+        getArtifactPath(
           appId: appId,
-          releaseId: release.id,
-          arch: 'aab',
+          release: release,
+          artifact: artifact,
           platform: platform,
-        );
+          extension: 'aab',
+        ),
+      );
+
+      if (!aabFile.existsSync()) {
+        aabFile.createSync(recursive: true);
 
         await artifactManager.downloadFile(
-          Uri.parse(releaseAabArtifact.url),
+          Uri.parse(artifact.url),
           outputPath: aabFile.path,
         );
         downloadArtifactProgress.complete();
-      } catch (error) {
-        downloadArtifactProgress.fail('$error');
-        return ExitCode.software.code;
       }
+    } catch (error) {
+      downloadArtifactProgress.fail('$error');
+      return ExitCode.software.code;
     }
 
     final apksPath = getArtifactPath(
       appId: appId,
       release: release,
+      artifact: artifact,
       platform: platform,
       extension: 'apks',
     );
@@ -320,10 +333,28 @@ class PreviewCommand extends ShorebirdCommand {
     await iosDeploy.installIfNeeded();
 
     const platform = ReleasePlatform.ios;
-    final runnerDirectory = Directory(
+    late Directory runnerDirectory;
+    late ReleaseArtifact releaseRunnerArtifact;
+
+    try {
+      releaseRunnerArtifact = await codePushClientWrapper.getReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        arch: 'runner',
+        platform: platform,
+      );
+    } catch (e, s) {
+      logger
+        ..err('Error getting release artifact: $e')
+        ..detail('Stack trace: $s');
+      return ExitCode.software.code;
+    }
+
+    runnerDirectory = Directory(
       getArtifactPath(
         appId: appId,
         release: release,
+        artifact: releaseRunnerArtifact,
         platform: platform,
         extension: 'app',
       ),
@@ -332,13 +363,9 @@ class PreviewCommand extends ShorebirdCommand {
     if (!runnerDirectory.existsSync()) {
       final downloadArtifactProgress = logger.progress('Downloading release');
       try {
-        final releaseRunnerArtifact =
-            await codePushClientWrapper.getReleaseArtifact(
-          appId: appId,
-          releaseId: release.id,
-          arch: 'runner',
-          platform: platform,
-        );
+        if (!runnerDirectory.existsSync()) {
+          runnerDirectory.createSync(recursive: true);
+        }
 
         final archiveFile = await artifactManager.downloadFile(
           Uri.parse(releaseRunnerArtifact.url),
@@ -413,13 +440,14 @@ class PreviewCommand extends ShorebirdCommand {
   String getArtifactPath({
     required String appId,
     required Release release,
+    required ReleaseArtifact artifact,
     required ReleasePlatform platform,
     required String extension,
   }) {
     final previewDirectory = cache.getPreviewDirectory(appId);
     return p.join(
       previewDirectory.path,
-      '${platform.name}_${release.version}.$extension',
+      '${platform.name}_${release.version}_${artifact.id}.$extension',
     );
   }
 

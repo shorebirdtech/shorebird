@@ -35,6 +35,7 @@ void main() {
     const releaseVersion = '1.2.3';
     const track = DeploymentTrack.production;
     const releaseId = 42;
+    const artifactId = 21;
 
     late AppMetadata app;
     late AppleDevice appleDevice;
@@ -135,6 +136,7 @@ void main() {
           platform: any(named: 'platform'),
         ),
       ).thenAnswer((_) async => releaseArtifact);
+      when(() => releaseArtifact.id).thenReturn(artifactId);
       when(() => app.appId).thenReturn(appId);
       when(() => app.displayName).thenReturn(appDisplayName);
       when(() => release.id).thenReturn(releaseId);
@@ -228,12 +230,12 @@ void main() {
 
       String aabPath() => p.join(
             previewDirectory.path,
-            '${releasePlatform.name}_$releaseVersion.aab',
+            '${releasePlatform.name}_${releaseVersion}_$artifactId.aab',
           );
 
       String apksPath() => p.join(
             previewDirectory.path,
-            '${releasePlatform.name}_$releaseVersion.apks',
+            '${releasePlatform.name}_${releaseVersion}_$artifactId.apks',
           );
 
       R runWithOverrides<R>(R Function() body) {
@@ -915,6 +917,28 @@ channel: ${track.channel}
           () => adb.logcat(filter: any(named: 'filter'), deviceId: deviceId),
         ).called(1);
       });
+
+      group('when fetching the artifact fails', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(Exception('oops'));
+        });
+        test('returns error and logs', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => logger.err(
+              'Error getting release artifact: Exception: oops',
+            ),
+          ).called(1);
+        });
+      });
     });
 
     group('ios', () {
@@ -925,7 +949,7 @@ channel: ${track.channel}
 
       String runnerPath() => p.join(
             previewDirectory.path,
-            '${releasePlatform.name}_$releaseVersion.app',
+            '${releasePlatform.name}_${releaseVersion}_$artifactId.app',
           );
 
       R runWithOverrides<R>(R Function() body) {
@@ -1201,6 +1225,34 @@ app_id: $appId
 channel: ${DeploymentTrack.staging.channel}
 '''),
         );
+      });
+
+      group('when fetching the artifact fails', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(Exception('oops'));
+        });
+        test('returns error and logs', () async {
+          when(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenAnswer((_) async => ExitCode.success.code);
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => logger.err(
+              'Error getting release artifact: Exception: oops',
+            ),
+          ).called(1);
+        });
       });
     });
   });
