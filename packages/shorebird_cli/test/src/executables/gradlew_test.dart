@@ -330,6 +330,28 @@ Make sure you have run "flutter build apk" at least once.''',
       );
     });
 
+    group('exists', () {
+      late Directory tempDir;
+      setUp(() {
+        tempDir = setUpAppTempDir();
+      });
+
+      group('when gradlew does not exist', () {
+        test('returns false', () {
+          expect(gradlew.exists(tempDir.path), isFalse);
+        });
+      });
+
+      group('when gradlew exists', () {
+        test('returns true', () {
+          File(
+            p.join(tempDir.path, 'android', 'gradlew'),
+          ).createSync(recursive: true);
+          expect(gradlew.exists(tempDir.path), isTrue);
+        });
+      });
+    });
+
     group('version', () {
       late Directory tempDir;
 
