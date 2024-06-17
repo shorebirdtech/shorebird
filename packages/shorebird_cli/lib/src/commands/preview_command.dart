@@ -216,10 +216,10 @@ class PreviewCommand extends ShorebirdCommand {
 
     final downloadArtifactProgress = logger.progress('Downloading release');
     late File aabFile;
-    late ReleaseArtifact artifact;
+    late ReleaseArtifact releaseAabArtifact;
 
     try {
-      artifact = await codePushClientWrapper.getReleaseArtifact(
+      releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
         appId: appId,
         releaseId: release.id,
         arch: 'aab',
@@ -237,7 +237,7 @@ class PreviewCommand extends ShorebirdCommand {
         getArtifactPath(
           appId: appId,
           release: release,
-          artifact: artifact,
+          artifact: releaseAabArtifact,
           platform: platform,
           extension: 'aab',
         ),
@@ -247,7 +247,7 @@ class PreviewCommand extends ShorebirdCommand {
         aabFile.createSync(recursive: true);
 
         await artifactManager.downloadFile(
-          Uri.parse(artifact.url),
+          Uri.parse(releaseAabArtifact.url),
           outputPath: aabFile.path,
         );
         downloadArtifactProgress.complete();
@@ -260,7 +260,7 @@ class PreviewCommand extends ShorebirdCommand {
     final apksPath = getArtifactPath(
       appId: appId,
       release: release,
-      artifact: artifact,
+      artifact: releaseAabArtifact,
       platform: platform,
       extension: 'apks',
     );
