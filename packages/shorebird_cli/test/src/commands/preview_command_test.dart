@@ -929,6 +929,7 @@ channel: ${track.channel}
             ),
           ).thenThrow(Exception('oops'));
         });
+
         test('returns error and logs', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
@@ -1238,6 +1239,7 @@ channel: ${DeploymentTrack.staging.channel}
             ),
           ).thenThrow(Exception('oops'));
         });
+
         test('returns error and logs', () async {
           when(
             () => iosDeploy.installAndLaunchApp(
