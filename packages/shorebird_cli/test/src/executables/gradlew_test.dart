@@ -389,6 +389,19 @@ OS:           Mac OS X 14.4.1 aarch64
         );
         expect(version, '7.6.3');
       });
+
+      group('when the output cannot be parsed', () {
+        setUp(() {
+          when(() => result.stdout).thenReturn('not a real version');
+        });
+
+        test('returns unknown', () async {
+          final version = await runWithOverrides(
+            () => gradlew.version(tempDir.path),
+          );
+          expect(version, 'unknown');
+        });
+      });
     });
   });
 }

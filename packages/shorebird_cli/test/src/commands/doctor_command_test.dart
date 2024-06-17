@@ -146,6 +146,7 @@ Android Toolchain
   • JAVA_HOME: $notDetectedText
   • JAVA_EXECUTABLE: $notDetectedText
   • JAVA_VERSION: $notDetectedText
+  • Gradle: $notDetectedText
 '''),
         );
       });
@@ -170,6 +171,7 @@ OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)'''
         final msg =
             verify(() => logger.info(captureAny())).captured.first as String;
 
+        final notDetectedText = red.wrap('not detected');
         expect(
           msg.replaceAll(
             Platform.lineTerminator,
@@ -191,6 +193,7 @@ Android Toolchain
   • JAVA_VERSION: openjdk version "17.0.9" 2023-10-17
                   OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
                   OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)
+  • Gradle: $notDetectedText
 ''',
           ),
         );
@@ -243,7 +246,7 @@ Android Toolchain
   • JAVA_VERSION: openjdk version "17.0.9" 2023-10-17
                   OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
                   OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)
-Gradle Wrapper: 7.6.3
+  • Gradle: 7.6.3
 ''',
             ),
           );

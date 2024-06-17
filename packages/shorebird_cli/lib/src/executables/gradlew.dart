@@ -97,7 +97,7 @@ class Gradlew {
     final versionPattern = RegExp(r'Gradle (\d+\.\d+\.\d+)');
     final match = versionPattern.firstMatch(result.stdout.toString());
 
-    return match?.group(1) ?? '';
+    return match?.group(1) ?? 'unknown';
   }
 
   /// Return the set of product flavors configured for the app at [projectPath].
