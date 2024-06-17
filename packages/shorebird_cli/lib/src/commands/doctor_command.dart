@@ -83,6 +83,11 @@ Android Toolchain
   • JAVA_HOME: ${java.home ?? notDetected}
   • JAVA_EXECUTABLE: ${javaExe ?? notDetected}
   • JAVA_VERSION: $javaVersion''');
+
+      if (gradlew.exists(Directory.current.path)) {
+        final gradlewVersion = await gradlew.version(Directory.current.path);
+        output.writeln('Gradle Wrapper: $gradlewVersion');
+      }
     }
 
     logger.info(output.toString());

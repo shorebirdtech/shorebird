@@ -58,9 +58,7 @@ Gradlew get gradlew => read(gradlewRef);
 class Gradlew {
   String get executable => platform.isWindows ? 'gradlew.bat' : 'gradlew';
 
-  /// Return the set of product flavors configured for the app at [projectPath].
-  /// Returns an empty set for apps that do not use product flavors.
-  Future<Set<String>> productFlavors(String projectPath) async {
+  Future<ShorebirdProcessResult> _run(List<String> args, String projectPath) {
     final javaHome = java.home;
     final androidRoot = Directory(p.join(projectPath, 'android'));
 
@@ -75,14 +73,39 @@ class Gradlew {
     }
 
     final executablePath = executableFile.path;
-    final result = await process.run(
+    return process.run(
       executablePath,
-      ['app:tasks', '--all', '--console=auto'],
+      args,
       runInShell: true,
       workingDirectory: p.dirname(executablePath),
       environment: {
         if (!javaHome.isNullOrEmpty) 'JAVA_HOME': javaHome!,
       },
+    );
+  }
+
+  /// Returns whether the gradle wrapper exists at [projectPath].
+  bool exists(String projectPath) {
+    final androidRoot = Directory(p.join(projectPath, 'android'));
+    return File(p.join(androidRoot.path, executable)).existsSync();
+  }
+
+  /// Return the version of the gradle wrapper at [projectPath].
+  Future<String> version(String projectPath) async {
+    final result = await _run(['--version'], projectPath);
+
+    final versionPattern = RegExp(r'Gradle (\d+\.\d+\.\d+)');
+    final match = versionPattern.firstMatch(result.stdout.toString());
+
+    return match?.group(1) ?? '';
+  }
+
+  /// Return the set of product flavors configured for the app at [projectPath].
+  /// Returns an empty set for apps that do not use product flavors.
+  Future<Set<String>> productFlavors(String projectPath) async {
+    final result = await _run(
+      ['app:tasks', '--all', '--console=auto'],
+      projectPath,
     );
 
     if (result.exitCode != 0) {

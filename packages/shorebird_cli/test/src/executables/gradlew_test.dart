@@ -76,13 +76,13 @@ Make sure you have run "flutter build apk" at least once.''',
       });
     });
 
-    group('productFlavors', () {
-      Directory setUpAppTempDir() {
-        final tempDir = Directory.systemTemp.createTempSync();
-        Directory(p.join(tempDir.path, 'android')).createSync(recursive: true);
-        return tempDir;
-      }
+    Directory setUpAppTempDir() {
+      final tempDir = Directory.systemTemp.createTempSync();
+      Directory(p.join(tempDir.path, 'android')).createSync(recursive: true);
+      return tempDir;
+    }
 
+    group('productFlavors', () {
       test(
           'throws MissingAndroidProjectException '
           'when android root does not exist', () async {
@@ -328,6 +328,45 @@ Make sure you have run "flutter build apk" at least once.''',
           });
         },
       );
+    });
+
+    group('version', () {
+      late Directory tempDir;
+
+      setUp(() {
+        when(() => platform.isLinux).thenReturn(true);
+        when(() => platform.isMacOS).thenReturn(false);
+        when(() => platform.isWindows).thenReturn(false);
+        tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'android', 'gradlew'),
+        ).createSync(recursive: true);
+        const javaHome = 'test_java_home';
+        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+
+        when(() => result.stdout).thenReturn('''
+
+------------------------------------------------------------
+Gradle 7.6.3
+------------------------------------------------------------
+
+Build time:   2023-10-04 15:59:47 UTC
+Revision:     1694251d59e0d4752d547e1fd5b5020b798a7e71
+
+Kotlin:       1.7.10
+Groovy:       3.0.13
+Ant:          Apache Ant(TM) version 1.10.11 compiled on July 10 2021
+JVM:          11.0.23 (Azul Systems, Inc. 11.0.23+9-LTS)
+OS:           Mac OS X 14.4.1 aarch64
+''');
+      });
+
+      test('returns the correct version', () async {
+        final version = await runWithOverrides(
+          () => gradlew.version(tempDir.path),
+        );
+        expect(version, '7.6.3');
+      });
     });
   });
 }
