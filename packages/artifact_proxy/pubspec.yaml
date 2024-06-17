@@ -9,7 +9,7 @@ environment:
 
 dependencies:
   checked_yaml: ^2.0.2
-  collection: ^1.17.1
+  collection: ^1.19.0
   http: ^1.0.0
   json_annotation: ^4.9.0
   quiver: ^3.2.1
@@ -19,6 +19,6 @@ dependencies:
 dev_dependencies:
   build_runner: ^2.4.11  
   json_serializable: ^6.6.1
-  mocktail: ^1.0.0
+  mocktail: ^1.0.4
   test: ^1.25.7
   very_good_analysis: ^5.1.0
