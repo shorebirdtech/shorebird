@@ -344,31 +344,65 @@ Make sure you have run "flutter build apk" at least once.''',
 
       group('when gradlew exists', () {
         group(
-          'when on mac and linux',
+          'when on linux',
           () {
-            test('returns true', () {
+            setUp(() {
+              when(() => platform.isLinux).thenReturn(true);
+              when(() => platform.isMacOS).thenReturn(false);
+              when(() => platform.isWindows).thenReturn(false);
               File(
                 p.join(tempDir.path, 'android', 'gradlew'),
               ).createSync(recursive: true);
-              expect(gradlew.exists(tempDir.path), isTrue);
+            });
+
+            test('returns true', () {
+              expect(
+                runWithOverrides(() => gradlew.exists(tempDir.path)),
+                isTrue,
+              );
             });
           },
-          onPlatform: {'windows': const Skip()},
+        );
+
+        group(
+          'when on macos',
+          () {
+            setUp(() {
+              when(() => platform.isLinux).thenReturn(false);
+              when(() => platform.isMacOS).thenReturn(true);
+              when(() => platform.isWindows).thenReturn(false);
+              File(
+                p.join(tempDir.path, 'android', 'gradlew'),
+              ).createSync(recursive: true);
+            });
+
+            test('returns true', () {
+              expect(
+                runWithOverrides(() => gradlew.exists(tempDir.path)),
+                isTrue,
+              );
+            });
+          },
         );
 
         group(
           'when on windows',
           () {
-            test('returns true', () {
+            setUp(() {
+              when(() => platform.isLinux).thenReturn(false);
+              when(() => platform.isMacOS).thenReturn(false);
+              when(() => platform.isWindows).thenReturn(true);
               File(
                 p.join(tempDir.path, 'android', 'gradlew.bat'),
               ).createSync(recursive: true);
-              expect(gradlew.exists(tempDir.path), isTrue);
             });
-          },
-          onPlatform: {
-            'mac-os': const Skip(),
-            'linux': const Skip(),
+
+            test('returns true', () {
+              expect(
+                runWithOverrides(() => gradlew.exists(tempDir.path)),
+                isTrue,
+              );
+            });
           },
         );
       });

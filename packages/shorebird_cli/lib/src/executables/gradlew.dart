@@ -16,15 +16,15 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 /// {@endtemplate}
 class MissingAndroidProjectException implements Exception {
   /// {@macro missing_android_project_exception}
-  const MissingAndroidProjectException(this.projectPath);
+  const MissingAndroidProjectException(this.projectRoot);
 
   /// Expected path for the Android project.
-  final String projectPath;
+  final String projectRoot;
 
   @override
   String toString() {
     return '''
-Could not find an android project in $projectPath.
+Could not find an android project in $projectRoot.
 To add android, run "flutter create . --platforms android"''';
   }
 }
@@ -58,12 +58,12 @@ Gradlew get gradlew => read(gradlewRef);
 class Gradlew {
   String get executable => platform.isWindows ? 'gradlew.bat' : 'gradlew';
 
-  Future<ShorebirdProcessResult> _run(List<String> args, String projectPath) {
+  Future<ShorebirdProcessResult> _run(List<String> args, String projectRoot) {
     final javaHome = java.home;
-    final androidRoot = Directory(p.join(projectPath, 'android'));
+    final androidRoot = Directory(p.join(projectRoot, 'android'));
 
     if (!androidRoot.existsSync()) {
-      throw MissingAndroidProjectException(projectPath);
+      throw MissingAndroidProjectException(projectRoot);
     }
 
     final executableFile = File(p.join(androidRoot.path, executable));
@@ -84,28 +84,27 @@ class Gradlew {
     );
   }
 
-  /// Returns whether the gradle wrapper exists at [projectPath].
-  bool exists(String projectPath) {
-    final androidRoot = Directory(p.join(projectPath, 'android'));
-    return File(p.join(androidRoot.path, executable)).existsSync();
-  }
+  /// Returns whether the gradle wrapper exists at [projectRoot].
+  bool exists(String projectRoot) =>
+      File(p.join(projectRoot, 'android', executable)).existsSync();
 
-  /// Return the version of the gradle wrapper at [projectPath].
-  Future<String> version(String projectPath) async {
-    final result = await _run(['--version'], projectPath);
+  /// Return the version of the gradle wrapper at [projectRoot].
+  Future<String> version(String projectRoot) async {
+    final result = await _run(['--version'], projectRoot);
 
+    // Tries to match version string in the output (e.g. "Gradle 7.6.3")
     final versionPattern = RegExp(r'Gradle (\d+\.\d+\.\d+)');
     final match = versionPattern.firstMatch(result.stdout.toString());
 
     return match?.group(1) ?? 'unknown';
   }
 
-  /// Return the set of product flavors configured for the app at [projectPath].
+  /// Return the set of product flavors configured for the app at [projectRoot].
   /// Returns an empty set for apps that do not use product flavors.
-  Future<Set<String>> productFlavors(String projectPath) async {
+  Future<Set<String>> productFlavors(String projectRoot) async {
     final result = await _run(
       ['app:tasks', '--all', '--console=auto'],
-      projectPath,
+      projectRoot,
     );
 
     if (result.exitCode != 0) {
