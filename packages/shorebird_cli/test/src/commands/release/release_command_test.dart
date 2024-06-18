@@ -523,8 +523,6 @@ $exception''',
     });
 
     group('when no platform argument is provided', () {
-      // https://github.com/shorebirdtech/shorebird/issues/2261
-
       setUp(() {
         when(() => argResults['platforms']).thenReturn(const <String>[]);
       });
