@@ -203,9 +203,6 @@ Android Toolchain
         setUp(() {
           when(() => gradlew.exists(any())).thenReturn(true);
           when(() => gradlew.version(any())).thenAnswer((_) async => '7.6.3');
-        });
-
-        test('prints the gradle version', () async {
           when(() => argResults['verbose']).thenReturn(true);
           when(() => androidStudio.path).thenReturn('test-studio-path');
           when(() => androidSdk.path).thenReturn('test-sdk-path');
@@ -220,6 +217,9 @@ OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
 OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)'''
                 .replaceAll('\n', Platform.lineTerminator),
           );
+        });
+
+        test('prints the gradle version', () async {
           await runWithOverrides(command.run);
 
           final msg =
