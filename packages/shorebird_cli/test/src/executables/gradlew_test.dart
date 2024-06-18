@@ -357,7 +357,7 @@ Make sure you have run "flutter build apk" at least once.''',
               () {
                 expect(gradlew.exists(tempDir.path), isTrue);
               },
-              testOn: 'linux', // Arbitrary choice on linux, could be mac-os too
+              testOn: 'linux || mac-os',
             );
           },
         );
