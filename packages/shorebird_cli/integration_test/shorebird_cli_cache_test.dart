@@ -24,13 +24,21 @@ R runWithOverrides<R>(R Function() body) {
 
 void main() {
   group('shorebird cache', () {
-    test('can clear the cache', () {
-      final result = runCommand(
-        'shorebird cache clear',
-        workingDirectory: '.',
-      );
+    group('clear', () {
+      tearDown(() {
+        // Run an arbritery, fast command, so cache will be restored
+        // for the next test.
+        runCommand('--version', workingDirectory: '.');
+      });
 
-      expect(result.exitCode, equals(ExitCode.success.code));
+      test('can clear the cache', () {
+        final result = runCommand(
+          'shorebird cache clear',
+          workingDirectory: '.',
+        );
+
+        expect(result.exitCode, equals(ExitCode.success.code));
+      });
     });
   });
 }
