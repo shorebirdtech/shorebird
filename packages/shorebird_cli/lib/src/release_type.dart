@@ -63,13 +63,11 @@ extension ReleaseTypeArgs on ArgResults {
       }
     }
 
-    if (releaseTypeCliNames == null) {
-      return const [];
-    }
-
-    return releaseTypeCliNames.map(
-      (cliName) =>
-          ReleaseType.values.firstWhere((target) => target.cliName == cliName),
-    );
+    return releaseTypeCliNames?.map(
+          (cliName) => ReleaseType.values.firstWhere(
+            (target) => target.cliName == cliName,
+          ),
+        ) ??
+        const [];
   }
 }
