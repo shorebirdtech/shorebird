@@ -195,6 +195,7 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
 Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 $shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
 Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
+      exitCode = ExitCode.success.code;
     } else {
       try {
         exitCode = await super.runCommand(topLevelResults);
