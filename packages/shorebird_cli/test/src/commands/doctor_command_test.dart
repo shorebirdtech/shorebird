@@ -28,6 +28,7 @@ void main() {
     late AndroidSdk androidSdk;
     late Directory logsDirectory;
     late Doctor doctor;
+    late Gradlew gradlew;
     late Java java;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
@@ -42,6 +43,7 @@ void main() {
           androidStudioRef.overrideWith(() => androidStudio),
           androidSdkRef.overrideWith(() => androidSdk),
           doctorRef.overrideWith(() => doctor),
+          gradlewRef.overrideWith(() => gradlew),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -55,6 +57,7 @@ void main() {
       androidStudio = MockAndroidStudio();
       androidSdk = MockAndroidSdk();
       doctor = MockDoctor();
+      gradlew = MockGradlew();
       logsDirectory = Directory.systemTemp.createTempSync('shorebird_logs');
       java = MockJava();
       logger = MockShorebirdLogger();
@@ -67,6 +70,7 @@ void main() {
       when(() => androidStudio.path).thenReturn(null);
       when(() => androidSdk.path).thenReturn(null);
       when(() => androidSdk.adbPath).thenReturn(null);
+      when(() => gradlew.exists(any())).thenReturn(false);
       when(() => java.home).thenReturn(null);
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
@@ -142,6 +146,7 @@ Android Toolchain
   • JAVA_HOME: $notDetectedText
   • JAVA_EXECUTABLE: $notDetectedText
   • JAVA_VERSION: $notDetectedText
+  • Gradle: $notDetectedText
 '''),
         );
       });
@@ -166,6 +171,7 @@ OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)'''
         final msg =
             verify(() => logger.info(captureAny())).captured.first as String;
 
+        final notDetectedText = red.wrap('not detected');
         expect(
           msg.replaceAll(
             Platform.lineTerminator,
@@ -187,9 +193,64 @@ Android Toolchain
   • JAVA_VERSION: openjdk version "17.0.9" 2023-10-17
                   OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
                   OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)
+  • Gradle: $notDetectedText
 ''',
           ),
         );
+      });
+
+      group('when a gradlew executable exists', () {
+        setUp(() {
+          when(() => gradlew.exists(any())).thenReturn(true);
+          when(() => gradlew.version(any())).thenAnswer((_) async => '7.6.3');
+          when(() => argResults['verbose']).thenReturn(true);
+          when(() => androidStudio.path).thenReturn('test-studio-path');
+          when(() => androidSdk.path).thenReturn('test-sdk-path');
+          when(() => androidSdk.adbPath).thenReturn('test-adb-path');
+          when(() => java.home).thenReturn('test-java-home');
+          when(() => java.executable).thenReturn('test-java-executable');
+
+          when(() => java.version).thenReturn(
+            '''
+openjdk version "17.0.9" 2023-10-17
+OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
+OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)'''
+                .replaceAll('\n', Platform.lineTerminator),
+          );
+        });
+
+        test('prints the gradle version', () async {
+          await runWithOverrides(command.run);
+
+          final msg =
+              verify(() => logger.info(captureAny())).captured.first as String;
+
+          expect(
+            msg.replaceAll(
+              Platform.lineTerminator,
+              '\n',
+            ),
+            equals(
+              '''
+Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
+Flutter • revision ${shorebirdEnv.flutterRevision}
+Engine • revision $shorebirdEngineRevision
+
+Logs: ${logsDirectory.path}
+Android Toolchain
+  • Android Studio: test-studio-path
+  • Android SDK: test-sdk-path
+  • ADB: test-adb-path
+  • JAVA_HOME: test-java-home
+  • JAVA_EXECUTABLE: test-java-executable
+  • JAVA_VERSION: openjdk version "17.0.9" 2023-10-17
+                  OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
+                  OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)
+  • Gradle: 7.6.3
+''',
+            ),
+          );
+        });
       });
     });
 
