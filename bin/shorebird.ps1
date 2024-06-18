@@ -132,7 +132,7 @@ function Update-Shorebird {
     Update-Flutter
 
     Push-Location $shorebirdCliDir
-    & $dart pub upgrade
+    & $dart pub get
     Pop-Location
 
     Write-Output "Compiling shorebird..."
