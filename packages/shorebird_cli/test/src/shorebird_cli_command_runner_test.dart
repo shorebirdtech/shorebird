@@ -196,6 +196,7 @@ ${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}''',
           () => commandRunner.run(['--version']),
         );
         expect(result, equals(ExitCode.success.code));
+
         verify(
           () => logger.info(
             '''
@@ -204,6 +205,10 @@ Flutter $flutterVersion • revision $flutterRevision
 Engine • revision $shorebirdEngineRevision''',
           ),
         ).called(1);
+
+        // Making sure the only thing that was logged was the version info.
+        // https://github.com/shorebirdtech/shorebird/issues/2260
+        verifyNever(() => logger.info(any()));
       });
     });
 
