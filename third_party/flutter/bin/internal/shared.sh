@@ -23,18 +23,18 @@ function update_flutter {
   FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev $FLUTTER_PATH/bin/flutter --version  
 }
 
-function pub_upgrade_with_retry {
+function pub_get_with_retry {
   local total_tries="10"
   local remaining_tries=$((total_tries - 1))
   while [[ "$remaining_tries" -gt 0 ]]; do
-    (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub upgrade) && break
-    >&2 echo "Error: Unable to 'pub upgrade' shorebird. Retrying in five seconds... ($remaining_tries tries left)"
+    (cd "$SHOREBIRD_CLI_DIR" && $DART_PATH pub get) && break
+    >&2 echo "Error: Unable to 'pub get' shorebird. Retrying in five seconds... ($remaining_tries tries left)"
     remaining_tries=$((remaining_tries - 1))
     sleep 5
   done
 
   if [[ "$remaining_tries" == 0 ]]; then
-    >&2 echo "Command 'pub upgrade' still failed after $total_tries tries, giving up."
+    >&2 echo "Command 'pub get' still failed after $total_tries tries, giving up."
     return 1
   fi
   return 0
@@ -154,7 +154,7 @@ function upgrade_shorebird () (
     fi
 
     export PUB_ENVIRONMENT="$PUB_ENVIRONMENT:shorebird_install"
-    pub_upgrade_with_retry
+    pub_get_with_retry
 
     # Move the old snapshot - we can't just overwrite it as the VM might currently have it
     # memory mapped (e.g. on shorebird upgrade). For downloading a new dart sdk the folder is moved,
