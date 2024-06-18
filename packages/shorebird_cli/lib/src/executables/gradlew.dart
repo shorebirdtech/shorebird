@@ -3,12 +3,61 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+
+enum GradleHandedErrors {
+  unsupportedClassFileVersion;
+
+  bool apply(ShorebirdProcessResult result) {
+    switch (this) {
+      case GradleHandedErrors.unsupportedClassFileVersion:
+        return result.stderr.toString().contains(
+              'Unsupported class file major version',
+            );
+    }
+  }
+
+  GradleProcessException toException() {
+    switch (this) {
+      case GradleHandedErrors.unsupportedClassFileVersion:
+        final docLink = link(
+          uri: Uri.parse(
+            ShorebirdDocumentation.unsupportedClassFileVersionUrl,
+          ),
+          message: 'troubleshooting documentation',
+        );
+        return GradleProcessException('''
+Unsupported class file major version.
+
+This error is typically caused by a mismatch between the Java and Gradle's versions.
+
+Check our $docLink for help. 
+''');
+    }
+  }
+}
+
+/// {@template gradle_process_exception}
+/// Thrown when the gradle sub-process fails.
+/// {@endtemplate}
+class GradleProcessException implements Exception {
+  /// {@macro gradle_process_exception}
+  const GradleProcessException(this.message);
+
+  final String message;
+
+  @override
+  String toString() {
+    return 'Gradle sub-process failed with error:\n$message';
+  }
+}
 
 /// {@template missing_android_project_exception}
 /// Thrown when the Flutter project does not have
@@ -58,7 +107,10 @@ Gradlew get gradlew => read(gradlewRef);
 class Gradlew {
   String get executable => platform.isWindows ? 'gradlew.bat' : 'gradlew';
 
-  Future<ShorebirdProcessResult> _run(List<String> args, String projectRoot) {
+  Future<ShorebirdProcessResult> _run(
+    List<String> args,
+    String projectRoot,
+  ) async {
     final javaHome = java.home;
     final androidRoot = Directory(p.join(projectRoot, 'android'));
 
@@ -73,7 +125,7 @@ class Gradlew {
     }
 
     final executablePath = executableFile.path;
-    return process.run(
+    final result = await process.run(
       executablePath,
       args,
       runInShell: true,
@@ -82,6 +134,16 @@ class Gradlew {
         if (!javaHome.isNullOrEmpty) 'JAVA_HOME': javaHome!,
       },
     );
+
+    if (result.exitCode != ExitCode.success.code) {
+      for (final error in GradleHandedErrors.values) {
+        if (error.apply(result)) {
+          throw error.toException();
+        }
+      }
+    }
+
+    return result;
   }
 
   /// Returns whether the gradle wrapper exists at [projectRoot].
