@@ -343,12 +343,34 @@ Make sure you have run "flutter build apk" at least once.''',
       });
 
       group('when gradlew exists', () {
-        test('returns true', () {
-          File(
-            p.join(tempDir.path, 'android', 'gradlew'),
-          ).createSync(recursive: true);
-          expect(gradlew.exists(tempDir.path), isTrue);
-        });
+        group(
+          'when on mac and linux',
+          () {
+            test('returns true', () {
+              File(
+                p.join(tempDir.path, 'android', 'gradlew'),
+              ).createSync(recursive: true);
+              expect(gradlew.exists(tempDir.path), isTrue);
+            });
+          },
+          onPlatform: {'windows': const Skip()},
+        );
+
+        group(
+          'when on windows',
+          () {
+            test('returns true', () {
+              File(
+                p.join(tempDir.path, 'android', 'gradlew.bat'),
+              ).createSync(recursive: true);
+              expect(gradlew.exists(tempDir.path), isTrue);
+            });
+          },
+          onPlatform: {
+            'mac-os': const Skip(),
+            'linux': const Skip(),
+          },
+        );
       });
     });
 
