@@ -142,6 +142,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   @override
   Future<int> run() async {
+    final platforms = results['platforms'] as List<String>;
+    if (platforms.isEmpty) {
+      logger.err('At least one platform must be specified.');
+      return ExitCode.usage.code;
+    }
+
     final releaserFutures =
         results.releaseTypes.map(_resolveReleaser).map(createRelease);
 

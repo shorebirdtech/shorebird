@@ -521,5 +521,25 @@ $exception''',
         });
       });
     });
+
+    group('when no platform argument is provided', () {
+      // https://github.com/shorebirdtech/shorebird/issues/2261
+
+      setUp(() {
+        when(() => argResults['platforms']).thenReturn(const <String>[]);
+      });
+
+      test('fails and log the correct message', () async {
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.usage.code));
+
+        verify(
+          () => logger.err(
+            'At least one platform must be specified.',
+          ),
+        ).called(1);
+      });
+    });
   });
 }
