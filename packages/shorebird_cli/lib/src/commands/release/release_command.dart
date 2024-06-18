@@ -143,7 +143,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   @override
   Future<int> run() async {
     if (results.releaseTypes.isEmpty) {
-      logger.err('At least one platform must be specified.');
+      logger.err(
+        '''No platforms were provided, use the --platforms argument to provide one or more platforms''',
+      );
       return ExitCode.usage.code;
     }
 

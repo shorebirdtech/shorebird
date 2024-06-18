@@ -534,7 +534,7 @@ $exception''',
 
         verify(
           () => logger.err(
-            'At least one platform must be specified.',
+            '''No platforms were provided, use the --platforms argument to provide one or more platforms''',
           ),
         ).called(1);
       });
