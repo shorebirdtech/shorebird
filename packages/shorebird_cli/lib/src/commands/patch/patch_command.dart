@@ -212,7 +212,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     final app = await codePushClientWrapper.getApp(appId: appId);
 
-    File? patchArtifact;
+    File? patchArtifactFile;
     final Release release;
     if (results.wasParsed('release-version')) {
       final releaseVersion = results['release-version'] as String;
@@ -226,10 +226,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       logger.info(
         '''Tip: make your patches build faster by specifying --release-version''',
       );
-      patchArtifact = await patcher.buildPatchArtifact();
+      patchArtifactFile = await patcher.buildPatchArtifact();
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
       final releaseVersion = await patcher.extractReleaseVersionFromArtifact(
-        patchArtifact,
+        patchArtifactFile,
       );
       release = await codePushClientWrapper.getRelease(
         appId: appId,
@@ -245,8 +245,15 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       throw ProcessExit(ExitCode.software.code);
     }
 
-    final releaseArtifact = await downloadPrimaryReleaseArtifact(
-      release: release,
+    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: patcher.primaryReleaseArtifactArch,
+      platform: patcher.releaseType.releasePlatform,
+    );
+
+    final releaseArtifactFile = await downloadPrimaryReleaseArtifact(
+      releaseArtifact: releaseArtifact,
       patcher: patcher,
     );
 
@@ -260,18 +267,20 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
         // Don't built the patch artifact twice with the same Flutter revision.
         if (lastBuiltFlutterRevision != release.flutterRevision) {
-          patchArtifact = await patcher.buildPatchArtifact();
+          patchArtifactFile = await patcher.buildPatchArtifact();
         }
 
+        await patcher.checkPatchability(releaseArtifact: releaseArtifact);
+
         final diffStatus = await assertUnpatchableDiffs(
-          releaseArtifact: releaseArtifact,
-          patchArtifact: patchArtifact!,
+          releaseArtifact: releaseArtifactFile,
+          patchArtifact: patchArtifactFile!,
           archiveDiffer: patcher.archiveDiffer,
         );
         final patchArtifactBundles = await patcher.createPatchArtifacts(
           appId: appId,
           releaseId: release.id,
-          releaseArtifact: releaseArtifact,
+          releaseArtifact: releaseArtifactFile,
         );
 
         final dryRun = results['dry-run'] == true;
@@ -404,22 +413,15 @@ ${summary.join('\n')}
   }
 
   Future<File> downloadPrimaryReleaseArtifact({
-    required Release release,
+    required ReleaseArtifact releaseArtifact,
     required Patcher patcher,
   }) async {
-    final artifact = await codePushClientWrapper.getReleaseArtifact(
-      appId: appId,
-      releaseId: release.id,
-      arch: patcher.primaryReleaseArtifactArch,
-      platform: patcher.releaseType.releasePlatform,
-    );
-
     final downloadProgress =
         logger.progress('Downloading ${patcher.primaryReleaseArtifactArch}');
     final File artifactFile;
     try {
       artifactFile =
-          await artifactManager.downloadFile(Uri.parse(artifact.url));
+          await artifactManager.downloadFile(Uri.parse(releaseArtifact.url));
     } catch (e) {
       downloadProgress.fail(e.toString());
       throw ProcessExit(ExitCode.software.code);

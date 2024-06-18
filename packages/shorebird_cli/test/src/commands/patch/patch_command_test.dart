@@ -75,6 +75,7 @@ void main() {
       hash: '#',
       size: 42,
       url: 'https://example.com',
+      podfileLockHash: null,
     );
     const aabArtifact = ReleaseArtifact(
       id: 0,
@@ -84,6 +85,7 @@ void main() {
       hash: '#',
       size: 42,
       url: 'https://example.com/release.aab',
+      podfileLockHash: null,
     );
 
     late AotTools aotTools;

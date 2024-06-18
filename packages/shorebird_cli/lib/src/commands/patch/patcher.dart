@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template patcher}
 /// Platform-specific functionality to create a patch.
@@ -70,6 +71,12 @@ https://docs.shorebird.dev/status#link-percentage-ios
 
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid() async {}
+
+  /// Checks whether the [releaseArtifact] can be patched by the current
+  /// project.
+  Future<void> checkPatchability({
+    required ReleaseArtifact releaseArtifact,
+  }) async {}
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).

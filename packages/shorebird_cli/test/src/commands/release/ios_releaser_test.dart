@@ -714,6 +714,7 @@ To change the version of this release, change your app's version in your pubspec
               xcarchivePath: any(named: 'xcarchivePath'),
               runnerPath: any(named: 'runnerPath'),
               isCodesigned: any(named: 'isCodesigned'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenAnswer((_) async => {});
         });
@@ -733,6 +734,7 @@ To change the version of this release, change your app's version in your pubspec
               xcarchivePath: xcarchiveDirectory.path,
               runnerPath: iosAppDirectory.path,
               isCodesigned: codesign,
+              podfileLockHash: 'TODO',
             ),
           ).called(1);
         });

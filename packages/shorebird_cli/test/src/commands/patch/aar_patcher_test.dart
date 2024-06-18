@@ -340,6 +340,7 @@ void main() {
         hash: '#',
         size: 42,
         url: 'https://example.com',
+        podfileLockHash: null,
       );
 
       late File releaseArtifactFile;

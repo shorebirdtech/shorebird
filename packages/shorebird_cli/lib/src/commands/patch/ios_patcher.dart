@@ -82,6 +82,26 @@ class IosPatcher extends Patcher {
   }
 
   @override
+  Future<void> checkPatchability({
+    required ReleaseArtifact releaseArtifact,
+  }) async {
+    final podfileLockHash = await ios.podfileLockHash();
+    if (podfileLockHash != releaseArtifact.podfileLockHash) {
+      logger
+        ..warn(
+          '''Your ios/Podfile.lock is different from the one used to build the release.''',
+        )
+        ..info(
+          yellow.wrap(
+            '''This may indicate that the patch contains native changes, which cannot be applied with a patch.''',
+          ),
+        );
+
+      // TODO
+    }
+  }
+
+  @override
   Future<File> buildPatchArtifact() async {
     final File exportOptionsPlist;
     try {

@@ -12,6 +12,7 @@ void main() {
         url: 'https://example.com',
         size: 42,
         hash: 'sha256:1234567890',
+        podfileLockHash: 'podfile-lock-hash',
       );
       expect(
         ReleaseArtifact.fromJson(artifact.toJson()).toJson(),
@@ -28,6 +29,7 @@ void main() {
         url: 'https://example.com',
         size: 42,
         hash: 'sha256:1234567890',
+        podfileLockHash: 'podfile-lock-hash',
       );
       final artifactString = artifact.toString();
       expect(

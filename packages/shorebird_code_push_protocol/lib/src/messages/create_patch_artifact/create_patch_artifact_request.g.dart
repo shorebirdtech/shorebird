@@ -22,10 +22,15 @@ CreatePatchArtifactRequest _$CreatePatchArtifactRequestFromJson(
           size: $checkedConvert(
               'size', (v) => CreatePatchArtifactRequest._parseStringToInt(v)),
           hashSignature: $checkedConvert('hash_signature', (v) => v as String?),
+          podfileLockHash:
+              $checkedConvert('podfile_lock_hash', (v) => v as String?),
         );
         return val;
       },
-      fieldKeyMap: const {'hashSignature': 'hash_signature'},
+      fieldKeyMap: const {
+        'hashSignature': 'hash_signature',
+        'podfileLockHash': 'podfile_lock_hash'
+      },
     );
 
 Map<String, dynamic> _$CreatePatchArtifactRequestToJson(
@@ -35,6 +40,7 @@ Map<String, dynamic> _$CreatePatchArtifactRequestToJson(
       'platform': _$ReleasePlatformEnumMap[instance.platform]!,
       'hash': instance.hash,
       'hash_signature': instance.hashSignature,
+      'podfile_lock_hash': instance.podfileLockHash,
       'size': CreatePatchArtifactRequest._parseIntToString(instance.size),
     };
 

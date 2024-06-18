@@ -11,6 +11,7 @@ void main() {
         size: 9876,
         canSideload: true,
         filename: 'test.apk',
+        podfileLockHash: null,
       );
       expect(
         CreateReleaseArtifactRequest.fromJson(request.toJson()).toJson(),

@@ -24,10 +24,15 @@ CreateReleaseArtifactRequest _$CreateReleaseArtifactRequestFromJson(
           canSideload: $checkedConvert('can_sideload',
               (v) => CreateReleaseArtifactRequest._parseStringToBool(v)),
           filename: $checkedConvert('filename', (v) => v as String),
+          podfileLockHash:
+              $checkedConvert('podfile_lock_hash', (v) => v as String?),
         );
         return val;
       },
-      fieldKeyMap: const {'canSideload': 'can_sideload'},
+      fieldKeyMap: const {
+        'canSideload': 'can_sideload',
+        'podfileLockHash': 'podfile_lock_hash'
+      },
     );
 
 Map<String, dynamic> _$CreateReleaseArtifactRequestToJson(
@@ -40,6 +45,7 @@ Map<String, dynamic> _$CreateReleaseArtifactRequestToJson(
       'can_sideload':
           CreateReleaseArtifactRequest._parseBoolToString(instance.canSideload),
       'size': CreateReleaseArtifactRequest._parseIntToString(instance.size),
+      'podfile_lock_hash': instance.podfileLockHash,
     };
 
 const _$ReleasePlatformEnumMap = {

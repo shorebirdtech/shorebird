@@ -183,6 +183,7 @@ For more information see: $supportedVersionsLink''',
           .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
           .path,
       isCodesigned: codesign,
+      podfileLockHash: await ios.podfileLockHash(),
     );
   }
 

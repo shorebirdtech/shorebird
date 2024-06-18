@@ -180,6 +180,7 @@ class CodePushClient {
     required ReleasePlatform platform,
     required String hash,
     required bool canSideload,
+    required String? podfileLockHash,
   }) async {
     final request = http.MultipartRequest(
       'POST',
@@ -194,6 +195,7 @@ class CodePushClient {
       size: file.length,
       canSideload: canSideload,
       filename: p.basename(artifactPath),
+      podfileLockHash: podfileLockHash,
     ).toJson().map((key, value) => MapEntry(key, '$value'));
     request.fields.addAll(payload);
 

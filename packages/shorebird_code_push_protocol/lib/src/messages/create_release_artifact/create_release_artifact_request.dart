@@ -19,6 +19,7 @@ class CreateReleaseArtifactRequest {
     required this.size,
     required this.canSideload,
     required this.filename,
+    required this.podfileLockHash,
   });
 
   /// Converts a Map<String, dynamic> to a [CreateReleaseArtifactRequest]
@@ -47,6 +48,9 @@ class CreateReleaseArtifactRequest {
   /// The size of the artifact in bytes.
   @JsonKey(fromJson: _parseStringToInt, toJson: _parseIntToString)
   final int size;
+
+  /// The hash of the Podfile.lock file used to create this artifact (iOS only).
+  final String? podfileLockHash;
 
   static int _parseStringToInt(dynamic value) => int.parse(value as String);
 

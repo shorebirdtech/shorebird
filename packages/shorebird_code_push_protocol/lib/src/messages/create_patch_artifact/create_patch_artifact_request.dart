@@ -15,6 +15,7 @@ class CreatePatchArtifactRequest {
     required this.hash,
     required this.size,
     this.hashSignature,
+    this.podfileLockHash,
   });
 
   /// Converts a Map<String, dynamic> to a [CreatePatchArtifactRequest]
@@ -39,6 +40,9 @@ class CreatePatchArtifactRequest {
   /// the product, so when this field is null, the patch does not uses code
   /// signing.
   final String? hashSignature;
+
+  /// TODO
+  final String? podfileLockHash;
 
   /// The size of the artifact in bytes.
   @JsonKey(fromJson: _parseStringToInt, toJson: _parseIntToString)

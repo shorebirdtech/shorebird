@@ -139,6 +139,7 @@ void main() {
       hash: 'asdf',
       size: 4,
       url: 'url',
+      podfileLockHash: 'podfile-lock-hash',
     );
 
     late CodePushClient codePushClient;
@@ -1050,6 +1051,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenAnswer((_) async {});
         });
@@ -1087,6 +1089,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenThrow(error);
           setUpProjectRoot();
@@ -1119,6 +1122,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenThrow(error);
           setUpProjectRoot();
@@ -1152,6 +1156,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           setUpProjectRoot();
@@ -1186,6 +1191,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           setUpProjectRoot();
@@ -1219,6 +1225,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenAnswer((_) async {});
           setUpProjectRoot();
@@ -1249,6 +1256,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenAnswer((_) async {});
           setUpProjectRoot(flavor: flavorName);
@@ -1277,6 +1285,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: releasePlatform,
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: null,
             ),
           ).called(Arch.values.length);
           verify(() => progress.complete()).called(1);
@@ -1325,6 +1334,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenAnswer((_) async {});
         });
@@ -1340,6 +1350,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenThrow(error);
           setUpProjectRoot();
@@ -1373,6 +1384,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenThrow(error);
           setUpProjectRoot();
@@ -1407,6 +1419,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           setUpProjectRoot();
@@ -1442,6 +1455,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenThrow(const CodePushConflictException(message: error));
           setUpProjectRoot();
@@ -1476,6 +1490,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenAnswer((_) async {});
           setUpProjectRoot();
@@ -1507,6 +1522,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenAnswer((_) async {});
           setUpProjectRoot(flavor: flavorName);
@@ -1532,6 +1548,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: releasePlatform,
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: null,
             ),
           ).called(Arch.values.length + 1);
           verify(() => progress.complete()).called(1);
@@ -1563,6 +1580,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -1580,6 +1598,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
           ),
         ).thenThrow(error);
         setUpProjectRoot();
@@ -1592,6 +1611,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               xcarchivePath: p.join(projectRoot.path, xcarchivePath),
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: true,
+              podfileLockHash: 'TODO',
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1615,6 +1635,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
           ),
         ).thenThrow(const CodePushConflictException(message: error));
         setUpProjectRoot();
@@ -1627,6 +1648,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               xcarchivePath: p.join(projectRoot.path, xcarchivePath),
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: false,
+              podfileLockHash: 'TODO',
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1650,6 +1672,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
           ),
         ).thenThrow(error);
         setUpProjectRoot();
@@ -1662,6 +1685,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               xcarchivePath: p.join(projectRoot.path, xcarchivePath),
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: false,
+              podfileLockHash: 'TODO',
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1680,6 +1704,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
           ),
         ).thenAnswer((_) async {});
         setUpProjectRoot();
@@ -1691,6 +1716,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             xcarchivePath: p.join(projectRoot.path, xcarchivePath),
             runnerPath: p.join(projectRoot.path, runnerPath),
             isCodesigned: true,
+            podfileLockHash: 'TODO',
           ),
         );
 
@@ -1720,6 +1746,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: any(named: 'platform'),
               hash: any(named: 'hash'),
               canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenThrow(Exception('oh no'));
           setUpProjectRoot();
@@ -1747,6 +1774,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             platform: any(named: 'platform'),
             hash: any(named: 'hash'),
             canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
           ),
         ).thenAnswer((_) async {});
         setUpProjectRoot();

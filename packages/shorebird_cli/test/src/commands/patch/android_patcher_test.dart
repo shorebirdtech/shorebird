@@ -363,6 +363,7 @@ Looked in:
         hash: '#',
         size: 42,
         url: 'https://example.com',
+        podfileLockHash: null,
       );
 
       setUp(() {

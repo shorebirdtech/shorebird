@@ -547,10 +547,11 @@ For more information see: $supportedVersionsLink''',
           id: 0,
           releaseId: releaseId,
           arch: arch,
-          platform: ReleasePlatform.android,
+          platform: ReleasePlatform.ios,
           hash: '#',
           size: 42,
           url: 'https://example.com',
+          podfileLockHash: 'podfile-lock-hash',
         );
         late File releaseArtifactFile;
 
