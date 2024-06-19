@@ -12,50 +12,24 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
-enum GradleHandedErrors {
-  unsupportedClassFileVersion;
+class IncompatibleGradleException implements Exception {
+  static const errorPattern = 'Unsupported class file major version';
 
-  bool apply(ShorebirdProcessResult result) {
-    switch (this) {
-      case GradleHandedErrors.unsupportedClassFileVersion:
-        return result.stderr.toString().contains(
-              'Unsupported class file major version',
-            );
-    }
-  }
-
-  GradleProcessException toException() {
-    switch (this) {
-      case GradleHandedErrors.unsupportedClassFileVersion:
-        final docLink = link(
-          uri: Uri.parse(
-            ShorebirdDocumentation.unsupportedClassFileVersionUrl,
-          ),
-          message: 'troubleshooting documentation',
-        );
-        return GradleProcessException('''
+  @override
+  String toString() {
+    final docLink = link(
+      uri: Uri.parse(
+        ShorebirdDocumentation.unsupportedClassFileVersionUrl,
+      ),
+      message: 'troubleshooting documentation',
+    );
+    return '''
 Unsupported class file major version.
 
 This error is typically caused by a mismatch between the Java and Gradle's versions.
 
 Check our $docLink for help. 
-''');
-    }
-  }
-}
-
-/// {@template gradle_process_exception}
-/// Thrown when the gradle sub-process fails.
-/// {@endtemplate}
-class GradleProcessException implements Exception {
-  /// {@macro gradle_process_exception}
-  const GradleProcessException(this.message);
-
-  final String message;
-
-  @override
-  String toString() {
-    return 'Gradle sub-process failed with error:\n$message';
+''';
   }
 }
 
@@ -136,10 +110,10 @@ class Gradlew {
     );
 
     if (result.exitCode != ExitCode.success.code) {
-      for (final error in GradleHandedErrors.values) {
-        if (error.apply(result)) {
-          throw error.toException();
-        }
+      if (result.stderr
+          .toString()
+          .contains(IncompatibleGradleException.errorPattern)) {
+        throw IncompatibleGradleException();
       }
     }
 

@@ -218,15 +218,7 @@ BUILD FAILED in 3s
 
               await expectLater(
                 runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-                throwsA(
-                  isA<GradleProcessException>().having(
-                    (e) => '$e',
-                    'message',
-                    equals(
-                      '''Gradle sub-process failed with error:\n${GradleHandedErrors.unsupportedClassFileVersion.toException().message}''',
-                    ),
-                  ),
-                ),
+                throwsA(isA<IncompatibleGradleException>()),
               );
             },
             testOn: 'linux || mac-os',
