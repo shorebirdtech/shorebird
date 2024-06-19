@@ -34,7 +34,7 @@ void main() {
       final artifactString = artifact.toString();
       expect(
         artifactString,
-        '{id: 1, release_id: 1, arch: aarch64, platform: android, hash: sha256:1234567890, size: 42, url: https://example.com}',
+        '{id: 1, release_id: 1, arch: aarch64, platform: android, hash: sha256:1234567890, size: 42, url: https://example.com, podfile_lock_hash: podfile-lock-hash}',
       );
     });
   });
