@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -97,7 +98,7 @@ Make sure you have run "flutter build apk" at least once.''',
             ),
           );
         },
-        testOn: 'linux',
+        testOn: 'linux || mac-os',
       );
 
       test(
@@ -119,7 +120,7 @@ Make sure you have run "flutter build apk" at least once.''',
             ),
           );
         },
-        testOn: 'linux',
+        testOn: 'linux || mac-os',
       );
 
       test(
@@ -143,7 +144,7 @@ Make sure you have run "flutter build apk" at least once.''',
             ),
           ).called(1);
         },
-        testOn: 'linux',
+        testOn: 'linux || mac-os',
       );
 
       test(
@@ -176,7 +177,62 @@ Make sure you have run "flutter build apk" at least once.''',
             ),
           ).called(1);
         },
-        testOn: 'linux',
+        testOn: 'linux || mac-os',
+      );
+
+      group(
+        '''when the process fails with the Unsupported class file major version error XX''',
+        () {
+          test(
+            'throws a GradleProcessException with the correct message',
+            () async {
+              final tempDir = setUpAppTempDir();
+              File(
+                p.join(tempDir.path, 'android', 'gradlew'),
+              ).createSync(recursive: true);
+              when(() => result.exitCode).thenReturn(1);
+              when(() => result.stderr).thenReturn('''
+BUILD FAILED in 3s
+
+✗ Detecting product flavors (3.6s)
+Unable to extract product flavors.
+Exception: > Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy FAILED
+1 actionable task: 1 executed
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':gradle:compileGroovy'.
+> BUG! exception in phase 'semantic analysis' in source unit '/home/user/flutter/packages/flutter_tools/gradle/src/main/groovy/app_plugin_loader.groovy' Unsupported class file major version 65
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+
+* Get more help at https://help.gradle.org
+
+BUILD FAILED in 3s
+''');
+
+              await expectLater(
+                runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+                throwsA(
+                  isA<IncompatibleGradleException>().having(
+                    (e) => e.toString(),
+                    'contains documentation link',
+                    contains(
+                      ShorebirdDocumentation.unsupportedClassFileVersionUrl,
+                    ),
+                  ),
+                ),
+              );
+            },
+            testOn: 'linux || mac-os',
+          );
+        },
       );
 
       test(
@@ -215,7 +271,7 @@ Make sure you have run "flutter build apk" at least once.''',
             ),
           ).called(1);
         },
-        testOn: 'linux',
+        testOn: 'linux || mac-os',
       );
 
       group('when flavors are all upper case', () {
@@ -246,7 +302,7 @@ Make sure you have run "flutter build apk" at least once.''',
               ),
             );
           },
-          testOn: 'linux',
+          testOn: 'linux || mac-os',
         );
       });
 
@@ -280,7 +336,7 @@ Make sure you have run "flutter build apk" at least once.''',
                 ),
               );
             },
-            testOn: 'linux',
+            testOn: 'linux || mac-os',
           );
         },
       );
@@ -315,7 +371,7 @@ Make sure you have run "flutter build apk" at least once.''',
                 ),
               );
             },
-            testOn: 'linux',
+            testOn: 'linux || mac-os',
           );
         },
       );
