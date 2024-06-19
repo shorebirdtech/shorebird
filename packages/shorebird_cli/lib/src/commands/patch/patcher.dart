@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -55,10 +54,6 @@ https://docs.shorebird.dev/status#link-percentage-ios
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;
 
-  /// Used to compare release and patch artifacts to determine if a patch can
-  /// be applied to a release.
-  ArchiveDiffer get archiveDiffer;
-
   /// The identifier used for the "primary" release artifact, usually a bundle.
   /// For example, 'aab' for Android, 'xcarchive' for iOS.
   String get primaryReleaseArtifactArch;
@@ -72,11 +67,12 @@ https://docs.shorebird.dev/status#link-percentage-ios
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid() async {}
 
-  /// Checks whether the [releaseArtifact] can be patched by the current
-  /// project.
-  Future<void> checkPatchability({
+  /// TODO
+  Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
-  }) async {}
+    required File releaseArchive,
+    required File patchArchive,
+  });
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).

@@ -6,7 +6,6 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -252,7 +251,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       platform: patcher.releaseType.releasePlatform,
     );
 
-    final releaseArtifactFile = await downloadPrimaryReleaseArtifact(
+    final releaseArchive = await downloadPrimaryReleaseArtifact(
       releaseArtifact: releaseArtifact,
       patcher: patcher,
     );
@@ -270,17 +269,16 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           patchArtifactFile = await patcher.buildPatchArtifact();
         }
 
-        await patcher.checkPatchability(releaseArtifact: releaseArtifact);
-
         final diffStatus = await assertUnpatchableDiffs(
-          releaseArtifact: releaseArtifactFile,
-          patchArtifact: patchArtifactFile!,
-          archiveDiffer: patcher.archiveDiffer,
+          releaseArtifact: releaseArtifact,
+          releaseArchive: releaseArchive,
+          patchArchive: patchArtifactFile!,
+          patcher: patcher,
         );
         final patchArtifactBundles = await patcher.createPatchArtifacts(
           appId: appId,
           releaseId: release.id,
-          releaseArtifact: releaseArtifactFile,
+          releaseArtifact: releaseArchive,
         );
 
         final dryRun = results['dry-run'] == true;
@@ -347,18 +345,24 @@ Please re-run the release command for this version or create a new release.''');
   }
 
   Future<DiffStatus> assertUnpatchableDiffs({
-    required File releaseArtifact,
-    required File patchArtifact,
-    required ArchiveDiffer archiveDiffer,
+    required ReleaseArtifact releaseArtifact,
+    required File patchArchive,
+    required File releaseArchive,
+    // required ArchiveDiffer archiveDiffer,
+    required Patcher patcher,
   }) async {
     try {
-      return await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-        localArtifact: patchArtifact,
+      return patcher.assertUnpatchableDiffs(
         releaseArtifact: releaseArtifact,
-        archiveDiffer: archiveDiffer,
-        allowAssetChanges: allowAssetDiffs,
-        allowNativeChanges: allowNativeDiffs,
+        releaseArchive: releaseArchive,
+        patchArchive: patchArchive,
       );
+      //   localArchive: patchArtifact,
+      //   releaseArchive: releaseArtifact,
+      //   archiveDiffer: archiveDiffer,
+      //   allowAssetChanges: allowAssetDiffs,
+      //   allowNativeChanges: allowNativeDiffs,
+      // );
     } on UserCancelledException {
       throw ProcessExit(ExitCode.success.code);
     } on UnpatchableChangeException {

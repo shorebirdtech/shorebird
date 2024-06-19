@@ -42,10 +42,10 @@ PatchDiffChecker get patchDiffChecker => read(patchDiffCheckerRef);
 /// {@endtemplate}
 class PatchDiffChecker {
   /// Checks for differences that could cause issues when applying the
-  /// [localArtifact] patch to the [releaseArtifact].
+  /// [localArchive] patch to the [releaseArchive].
   Future<DiffStatus> confirmUnpatchableDiffsIfNecessary({
-    required File localArtifact,
-    required File releaseArtifact,
+    required File localArchive,
+    required File releaseArchive,
     required ArchiveDiffer archiveDiffer,
     required bool allowAssetChanges,
     required bool allowNativeChanges,
@@ -54,8 +54,8 @@ class PatchDiffChecker {
         logger.progress('Verifying patch can be applied to release');
 
     final contentDiffs = await archiveDiffer.changedFiles(
-      releaseArtifact.path,
-      localArtifact.path,
+      releaseArchive.path,
+      localArchive.path,
     );
     progress.complete();
 

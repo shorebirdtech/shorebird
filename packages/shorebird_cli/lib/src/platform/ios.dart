@@ -3,14 +3,12 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// {@template export_method}
 /// The method used to export the IPA.
@@ -73,18 +71,6 @@ final iosRef = create(Ios.new);
 Ios get ios => read(iosRef);
 
 class Ios {
-  /// TODO
-  Future<String> podfileLockHash() async {
-    final podfileLockFile = File(
-      p.join(
-        shorebirdEnv.getShorebirdProjectRoot()!.path,
-        'ios',
-        'Podfile.lock',
-      ),
-    );
-    return sha256.convert(await podfileLockFile.readAsBytes()).toString();
-  }
-
   File exportOptionsPlistFromArgs(ArgResults results) {
     final exportPlistArg =
         results[CommonArguments.exportOptionsPlistArg.name] as String?;

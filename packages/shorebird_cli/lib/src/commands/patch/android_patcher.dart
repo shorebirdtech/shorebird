@@ -4,7 +4,6 @@ import 'package:crypto/crypto.dart';
 import 'package:io/io.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -43,7 +42,18 @@ class AndroidPatcher extends Patcher {
   String get primaryReleaseArtifactArch => 'aab';
 
   @override
-  ArchiveDiffer get archiveDiffer => AndroidArchiveDiffer();
+  Future<DiffStatus> assertUnpatchableDiffs({
+    required ReleaseArtifact releaseArtifact,
+    required File releaseArchive,
+    required File patchArchive,
+  }) =>
+      patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+        localArchive: patchArchive,
+        releaseArchive: releaseArchive,
+        archiveDiffer: AndroidArchiveDiffer(),
+        allowAssetChanges: allowAssetDiffs,
+        allowNativeChanges: allowNativeDiffs,
+      );
 
   @override
   Future<void> assertPreconditions() async {

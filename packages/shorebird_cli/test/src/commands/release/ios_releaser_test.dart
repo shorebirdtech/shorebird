@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -680,6 +682,7 @@ To change the version of this release, change your app's version in your pubspec
         const releaseVersion = '1.0.0';
         const flutterRevision = 'deadbeef';
         const codesign = true;
+        const podfileLockContent = 'podfile-lock';
 
         final release = Release(
           id: 42,
@@ -694,12 +697,21 @@ To change the version of this release, change your app's version in your pubspec
 
         late Directory xcarchiveDirectory;
         late Directory iosAppDirectory;
+        late File podfileLockFile;
 
         setUp(() {
           when(() => argResults['codesign']).thenReturn(codesign);
 
           xcarchiveDirectory = Directory.systemTemp.createTempSync();
           iosAppDirectory = Directory.systemTemp.createTempSync();
+          podfileLockFile = File(
+            p.join(
+              Directory.systemTemp.createTempSync().path,
+              'Podfile.lock',
+            ),
+          )
+            ..createSync(recursive: true)
+            ..writeAsStringSync(podfileLockContent);
           when(artifactManager.getXcarchiveDirectory)
               .thenReturn(xcarchiveDirectory);
           when(
@@ -717,6 +729,7 @@ To change the version of this release, change your app's version in your pubspec
               podfileLockHash: any(named: 'podfileLockHash'),
             ),
           ).thenAnswer((_) async => {});
+          when(() => shorebirdEnv.podfileLockFile).thenReturn(podfileLockFile);
         });
 
         test('forwards call to codePushClientWrapper', () async {
@@ -734,7 +747,8 @@ To change the version of this release, change your app's version in your pubspec
               xcarchivePath: xcarchiveDirectory.path,
               runnerPath: iosAppDirectory.path,
               isCodesigned: codesign,
-              podfileLockHash: 'TODO',
+              podfileLockHash:
+                  sha256.convert(utf8.encode(podfileLockContent)).toString(),
             ),
           ).called(1);
         });

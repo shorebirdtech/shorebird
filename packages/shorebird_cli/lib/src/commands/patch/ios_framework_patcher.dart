@@ -6,7 +6,6 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/ios_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -45,9 +44,6 @@ class IosFrameworkPatcher extends Patcher {
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
 
   @override
-  ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
-
-  @override
   String get primaryReleaseArtifactArch => 'xcframework';
 
   @override
@@ -81,6 +77,20 @@ class IosFrameworkPatcher extends Patcher {
       throw ProcessExit(ExitCode.usage.code);
     }
   }
+
+  @override
+  Future<DiffStatus> assertUnpatchableDiffs({
+    required ReleaseArtifact releaseArtifact,
+    required File releaseArchive,
+    required File patchArchive,
+  }) =>
+      patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+        localArchive: patchArchive,
+        releaseArchive: releaseArchive,
+        archiveDiffer: IosArchiveDiffer(),
+        allowAssetChanges: allowAssetDiffs,
+        allowNativeChanges: allowNativeDiffs,
+      );
 
   @override
   Future<File> buildPatchArtifact() async {

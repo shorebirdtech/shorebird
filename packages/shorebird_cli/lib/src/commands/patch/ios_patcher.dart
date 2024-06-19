@@ -10,7 +10,6 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -32,6 +31,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 typedef _LinkResult = ({int exitCode, double? linkPercentage});
 
@@ -64,8 +64,8 @@ class IosPatcher extends Patcher {
   @override
   String get primaryReleaseArtifactArch => 'xcarchive';
 
-  @override
-  ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
+  // @override
+  // ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
 
   @override
   Future<void> assertPreconditions() async {
@@ -82,10 +82,28 @@ class IosPatcher extends Patcher {
   }
 
   @override
-  Future<void> checkPatchability({
+  Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
+    required File releaseArchive,
+    required File patchArchive,
   }) async {
-    final podfileLockHash = await ios.podfileLockHash();
+    final diffStatus =
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArchive: patchArchive,
+      releaseArchive: releaseArchive,
+      archiveDiffer: IosArchiveDiffer(),
+      allowAssetChanges: allowAssetDiffs,
+      allowNativeChanges: allowNativeDiffs,
+    );
+
+    if (!diffStatus.hasNativeChanges) {
+      return diffStatus;
+    }
+
+    final podfileLockHash = sha256
+        .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
+        .toString();
+
     if (podfileLockHash != releaseArtifact.podfileLockHash) {
       logger
         ..warn(
@@ -93,12 +111,22 @@ class IosPatcher extends Patcher {
         )
         ..info(
           yellow.wrap(
-            '''This may indicate that the patch contains native changes, which cannot be applied with a patch.''',
+            '''This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
           ),
         );
 
-      // TODO
+      if (!allowNativeDiffs) {
+        if (!shorebirdEnv.canAcceptUserInput) {
+          throw UnpatchableChangeException();
+        }
+
+        if (!logger.confirm('Continue anyways?')) {
+          throw UserCancelledException();
+        }
+      }
     }
+
+    return diffStatus;
   }
 
   @override

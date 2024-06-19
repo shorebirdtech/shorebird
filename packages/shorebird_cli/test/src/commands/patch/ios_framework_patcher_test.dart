@@ -6,7 +6,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -131,12 +130,6 @@ void main() {
           flavor: null,
           target: null,
         );
-      });
-
-      group('archiveDiffer', () {
-        test('is an IosArchiveDiffer', () {
-          expect(patcher.archiveDiffer, isA<IosArchiveDiffer>());
-        });
       });
 
       group('primaryReleaseArtifactArch', () {
@@ -278,6 +271,8 @@ void main() {
           });
         });
       });
+
+      group('assertUnpatchableDiffs', () {});
 
       group('buildPatchArtifact', () {
         const flutterVersionAndRevision = '3.10.6 (83305b5088)';

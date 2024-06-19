@@ -17,4 +17,6 @@ class FakeIOSink extends Fake implements IOSink {}
 
 class FakeRelease extends Fake implements Release {}
 
+class FakeReleaseArtifact extends Fake implements ReleaseArtifact {}
+
 class FakeShorebirdProcess extends Fake implements ShorebirdProcess {}

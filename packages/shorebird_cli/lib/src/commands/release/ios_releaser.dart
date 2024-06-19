@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
@@ -16,6 +17,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -175,6 +177,9 @@ For more information see: $supportedVersionsLink''',
     required String appId,
   }) async {
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory()!;
+    final podfileLockHash = sha256
+        .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
+        .toString();
     await codePushClientWrapper.createIosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
@@ -183,7 +188,7 @@ For more information see: $supportedVersionsLink''',
           .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
           .path,
       isCodesigned: codesign,
-      podfileLockHash: await ios.podfileLockHash(),
+      podfileLockHash: podfileLockHash,
     );
   }
 
