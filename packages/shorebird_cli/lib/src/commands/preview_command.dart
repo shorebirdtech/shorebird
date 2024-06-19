@@ -19,8 +19,10 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
@@ -76,6 +78,17 @@ class PreviewCommand extends ShorebirdCommand {
 
   @override
   String get description => 'Preview a specific release on a device.';
+
+  void assertArtifactIsSideloable(ReleaseArtifact artifact) {
+    if (!artifact.canSideload) {
+      logger.err('''
+The choosen release is cannot be sideloaded.
+
+For more information, see ${link(uri: Uri.parse(ShorebirdDocumentation.nonSideloadableRelease))}
+''');
+      throw ProcessExit(ExitCode.unavailable.code);
+    }
+  }
 
   @override
   Future<int> run() async {
@@ -232,6 +245,8 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
+    assertArtifactIsSideloable(releaseAabArtifact);
+
     try {
       aabFile = File(
         getArtifactPath(
@@ -349,6 +364,8 @@ class PreviewCommand extends ShorebirdCommand {
         ..detail('Stack trace: $s');
       return ExitCode.software.code;
     }
+
+    assertArtifactIsSideloable(releaseRunnerArtifact);
 
     runnerDirectory = Directory(
       getArtifactPath(

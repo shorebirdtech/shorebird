@@ -8,4 +8,10 @@ class ShorebirdDocumentation {
   /// file major version
   static const String unsupportedClassFileVersionUrl =
       '$baseUrl/troubleshooting/#unsupported-class-file-major-version-65';
+
+  /// URL to the documentation section which explains what makes a release
+  /// not sideloadable.
+  static const String nonSideloadableRelease =
+      // TODO(erickzanardo): Add the real URL here.
+      '$baseUrl/faq/#non-sideloadable-release';
 }

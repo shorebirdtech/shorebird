@@ -21,11 +21,13 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../matchers.dart';
 import '../mocks.dart';
 
 void main() {
@@ -137,6 +139,7 @@ void main() {
         ),
       ).thenAnswer((_) async => releaseArtifact);
       when(() => releaseArtifact.id).thenReturn(artifactId);
+      when(() => releaseArtifact.canSideload).thenReturn(true);
       when(() => app.appId).thenReturn(appId);
       when(() => app.displayName).thenReturn(appDisplayName);
       when(() => release.id).thenReturn(releaseId);
@@ -940,6 +943,35 @@ channel: ${track.channel}
           ).called(1);
         });
       });
+
+      group('when artifacts cannot be sideloaded', () {
+        setUp(() {
+          when(() => releaseArtifact.canSideload).thenReturn(false);
+        });
+
+        test('logs and exits with unavailable error', () async {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(createShorebirdYaml);
+
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.unavailable),
+          );
+          verify(
+            () => logger.err(
+              '''
+The choosen release is cannot be sideloaded.
+
+For more information, see ${link(uri: Uri.parse(ShorebirdDocumentation.nonSideloadableRelease))}
+''',
+            ),
+          ).called(1);
+        });
+      });
     });
 
     group('ios', () {
@@ -1252,6 +1284,34 @@ channel: ${DeploymentTrack.staging.channel}
           verify(
             () => logger.err(
               'Error getting release artifact: Exception: oops',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when artifacts cannot be sideloaded', () {
+        setUp(() {
+          when(() => releaseArtifact.canSideload).thenReturn(false);
+          when(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenAnswer((_) async => ExitCode.success.code);
+        });
+
+        test('logs and exits with unavailable error', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.unavailable),
+          );
+          verify(
+            () => logger.err(
+              '''
+The choosen release is cannot be sideloaded.
+
+For more information, see ${link(uri: Uri.parse(ShorebirdDocumentation.nonSideloadableRelease))}
+''',
             ),
           ).called(1);
         });
