@@ -15,6 +15,7 @@ void main() {
             size: 1337,
             url: 'https://example.com',
             podfileLockHash: 'podfile-lock-hash',
+            canSideload: true,
           ),
         ],
       );
