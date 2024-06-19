@@ -19,6 +19,7 @@ class ReleaseArtifact {
     required this.size,
     required this.url,
     required this.podfileLockHash,
+    required this.canSideload,
   });
 
   /// Converts a Map<String, dynamic> to a [ReleaseArtifact]
@@ -51,6 +52,10 @@ class ReleaseArtifact {
 
   /// The hash of the Podfile.lock file used to create the artifact (iOS only).
   final String? podfileLockHash;
+
+  /// Whether the artifact can be sideloaded onto a device or not
+  /// (e.g. non signed iOS artifacts cannot be sideloaded).
+  final bool canSideload;
 
   @override
   String toString() => toJson().toString();
