@@ -109,7 +109,8 @@ class IosPatcher extends Patcher {
         .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
         .toString();
 
-    if (podfileLockHash != releaseArtifact.podfileLockHash) {
+    if (releaseArtifact.podfileLockHash != null &&
+        podfileLockHash != releaseArtifact.podfileLockHash) {
       logger
         ..warn(
           '''Your ios/Podfile.lock is different from the one used to build the release.''',
