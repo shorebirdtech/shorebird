@@ -199,6 +199,23 @@ void main() {
       });
     });
 
+    group('podfileLockFile', () {
+      test('returns correct path', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
+        final podfileLockFile = IOOverrides.runZoned(
+          () => runWithOverrides(
+            () => shorebirdEnv.podfileLockFile,
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          podfileLockFile.path,
+          equals(p.join(tempDir.path, 'ios', 'Podfile.lock')),
+        );
+      });
+    });
+
     group('flutterBinaryFile', () {
       test('returns correct path', () {
         expect(
