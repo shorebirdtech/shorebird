@@ -144,7 +144,5 @@ jobs:
           cache: true
 
       - name: 🧪 Run Integration Tests
-        # Run a single test at a time to ensure that one test does not interfere with another
-        # since some commands might change the state of the cli installation.
-        run: dart test integration_test -j 1
+        run: dart test integration_test
         working-directory: packages/shorebird_cli
