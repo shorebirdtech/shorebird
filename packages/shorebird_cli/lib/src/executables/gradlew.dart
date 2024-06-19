@@ -3,12 +3,35 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+
+class IncompatibleGradleException implements Exception {
+  static const errorPattern = 'Unsupported class file major version';
+
+  @override
+  String toString() {
+    final docLink = link(
+      uri: Uri.parse(
+        ShorebirdDocumentation.unsupportedClassFileVersionUrl,
+      ),
+      message: 'troubleshooting documentation',
+    );
+    return '''
+Unsupported class file major version.
+
+This error is typically caused by a mismatch between the Java and Gradle's versions.
+
+Check our $docLink for help. 
+''';
+  }
+}
 
 /// {@template missing_android_project_exception}
 /// Thrown when the Flutter project does not have
@@ -58,7 +81,10 @@ Gradlew get gradlew => read(gradlewRef);
 class Gradlew {
   String get executable => platform.isWindows ? 'gradlew.bat' : 'gradlew';
 
-  Future<ShorebirdProcessResult> _run(List<String> args, String projectRoot) {
+  Future<ShorebirdProcessResult> _run(
+    List<String> args,
+    String projectRoot,
+  ) async {
     final javaHome = java.home;
     final androidRoot = Directory(p.join(projectRoot, 'android'));
 
@@ -73,7 +99,7 @@ class Gradlew {
     }
 
     final executablePath = executableFile.path;
-    return process.run(
+    final result = await process.run(
       executablePath,
       args,
       runInShell: true,
@@ -82,6 +108,16 @@ class Gradlew {
         if (!javaHome.isNullOrEmpty) 'JAVA_HOME': javaHome!,
       },
     );
+
+    if (result.exitCode != ExitCode.success.code) {
+      if (result.stderr
+          .toString()
+          .contains(IncompatibleGradleException.errorPattern)) {
+        throw IncompatibleGradleException();
+      }
+    }
+
+    return result;
   }
 
   /// Returns whether the gradle wrapper exists at [projectRoot].
