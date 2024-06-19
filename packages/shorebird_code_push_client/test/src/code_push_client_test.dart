@@ -1728,6 +1728,7 @@ void main() {
             hash: '#',
             size: 42,
             podfileLockHash: null,
+            canSideload: true,
           ),
         ];
 
