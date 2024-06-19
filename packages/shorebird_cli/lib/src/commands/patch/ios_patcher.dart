@@ -98,13 +98,20 @@ class IosPatcher extends Patcher {
       confirmNativeChanges: false,
     );
 
+    print('has native changes: ${diffStatus.hasNativeChanges}');
+
     if (!diffStatus.hasNativeChanges) {
       return diffStatus;
     }
 
-    final podfileLockHash = sha256
-        .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
-        .toString();
+    final String? podfileLockHash;
+    if (shorebirdEnv.podfileLockFile.existsSync()) {
+      podfileLockHash = sha256
+          .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
+          .toString();
+    } else {
+      podfileLockHash = null;
+    }
 
     if (releaseArtifact.podfileLockHash != null &&
         podfileLockHash != releaseArtifact.podfileLockHash) {

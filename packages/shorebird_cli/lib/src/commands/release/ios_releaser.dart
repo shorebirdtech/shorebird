@@ -177,9 +177,14 @@ For more information see: $supportedVersionsLink''',
     required String appId,
   }) async {
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory()!;
-    final podfileLockHash = sha256
-        .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
-        .toString();
+    final String? podfileLockHash;
+    if (shorebirdEnv.podfileLockFile.existsSync()) {
+      podfileLockHash = sha256
+          .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
+          .toString();
+    } else {
+      podfileLockHash = null;
+    }
     await codePushClientWrapper.createIosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,

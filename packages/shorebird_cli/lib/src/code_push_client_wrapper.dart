@@ -582,7 +582,7 @@ aar artifact already exists, continuing...''',
     required String xcarchivePath,
     required String runnerPath,
     required bool isCodesigned,
-    required String podfileLockHash,
+    required String? podfileLockHash,
   }) async {
     final createArtifactProgress = logger.progress('Creating artifacts');
     final thinnedArchiveDirectory =
