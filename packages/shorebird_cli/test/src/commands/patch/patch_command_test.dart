@@ -882,7 +882,7 @@ Please re-run the release command for this version or create a new release.''',
 
         verify(
           () => logger.err(
-            '''No release exists for [platform]. Please run shorebird release [platform] to create one.''',
+            '''No release exists for android in $releaseVersion. Please run shorebird release --platform android to create one.''',
           ),
         ).called(1);
       });
