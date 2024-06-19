@@ -483,7 +483,7 @@ void main() {
       });
 
       test('returns correct metadata', () async {
-        final diffStatus = DiffStatus(
+        const diffStatus = DiffStatus(
           hasAssetChanges: false,
           hasNativeChanges: false,
         );

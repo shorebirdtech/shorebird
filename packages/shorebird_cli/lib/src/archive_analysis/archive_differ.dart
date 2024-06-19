@@ -9,8 +9,13 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 /// Thrown when an [ArchiveDiffer] fails to generate a [FileSetDiff].
 class DiffFailedException implements Exception {}
 
+/// {@template archive_differ}
 /// Computes content differences between two archives.
+/// {@endtemplate}
 abstract class ArchiveDiffer {
+  /// {@macro archive_differ}
+  const ArchiveDiffer();
+
   /// Asset files that are not considered to be breaking changes.
   static const assetFileNamesToIgnore = {
     'AssetManifest.bin',

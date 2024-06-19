@@ -87,7 +87,7 @@ class IosFrameworkPatcher extends Patcher {
       patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArchive: patchArchive,
         releaseArchive: releaseArchive,
-        archiveDiffer: IosArchiveDiffer(),
+        archiveDiffer: const IosArchiveDiffer(),
         allowAssetChanges: allowAssetDiffs,
         allowNativeChanges: allowNativeDiffs,
       );

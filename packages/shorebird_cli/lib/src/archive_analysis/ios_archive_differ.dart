@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 import 'package:shorebird_cli/src/archive_analysis/macho.dart';
 
+/// {@template ios_archive_differ}
 /// Finds differences between two IPAs or zipped Xcframeworks.
 ///
 /// Asset changes will be in the `Assets.car` file (which is a combination of
@@ -21,7 +22,11 @@ import 'package:shorebird_cli/src/archive_analysis/macho.dart';
 ///   Flutter.framework or App.framework files.
 ///
 /// Dart changes will appear in the App.framework/App executable.
+/// {@endtemplate}
 class IosArchiveDiffer extends ArchiveDiffer {
+  /// {@macro ios_archive_differ}
+  const IosArchiveDiffer();
+
   String _hash(List<int> bytes) => sha256.convert(bytes).toString();
 
   static final _binaryFilePatterns = {

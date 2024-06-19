@@ -1,12 +1,15 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/archive_analysis/ios_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -54,6 +57,7 @@ void main() {
       late Directory projectRoot;
       late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
+      late PatchDiffChecker patchDiffChecker;
       late Platform platform;
       late Progress progress;
       late ShorebirdArtifacts shorebirdArtifacts;
@@ -80,6 +84,7 @@ void main() {
             iosRef.overrideWith(() => ios),
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
+            patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
             platformRef.overrideWith(() => platform),
             processRef.overrideWith(() => shorebirdProcess),
             shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
@@ -95,6 +100,7 @@ void main() {
         registerFallbackValue(FakeArgResults());
         registerFallbackValue(Directory(''));
         registerFallbackValue(File(''));
+        registerFallbackValue(const IosArchiveDiffer());
         registerFallbackValue(ReleasePlatform.ios);
         registerFallbackValue(Uri.parse('https://example.com'));
       });
@@ -110,6 +116,7 @@ void main() {
         engineConfig = MockEngineConfig();
         ios = MockIos();
         operatingSystemInterface = MockOperatingSystemInterface();
+        patchDiffChecker = MockPatchDiffChecker();
         platform = MockPlatform();
         progress = MockProgress();
         projectRoot = Directory.systemTemp.createTempSync();
@@ -258,7 +265,217 @@ void main() {
         });
       });
 
-      group('assertUnpatchableDiffs', () {});
+      group('assertUnpatchableDiffs', () {
+        group('when no native changes are detected', () {
+          const noChangeDiffStatus = DiffStatus(
+            hasAssetChanges: false,
+            hasNativeChanges: false,
+          );
+
+          setUp(() {
+            when(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: any(named: 'localArchive'),
+                releaseArchive: any(named: 'releaseArchive'),
+                archiveDiffer: any(named: 'archiveDiffer'),
+                allowAssetChanges: any(named: 'allowAssetChanges'),
+                allowNativeChanges: any(named: 'allowNativeChanges'),
+                confirmNativeChanges: false,
+              ),
+            ).thenAnswer((_) async => noChangeDiffStatus);
+          });
+
+          test('returns diff status from patchDiffChecker', () async {
+            final diffStatus = await runWithOverrides(
+              () => patcher.assertUnpatchableDiffs(
+                releaseArtifact: FakeReleaseArtifact(),
+                releaseArchive: File(''),
+                patchArchive: File(''),
+              ),
+            );
+            expect(diffStatus, equals(noChangeDiffStatus));
+            verifyNever(
+              () => logger.warn(
+                '''Your ios/Podfile.lock is different from the one used to build the release.''',
+              ),
+            );
+          });
+        });
+
+        group('when native changes are detected', () {
+          const nativeChangeDiffStatus = DiffStatus(
+            hasAssetChanges: false,
+            hasNativeChanges: true,
+          );
+
+          late String podfileLockHash;
+
+          setUp(() {
+            when(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: any(named: 'localArchive'),
+                releaseArchive: any(named: 'releaseArchive'),
+                archiveDiffer: any(named: 'archiveDiffer'),
+                allowAssetChanges: any(named: 'allowAssetChanges'),
+                allowNativeChanges: any(named: 'allowNativeChanges'),
+                confirmNativeChanges: false,
+              ),
+            ).thenAnswer((_) async => nativeChangeDiffStatus);
+
+            const podfileLockContents = 'lock file';
+            podfileLockHash =
+                sha256.convert(utf8.encode(podfileLockContents)).toString();
+            final podfileLockFile = File(
+              p.join(
+                Directory.systemTemp.createTempSync().path,
+                'Podfile.lock',
+              ),
+            )
+              ..createSync(recursive: true)
+              ..writeAsStringSync(podfileLockContents);
+
+            when(() => shorebirdEnv.podfileLockFile)
+                .thenReturn(podfileLockFile);
+          });
+
+          group('when release has podspec lock hash', () {
+            group('when release podspec lock hash matches patch', () {
+              late final releaseArtifact = ReleaseArtifact(
+                id: 0,
+                releaseId: 0,
+                arch: 'aarch64',
+                platform: ReleasePlatform.ios,
+                hash: '#',
+                size: 42,
+                url: 'https://example.com',
+                podfileLockHash: podfileLockHash,
+              );
+
+              test('does not warn of native changes', () async {
+                final diffStatus = await runWithOverrides(
+                  () => patcher.assertUnpatchableDiffs(
+                    releaseArtifact: releaseArtifact,
+                    releaseArchive: File(''),
+                    patchArchive: File(''),
+                  ),
+                );
+                expect(diffStatus, equals(nativeChangeDiffStatus));
+                verifyNever(
+                  () => logger.warn(
+                    '''Your ios/Podfile.lock is different from the one used to build the release.''',
+                  ),
+                );
+              });
+            });
+
+            group('when release podspec lock hash does not match patch', () {
+              const releaseArtifact = ReleaseArtifact(
+                id: 0,
+                releaseId: 0,
+                arch: 'aarch64',
+                platform: ReleasePlatform.ios,
+                hash: '#',
+                size: 42,
+                url: 'https://example.com',
+                podfileLockHash: 'podfile-lock-hash',
+              );
+
+              group('when native diffs are allowed', () {
+                setUp(() {
+                  when(() => argResults['allow-native-diffs']).thenReturn(true);
+                });
+
+                test(
+                    'logs warning, does not prompt for confirmation to proceed',
+                    () async {
+                  final diffStatus = await runWithOverrides(
+                    () => patcher.assertUnpatchableDiffs(
+                      releaseArtifact: releaseArtifact,
+                      releaseArchive: File(''),
+                      patchArchive: File(''),
+                    ),
+                  );
+                  expect(diffStatus, equals(nativeChangeDiffStatus));
+                  verify(
+                    () => logger.warn(
+                      '''Your ios/Podfile.lock is different from the one used to build the release.''',
+                    ),
+                  ).called(1);
+                  verifyNever(() => logger.confirm(any()));
+                });
+              });
+
+              group('when native diffs are not allowed', () {
+                group('when in an environment that accepts user input', () {
+                  setUp(() {
+                    when(() => shorebirdEnv.canAcceptUserInput)
+                        .thenReturn(true);
+                  });
+
+                  group('when user opts to continue at prompt', () {
+                    setUp(() {
+                      when(() => logger.confirm(any())).thenReturn(true);
+                    });
+
+                    test('returns diff status from patchDiffChecker', () async {
+                      final diffStatus = await runWithOverrides(
+                        () => patcher.assertUnpatchableDiffs(
+                          releaseArtifact: releaseArtifact,
+                          releaseArchive: File(''),
+                          patchArchive: File(''),
+                        ),
+                      );
+                      expect(diffStatus, equals(nativeChangeDiffStatus));
+                    });
+                  });
+
+                  group('when user aborts at prompt', () {
+                    setUp(() {
+                      when(() => logger.confirm(any())).thenReturn(false);
+                    });
+
+                    test('throws UserCancelledException', () async {
+                      await expectLater(
+                        () => runWithOverrides(
+                          () => patcher.assertUnpatchableDiffs(
+                            releaseArtifact: releaseArtifact,
+                            releaseArchive: File(''),
+                            patchArchive: File(''),
+                          ),
+                        ),
+                        throwsA(isA<UserCancelledException>()),
+                      );
+                    });
+                  });
+                });
+
+                group('when in an environment that does not accept user input',
+                    () {
+                  setUp(() {
+                    when(() => shorebirdEnv.canAcceptUserInput)
+                        .thenReturn(false);
+                  });
+
+                  test('throws UnpatchableChangeException', () async {
+                    await expectLater(
+                      () => runWithOverrides(
+                        () => patcher.assertUnpatchableDiffs(
+                          releaseArtifact: releaseArtifact,
+                          releaseArchive: File(''),
+                          patchArchive: File(''),
+                        ),
+                      ),
+                      throwsA(isA<UnpatchableChangeException>()),
+                    );
+                  });
+                });
+              });
+            });
+          });
+
+          group('when release does not have podspec lock hash', () {});
+        });
+      });
 
       group('buildPatchArtifact', () {
         const flutterVersionAndRevision = '3.22.2 (83305b5088)';
@@ -1364,7 +1581,7 @@ For more information see: $supportedVersionsLink''',
 
         group('when linker is not enabled', () {
           test('returns correct metadata', () async {
-            final diffStatus = DiffStatus(
+            const diffStatus = DiffStatus(
               hasAssetChanges: false,
               hasNativeChanges: false,
             );
@@ -1403,7 +1620,7 @@ For more information see: $supportedVersionsLink''',
           });
 
           test('returns correct metadata', () async {
-            final diffStatus = DiffStatus(
+            const diffStatus = DiffStatus(
               hasAssetChanges: false,
               hasNativeChanges: false,
             );

@@ -84,21 +84,18 @@ class IosPatcher extends Patcher {
     required File releaseArchive,
     required File patchArchive,
   }) async {
-    final progress =
-        logger.progress('Verifying patch can be applied to release');
-
-    final archiveDiffer = IosArchiveDiffer();
-    final contentDiffs = await archiveDiffer.changedFiles(
-      releaseArchive.path,
-      patchArchive.path,
-    );
-    progress.complete();
-
-    final diffStatus = DiffStatus(
-      hasAssetChanges:
-          archiveDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs),
-      hasNativeChanges:
-          archiveDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs),
+    // Check for diffs without warning about native changes, as Xcode builds
+    // can be nondeterministic. So we still have some hope of alerting users of
+    // unpatchable native changes, we compare the Podfile.lock hash between the
+    // patch and the release.
+    final diffStatus =
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArchive: patchArchive,
+      releaseArchive: releaseArchive,
+      archiveDiffer: const IosArchiveDiffer(),
+      allowAssetChanges: allowAssetDiffs,
+      allowNativeChanges: allowNativeDiffs,
+      confirmNativeChanges: false,
     );
 
     if (!diffStatus.hasNativeChanges) {

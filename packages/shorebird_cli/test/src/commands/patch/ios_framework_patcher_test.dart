@@ -801,7 +801,7 @@ void main() {
 
         group('when linker is not enabled', () {
           test('returns correct metadata', () async {
-            final diffStatus = DiffStatus(
+            const diffStatus = DiffStatus(
               hasAssetChanges: false,
               hasNativeChanges: false,
             );
@@ -840,7 +840,7 @@ void main() {
           });
 
           test('returns correct metadata', () async {
-            final diffStatus = DiffStatus(
+            const diffStatus = DiffStatus(
               hasAssetChanges: false,
               hasNativeChanges: false,
             );

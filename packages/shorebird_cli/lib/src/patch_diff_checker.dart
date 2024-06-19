@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 /// {@endtemplate}
 class DiffStatus {
   /// {@macro diff_status}
-  DiffStatus({
+  const DiffStatus({
     required this.hasAssetChanges,
     required this.hasNativeChanges,
   });
@@ -49,6 +49,8 @@ class PatchDiffChecker {
     required ArchiveDiffer archiveDiffer,
     required bool allowAssetChanges,
     required bool allowNativeChanges,
+    bool checkAssetChanges = true,
+    bool confirmNativeChanges = true,
   }) async {
     final progress =
         logger.progress('Verifying patch can be applied to release');
@@ -66,7 +68,7 @@ class PatchDiffChecker {
           archiveDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs),
     );
 
-    if (status.hasNativeChanges) {
+    if (status.hasNativeChanges && confirmNativeChanges) {
       logger
         ..warn(
           '''Your app contains native changes, which cannot be applied with a patch.''',
@@ -93,7 +95,7 @@ If you don't know why you're seeing this error, visit our troublshooting page at
       }
     }
 
-    if (status.hasAssetChanges) {
+    if (status.hasAssetChanges && checkAssetChanges) {
       logger
         ..warn(
           '''Your app contains asset changes, which will not be included in the patch.''',
