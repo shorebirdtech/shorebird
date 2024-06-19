@@ -853,6 +853,41 @@ Please re-run the release command for this version or create a new release.''',
       });
     });
 
+    group('when the target release does not contain the provided platform', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer(
+          (_) async => Release(
+            id: 0,
+            appId: appId,
+            version: releaseVersion,
+            flutterRevision: flutterRevision,
+            displayName: '1.2.3+1',
+            platformStatuses: {ReleasePlatform.ios: ReleaseStatus.active},
+            createdAt: DateTime(2023),
+            updatedAt: DateTime(2023),
+          ),
+        );
+      });
+
+      test('logs error and exits with code 70', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+
+        verify(
+          () => logger.err(
+            '''No release exists for [platform]. Please run shorebird release [platform] to create one.''',
+          ),
+        ).called(1);
+      });
+    });
+
     group('when primary release artifact fails to download', () {
       final error = Exception('Failed to download primary release artifact.');
 
