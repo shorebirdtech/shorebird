@@ -195,9 +195,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     }
   }
 
-  bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
-  bool get allowNativeDiffs => results['allow-native-diffs'] == true;
-
   String? lastBuiltFlutterRevision;
 
   @visibleForTesting
