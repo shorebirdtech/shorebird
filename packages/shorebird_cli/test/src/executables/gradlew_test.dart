@@ -97,7 +97,7 @@ Make sure you have run "flutter build apk" at least once.''',
             ),
           );
         },
-        testOn: 'linux',
+        testOn: 'linux || mac-os',
       );
 
       test(
@@ -119,7 +119,7 @@ Make sure you have run "flutter build apk" at least once.''',
             ),
           );
         },
-        testOn: 'linux',
+        testOn: 'linux || mac-os',
       );
 
       test(
@@ -143,7 +143,7 @@ Make sure you have run "flutter build apk" at least once.''',
             ),
           ).called(1);
         },
-        testOn: 'linux',
+        testOn: 'linux || mac-os',
       );
 
       test(
@@ -176,7 +176,7 @@ Make sure you have run "flutter build apk" at least once.''',
             ),
           ).called(1);
         },
-        testOn: 'linux',
+        testOn: 'linux || mac-os',
       );
 
       group(
@@ -223,15 +223,13 @@ BUILD FAILED in 3s
                     (e) => '$e',
                     'message',
                     equals(
-                      GradleHandedErrors.unsupportedClassFileVersion
-                          .toException()
-                          .message,
+                      '''Gradle sub-process failed with error:\n${GradleHandedErrors.unsupportedClassFileVersion.toException().message}''',
                     ),
                   ),
                 ),
               );
             },
-            testOn: 'linux',
+            testOn: 'linux || mac-os',
           );
         },
       );
@@ -272,7 +270,7 @@ BUILD FAILED in 3s
             ),
           ).called(1);
         },
-        testOn: 'linux',
+        testOn: 'linux || mac-os',
       );
 
       group('when flavors are all upper case', () {
@@ -303,7 +301,7 @@ BUILD FAILED in 3s
               ),
             );
           },
-          testOn: 'linux',
+          testOn: 'linux || mac-os',
         );
       });
 
@@ -337,7 +335,7 @@ BUILD FAILED in 3s
                 ),
               );
             },
-            testOn: 'linux',
+            testOn: 'linux || mac-os',
           );
         },
       );
@@ -372,7 +370,7 @@ BUILD FAILED in 3s
                 ),
               );
             },
-            testOn: 'linux',
+            testOn: 'linux || mac-os',
           );
         },
       );
