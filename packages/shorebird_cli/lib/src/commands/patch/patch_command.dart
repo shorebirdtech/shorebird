@@ -361,7 +361,6 @@ Please re-run the release command for this version or create a new release.''');
     required ReleaseArtifact releaseArtifact,
     required File patchArchive,
     required File releaseArchive,
-    // required ArchiveDiffer archiveDiffer,
     required Patcher patcher,
   }) async {
     try {
@@ -370,12 +369,6 @@ Please re-run the release command for this version or create a new release.''');
         releaseArchive: releaseArchive,
         patchArchive: patchArchive,
       );
-      //   localArchive: patchArtifact,
-      //   releaseArchive: releaseArtifact,
-      //   archiveDiffer: archiveDiffer,
-      //   allowAssetChanges: allowAssetDiffs,
-      //   allowNativeChanges: allowNativeDiffs,
-      // );
     } on UserCancelledException {
       throw ProcessExit(ExitCode.success.code);
     } on UnpatchableChangeException {
