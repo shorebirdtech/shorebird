@@ -64,9 +64,6 @@ class IosPatcher extends Patcher {
   @override
   String get primaryReleaseArtifactArch => 'xcarchive';
 
-  // @override
-  // ArchiveDiffer get archiveDiffer => IosArchiveDiffer();
-
   @override
   Future<void> assertPreconditions() async {
     try {
