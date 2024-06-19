@@ -67,7 +67,8 @@ https://docs.shorebird.dev/status#link-percentage-ios
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid() async {}
 
-  /// TODO
+  /// Compares the release and patch artifacts to determine if the patch can be
+  /// cleanly applied to the release.
   Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,

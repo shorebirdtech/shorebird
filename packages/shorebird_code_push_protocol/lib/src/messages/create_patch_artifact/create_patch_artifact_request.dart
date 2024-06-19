@@ -41,7 +41,8 @@ class CreatePatchArtifactRequest {
   /// signing.
   final String? hashSignature;
 
-  /// TODO
+  /// The sha256 hash of the Podfile.lock file, if a Podfile.lock file was
+  /// involved in the creation of the patch (iOS only).
   final String? podfileLockHash;
 
   /// The size of the artifact in bytes.
