@@ -26,7 +26,7 @@ void main() {
     late AndroidArchiveDiffer differ;
 
     setUp(() {
-      differ = AndroidArchiveDiffer();
+      differ = const AndroidArchiveDiffer();
     });
 
     group('aab', () {

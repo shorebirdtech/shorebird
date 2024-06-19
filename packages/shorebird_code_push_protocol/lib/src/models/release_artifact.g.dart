@@ -22,10 +22,15 @@ ReleaseArtifact _$ReleaseArtifactFromJson(Map<String, dynamic> json) =>
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert('size', (v) => v as int),
           url: $checkedConvert('url', (v) => v as String),
+          podfileLockHash:
+              $checkedConvert('podfile_lock_hash', (v) => v as String?),
         );
         return val;
       },
-      fieldKeyMap: const {'releaseId': 'release_id'},
+      fieldKeyMap: const {
+        'releaseId': 'release_id',
+        'podfileLockHash': 'podfile_lock_hash'
+      },
     );
 
 Map<String, dynamic> _$ReleaseArtifactToJson(ReleaseArtifact instance) =>
@@ -37,6 +42,7 @@ Map<String, dynamic> _$ReleaseArtifactToJson(ReleaseArtifact instance) =>
       'hash': instance.hash,
       'size': instance.size,
       'url': instance.url,
+      'podfile_lock_hash': instance.podfileLockHash,
     };
 
 const _$ReleasePlatformEnumMap = {

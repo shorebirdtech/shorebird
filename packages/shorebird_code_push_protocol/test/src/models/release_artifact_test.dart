@@ -12,6 +12,7 @@ void main() {
         url: 'https://example.com',
         size: 42,
         hash: 'sha256:1234567890',
+        podfileLockHash: 'podfile-lock-hash',
       );
       expect(
         ReleaseArtifact.fromJson(artifact.toJson()).toJson(),
@@ -28,11 +29,12 @@ void main() {
         url: 'https://example.com',
         size: 42,
         hash: 'sha256:1234567890',
+        podfileLockHash: 'podfile-lock-hash',
       );
       final artifactString = artifact.toString();
       expect(
         artifactString,
-        '{id: 1, release_id: 1, arch: aarch64, platform: android, hash: sha256:1234567890, size: 42, url: https://example.com}',
+        '{id: 1, release_id: 1, arch: aarch64, platform: android, hash: sha256:1234567890, size: 42, url: https://example.com, podfile_lock_hash: podfile-lock-hash}',
       );
     });
   });

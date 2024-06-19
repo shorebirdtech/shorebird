@@ -18,6 +18,7 @@ class ReleaseArtifact {
     required this.hash,
     required this.size,
     required this.url,
+    required this.podfileLockHash,
   });
 
   /// Converts a Map<String, dynamic> to a [ReleaseArtifact]
@@ -47,6 +48,9 @@ class ReleaseArtifact {
 
   /// The url of the artifact.
   final String url;
+
+  /// The hash of the Podfile.lock file used to create the artifact (iOS only).
+  final String? podfileLockHash;
 
   @override
   String toString() => toJson().toString();

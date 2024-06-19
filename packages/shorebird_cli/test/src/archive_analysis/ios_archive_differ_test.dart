@@ -45,7 +45,7 @@ void main() {
       late IosArchiveDiffer differ;
 
       setUp(() {
-        differ = IosArchiveDiffer();
+        differ = const IosArchiveDiffer();
       });
 
       group('appRegex', () {

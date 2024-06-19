@@ -94,8 +94,8 @@ void main() {
         test('logs warning', () async {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifact: releaseArtifact,
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
               archiveDiffer: archiveDiffer,
               allowAssetChanges: false,
               allowNativeChanges: false,
@@ -123,8 +123,8 @@ void main() {
         test('prompts user if allowNativeChanges is false', () async {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifact: releaseArtifact,
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
               archiveDiffer: archiveDiffer,
               allowAssetChanges: false,
               allowNativeChanges: false,
@@ -137,8 +137,8 @@ void main() {
         test('does not prompt user if allowNativeChanges is true', () async {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifact: releaseArtifact,
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
               archiveDiffer: archiveDiffer,
               allowAssetChanges: false,
               allowNativeChanges: true,
@@ -155,8 +155,8 @@ void main() {
           await expectLater(
             runWithOverrides(
               () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-                localArtifact: localArtifact,
-                releaseArtifact: releaseArtifact,
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
                 archiveDiffer: archiveDiffer,
                 allowAssetChanges: false,
                 allowNativeChanges: false,
@@ -176,8 +176,8 @@ void main() {
           await expectLater(
             () => runWithOverrides(
               () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-                localArtifact: localArtifact,
-                releaseArtifact: releaseArtifact,
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
                 archiveDiffer: archiveDiffer,
                 allowAssetChanges: false,
                 allowNativeChanges: false,
@@ -200,8 +200,8 @@ void main() {
         test('logs warning', () async {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifact: releaseArtifact,
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
               archiveDiffer: archiveDiffer,
               allowAssetChanges: false,
               allowNativeChanges: false,
@@ -221,8 +221,8 @@ void main() {
         test('prompts user if allowAssetChanges is false', () async {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifact: releaseArtifact,
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
               archiveDiffer: archiveDiffer,
               allowAssetChanges: false,
               allowNativeChanges: false,
@@ -235,8 +235,8 @@ void main() {
         test('does not prompt user if allowAssetChanges is true', () async {
           await runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifact: releaseArtifact,
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
               archiveDiffer: archiveDiffer,
               allowAssetChanges: true,
               allowNativeChanges: false,
@@ -253,8 +253,8 @@ void main() {
           await expectLater(
             runWithOverrides(
               () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-                localArtifact: localArtifact,
-                releaseArtifact: releaseArtifact,
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
                 archiveDiffer: archiveDiffer,
                 allowAssetChanges: false,
                 allowNativeChanges: false,
@@ -272,8 +272,8 @@ void main() {
           await expectLater(
             () => runWithOverrides(
               () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-                localArtifact: localArtifact,
-                releaseArtifact: releaseArtifact,
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
                 archiveDiffer: archiveDiffer,
                 allowAssetChanges: false,
                 allowNativeChanges: false,
@@ -291,8 +291,8 @@ void main() {
         await expectLater(
           runWithOverrides(
             () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArtifact: localArtifact,
-              releaseArtifact: releaseArtifact,
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
               archiveDiffer: archiveDiffer,
               allowAssetChanges: false,
               allowNativeChanges: false,

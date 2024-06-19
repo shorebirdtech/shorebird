@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 
+/// {@template android_archive_differ}
 /// Finds differences between two Android archives (either AABs or AARs).
 ///
 /// Types of changes we care about:
@@ -24,7 +25,11 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 /// /// https://developer.android.com/studio/projects/android-library.html#aar-contents
 /// for reference. Note that .aars produced by Flutter modules do not contain
 /// .jar files, so only asset and dart changes are possible.
+/// {@endtemplate}
 class AndroidArchiveDiffer extends ArchiveDiffer {
+  /// {@macro android_archive_differ}
+  const AndroidArchiveDiffer();
+
   @override
   bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) =>
       nativeFileSetDiff(fileSetDiff).isNotEmpty;

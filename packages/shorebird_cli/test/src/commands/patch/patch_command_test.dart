@@ -6,7 +6,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -75,6 +74,7 @@ void main() {
       hash: '#',
       size: 42,
       url: 'https://example.com',
+      podfileLockHash: null,
     );
     const aabArtifact = ReleaseArtifact(
       id: 0,
@@ -84,17 +84,16 @@ void main() {
       hash: '#',
       size: 42,
       url: 'https://example.com/release.aab',
+      podfileLockHash: null,
     );
 
     late AotTools aotTools;
-    late ArchiveDiffer archiveDiffer;
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late Cache cache;
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdLogger logger;
-    late PatchDiffChecker patchDiffChecker;
     late Patcher patcher;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
@@ -113,7 +112,6 @@ void main() {
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
-          patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -129,13 +127,13 @@ void main() {
       registerFallbackValue(File(''));
       registerFallbackValue(FileSetDiff.empty());
       registerFallbackValue(release);
+      registerFallbackValue(FakeReleaseArtifact());
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(Uri.parse('https://example.com'));
     });
 
     setUp(() {
       aotTools = MockAotTools();
-      archiveDiffer = MockAndroidArchiveDiffer();
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
@@ -143,7 +141,6 @@ void main() {
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
       progress = MockProgress();
-      patchDiffChecker = MockPatchDiffChecker();
       patcher = MockPatcher();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
@@ -220,22 +217,6 @@ void main() {
       when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
-      when(
-        () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-          localArtifact: any(named: 'localArtifact'),
-          releaseArtifact: any(named: 'releaseArtifact'),
-          archiveDiffer: archiveDiffer,
-          allowAssetChanges: any(named: 'allowAssetChanges'),
-          allowNativeChanges: any(named: 'allowNativeChanges'),
-        ),
-      ).thenAnswer(
-        (_) async => DiffStatus(
-          hasAssetChanges: false,
-          hasNativeChanges: false,
-        ),
-      );
-
-      when(() => patcher.archiveDiffer).thenReturn(archiveDiffer);
       when(() => patcher.assertArgsAreValid()).thenAnswer((_) async {});
       when(() => patcher.assertPreconditions()).thenAnswer((_) async {});
       when(
@@ -256,6 +237,13 @@ void main() {
       when(
         () => patcher.createPatchMetadata(any()),
       ).thenAnswer((_) async => patchMetadata);
+      when(
+        () => patcher.assertUnpatchableDiffs(
+          releaseArtifact: any(named: 'releaseArtifact'),
+          releaseArchive: any(named: 'releaseArchive'),
+          patchArchive: any(named: 'patchArchive'),
+        ),
+      ).thenAnswer((_) async => FakeDiffStatus());
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
@@ -591,12 +579,10 @@ void main() {
                 platform: releasePlatform,
               ),
           () => patcher.buildPatchArtifact(),
-          () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-                allowAssetChanges: false,
-                allowNativeChanges: false,
-                archiveDiffer: archiveDiffer,
-                localArtifact: any(named: 'localArtifact'),
+          () => patcher.assertUnpatchableDiffs(
                 releaseArtifact: any(named: 'releaseArtifact'),
+                releaseArchive: any(named: 'releaseArchive'),
+                patchArchive: any(named: 'patchArchive'),
               ),
           () => patcher.createPatchArtifacts(
                 appId: appId,
@@ -645,12 +631,10 @@ void main() {
                 arch: patcher.primaryReleaseArtifactArch,
                 platform: releasePlatform,
               ),
-          () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-                allowAssetChanges: false,
-                allowNativeChanges: false,
-                archiveDiffer: archiveDiffer,
-                localArtifact: any(named: 'localArtifact'),
+          () => patcher.assertUnpatchableDiffs(
                 releaseArtifact: any(named: 'releaseArtifact'),
+                releaseArchive: any(named: 'releaseArchive'),
+                patchArchive: any(named: 'patchArchive'),
               ),
           () => patcher.createPatchArtifacts(
                 appId: appId,
@@ -913,12 +897,10 @@ Please re-run the release command for this version or create a new release.''',
       group('when user cancels', () {
         setUp(() {
           when(
-            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              allowAssetChanges: any(named: 'allowAssetChanges'),
-              allowNativeChanges: any(named: 'allowNativeChanges'),
-              archiveDiffer: archiveDiffer,
-              localArtifact: any(named: 'localArtifact'),
+            () => patcher.assertUnpatchableDiffs(
               releaseArtifact: any(named: 'releaseArtifact'),
+              releaseArchive: any(named: 'releaseArchive'),
+              patchArchive: any(named: 'patchArchive'),
             ),
           ).thenThrow(UserCancelledException());
         });
@@ -934,12 +916,10 @@ Please re-run the release command for this version or create a new release.''',
       group('when UnpatchableChangeException is thrown', () {
         setUp(() {
           when(
-            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              allowAssetChanges: any(named: 'allowAssetChanges'),
-              allowNativeChanges: any(named: 'allowNativeChanges'),
-              archiveDiffer: archiveDiffer,
-              localArtifact: any(named: 'localArtifact'),
+            () => patcher.assertUnpatchableDiffs(
               releaseArtifact: any(named: 'releaseArtifact'),
+              releaseArchive: any(named: 'releaseArchive'),
+              patchArchive: any(named: 'patchArchive'),
             ),
           ).thenThrow(UnpatchableChangeException());
         });

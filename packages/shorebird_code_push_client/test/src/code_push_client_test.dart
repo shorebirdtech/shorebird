@@ -28,6 +28,7 @@ void main() {
       ...CodePushClient.standardHeaders,
       ...customHeaders,
     };
+    const podfileLockHash = 'podfile-lock-hash';
 
     late http.Client httpClient;
     late CodePushClient codePushClient;
@@ -443,6 +444,7 @@ void main() {
           size: size,
           canSideload: canSideload,
           filename: 'release.txt',
+          podfileLockHash: podfileLockHash,
         );
 
         try {
@@ -454,6 +456,7 @@ void main() {
             platform: platform,
             hash: hash,
             canSideload: canSideload,
+            podfileLockHash: podfileLockHash,
           );
         } catch (_) {}
 
@@ -496,6 +499,7 @@ void main() {
             platform: platform,
             hash: hash,
             canSideload: canSideload,
+            podfileLockHash: null,
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -530,6 +534,7 @@ void main() {
             platform: platform,
             hash: hash,
             canSideload: canSideload,
+            podfileLockHash: null,
           ),
           throwsA(isA<CodePushNotFoundException>()),
         );
@@ -558,6 +563,7 @@ void main() {
             platform: platform,
             hash: hash,
             canSideload: canSideload,
+            podfileLockHash: null,
           ),
           throwsA(isA<CodePushConflictException>()),
         );
@@ -584,6 +590,7 @@ void main() {
             platform: platform,
             hash: hash,
             canSideload: canSideload,
+            podfileLockHash: null,
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -636,6 +643,7 @@ void main() {
             platform: platform,
             hash: hash,
             canSideload: canSideload,
+            podfileLockHash: null,
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -696,6 +704,7 @@ void main() {
             platform: platform,
             hash: hash,
             canSideload: canSideload,
+            podfileLockHash: podfileLockHash,
           ),
           completes,
         );
@@ -1718,6 +1727,7 @@ void main() {
             url: 'https://example.com',
             hash: '#',
             size: 42,
+            podfileLockHash: null,
           ),
         ];
 

@@ -37,6 +37,7 @@ Future<void> main() async {
     arch: '<ARCHITECTURE>', // e.g. 'aarch64'
     hash: '<HASH>', // 'sha256 hash of the artifact'
     canSideload: true,
+    podfileLockHash: '<HASH>', // 'sha256 hash of ios/Podfile.lock'
   );
 
   // Create a new patch.

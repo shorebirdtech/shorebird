@@ -102,6 +102,10 @@ class ShorebirdEnv {
     return File(p.join(flutterDirectory.path, 'bin', 'dart'));
   }
 
+  File get podfileLockFile {
+    return File(p.join(getFlutterProjectRoot()!.path, 'ios', 'Podfile.lock'));
+  }
+
   /// The `shorebird.yaml` file for this project.
   File getShorebirdYamlFile({required Directory cwd}) {
     return File(p.join(cwd.path, 'shorebird.yaml'));

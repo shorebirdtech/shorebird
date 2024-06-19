@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_code_push_protocol/src/models/create_patch_metadata.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_artifact.dart';
 import 'package:test/test.dart';
 
 import '../../mocks.dart';
@@ -49,10 +49,16 @@ class _TestPatcher extends Patcher {
   });
 
   @override
-  ArchiveDiffer get archiveDiffer => throw UnimplementedError();
+  Future<void> assertPreconditions() {
+    throw UnimplementedError();
+  }
 
   @override
-  Future<void> assertPreconditions() {
+  Future<DiffStatus> assertUnpatchableDiffs({
+    required ReleaseArtifact releaseArtifact,
+    required File releaseArchive,
+    required File patchArchive,
+  }) {
     throw UnimplementedError();
   }
 

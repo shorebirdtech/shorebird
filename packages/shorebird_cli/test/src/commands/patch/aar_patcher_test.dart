@@ -6,7 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -25,6 +25,7 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../fakes.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -39,6 +40,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late Directory projectRoot;
     late ShorebirdLogger logger;
+    late PatchDiffChecker patchDiffChecker;
     late Platform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
@@ -57,6 +59,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
+          patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -81,7 +84,10 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(const AndroidArchiveDiffer());
       registerFallbackValue(Directory(''));
+      registerFallbackValue(FakeReleaseArtifact());
+      registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(Uri.parse('https://example.com'));
     });
@@ -91,6 +97,7 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
+      patchDiffChecker = MockPatchDiffChecker();
       platform = MockPlatform();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -121,12 +128,6 @@ void main() {
 
       test('is the value of the build-number argument', () {
         expect(patcher.buildNumber, buildNumber);
-      });
-    });
-
-    group('archiveDiffer', () {
-      test('is an AndroidArchiveDiffer', () {
-        expect(patcher.archiveDiffer, isA<AndroidArchiveDiffer>());
       });
     });
 
@@ -216,6 +217,45 @@ void main() {
             ),
           ).called(1);
         });
+      });
+    });
+
+    group('assertUnpatchableDiffs', () {
+      const diffStatus = DiffStatus(
+        hasAssetChanges: false,
+        hasNativeChanges: false,
+      );
+
+      setUp(() {
+        when(
+          () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+            localArchive: any(named: 'localArchive'),
+            releaseArchive: any(named: 'releaseArchive'),
+            archiveDiffer: any(named: 'archiveDiffer'),
+            allowAssetChanges: any(named: 'allowAssetChanges'),
+            allowNativeChanges: any(named: 'allowNativeChanges'),
+          ),
+        ).thenAnswer((_) async => diffStatus);
+      });
+
+      test('forwards result from patchDiffChecker', () async {
+        final result = await runWithOverrides(
+          () => patcher.assertUnpatchableDiffs(
+            releaseArtifact: FakeReleaseArtifact(),
+            releaseArchive: File(''),
+            patchArchive: File(''),
+          ),
+        );
+        expect(result, equals(diffStatus));
+        verify(
+          () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+            localArchive: any(named: 'localArchive'),
+            releaseArchive: any(named: 'releaseArchive'),
+            archiveDiffer: any(named: 'archiveDiffer'),
+            allowAssetChanges: any(named: 'allowAssetChanges'),
+            allowNativeChanges: any(named: 'allowNativeChanges'),
+          ),
+        ).called(1);
       });
     });
 
@@ -340,6 +380,7 @@ void main() {
         hash: '#',
         size: 42,
         url: 'https://example.com',
+        podfileLockHash: null,
       );
 
       late File releaseArtifactFile;
@@ -487,7 +528,7 @@ void main() {
       });
 
       test('returns correct metadata', () async {
-        final diffStatus = DiffStatus(
+        const diffStatus = DiffStatus(
           hasAssetChanges: false,
           hasNativeChanges: false,
         );

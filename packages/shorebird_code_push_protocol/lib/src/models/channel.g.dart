@@ -13,7 +13,7 @@ Channel _$ChannelFromJson(Map<String, dynamic> json) => $checkedCreate(
       json,
       ($checkedConvert) {
         final val = Channel(
-          id: $checkedConvert('id', (v) => (v as num).toInt()),
+          id: $checkedConvert('id', (v) => v as int),
           appId: $checkedConvert('app_id', (v) => v as String),
           name: $checkedConvert('name', (v) => v as String),
         );

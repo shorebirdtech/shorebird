@@ -14,6 +14,7 @@ void main() {
             hash: '#',
             size: 1337,
             url: 'https://example.com',
+            podfileLockHash: 'podfile-lock-hash',
           ),
         ],
       );
