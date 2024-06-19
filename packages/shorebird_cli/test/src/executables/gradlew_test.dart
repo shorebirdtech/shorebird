@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -218,7 +219,15 @@ BUILD FAILED in 3s
 
               await expectLater(
                 runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-                throwsA(isA<IncompatibleGradleException>()),
+                throwsA(
+                  isA<IncompatibleGradleException>().having(
+                    (e) => e.toString(),
+                    'contains documentation link',
+                    contains(
+                      ShorebirdDocumentation.unsupportedClassFileVersionUrl,
+                    ),
+                  ),
+                ),
               );
             },
             testOn: 'linux || mac-os',
