@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/archive_analysis/ios_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -31,6 +32,7 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../fakes.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -49,6 +51,7 @@ void main() {
       late Directory projectRoot;
       late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
+      late PatchDiffChecker patchDiffChecker;
       late Platform platform;
       late Progress progress;
       late ShorebirdArtifacts shorebirdArtifacts;
@@ -72,6 +75,7 @@ void main() {
             engineConfigRef.overrideWith(() => engineConfig),
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
+            patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
             platformRef.overrideWith(() => platform),
             processRef.overrideWith(() => shorebirdProcess),
             shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
@@ -86,6 +90,7 @@ void main() {
       setUpAll(() {
         registerFallbackValue(Directory(''));
         registerFallbackValue(File(''));
+        registerFallbackValue(const IosArchiveDiffer());
         registerFallbackValue(ReleasePlatform.ios);
         registerFallbackValue(Uri.parse('https://example.com'));
       });
@@ -99,6 +104,7 @@ void main() {
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
         operatingSystemInterface = MockOperatingSystemInterface();
+        patchDiffChecker = MockPatchDiffChecker();
         platform = MockPlatform();
         progress = MockProgress();
         projectRoot = Directory.systemTemp.createTempSync();
@@ -272,7 +278,44 @@ void main() {
         });
       });
 
-      group('assertUnpatchableDiffs', () {});
+      group('assertUnpatchableDiffs', () {
+        const diffStatus = DiffStatus(
+          hasAssetChanges: false,
+          hasNativeChanges: false,
+        );
+
+        setUp(() {
+          when(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: any(named: 'localArchive'),
+              releaseArchive: any(named: 'releaseArchive'),
+              archiveDiffer: any(named: 'archiveDiffer'),
+              allowAssetChanges: any(named: 'allowAssetChanges'),
+              allowNativeChanges: any(named: 'allowNativeChanges'),
+            ),
+          ).thenAnswer((_) async => diffStatus);
+        });
+
+        test('forwards result from patchDiffChecker', () async {
+          final result = await runWithOverrides(
+            () => patcher.assertUnpatchableDiffs(
+              releaseArtifact: FakeReleaseArtifact(),
+              releaseArchive: File(''),
+              patchArchive: File(''),
+            ),
+          );
+          expect(result, equals(diffStatus));
+          verify(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: any(named: 'localArchive'),
+              releaseArchive: any(named: 'releaseArchive'),
+              archiveDiffer: any(named: 'archiveDiffer'),
+              allowAssetChanges: any(named: 'allowAssetChanges'),
+              allowNativeChanges: any(named: 'allowNativeChanges'),
+            ),
+          ).called(1);
+        });
+      });
 
       group('buildPatchArtifact', () {
         const flutterVersionAndRevision = '3.10.6 (83305b5088)';

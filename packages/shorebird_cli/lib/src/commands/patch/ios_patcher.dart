@@ -98,8 +98,6 @@ class IosPatcher extends Patcher {
       confirmNativeChanges: false,
     );
 
-    print('has native changes: ${diffStatus.hasNativeChanges}');
-
     if (!diffStatus.hasNativeChanges) {
       return diffStatus;
     }

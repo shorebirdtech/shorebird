@@ -71,7 +71,7 @@ class AarPatcher extends Patcher {
       patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArchive: patchArchive,
         releaseArchive: releaseArchive,
-        archiveDiffer: AndroidArchiveDiffer(),
+        archiveDiffer: const AndroidArchiveDiffer(),
         allowAssetChanges: allowAssetDiffs,
         allowNativeChanges: allowNativeDiffs,
       );
