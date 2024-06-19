@@ -75,6 +75,7 @@ void main() {
       size: 42,
       url: 'https://example.com',
       podfileLockHash: null,
+      canSideload: true,
     );
     const aabArtifact = ReleaseArtifact(
       id: 0,
@@ -85,6 +86,7 @@ void main() {
       size: 42,
       url: 'https://example.com/release.aab',
       podfileLockHash: null,
+      canSideload: true,
     );
 
     late AotTools aotTools;

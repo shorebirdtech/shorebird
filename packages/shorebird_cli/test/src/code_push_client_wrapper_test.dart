@@ -140,6 +140,7 @@ void main() {
       size: 4,
       url: 'url',
       podfileLockHash: 'podfile-lock-hash',
+      canSideload: true,
     );
 
     late CodePushClient codePushClient;

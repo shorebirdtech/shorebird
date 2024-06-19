@@ -349,6 +349,7 @@ void main() {
                 size: 42,
                 url: 'https://example.com',
                 podfileLockHash: podfileLockHash,
+                canSideload: true,
               );
 
               test('does not warn of native changes', () async {
@@ -378,6 +379,7 @@ void main() {
                 size: 42,
                 url: 'https://example.com',
                 podfileLockHash: 'podfile-lock-hash',
+                canSideload: true,
               );
 
               group('when native diffs are allowed', () {
@@ -766,6 +768,7 @@ For more information see: $supportedVersionsLink''',
           size: 42,
           url: 'https://example.com',
           podfileLockHash: 'podfile-lock-hash',
+          canSideload: true,
         );
         late File releaseArtifactFile;
 

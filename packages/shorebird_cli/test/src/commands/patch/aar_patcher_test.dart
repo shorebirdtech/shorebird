@@ -381,6 +381,7 @@ void main() {
         size: 42,
         url: 'https://example.com',
         podfileLockHash: null,
+        canSideload: true,
       );
 
       late File releaseArtifactFile;

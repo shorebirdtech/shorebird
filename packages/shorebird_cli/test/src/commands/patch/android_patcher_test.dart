@@ -403,6 +403,7 @@ Looked in:
         size: 42,
         url: 'https://example.com',
         podfileLockHash: null,
+        canSideload: true,
       );
 
       setUp(() {
