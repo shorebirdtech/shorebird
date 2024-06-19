@@ -237,6 +237,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       );
     }
 
+    assertReleaseContainsPlatform(release: release, patcher: patcher);
     assertReleaseIsActive(release: release, patcher: patcher);
 
     try {
@@ -321,6 +322,21 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       choices: releases.sortedBy((r) => r.createdAt).reversed.toList(),
       display: (r) => r.version,
     );
+  }
+
+  void assertReleaseContainsPlatform({
+    required Release release,
+    required Patcher patcher,
+  }) {
+    final releasePlatform = patcher.releaseType.releasePlatform;
+    final contains = release.platformStatuses.containsKey(releasePlatform);
+    if (!contains) {
+      final platformName = releasePlatform.name;
+      logger.err(
+        '''No release exists for $platformName in release version ${release.version}. Please run shorebird release $platformName to create one.''',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
   }
 
   void assertReleaseIsActive({
