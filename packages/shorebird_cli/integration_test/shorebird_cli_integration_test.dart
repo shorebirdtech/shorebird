@@ -32,11 +32,15 @@ R runWithOverrides<R>(R Function() body) {
 }
 
 void main() {
+  final shorebirdHostedURL = Platform.environment['SHOREBIRD_HOSTED_URL'];
+  if (shorebirdHostedURL == null || shorebirdHostedURL.isEmpty) {
+    throw Exception('SHOREBIRD_HOSTED_URL environment variable is not set.');
+  }
   final logger = Logger();
   final client = runWithOverrides(
     () => CodePushClient(
       httpClient: Auth().client,
-      hostedUri: Uri.parse(Platform.environment['SHOREBIRD_HOSTED_URL']!),
+      hostedUri: Uri.parse(shorebirdHostedURL),
     ),
   );
 

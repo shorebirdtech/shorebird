@@ -49,21 +49,25 @@ enum ReleaseType {
 
 extension ReleaseTypeArgs on ArgResults {
   Iterable<ReleaseType> get releaseTypes {
-    final List<String> releaseTypeCliNames;
+    List<String>? releaseTypeCliNames;
     if (wasParsed('platforms')) {
       releaseTypeCliNames = this['platforms'] as List<String>;
     } else {
-      final platformCliName = arguments.first;
-      if (ReleaseType.values
-          .none((target) => target.cliName == platformCliName)) {
-        throw ArgumentError('Invalid platform: $platformCliName');
+      if (arguments.isNotEmpty) {
+        final platformCliName = arguments.first;
+        if (ReleaseType.values
+            .none((target) => target.cliName == platformCliName)) {
+          throw ArgumentError('Invalid platform: $platformCliName');
+        }
+        releaseTypeCliNames = [platformCliName];
       }
-      releaseTypeCliNames = [platformCliName];
     }
 
-    return releaseTypeCliNames.map(
-      (cliName) =>
-          ReleaseType.values.firstWhere((target) => target.cliName == cliName),
-    );
+    return releaseTypeCliNames?.map(
+          (cliName) => ReleaseType.values.firstWhere(
+            (target) => target.cliName == cliName,
+          ),
+        ) ??
+        const [];
   }
 }

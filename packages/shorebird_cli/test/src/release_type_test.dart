@@ -29,6 +29,15 @@ void main() {
           );
       });
 
+      group('when nothing is provided', () {
+        test('parses and return empty', () {
+          expect(
+            parser.parse([]).releaseTypes.toList(),
+            isEmpty,
+          );
+        });
+      });
+
       group('when the platforms argument is provided', () {
         test('parses the release types', () {
           expect(
@@ -51,33 +60,33 @@ void main() {
             [ReleaseType.aar],
           );
         });
+      });
 
-        group('when the platforms is provided as a raw arg', () {
-          test('throws an ArgumentError if the platform is invalid', () {
-            expect(
-              () => parser.parse(['foo']).releaseTypes.toList(),
-              throwsArgumentError,
-            );
-          });
+      group('when the platforms is provided as a raw arg', () {
+        test('throws an ArgumentError if the platform is invalid', () {
+          expect(
+            () => parser.parse(['foo']).releaseTypes.toList(),
+            throwsArgumentError,
+          );
+        });
 
-          test('parses the release types', () {
-            expect(
-              parser.parse(['android', 'foo']).releaseTypes.toList(),
-              [ReleaseType.android],
-            );
-            expect(
-              parser.parse(['ios', 'foo']).releaseTypes.toList(),
-              [ReleaseType.ios],
-            );
-            expect(
-              parser.parse(['ios-framework', 'foo']).releaseTypes.toList(),
-              [ReleaseType.iosFramework],
-            );
-            expect(
-              parser.parse(['aar', 'foo']).releaseTypes.toList(),
-              [ReleaseType.aar],
-            );
-          });
+        test('parses the release types', () {
+          expect(
+            parser.parse(['android', 'foo']).releaseTypes.toList(),
+            [ReleaseType.android],
+          );
+          expect(
+            parser.parse(['ios', 'foo']).releaseTypes.toList(),
+            [ReleaseType.ios],
+          );
+          expect(
+            parser.parse(['ios-framework', 'foo']).releaseTypes.toList(),
+            [ReleaseType.iosFramework],
+          );
+          expect(
+            parser.parse(['aar', 'foo']).releaseTypes.toList(),
+            [ReleaseType.aar],
+          );
         });
       });
     });

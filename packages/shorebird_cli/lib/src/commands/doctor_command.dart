@@ -73,6 +73,12 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''',
               .join('${Platform.lineTerminator}                  ');
         }
       }
+
+      String? gradlewVersion;
+      if (gradlew.exists(Directory.current.path)) {
+        gradlewVersion = await gradlew.version(Directory.current.path);
+      }
+
       output.writeln('''
 
 Logs: ${shorebirdEnv.logsDirectory.path}
@@ -82,7 +88,8 @@ Android Toolchain
   • ADB: ${androidSdk.adbPath ?? notDetected}
   • JAVA_HOME: ${java.home ?? notDetected}
   • JAVA_EXECUTABLE: ${javaExe ?? notDetected}
-  • JAVA_VERSION: $javaVersion''');
+  • JAVA_VERSION: $javaVersion
+  • Gradle: ${gradlewVersion ?? notDetected}''');
     }
 
     logger.info(output.toString());
