@@ -333,7 +333,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     if (!contains) {
       final platformName = releasePlatform.name;
       logger.err(
-        '''No release exists for $platformName in ${release.version}. Please run shorebird release --platform $platformName to create one.''',
+        '''No release exists for $platformName in release version ${release.version}. Please run shorebird release $platformName to create one.''',
       );
       throw ProcessExit(ExitCode.software.code);
     }
