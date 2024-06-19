@@ -113,15 +113,11 @@ class IosPatcher extends Patcher {
 
     if (releaseArtifact.podfileLockHash != null &&
         podfileLockHash != releaseArtifact.podfileLockHash) {
-      logger
-        ..warn(
-          '''Your ios/Podfile.lock is different from the one used to build the release.''',
-        )
-        ..info(
-          yellow.wrap(
-            '''This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
-          ),
-        );
+      logger.warn(
+        '''
+Your ios/Podfile.lock is different from the one used to build the release.
+This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
+      );
 
       if (!allowNativeDiffs) {
         if (!shorebirdEnv.canAcceptUserInput) {

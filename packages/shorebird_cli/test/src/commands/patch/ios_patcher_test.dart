@@ -398,7 +398,9 @@ void main() {
                   expect(diffStatus, equals(nativeChangeDiffStatus));
                   verify(
                     () => logger.warn(
-                      '''Your ios/Podfile.lock is different from the one used to build the release.''',
+                      '''
+Your ios/Podfile.lock is different from the one used to build the release.
+This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
                     ),
                   ).called(1);
                   verifyNever(() => logger.confirm(any()));
