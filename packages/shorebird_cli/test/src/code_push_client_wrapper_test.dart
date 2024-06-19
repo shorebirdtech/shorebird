@@ -1558,6 +1558,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
     });
 
     group('createIosReleaseArtifacts', () {
+      const podfileLockHash = 'podfile-lock-hash';
       final xcarchivePath = p.join('path', 'to', 'app.xcarchive');
       final runnerPath = p.join('path', 'to', 'runner.app');
 
@@ -1611,7 +1612,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               xcarchivePath: p.join(projectRoot.path, xcarchivePath),
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: true,
-              podfileLockHash: 'TODO',
+              podfileLockHash: podfileLockHash,
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1648,7 +1649,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               xcarchivePath: p.join(projectRoot.path, xcarchivePath),
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: false,
-              podfileLockHash: 'TODO',
+              podfileLockHash: podfileLockHash,
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1685,7 +1686,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               xcarchivePath: p.join(projectRoot.path, xcarchivePath),
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: false,
-              podfileLockHash: 'TODO',
+              podfileLockHash: podfileLockHash,
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1716,12 +1717,27 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             xcarchivePath: p.join(projectRoot.path, xcarchivePath),
             runnerPath: p.join(projectRoot.path, runnerPath),
             isCodesigned: true,
-            podfileLockHash: 'TODO',
+            podfileLockHash: podfileLockHash,
           ),
         );
 
         verify(() => progress.complete()).called(1);
         verifyNever(() => progress.fail(any()));
+        verify(
+          () => codePushClient.createReleaseArtifact(
+            appId: app.appId,
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('.xcarchive.zip'),
+            ),
+            releaseId: releaseId,
+            arch: any(named: 'arch'),
+            platform: releasePlatform,
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: podfileLockHash,
+          ),
+        ).called(1);
       });
     });
 
