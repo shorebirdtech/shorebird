@@ -6,6 +6,16 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.12 (June 19, 2024)
+
+- 🩹 fix iOS patches rendering issues (black screen)
+- 🔎 fix iOS native assets detection
+- 👀 fix `shorebird preview` using stale artifacts
+- 🗑️ fix `shorebird cache clear` bug
+- 🍧 add flavor validation
+- 🤖 add gradlew version to `shorebird doctor`
+- 🪵 improve logging
+
 ## 1.1.11 (June 11, 2024)
 
 🫴 Fixes a bug in iOS where try/catch blocks could be ignored after patching.
