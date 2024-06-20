@@ -250,8 +250,9 @@ class PreviewCommand extends ShorebirdCommand {
           Uri.parse(releaseAabArtifact.url),
           outputPath: aabFile.path,
         );
-        downloadArtifactProgress.complete();
       }
+
+      downloadArtifactProgress.complete();
     } catch (error) {
       downloadArtifactProgress.fail('$error');
       return ExitCode.software.code;
