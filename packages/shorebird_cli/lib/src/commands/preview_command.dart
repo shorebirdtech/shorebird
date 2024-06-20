@@ -114,15 +114,18 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
-    final releases = await codePushClientWrapper.getReleases(
-      appId: appId,
-      sideloadableOnly: true,
-    );
+    final (allReleases, sideloadableReleases) = await (
+      codePushClientWrapper.getReleases(appId: appId),
+      codePushClientWrapper.getReleases(
+        appId: appId,
+        sideloadableOnly: true,
+      )
+    ).wait;
 
     final releaseVersion = results['release-version'] as String? ??
-        await promptForReleaseVersion(releases);
+        await promptForReleaseVersion(sideloadableReleases);
 
-    final release = releases.firstWhereOrNull(
+    final release = sideloadableReleases.firstWhereOrNull(
       (r) => r.version == releaseVersion,
     );
 
@@ -134,6 +137,7 @@ class PreviewCommand extends ShorebirdCommand {
     final availablePlatforms = release.activePlatforms
         .where((p) => supportedReleasePlatforms.contains(p))
         .toList();
+
     if (availablePlatforms.isEmpty) {
       final activePlatformsString =
           release.activePlatforms.map((p) => p.displayName).join(', ');
@@ -143,12 +147,51 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
+    final completeRelease = allReleases.firstWhereOrNull(
+      (r) => r.version == releaseVersion,
+    );
+    if (completeRelease != null) {
+      final nonPreviewablePlatforms = completeRelease.activePlatforms.where(
+        (p) => !release.activePlatforms.contains(p),
+      );
+
+      if (nonPreviewablePlatforms.isNotEmpty) {
+        for (final platform in nonPreviewablePlatforms) {
+          final message =
+              '''${platform.displayName} is not previewable and can't be used.''';
+
+          // If the user explicitly specified a platform and it matches a non
+          // previewable platform, we early exit to avoid duplicated warnings/errors.
+          if (results['platform'] == platform.name) {
+            logger.err(message);
+            return ExitCode.software.code;
+          } else {
+            logger.warn(message);
+          }
+        }
+      }
+    }
+
     final ReleasePlatform releasePlatform;
-    if (availablePlatforms.length == 1) {
+    if (results['platform'] != null) {
+      final platformName = ReleasePlatform.values.byName(
+        results['platform'] as String,
+      );
+
+      final matchedPlatform = release.activePlatforms.firstWhereOrNull(
+        (p) => p == platformName,
+      );
+
+      if (matchedPlatform == null) {
+        logger.err(
+          '''The platform ${platformName.displayName} doesn't exists or is not previewable''',
+        );
+        return ExitCode.software.code;
+      }
+
+      releasePlatform = matchedPlatform;
+    } else if (availablePlatforms.length == 1) {
       releasePlatform = availablePlatforms.first;
-    } else if (results['platform'] != null) {
-      releasePlatform =
-          ReleasePlatform.values.byName(results['platform'] as String);
     } else {
       releasePlatform = await promptForPlatform(availablePlatforms);
     }

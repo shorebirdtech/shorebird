@@ -35,7 +35,8 @@ void main() {
     const releaseVersion = '1.2.3';
     const track = DeploymentTrack.production;
     const releaseId = 42;
-    const artifactId = 21;
+    const androidArtifactId = 21;
+    const iosArtifactId = 12;
 
     late AppMetadata app;
     late AppleDevice appleDevice;
@@ -53,6 +54,101 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
     late PreviewCommand command;
+
+    String runnerPath() {
+      final platformName = ReleasePlatform.ios.name;
+      return p.join(
+        previewDirectory.path,
+        '${platformName}_${releaseVersion}_$iosArtifactId.app',
+      );
+    }
+
+    String aabPath() {
+      final platformName = ReleasePlatform.android.name;
+      return p.join(
+        previewDirectory.path,
+        '${platformName}_${releaseVersion}_$androidArtifactId.aab',
+      );
+    }
+
+    String apksPath() {
+      final platformName = ReleasePlatform.android.name;
+      return p.join(
+        previewDirectory.path,
+        '${platformName}_${releaseVersion}_$androidArtifactId.apks',
+      );
+    }
+
+    File setupIOSShorebirdYaml() => File(
+          p.join(
+            runnerPath(),
+            'Frameworks',
+            'App.framework',
+            'flutter_assets',
+            'shorebird.yaml',
+          ),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: $appId', flush: true);
+
+    Future<void> createAndroidShorebirdYaml(Invocation invocation) async {
+      File(
+        p.join(
+          (invocation.namedArguments[#outputDirectory] as Directory).path,
+          'base',
+          'assets',
+          'flutter_assets',
+          'shorebird.yaml',
+        ),
+      )
+        ..createSync(recursive: true)
+        ..writeAsStringSync('app_id: $appId', flush: true);
+    }
+
+    File createAabFile({required String? channel}) {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final aabDirectory = Directory(p.join(tempDir.path, 'app-release'))
+        ..createSync(recursive: true);
+      final yamlContents = [
+        'app_id: $appId\n',
+        if (channel != null) 'channel: $channel\n',
+      ].join();
+      File(
+        p.join(
+          aabDirectory.path,
+          'base',
+          'assets',
+          'flutter_assets',
+          'shorebird.yaml',
+        ),
+      )
+        ..createSync(recursive: true)
+        ..writeAsStringSync(yamlContents);
+
+      ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
+
+      return File(aabPath());
+    }
+
+    Future<File> shorebirdYamlFileFromAab(File aab) async {
+      final tempDir = Directory.systemTemp.createTempSync();
+      final aabDirectory = Directory(p.join(tempDir.path, 'app-release'))
+        ..createSync(recursive: true);
+
+      await artifactManager.extractZip(
+        zipFile: aab,
+        outputDirectory: aabDirectory,
+      );
+      return File(
+        p.join(
+          aabDirectory.path,
+          'base',
+          'assets',
+          'flutter_assets',
+          'shorebird.yaml',
+        ),
+      );
+    }
 
     R runWithOverrides<R>(R Function() body) {
       return HttpOverrides.runZoned(
@@ -136,7 +232,6 @@ void main() {
           platform: any(named: 'platform'),
         ),
       ).thenAnswer((_) async => releaseArtifact);
-      when(() => releaseArtifact.id).thenReturn(artifactId);
       when(() => app.appId).thenReturn(appId);
       when(() => app.displayName).thenReturn(appDisplayName);
       when(() => release.id).thenReturn(releaseId);
@@ -192,7 +287,6 @@ void main() {
       verify(
         () => codePushClientWrapper.getReleases(
           appId: appId,
-          sideloadableOnly: true,
         ),
       ).called(1);
     });
@@ -228,16 +322,6 @@ void main() {
       late Bundletool bundletool;
       late Process process;
 
-      String aabPath() => p.join(
-            previewDirectory.path,
-            '${releasePlatform.name}_${releaseVersion}_$artifactId.aab',
-          );
-
-      String apksPath() => p.join(
-            previewDirectory.path,
-            '${releasePlatform.name}_${releaseVersion}_$artifactId.apks',
-          );
-
       R runWithOverrides<R>(R Function() body) {
         return HttpOverrides.runZoned(
           () => runScoped(
@@ -261,25 +345,12 @@ void main() {
         );
       }
 
-      Future<void> createShorebirdYaml(Invocation invocation) async {
-        File(
-          p.join(
-            (invocation.namedArguments[#outputDirectory] as Directory).path,
-            'base',
-            'assets',
-            'flutter_assets',
-            'shorebird.yaml',
-          ),
-        )
-          ..createSync(recursive: true)
-          ..writeAsStringSync('app_id: $appId', flush: true);
-      }
-
       setUp(() {
         adb = MockAdb();
         bundletool = MockBundleTool();
         process = MockProcess();
 
+        when(() => releaseArtifact.id).thenReturn(androidArtifactId);
         when(() => argResults['platform']).thenReturn(releasePlatform.name);
         when(
           () => artifactManager.downloadFile(
@@ -352,7 +423,7 @@ void main() {
               zipFile: any(named: 'zipFile'),
               outputDirectory: any(named: 'outputDirectory'),
             ),
-          ).thenAnswer(createShorebirdYaml);
+          ).thenAnswer(createAndroidShorebirdYaml);
 
           when(() => release.platformStatuses).thenReturn({
             ReleasePlatform.ios: ReleaseStatus.active,
@@ -376,51 +447,6 @@ void main() {
 
       group('setChannelOnAab', () {
         late File aabFile;
-
-        File createAabFile({required String? channel}) {
-          final tempDir = Directory.systemTemp.createTempSync();
-          final aabDirectory = Directory(p.join(tempDir.path, 'app-release'))
-            ..createSync(recursive: true);
-          final yamlContents = [
-            'app_id: $appId\n',
-            if (channel != null) 'channel: $channel\n',
-          ].join();
-          File(
-            p.join(
-              aabDirectory.path,
-              'base',
-              'assets',
-              'flutter_assets',
-              'shorebird.yaml',
-            ),
-          )
-            ..createSync(recursive: true)
-            ..writeAsStringSync(yamlContents);
-
-          ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
-
-          return File(aabPath());
-        }
-
-        Future<File> shorebirdYamlFileFromAab(File aab) async {
-          final tempDir = Directory.systemTemp.createTempSync();
-          final aabDirectory = Directory(p.join(tempDir.path, 'app-release'))
-            ..createSync(recursive: true);
-
-          await artifactManager.extractZip(
-            zipFile: aab,
-            outputDirectory: aabDirectory,
-          );
-          return File(
-            p.join(
-              aabDirectory.path,
-              'base',
-              'assets',
-              'flutter_assets',
-              'shorebird.yaml',
-            ),
-          );
-        }
 
         setUp(() {
           artifactManager = ArtifactManager();
@@ -559,7 +585,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         final exception = Exception('oops');
         when(() => bundletool.getPackageName(any())).thenThrow(exception);
@@ -574,7 +600,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         final exception = Exception('oops');
         when(
@@ -596,7 +622,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         final exception = Exception('oops');
         when(
@@ -613,7 +639,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         final exception = Exception('oops');
         when(
@@ -630,7 +656,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         final exception = Exception('oops');
         when(() => adb.startApp(package: any(named: 'package')))
@@ -646,7 +672,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         when(() => process.exitCode).thenAnswer((_) async => 1);
         final result = await runWithOverrides(command.run);
@@ -660,7 +686,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
@@ -680,7 +706,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
@@ -750,7 +776,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         when(() => argResults.wasParsed('app-id')).thenReturn(false);
         when(() => argResults['app-id']).thenReturn(null);
@@ -780,7 +806,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
         // We only prompt when there are multiple platforms to choose from
         when(() => platform.isMacOS).thenReturn(true);
 
@@ -861,7 +887,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         when(() => argResults['release-version']).thenReturn(null);
         when(
@@ -895,7 +921,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createShorebirdYaml);
+        ).thenAnswer(createAndroidShorebirdYaml);
 
         const deviceId = '1234';
         when(() => argResults['device-id']).thenReturn(deviceId);
@@ -948,11 +974,6 @@ channel: ${track.channel}
       late Devicectl devicectl;
       late IOSDeploy iosDeploy;
 
-      String runnerPath() => p.join(
-            previewDirectory.path,
-            '${releasePlatform.name}_${releaseVersion}_$artifactId.app',
-          );
-
       R runWithOverrides<R>(R Function() body) {
         return HttpOverrides.runZoned(
           () => runScoped(
@@ -981,6 +1002,7 @@ channel: ${track.channel}
         devicectl = MockDevicectl();
         iosDeploy = MockIOSDeploy();
 
+        when(() => releaseArtifact.id).thenReturn(iosArtifactId);
         when(() => appleDevice.name).thenReturn('iPhone 12');
         when(() => appleDevice.udid).thenReturn('12345678-1234567890ABCDEF');
         when(() => argResults['platform']).thenReturn(releasePlatform.name);
@@ -1016,18 +1038,6 @@ channel: ${track.channel}
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
         when(() => platform.isMacOS).thenReturn(true);
       });
-
-      File setupShorebirdYaml() => File(
-            p.join(
-              runnerPath(),
-              'Frameworks',
-              'App.framework',
-              'flutter_assets',
-              'shorebird.yaml',
-            ),
-          )
-            ..createSync(recursive: true)
-            ..writeAsStringSync('app_id: $appId', flush: true);
 
       test('ensures ios-deploy is installed', () async {
         await runWithOverrides(command.run);
@@ -1106,7 +1116,7 @@ channel: ${track.channel}
           when(() => argResults['device-id'])
               .thenAnswer((_) => devicectlDeviceId);
 
-          setupShorebirdYaml();
+          setupIOSShorebirdYaml();
           await runWithOverrides(command.run);
 
           verifyNever(
@@ -1119,7 +1129,7 @@ channel: ${track.channel}
             () async {
           when(() => argResults['device-id'])
               .thenAnswer((_) => 'not-a-device-id');
-          setupShorebirdYaml();
+          setupIOSShorebirdYaml();
           await runWithOverrides(command.run);
 
           verify(
@@ -1139,7 +1149,7 @@ channel: ${track.channel}
       test('uses devicectl if devicectl returns a usable device', () async {
         when(() => devicectl.deviceForLaunch(deviceId: any(named: 'deviceId')))
             .thenAnswer((_) async => appleDevice);
-        setupShorebirdYaml();
+        setupIOSShorebirdYaml();
         await runWithOverrides(command.run);
         verify(
           () => devicectl.installAndLaunchApp(
@@ -1156,7 +1166,7 @@ channel: ${track.channel}
       });
 
       test('exits with code 70 when install/launch throws', () async {
-        setupShorebirdYaml();
+        setupIOSShorebirdYaml();
         final exception = Exception('oops');
         when(
           () => iosDeploy.installAndLaunchApp(
@@ -1173,7 +1183,7 @@ channel: ${track.channel}
 
       test('exits with code 0 when install/launch succeeds (production)',
           () async {
-        final shorebirdYaml = setupShorebirdYaml();
+        final shorebirdYaml = setupIOSShorebirdYaml();
         when(
           () => iosDeploy.installAndLaunchApp(
             bundlePath: any(named: 'bundlePath'),
@@ -1254,6 +1264,374 @@ channel: ${DeploymentTrack.staging.channel}
               'Error getting release artifact: Exception: oops',
             ),
           ).called(1);
+        });
+      });
+
+      group('when the android release is not sideloadable', () {
+        setUp(() {
+          final unfilteredRelease = MockRelease();
+          when(() => unfilteredRelease.id).thenReturn(releaseId);
+          when(() => unfilteredRelease.version).thenReturn(releaseVersion);
+          when(() => unfilteredRelease.platformStatuses).thenReturn({
+            ReleasePlatform.ios: ReleaseStatus.active,
+            ReleasePlatform.android: ReleaseStatus.active,
+          });
+          when(() => release.platformStatuses).thenReturn({
+            ReleasePlatform.ios: ReleaseStatus.active,
+          });
+          when(
+            () => codePushClientWrapper.getReleases(
+              appId: any(named: 'appId'),
+              sideloadableOnly: true,
+            ),
+          ).thenAnswer((_) async => [release]);
+          when(
+            () => codePushClientWrapper.getReleases(
+              appId: any(named: 'appId'),
+            ),
+          ).thenAnswer((_) async => [unfilteredRelease]);
+        });
+
+        test('err about the platform and exits', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.software.code));
+
+          verify(
+            () => logger.warn(
+              '''${ReleasePlatform.android.displayName} is not previewable and can't be used.''',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when the ios release is not sideloadable', () {
+        setUp(() {
+          final unfilteredRelease = MockRelease();
+          when(() => unfilteredRelease.id).thenReturn(releaseId);
+          when(() => unfilteredRelease.version).thenReturn(releaseVersion);
+          when(() => unfilteredRelease.platformStatuses).thenReturn({
+            ReleasePlatform.ios: ReleaseStatus.active,
+            ReleasePlatform.android: ReleaseStatus.active,
+          });
+          when(() => release.platformStatuses).thenReturn({
+            ReleasePlatform.android: ReleaseStatus.active,
+          });
+          when(
+            () => codePushClientWrapper.getReleases(
+              appId: any(named: 'appId'),
+              sideloadableOnly: true,
+            ),
+          ).thenAnswer((_) async => [release]);
+          when(
+            () => codePushClientWrapper.getReleases(
+              appId: any(named: 'appId'),
+            ),
+          ).thenAnswer((_) async => [unfilteredRelease]);
+        });
+
+        test('err about the platform and exits', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.software.code));
+
+          verify(
+            () => logger.err(
+              '''${ReleasePlatform.ios.displayName} is not previewable and can't be used.''',
+            ),
+          ).called(1);
+        });
+      });
+    });
+
+    group('when no platform is informed', () {
+      const iosReleaseArtifactUrl = 'https://example.com/runner.app';
+      late Devicectl devicectl;
+      late IOSDeploy iosDeploy;
+
+      const androidReleaseArtifactUrl = 'https://example.com/release.aab';
+      const androidPackageName = 'com.example.app';
+
+      late ReleaseArtifact iosReleaseArtifact;
+      late ReleaseArtifact androidReleaseArtifact;
+
+      late Adb adb;
+      late Bundletool bundletool;
+      late Process process;
+
+      R runWithOverrides<R>(R Function() body) {
+        return HttpOverrides.runZoned(
+          () => runScoped(
+            body,
+            values: {
+              adbRef.overrideWith(() => adb),
+              artifactManagerRef.overrideWith(() => artifactManager),
+              authRef.overrideWith(() => auth),
+              bundletoolRef.overrideWith(() => bundletool),
+              cacheRef.overrideWith(() => cache),
+              codePushClientWrapperRef
+                  .overrideWith(() => codePushClientWrapper),
+              devicectlRef.overrideWith(() => devicectl),
+              httpClientRef.overrideWith(() => httpClient),
+              iosDeployRef.overrideWith(() => iosDeploy),
+              loggerRef.overrideWith(() => logger),
+              platformRef.overrideWith(() => platform),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+        );
+      }
+
+      setUp(() {
+        adb = MockAdb();
+        bundletool = MockBundleTool();
+        process = MockProcess();
+        devicectl = MockDevicectl();
+        iosDeploy = MockIOSDeploy();
+
+        when(() => appleDevice.name).thenReturn('iPhone 12');
+        when(() => appleDevice.udid).thenReturn('12345678-1234567890ABCDEF');
+        when(
+          () => artifactManager.downloadFile(any()),
+        ).thenAnswer((_) async => File(''));
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((_) async {});
+
+        when(() => devicectl.deviceForLaunch(deviceId: any(named: 'deviceId')))
+            .thenAnswer((_) async => null);
+        when(
+          () => devicectl.installAndLaunchApp(
+            runnerAppDirectory: any(named: 'runnerAppDirectory'),
+            device: any(named: 'device'),
+          ),
+        ).thenAnswer((_) async => ExitCode.success.code);
+        when(() => iosDeploy.installIfNeeded()).thenAnswer((_) async {});
+        when(
+          () => iosDeploy.installAndLaunchApp(
+            bundlePath: any(named: 'bundlePath'),
+            deviceId: any(named: 'deviceId'),
+          ),
+        ).thenAnswer((_) async => ExitCode.success.code);
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.android: ReleaseStatus.active,
+          ReleasePlatform.ios: ReleaseStatus.active,
+        });
+
+        iosReleaseArtifact = MockReleaseArtifact();
+        androidReleaseArtifact = MockReleaseArtifact();
+
+        when(() => iosReleaseArtifact.id).thenReturn(iosArtifactId);
+        when(() => iosReleaseArtifact.url).thenReturn(iosReleaseArtifactUrl);
+
+        when(
+          () => codePushClientWrapper.getReleaseArtifact(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: ReleasePlatform.ios,
+          ),
+        ).thenAnswer((_) async => iosReleaseArtifact);
+
+        when(() => androidReleaseArtifact.id).thenReturn(androidArtifactId);
+        when(() => androidReleaseArtifact.url)
+            .thenReturn(androidReleaseArtifactUrl);
+
+        when(
+          () => codePushClientWrapper.getReleaseArtifact(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: ReleasePlatform.android,
+          ),
+        ).thenAnswer((_) async => androidReleaseArtifact);
+
+        when(() => platform.isMacOS).thenReturn(true);
+      });
+
+      group('when the user choose ios', () {
+        setUp(() {
+          when(
+            () => logger.chooseOne<String>(
+              'Which platform would you like to preview?',
+              choices: any(named: 'choices'),
+            ),
+          ).thenReturn(ReleasePlatform.ios.displayName);
+
+          setupIOSShorebirdYaml()
+            ..createSync(recursive: true)
+            ..writeAsStringSync('app_id: $appId', flush: true);
+
+          when(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenAnswer((_) async => ExitCode.success.code);
+        });
+
+        test('exits with success and calls install and launch app', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+
+          verify(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).called(1);
+        });
+
+        group('when the android release is not sideloadable', () {
+          setUp(() {
+            final unfilteredRelease = MockRelease();
+            when(() => unfilteredRelease.id).thenReturn(releaseId);
+            when(() => unfilteredRelease.version).thenReturn(releaseVersion);
+            when(() => unfilteredRelease.platformStatuses).thenReturn({
+              ReleasePlatform.ios: ReleaseStatus.active,
+              ReleasePlatform.android: ReleaseStatus.active,
+            });
+            when(() => release.platformStatuses).thenReturn({
+              ReleasePlatform.ios: ReleaseStatus.active,
+            });
+            when(
+              () => codePushClientWrapper.getReleases(
+                appId: any(named: 'appId'),
+                sideloadableOnly: true,
+              ),
+            ).thenAnswer((_) async => [release]);
+            when(
+              () => codePushClientWrapper.getReleases(
+                appId: any(named: 'appId'),
+              ),
+            ).thenAnswer((_) async => [unfilteredRelease]);
+          });
+
+          test('warns about the platform and goes directly to iOS', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+
+            verify(
+              () => logger.warn(
+                '''${ReleasePlatform.android.displayName} is not previewable and can't be used.''',
+              ),
+            ).called(1);
+          });
+        });
+      });
+
+      group('when the user choose android', () {
+        const deviceId = '1234';
+
+        setUp(() {
+          when(
+            () => logger.chooseOne<String>(
+              'Which platform would you like to preview?',
+              choices: any(named: 'choices'),
+            ),
+          ).thenReturn(ReleasePlatform.android.displayName);
+
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(createAndroidShorebirdYaml);
+
+          when(() => argResults['device-id']).thenReturn(deviceId);
+
+          when(
+            () => bundletool.getPackageName(any()),
+          ).thenAnswer((_) async => androidPackageName);
+          when(
+            () => bundletool.buildApks(
+              bundle: any(named: 'bundle'),
+              output: any(named: 'output'),
+            ),
+          ).thenAnswer((_) async {});
+          when(
+            () => bundletool.installApks(
+              apks: any(named: 'apks'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenAnswer((_) async {});
+          when(
+            () => adb.clearAppData(
+              package: any(named: 'package'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenAnswer((_) async {});
+          when(
+            () => adb.startApp(
+              package: any(named: 'package'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenAnswer((_) async {});
+          when(
+            () => adb.logcat(
+              filter: any(named: 'filter'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenAnswer((_) async => process);
+          when(() => process.stdout).thenAnswer((_) => const Stream.empty());
+          when(() => process.stderr).thenAnswer((_) => const Stream.empty());
+          when(() => releaseArtifact.url).thenReturn(androidReleaseArtifactUrl);
+          when(
+            () => process.exitCode,
+          ).thenAnswer((_) async => ExitCode.success.code);
+
+          createAabFile(channel: null);
+        });
+
+        test('exits with success and calls install and launch app', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+
+          verify(
+            () => bundletool.installApks(
+              apks: any(named: 'apks'),
+              deviceId: deviceId,
+            ),
+          ).called(1);
+        });
+
+        group('when the ios release is not sideloadable', () {
+          setUp(() {
+            final unfilteredRelease = MockRelease();
+            when(() => unfilteredRelease.id).thenReturn(releaseId);
+            when(() => unfilteredRelease.version).thenReturn(releaseVersion);
+            when(() => unfilteredRelease.platformStatuses).thenReturn({
+              ReleasePlatform.ios: ReleaseStatus.active,
+              ReleasePlatform.android: ReleaseStatus.active,
+            });
+            when(() => release.platformStatuses).thenReturn({
+              ReleasePlatform.android: ReleaseStatus.active,
+            });
+            when(
+              () => codePushClientWrapper.getReleases(
+                appId: any(named: 'appId'),
+                sideloadableOnly: true,
+              ),
+            ).thenAnswer((_) async => [release]);
+            when(
+              () => codePushClientWrapper.getReleases(
+                appId: any(named: 'appId'),
+              ),
+            ).thenAnswer((_) async => [unfilteredRelease]);
+          });
+
+          test('warns about the platform and goes directly to iOS', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+
+            verify(
+              () => logger.warn(
+                '''${ReleasePlatform.ios.displayName} is not previewable and can't be used.''',
+              ),
+            ).called(1);
+          });
         });
       });
     });
