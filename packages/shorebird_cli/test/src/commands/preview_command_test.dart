@@ -26,6 +26,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../matchers.dart';
 import '../mocks.dart';
 
 void main() {
@@ -1330,8 +1331,10 @@ channel: ${DeploymentTrack.staging.channel}
         });
 
         test('err about the platform and exits', () async {
-          final exitCode = await runWithOverrides(command.run);
-          expect(exitCode, equals(ExitCode.software.code));
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.software),
+          );
 
           verify(
             () => logger.err(
