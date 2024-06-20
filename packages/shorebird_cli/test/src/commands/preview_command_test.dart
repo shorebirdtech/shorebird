@@ -569,7 +569,18 @@ channel: ${track.channel}
         ).thenThrow(exception);
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.software.code));
+        verify(() => logger.progress('Downloading release')).called(1);
         verify(() => progress.fail('$exception')).called(1);
+      });
+
+      test('downloading release progress completes when download completes',
+          () async {
+        final mockDownloadingProgress = MockProgress();
+        when(() => logger.progress('Downloading release'))
+            .thenReturn(mockDownloadingProgress);
+        await runWithOverrides(command.run);
+        verify(() => logger.progress('Downloading release')).called(1);
+        verify(mockDownloadingProgress.complete).called(1);
       });
 
       test('exits with code 70 when unable to find shorebird.yaml', () async {
