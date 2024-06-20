@@ -21,11 +21,10 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
-
-import '../third_party/flutter_tools/lib/flutter_tools.dart';
 
 /// {@template preview_command}
 /// `shorebird preview` command.
@@ -79,6 +78,14 @@ class PreviewCommand extends ShorebirdCommand {
   @override
   String get description => 'Preview a specific release on a device.';
 
+  /// Given two [Release]s, one with all the platforms, previewable or not,
+  /// and one with only the previewable platforms, this method will check for
+  /// platforms that are not previewable.
+  ///
+  /// If any is found, we will:
+  /// - Warn the user about the platform if that platform is not the one
+  /// the user provide on --platform
+  /// - Error out if the user provided the platform that is not previewable.
   void _assertPreviwableReleases({
     required Release releaseWithAllPlatforms,
     required Release release,
