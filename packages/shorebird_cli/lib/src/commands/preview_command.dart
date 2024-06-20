@@ -82,10 +82,10 @@ class PreviewCommand extends ShorebirdCommand {
   /// and one with only the previewable platforms, this method will check for
   /// platforms that are not previewable.
   ///
-  /// If any is found, we will:
+  /// If any non-previewable platforms are found, we will:
   /// - Warn the user about the platform if that platform is not the one
-  /// the user provide on --platform
-  /// - Error out if the user provided the platform that is not previewable.
+  ///    the user specified with `--platform`.
+  /// - Error out if the user specified a platform that is not previewable.
   void _assertPreviwableReleases({
     required Release releaseWithAllPlatforms,
     required Release release,
