@@ -25,7 +25,7 @@ This section contains past updates we've sent to customers.
 We found and fixed a bug in the Dart runtime, whereby sometimes "catch" blocks
 would be ignored after applying a Shorebird patch.  This bug has been present in
 all versions of Shorebird Flutter for iOS prior to 3.22.2.  This bug did not
-effect Android.
+affect Android.
 
 After careful evaluation we decided this try/catch issue was severe enough that
 we would be remiss to allow continued use of older versions of Flutter for iOS
