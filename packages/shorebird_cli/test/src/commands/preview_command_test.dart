@@ -1404,7 +1404,6 @@ channel: ${DeploymentTrack.staging.channel}
         process = MockProcess();
         devicectl = MockDevicectl();
         iosDeploy = MockIOSDeploy();
-
         iosReleaseArtifact = MockReleaseArtifact();
         androidReleaseArtifact = MockReleaseArtifact();
 
@@ -1468,7 +1467,7 @@ channel: ${DeploymentTrack.staging.channel}
         when(() => platform.isMacOS).thenReturn(true);
       });
 
-      group('when the user choose ios', () {
+      group('when the user chooses ios at the prompt', () {
         setUp(() {
           when(
             () => logger.chooseOne<String>(
@@ -1540,7 +1539,7 @@ channel: ${DeploymentTrack.staging.channel}
         });
       });
 
-      group('when the user choose android', () {
+      group('when the user chooses android at the prompt', () {
         const deviceId = '1234';
 
         setUp(() {
