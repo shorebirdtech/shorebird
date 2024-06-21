@@ -21,6 +21,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
@@ -77,6 +78,39 @@ class PreviewCommand extends ShorebirdCommand {
   @override
   String get description => 'Preview a specific release on a device.';
 
+  /// Given two [Release]s, one with all the platforms, previewable or not,
+  /// and one with only the previewable platforms, this method will check for
+  /// platforms that are not previewable.
+  ///
+  /// If any non-previewable platforms are found, we will:
+  /// - Warn the user about the platform if that platform is not the one
+  ///    the user specified with `--platform`.
+  /// - Error out if the user specified a platform that is not previewable.
+  void _assertPreviwableReleases({
+    required Release releaseWithAllPlatforms,
+    required Release release,
+  }) {
+    final nonPreviewablePlatforms =
+        releaseWithAllPlatforms.activePlatforms.where(
+      (p) => !release.activePlatforms.contains(p),
+    );
+
+    for (final platform in nonPreviewablePlatforms) {
+      final message =
+          '''The ${platform.displayName} artifact for this release is not previewable.''';
+
+      // If the user explicitly specified a platform and it matches a non
+      // previewable platform, we early exit to avoid duplicated warnings/errors.
+      if (results['platform'] == platform.name) {
+        logger.err(message);
+        throw ProcessExit(ExitCode.software.code);
+        // We only WARN if the user didn't specify a platform.
+      } else if (results['platform'] == null) {
+        logger.warn(message);
+      }
+    }
+  }
+
   @override
   Future<int> run() async {
     // TODO(bryanoltman): check preview target and run either
@@ -114,15 +148,37 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
-    final releases = await codePushClientWrapper.getReleases(
-      appId: appId,
-      sideloadableOnly: true,
-    );
+    // The information if a platform is previewable or not is on
+    // the artifacts, we would need to query for the artifacts for all platforms
+    // in a release to be able to know if a platform is previewable or not.
+    //
+    // To avoid making too many requests, we instead ask for all releases two
+    // times.
+    //
+    // When querying for releases, we can ask for sideloadable only
+    //
+    // When sideloadableOnly is true, the API will only return releases that
+    // have at least one platform that is previewable, and will not return
+    // platforms that are not previewable.
+    //
+    // But when sideloadableOnly is false, the API will return all releases
+    // with all platforms, including those that are not previewable.
+    //
+    // With these two lists, we can now determine if a platform is previewable
+    // or not, by making a difference between the two lists.
+    final (releasesWithAllPlatforms, releasesWithPreviewablePlatforms) = await (
+      codePushClientWrapper.getReleases(appId: appId),
+      codePushClientWrapper.getReleases(
+        appId: appId,
+        sideloadableOnly: true,
+      )
+    ).wait;
 
     final releaseVersion = results['release-version'] as String? ??
-        await promptForReleaseVersion(releases);
+        // Prompt only for releases that have previewable platforms.
+        await promptForReleaseVersion(releasesWithPreviewablePlatforms);
 
-    final release = releases.firstWhereOrNull(
+    final release = releasesWithPreviewablePlatforms.firstWhereOrNull(
       (r) => r.version == releaseVersion,
     );
 
@@ -134,6 +190,7 @@ class PreviewCommand extends ShorebirdCommand {
     final availablePlatforms = release.activePlatforms
         .where((p) => supportedReleasePlatforms.contains(p))
         .toList();
+
     if (availablePlatforms.isEmpty) {
       final activePlatformsString =
           release.activePlatforms.map((p) => p.displayName).join(', ');
@@ -143,12 +200,27 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
+    final releaseWithAllPlatforms = releasesWithAllPlatforms.firstWhere(
+      (r) => r.id == release.id,
+    );
+    _assertPreviwableReleases(
+      releaseWithAllPlatforms: releaseWithAllPlatforms,
+      release: release,
+    );
+
     final ReleasePlatform releasePlatform;
-    if (availablePlatforms.length == 1) {
+    if (results['platform'] != null) {
+      final platformName = ReleasePlatform.values.byName(
+        results['platform'] as String,
+      );
+
+      final matchedPlatform = release.activePlatforms.firstWhere(
+        (p) => p == platformName,
+      );
+
+      releasePlatform = matchedPlatform;
+    } else if (availablePlatforms.length == 1) {
       releasePlatform = availablePlatforms.first;
-    } else if (results['platform'] != null) {
-      releasePlatform =
-          ReleasePlatform.values.byName(results['platform'] as String);
     } else {
       releasePlatform = await promptForPlatform(availablePlatforms);
     }
