@@ -1,5 +1,4 @@
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 
 /// {@template android_archive_differ}
@@ -29,10 +28,6 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 class AndroidArchiveDiffer extends ArchiveDiffer {
   /// {@macro android_archive_differ}
   const AndroidArchiveDiffer();
-
-  @override
-  bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) =>
-      nativeFileSetDiff(fileSetDiff).isNotEmpty;
 
   @override
   bool isAssetFilePath(String filePath) {

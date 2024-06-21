@@ -29,6 +29,8 @@ abstract class ArchiveDiffer {
     final assetsDiff = assetsFileSetDiff(fileSetDiff);
 
     // If assets were added, we need to warn the user about asset differences.
+    // We don't care about removed assets, as they can't be removed by patch
+    // and won't cause issues.
     if (assetsDiff.addedPaths.isNotEmpty) {
       return true;
     }
@@ -43,7 +45,8 @@ abstract class ArchiveDiffer {
 
   /// Whether there are native code differences between the archives that may
   /// cause issues when patching a release.
-  bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff);
+  bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) =>
+      nativeFileSetDiff(fileSetDiff).isNotEmpty;
 
   /// Whether the provided file path represents a changed asset.
   bool isAssetFilePath(String filePath);
