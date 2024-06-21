@@ -98,6 +98,7 @@ void main() {
                 fileSetDiff.changedPaths,
                 {
                   'Products/Applications/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources',
+                  'Products/Applications/Runner.app/Frameworks/App.framework/flutter_assets/NOTICES.Z',
                   'Products/Applications/Runner.app/Frameworks/App.framework/flutter_assets/assets/asset.json',
                   'Info.plist',
                 },

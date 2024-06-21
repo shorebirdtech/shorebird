@@ -157,14 +157,6 @@ class IosArchiveDiffer extends ArchiveDiffer {
   }
 
   @override
-  bool containsPotentiallyBreakingAssetDiffs(FileSetDiff fileSetDiff) =>
-      assetsFileSetDiff(fileSetDiff).isNotEmpty;
-
-  @override
-  bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) =>
-      nativeFileSetDiff(fileSetDiff).isNotEmpty;
-
-  @override
   bool isAssetFilePath(String filePath) {
     /// The flutter_assets directory contains the assets listed in the assets
     ///   section of the pubspec.yaml file.
