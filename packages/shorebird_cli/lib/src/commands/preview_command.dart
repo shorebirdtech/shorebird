@@ -104,7 +104,8 @@ class PreviewCommand extends ShorebirdCommand {
       if (results['platform'] == platform.name) {
         logger.err(message);
         throw ProcessExit(ExitCode.software.code);
-      } else {
+        // We only WARN if the user didn't specify a platform.
+      } else if (results['platform'] == null) {
         logger.warn(message);
       }
     }

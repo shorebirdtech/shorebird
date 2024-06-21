@@ -1304,16 +1304,19 @@ channel: ${DeploymentTrack.staging.channel}
           ).thenAnswer((_) async => [releatWithAllPlatforms]);
         });
 
-        test('err about the platform and exits', () async {
-          final exitCode = await runWithOverrides(command.run);
-          expect(exitCode, equals(ExitCode.software.code));
+        test(
+          'does not warns since the user explicitly asked for iOS',
+          () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.software.code));
 
-          verify(
-            () => logger.warn(
-              '''${ReleasePlatform.android.displayName} is not previewable and can't be used.''',
-            ),
-          ).called(1);
-        });
+            verifyNever(
+              () => logger.warn(
+                '''${ReleasePlatform.android.displayName} is not previewable and can't be used.''',
+              ),
+            );
+          },
+        );
       });
 
       group('when the ios release is not sideloadable', () {
