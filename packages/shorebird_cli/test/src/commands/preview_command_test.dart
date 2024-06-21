@@ -92,7 +92,7 @@ void main() {
           ..createSync(recursive: true)
           ..writeAsStringSync('app_id: $appId', flush: true);
 
-    Future<void> createAndroidShorebirdYaml(Invocation invocation) async {
+    Future<void> setupAndroidShorebirdYaml(Invocation invocation) async {
       File(
         p.join(
           (invocation.namedArguments[#outputDirectory] as Directory).path,
@@ -424,7 +424,7 @@ void main() {
               zipFile: any(named: 'zipFile'),
               outputDirectory: any(named: 'outputDirectory'),
             ),
-          ).thenAnswer(createAndroidShorebirdYaml);
+          ).thenAnswer(setupAndroidShorebirdYaml);
 
           when(() => release.platformStatuses).thenReturn({
             ReleasePlatform.ios: ReleaseStatus.active,
@@ -597,7 +597,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         final exception = Exception('oops');
         when(() => bundletool.getPackageName(any())).thenThrow(exception);
@@ -612,7 +612,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         final exception = Exception('oops');
         when(
@@ -634,7 +634,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         final exception = Exception('oops');
         when(
@@ -651,7 +651,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         final exception = Exception('oops');
         when(
@@ -668,7 +668,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         final exception = Exception('oops');
         when(() => adb.startApp(package: any(named: 'package')))
@@ -684,7 +684,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         when(() => process.exitCode).thenAnswer((_) async => 1);
         final result = await runWithOverrides(command.run);
@@ -698,7 +698,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
@@ -718,7 +718,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
@@ -788,7 +788,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         when(() => argResults.wasParsed('app-id')).thenReturn(false);
         when(() => argResults['app-id']).thenReturn(null);
@@ -818,7 +818,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
         // We only prompt when there are multiple platforms to choose from
         when(() => platform.isMacOS).thenReturn(true);
 
@@ -899,7 +899,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         when(() => argResults['release-version']).thenReturn(null);
         when(
@@ -933,7 +933,7 @@ channel: ${track.channel}
             zipFile: any(named: 'zipFile'),
             outputDirectory: any(named: 'outputDirectory'),
           ),
-        ).thenAnswer(createAndroidShorebirdYaml);
+        ).thenAnswer(setupAndroidShorebirdYaml);
 
         const deviceId = '1234';
         when(() => argResults['device-id']).thenReturn(deviceId);
@@ -1281,10 +1281,10 @@ channel: ${DeploymentTrack.staging.channel}
 
       group('when the android release is not sideloadable', () {
         setUp(() {
-          final unfilteredRelease = MockRelease();
-          when(() => unfilteredRelease.id).thenReturn(releaseId);
-          when(() => unfilteredRelease.version).thenReturn(releaseVersion);
-          when(() => unfilteredRelease.platformStatuses).thenReturn({
+          final releatWithAllPlatforms = MockRelease();
+          when(() => releatWithAllPlatforms.id).thenReturn(releaseId);
+          when(() => releatWithAllPlatforms.version).thenReturn(releaseVersion);
+          when(() => releatWithAllPlatforms.platformStatuses).thenReturn({
             ReleasePlatform.ios: ReleaseStatus.active,
             ReleasePlatform.android: ReleaseStatus.active,
           });
@@ -1301,7 +1301,7 @@ channel: ${DeploymentTrack.staging.channel}
             () => codePushClientWrapper.getReleases(
               appId: any(named: 'appId'),
             ),
-          ).thenAnswer((_) async => [unfilteredRelease]);
+          ).thenAnswer((_) async => [releatWithAllPlatforms]);
         });
 
         test('err about the platform and exits', () async {
@@ -1318,10 +1318,10 @@ channel: ${DeploymentTrack.staging.channel}
 
       group('when the ios release is not sideloadable', () {
         setUp(() {
-          final unfilteredRelease = MockRelease();
-          when(() => unfilteredRelease.id).thenReturn(releaseId);
-          when(() => unfilteredRelease.version).thenReturn(releaseVersion);
-          when(() => unfilteredRelease.platformStatuses).thenReturn({
+          final releatWithAllPlatforms = MockRelease();
+          when(() => releatWithAllPlatforms.id).thenReturn(releaseId);
+          when(() => releatWithAllPlatforms.version).thenReturn(releaseVersion);
+          when(() => releatWithAllPlatforms.platformStatuses).thenReturn({
             ReleasePlatform.ios: ReleaseStatus.active,
             ReleasePlatform.android: ReleaseStatus.active,
           });
@@ -1338,7 +1338,7 @@ channel: ${DeploymentTrack.staging.channel}
             () => codePushClientWrapper.getReleases(
               appId: any(named: 'appId'),
             ),
-          ).thenAnswer((_) async => [unfilteredRelease]);
+          ).thenAnswer((_) async => [releatWithAllPlatforms]);
         });
 
         test('err about the platform and exits', () async {
@@ -1356,7 +1356,7 @@ channel: ${DeploymentTrack.staging.channel}
       });
     });
 
-    group('when no platform is informed', () {
+    group('when no platform is specified', () {
       const iosReleaseArtifactUrl = 'https://example.com/runner.app';
       late Devicectl devicectl;
       late IOSDeploy iosDeploy;
@@ -1402,6 +1402,9 @@ channel: ${DeploymentTrack.staging.channel}
         devicectl = MockDevicectl();
         iosDeploy = MockIOSDeploy();
 
+        iosReleaseArtifact = MockReleaseArtifact();
+        androidReleaseArtifact = MockReleaseArtifact();
+
         when(() => appleDevice.name).thenReturn('iPhone 12');
         when(() => appleDevice.udid).thenReturn('12345678-1234567890ABCDEF');
         when(
@@ -1433,9 +1436,6 @@ channel: ${DeploymentTrack.staging.channel}
           ReleasePlatform.android: ReleaseStatus.active,
           ReleasePlatform.ios: ReleaseStatus.active,
         });
-
-        iosReleaseArtifact = MockReleaseArtifact();
-        androidReleaseArtifact = MockReleaseArtifact();
 
         when(() => iosReleaseArtifact.id).thenReturn(iosArtifactId);
         when(() => iosReleaseArtifact.url).thenReturn(iosReleaseArtifactUrl);
@@ -1500,10 +1500,11 @@ channel: ${DeploymentTrack.staging.channel}
 
         group('when the android release is not sideloadable', () {
           setUp(() {
-            final unfilteredRelease = MockRelease();
-            when(() => unfilteredRelease.id).thenReturn(releaseId);
-            when(() => unfilteredRelease.version).thenReturn(releaseVersion);
-            when(() => unfilteredRelease.platformStatuses).thenReturn({
+            final releatWithAllPlatforms = MockRelease();
+            when(() => releatWithAllPlatforms.id).thenReturn(releaseId);
+            when(() => releatWithAllPlatforms.version)
+                .thenReturn(releaseVersion);
+            when(() => releatWithAllPlatforms.platformStatuses).thenReturn({
               ReleasePlatform.ios: ReleaseStatus.active,
               ReleasePlatform.android: ReleaseStatus.active,
             });
@@ -1520,7 +1521,7 @@ channel: ${DeploymentTrack.staging.channel}
               () => codePushClientWrapper.getReleases(
                 appId: any(named: 'appId'),
               ),
-            ).thenAnswer((_) async => [unfilteredRelease]);
+            ).thenAnswer((_) async => [releatWithAllPlatforms]);
           });
 
           test('warns about the platform and goes directly to iOS', () async {
@@ -1552,7 +1553,7 @@ channel: ${DeploymentTrack.staging.channel}
               zipFile: any(named: 'zipFile'),
               outputDirectory: any(named: 'outputDirectory'),
             ),
-          ).thenAnswer(createAndroidShorebirdYaml);
+          ).thenAnswer(setupAndroidShorebirdYaml);
 
           when(() => argResults['device-id']).thenReturn(deviceId);
 
@@ -1613,10 +1614,11 @@ channel: ${DeploymentTrack.staging.channel}
 
         group('when the ios release is not sideloadable', () {
           setUp(() {
-            final unfilteredRelease = MockRelease();
-            when(() => unfilteredRelease.id).thenReturn(releaseId);
-            when(() => unfilteredRelease.version).thenReturn(releaseVersion);
-            when(() => unfilteredRelease.platformStatuses).thenReturn({
+            final releatWithAllPlatforms = MockRelease();
+            when(() => releatWithAllPlatforms.id).thenReturn(releaseId);
+            when(() => releatWithAllPlatforms.version)
+                .thenReturn(releaseVersion);
+            when(() => releatWithAllPlatforms.platformStatuses).thenReturn({
               ReleasePlatform.ios: ReleaseStatus.active,
               ReleasePlatform.android: ReleaseStatus.active,
             });
@@ -1633,10 +1635,10 @@ channel: ${DeploymentTrack.staging.channel}
               () => codePushClientWrapper.getReleases(
                 appId: any(named: 'appId'),
               ),
-            ).thenAnswer((_) async => [unfilteredRelease]);
+            ).thenAnswer((_) async => [releatWithAllPlatforms]);
           });
 
-          test('warns about the platform and goes directly to iOS', () async {
+          test('warns about it not being previewable', () async {
             final exitCode = await runWithOverrides(command.run);
             expect(exitCode, equals(ExitCode.success.code));
 
