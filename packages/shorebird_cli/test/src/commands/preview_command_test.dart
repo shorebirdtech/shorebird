@@ -1281,10 +1281,11 @@ channel: ${DeploymentTrack.staging.channel}
 
       group('when the android release is not sideloadable', () {
         setUp(() {
-          final releatWithAllPlatforms = MockRelease();
-          when(() => releatWithAllPlatforms.id).thenReturn(releaseId);
-          when(() => releatWithAllPlatforms.version).thenReturn(releaseVersion);
-          when(() => releatWithAllPlatforms.platformStatuses).thenReturn({
+          final releaseWithAllPlatforms = MockRelease();
+          when(() => releaseWithAllPlatforms.id).thenReturn(releaseId);
+          when(() => releaseWithAllPlatforms.version)
+              .thenReturn(releaseVersion);
+          when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
             ReleasePlatform.ios: ReleaseStatus.active,
             ReleasePlatform.android: ReleaseStatus.active,
           });
@@ -1301,7 +1302,7 @@ channel: ${DeploymentTrack.staging.channel}
             () => codePushClientWrapper.getReleases(
               appId: any(named: 'appId'),
             ),
-          ).thenAnswer((_) async => [releatWithAllPlatforms]);
+          ).thenAnswer((_) async => [releaseWithAllPlatforms]);
         });
 
         test(
@@ -1321,10 +1322,11 @@ channel: ${DeploymentTrack.staging.channel}
 
       group('when the ios release is not sideloadable', () {
         setUp(() {
-          final releatWithAllPlatforms = MockRelease();
-          when(() => releatWithAllPlatforms.id).thenReturn(releaseId);
-          when(() => releatWithAllPlatforms.version).thenReturn(releaseVersion);
-          when(() => releatWithAllPlatforms.platformStatuses).thenReturn({
+          final releaseWithAllPlatforms = MockRelease();
+          when(() => releaseWithAllPlatforms.id).thenReturn(releaseId);
+          when(() => releaseWithAllPlatforms.version)
+              .thenReturn(releaseVersion);
+          when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
             ReleasePlatform.ios: ReleaseStatus.active,
             ReleasePlatform.android: ReleaseStatus.active,
           });
@@ -1341,7 +1343,7 @@ channel: ${DeploymentTrack.staging.channel}
             () => codePushClientWrapper.getReleases(
               appId: any(named: 'appId'),
             ),
-          ).thenAnswer((_) async => [releatWithAllPlatforms]);
+          ).thenAnswer((_) async => [releaseWithAllPlatforms]);
         });
 
         test('err about the platform and exits', () async {
@@ -1502,11 +1504,11 @@ channel: ${DeploymentTrack.staging.channel}
 
         group('when the android release is not sideloadable', () {
           setUp(() {
-            final releatWithAllPlatforms = MockRelease();
-            when(() => releatWithAllPlatforms.id).thenReturn(releaseId);
-            when(() => releatWithAllPlatforms.version)
+            final releaseWithAllPlatforms = MockRelease();
+            when(() => releaseWithAllPlatforms.id).thenReturn(releaseId);
+            when(() => releaseWithAllPlatforms.version)
                 .thenReturn(releaseVersion);
-            when(() => releatWithAllPlatforms.platformStatuses).thenReturn({
+            when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
               ReleasePlatform.ios: ReleaseStatus.active,
               ReleasePlatform.android: ReleaseStatus.active,
             });
@@ -1523,7 +1525,7 @@ channel: ${DeploymentTrack.staging.channel}
               () => codePushClientWrapper.getReleases(
                 appId: any(named: 'appId'),
               ),
-            ).thenAnswer((_) async => [releatWithAllPlatforms]);
+            ).thenAnswer((_) async => [releaseWithAllPlatforms]);
           });
 
           test('warns about the platform and goes directly to iOS', () async {
@@ -1616,11 +1618,11 @@ channel: ${DeploymentTrack.staging.channel}
 
         group('when the ios release is not sideloadable', () {
           setUp(() {
-            final releatWithAllPlatforms = MockRelease();
-            when(() => releatWithAllPlatforms.id).thenReturn(releaseId);
-            when(() => releatWithAllPlatforms.version)
+            final releaseWithAllPlatforms = MockRelease();
+            when(() => releaseWithAllPlatforms.id).thenReturn(releaseId);
+            when(() => releaseWithAllPlatforms.version)
                 .thenReturn(releaseVersion);
-            when(() => releatWithAllPlatforms.platformStatuses).thenReturn({
+            when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
               ReleasePlatform.ios: ReleaseStatus.active,
               ReleasePlatform.android: ReleaseStatus.active,
             });
@@ -1637,7 +1639,7 @@ channel: ${DeploymentTrack.staging.channel}
               () => codePushClientWrapper.getReleases(
                 appId: any(named: 'appId'),
               ),
-            ).thenAnswer((_) async => [releatWithAllPlatforms]);
+            ).thenAnswer((_) async => [releaseWithAllPlatforms]);
           });
 
           test('warns about it not being previewable', () async {
