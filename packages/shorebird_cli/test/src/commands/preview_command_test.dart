@@ -1312,7 +1312,7 @@ channel: ${DeploymentTrack.staging.channel}
 
             verifyNever(
               () => logger.warn(
-                '''${ReleasePlatform.android.displayName} is not previewable and can't be used.''',
+                '''The ${ReleasePlatform.android.displayName} artifact for this release is not previewable.''',
               ),
             );
           },
@@ -1352,7 +1352,7 @@ channel: ${DeploymentTrack.staging.channel}
 
           verify(
             () => logger.err(
-              '''${ReleasePlatform.ios.displayName} is not previewable and can't be used.''',
+              '''The ${ReleasePlatform.ios.displayName} artifact for this release is not previewable.''',
             ),
           ).called(1);
         });
@@ -1533,7 +1533,7 @@ channel: ${DeploymentTrack.staging.channel}
 
             verify(
               () => logger.warn(
-                '''${ReleasePlatform.android.displayName} is not previewable and can't be used.''',
+                '''The ${ReleasePlatform.android.displayName} artifact for this release is not previewable.''',
               ),
             ).called(1);
           });
@@ -1647,7 +1647,7 @@ channel: ${DeploymentTrack.staging.channel}
 
             verify(
               () => logger.warn(
-                '''${ReleasePlatform.ios.displayName} is not previewable and can't be used.''',
+                '''The ${ReleasePlatform.ios.displayName} artifact for this release is not previewable.''',
               ),
             ).called(1);
           });

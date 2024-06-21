@@ -97,7 +97,7 @@ class PreviewCommand extends ShorebirdCommand {
 
     for (final platform in nonPreviewablePlatforms) {
       final message =
-          '''${platform.displayName} is not previewable and can't be used.''';
+          '''The ${platform.displayName} artifact for this release is not previewable.''';
 
       // If the user explicitly specified a platform and it matches a non
       // previewable platform, we early exit to avoid duplicated warnings/errors.
