@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:args/args.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -36,6 +38,82 @@ void main() {
           ).assertArgsAreValid,
           returnsNormally,
         );
+      });
+    });
+
+    group('buildNameAndNumberArgsFromReleaseVersionArg', () {
+      late ArgResults argResults;
+      setUp(() {
+        argResults = MockArgResults();
+      });
+
+      group('when --releaseVersion is not specified', () {
+        test('returns an empty list', () {
+          expect(
+            _TestPatcher(
+              argResults: MockArgResults(),
+              flavor: null,
+              target: null,
+            ).buildNameAndNumberArgsFromReleaseVersionArg(),
+            isEmpty,
+          );
+        });
+      });
+
+      group('when an invalid --release-version is specified', () {
+        setUp(() {
+          when(() => argResults['release-version']).thenReturn('invalid');
+        });
+
+        test('returns an empty list', () {
+          expect(
+            _TestPatcher(
+              argResults: argResults,
+              flavor: null,
+              target: null,
+            ).buildNameAndNumberArgsFromReleaseVersionArg(),
+            isEmpty,
+          );
+        });
+      });
+
+      group('when a valid --release-version is specified', () {
+        setUp(() {
+          when(() => argResults['release-version']).thenReturn('1.2.3+4');
+        });
+
+        group('when --build-name and --build-number are specified', () {
+          test('returns an empty list', () {
+            when(() => argResults.rest).thenReturn([
+              '--build-name=foo',
+              '--build-number=42',
+            ]);
+
+            expect(
+              _TestPatcher(
+                argResults: argResults,
+                flavor: null,
+                target: null,
+              ).buildNameAndNumberArgsFromReleaseVersionArg(),
+              isEmpty,
+            );
+          });
+        });
+
+        group('when neither --build-name nor --build-number are specified', () {
+          test('returns --build-name and --build-number', () {
+            when(() => argResults.rest).thenReturn([]);
+
+            expect(
+              _TestPatcher(
+                argResults: argResults,
+                flavor: null,
+                target: null,
+              ).buildNameAndNumberArgsFromReleaseVersionArg(),
+              equals(['--build-name=1.2.3', '--build-number=4']),
+            );
+          });
+        });
       });
     });
   });

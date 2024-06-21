@@ -172,7 +172,8 @@ For more information see: $supportedVersionsLink''',
           exportOptionsPlist: exportOptionsPlist,
           flavor: flavor,
           target: target,
-          args: argResults.forwardedArgs,
+          args: argResults.forwardedArgs +
+              buildNameAndNumberArgsFromReleaseVersionArg(),
           base64PublicKey: argResults.encodedPublicKey,
         );
       } on ProcessException catch (error) {

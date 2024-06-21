@@ -79,7 +79,8 @@ class AndroidPatcher extends Patcher {
       aabFile = await artifactBuilder.buildAppBundle(
         flavor: flavor,
         target: target,
-        args: argResults.forwardedArgs,
+        args: argResults.forwardedArgs +
+            buildNameAndNumberArgsFromReleaseVersionArg(),
         base64PublicKey: argResults.encodedPublicKey,
       );
       buildProgress.complete();

@@ -674,6 +674,31 @@ For more information see: $supportedVersionsLink''',
             );
           });
 
+          group('when --release-version is specified', () {
+            setUp(() {
+              when(() => argResults['release-version']).thenReturn('1.2.3+4');
+            });
+
+            test('forwards --build-name and --build-number to builder',
+                () async {
+              await runWithOverrides(patcher.buildPatchArtifact);
+              verify(
+                () => artifactBuilder.buildIpa(
+                  flavor: any(named: 'flavor'),
+                  exportOptionsPlist: any(named: 'exportOptionsPlist'),
+                  codesign: any(named: 'codesign'),
+                  target: any(named: 'target'),
+                  args: any(
+                    named: 'args',
+                    that: containsAll(
+                      ['--build-name=1.2.3', '--build-number=4'],
+                    ),
+                  ),
+                ),
+              ).called(1);
+            });
+          });
+
           group('when platform was specified via arg results rest', () {
             setUp(() {
               when(() => argResults.rest).thenReturn(['ios', '--verbose']);
