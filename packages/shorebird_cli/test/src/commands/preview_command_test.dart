@@ -1305,7 +1305,7 @@ channel: ${DeploymentTrack.staging.channel}
         });
 
         test(
-          'does not warns since the user explicitly asked for iOS',
+          'does not warn since the user explicitly asked for iOS',
           () async {
             final exitCode = await runWithOverrides(command.run);
             expect(exitCode, equals(ExitCode.software.code));
