@@ -134,7 +134,7 @@ This may indicate that the patch contains native changes, which cannot be applie
   }
 
   @override
-  Future<File> buildPatchArtifact() async {
+  Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final File exportOptionsPlist;
     try {
       exportOptionsPlist = ios.exportOptionsPlistFromArgs(argResults);
@@ -173,7 +173,7 @@ For more information see: $supportedVersionsLink''',
           flavor: flavor,
           target: target,
           args: argResults.forwardedArgs +
-              buildNameAndNumberArgsFromReleaseVersionArg(),
+              buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
           base64PublicKey: argResults.encodedPublicKey,
         );
       } on ProcessException catch (error) {

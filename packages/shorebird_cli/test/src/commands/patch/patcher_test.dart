@@ -41,60 +41,54 @@ void main() {
       });
     });
 
-    group('buildNameAndNumberArgsFromReleaseVersionArg', () {
+    group('buildNameAndNumberArgsFromReleaseVersion', () {
       late ArgResults argResults;
       setUp(() {
         argResults = MockArgResults();
       });
 
-      group('when --releaseVersion is not specified', () {
+      group('when releaseVersion is not specified', () {
         test('returns an empty list', () {
           expect(
             _TestPatcher(
               argResults: MockArgResults(),
               flavor: null,
               target: null,
-            ).buildNameAndNumberArgsFromReleaseVersionArg(),
+            ).buildNameAndNumberArgsFromReleaseVersion(null),
             isEmpty,
           );
         });
       });
 
       group('when an invalid --release-version is specified', () {
-        setUp(() {
-          when(() => argResults['release-version']).thenReturn('invalid');
-        });
-
         test('returns an empty list', () {
           expect(
             _TestPatcher(
               argResults: argResults,
               flavor: null,
               target: null,
-            ).buildNameAndNumberArgsFromReleaseVersionArg(),
+            ).buildNameAndNumberArgsFromReleaseVersion('invalid'),
             isEmpty,
           );
         });
       });
 
       group('when a valid --release-version is specified', () {
-        setUp(() {
-          when(() => argResults['release-version']).thenReturn('1.2.3+4');
-        });
-
         group('when --build-name and --build-number are specified', () {
-          test('returns an empty list', () {
+          setUp(() {
             when(() => argResults.rest).thenReturn([
               '--build-name=foo',
               '--build-number=42',
             ]);
+          });
 
+          test('returns an empty list', () {
             expect(
               _TestPatcher(
                 argResults: argResults,
                 flavor: null,
                 target: null,
-              ).buildNameAndNumberArgsFromReleaseVersionArg(),
+              ).buildNameAndNumberArgsFromReleaseVersion('1.2.3+4'),
               isEmpty,
             );
           });
@@ -109,7 +103,7 @@ void main() {
                 argResults: argResults,
                 flavor: null,
                 target: null,
-              ).buildNameAndNumberArgsFromReleaseVersionArg(),
+              ).buildNameAndNumberArgsFromReleaseVersion('1.2.3+4'),
               equals(['--build-name=1.2.3', '--build-number=4']),
             );
           });
@@ -141,7 +135,7 @@ class _TestPatcher extends Patcher {
   }
 
   @override
-  Future<File> buildPatchArtifact() {
+  Future<File> buildPatchArtifact({String? releaseVersion}) {
     throw UnimplementedError();
   }
 

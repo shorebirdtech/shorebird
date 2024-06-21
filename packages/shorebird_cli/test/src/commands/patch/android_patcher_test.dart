@@ -334,14 +334,13 @@ Looked in:
         });
       });
 
-      group('when --release-version is specified', () {
-        setUp(() {
-          setUpProjectRootArtifacts();
-          when(() => argResults['release-version']).thenReturn('1.2.3+4');
-        });
+      group('when releaseVersion is provided', () {
+        setUp(setUpProjectRootArtifacts);
 
         test('forwards --build-name and --build-number to builder', () async {
-          await runWithOverrides(patcher.buildPatchArtifact);
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.2.3+4'),
+          );
           verify(
             () => artifactBuilder.buildAppBundle(
               flavor: any(named: 'flavor'),

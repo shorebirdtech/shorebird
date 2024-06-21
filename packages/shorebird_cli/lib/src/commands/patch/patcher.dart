@@ -77,7 +77,7 @@ https://docs.shorebird.dev/status#link-percentage-ios
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
-  Future<File> buildPatchArtifact();
+  Future<File> buildPatchArtifact({String? releaseVersion});
 
   /// Determines the release version from the provided app artifact.
   Future<String> extractReleaseVersionFromArtifact(File artifact);
@@ -132,8 +132,9 @@ https://docs.shorebird.dev/status#link-percentage-ios
   /// code or dependencies.
   ///
   /// Context: https://github.com/shorebirdtech/shorebird/issues/2270
-  List<String> buildNameAndNumberArgsFromReleaseVersionArg() {
-    final releaseVersion = argResults['release-version'] as String?;
+  List<String> buildNameAndNumberArgsFromReleaseVersion(
+    String? releaseVersion,
+  ) {
     if (releaseVersion == null || !releaseVersion.contains('+')) {
       return [];
     }

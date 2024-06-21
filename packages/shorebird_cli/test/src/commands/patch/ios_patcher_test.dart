@@ -674,14 +674,12 @@ For more information see: $supportedVersionsLink''',
             );
           });
 
-          group('when --release-version is specified', () {
-            setUp(() {
-              when(() => argResults['release-version']).thenReturn('1.2.3+4');
-            });
-
+          group('when releaseVersion is provided', () {
             test('forwards --build-name and --build-number to builder',
                 () async {
-              await runWithOverrides(patcher.buildPatchArtifact);
+              await runWithOverrides(
+                () => patcher.buildPatchArtifact(releaseVersion: '1.2.3+4'),
+              );
               verify(
                 () => artifactBuilder.buildIpa(
                   flavor: any(named: 'flavor'),
