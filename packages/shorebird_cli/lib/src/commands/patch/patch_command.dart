@@ -264,7 +264,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
         // Don't built the patch artifact twice with the same Flutter revision.
         if (lastBuiltFlutterRevision != release.flutterRevision) {
-          patchArtifactFile = await patcher.buildPatchArtifact();
+          patchArtifactFile = await patcher.buildPatchArtifact(
+            releaseVersion: release.version,
+          );
         }
 
         final diffStatus = await assertUnpatchableDiffs(

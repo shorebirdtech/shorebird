@@ -225,7 +225,9 @@ void main() {
         () => patcher.extractReleaseVersionFromArtifact(any()),
       ).thenAnswer((_) async => releaseVersion);
       when(
-        () => patcher.buildPatchArtifact(),
+        () => patcher.buildPatchArtifact(
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
       ).thenAnswer((_) async => File(''));
       when(() => patcher.releaseType).thenReturn(ReleaseType.android);
       when(() => patcher.primaryReleaseArtifactArch).thenReturn('aab');
@@ -580,7 +582,7 @@ void main() {
                 arch: patcher.primaryReleaseArtifactArch,
                 platform: releasePlatform,
               ),
-          () => patcher.buildPatchArtifact(),
+          () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
           () => patcher.assertUnpatchableDiffs(
                 releaseArtifact: any(named: 'releaseArtifact'),
                 releaseArchive: any(named: 'releaseArchive'),
@@ -730,7 +732,7 @@ void main() {
               () => shorebirdEnv.copyWith(
                     flutterRevisionOverride: releaseFlutterRevision,
                   ),
-              () => patcher.buildPatchArtifact(),
+              () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
             ]);
           });
 
