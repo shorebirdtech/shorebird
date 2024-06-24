@@ -802,44 +802,20 @@ To change the version of this release, change your app's version in your pubspec
             when(() => argResults['codesign']).thenReturn(true);
           });
 
-          group('when no ipa found', () {
-            test('logs error and exits', () async {
-              await expectLater(
-                () => runWithOverrides(
-                  () => iosReleaser.postReleaseInstructions,
-                ),
-                exitsWithCode(ExitCode.software),
-              );
-
-              verify(
-                () => logger.err('Could not find ipa file'),
-              ).called(1);
-            });
-          });
-
-          group('when ipa found', () {
-            late File ipa;
-            setUp(() {
-              final tempDir = Directory.systemTemp.createTempSync();
-              ipa = File(p.join(tempDir.path, 'ipa.ipa'))..createSync();
-              when(() => artifactManager.getIpa()).thenReturn(ipa);
-            });
-
-            test('prints ipa upload steps', () {
-              expect(
-                runWithOverrides(() => iosReleaser.postReleaseInstructions),
-                equals('''
+          test('prints ipa upload steps', () {
+            expect(
+              runWithOverrides(() => iosReleaser.postReleaseInstructions),
+              equals('''
 
 Your next step is to upload your app to App Store Connect.
 
 To upload to the App Store, do one of the following:
     1. Open ${lightCyan.wrap(p.relative(xcarchiveDirectory.path))} in Xcode and use the "Distribute App" flow.
-    2. Drag and drop the ${lightCyan.wrap(p.relative(ipa.path))} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
-    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f ${p.relative(ipa.path)} --apiKey your_api_key --apiIssuer your_issuer_id')}.
+    2. Drag and drop the ${lightCyan.wrap('build/ios/ipa/*.ipa')} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
+    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f ${p.relative('build/ios/ipa/*.ipa')} --apiKey your_api_key --apiIssuer your_issuer_id')}.
        See "man altool" for details about how to authenticate with the App Store Connect API key.
 '''),
-              );
-            });
+            );
           });
         });
 
