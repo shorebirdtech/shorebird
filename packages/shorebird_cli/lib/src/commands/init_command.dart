@@ -67,12 +67,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
     final detectFlavorsProgress = logger.progress('Detecting product flavors');
     try {
-      final flavors = await Future.wait([
-        _maybeGetAndroidFlavors(projectRoot.path),
-        Future.value(ios.flavors()),
-      ]);
-      androidFlavors = flavors[0];
-      iosFlavors = flavors[1];
+      androidFlavors = await _maybeGetAndroidFlavors(projectRoot.path);
+      iosFlavors = ios.flavors();
       productFlavors = <String>{
         if (androidFlavors != null) ...androidFlavors,
         if (iosFlavors != null) ...iosFlavors,
