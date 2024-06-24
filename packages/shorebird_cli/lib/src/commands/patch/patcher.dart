@@ -77,7 +77,7 @@ https://docs.shorebird.dev/status#link-percentage-ios
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
-  Future<File> buildPatchArtifact();
+  Future<File> buildPatchArtifact({String? releaseVersion});
 
   /// Determines the release version from the provided app artifact.
   Future<String> extractReleaseVersionFromArtifact(File artifact);
@@ -114,5 +114,43 @@ https://docs.shorebird.dev/status#link-percentage-ios
   /// The path to the output file for the debug info.
   File get debugInfoFile {
     return File(p.join(buildDirectory.path, 'patch-debug.zip'));
+  }
+
+  /// Extracts the --build-name and --build-number from the --release-version
+  /// argument if it's provided. Given `--release-version=1.2.3+4`, this will
+  /// return `['--build-name=1.2.3', '--build-number=4']`, with the intent that
+  /// these values will be forwarded to the `flutter build` command.
+  ///
+  /// Because not all platform types support both --build-name and
+  /// --build-number, this needs to be handled in the platform-specific
+  /// patchers instead of at the patch command level.
+  ///
+  /// We do this because some platforms encode the build version in their
+  /// binaries (Android does this with .dex files). If a release and a patch
+  /// have different version numbers, our [PatchDiffChecker] to warn the user of
+  /// native changes, even though the user may not have actually changed any
+  /// code or dependencies.
+  ///
+  /// Context: https://github.com/shorebirdtech/shorebird/issues/2270
+  List<String> buildNameAndNumberArgsFromReleaseVersion(
+    String? releaseVersion,
+  ) {
+    if (releaseVersion == null || !releaseVersion.contains('+')) {
+      return [];
+    }
+
+    // If the user already provided --build-name or --build-number, we don't
+    // want to override them.
+    if (argResults.rest.any(
+      (a) => a.startsWith('--build-name') || a.startsWith('--build-number'),
+    )) {
+      return [];
+    }
+
+    final parts = releaseVersion.split('+');
+    return [
+      '--build-name=${parts[0]}',
+      '--build-number=${parts[1]}',
+    ];
   }
 }

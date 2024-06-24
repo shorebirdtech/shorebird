@@ -334,6 +334,26 @@ Looked in:
         });
       });
 
+      group('when releaseVersion is provided', () {
+        setUp(setUpProjectRootArtifacts);
+
+        test('forwards --build-name and --build-number to builder', () async {
+          await runWithOverrides(
+            () => patcher.buildPatchArtifact(releaseVersion: '1.2.3+4'),
+          );
+          verify(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: any(
+                named: 'args',
+                that: containsAll(['--build-name=1.2.3', '--build-number=4']),
+              ),
+            ),
+          ).called(1);
+        });
+      });
+
       group('when build succeeds', () {
         setUp(setUpProjectRootArtifacts);
 

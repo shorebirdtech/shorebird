@@ -69,7 +69,7 @@ class AndroidPatcher extends Patcher {
   }
 
   @override
-  Future<File> buildPatchArtifact() async {
+  Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final File aabFile;
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     final buildProgress =
@@ -79,7 +79,8 @@ class AndroidPatcher extends Patcher {
       aabFile = await artifactBuilder.buildAppBundle(
         flavor: flavor,
         target: target,
-        args: argResults.forwardedArgs,
+        args: argResults.forwardedArgs +
+            buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
         base64PublicKey: argResults.encodedPublicKey,
       );
       buildProgress.complete();

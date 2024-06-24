@@ -93,7 +93,7 @@ class IosFrameworkPatcher extends Patcher {
       );
 
   @override
-  Future<File> buildPatchArtifact() async {
+  Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     final buildProgress = logger.progress(
       'Building patch with Flutter $flutterVersionString',
