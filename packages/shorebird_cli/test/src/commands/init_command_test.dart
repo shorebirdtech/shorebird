@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -49,7 +50,7 @@ environment:
     late PubspecEditor pubspecEditor;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
-    late XcodeBuild xcodeBuild;
+    late Ios ios;
     late InitCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -59,13 +60,13 @@ environment:
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           gradlewRef.overrideWith(() => gradlew),
+          iosRef.overrideWith(() => ios),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
           pubspecEditorRef.overrideWith(() => pubspecEditor),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
-          xcodeBuildRef.overrideWith(() => xcodeBuild),
         },
       );
     }
@@ -79,6 +80,7 @@ environment:
       doctor = MockDoctor();
       gradlew = MockGradlew();
       codePushClientWrapper = MockCodePushClientWrapper();
+      ios = MockIos();
       shorebirdYaml = MockShorebirdYaml();
       shorebirdYamlFile = MockFile();
       pubspecYamlFile = MockFile();
@@ -89,7 +91,6 @@ environment:
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
-      xcodeBuild = MockXcodeBuild();
 
       when(
         () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
@@ -129,9 +130,7 @@ environment:
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
         ),
       ).thenAnswer((_) async {});
-      when(
-        () => xcodeBuild.list(any()),
-      ).thenAnswer((_) async => const XcodeProjectBuildInfo());
+      when(() => ios.flavors()).thenReturn(null);
 
       command = runWithOverrides(InitCommand.new)..testArgResults = argResults;
     });
@@ -265,16 +264,24 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         when(() => platform.isMacOS).thenReturn(false);
       });
 
-      test('throws software error when unable to detect schemes', () async {
-        Directory(p.join(projectRoot.path, 'ios')).createSync(recursive: true);
-        final exitCode = await runWithOverrides(command.run);
-        expect(exitCode, equals(ExitCode.software.code));
-        verify(
-          () => logger.err(
-            any(that: contains('Unable to detect iOS schemes in')),
-          ),
-        ).called(1);
-        verifyNever(() => xcodeBuild.list(any()));
+      group('when ios directory is empty', () {
+        setUp(() {
+          when(() => ios.flavors()).thenThrow(
+            MissingIOSProjectException(projectRoot.path),
+          );
+        });
+
+        test('exits with software error code', () async {
+          Directory(p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'))
+              .createSync(recursive: true);
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.software.code));
+          verify(
+            () => logger.err(
+              any(that: contains('Could not find an iOS project in')),
+            ),
+          ).called(1);
+        });
       });
 
       test('creates shorebird for an android-only app', () async {
@@ -285,7 +292,6 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             any(that: contains('app_id: $appId')),
           ),
         ).called(1);
-        verifyNever(() => xcodeBuild.list(any()));
       });
 
       test('creates shorebird for an app without flavors', () async {
@@ -311,7 +317,6 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         ).called(1);
         verify(() => progress.complete('No product flavors detected.'))
             .called(1);
-        verifyNever(() => xcodeBuild.list(any()));
       });
 
       test('creates shorebird for an app with flavors', () async {
@@ -326,22 +331,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         when(
           () => gradlew.productFlavors(any()),
         ).thenThrow(MissingAndroidProjectException(projectRoot.path));
-        final schemesPath = p.join(
-          projectRoot.path,
-          'ios',
-          'Runner.xcodeproj',
-          'xcshareddata',
-          'xcschemes',
-        );
-        File(
-          p.join(schemesPath, 'Runner.xcscheme'),
-        ).createSync(recursive: true);
-        File(
-          p.join(schemesPath, 'internal.xcscheme'),
-        ).createSync(recursive: true);
-        File(
-          p.join(schemesPath, 'stable.xcscheme'),
-        ).createSync(recursive: true);
+        when(() => ios.flavors()).thenReturn({'internal', 'stable'});
         final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
         verify(() => progress.complete('2 product flavors detected:'))
@@ -363,7 +353,6 @@ flavors:
           () => codePushClientWrapper.createApp(appName: '$appName (internal)'),
           () => codePushClientWrapper.createApp(appName: '$appName (stable)'),
         ]);
-        verifyNever(() => xcodeBuild.list(any()));
       });
     });
 
@@ -403,9 +392,6 @@ flavors:
           final appName = invocation.namedArguments[#appName] as String?;
           return App(id: appIds[index++], displayName: appName ?? '--');
         });
-        when(
-          () => xcodeBuild.list(any()),
-        ).thenThrow(const MissingIOSProjectException(''));
         await runWithOverrides(command.run);
         verify(
           () => shorebirdYamlFile.writeAsStringSync(
@@ -454,17 +440,15 @@ flavors:
           'test-appId-6',
         ];
         var index = 0;
-        when(() => xcodeBuild.list(any())).thenAnswer(
-          (_) async => const XcodeProjectBuildInfo(
-            schemes: {
-              'development',
-              'developmentInternal',
-              'production',
-              'productionInternal',
-              'staging',
-              'stagingInternal',
-            },
-          ),
+        when(() => ios.flavors()).thenReturn(
+          {
+            'development',
+            'developmentInternal',
+            'production',
+            'productionInternal',
+            'staging',
+            'stagingInternal',
+          },
         );
         when(
           () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
@@ -524,17 +508,15 @@ flavors:
           'test-appId-7',
         ];
         var index = 0;
-        when(() => xcodeBuild.list(any())).thenAnswer(
-          (_) async => const XcodeProjectBuildInfo(
-            schemes: {
-              'development',
-              'developmentInternal',
-              'production',
-              'productionInternal',
-              'staging',
-              'stagingInternal',
-            },
-          ),
+        when(() => ios.flavors()).thenReturn(
+          {
+            'development',
+            'developmentInternal',
+            'production',
+            'productionInternal',
+            'staging',
+            'stagingInternal',
+          },
         );
         when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
         when(
@@ -592,9 +574,7 @@ flavors:
           'test-appId-7',
         ];
         var index = 0;
-        when(() => xcodeBuild.list(any())).thenAnswer(
-          (_) async => const XcodeProjectBuildInfo(),
-        );
+        when(() => ios.flavors()).thenReturn({});
         when(() => gradlew.productFlavors(any())).thenAnswer(
           (_) async => {
             'development',
@@ -670,9 +650,7 @@ flavors:
         when(
           () => gradlew.productFlavors(any()),
         ).thenAnswer((_) async => variants);
-        when(() => xcodeBuild.list(any())).thenAnswer(
-          (_) async => const XcodeProjectBuildInfo(schemes: variants),
-        );
+        when(() => ios.flavors()).thenReturn(variants);
         when(
           () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
         ).thenAnswer((invocation) async {
@@ -746,9 +724,7 @@ flavors:
         when(
           () => gradlew.productFlavors(any()),
         ).thenAnswer((_) async => androidVariants);
-        when(() => xcodeBuild.list(any())).thenAnswer(
-          (_) async => const XcodeProjectBuildInfo(schemes: iosVariants),
-        );
+        when(() => ios.flavors()).thenReturn(iosVariants);
         when(
           () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
         ).thenAnswer((invocation) async {

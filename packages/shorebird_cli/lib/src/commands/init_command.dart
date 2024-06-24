@@ -1,14 +1,12 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -69,12 +67,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
     final detectFlavorsProgress = logger.progress('Detecting product flavors');
     try {
-      final flavors = await Future.wait([
-        _maybeGetAndroidFlavors(projectRoot.path),
-        _maybeGetiOSFlavors(projectRoot.path),
-      ]);
-      androidFlavors = flavors[0];
-      iosFlavors = flavors[1];
+      androidFlavors = await _maybeGetAndroidFlavors(projectRoot.path);
+      iosFlavors = ios.flavors();
       productFlavors = <String>{
         if (androidFlavors != null) ...androidFlavors,
         if (iosFlavors != null) ...iosFlavors,
@@ -241,42 +235,6 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
       return await gradlew.productFlavors(projectPath);
     } on MissingAndroidProjectException {
       return null;
-    }
-  }
-
-  Future<Set<String>?> _maybeGetiOSFlavors(String projectPath) async {
-    if (platform.isMacOS) {
-      try {
-        final info = await xcodeBuild.list(projectPath);
-        return info.schemes.whereNot((element) => element == 'Runner').toSet();
-      } on MissingIOSProjectException {
-        return null;
-      }
-    } else {
-      // When running on a non-macOS platform, we can't use `xcodebuild` to
-      // detect flavors so we fallback to looking for schemes in xcschemes.
-      // Note: this appears to be identical to the behavior of `xcodebuild`.
-      final iosDir = Directory(p.join(projectPath, 'ios'));
-      if (!iosDir.existsSync()) return null;
-      final xcschemesDir = Directory(
-        p.join(
-          iosDir.path,
-          'Runner.xcodeproj',
-          'xcshareddata',
-          'xcschemes',
-        ),
-      );
-      if (!xcschemesDir.existsSync()) {
-        throw Exception('Unable to detect iOS schemes in $xcschemesDir');
-      }
-      return xcschemesDir
-          .listSync()
-          .whereType<File>()
-          .where((e) => p.basename(e.path).endsWith('.xcscheme'))
-          .where((e) => p.basenameWithoutExtension(e.path) != 'Runner')
-          .map((file) => p.basename(file.path).split('.xcscheme').first)
-          .sorted()
-          .toSet();
     }
   }
 
