@@ -5,27 +5,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
-/// {@template xcode_project_build_info}
-/// Xcode project build information returned by `xcodebuild -list`
-/// {@endtemplate}
-class XcodeProjectBuildInfo {
-  /// {@macro xcode_project_build_info}
-  const XcodeProjectBuildInfo({
-    this.targets = const {},
-    this.buildConfigurations = const {},
-    this.schemes = const {},
-  });
-
-  /// Set of targets configured for the project.
-  final Set<String> targets;
-
-  /// Set of build configurations configured for the project.
-  final Set<String> buildConfigurations;
-
-  /// Set of schemes configured for the project.
-  final Set<String> schemes;
-}
-
 /// A reference to a [XcodeBuild] instance.
 final xcodeBuildRef = create(XcodeBuild.new);
 
