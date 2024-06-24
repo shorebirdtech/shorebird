@@ -13,7 +13,7 @@ dependencies:
   http: ^1.0.0
   json_annotation: ^4.9.0
   quiver: ^3.2.1
-  shelf: ^1.4.0
+  shelf: ^1.4.2
   shelf_hotreload: ^1.5.0
 
 dev_dependencies:
