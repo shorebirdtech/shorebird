@@ -260,15 +260,16 @@ Engine • revision $shorebirdEngineRevision''',
     });
 
     group('on command failure', () {
-      test('logs a stack trace using detail', () async {
-        // This will fail due to the release android command missing scoped
-        // dependencies.
+      test('logs error and stack trace using detail', () async {
+        // This will fail with a StateError due to the release android command
+        // missing scoped dependencies.
         // Note: the --verbose flag is here for illustrative purposes only.
         // Because logger is a mock, setting the log level in code does
         // nothing.
         await runWithOverrides(
           () => commandRunner.run(['release', 'android', '--verbose']),
         );
+        verify(() => logger.detail(any(that: contains('Bad state')))).called(1);
         verify(() => logger.detail(any(that: contains('#0')))).called(1);
       });
 
