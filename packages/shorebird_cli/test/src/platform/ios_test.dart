@@ -255,6 +255,19 @@ To add iOS, run "flutter create . --platforms ios"''',
         });
       });
 
+      group('when xcschemes directory does not exist', () {
+        setUp(() {
+          copyFixturesToProjectRoot();
+          Directory(
+            p.join(projectRoot.path, 'ios', 'Runner.xcodeproj', 'xcshareddata'),
+          ).deleteSync(recursive: true);
+        });
+
+        test('throws exception', () {
+          expect(() => runWithOverrides(ios.flavors), throwsException);
+        });
+      });
+
       group('when only Runner scheme exists', () {
         setUp(() {
           copyFixturesToProjectRoot();
