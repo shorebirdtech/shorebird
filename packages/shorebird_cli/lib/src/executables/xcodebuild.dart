@@ -2,27 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
-
-/// {@template missing_ios_project_exception}
-/// Thrown when the Flutter project does not have iOS configured as a platform.
-/// {@endtemplate}
-class MissingIOSProjectException implements Exception {
-  /// {@macro missing_ios_project_exception}
-  const MissingIOSProjectException(this.projectPath);
-
-  /// Expected path of the XCode project.
-  final String projectPath;
-
-  @override
-  String toString() {
-    return '''
-Could not find an iOS project in $projectPath.
-To add iOS, run "flutter create . --platforms ios"''';
-  }
-}
 
 /// {@template xcode_project_build_info}
 /// Xcode project build information returned by `xcodebuild -list`
@@ -55,58 +36,6 @@ XcodeBuild get xcodeBuild => read(xcodeBuildRef);
 class XcodeBuild {
   /// Name of the executable.
   static const executable = 'xcodebuild';
-
-  /// Return Xcode project build info returned by `xcodebuild -list`
-  /// for the app at [projectPath].
-  Future<XcodeProjectBuildInfo> list(String projectPath) async {
-    final iosRoot = Directory(p.join(projectPath, 'ios'));
-
-    if (!iosRoot.existsSync()) throw MissingIOSProjectException(projectPath);
-
-    const arguments = ['-list'];
-    final result = await process.run(
-      executable,
-      arguments,
-      workingDirectory: iosRoot.path,
-    );
-
-    if (result.exitCode != ExitCode.success.code) {
-      throw ProcessException(executable, arguments, '${result.stderr}');
-    }
-
-    final lines = LineSplitter.split('${result.stdout}').map((e) => e.trim());
-    final targets = <String>{};
-    final buildConfigurations = <String>{};
-    final schemes = <String>{};
-    Set<String>? bucket;
-
-    for (final line in lines) {
-      if (line.isEmpty) {
-        bucket = null;
-        continue;
-      }
-      if (line.endsWith('Targets:')) {
-        bucket = targets;
-        continue;
-      }
-      if (line.endsWith('Build Configurations:')) {
-        bucket = buildConfigurations;
-        continue;
-      }
-      if (line.endsWith('Schemes:')) {
-        bucket = schemes;
-        continue;
-      }
-      bucket?.add(line);
-    }
-    if (schemes.isEmpty) schemes.add('Runner');
-
-    return XcodeProjectBuildInfo(
-      targets: targets,
-      buildConfigurations: buildConfigurations,
-      schemes: schemes,
-    );
-  }
 
   /// Get the current Xcode version.
   Future<String> version() async {
