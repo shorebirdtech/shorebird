@@ -50,6 +50,7 @@ artifact_overrides:
 
   # Dart SDK
   - flutter_infra_release/flutter/\$engine/dart-sdk-darwin-arm64.zip
+  - flutter_infra_release/flutter/\$engine/dart-sdk-darwin-x64.zip
   - flutter_infra_release/flutter/\$engine/dart-sdk-linux-x64.zip
   - flutter_infra_release/flutter/\$engine/dart-sdk-windows-x64.zip
 
