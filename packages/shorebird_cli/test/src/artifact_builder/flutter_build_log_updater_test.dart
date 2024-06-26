@@ -52,7 +52,7 @@ void main() {
         // The test fixtures were generated on a macOS. And some of the Build
         // Steps logic involves checking on file paths, so we run this test just
         // on unix based platforms.
-        skip: 'windows',
+        testOn: 'linux || mac-os',
       );
     });
   });
