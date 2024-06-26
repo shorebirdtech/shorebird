@@ -28,25 +28,32 @@ void main() {
         );
       });
 
-      test('correctly parses a logging output', () {
-        final lines = androidBuildLogFile.readAsLinesSync();
-        for (final line in lines) {
-          flutterBuildLogUpdater.onLog(line);
-        }
+      test(
+        'correctly parses a logging output',
+        () {
+          final lines = androidBuildLogFile.readAsLinesSync();
+          for (final line in lines) {
+            flutterBuildLogUpdater.onLog(line);
+          }
 
-        expect(
-          flutterBuildLogUpdater.steps,
-          equals([
-            LogUpdaterStep.initial,
-            LogUpdaterStep.building,
-            LogUpdaterStep.downloadingGradleW,
-            LogUpdaterStep.preparingAndroidSDK,
-            LogUpdaterStep.building,
-            LogUpdaterStep.flutterAssemble,
-            LogUpdaterStep.building,
-          ]),
-        );
-      });
+          expect(
+            flutterBuildLogUpdater.steps,
+            equals([
+              LogUpdaterStep.initial,
+              LogUpdaterStep.building,
+              LogUpdaterStep.downloadingGradleW,
+              LogUpdaterStep.preparingAndroidSDK,
+              LogUpdaterStep.building,
+              LogUpdaterStep.flutterAssemble,
+              LogUpdaterStep.building,
+            ]),
+          );
+        },
+        // The test fixtures were generated on a macOS. And some of the Build
+        // Steps logic involves checking on file paths, so we run this test just
+        // on unix based platforms.
+        skip: 'windows',
+      );
     });
   });
 }

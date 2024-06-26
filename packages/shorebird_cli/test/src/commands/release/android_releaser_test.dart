@@ -423,6 +423,49 @@ To change the version of this release, change your app's version in your pubspec
         });
       });
 
+      group('when the build stdout has different build steps', () {
+        final buildOutputFile = File(
+          p.join(
+            'test',
+            'fixtures',
+            'artifact_builder',
+            'android_build.txt',
+          ),
+        );
+
+        setUp(() {
+          when(() => platform.pathSeparator).thenReturn(p.separator);
+          when(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              progressUpdater: any(named: 'progressUpdater'),
+            ),
+          ).thenAnswer((invocation) async {
+            final progressUpdater = invocation.namedArguments[#progressUpdater]
+                as FlutterBuildLogUpdater;
+
+            final lines = buildOutputFile.readAsLinesSync();
+            for (final line in lines) {
+              progressUpdater.onLog(line);
+            }
+
+            return aabFile;
+          });
+        });
+
+        test('updates the progress with the different messages', () async {
+          await runWithOverrides(
+            () => androidReleaser.buildReleaseArtifacts(),
+          );
+
+          verify(() => progress.update(LogUpdaterStep.flutterAssemble.message!))
+              .called(1);
+        });
+      });
+
       group('with flavor and target', () {
         const flavor = 'my-flavor';
         const target = 'my-target';

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -5,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/flutter_build_log_updater.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -373,6 +375,34 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
               ),
             );
           });
+        });
+      });
+
+      group('when using a FlutterBuildLogUpdater', () {
+        late final FlutterBuildLogUpdater flutterBuildLogUpdater;
+
+        setUp(() {
+          flutterBuildLogUpdater = MockFlutterBuildLogUpdater();
+
+          when(() => mockBuildSpawnedProcess.stdout).thenAnswer(
+            (_) => Stream.fromIterable(
+              [
+                utf8.encode('message'),
+              ],
+            ),
+          );
+        });
+
+        test('forwards the stdout to it', () async {
+          await runWithOverrides(
+            () => builder.buildAppBundle(
+              progressUpdater: flutterBuildLogUpdater,
+            ),
+          );
+
+          verify(
+            () => flutterBuildLogUpdater.onLog('message'),
+          ).called(1);
         });
       });
     });
