@@ -894,8 +894,6 @@ flutter:
                 '✅ A shorebird app has been created.',
                 '✅ A "shorebird.yaml" has been created.',
                 '''✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.''',
-                '''shorebird.yaml does not contain any sensitive information and should be checked into version control.''',
-                'You can freely share your app_id with others.',
                 '''📦 To create a new release use: "${lightCyan.wrap('shorebird release')}".''',
                 '''🚀 To push an update use: "${lightCyan.wrap('shorebird patch')}".''',
                 '''👀 To preview a release use: "${lightCyan.wrap('shorebird preview')}".''',

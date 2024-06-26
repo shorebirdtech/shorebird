@@ -216,9 +216,6 @@ ${lightGreen.wrap('🐦 Shorebird initialized successfully!')}
 ✅ A "shorebird.yaml" has been created.
 ✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
 
-shorebird.yaml does not contain any sensitive information and should be checked into version control.
-You can freely share your app_id with others.
-
 Reference the following commands to get started:
 
 📦 To create a new release use: "${lightCyan.wrap('shorebird release')}".
@@ -249,11 +246,11 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     const content = '''
 # This file is used to configure the Shorebird updater used by your app.
 # Learn more at https://docs.shorebird.dev
-# This file should be checked into version control.
+# This file does not contain any sensitive information and should be checked into version control.
 
-# This is the unique identifier assigned to your app.
-# Your app_id is not a secret and is just used to identify your app
-# when requesting patches from Shorebird's servers.
+# Your app_id is the unique identifier assigned to your app.
+# It is used to identify your app when requesting patches from Shorebird's servers.
+# It is not a secret and can be shared publicly.
 app_id:
 
 # auto_update controls if Shorebird should automatically update in the background on launch.
