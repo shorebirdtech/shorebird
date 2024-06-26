@@ -11,7 +11,8 @@ import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
-import 'package:shorebird_cli/src/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/flutter_build_log_updater.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
@@ -89,6 +90,9 @@ class MockEngineConfig extends Mock implements EngineConfig {}
 class MockFile extends Mock implements File {}
 
 class MockFileSetDiff extends Mock implements FileSetDiff {}
+
+class MockFlutterBuildLogUpdater extends Mock
+    implements FlutterBuildLogUpdater {}
 
 class MockGit extends Mock implements Git {}
 

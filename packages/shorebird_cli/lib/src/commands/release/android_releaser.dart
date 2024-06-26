@@ -1,7 +1,8 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/flutter_build_log_updater.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
@@ -101,8 +102,14 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
 
-    final buildAppBundleProgress = logger
-        .progress('Building app bundle with Flutter $flutterVersionString');
+    final baseMessage =
+        'Building release artifacts with Flutter $flutterVersionString';
+    final buildAppBundleProgress = logger.progress(baseMessage);
+    final progressUpdater = FlutterBuildLogUpdater(
+      onBuildStep: (step) {
+        buildAppBundleProgress.update(step.message ?? baseMessage);
+      },
+    );
 
     final File aab;
 
@@ -115,6 +122,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         targetPlatforms: architectures,
         args: argResults.forwardedArgs,
         base64PublicKey: base64PublicKey,
+        progressUpdater: progressUpdater,
       );
     } on ArtifactBuildException catch (e) {
       buildAppBundleProgress.fail(e.message);
