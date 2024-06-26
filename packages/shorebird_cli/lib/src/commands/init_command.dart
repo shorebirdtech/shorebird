@@ -216,6 +216,9 @@ ${lightGreen.wrap('🐦 Shorebird initialized successfully!')}
 ✅ A "shorebird.yaml" has been created.
 ✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.
 
+shorebird.yaml does not contain any sensitive information and should be checked into version control.
+You can freely share your app_id with others.
+
 Reference the following commands to get started:
 
 📦 To create a new release use: "${lightCyan.wrap('shorebird release')}".
