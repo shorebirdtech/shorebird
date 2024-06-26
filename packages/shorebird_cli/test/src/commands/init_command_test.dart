@@ -883,6 +883,29 @@ flutter:
       );
     });
 
+    test('logs success message on completion', () async {
+      await runWithOverrides(command.run);
+      verify(
+        () => logger.info(
+          any(
+            that: stringContainsInOrder(
+              [
+                lightGreen.wrap('🐦 Shorebird initialized successfully!')!,
+                '✅ A shorebird app has been created.',
+                '✅ A "shorebird.yaml" has been created.',
+                '''✅ The "pubspec.yaml" has been updated to include "shorebird.yaml" as an asset.''',
+                '''📦 To create a new release use: "${lightCyan.wrap('shorebird release')}".''',
+                '''🚀 To push an update use: "${lightCyan.wrap('shorebird patch')}".''',
+                '''👀 To preview a release use: "${lightCyan.wrap('shorebird preview')}".''',
+                '''For more information about Shorebird, visit ${link(uri: Uri.parse('https://shorebird.dev'))}''',
+                ''
+              ],
+            ),
+          ),
+        ),
+      ).called(1);
+    });
+
     test('ensures that addShorebirdYamlToPubspecAssets is called', () async {
       when(() => shorebirdEnv.pubspecContainsShorebirdYaml).thenReturn(false);
       await runWithOverrides(command.run);
