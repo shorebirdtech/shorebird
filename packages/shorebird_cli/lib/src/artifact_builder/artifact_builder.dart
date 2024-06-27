@@ -1,11 +1,9 @@
 // cspell:words endtemplate aabs ipas appbundle bryanoltman codesign xcarchive
 // cspell:words xcframework
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/artifact_builder/flutter_build_log_updater.dart';
 import 'package:shorebird_cli/src/extensions/shorebird_process_result.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -87,8 +85,9 @@ class ArtifactBuilder {
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
-    FlutterBuildLogUpdater? progressUpdater,
+    ShorebirdProcessTracker? processTracker,
   }) async {
+    final tracker = processTracker ?? ShorebirdProcessTracker();
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
@@ -108,24 +107,14 @@ class ArtifactBuilder {
         arguments,
         runInShell: true,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        processTracker: tracker,
       );
-
-      final sub = spawnedProcess.stdout.map(utf8.decode).listen((event) {
-        progressUpdater?.onLog(event);
-      });
-
-      final stderr = StringBuffer();
-      final stderrSub =
-          spawnedProcess.stderr.map(utf8.decode).listen(stderr.write);
 
       final exitCode = await spawnedProcess.exitCode;
 
-      await sub.cancel();
-      await stderrSub.cancel();
-
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
-          'Failed to build: $stderr',
+          'Failed to build: ${tracker.stderr}',
         );
       }
     });
