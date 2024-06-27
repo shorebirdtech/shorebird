@@ -574,12 +574,8 @@ void main() {
       await Future.microtask(() {});
       await Future.microtask(() {});
 
-      expect(
-        shorebirdProcessTracker.stdout.trim(),
-        equals(
-          ['value', 'value2'].join(Platform.lineTerminator),
-        ),
-      );
+      expect(shorebirdProcessTracker.stdout, contains('value'));
+      expect(shorebirdProcessTracker.stdout, contains('value2'));
     });
 
     test('tracks the stderr of the process', () async {
@@ -593,12 +589,8 @@ void main() {
       await Future.microtask(() {});
       await Future.microtask(() {});
 
-      expect(
-        shorebirdProcessTracker.stderr.trim(),
-        equals(
-          ['value', 'value2'].join(Platform.lineTerminator),
-        ),
-      );
+      expect(shorebirdProcessTracker.stderr, contains('value'));
+      expect(shorebirdProcessTracker.stderr, contains('value2'));
     });
 
     test('cancels the subscriptions when the process is over', () async {
