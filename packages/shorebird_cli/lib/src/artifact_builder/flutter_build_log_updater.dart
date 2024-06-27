@@ -76,7 +76,7 @@ class FlutterBuildLogUpdater {
 
   /// Should be called every time a new log is written to the process
   /// stdout.
-  void onLog(String log) {
+  void onLog(String logLine) {
     if (log.contains("Running Gradle task 'bundleRelease'...") &&
         currentStep == LogUpdaterStep.initial) {
       onBuildStep(LogUpdaterStep.building);
