@@ -164,6 +164,9 @@ class MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 class MockShorebirdProcessResult extends Mock
     implements ShorebirdProcessResult {}
 
+class MockShorebirdProcessTracker extends Mock
+    implements ShorebirdProcessTracker {}
+
 class MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 
 class MockShorebirdVersion extends Mock implements ShorebirdVersion {}

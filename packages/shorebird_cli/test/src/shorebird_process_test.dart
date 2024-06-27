@@ -534,6 +534,27 @@ void main() {
           ).called(1);
         },
       );
+
+      group('when a progress tracker is provided', () {
+        late ShorebirdProcessTracker tracker;
+
+        setUp(() {
+          tracker = MockShorebirdProcessTracker();
+        });
+
+        test('calls beginTracking on the tracker', () async {
+          await runWithOverrides(
+            () => shorebirdProcess.start(
+              'flutter',
+              ['run'],
+              runInShell: true,
+              processTracker: tracker,
+            ),
+          );
+
+          verify(() => tracker.beginTracking(startProcess)).called(1);
+        });
+      });
     });
   });
 

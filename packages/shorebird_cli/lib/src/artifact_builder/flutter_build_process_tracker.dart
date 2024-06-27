@@ -118,7 +118,11 @@ class FlutterBuildProcessTracker extends ShorebirdProcessTracker {
             step !=
                 FlutterBuildProcessTrackerStep.downloadingGradleDependency &&
             step != FlutterBuildProcessTrackerStep.downloadingGradleW,
-        orElse: () => FlutterBuildProcessTrackerStep.building,
+        // We don't need a orElse here because there will always be a
+        // non gralde step.
+        // If by a very unlikely chance that no non gradle step is added
+        // after the tracker has started, there will always be the initial
+        // step.
       );
       _emitStep(lastNonGradleDownload);
     }
