@@ -143,25 +143,25 @@ void main() {
       });
 
       group('on Linux', () {
-        late Directory mockedHome;
+        late Directory userHomeDir;
 
         setUp(() {
           when(() => platform.isWindows).thenReturn(false);
           when(() => platform.isMacOS).thenReturn(false);
           when(() => platform.isLinux).thenReturn(true);
 
-          mockedHome = Directory.systemTemp.createTempSync();
+          userHomeDir = Directory.systemTemp.createTempSync();
           when(() => platform.environment).thenReturn({
-            'HOME': mockedHome.path,
+            'HOME': userHomeDir.path,
           });
         });
 
-        group('when installed directly on home', () {
+        group('when installed at ~', () {
           late Directory androidStudioDir;
 
           setUp(() {
             androidStudioDir = Directory(
-              p.join(mockedHome.path, '.AndroidStudio'),
+              p.join(userHomeDir.path, '.AndroidStudio'),
             )..createSync(recursive: true);
           });
 
@@ -173,12 +173,12 @@ void main() {
           });
         });
 
-        group('when installed on the home cache', () {
+        group('when installed at ~/cache', () {
           late Directory androidStudioDir;
 
           setUp(() {
             androidStudioDir = Directory(
-              p.join(mockedHome.path, '.cache', 'Google', 'AndroidStudio'),
+              p.join(userHomeDir.path, '.cache', 'Google', 'AndroidStudio'),
             )..createSync(recursive: true);
           });
 
@@ -196,7 +196,7 @@ void main() {
           setUp(() {
             androidStudioDir = Directory(
               p.join(
-                mockedHome.path,
+                userHomeDir.path,
                 '.local',
                 'share',
                 'JetBrains',
