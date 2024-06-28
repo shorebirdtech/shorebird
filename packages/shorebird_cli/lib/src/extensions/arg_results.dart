@@ -105,6 +105,24 @@ extension ForwardedArgs on ArgResults {
   bool _isPositionalArgPlatform(String arg) =>
       ReleaseType.values.any((target) => target.cliName == arg);
 
+  /// All parsed args with the given name. Because of multioptions, there may
+  /// be multiple values for a single name, so we return a potentially empty
+  /// [Iterable<String>] instead of a [String?].
+  Iterable<String> _argsNamed(String name) {
+    if (!wasParsed(name)) {
+      return [];
+    }
+
+    final value = this[name];
+    if (value is List) {
+      return value.map((a) => '--$name=$a');
+    } else {
+      return ['--$name=$value'];
+    }
+  }
+
+  /// A list of arguments parsed by Shorebird commands that will be forwarded
+  /// to the underlying Flutter commands (that is, placed after `--`).
   List<String> get forwardedArgs {
     final List<String> forwarded;
     if (rest.isNotEmpty && _isPositionalArgPlatform(rest.first)) {
@@ -113,20 +131,14 @@ extension ForwardedArgs on ArgResults {
       forwarded = rest.toList();
     }
 
-    if (wasParsed(CommonArguments.dartDefineArg.name)) {
-      forwarded.addAll(
-        (this[CommonArguments.dartDefineArg.name] as List<String>).map(
-          (a) => '--${CommonArguments.dartDefineArg.name}=$a',
-        ),
-      );
-    }
-
-    if (wasParsed(CommonArguments.dartDefineFromFileArg.name)) {
-      forwarded.addAll(
-        (this[CommonArguments.dartDefineFromFileArg.name] as List<String>)
-            .map((a) => '--${CommonArguments.dartDefineFromFileArg.name}=$a'),
-      );
-    }
+    forwarded.addAll(
+      [
+        ..._argsNamed(CommonArguments.dartDefineArg.name),
+        ..._argsNamed(CommonArguments.dartDefineFromFileArg.name),
+        ..._argsNamed(CommonArguments.buildNameArg.name),
+        ..._argsNamed(CommonArguments.buildNumberArg.name),
+      ],
+    );
 
     return forwarded;
   }

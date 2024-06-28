@@ -49,14 +49,12 @@ class ReleaseCommand extends ShorebirdCommand {
         help: 'The product flavor to use when building the app.',
       )
       ..addOption(
-        'build-number',
-        help: '''
-An identifier used as an internal version number.
-Each build must have a unique identifier to differentiate it from previous builds.
-It is used to determine whether one build is more recent than another, with higher numbers indicating more recent build.
-On Android it is used as "versionCode".
-On Xcode builds it is used as "CFBundleVersion".''',
-        defaultsTo: '1.0',
+        CommonArguments.buildNameArg.name,
+        help: CommonArguments.buildNameArg.description,
+      )
+      ..addOption(
+        CommonArguments.buildNumberArg.name,
+        help: CommonArguments.buildNumberArg.description,
       )
       ..addFlag(
         'codesign',

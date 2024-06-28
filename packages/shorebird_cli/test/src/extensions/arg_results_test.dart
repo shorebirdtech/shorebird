@@ -98,6 +98,14 @@ void main() {
           CommonArguments.dartDefineFromFileArg.name,
           help: CommonArguments.dartDefineFromFileArg.description,
         )
+        ..addOption(
+          CommonArguments.buildNameArg.name,
+          help: CommonArguments.buildNameArg.description,
+        )
+        ..addOption(
+          CommonArguments.buildNumberArg.name,
+          help: CommonArguments.buildNumberArg.description,
+        )
         ..addMultiOption(
           'platforms',
           allowed: ReleaseType.values.map((e) => e.cliName),
@@ -173,6 +181,49 @@ void main() {
               '--dart-define=foo=bar',
               '--dart-define-from-file=bar.json',
               '--test',
+            ],
+          ),
+        );
+      });
+    });
+
+    group('when build-name and build-number are provided', () {
+      test('forwards build-name and build-number', () {
+        final args = [
+          '--verbose',
+          '--',
+          '--build-name=1.2.3',
+          '--build-number=4',
+        ];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, hasLength(2));
+        expect(
+          result.forwardedArgs,
+          containsAll(
+            [
+              '--build-name=1.2.3',
+              '--build-number=4',
+            ],
+          ),
+        );
+      });
+    });
+
+    group('when build-name and build-number are before the --', () {
+      test('forwards build-name and build-number', () {
+        final args = [
+          '--verbose',
+          '--build-name=1.2.3',
+          '--build-number=4',
+        ];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, hasLength(2));
+        expect(
+          result.forwardedArgs,
+          containsAll(
+            [
+              '--build-name=1.2.3',
+              '--build-number=4',
             ],
           ),
         );

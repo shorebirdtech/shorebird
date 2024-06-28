@@ -6,6 +6,8 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/extensions/iterable.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -139,8 +141,17 @@ https://docs.shorebird.dev/status#link-percentage-ios
       return [];
     }
 
-    // If the user already provided --build-name or --build-number, we don't
-    // want to override them.
+    // If the user provided --build-name or --build-number before the --, we
+    // don't want to override them.
+    if (argResults.options.containsAnyOf([
+      CommonArguments.buildNameArg.name,
+      CommonArguments.buildNumberArg.name,
+    ])) {
+      return [];
+    }
+
+    // If the user provided --build-name or --build-number after the --, we
+    // don't want to override them.
     if (argResults.rest.any(
       (a) => a.startsWith('--build-name') || a.startsWith('--build-number'),
     )) {
