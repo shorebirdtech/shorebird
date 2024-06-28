@@ -190,7 +190,7 @@ void main() {
           });
         });
 
-        group('when installed via the jetbrains toolbox app', () {
+        group('when installed in JetBrains Toolbox apps directory', () {
           late Directory androidStudioDir;
 
           setUp(() {
