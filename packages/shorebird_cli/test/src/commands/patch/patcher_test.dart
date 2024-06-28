@@ -46,6 +46,7 @@ void main() {
       late ArgResults argResults;
       setUp(() {
         argResults = MockArgResults();
+        when(() => argResults.options).thenReturn([]);
       });
 
       group('when releaseVersion is not specified', () {

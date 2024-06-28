@@ -51,10 +51,12 @@ class PatchCommand extends ShorebirdCommand {
       ..addOption(
         CommonArguments.buildNameArg.name,
         help: CommonArguments.buildNameArg.description,
+        defaultsTo: CommonArguments.buildNameArg.defaultValue,
       )
       ..addOption(
         CommonArguments.buildNumberArg.name,
         help: CommonArguments.buildNumberArg.description,
+        defaultsTo: CommonArguments.buildNumberArg.defaultValue,
       )
       ..addOption(
         'target',

@@ -8,6 +8,7 @@ class ArgumentDescriber {
   const ArgumentDescriber({
     required this.name,
     required this.description,
+    this.defaultValue,
   });
 
   /// Argument name as how the user writes it.
@@ -15,6 +16,10 @@ class ArgumentDescriber {
 
   /// Argument description that will be shown in the help of the command.
   final String description;
+
+  /// Default value for this argument. Only provide this if the default value
+  /// holds across all commands.
+  final String? defaultValue;
 }
 
 /// A class that houses the name of arguments that are shared between different
@@ -42,6 +47,7 @@ On Android it is used as "versionName".
 On Xcode builds it is used as "CFBundleShortVersionString".
 On Windows it is used as the major, minor, and patch parts of the product and file
 versions.''',
+    defaultValue: '1.0',
   );
 
   /// A multioption argument that defines constants for the built application.
