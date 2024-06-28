@@ -143,22 +143,76 @@ void main() {
       });
 
       group('on Linux', () {
+        late Directory mockedHome;
+
         setUp(() {
           when(() => platform.isWindows).thenReturn(false);
           when(() => platform.isMacOS).thenReturn(false);
           when(() => platform.isLinux).thenReturn(true);
+
+          mockedHome = Directory.systemTemp.createTempSync();
+          when(() => platform.environment).thenReturn({
+            'HOME': mockedHome.path,
+          });
         });
 
-        test('returns correct path', () async {
-          final tempDir = setUpAppTempDir();
-          final androidStudioDir = Directory(
-            p.join(tempDir.path, '.AndroidStudio'),
-          )..createSync(recursive: true);
-          when(() => platform.environment).thenReturn({'HOME': tempDir.path});
-          await expectLater(
-            runWithOverrides(() => androidStudio.path),
-            equals(androidStudioDir.path),
-          );
+        group('when installed directly on home', () {
+          late Directory androidStudioDir;
+
+          setUp(() {
+            androidStudioDir = Directory(
+              p.join(mockedHome.path, '.AndroidStudio'),
+            )..createSync(recursive: true);
+          });
+
+          test('returns correct path', () async {
+            await expectLater(
+              runWithOverrides(() => androidStudio.path),
+              equals(androidStudioDir.path),
+            );
+          });
+        });
+
+        group('when installed on the home cache', () {
+          late Directory androidStudioDir;
+
+          setUp(() {
+            androidStudioDir = Directory(
+              p.join(mockedHome.path, '.cache', 'Google', 'AndroidStudio'),
+            )..createSync(recursive: true);
+          });
+
+          test('returns correct path', () async {
+            await expectLater(
+              runWithOverrides(() => androidStudio.path),
+              equals(androidStudioDir.path),
+            );
+          });
+        });
+
+        group('when installed via the jetbrains toolbox app', () {
+          late Directory androidStudioDir;
+
+          setUp(() {
+            androidStudioDir = Directory(
+              p.join(
+                mockedHome.path,
+                '.local',
+                'share',
+                'JetBrains',
+                'Toolbox',
+                'apps',
+                'AndroidStudio',
+              ),
+            )..createSync(recursive: true);
+          });
+
+          test('returns correct path', () async {
+            await expectLater(
+              runWithOverrides(() => androidStudio.path),
+              equals(androidStudioDir.path),
+            );
+          });
         });
       });
     });

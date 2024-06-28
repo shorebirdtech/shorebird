@@ -91,6 +91,17 @@ class AndroidStudio {
       p.join('/', 'opt', 'android-studio'),
       p.join(home, '.AndroidStudio'),
       p.join(home, '.cache', 'Google', 'AndroidStudio'),
+      // Reference:
+      // https://blog.jetbrains.com/toolbox-app/2023/08/toolbox-app-2-0-overhauls-installations-and-updates/#install-and-update-reworked-from-the-ground-up
+      p.join(
+        home,
+        '.local',
+        'share',
+        'JetBrains',
+        'Toolbox',
+        'apps',
+        'AndroidStudio',
+      ),
     ];
     return candidateLocations.firstWhereOrNull((location) {
       return Directory(location).existsSync();
