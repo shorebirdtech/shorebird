@@ -4,7 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -14,8 +14,8 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
-import 'fakes.dart';
-import 'mocks.dart';
+import '../fakes.dart';
+import '../mocks.dart';
 
 void main() {
   group(ArtifactBuildException, () {
@@ -29,8 +29,9 @@ void main() {
 
   group(ArtifactBuilder, () {
     late Ios ios;
-    late ShorebirdLogger logger;
+    late Process mockBuildSpawnedProcess;
     late OperatingSystemInterface operatingSystemInterface;
+    late ShorebirdLogger logger;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdEnv shorebirdEnv;
@@ -58,12 +59,14 @@ void main() {
     setUpAll(() {
       registerFallbackValue(FakeShorebirdProcess());
       registerFallbackValue(Directory(''));
+      registerFallbackValue(ShorebirdProcessTracker());
     });
 
     setUp(() {
       buildProcessResult = MockProcessResult();
       ios = MockIos();
       logger = MockShorebirdLogger();
+      mockBuildSpawnedProcess = MockProcess();
       operatingSystemInterface = MockOperatingSystemInterface();
       pubGetProcessResult = MockProcessResult();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
@@ -96,8 +99,25 @@ void main() {
            [+3688 ms] executing: sysctl hw.optional.arm64
 ''',
       );
+      when(
+        () => shorebirdProcess.start(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+          processTracker: any(named: 'processTracker'),
+        ),
+      ).thenAnswer((_) async => mockBuildSpawnedProcess);
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
+
+      when(() => mockBuildSpawnedProcess.exitCode)
+          .thenAnswer((_) async => ExitCode.success.code);
+      when(() => mockBuildSpawnedProcess.stdout)
+          .thenAnswer((_) => const Stream.empty());
+
+      when(() => mockBuildSpawnedProcess.stderr)
+          .thenAnswer((_) => const Stream.empty());
+
       when(() => operatingSystemInterface.which('flutter'))
           .thenReturn('/path/to/flutter');
       when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
@@ -180,11 +200,12 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
         await runWithOverrides(() => builder.buildAppBundle());
 
         verify(
-          () => shorebirdProcess.run(
+          () => shorebirdProcess.start(
             'flutter',
-            ['build', 'appbundle', '--release'],
+            ['build', 'appbundle', '--release', '-v'],
             runInShell: any(named: 'runInShell'),
             environment: any(named: 'environment'),
+            processTracker: any(named: 'processTracker'),
           ),
         ).called(1);
       });
@@ -200,12 +221,13 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
         );
 
         verify(
-          () => shorebirdProcess.run(
+          () => shorebirdProcess.start(
             'flutter',
             [
               'build',
               'appbundle',
               '--release',
+              '-v',
               '--flavor=flavor',
               '--target=target',
               '--target-platform=android-arm64',
@@ -213,6 +235,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
               'bar',
             ],
             runInShell: any(named: 'runInShell'),
+            processTracker: any(named: 'processTracker'),
           ),
         ).called(1);
       });
@@ -222,12 +245,13 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
 
         setUp(() {
           when(
-            () => shorebirdProcess.run(
+            () => shorebirdProcess.start(
               'flutter',
               [
                 'build',
                 'appbundle',
                 '--release',
+                '-v',
                 '--flavor=flavor',
                 '--target=target',
                 '--target-platform=android-arm64',
@@ -236,8 +260,9 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
               environment: {
                 'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
               },
+              processTracker: any(named: 'processTracker'),
             ),
-          ).thenAnswer((_) async => buildProcessResult);
+          ).thenAnswer((_) async => mockBuildSpawnedProcess);
         });
 
         test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
@@ -251,12 +276,13 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
           );
 
           verify(
-            () => shorebirdProcess.run(
+            () => shorebirdProcess.start(
               'flutter',
               [
                 'build',
                 'appbundle',
                 '--release',
+                '-v',
                 '--flavor=flavor',
                 '--target=target',
                 '--target-platform=android-arm64',
@@ -265,6 +291,7 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
               environment: {
                 'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
               },
+              processTracker: any(named: 'processTracker'),
             ),
           ).called(1);
         });
@@ -331,8 +358,8 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
       group('after a build', () {
         group('when the build is successful', () {
           setUp(() {
-            when(() => buildProcessResult.exitCode)
-                .thenReturn(ExitCode.success.code);
+            when(() => mockBuildSpawnedProcess.exitCode)
+                .thenAnswer((_) async => ExitCode.success.code);
           });
 
           verifyCorrectFlutterPubGet(
@@ -341,8 +368,8 @@ Either run `flutter pub get` manually, or follow the steps in ${link(uri: Uri.pa
 
           group('when the build fails', () {
             setUp(() {
-              when(() => buildProcessResult.exitCode)
-                  .thenReturn(ExitCode.software.code);
+              when(() => mockBuildSpawnedProcess.exitCode)
+                  .thenAnswer((_) async => ExitCode.software.code);
             });
 
             verifyCorrectFlutterPubGet(

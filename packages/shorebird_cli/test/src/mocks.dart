@@ -11,7 +11,8 @@ import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
-import 'package:shorebird_cli/src/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/flutter_build_process_tracker.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
@@ -90,6 +91,9 @@ class MockFile extends Mock implements File {}
 
 class MockFileSetDiff extends Mock implements FileSetDiff {}
 
+class MockFlutterBuildProcessTracker extends Mock
+    implements FlutterBuildProcessTracker {}
+
 class MockGit extends Mock implements Git {}
 
 class MockGradlew extends Mock implements Gradlew {}
@@ -159,6 +163,9 @@ class MockShorebirdProcess extends Mock implements ShorebirdProcess {}
 
 class MockShorebirdProcessResult extends Mock
     implements ShorebirdProcessResult {}
+
+class MockShorebirdProcessTracker extends Mock
+    implements ShorebirdProcessTracker {}
 
 class MockShorebirdValidator extends Mock implements ShorebirdValidator {}
 

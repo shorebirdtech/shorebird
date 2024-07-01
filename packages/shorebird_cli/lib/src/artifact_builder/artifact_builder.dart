@@ -85,7 +85,9 @@ class ArtifactBuilder {
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
+    ShorebirdProcessTracker? processTracker,
   }) async {
+    final tracker = processTracker ?? ShorebirdProcessTracker();
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
@@ -93,22 +95,26 @@ class ArtifactBuilder {
         'build',
         'appbundle',
         '--release',
+        '-v',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
         ...args,
       ];
 
-      final result = await process.run(
+      final spawnedProcess = await process.start(
         executable,
         arguments,
         runInShell: true,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        processTracker: tracker,
       );
 
-      if (result.exitCode != ExitCode.success.code) {
+      final exitCode = await spawnedProcess.exitCode;
+
+      if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
-          'Failed to build: ${result.stderr}',
+          'Failed to build: ${tracker.stderr}',
         );
       }
     });

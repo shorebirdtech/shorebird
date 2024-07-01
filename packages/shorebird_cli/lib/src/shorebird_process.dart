@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:meta/meta.dart';
@@ -11,6 +13,56 @@ final processRef = create(ShorebirdProcess.new);
 
 /// The [ShorebirdProcess] instance available in the current zone.
 ShorebirdProcess get process => read(processRef);
+
+/// {@template shorebird_process_tracker}
+///
+/// A class that tracks a process and its outputs.
+///
+/// This base implementation just records the process stdout and stderr.
+///
+/// Extend this class to execute custom logic when the process outputs
+/// new lines.
+///
+/// {@endtemplate}
+class ShorebirdProcessTracker {
+  /// @{template shorebird_process_tracker}
+  ShorebirdProcessTracker();
+
+  late final StreamSubscription<String> _stdoutSubscription;
+  late final StreamSubscription<String> _stderrSubscription;
+
+  late final StringBuffer _stderrBuffer = StringBuffer();
+  late final StringBuffer _stdoutBuffer = StringBuffer();
+
+  /// Starts to track the given process.
+  @mustCallSuper
+  void beginTracking(Process process) {
+    _stdoutSubscription = process.stdout.map(utf8.decode).listen(onLog);
+    _stderrSubscription = process.stderr.map(utf8.decode).listen(
+          _stderrBuffer.writeln,
+        );
+    process.exitCode.then((_) => dispose());
+  }
+
+  /// The process stderr.
+  String get stderr => _stderrBuffer.toString();
+
+  /// The process stdout.
+  String get stdout => _stdoutBuffer.toString();
+
+  /// Called everytime stdout receives a new line.
+  @mustCallSuper
+  void onLog(String logLine) {
+    _stdoutBuffer.writeln(logLine);
+  }
+
+  /// Called when the process is done. Disposes all resources.
+  @mustCallSuper
+  void dispose() {
+    _stdoutSubscription.cancel();
+    _stderrSubscription.cancel();
+  }
+}
 
 /// A wrapper around [Process] that replaces executables to Shorebird-vended
 /// versions.
@@ -113,7 +165,8 @@ class ShorebirdProcess {
     bool runInShell = false,
     bool useVendedFlutter = true,
     String? workingDirectory,
-  }) {
+    ShorebirdProcessTracker? processTracker,
+  }) async {
     final resolvedEnvironment = environment ?? {};
     if (useVendedFlutter) {
       // Note: this will overwrite existing environment values.
@@ -134,13 +187,19 @@ class ShorebirdProcess {
       '''[Process.start] $resolvedExecutable ${resolvedArguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
     );
 
-    return processWrapper.start(
+    final process = await processWrapper.start(
       resolvedExecutable,
       resolvedArguments,
       runInShell: runInShell,
       environment: resolvedEnvironment,
       workingDirectory: workingDirectory,
     );
+
+    if (processTracker != null) {
+      processTracker.beginTracking(process);
+    }
+
+    return process;
   }
 
   Map<String, String> _resolveEnvironment(

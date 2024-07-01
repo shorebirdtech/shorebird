@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -531,6 +533,110 @@ void main() {
             ),
           ).called(1);
         },
+      );
+
+      group('when a progress tracker is provided', () {
+        late ShorebirdProcessTracker tracker;
+
+        setUp(() {
+          tracker = MockShorebirdProcessTracker();
+        });
+
+        test('calls beginTracking on the tracker', () async {
+          await runWithOverrides(
+            () => shorebirdProcess.start(
+              'flutter',
+              ['run'],
+              runInShell: true,
+              processTracker: tracker,
+            ),
+          );
+
+          verify(() => tracker.beginTracking(startProcess)).called(1);
+        });
+      });
+    });
+  });
+
+  group('ShorebirdProcessTracker', () {
+    late ShorebirdProcessTracker shorebirdProcessTracker;
+    late Process process;
+    late Completer<int> exitCodeCompleter;
+    late StreamController<List<int>> stdoutController;
+    late StreamController<List<int>> stderrController;
+
+    setUp(() {
+      process = MockProcess();
+
+      stdoutController = StreamController<List<int>>();
+      when(() => process.stdout).thenAnswer(
+        (_) => stdoutController.stream,
+      );
+
+      stderrController = StreamController<List<int>>();
+      when(() => process.stderr).thenAnswer(
+        (_) => stderrController.stream,
+      );
+
+      exitCodeCompleter = Completer<int>();
+      when(() => process.exitCode).thenAnswer((_) => exitCodeCompleter.future);
+
+      shorebirdProcessTracker = ShorebirdProcessTracker();
+    });
+
+    test('tracks the stdout of the process', () async {
+      shorebirdProcessTracker.beginTracking(process);
+
+      stdoutController
+        ..add(utf8.encode('value'))
+        ..add(utf8.encode('value2'));
+
+      // Give the event loop a chance to process the events.
+      await Future.microtask(() {});
+      await Future.microtask(() {});
+
+      expect(shorebirdProcessTracker.stdout, contains('value'));
+      expect(shorebirdProcessTracker.stdout, contains('value2'));
+    });
+
+    test('tracks the stderr of the process', () async {
+      shorebirdProcessTracker.beginTracking(process);
+
+      stderrController
+        ..add(utf8.encode('value'))
+        ..add(utf8.encode('value2'));
+
+      // Give the event loop a chance to process the events.
+      await Future.microtask(() {});
+      await Future.microtask(() {});
+
+      expect(shorebirdProcessTracker.stderr, contains('value'));
+      expect(shorebirdProcessTracker.stderr, contains('value2'));
+    });
+
+    test('cancels the subscriptions when the process is over', () async {
+      shorebirdProcessTracker.beginTracking(process);
+
+      exitCodeCompleter.complete(0);
+
+      // Give the event loop a chance to process the future completion.
+      await Future.microtask(() {});
+
+      stderrController
+        ..add(utf8.encode('value'))
+        ..add(utf8.encode('value2'));
+
+      // Give the event loop a chance to process the events.
+      await Future.microtask(() {});
+      await Future.microtask(() {});
+
+      expect(
+        shorebirdProcessTracker.stderr.trim(),
+        isEmpty,
+      );
+      expect(
+        shorebirdProcessTracker.stdout.trim(),
+        isEmpty,
       );
     });
   });

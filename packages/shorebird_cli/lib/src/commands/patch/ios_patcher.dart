@@ -10,7 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
-import 'package:shorebird_cli/src/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';

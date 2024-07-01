@@ -6,7 +6,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/flutter_build_process_tracker.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/android_releaser.dart';
@@ -77,6 +78,12 @@ void main() {
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.android);
+      registerFallbackValue(
+        FlutterBuildProcessTracker(
+          baseMessage: '',
+          progress: MockProgress(),
+        ),
+      );
     });
 
     setUp(() {
@@ -292,6 +299,7 @@ To change the version of this release, change your app's version in your pubspec
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
+            processTracker: any(named: 'processTracker'),
           ),
         ).thenAnswer((_) async => aabFile);
         when(
@@ -323,6 +331,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
+              processTracker: any(named: 'processTracker'),
             ),
           ).thenThrow(ArtifactBuildException('Uh oh'));
         });
@@ -378,6 +387,10 @@ To change the version of this release, change your app's version in your pubspec
               () => artifactBuilder.buildAppBundle(
                 targetPlatforms: Arch.values,
                 args: ['--verbose'],
+                processTracker: any(
+                  named: 'processTracker',
+                  that: isA<FlutterBuildProcessTracker>(),
+                ),
               ),
             ).called(1);
           });
@@ -392,6 +405,10 @@ To change the version of this release, change your app's version in your pubspec
             () => artifactBuilder.buildAppBundle(
               targetPlatforms: Arch.values,
               args: [],
+              processTracker: any(
+                named: 'processTracker',
+                that: isA<FlutterBuildProcessTracker>(),
+              ),
             ),
           ).called(1);
         });
@@ -432,6 +449,10 @@ To change the version of this release, change your app's version in your pubspec
               target: target,
               targetPlatforms: Arch.values,
               args: [],
+              processTracker: any(
+                named: 'processTracker',
+                that: isA<FlutterBuildProcessTracker>(),
+              ),
             ),
           ).called(1);
           verify(
@@ -465,6 +486,7 @@ To change the version of this release, change your app's version in your pubspec
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              processTracker: any(named: 'processTracker'),
             ),
           ).thenAnswer((_) async => aabFile);
           when(
@@ -495,6 +517,10 @@ To change the version of this release, change your app's version in your pubspec
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
+                processTracker: any(
+                  named: 'processTracker',
+                  that: isA<FlutterBuildProcessTracker>(),
+                ),
               ),
             ).called(1);
           },
@@ -519,6 +545,10 @@ To change the version of this release, change your app's version in your pubspec
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
                   base64PublicKey: base64PublicKey,
+                  processTracker: any(
+                    named: 'processTracker',
+                    that: isA<FlutterBuildProcessTracker>(),
+                  ),
                 ),
               ).called(1);
 
