@@ -153,7 +153,9 @@ https://docs.shorebird.dev/status#link-percentage-ios
     // If the user provided --build-name or --build-number after the --, we
     // don't want to override them.
     if (argResults.rest.any(
-      (a) => a.startsWith('--build-name') || a.startsWith('--build-number'),
+      (a) =>
+          a.startsWith('--${CommonArguments.buildNameArg.name}') ||
+          a.startsWith('--${CommonArguments.buildNumberArg.name}'),
     )) {
       return [];
     }
