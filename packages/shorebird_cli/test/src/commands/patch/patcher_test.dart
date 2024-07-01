@@ -76,12 +76,26 @@ void main() {
       });
 
       group('when a valid --release-version is specified', () {
-        group('when --build-name and --build-number are specified', () {
+        group('when --build-name is specified', () {
           setUp(() {
-            when(() => argResults.rest).thenReturn([
-              '--build-name=foo',
-              '--build-number=42',
-            ]);
+            when(() => argResults.rest).thenReturn(['--build-name=foo']);
+          });
+
+          test('returns an empty list', () {
+            expect(
+              _TestPatcher(
+                argResults: argResults,
+                flavor: null,
+                target: null,
+              ).buildNameAndNumberArgsFromReleaseVersion('1.2.3+4'),
+              isEmpty,
+            );
+          });
+        });
+
+        group('when --build-number is specified', () {
+          setUp(() {
+            when(() => argResults.rest).thenReturn(['--build-number=42']);
           });
 
           test('returns an empty list', () {
