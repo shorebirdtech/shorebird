@@ -129,7 +129,7 @@ void main() {
         shorebirdValidator = MockShorebirdValidator();
         xcodeBuild = MockXcodeBuild();
 
-        when(() => argResults['build-number']).thenReturn('1.0');
+        when(() => argResults.options).thenReturn([]);
         when(() => argResults.rest).thenReturn([]);
         when(() => argResults.wasParsed(any())).thenReturn(false);
 

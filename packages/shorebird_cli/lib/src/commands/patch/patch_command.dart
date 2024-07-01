@@ -47,18 +47,16 @@ class PatchCommand extends ShorebirdCommand {
         abbr: 'p',
         help: 'The platform(s) to to build this release for.',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),
-        // TODO(bryanoltman): uncomment this once https://github.com/dart-lang/args/pull/273 lands
-        // mandatory: true.
       )
       ..addOption(
-        'build-number',
-        help: '''
-An identifier used as an internal version number.
-Each build must have a unique identifier to differentiate it from previous builds.
-It is used to determine whether one build is more recent than another, with higher numbers indicating more recent build.
-On Android it is used as "versionCode".
-On Xcode builds it is used as "CFBundleVersion".''',
-        defaultsTo: '1.0',
+        CommonArguments.buildNameArg.name,
+        help: CommonArguments.buildNameArg.description,
+        defaultsTo: CommonArguments.buildNameArg.defaultValue,
+      )
+      ..addOption(
+        CommonArguments.buildNumberArg.name,
+        help: CommonArguments.buildNumberArg.description,
+        defaultsTo: CommonArguments.buildNumberArg.defaultValue,
       )
       ..addOption(
         'target',

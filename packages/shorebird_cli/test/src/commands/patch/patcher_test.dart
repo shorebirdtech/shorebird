@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -45,6 +46,7 @@ void main() {
       late ArgResults argResults;
       setUp(() {
         argResults = MockArgResults();
+        when(() => argResults.options).thenReturn([]);
       });
 
       group('when releaseVersion is not specified', () {
@@ -74,12 +76,26 @@ void main() {
       });
 
       group('when a valid --release-version is specified', () {
-        group('when --build-name and --build-number are specified', () {
+        group('when --build-name is specified', () {
           setUp(() {
-            when(() => argResults.rest).thenReturn([
-              '--build-name=foo',
-              '--build-number=42',
-            ]);
+            when(() => argResults.rest).thenReturn(['--build-name=foo']);
+          });
+
+          test('returns an empty list', () {
+            expect(
+              _TestPatcher(
+                argResults: argResults,
+                flavor: null,
+                target: null,
+              ).buildNameAndNumberArgsFromReleaseVersion('1.2.3+4'),
+              isEmpty,
+            );
+          });
+        });
+
+        group('when --build-number is specified', () {
+          setUp(() {
+            when(() => argResults.rest).thenReturn(['--build-number=42']);
           });
 
           test('returns an empty list', () {
@@ -105,6 +121,34 @@ void main() {
                 target: null,
               ).buildNameAndNumberArgsFromReleaseVersion('1.2.3+4'),
               equals(['--build-name=1.2.3', '--build-number=4']),
+            );
+          });
+        });
+
+        group('when build-name and build-number were parsed as options', () {
+          setUp(() {
+            when(
+              () => argResults.wasParsed(CommonArguments.buildNameArg.name),
+            ).thenReturn(true);
+            when(
+              () => argResults.wasParsed(CommonArguments.buildNumberArg.name),
+            ).thenReturn(true);
+            when(() => argResults.options).thenReturn([
+              'release-version',
+              'build-name',
+              'build-number',
+              'platforms',
+            ]);
+          });
+
+          test('returns an empty list', () {
+            expect(
+              _TestPatcher(
+                argResults: argResults,
+                flavor: null,
+                target: null,
+              ).buildNameAndNumberArgsFromReleaseVersion('1.2.3+4'),
+              isEmpty,
             );
           });
         });
