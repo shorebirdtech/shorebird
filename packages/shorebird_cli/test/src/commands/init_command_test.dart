@@ -294,6 +294,29 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         ).called(1);
       });
 
+      group('when --display-name is provided', () {
+        const displayName = 'custom-display-name';
+
+        setUp(() {
+          when(() => argResults['display-name']).thenReturn(displayName);
+        });
+
+        test('does not prompt for display name and uses correct display name',
+            () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
+          verify(
+            () => shorebirdYamlFile.writeAsStringSync(
+              any(that: contains('app_id: $appId')),
+            ),
+          ).called(1);
+          verifyNever(() => logger.prompt(any()));
+          verify(
+            () => codePushClientWrapper.createApp(appName: displayName),
+          ).called(1);
+        });
+      });
+
       test('creates shorebird for an app without flavors', () async {
         when(
           () => gradlew.productFlavors(any()),
