@@ -22,12 +22,17 @@ import 'package:yaml_edit/yaml_edit.dart';
 class InitCommand extends ShorebirdCommand {
   /// {@macro init_command}
   InitCommand() {
-    argParser.addFlag(
-      'force',
-      abbr: 'f',
-      help: 'Initialize the app even if a "shorebird.yaml" already exists.',
-      negatable: false,
-    );
+    argParser
+      ..addFlag(
+        'force',
+        abbr: 'f',
+        help: 'Initialize the app even if a "shorebird.yaml" already exists.',
+        negatable: false,
+      )
+      ..addOption(
+        'display-name',
+        help: 'The display name of the app.',
+      );
   }
 
   @override
@@ -150,7 +155,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     try {
       final needsConfirmation = !force && shorebirdEnv.canAcceptUserInput;
       final pubspecName = shorebirdEnv.getPubspecYaml()!.name;
-      final displayName = needsConfirmation
+      var displayName = results['display-name'] as String?;
+      displayName ??= needsConfirmation
           ? logger.prompt(
               '${lightGreen.wrap('?')} How should we refer to this app?',
               defaultValue: pubspecName,
