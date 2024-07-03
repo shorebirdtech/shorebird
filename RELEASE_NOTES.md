@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.14 (July 3, 2024)
+
+- 📈 Improve iOS patch performance (GDT sort)
+- 🤖 Add Jetbrains Toolbox Android Studio detection for Linux
+- 🩹 Always respect `--build-name` and `--build-number` args
+
 ## 1.1.13 (June 26, 2024)
 
 - 🍧 Fix an issue where iOS app extensions were incorrectly recognized as flavors.
