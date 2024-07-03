@@ -6,10 +6,14 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.15 (July 3, 2024)
+
+- ✨ Add `--display-name` to `shorebird init`
+
 ## 1.1.14 (July 3, 2024)
 
 - 📈 Improve iOS patch performance (GDT sort)
-- 🤖 Add Jetbrains Toolbox Android Studio detection for Linux
+- 🤖 Add JetBrains Toolbox Android Studio detection for Linux
 - 🩹 Always respect `--build-name` and `--build-number` args
 
 ## 1.1.13 (June 26, 2024)
