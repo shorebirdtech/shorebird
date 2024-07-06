@@ -23,9 +23,9 @@ This repository is a monorepo containing the following packages:
 | [shorebird_code_push_protocol](packages/shorebird_code_push_protocol/README.md) | Dart library which contains common interfaces used by Shorebird CodePush                |
 | [artifact_proxy](packages/artifact_proxy/README.md)                             | Dart server which supports intercepting and proxying Flutter artifact requests.         |
 | [discord_gcp_alerts](packages/discord_gcp_alerts/README.md)                     | Dart server which forwards GCP alerts to Discord                                        |
-| [jwt](packages/jwt/README.md)                                                   | Dart library for verifying Json Web Tokens                                              |
+| [jwt](packages/jwt/README.md)                                                   | Dart library for verifying JSON Web Tokens                                              |
 | [redis_client](packages/redis_client/README.md)                                 | Dart library for interacting with Redis                                                 |
-| [scoped](packages/scoped/README.md)                                             | A simple dependency injection library built on Zones                                    |
+| [scoped_deps](packages/scoped_deps/README.md)                                   | A simple dependency injection library built on Zones                                    |
 
 For more information, please refer to the documentation for each package.
 
@@ -85,4 +85,4 @@ Shorebird projects are licensed for use under either Apache License, Version 2.0
 
 See our license philosophy for more information on why we license files this
 way:
-https://github.com/shorebirdtech/handbook/blob/main/engineering.md#licensing-philosophy
+https://github.com/shorebirdtech/handbook/blob/main/src/content/docs/engineering.md#licensing-philosophy
