@@ -11,6 +11,7 @@ class CreateReleaseRequest {
   const CreateReleaseRequest({
     required this.version,
     required this.flutterRevision,
+    required this.flutterVersion,
     this.displayName,
   });
 
@@ -26,6 +27,12 @@ class CreateReleaseRequest {
 
   /// The Flutter revision used to create the release.
   final String flutterRevision;
+
+  /// The Flutter version used to create the release.
+  ///
+  /// This field is optional due to been added later and
+  /// older releases not having this information.
+  final String? flutterVersion;
 
   /// The display name for the release.
   final String? displayName;

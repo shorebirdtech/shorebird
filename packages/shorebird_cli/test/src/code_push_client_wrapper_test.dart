@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -31,6 +32,7 @@ void main() {
     late Platform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
 
     setUpAll(() {
       registerFallbackValue(CreatePatchMetadata.forTest());
@@ -44,12 +46,21 @@ void main() {
       platform = MockPlatform();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
 
       when(() => auth.client).thenReturn(httpClient);
       when(() => shorebirdEnv.hostedUri).thenReturn(
         Uri.parse('http://example.com'),
       );
       when(() => logger.progress(any())).thenReturn(progress);
+
+      when(
+        () => shorebirdFlutter.getVersionString(
+          revision: any(named: 'revision'),
+        ),
+      ).thenAnswer(
+        (_) async => '3.22.0',
+      );
     });
 
     test('creates correct instance from environment', () async {
@@ -70,6 +81,7 @@ void main() {
           authRef.overrideWith(() => auth),
           platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
       );
 
@@ -111,6 +123,7 @@ void main() {
     const releaseId = 123;
     const arch = Arch.arm64;
     const flutterRevision = '123';
+    const flutterVersion = '3.22.0';
     const displayName = 'TestApp';
     const releaseVersion = '1.0.0';
     final release = Release(
@@ -118,6 +131,7 @@ void main() {
       appId: appId,
       version: releaseVersion,
       flutterRevision: flutterRevision,
+      flutterVersion: flutterVersion,
       displayName: displayName,
       platformStatuses: {},
       createdAt: DateTime(2023),
@@ -145,6 +159,7 @@ void main() {
 
     late CodePushClient codePushClient;
     late ShorebirdLogger logger;
+    late ShorebirdFlutter shorebirdFlutter;
     late Progress progress;
     late CodePushClientWrapper codePushClientWrapper;
     late Platform platform;
@@ -156,6 +171,7 @@ void main() {
         values: {
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
       );
     }
@@ -176,6 +192,8 @@ void main() {
         () => CodePushClientWrapper(codePushClient: codePushClient),
       );
 
+      shorebirdFlutter = MockShorebirdFlutter();
+
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.script).thenReturn(
         Uri.file(
@@ -187,6 +205,9 @@ void main() {
           ),
         ),
       );
+
+      when(() => shorebirdFlutter.getVersionString(revision: flutterRevision))
+          .thenAnswer((_) async => flutterVersion);
     });
 
     group('app', () {
@@ -469,6 +490,7 @@ void main() {
                     appId: appId,
                     version: releaseVersion,
                     flutterRevision: flutterRevision,
+                    flutterVersion: flutterVersion,
                     displayName: displayName,
                     platformStatuses: {
                       releasePlatform: ReleaseStatus.active,
@@ -509,6 +531,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                     appId: appId,
                     version: releaseVersion,
                     flutterRevision: flutterRevision,
+                    flutterVersion: flutterVersion,
                     displayName: displayName,
                     platformStatuses: {},
                     createdAt: DateTime(2023),
@@ -533,6 +556,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                     appId: appId,
                     version: releaseVersion,
                     flutterRevision: flutterRevision,
+                    flutterVersion: flutterVersion,
                     displayName: displayName,
                     platformStatuses: {releasePlatform: ReleaseStatus.draft},
                     createdAt: DateTime(2023),
@@ -720,6 +744,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: any(named: 'appId'),
               version: any(named: 'version'),
               flutterRevision: any(named: 'flutterRevision'),
+              flutterVersion: any(named: 'flutterVersion'),
             ),
           ).thenThrow(error);
 
@@ -743,6 +768,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: any(named: 'appId'),
               version: any(named: 'version'),
               flutterRevision: any(named: 'flutterRevision'),
+              flutterVersion: any(named: 'flutterVersion'),
             ),
           ).thenAnswer((_) async => release);
           when(

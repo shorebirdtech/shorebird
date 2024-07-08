@@ -20,6 +20,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_web_console.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -243,11 +244,15 @@ Please create a release using "shorebird release" and try again.
     required ReleasePlatform platform,
   }) async {
     final createReleaseProgress = logger.progress('Creating release');
+    final flutterVersion = await shorebirdFlutter.getVersionString(
+      revision: flutterRevision,
+    );
     try {
       final release = await codePushClient.createRelease(
         appId: appId,
         version: version,
         flutterRevision: flutterRevision,
+        flutterVersion: flutterVersion,
       );
       await codePushClient.updateReleaseStatus(
         appId: appId,

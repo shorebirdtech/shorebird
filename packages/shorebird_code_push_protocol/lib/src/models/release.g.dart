@@ -13,11 +13,13 @@ Release _$ReleaseFromJson(Map<String, dynamic> json) => $checkedCreate(
       json,
       ($checkedConvert) {
         final val = Release(
-          id: $checkedConvert('id', (v) => v as int),
+          id: $checkedConvert('id', (v) => (v as num).toInt()),
           appId: $checkedConvert('app_id', (v) => v as String),
           version: $checkedConvert('version', (v) => v as String),
           flutterRevision:
               $checkedConvert('flutter_revision', (v) => v as String),
+          flutterVersion:
+              $checkedConvert('flutter_version', (v) => v as String?),
           displayName: $checkedConvert('display_name', (v) => v as String?),
           platformStatuses: $checkedConvert(
               'platform_statuses',
@@ -35,6 +37,7 @@ Release _$ReleaseFromJson(Map<String, dynamic> json) => $checkedCreate(
       fieldKeyMap: const {
         'appId': 'app_id',
         'flutterRevision': 'flutter_revision',
+        'flutterVersion': 'flutter_version',
         'displayName': 'display_name',
         'platformStatuses': 'platform_statuses',
         'createdAt': 'created_at',
@@ -47,6 +50,7 @@ Map<String, dynamic> _$ReleaseToJson(Release instance) => <String, dynamic>{
       'app_id': instance.appId,
       'version': instance.version,
       'flutter_revision': instance.flutterRevision,
+      'flutter_version': instance.flutterVersion,
       'display_name': instance.displayName,
       'platform_statuses': instance.platformStatuses.map((k, e) =>
           MapEntry(_$ReleasePlatformEnumMap[k]!, _$ReleaseStatusEnumMap[e]!)),
