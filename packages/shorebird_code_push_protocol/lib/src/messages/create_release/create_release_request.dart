@@ -30,8 +30,8 @@ class CreateReleaseRequest {
 
   /// The Flutter version used to create the release.
   ///
-  /// This field is optional due to been added later and
-  /// older releases not having this information.
+  /// This field is optional because it was newly added and
+  /// older releases do not have this information.
   final String? flutterVersion;
 
   /// The display name for the release.
