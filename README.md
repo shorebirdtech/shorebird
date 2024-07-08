@@ -85,4 +85,4 @@ Shorebird projects are licensed for use under either Apache License, Version 2.0
 
 See our license philosophy for more information on why we license files this
 way:
-https://github.com/shorebirdtech/handbook/blob/main/src/content/docs/engineering.md#licensing-philosophy
+https://handbook.shorebird.dev/engineering/#licensing-philosophy
