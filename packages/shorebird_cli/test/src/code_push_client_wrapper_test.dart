@@ -206,8 +206,9 @@ void main() {
         ),
       );
 
-      when(() => shorebirdFlutter.getVersionString(revision: flutterRevision),)
-          .thenAnswer((_) async => flutterVersion);
+      when(
+        () => shorebirdFlutter.getVersionString(revision: flutterRevision),
+      ).thenAnswer((_) async => flutterVersion);
     });
 
     group('app', () {
