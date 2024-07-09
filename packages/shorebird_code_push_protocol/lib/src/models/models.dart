@@ -6,6 +6,7 @@ export 'channel.dart';
 export 'create_patch_metadata.dart';
 export 'error_response.dart';
 export 'patch.dart';
+export 'patch_artifact.dart';
 export 'release.dart';
 export 'release_artifact.dart';
 export 'release_platform.dart';
