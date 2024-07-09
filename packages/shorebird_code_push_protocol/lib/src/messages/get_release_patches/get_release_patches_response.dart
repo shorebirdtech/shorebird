@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -26,7 +27,7 @@ class GetReleasePatchesResponse {
 /// A patch for a given release.
 /// {@endtemplate}
 @JsonSerializable()
-class ReleasePatch {
+class ReleasePatch extends Equatable {
   /// {@macro release_patch}
   const ReleasePatch({
     required this.id,
@@ -53,4 +54,7 @@ class ReleasePatch {
 
   /// The associated patch artifacts.
   final List<PatchArtifact> artifacts;
+
+  @override
+  List<Object?> get props => [id, number, channel, artifacts];
 }

@@ -415,6 +415,24 @@ class CodePushClient {
     return decoded.releases;
   }
 
+  /// Gets [ReleasePatch]es associated with [appId]'s [releaseId].
+  Future<List<ReleasePatch>> getPatches({
+    required String appId,
+    required int releaseId,
+  }) async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/apps/$appId/releases/$releaseId/patches'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetReleasePatchesResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    ).patches;
+  }
+
   /// Get all release artifacts for a specific [releaseId]
   /// and optional [arch] and [platform].
   Future<List<ReleaseArtifact>> getReleaseArtifacts({
