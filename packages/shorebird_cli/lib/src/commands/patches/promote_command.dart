@@ -8,12 +8,12 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
-/// {@template promote_patch_command}
+/// {@template promote_command}
 /// Promotes a patch to the production channel.
 /// {@endtemplate}
-class PromotePatchCommand extends ShorebirdCommand {
-  /// {@macro promote_patch_command}
-  PromotePatchCommand() {
+class PromoteCommand extends ShorebirdCommand {
+  /// {@macro promote_command}
+  PromoteCommand() {
     argParser
       ..addOption(
         'flavor',
@@ -32,7 +32,7 @@ class PromotePatchCommand extends ShorebirdCommand {
   }
 
   @override
-  String get name => 'promote-patch';
+  String get name => 'promote';
 
   @override
   String get description => 'Promotes a patch to the "stable" channel.';
@@ -66,9 +66,7 @@ class PromotePatchCommand extends ShorebirdCommand {
     }
 
     if (patchToPromote.channel == DeploymentTrack.production.channel) {
-      logger.err(
-        'Patch ${patchToPromote.number} is already in the production channel',
-      );
+      logger.err('Patch ${patchToPromote.number} is already live');
       return ExitCode.usage.code;
     }
 
@@ -92,6 +90,10 @@ This is a bug and should never happen. Please file an issue at https://github.co
       appId: appId,
       patchId: patchToPromote.id,
       channel: channel,
+    );
+
+    logger.success(
+      'Patch ${patchToPromote.number} is now live for release $releaseVersion!',
     );
 
     return ExitCode.success.code;

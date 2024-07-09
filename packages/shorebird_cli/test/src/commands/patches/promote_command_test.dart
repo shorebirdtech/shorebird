@@ -3,7 +3,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/promote_patch_command.dart';
+import 'package:shorebird_cli/src/commands/patches/patches.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -11,11 +11,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
-import '../fakes.dart';
-import '../mocks.dart';
+import '../../fakes.dart';
+import '../../mocks.dart';
 
 void main() {
-  group(PromotePatchCommand, () {
+  group(PromoteCommand, () {
     const appId = 'app-id';
     const releaseVersion = '1.0.0';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
@@ -48,7 +48,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdLogger logger;
 
-    late PromotePatchCommand command;
+    late PromoteCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -104,7 +104,7 @@ void main() {
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
 
-      command = PromotePatchCommand()..testArgResults = argResults;
+      command = PromoteCommand()..testArgResults = argResults;
     });
 
     group('when an invalid patch number is provided', () {
@@ -143,8 +143,7 @@ void main() {
           () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
-        verify(() => logger.err('Patch 1 is already in the production channel'))
-            .called(1);
+        verify(() => logger.err('Patch 1 is already live')).called(1);
       });
     });
 
@@ -175,6 +174,8 @@ void main() {
             channel: stableChannel,
           ),
         );
+        verify(() => logger.success('Patch 1 is now live for release 1.0.0!'))
+            .called(1);
       });
     });
   });

@@ -1,0 +1,18 @@
+import 'package:shorebird_cli/src/commands/patches/patches.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
+
+/// {@template patches_command}
+///
+/// {@endtemplate}
+class PatchesCommand extends ShorebirdCommand {
+  /// {@macro patches_command}
+  PatchesCommand() {
+    addSubcommand(PromoteCommand());
+  }
+
+  @override
+  String get name => 'patches';
+
+  @override
+  String get description => 'Manage Shorebird patches';
+}
