@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -251,7 +252,7 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
   }) {
     const content = '''
 # This file is used to configure the Shorebird updater used by your app.
-# Learn more at https://docs.shorebird.dev
+# Learn more at $docsUrl
 # This file does not contain any sensitive information and should be checked into version control.
 
 # Your app_id is the unique identifier assigned to your app.

@@ -18,9 +18,7 @@ class IncompatibleGradleException implements Exception {
   @override
   String toString() {
     final docLink = link(
-      uri: Uri.parse(
-        ShorebirdDocumentation.unsupportedClassFileVersionUrl,
-      ),
+      uri: Uri.parse(unsupportedClassFileVersionUrl),
       message: 'troubleshooting documentation',
     );
     return '''

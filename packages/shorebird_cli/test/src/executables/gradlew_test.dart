@@ -223,9 +223,7 @@ BUILD FAILED in 3s
                   isA<IncompatibleGradleException>().having(
                     (e) => e.toString(),
                     'contains documentation link',
-                    contains(
-                      ShorebirdDocumentation.unsupportedClassFileVersionUrl,
-                    ),
+                    contains(unsupportedClassFileVersionUrl),
                   ),
                 ),
               );

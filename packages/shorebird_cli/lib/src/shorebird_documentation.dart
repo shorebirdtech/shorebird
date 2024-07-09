@@ -1,11 +1,37 @@
-/// A class that holds a collection of Shorebird documentation links
-/// used throughout the Shorebird CLI.
-class ShorebirdDocumentation {
-  /// The base URL for the Shorebird documentation.
-  static const String baseUrl = 'https://docs.shorebird.dev';
+import 'package:mason_logger/mason_logger.dart';
 
-  /// URL to the troubshooting section which covers the Unsupported class
-  /// file major version
-  static const String unsupportedClassFileVersionUrl =
-      '$baseUrl/troubleshooting/#unsupported-class-file-major-version-65';
+/// Link to the Shorebird documentation page.
+const docsUrl = 'https://docs.shorebird.dev';
+
+/// Link to the Flutter version page on the Shorebird documentation.
+const flutterVersionUrl = '$docsUrl/flutter-version';
+
+/// Link to the supported Flutter versions section on the Shorebird
+/// documentation.
+const supportedFlutterVersionsUrl =
+    '$flutterVersionUrl#supported-flutter-versions';
+
+/// Link to the status page on the Shorebird documentation.
+const statusUrl = '$docsUrl/status';
+
+/// Link to the iOS link percentage section on the Shorebird documentation.
+const iOSLinkPercentageUrl = '$statusUrl#link-percentage-ios';
+
+/// Link to the troubleshooting page on the Shorebird documentation.
+const troubleshootingUrl = '$docsUrl/troubleshooting';
+
+/// Link to the troubshooting section which covers the
+/// Unsupported class file major version
+const unsupportedClassFileVersionUrl =
+    '$troubleshootingUrl#unsupported-class-file-major-version-65';
+
+/// Link to the troubleshooting section which covers the
+/// not being able to run the app in VS Code after installing Shorebird.
+const cannotRunInVSCodeUrl =
+    '''$troubleshootingUrl#i-installed-shorebird-and-now-i-cant-run-my-app-in-vs-code''';
+
+/// Extension to convert a string to a CLI link.
+extension ToLink on String {
+  /// Wraps the string in a link.
+  String toLink() => link(uri: Uri.parse(this));
 }
