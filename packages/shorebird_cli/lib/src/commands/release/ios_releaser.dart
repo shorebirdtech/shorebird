@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -87,7 +88,7 @@ To change the version of this release, change your app's version in your pubspec
         logger.err(
           '''
 iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: $supportedVersionsLink''',
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         );
         throw ProcessExit(ExitCode.usage.code);
       }

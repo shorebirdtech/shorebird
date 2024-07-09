@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -77,13 +76,6 @@ class InvalidExportOptionsPlistException implements Exception {
 
 /// The minimum allowed Flutter version for creating iOS releases.
 final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
-
-/// Link to the supported versions documentation.
-final supportedVersionsLink = link(
-  uri: Uri.parse(
-    'https://docs.shorebird.dev/flutter-version/#supported-flutter-versions',
-  ),
-);
 
 /// A reference to a [Ios] instance.
 final iosRef = create(Ios.new);
