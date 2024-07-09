@@ -15,7 +15,7 @@ dev_dependencies:
   ffigen: ">=8.0.2 <13.0.0"
   mocktail: ">=0.3.0 <2.0.0"
   test: ^1.19.2
-  very_good_analysis: ^5.0.0
+  very_good_analysis: ">=5.0.0 <7.0.0"
 
 ffigen:
   output: "lib/src/generated/updater_bindings.g.dart"
