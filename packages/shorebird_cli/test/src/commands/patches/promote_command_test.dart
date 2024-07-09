@@ -107,6 +107,10 @@ void main() {
       command = PromoteCommand()..testArgResults = argResults;
     });
 
+    test('has a description', () {
+      expect(command.description, isNotEmpty);
+    });
+
     group('when an invalid patch number is provided', () {
       setUp(() {
         when(() => argResults['patch-number']).thenReturn('5');
