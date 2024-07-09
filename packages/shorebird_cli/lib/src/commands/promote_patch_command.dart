@@ -79,7 +79,12 @@ class PromotePatchCommand extends ShorebirdCommand {
     if (channel == null) {
       // This is a symptom that something bigger is wrong. Apps should always
       // have a production channel.
-      logger.err('No production channel found for app $appId');
+      logger.err(
+        '''
+No production channel found for app $appId.
+      
+This is a bug and should never happen. Please file an issue at https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=fix%3A+''',
+      );
       return ExitCode.software.code;
     }
 
