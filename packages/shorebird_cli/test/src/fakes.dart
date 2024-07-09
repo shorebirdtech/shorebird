@@ -11,6 +11,8 @@ class FakeArgResults extends Fake implements ArgResults {}
 
 class FakeBaseRequest extends Fake implements http.BaseRequest {}
 
+class FakeChannel extends Fake implements Channel {}
+
 class FakeDiffStatus extends Fake implements DiffStatus {}
 
 class FakeIOSink extends Fake implements IOSink {}

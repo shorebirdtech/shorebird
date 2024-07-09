@@ -9,6 +9,7 @@ export 'patch.dart';
 export 'patch_artifact.dart';
 export 'release.dart';
 export 'release_artifact.dart';
+export 'release_patch.dart';
 export 'release_platform.dart';
 export 'release_status.dart';
 export 'update_release_metadata.dart';
