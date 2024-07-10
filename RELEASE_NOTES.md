@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.17 (July 10, 2024)
+
+- 📈 Improve iOS patch performance
+- 🍄 Add `shorebird patches promote` command
+
 ## 1.1.16 (July 9, 2024)
 
 - 🍎 Fix an issue where iOS patches would sometimes exhibit incorrect behavior (e.g scrolling, animations, lerping issues)
