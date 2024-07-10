@@ -49,8 +49,7 @@ class Cache {
   Cache() {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
-    registerArtifact(AotToolsDillArtifact(cache: this, platform: platform));
-    registerArtifact(AotToolsExeArtifact(cache: this, platform: platform));
+    registerArtifact(AotToolsArtifact(cache: this, platform: platform));
   }
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
@@ -66,7 +65,7 @@ class Cache {
         maxAttempts: 3,
         onRetry: (e) {
           logger
-            ..detail('Failed to update ${artifact.name}, retrying...')
+            ..detail('Failed to update ${artifact.fileName}, retrying...')
             ..detail(e.toString());
         },
       );
@@ -131,17 +130,13 @@ abstract class CachedArtifact {
   final Platform platform;
 
   /// The on-disk name of the artifact.
-  String get name;
+  String get fileName;
 
   /// Should the artifact be marked executable.
   bool get isExecutable;
 
   /// The URL from which the artifact can be downloaded.
   String get storageUrl;
-
-  /// Whether the artifact is required for Shorebird to function.
-  /// If we fail to fetch it we will exit with an error.
-  bool get required => true;
 
   /// The SHA256 checksum of the artifact binary.
   ///
@@ -150,13 +145,15 @@ abstract class CachedArtifact {
   String? get checksum;
 
   Future<void> extractArtifact(http.ByteStream stream, String outputPath) {
-    final file = File(p.join(outputPath, name))..createSync(recursive: true);
+    final file = File(p.join(outputPath, fileName))
+      ..createSync(recursive: true);
     return stream.pipe(file.openWrite());
   }
 
-  Directory get location => cache.getArtifactDirectory(name);
+  File get file =>
+      File(p.join(cache.getArtifactDirectory(fileName).path, fileName));
 
-  Future<bool> isUpToDate() async => location.existsSync();
+  Future<bool> isUpToDate() async => file.existsSync();
 
   Future<void> update() async {
     final request = http.Request('GET', Uri.parse(storageUrl));
@@ -166,41 +163,33 @@ abstract class CachedArtifact {
     } catch (error) {
       throw CacheUpdateFailure(
         '''
-Failed to download $name: $error
+Failed to download $fileName: $error
 If you're behind a firewall/proxy, please, make sure shorebird_cli is
 allowed to access $storageUrl.''',
       );
     }
 
     if (response.statusCode != HttpStatus.ok) {
-      if (!required && response.statusCode == HttpStatus.notFound) {
-        logger.detail(
-          '[cache] optional artifact: "$name" was not found, skipping...',
-        );
-        return;
-      }
-
       throw CacheUpdateFailure(
-        '''Failed to download $name: ${response.statusCode} ${response.reasonPhrase}''',
+        '''Failed to download $fileName: ${response.statusCode} ${response.reasonPhrase}''',
       );
     }
 
-    await extractArtifact(response.stream, location.path);
+    final artifactDirectory = Directory(p.dirname(file.path));
+    await extractArtifact(response.stream, artifactDirectory.path);
 
     final expectedChecksum = checksum;
     if (expectedChecksum != null) {
-      final artifactFile = File(p.join(location.path, name));
-
-      if (!checksumChecker.checkFile(artifactFile, expectedChecksum)) {
+      if (!checksumChecker.checkFile(file, expectedChecksum)) {
         // Delete the location, so if the download is retried, it will be
         // re-downloaded.
-        location.deleteSync(recursive: true);
+        artifactDirectory.deleteSync(recursive: true);
         throw CacheUpdateFailure(
-          '''Failed to download $name: checksum mismatch''',
+          '''Failed to download $fileName: checksum mismatch''',
         );
       } else {
         logger.detail(
-          'No checksum provided for $name, skipping file corruption validation',
+          'No checksum provided for $fileName, skipping file corruption validation',
         );
       }
     }
@@ -208,78 +197,34 @@ allowed to access $storageUrl.''',
     if (!platform.isWindows && isExecutable) {
       final result = await process.start(
         'chmod',
-        ['+x', p.join(location.path, name)],
+        ['+x', file.path],
       );
       await result.exitCode;
     }
   }
 }
 
-class AotToolsDillArtifact extends CachedArtifact {
-  AotToolsDillArtifact({required super.cache, required super.platform});
+class AotToolsArtifact extends CachedArtifact {
+  AotToolsArtifact({required super.cache, required super.platform});
 
   @override
-  String get name => 'aot-tools.dill';
+  String get fileName => 'aot-tools.dill';
 
   @override
   bool get isExecutable => false;
 
-  /// The aot-tools are only available for revisions that support mixed-mode.
   @override
-  bool get required => false;
-
-  @override
-  Directory get location => Directory(
+  File get file => File(
         p.join(
-          cache.getArtifactDirectory(name).path,
+          cache.getArtifactDirectory(fileName).path,
           shorebirdEnv.shorebirdEngineRevision,
+          fileName,
         ),
       );
 
   @override
   String get storageUrl =>
-      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$name';
-
-  @override
-  String? get checksum => null;
-}
-
-/// For a few revisions in Dec 2023, we distributed aot-tools as an executable.
-/// Should be removed sometime after June 2024.
-class AotToolsExeArtifact extends CachedArtifact {
-  AotToolsExeArtifact({required super.cache, required super.platform});
-
-  @override
-  String get name => 'aot-tools';
-
-  @override
-  bool get isExecutable => true;
-
-  /// The aot-tools are only available for revisions that support mixed-mode.
-  @override
-  bool get required => false;
-
-  @override
-  Directory get location => Directory(
-        p.join(
-          cache.getArtifactDirectory(name).path,
-          shorebirdEnv.shorebirdEngineRevision,
-        ),
-      );
-
-  @override
-  String get storageUrl {
-    var artifactName = 'aot-tools-';
-    if (platform.isMacOS) {
-      artifactName += 'darwin-x64';
-    } else if (platform.isLinux) {
-      artifactName += 'linux-x64';
-    } else if (platform.isWindows) {
-      artifactName += 'windows-x64';
-    }
-
-    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
-  }
+      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$fileName';
 
   @override
   String? get checksum => null;
@@ -289,7 +234,7 @@ class PatchArtifact extends CachedArtifact {
   PatchArtifact({required super.cache, required super.platform});
 
   @override
-  String get name => 'patch';
+  String get fileName => 'patch';
 
   @override
   bool get isExecutable => true;
@@ -300,7 +245,7 @@ class PatchArtifact extends CachedArtifact {
     String outputPath,
   ) async {
     final tempDir = Directory.systemTemp.createTempSync();
-    final artifactPath = p.join(tempDir.path, '$name.zip');
+    final artifactPath = p.join(tempDir.path, '$fileName.zip');
     await stream.pipe(File(artifactPath).openWrite());
     await artifactManager.extractZip(
       zipFile: File(artifactPath),
@@ -330,7 +275,7 @@ class BundleToolArtifact extends CachedArtifact {
   BundleToolArtifact({required super.cache, required super.platform});
 
   @override
-  String get name => 'bundletool.jar';
+  String get fileName => 'bundletool.jar';
 
   @override
   bool get isExecutable => false;

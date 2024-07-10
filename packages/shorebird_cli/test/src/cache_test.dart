@@ -237,41 +237,6 @@ void main() {
           );
         });
 
-        test('skips optional artifacts if a 404 is returned', () async {
-          when(() => httpClient.send(any())).thenAnswer(
-            (invocation) async {
-              final request =
-                  invocation.positionalArguments.first as http.BaseRequest;
-              final fileName = p.basename(request.url.path);
-              if (fileName.startsWith('aot-tools')) {
-                return http.StreamedResponse(
-                  const Stream.empty(),
-                  HttpStatus.notFound,
-                  reasonPhrase: 'Not Found',
-                );
-              }
-              return http.StreamedResponse(
-                Stream.value(ZipEncoder().encode(Archive())!),
-                HttpStatus.ok,
-              );
-            },
-          );
-          await expectLater(
-            runWithOverrides(cache.updateAll),
-            completes,
-          );
-          verify(
-            () => logger.detail(
-              '''[cache] optional artifact: "aot-tools.dill" was not found, skipping...''',
-            ),
-          ).called(1);
-          verify(
-            () => logger.detail(
-              '''[cache] optional artifact: "aot-tools" was not found, skipping...''',
-            ),
-          ).called(1);
-        });
-
         test('downloads correct artifacts', () async {
           final patchArtifactDirectory = runWithOverrides(
             () => cache.getArtifactDirectory('patch'),
@@ -323,77 +288,6 @@ void main() {
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
-        });
-
-        test('aot-tools falls back to executable', () async {
-          setMockPlatform(Platform.macOS);
-
-          when(() => httpClient.send(any())).thenAnswer(
-            (invocation) async {
-              final request =
-                  invocation.positionalArguments.first as http.BaseRequest;
-              final fileName = p.basename(request.url.path);
-              if (fileName == 'aot-tools.dill') {
-                return http.StreamedResponse(
-                  const Stream.empty(),
-                  HttpStatus.notFound,
-                  reasonPhrase: 'Not Found',
-                );
-              }
-              return http.StreamedResponse(
-                Stream.value(ZipEncoder().encode(Archive())!),
-                HttpStatus.ok,
-              );
-            },
-          );
-
-          await expectLater(runWithOverrides(cache.updateAll), completes);
-
-          final requests = verify(() => httpClient.send(captureAny()))
-              .captured
-              .cast<http.BaseRequest>()
-              .map((r) => r.url)
-              .toList();
-
-          String perEngine(String name) =>
-              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
-
-          final expected = [
-            perEngine('patch-darwin-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
-            // Requests the .dill, fails and falls back to executable:
-            perEngine('aot-tools.dill'),
-            perEngine('aot-tools-darwin-x64'),
-          ].map(Uri.parse).toList();
-
-          expect(requests, equals(expected));
-        });
-
-        test('aot-tools executable paths by platform', () async {
-          setMockPlatform(Platform.windows);
-          expect(
-            runWithOverrides(
-              () => AotToolsExeArtifact(cache: cache, platform: platform)
-                  .storageUrl,
-            ),
-            endsWith('aot-tools-windows-x64'),
-          );
-          setMockPlatform(Platform.linux);
-          expect(
-            runWithOverrides(
-              () => AotToolsExeArtifact(cache: cache, platform: platform)
-                  .storageUrl,
-            ),
-            endsWith('aot-tools-linux-x64'),
-          );
-          setMockPlatform(Platform.macOS);
-          expect(
-            runWithOverrides(
-              () => AotToolsExeArtifact(cache: cache, platform: platform)
-                  .storageUrl,
-            ),
-            endsWith('aot-tools-darwin-x64'),
-          );
         });
 
         test('pull correct artifact for Windows', () async {
