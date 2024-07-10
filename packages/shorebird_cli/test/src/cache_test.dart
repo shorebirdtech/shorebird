@@ -431,7 +431,7 @@ class _TestCachedArtifact extends CachedArtifact {
   String? checksumOverride;
 
   @override
-  String? get sha256Checksum => checksumOverride;
+  String? get checksum => checksumOverride;
 
   final Directory _location = Directory.systemTemp.createTempSync();
 
