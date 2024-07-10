@@ -153,7 +153,20 @@ abstract class CachedArtifact {
   File get file =>
       File(p.join(cache.getArtifactDirectory(fileName).path, fileName));
 
-  Future<bool> isUpToDate() async => file.existsSync();
+  Future<bool> isUpToDate() async {
+    if (!file.existsSync()) {
+      return false;
+    }
+
+    if (checksum == null) {
+      logger.detail(
+        '''No checksum provided for $fileName, skipping file corruption validation''',
+      );
+      return true;
+    }
+
+    return checksumChecker.checkFile(file, checksum!);
+  }
 
   Future<void> update() async {
     final request = http.Request('GET', Uri.parse(storageUrl));
