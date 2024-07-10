@@ -587,12 +587,14 @@ To change the version of this release, change your app's version in your pubspec
       const releaseVersion = '1.0.0';
       const appId = 'appId';
       const flutterRevision = 'deadbeef';
+      const flutterVersion = '3.22.1';
 
       final release = Release(
         id: 42,
         appId: appId,
         version: releaseVersion,
         flutterRevision: flutterRevision,
+        flutterVersion: flutterVersion,
         displayName: '1.2.3+1',
         platformStatuses: {},
         createdAt: DateTime(2023),

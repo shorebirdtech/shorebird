@@ -11,6 +11,7 @@ void main() {
             displayName: 'v1.0.0',
             appId: 'test-app-id',
             flutterRevision: 'flutter-revision',
+            flutterVersion: '3.22.0',
             version: '1.0.0',
             platformStatuses: {
               ReleasePlatform.ios: ReleaseStatus.draft,

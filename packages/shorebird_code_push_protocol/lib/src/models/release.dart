@@ -15,6 +15,7 @@ class Release {
     required this.appId,
     required this.version,
     required this.flutterRevision,
+    required this.flutterVersion,
     required this.displayName,
     required this.platformStatuses,
     required this.createdAt,
@@ -39,6 +40,12 @@ class Release {
 
   /// The Flutter revision used to create the release.
   final String flutterRevision;
+
+  /// The Flutter version used to create the release.
+  ///
+  /// This field is optional because it was newly added and
+  /// older releases do not have this information.
+  final String? flutterVersion;
 
   /// The display name for the release
   final String? displayName;

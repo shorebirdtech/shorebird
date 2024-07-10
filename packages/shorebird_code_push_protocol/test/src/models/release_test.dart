@@ -9,6 +9,7 @@ void main() {
         appId: 'app-id',
         version: '1.0.0',
         flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
+        flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
         platformStatuses: {ReleasePlatform.android: ReleaseStatus.active},
         createdAt: DateTime(2023),

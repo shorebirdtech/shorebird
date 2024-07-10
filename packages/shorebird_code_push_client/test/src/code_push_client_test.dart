@@ -17,6 +17,7 @@ void main() {
   group(CodePushClient, () {
     const appId = 'app-id';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+    const flutterVersion = '3.22.0';
     const displayName = 'shorebird-example';
     const errorResponse = ErrorResponse(
       code: 'test_code',
@@ -1016,6 +1017,7 @@ void main() {
               appId: appId,
               version: version,
               flutterRevision: flutterRevision,
+              flutterVersion: flutterVersion,
               displayName: displayName,
             )
             .ignore();
@@ -1040,6 +1042,7 @@ void main() {
             appId: appId,
             version: version,
             flutterRevision: flutterRevision,
+            flutterVersion: flutterVersion,
             displayName: displayName,
           ),
           throwsA(
@@ -1065,6 +1068,7 @@ void main() {
             appId: appId,
             version: version,
             flutterRevision: flutterRevision,
+            flutterVersion: flutterVersion,
             displayName: displayName,
           ),
           throwsA(
@@ -1090,6 +1094,7 @@ void main() {
                       appId: appId,
                       version: version,
                       flutterRevision: flutterRevision,
+                      flutterVersion: flutterVersion,
                       displayName: displayName,
                       platformStatuses: {},
                       createdAt: DateTime(2023),
@@ -1108,6 +1113,7 @@ void main() {
             appId: appId,
             version: version,
             flutterRevision: flutterRevision,
+            flutterVersion: flutterVersion,
             displayName: displayName,
           ),
           completion(
@@ -1120,6 +1126,11 @@ void main() {
                     (r) => r.flutterRevision,
                     'flutterRevision',
                     flutterRevision,
+                  )
+                  .having(
+                    (r) => r.flutterVersion,
+                    'flutterVersion',
+                    flutterVersion,
                   )
                   .having((r) => r.displayName, 'displayName', displayName)
                   .having(
@@ -1608,6 +1619,7 @@ void main() {
             appId: '1',
             version: '1.0.0',
             flutterRevision: flutterRevision,
+            flutterVersion: flutterVersion,
             displayName: 'v1.0.0',
             platformStatuses: {ReleasePlatform.android: ReleaseStatus.draft},
             createdAt: DateTime(2022),
@@ -1618,6 +1630,7 @@ void main() {
             appId: '2',
             version: '1.0.1',
             flutterRevision: flutterRevision,
+            flutterVersion: flutterVersion,
             displayName: 'v1.0.1',
             platformStatuses: {},
             createdAt: DateTime(2022),

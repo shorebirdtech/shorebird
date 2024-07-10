@@ -37,6 +37,7 @@ void main() {
     const appDisplayName = 'Test App';
     const arch = 'aarch64';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+    const flutterVersion = '3.22.0';
     const releasePlatform = ReleasePlatform.android;
     const releaseVersion = '1.2.3+1';
     const patchArtifactBundles = {
@@ -61,6 +62,7 @@ void main() {
       appId: appId,
       version: releaseVersion,
       flutterRevision: flutterRevision,
+      flutterVersion: flutterVersion,
       displayName: '1.2.3+1',
       platformStatuses: {releasePlatform: ReleaseStatus.active},
       createdAt: DateTime(2023),
@@ -707,6 +709,7 @@ void main() {
                 appId: appId,
                 version: releaseVersion,
                 flutterRevision: releaseFlutterRevision,
+                flutterVersion: flutterVersion,
                 displayName: '1.2.3+1',
                 platformStatuses: {releasePlatform: ReleaseStatus.active},
                 createdAt: DateTime(2023),
@@ -817,6 +820,7 @@ void main() {
             appId: appId,
             version: releaseVersion,
             flutterRevision: flutterRevision,
+            flutterVersion: flutterVersion,
             displayName: '1.2.3+1',
             platformStatuses: {releasePlatform: ReleaseStatus.draft},
             createdAt: DateTime(2023),
@@ -854,6 +858,7 @@ Please re-run the release command for this version or create a new release.''',
             appId: appId,
             version: releaseVersion,
             flutterRevision: flutterRevision,
+            flutterVersion: flutterVersion,
             displayName: '1.2.3+1',
             platformStatuses: {ReleasePlatform.ios: ReleaseStatus.active},
             createdAt: DateTime(2023),

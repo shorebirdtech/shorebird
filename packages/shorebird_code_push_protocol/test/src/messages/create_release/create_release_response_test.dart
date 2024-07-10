@@ -11,6 +11,7 @@ void main() {
           version: '1.0.0',
           displayName: 'v1.0.0',
           flutterRevision: 'flutter-revision',
+          flutterVersion: '3.22.0',
           platformStatuses: {},
           createdAt: DateTime(2023),
           updatedAt: DateTime(2023),

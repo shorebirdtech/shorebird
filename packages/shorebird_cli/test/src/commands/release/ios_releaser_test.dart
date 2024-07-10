@@ -682,6 +682,7 @@ To change the version of this release, change your app's version in your pubspec
         const appId = 'appId';
         const releaseVersion = '1.0.0';
         const flutterRevision = 'deadbeef';
+        const flutterVersion = '3.22.0';
         const codesign = true;
         const podfileLockContent = 'podfile-lock';
 
@@ -690,6 +691,7 @@ To change the version of this release, change your app's version in your pubspec
           appId: appId,
           version: releaseVersion,
           flutterRevision: flutterRevision,
+          flutterVersion: flutterVersion,
           displayName: '1.2.3+1',
           platformStatuses: {},
           createdAt: DateTime(2023),

@@ -7,6 +7,7 @@ void main() {
       const request = CreateReleaseRequest(
         version: '1.2.3',
         flutterRevision: 'abc123',
+        flutterVersion: '3.22.0',
         displayName: 'display_name',
       );
       expect(

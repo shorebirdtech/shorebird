@@ -26,6 +26,7 @@ void main() {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+    const flutterVersion = '3.22.0';
     const releaseVersion = '1.2.3+1';
     const postReleaseInstructions = 'Make a patch!';
     const shorebirdYaml = ShorebirdYaml(appId: appId);
@@ -40,6 +41,7 @@ void main() {
       appId: appId,
       version: releaseVersion,
       flutterRevision: flutterRevision,
+      flutterVersion: flutterVersion,
       displayName: '1.2.3+1',
       platformStatuses: {},
       createdAt: DateTime(2023),
@@ -362,6 +364,7 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android --flavor=$flavor --t
             appId: appId,
             version: releaseVersion,
             flutterRevision: 'different',
+            flutterVersion: '3.12.1',
             displayName: '1.2.3+1',
             platformStatuses: {},
             createdAt: DateTime(2023),
