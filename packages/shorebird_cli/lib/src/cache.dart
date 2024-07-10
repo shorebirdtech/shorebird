@@ -202,7 +202,7 @@ allowed to access $storageUrl.''',
         );
       } else {
         logger.detail(
-          'No checksum provided for $fileName, skipping file corruption validation',
+          '''No checksum provided for $fileName, skipping file corruption validation''',
         );
       }
     }
