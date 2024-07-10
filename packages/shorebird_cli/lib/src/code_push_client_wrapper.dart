@@ -130,7 +130,6 @@ This app may not exist or you may not have permission to view it.''',
     return apps.firstWhereOrNull((a) => a.appId == appId);
   }
 
-  @visibleForTesting
   Future<Channel?> maybeGetChannel({
     required String appId,
     required String name,
@@ -235,6 +234,24 @@ Please create a release using "shorebird release" and try again.
   }) async {
     final releases = await getReleases(appId: appId);
     return releases.firstWhereOrNull((r) => r.version == releaseVersion);
+  }
+
+  /// Gets the patches for [appId]'s [releaseId].
+  Future<List<ReleasePatch>> getReleasePatches({
+    required String appId,
+    required int releaseId,
+  }) async {
+    final fetchReleasePatchesProgress = logger.progress('Fetching patches');
+    try {
+      final patches = await codePushClient.getPatches(
+        appId: appId,
+        releaseId: releaseId,
+      );
+      fetchReleasePatchesProgress.complete();
+      return patches;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: fetchReleasePatchesProgress);
+    }
   }
 
   Future<Release> createRelease({
@@ -718,7 +735,6 @@ aar artifact already exists, continuing...''',
     createArtifactProgress.complete();
   }
 
-  @visibleForTesting
   Future<void> promotePatch({
     required String appId,
     required int patchId,

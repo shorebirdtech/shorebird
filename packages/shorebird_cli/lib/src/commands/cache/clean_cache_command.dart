@@ -26,7 +26,7 @@ class CleanCacheCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    final progress = logger.progress('Clearing Cache');
+    final progress = logger.progress('Clearing cache');
     try {
       await cache.clear();
     } on FileSystemException catch (error) {

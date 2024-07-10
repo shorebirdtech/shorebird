@@ -4,6 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// {@template diff_status}
@@ -81,7 +82,7 @@ class PatchDiffChecker {
         ..info(
           yellow.wrap('''
 
-If you don't know why you're seeing this error, visit our troublshooting page at ${link(uri: Uri.parse('https://docs.shorebird.dev/troubleshooting#unexpected-native-changes'))}'''),
+If you don't know why you're seeing this error, visit our troublshooting page at ${troubleshootingUrl.toLink()}'''),
         );
 
       if (!allowNativeChanges) {

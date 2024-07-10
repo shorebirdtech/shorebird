@@ -737,6 +737,62 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         });
       });
 
+      group('getReleasePatches', () {
+        group('when getPatches request fails', () {
+          setUp(() {
+            when(
+              () => codePushClient.getPatches(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+              ),
+            ).thenThrow('something went wrong');
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.getReleasePatches(
+                  appId: appId,
+                  releaseId: releaseId,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail(any())).called(1);
+          });
+        });
+
+        group('when getPatches request succeeds', () {
+          final patch = ReleasePatch(
+            id: 0,
+            number: 1,
+            channel: DeploymentTrack.production.channel,
+            artifacts: const [],
+          );
+
+          setUp(() {
+            when(
+              () => codePushClient.getPatches(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+              ),
+            ).thenAnswer((_) async => [patch]);
+          });
+
+          test('returns list of patches', () async {
+            final result = await runWithOverrides(
+              () => codePushClientWrapper.getReleasePatches(
+                appId: appId,
+                releaseId: releaseId,
+              ),
+            );
+
+            expect(result, equals([patch]));
+            verify(() => progress.complete()).called(1);
+          });
+        });
+      });
+
       group('createRelease', () {
         test('exits with code 70 when creating release fails', () async {
           const error = 'something went wrong';

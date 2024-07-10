@@ -2,50 +2,42 @@
 
 // ignore_for_file: implicit_dynamic_parameter, require_trailing_commas, cast_nullable_to_non_nullable, lines_longer_than_80_chars
 
-part of 'release_artifact.dart';
+part of 'patch_artifact.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-ReleaseArtifact _$ReleaseArtifactFromJson(Map<String, dynamic> json) =>
+PatchArtifact _$PatchArtifactFromJson(Map<String, dynamic> json) =>
     $checkedCreate(
-      'ReleaseArtifact',
+      'PatchArtifact',
       json,
       ($checkedConvert) {
-        final val = ReleaseArtifact(
+        final val = PatchArtifact(
           id: $checkedConvert('id', (v) => v as int),
-          releaseId: $checkedConvert('release_id', (v) => v as int),
+          patchId: $checkedConvert('patch_id', (v) => v as int),
           arch: $checkedConvert('arch', (v) => v as String),
           platform: $checkedConvert(
               'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert('size', (v) => v as int),
-          url: $checkedConvert('url', (v) => v as String),
-          podfileLockHash:
-              $checkedConvert('podfile_lock_hash', (v) => v as String?),
-          canSideload: $checkedConvert('can_sideload', (v) => v as bool),
+          createdAt:
+              $checkedConvert('created_at', (v) => DateTime.parse(v as String)),
         );
         return val;
       },
-      fieldKeyMap: const {
-        'releaseId': 'release_id',
-        'podfileLockHash': 'podfile_lock_hash',
-        'canSideload': 'can_sideload'
-      },
+      fieldKeyMap: const {'patchId': 'patch_id', 'createdAt': 'created_at'},
     );
 
-Map<String, dynamic> _$ReleaseArtifactToJson(ReleaseArtifact instance) =>
+Map<String, dynamic> _$PatchArtifactToJson(PatchArtifact instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'release_id': instance.releaseId,
+      'patch_id': instance.patchId,
       'arch': instance.arch,
       'platform': _$ReleasePlatformEnumMap[instance.platform]!,
       'hash': instance.hash,
       'size': instance.size,
-      'url': instance.url,
-      'podfile_lock_hash': instance.podfileLockHash,
-      'can_sideload': instance.canSideload,
+      'created_at': instance.createdAt.toIso8601String(),
     };
 
 const _$ReleasePlatformEnumMap = {

@@ -1652,6 +1652,61 @@ void main() {
       });
     });
 
+    group('getPatches', () {
+      group('when request is not successful', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.failedDependency,
+            ),
+          );
+        });
+
+        test('throws exception', () async {
+          expect(
+            () async => codePushClient.getPatches(appId: appId, releaseId: 123),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                CodePushClient.unknownErrorMessage,
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when request is successful', () {
+        late GetReleasePatchesResponse response;
+        late ReleasePatch patch;
+
+        setUp(() {
+          patch = ReleasePatch(
+            id: 0,
+            number: 1,
+            channel: 'stable',
+            artifacts: [],
+          );
+          response = GetReleasePatchesResponse(patches: [patch]);
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(response))),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('deserializes GetReleasePatchesResponse', () async {
+          final patches = await codePushClient.getPatches(
+            appId: appId,
+            releaseId: 123,
+          );
+          expect(patches, equals([patch]));
+        });
+      });
+    });
+
     group('getReleaseArtifacts', () {
       const appId = 'test-app-id';
       const releaseId = 0;

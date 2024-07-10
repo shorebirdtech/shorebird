@@ -27,6 +27,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -523,7 +524,7 @@ This may indicate that the patch contains native changes, which cannot be applie
               () => logger.err(
                 '''
 iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: $supportedVersionsLink''',
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               ),
             ).called(1);
           });

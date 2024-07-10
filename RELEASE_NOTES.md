@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.16 (July 9, 2024)
+
+- 🍎 Fix an issue where iOS patches would sometimes exhibit incorrect behavior (e.g scrolling, animations, lerping issues)
+- 🔗 Consolidate docs.shorebird.dev links in CLI
+
 ## 1.1.15 (July 3, 2024)
 
 - ✨ Add `--display-name` to `shorebird init`

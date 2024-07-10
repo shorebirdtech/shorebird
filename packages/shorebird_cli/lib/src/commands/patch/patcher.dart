@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/extensions/iterable.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
@@ -40,7 +41,7 @@ abstract class Patcher {
     return '''
 ${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(1)}% of Dart code with the released app.
 This means the patched code may execute slower than expected.
-https://docs.shorebird.dev/status#link-percentage-ios
+${iOSLinkPercentageUrl.toLink()}
 ''';
   }
 
