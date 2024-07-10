@@ -56,7 +56,7 @@ class Cache {
 
   Future<void> updateAll() async {
     for (final artifact in _artifacts) {
-      if (await artifact.isUpToDate()) {
+      if (await artifact.isValid()) {
         continue;
       }
 
@@ -153,7 +153,7 @@ abstract class CachedArtifact {
   File get file =>
       File(p.join(cache.getArtifactDirectory(fileName).path, fileName));
 
-  Future<bool> isUpToDate() async {
+  Future<bool> isValid() async {
     if (!file.existsSync()) {
       return false;
     }

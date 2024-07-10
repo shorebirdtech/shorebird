@@ -368,10 +368,10 @@ void main() {
       cachedArtifact = _TestCachedArtifact(cache: cache, platform: platform);
     });
 
-    group('isUpToDate', () {
+    group('isValid', () {
       group('when the artifact file does not exist', () {
         test('returns false', () async {
-          expect(await runWithOverrides(cachedArtifact.isUpToDate), isFalse);
+          expect(await runWithOverrides(cachedArtifact.isValid), isFalse);
         });
       });
 
@@ -386,7 +386,7 @@ void main() {
           });
 
           test('returns true', () async {
-            expect(await runWithOverrides(cachedArtifact.isUpToDate), isTrue);
+            expect(await runWithOverrides(cachedArtifact.isValid), isTrue);
           });
         });
 
@@ -402,7 +402,7 @@ void main() {
             });
 
             test('returns true', () async {
-              expect(await runWithOverrides(cachedArtifact.isUpToDate), isTrue);
+              expect(await runWithOverrides(cachedArtifact.isValid), isTrue);
             });
           });
 
@@ -414,7 +414,7 @@ void main() {
 
             test('returns false', () async {
               expect(
-                await runWithOverrides(cachedArtifact.isUpToDate),
+                await runWithOverrides(cachedArtifact.isValid),
                 isFalse,
               );
             });
@@ -431,7 +431,7 @@ class _TestCachedArtifact extends CachedArtifact {
   String? checksumOverride;
 
   @override
-  String? get checksum => checksumOverride;
+  String? get sha256Checksum => checksumOverride;
 
   final Directory _location = Directory.systemTemp.createTempSync();
 
