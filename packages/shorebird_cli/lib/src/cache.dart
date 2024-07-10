@@ -56,7 +56,7 @@ class Cache {
 
   Future<void> updateAll() async {
     for (final artifact in _artifacts) {
-      if (await artifact.isUpToDate()) {
+      if (await artifact.isValid()) {
         continue;
       }
 
@@ -153,7 +153,20 @@ abstract class CachedArtifact {
   File get file =>
       File(p.join(cache.getArtifactDirectory(fileName).path, fileName));
 
-  Future<bool> isUpToDate() async => file.existsSync();
+  Future<bool> isValid() async {
+    if (!file.existsSync()) {
+      return false;
+    }
+
+    if (checksum == null) {
+      logger.detail(
+        '''No checksum provided for $fileName, skipping file corruption validation''',
+      );
+      return true;
+    }
+
+    return checksumChecker.checkFile(file, checksum!);
+  }
 
   Future<void> update() async {
     final request = http.Request('GET', Uri.parse(storageUrl));
@@ -189,7 +202,7 @@ allowed to access $storageUrl.''',
         );
       } else {
         logger.detail(
-          'No checksum provided for $fileName, skipping file corruption validation',
+          '''No checksum provided for $fileName, skipping file corruption validation''',
         );
       }
     }

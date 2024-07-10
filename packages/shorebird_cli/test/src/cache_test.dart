@@ -338,4 +338,112 @@ void main() {
       });
     });
   });
+
+  group(CachedArtifact, () {
+    late Cache cache;
+    late ChecksumChecker checksumChecker;
+    late ShorebirdLogger logger;
+    late Platform platform;
+    late _TestCachedArtifact cachedArtifact;
+
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        () => body(),
+        values: {
+          checksumCheckerRef.overrideWith(() => checksumChecker),
+          loggerRef.overrideWith(() => logger),
+        },
+      );
+    }
+
+    setUpAll(() {
+      registerFallbackValue(File(''));
+    });
+
+    setUp(() {
+      cache = MockCache();
+      checksumChecker = MockChecksumChecker();
+      logger = MockShorebirdLogger();
+      platform = MockPlatform();
+      cachedArtifact = _TestCachedArtifact(cache: cache, platform: platform);
+    });
+
+    group('isValid', () {
+      group('when the artifact file does not exist', () {
+        test('returns false', () async {
+          expect(await runWithOverrides(cachedArtifact.isValid), isFalse);
+        });
+      });
+
+      group('when the artifact file exists', () {
+        setUp(() {
+          cachedArtifact.file.createSync(recursive: true);
+        });
+
+        group('when there is no expected checksum', () {
+          setUp(() {
+            cachedArtifact.checksumOverride = null;
+          });
+
+          test('returns true', () async {
+            expect(await runWithOverrides(cachedArtifact.isValid), isTrue);
+          });
+        });
+
+        group('when there is an expected checksum', () {
+          setUp(() {
+            cachedArtifact.checksumOverride = 'some-checksum';
+          });
+
+          group('when the checksum matches', () {
+            setUp(() {
+              when(() => checksumChecker.checkFile(any(), any()))
+                  .thenReturn(true);
+            });
+
+            test('returns true', () async {
+              expect(await runWithOverrides(cachedArtifact.isValid), isTrue);
+            });
+          });
+
+          group('when the checksum does not match', () {
+            setUp(() {
+              when(() => checksumChecker.checkFile(any(), any()))
+                  .thenReturn(false);
+            });
+
+            test('returns false', () async {
+              expect(
+                await runWithOverrides(cachedArtifact.isValid),
+                isFalse,
+              );
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+class _TestCachedArtifact extends CachedArtifact {
+  _TestCachedArtifact({required super.cache, required super.platform});
+
+  String? checksumOverride;
+
+  @override
+  String? get checksum => checksumOverride;
+
+  final Directory _location = Directory.systemTemp.createTempSync();
+
+  @override
+  bool get isExecutable => throw UnimplementedError();
+
+  @override
+  String get fileName => 'test_artifact.exe';
+
+  @override
+  File get file => File(p.join(_location.path, fileName));
+
+  @override
+  String get storageUrl => throw UnimplementedError();
 }
