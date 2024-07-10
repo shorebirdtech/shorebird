@@ -19,6 +19,7 @@ void main() {
     const appId = 'app-id';
     const releaseVersion = '1.0.0';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
+    const flutterVersion = '3.22.0';
     const releasePlatform = ReleasePlatform.android;
     const shorebirdYaml = ShorebirdYaml(appId: appId);
     final stableChannel = Channel(
@@ -31,6 +32,7 @@ void main() {
       appId: appId,
       version: releaseVersion,
       flutterRevision: flutterRevision,
+      flutterVersion: flutterVersion,
       displayName: '1.2.3+1',
       platformStatuses: {releasePlatform: ReleaseStatus.active},
       createdAt: DateTime(2023),
