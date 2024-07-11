@@ -65,6 +65,7 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(ChecksumAlgorithm.sha256);
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(FakeBaseRequest());
@@ -109,7 +110,13 @@ void main() {
           HttpStatus.ok,
         ),
       );
-      when(() => checksumChecker.checkFile(any(), any())).thenReturn(true);
+      when(
+        () => checksumChecker.checkFile(
+          any(),
+          checksum: any(named: 'checksum'),
+          algorithm: any(named: 'algorithm'),
+        ),
+      ).thenReturn(true);
 
       cache = runWithOverrides(Cache.new);
     });
@@ -278,9 +285,15 @@ void main() {
 
         group('when checksum validation fails', () {
           setUp(() {
-            when(() => checksumChecker.checkFile(any(), any()))
-                .thenReturn(false);
+            when(
+              () => checksumChecker.checkFile(
+                any(),
+                checksum: any(named: 'checksum'),
+                algorithm: any(named: 'algorithm'),
+              ),
+            ).thenReturn(false);
           });
+
           test('fails with the correct message', () async {
             await expectLater(
               () => runWithOverrides(cache.updateAll),
@@ -427,8 +440,13 @@ void main() {
 
           group('when the checksum matches', () {
             setUp(() {
-              when(() => checksumChecker.checkFile(any(), any()))
-                  .thenReturn(true);
+              when(
+                () => checksumChecker.checkFile(
+                  any(),
+                  checksum: any(named: 'checksum'),
+                  algorithm: any(named: 'algorithm'),
+                ),
+              ).thenReturn(true);
             });
 
             test('returns true', () async {
@@ -438,8 +456,13 @@ void main() {
 
           group('when the checksum does not match', () {
             setUp(() {
-              when(() => checksumChecker.checkFile(any(), any()))
-                  .thenReturn(false);
+              when(
+                () => checksumChecker.checkFile(
+                  any(),
+                  checksum: any(named: 'checksum'),
+                  algorithm: any(named: 'algorithm'),
+                ),
+              ).thenReturn(false);
             });
 
             test('returns false', () async {
@@ -461,7 +484,7 @@ class _TestCachedArtifact extends CachedArtifact {
   String? checksumOverride;
 
   @override
-  String? get checksum => checksumOverride;
+  String? get sha256Checksum => checksumOverride;
 
   final Directory _location = Directory.systemTemp.createTempSync();
 

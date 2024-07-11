@@ -16,6 +16,7 @@ dependencies:
   cli_completion: ^0.5.0
   cli_util: ^0.4.1
   collection: ^1.18.0
+  crclib: ^3.0.0
   crypto: ^3.0.3
   googleapis_auth: ^1.6.0
   http: ^1.2.1

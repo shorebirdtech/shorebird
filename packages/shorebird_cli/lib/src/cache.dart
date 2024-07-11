@@ -2,6 +2,7 @@
 
 import 'dart:io' hide Platform;
 
+import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
@@ -146,13 +147,7 @@ abstract class CachedArtifact {
   ///
   /// When null, the checksum is not verified and the downloaded artifact
   /// is assumed to be correct.
-  String? get checksum;
-
-  Future<void> extractArtifact(http.ByteStream stream, String outputPath) {
-    final file = File(p.join(outputPath, fileName))
-      ..createSync(recursive: true);
-    return stream.pipe(file.openWrite());
-  }
+  String? get sha256Checksum;
 
   File get file =>
       File(p.join(cache.getArtifactDirectory(fileName).path, fileName));
@@ -162,17 +157,43 @@ abstract class CachedArtifact {
       return false;
     }
 
-    if (checksum == null) {
+    final expectedChecksum = sha256Checksum;
+    if (expectedChecksum == null) {
       logger.detail(
         '''No checksum provided for $fileName, skipping file corruption validation''',
       );
       return true;
     }
 
-    return checksumChecker.checkFile(file, checksum!);
+    return checksumChecker.checkFile(
+      file,
+      checksum: expectedChecksum,
+      algorithm: ChecksumAlgorithm.sha256,
+    );
   }
 
   Future<void> update() async {
+    try {
+      await _downloadIfNeeded();
+
+      if (!platform.isWindows && isExecutable) {
+        final result = await process.start('chmod', ['+x', file.path]);
+        await result.exitCode;
+      }
+    } catch (e) {
+      // Delete the location, so if the download is retried, it will be
+      // re-downloaded.
+      final artifactDirectory = Directory(p.dirname(file.path));
+      if (artifactDirectory.existsSync()) {
+        artifactDirectory.deleteSync(recursive: true);
+      }
+      rethrow;
+    }
+  }
+
+  /// Downloads the file from [storageUrl] to a temp location, validates the
+  /// checksum, and moves the file to the final location.
+  Future<void> _downloadIfNeeded() async {
     final request = http.Request('GET', Uri.parse(storageUrl));
     final http.StreamedResponse response;
     try {
@@ -199,29 +220,67 @@ allowed to access $storageUrl.''',
       );
     }
 
-    final artifactDirectory = Directory(p.dirname(file.path));
-    await extractArtifact(response.stream, artifactDirectory.path);
+    final isZip =
+        response.headers[HttpHeaders.contentTypeHeader] == 'application/zip';
+    final tempDirectory = Directory.systemTemp.createTempSync();
+    final tempFile = File(
+      p.join(tempDirectory.path, '$fileName${isZip ? '.zip' : ''}'),
+    );
+    await response.stream.pipe(tempFile.openWrite());
 
-    final expectedChecksum = checksum;
-    if (expectedChecksum != null) {
-      if (!checksumChecker.checkFile(file, expectedChecksum)) {
-        // Delete the artifact directory, so if the download is retried, it will
-        // be re-downloaded.
-        artifactDirectory.deleteSync(recursive: true);
-        throw CacheUpdateFailure(
-          '''Failed to download $fileName: checksum mismatch''',
-        );
-      } else {
-        logger.detail(
-          '''No checksum provided for $fileName, skipping file corruption validation''',
-        );
-      }
+    _verifyChecksum(file: tempFile, responseHeaders: response.headers);
+
+    // Create the directory containing the artifact if it does not already
+    // exist. Failing to do this will cause [renameSync] to throw an exception.
+    Directory(p.dirname(file.path)).createSync(recursive: true);
+
+    if (isZip) {
+      final unzipDirectory = Directory(p.join(tempDirectory.path, fileName));
+      await artifactManager.extractZip(
+        zipFile: tempFile,
+        outputDirectory: unzipDirectory,
+      );
+      unzipDirectory.renameSync(p.dirname(file.path));
+    } else {
+      tempFile.renameSync(file.path);
+    }
+  }
+
+  void _verifyChecksum({
+    required File file,
+    required Map<String, String> responseHeaders,
+  }) {
+    final String expectedChecksum;
+    final ChecksumAlgorithm algorithm;
+    if (sha256Checksum != null) {
+      expectedChecksum = sha256Checksum!;
+      algorithm = ChecksumAlgorithm.sha256;
+    } else if (_gcpCrc32cChecksum(responseHeaders: responseHeaders) != null) {
+      expectedChecksum = _gcpCrc32cChecksum(responseHeaders: responseHeaders)!;
+      algorithm = ChecksumAlgorithm.crc32c;
+    } else {
+      return;
     }
 
-    if (!platform.isWindows && isExecutable) {
-      final result = await process.start('chmod', ['+x', file.path]);
-      await result.exitCode;
+    final isChecksumValid = checksumChecker.checkFile(
+      file,
+      checksum: expectedChecksum,
+      algorithm: algorithm,
+    );
+    if (!isChecksumValid) {
+      throw CacheUpdateFailure(
+        '''Failed to download $fileName: checksum mismatch''',
+      );
     }
+  }
+
+  String? _gcpCrc32cChecksum({required Map<String, String> responseHeaders}) {
+    return responseHeaders['x-goog-hash']
+        ?.split(',')
+        .firstWhereOrNull(
+          (header) => header.startsWith('crc32c='),
+        )
+        ?.replaceAll('crc32c=', '');
   }
 }
 
@@ -235,6 +294,8 @@ class AotToolsArtifact extends CachedArtifact {
   bool get isExecutable => false;
 
   /// The aot-tools are only available for revisions that support mixed-mode.
+  /// Although this artifact is only used for iOS, it will be updated by
+  /// [cache.updateAll()].
   @override
   bool get required => false;
 
@@ -252,7 +313,7 @@ class AotToolsArtifact extends CachedArtifact {
       '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$fileName';
 
   @override
-  String? get checksum => null;
+  String? get sha256Checksum => null;
 }
 
 class PatchArtifact extends CachedArtifact {
@@ -263,20 +324,6 @@ class PatchArtifact extends CachedArtifact {
 
   @override
   bool get isExecutable => true;
-
-  @override
-  Future<void> extractArtifact(
-    http.ByteStream stream,
-    String outputPath,
-  ) async {
-    final tempDir = Directory.systemTemp.createTempSync();
-    final artifactPath = p.join(tempDir.path, '$fileName.zip');
-    await stream.pipe(File(artifactPath).openWrite());
-    await artifactManager.extractZip(
-      zipFile: File(artifactPath),
-      outputDirectory: Directory(outputPath),
-    );
-  }
 
   @override
   String get storageUrl {
@@ -293,7 +340,7 @@ class PatchArtifact extends CachedArtifact {
   }
 
   @override
-  String? get checksum => null;
+  String? get sha256Checksum => null;
 }
 
 class BundleToolArtifact extends CachedArtifact {
@@ -311,12 +358,17 @@ class BundleToolArtifact extends CachedArtifact {
   }
 
   @override
-  String? get checksum =>
+  String? get sha256Checksum =>
       // SHA-256 checksum of the bundletool.jar file.
       // When updating the bundletool version, be sure to update this checksum.
       // This can be done by running the following command:
       // ```shell
       // shasum --algorithm 256 /path/to/file
       // ```
+      // TODO(bryanoltman): github includes `content-md5` in the response
+      // headers. There are tradeoffs to consider, but getting the checksum
+      // from the response header would be more consistent with how we handle
+      // GCP artifacts and would avoid the need to update this checksum
+      // manually.
       '''38ae8a10bcdacef07ecce8211188c5c92b376be96da38ff3ee1f2cf4895b2cb8''';
 }
