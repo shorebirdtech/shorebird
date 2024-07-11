@@ -1686,7 +1686,7 @@ void main() {
             id: 0,
             number: 1,
             channel: 'stable',
-            artifacts: [],
+            artifacts: const [],
           );
           response = GetReleasePatchesResponse(patches: [patch]);
           when(() => httpClient.send(any())).thenAnswer(
