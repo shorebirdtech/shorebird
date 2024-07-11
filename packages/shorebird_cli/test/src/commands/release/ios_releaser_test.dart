@@ -758,19 +758,24 @@ To change the version of this release, change your app's version in your pubspec
       });
 
       group('releaseMetadata', () {
+        const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
         const operatingSystem = 'macOS';
         const operatingSystemVersion = '11.0.0';
         const xcodeVersion = '123';
         const flutterVersionOverride = '1.2.3';
 
         setUp(() {
+          when(
+            () => argResults['flutter-version'],
+          ).thenReturn(flutterVersionOverride);
           when(() => platform.operatingSystem).thenReturn(operatingSystem);
-          when(() => platform.operatingSystemVersion)
-              .thenReturn(operatingSystemVersion);
-          when(() => xcodeBuild.version())
-              .thenAnswer((_) async => xcodeVersion);
-          when(() => argResults['flutter-version'])
-              .thenReturn(flutterVersionOverride);
+          when(
+            () => platform.operatingSystemVersion,
+          ).thenReturn(operatingSystemVersion);
+          when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+          when(
+            () => xcodeBuild.version(),
+          ).thenAnswer((_) async => xcodeVersion);
         });
 
         test('returns expected metadata', () async {
@@ -781,6 +786,7 @@ To change the version of this release, change your app's version in your pubspec
               flutterVersionOverride: flutterVersionOverride,
               generatedApks: false,
               environment: BuildEnvironmentMetadata(
+                flutterRevision: flutterRevision,
                 operatingSystem: operatingSystem,
                 operatingSystemVersion: operatingSystemVersion,
                 shorebirdVersion: packageVersion,

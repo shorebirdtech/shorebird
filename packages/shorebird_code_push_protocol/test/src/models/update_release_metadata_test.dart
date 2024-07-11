@@ -9,6 +9,7 @@ void main() {
         flutterVersionOverride: '1.2.3',
         generatedApks: false,
         environment: BuildEnvironmentMetadata(
+          flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
@@ -28,6 +29,7 @@ void main() {
           flutterVersionOverride: '1.2.3',
           generatedApks: false,
           environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
@@ -39,6 +41,7 @@ void main() {
           flutterVersionOverride: '1.2.3',
           generatedApks: false,
           environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
@@ -54,6 +57,7 @@ void main() {
           flutterVersionOverride: '1.2.3',
           generatedApks: false,
           environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
@@ -65,6 +69,7 @@ void main() {
           flutterVersionOverride: '1.2.4',
           generatedApks: false,
           environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',

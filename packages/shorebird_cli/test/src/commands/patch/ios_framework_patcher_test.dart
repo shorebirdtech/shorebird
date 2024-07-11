@@ -822,6 +822,7 @@ void main() {
       group('createPatchMetadata', () {
         const allowAssetDiffs = false;
         const allowNativeDiffs = true;
+        const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
         const operatingSystem = 'Mac OS X';
         const operatingSystemVersion = '10.15.7';
         const xcodeVersion = '11';
@@ -837,7 +838,7 @@ void main() {
           when(
             () => platform.operatingSystemVersion,
           ).thenReturn(operatingSystemVersion);
-
+          when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
           when(
             () => xcodeBuild.version(),
           ).thenAnswer((_) async => xcodeVersion);
@@ -865,6 +866,7 @@ void main() {
                   hasNativeChanges: diffStatus.hasNativeChanges,
                   linkPercentage: null,
                   environment: const BuildEnvironmentMetadata(
+                    flutterRevision: flutterRevision,
                     operatingSystem: operatingSystem,
                     operatingSystemVersion: operatingSystemVersion,
                     shorebirdVersion: packageVersion,
@@ -904,6 +906,7 @@ void main() {
                   hasNativeChanges: diffStatus.hasNativeChanges,
                   linkPercentage: linkPercentage,
                   environment: const BuildEnvironmentMetadata(
+                    flutterRevision: flutterRevision,
                     operatingSystem: operatingSystem,
                     operatingSystemVersion: operatingSystemVersion,
                     shorebirdVersion: packageVersion,

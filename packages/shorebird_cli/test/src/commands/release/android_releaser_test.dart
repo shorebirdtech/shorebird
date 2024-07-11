@@ -648,13 +648,16 @@ To change the version of this release, change your app's version in your pubspec
     });
 
     group('releaseMetadata', () {
+      const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
       const operatingSystem = 'macos';
       const operatingSystemVersion = '11.0.0';
 
       setUp(() {
         when(() => platform.operatingSystem).thenReturn(operatingSystem);
-        when(() => platform.operatingSystemVersion)
-            .thenReturn(operatingSystemVersion);
+        when(
+          () => platform.operatingSystemVersion,
+        ).thenReturn(operatingSystemVersion);
+        when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       });
 
       group('when an apk is generated', () {
@@ -670,6 +673,7 @@ To change the version of this release, change your app's version in your pubspec
               flutterVersionOverride: null,
               generatedApks: true,
               environment: BuildEnvironmentMetadata(
+                flutterRevision: flutterRevision,
                 operatingSystem: operatingSystem,
                 operatingSystemVersion: operatingSystemVersion,
                 shorebirdVersion: packageVersion,
@@ -693,6 +697,7 @@ To change the version of this release, change your app's version in your pubspec
               flutterVersionOverride: null,
               generatedApks: false,
               environment: BuildEnvironmentMetadata(
+                flutterRevision: flutterRevision,
                 operatingSystem: operatingSystem,
                 operatingSystemVersion: operatingSystemVersion,
                 shorebirdVersion: packageVersion,

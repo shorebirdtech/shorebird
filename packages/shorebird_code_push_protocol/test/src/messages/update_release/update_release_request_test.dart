@@ -12,6 +12,7 @@ void main() {
           flutterVersionOverride: null,
           generatedApks: null,
           environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '11.1',
             shorebirdVersion: '1.2.3',

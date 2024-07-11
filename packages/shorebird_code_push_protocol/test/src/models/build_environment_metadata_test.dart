@@ -6,6 +6,7 @@ void main() {
   group(BuildEnvironmentMetadata, () {
     test('can be (de)serialized', () {
       const metadata = BuildEnvironmentMetadata(
+        flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
         operatingSystem: 'macos',
         operatingSystemVersion: '1.2.3',
         shorebirdVersion: '4.5.6',
@@ -20,12 +21,14 @@ void main() {
     group('equatable', () {
       test('two metadatas with the same properties are equal', () {
         const metadata = BuildEnvironmentMetadata(
+          flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
           xcodeVersion: '15.0',
         );
         const otherMetadata = BuildEnvironmentMetadata(
+          flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
@@ -36,12 +39,14 @@ void main() {
 
       test('two metadatas with different properties are not equal', () {
         const metadata = BuildEnvironmentMetadata(
+          flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
           xcodeVersion: '15.0',
         );
         const otherMetadata = BuildEnvironmentMetadata(
+          flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',

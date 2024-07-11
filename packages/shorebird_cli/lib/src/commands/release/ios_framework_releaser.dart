@@ -154,6 +154,7 @@ Instructions for these steps can be found at https://docs.flutter.dev/add-to-app
         flutterVersionOverride: argResults['flutter-version'] as String?,
         generatedApks: false,
         environment: BuildEnvironmentMetadata(
+          flutterRevision: shorebirdEnv.flutterRevision,
           operatingSystem: platform.operatingSystem,
           operatingSystemVersion: platform.operatingSystemVersion,
           shorebirdVersion: packageVersion,

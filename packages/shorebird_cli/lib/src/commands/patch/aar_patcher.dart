@@ -191,6 +191,7 @@ class AarPatcher extends Patcher {
       hasNativeChanges: diffStatus.hasNativeChanges,
       linkPercentage: null,
       environment: BuildEnvironmentMetadata(
+        flutterRevision: shorebirdEnv.flutterRevision,
         operatingSystem: platform.operatingSystem,
         operatingSystemVersion: platform.operatingSystemVersion,
         shorebirdVersion: packageVersion,
