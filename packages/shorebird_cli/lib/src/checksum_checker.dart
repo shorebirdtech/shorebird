@@ -45,7 +45,7 @@ class ChecksumChecker {
   /// [checksum] can be computed locally by running the following in the
   /// terminal:
   ///
-  ///   gcloud-crc32c /path/to/file | base64
+  ///   gcloud-crc32c -e /path/to/file
   ///
   bool _checkCrc32c(File file, String checksum) {
     logger.detail('checking CRC for ${file.path} against $checksum');

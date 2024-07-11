@@ -174,7 +174,30 @@ abstract class CachedArtifact {
 
   Future<void> update() async {
     try {
-      await _downloadIfNeeded();
+      final response = await _makeDownloadRequest();
+      final tempFile = await _downloadFile(response);
+
+      final isZip =
+          response.headers[HttpHeaders.contentTypeHeader] == 'application/zip';
+
+      _verifyChecksum(file: tempFile, responseHeaders: response.headers);
+
+      // Create the directory containing the artifact if it does not already
+      // exist. Failing to do this will cause [renameSync] to throw an exception.
+      Directory(p.dirname(file.path)).createSync(recursive: true);
+
+      if (isZip) {
+        final unzipDirectory = Directory(
+          p.join(p.dirname(tempFile.path), fileName),
+        );
+        await artifactManager.extractZip(
+          zipFile: tempFile,
+          outputDirectory: unzipDirectory,
+        );
+        unzipDirectory.renameSync(p.dirname(file.path));
+      } else {
+        tempFile.renameSync(file.path);
+      }
 
       if (!platform.isWindows && isExecutable) {
         final result = await process.start('chmod', ['+x', file.path]);
@@ -191,9 +214,7 @@ abstract class CachedArtifact {
     }
   }
 
-  /// Downloads the file from [storageUrl] to a temp location, validates the
-  /// checksum, and moves the file to the final location.
-  Future<void> _downloadIfNeeded() async {
+  Future<http.StreamedResponse> _makeDownloadRequest() async {
     final request = http.Request('GET', Uri.parse(storageUrl));
     final http.StreamedResponse response;
     try {
@@ -212,7 +233,7 @@ allowed to access $storageUrl.''',
         logger.detail(
           '[cache] optional artifact: "$fileName" was not found, skipping...',
         );
-        return;
+        return response;
       }
 
       throw CacheUpdateFailure(
@@ -220,6 +241,10 @@ allowed to access $storageUrl.''',
       );
     }
 
+    return response;
+  }
+
+  Future<File> _downloadFile(http.StreamedResponse response) async {
     final isZip =
         response.headers[HttpHeaders.contentTypeHeader] == 'application/zip';
     final tempDirectory = Directory.systemTemp.createTempSync();
@@ -227,23 +252,7 @@ allowed to access $storageUrl.''',
       p.join(tempDirectory.path, '$fileName${isZip ? '.zip' : ''}'),
     );
     await response.stream.pipe(tempFile.openWrite());
-
-    _verifyChecksum(file: tempFile, responseHeaders: response.headers);
-
-    // Create the directory containing the artifact if it does not already
-    // exist. Failing to do this will cause [renameSync] to throw an exception.
-    Directory(p.dirname(file.path)).createSync(recursive: true);
-
-    if (isZip) {
-      final unzipDirectory = Directory(p.join(tempDirectory.path, fileName));
-      await artifactManager.extractZip(
-        zipFile: tempFile,
-        outputDirectory: unzipDirectory,
-      );
-      unzipDirectory.renameSync(p.dirname(file.path));
-    } else {
-      tempFile.renameSync(file.path);
-    }
+    return tempFile;
   }
 
   void _verifyChecksum({
