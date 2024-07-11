@@ -49,7 +49,7 @@ class Cache {
   Cache() {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
-    registerArtifact(AotToolsDillArtifact(cache: this, platform: platform));
+    registerArtifact(AotToolsArtifact(cache: this, platform: platform));
   }
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
@@ -225,8 +225,8 @@ allowed to access $storageUrl.''',
   }
 }
 
-class AotToolsDillArtifact extends CachedArtifact {
-  AotToolsDillArtifact({required super.cache, required super.platform});
+class AotToolsArtifact extends CachedArtifact {
+  AotToolsArtifact({required super.cache, required super.platform});
 
   @override
   String get fileName => 'aot-tools.dill';
