@@ -219,6 +219,31 @@ void main() {
         });
       });
 
+      group('when artifact is downloaded as a zip file', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(ZipEncoder().encode(Archive())!),
+              HttpStatus.ok,
+              headers: {
+                HttpHeaders.contentTypeHeader: 'application/zip',
+              },
+            ),
+          );
+        });
+
+        test('extracts the zip file', () async {
+          await runWithOverrides(cache.updateAll);
+
+          verify(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).called(3); // once per artifact
+        });
+      });
+
       group('when an exception happens', () {
         const exception = SocketException('test');
 
