@@ -138,6 +138,10 @@ abstract class CachedArtifact {
   /// The URL from which the artifact can be downloaded.
   String get storageUrl;
 
+  /// Whether the artifact is required for Shorebird to function.
+  /// If we fail to fetch it we will exit with an error.
+  bool get required => true;
+
   /// The SHA256 checksum of the artifact binary.
   ///
   /// When null, the checksum is not verified and the downloaded artifact
@@ -183,6 +187,13 @@ allowed to access $storageUrl.''',
     }
 
     if (response.statusCode != HttpStatus.ok) {
+      if (!required && response.statusCode == HttpStatus.notFound) {
+        logger.detail(
+          '[cache] optional artifact: "$fileName" was not found, skipping...',
+        );
+        return;
+      }
+
       throw CacheUpdateFailure(
         '''Failed to download $fileName: ${response.statusCode} ${response.reasonPhrase}''',
       );
@@ -194,8 +205,8 @@ allowed to access $storageUrl.''',
     final expectedChecksum = checksum;
     if (expectedChecksum != null) {
       if (!checksumChecker.checkFile(file, expectedChecksum)) {
-        // Delete the location, so if the download is retried, it will be
-        // re-downloaded.
+        // Delete the artifact directory, so if the download is retried, it will
+        // be re-downloaded.
         artifactDirectory.deleteSync(recursive: true);
         throw CacheUpdateFailure(
           '''Failed to download $fileName: checksum mismatch''',
@@ -208,10 +219,7 @@ allowed to access $storageUrl.''',
     }
 
     if (!platform.isWindows && isExecutable) {
-      final result = await process.start(
-        'chmod',
-        ['+x', file.path],
-      );
+      final result = await process.start('chmod', ['+x', file.path]);
       await result.exitCode;
     }
   }
@@ -225,6 +233,10 @@ class AotToolsArtifact extends CachedArtifact {
 
   @override
   bool get isExecutable => false;
+
+  /// The aot-tools are only available for revisions that support mixed-mode.
+  @override
+  bool get required => false;
 
   @override
   File get file => File(
