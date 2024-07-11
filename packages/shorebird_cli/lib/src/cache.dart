@@ -154,8 +154,6 @@ abstract class CachedArtifact {
     return stream.pipe(file.openWrite());
   }
 
-  Directory get location => cache.getArtifactDirectory(fileName);
-
   File get file =>
       File(p.join(cache.getArtifactDirectory(fileName).path, fileName));
 
@@ -201,16 +199,15 @@ allowed to access $storageUrl.''',
       );
     }
 
-    await extractArtifact(response.stream, location.path);
+    final artifactDirectory = Directory(p.dirname(file.path));
+    await extractArtifact(response.stream, artifactDirectory.path);
 
     final expectedChecksum = checksum;
     if (expectedChecksum != null) {
-      final artifactFile = File(p.join(location.path, fileName));
-
-      if (!checksumChecker.checkFile(artifactFile, expectedChecksum)) {
-        // Delete the location, so if the download is retried, it will be
-        // re-downloaded.
-        location.deleteSync(recursive: true);
+      if (!checksumChecker.checkFile(file, expectedChecksum)) {
+        // Delete the artifact directory, so if the download is retried, it will
+        // be re-downloaded.
+        artifactDirectory.deleteSync(recursive: true);
         throw CacheUpdateFailure(
           '''Failed to download $fileName: checksum mismatch''',
         );
@@ -222,10 +219,7 @@ allowed to access $storageUrl.''',
     }
 
     if (!platform.isWindows && isExecutable) {
-      final result = await process.start(
-        'chmod',
-        ['+x', p.join(location.path, fileName)],
-      );
+      final result = await process.start('chmod', ['+x', file.path]);
       await result.exitCode;
     }
   }
@@ -245,10 +239,11 @@ class AotToolsDillArtifact extends CachedArtifact {
   bool get required => false;
 
   @override
-  Directory get location => Directory(
+  File get file => File(
         p.join(
           cache.getArtifactDirectory(fileName).path,
           shorebirdEnv.shorebirdEngineRevision,
+          fileName,
         ),
       );
 
