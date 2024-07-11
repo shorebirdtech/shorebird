@@ -222,12 +222,7 @@ void main() {
       group('when artifact is downloaded as a zip file', () {
         setUp(() {
           when(
-            () => httpClient.send(
-              any(
-                that: isA<http.Request>()
-                    .having((r) => r.url.path, 'url', endsWith('.zip')),
-              ),
-            ),
+            () => httpClient.send(any()),
           ).thenAnswer(
             (_) async => http.StreamedResponse(
               Stream.value(ZipEncoder().encode(Archive())!),
@@ -247,9 +242,29 @@ void main() {
               zipFile: any(named: 'zipFile'),
               outputDirectory: any(named: 'outputDirectory'),
             ),
-          ).called(
-            // We currently only have one artifact stored as a zip file
-            1,
+          ).called(3);
+
+          expect(
+            runWithOverrides(
+              () => PatchArtifact(cache: cache, platform: platform).file.parent,
+            ).existsSync(),
+            isTrue,
+          );
+          expect(
+            runWithOverrides(
+              () => AotToolsArtifact(cache: cache, platform: platform)
+                  .file
+                  .parent,
+            ).existsSync(),
+            isTrue,
+          );
+          expect(
+            runWithOverrides(
+              () => BundleToolArtifact(cache: cache, platform: platform)
+                  .file
+                  .parent,
+            ).existsSync(),
+            isTrue,
           );
         });
       });

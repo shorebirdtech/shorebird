@@ -4,6 +4,7 @@ import 'dart:io' hide Platform;
 
 import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
+import 'package:io/io.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:retry/retry.dart';
@@ -186,7 +187,10 @@ abstract class CachedArtifact {
 
       _verifyChecksum(file: tempFile, responseHeaders: response.headers);
 
-      final parentDirectory = file.parent;
+      // Create the directory containing the artifact if it does not already
+      // exist. Failing to do this will cause [renameSync] to throw an
+      // exception.
+      final parentDirectory = file.parent..createSync(recursive: true);
       if (isZip) {
         final unzipDirectory = Directory(
           p.join(p.dirname(tempFile.path), fileName),
@@ -195,12 +199,8 @@ abstract class CachedArtifact {
           zipFile: tempFile,
           outputDirectory: unzipDirectory,
         );
-        unzipDirectory.renameSync(parentDirectory.path);
+        await copyPath(unzipDirectory.path, parentDirectory.path);
       } else {
-        // Create the directory containing the artifact if it does not already
-        // exist. Failing to do this will cause [renameSync] to throw an
-        // exception.
-        parentDirectory.createSync(recursive: true);
         tempFile.renameSync(file.path);
       }
 
