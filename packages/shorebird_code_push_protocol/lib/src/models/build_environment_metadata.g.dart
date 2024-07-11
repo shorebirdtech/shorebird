@@ -15,6 +15,8 @@ BuildEnvironmentMetadata _$BuildEnvironmentMetadataFromJson(
       json,
       ($checkedConvert) {
         final val = BuildEnvironmentMetadata(
+          flutterRevision:
+              $checkedConvert('flutter_revision', (v) => v as String),
           shorebirdVersion:
               $checkedConvert('shorebird_version', (v) => v as String),
           operatingSystem:
@@ -26,6 +28,7 @@ BuildEnvironmentMetadata _$BuildEnvironmentMetadataFromJson(
         return val;
       },
       fieldKeyMap: const {
+        'flutterRevision': 'flutter_revision',
         'shorebirdVersion': 'shorebird_version',
         'operatingSystem': 'operating_system',
         'operatingSystemVersion': 'operating_system_version',
@@ -36,6 +39,7 @@ BuildEnvironmentMetadata _$BuildEnvironmentMetadataFromJson(
 Map<String, dynamic> _$BuildEnvironmentMetadataToJson(
         BuildEnvironmentMetadata instance) =>
     <String, dynamic>{
+      'flutter_revision': instance.flutterRevision,
       'shorebird_version': instance.shorebirdVersion,
       'operating_system': instance.operatingSystem,
       'operating_system_version': instance.operatingSystemVersion,

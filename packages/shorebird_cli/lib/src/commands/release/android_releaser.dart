@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -193,6 +194,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         flutterVersionOverride: argResults['flutter-version'] as String?,
         generatedApks: generateApk,
         environment: BuildEnvironmentMetadata(
+          flutterRevision: shorebirdEnv.flutterRevision,
           operatingSystem: platform.operatingSystem,
           operatingSystemVersion: platform.operatingSystemVersion,
           shorebirdVersion: packageVersion,

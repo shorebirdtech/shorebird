@@ -237,6 +237,7 @@ class IosFrameworkPatcher extends Patcher {
       hasNativeChanges: diffStatus.hasNativeChanges,
       linkPercentage: lastBuildLinkPercentage,
       environment: BuildEnvironmentMetadata(
+        flutterRevision: shorebirdEnv.flutterRevision,
         operatingSystem: platform.operatingSystem,
         operatingSystemVersion: platform.operatingSystemVersion,
         shorebirdVersion: packageVersion,

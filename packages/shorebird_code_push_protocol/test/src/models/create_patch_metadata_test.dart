@@ -12,6 +12,7 @@ void main() {
         hasNativeChanges: false,
         linkPercentage: 99.9,
         environment: BuildEnvironmentMetadata(
+          flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
@@ -34,6 +35,7 @@ void main() {
           hasNativeChanges: false,
           linkPercentage: 99.9,
           environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
@@ -48,6 +50,7 @@ void main() {
           hasNativeChanges: false,
           linkPercentage: 99.9,
           environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
@@ -66,6 +69,7 @@ void main() {
           hasNativeChanges: false,
           linkPercentage: null,
           environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
@@ -80,6 +84,7 @@ void main() {
           hasNativeChanges: false,
           linkPercentage: null,
           environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',

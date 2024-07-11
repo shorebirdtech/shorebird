@@ -17,6 +17,7 @@ part 'build_environment_metadata.g.dart';
 class BuildEnvironmentMetadata extends Equatable {
   /// {@macro build_environment_metadata}
   const BuildEnvironmentMetadata({
+    required this.flutterRevision,
     required this.shorebirdVersion,
     required this.operatingSystem,
     required this.operatingSystemVersion,
@@ -27,12 +28,14 @@ class BuildEnvironmentMetadata extends Equatable {
   /// Creates a [BuildEnvironmentMetadata] with overridable default values for
   /// testing purposes.
   factory BuildEnvironmentMetadata.forTest({
+    String flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
     String shorebirdVersion = '4.5.6',
     String operatingSystem = 'macos',
     String operatingSystemVersion = '1.2.3',
     String? xcodeVersion = '15.0',
   }) =>
       BuildEnvironmentMetadata(
+        flutterRevision: flutterRevision,
         shorebirdVersion: shorebirdVersion,
         operatingSystem: operatingSystem,
         operatingSystemVersion: operatingSystemVersion,
@@ -46,6 +49,12 @@ class BuildEnvironmentMetadata extends Equatable {
 
   /// Converts a [BuildEnvironmentMetadata] to a Map<String, dynamic>
   Map<String, dynamic> toJson() => _$BuildEnvironmentMetadataToJson(this);
+
+  /// The revision of Flutter used to run the command.
+  ///
+  /// Reason: often times we want to track things like link percentage
+  /// which are tied to a flutter revision as opposed to a shorebird version.
+  final String flutterRevision;
 
   /// The version of Shorebird used to run the command.
   ///
@@ -74,6 +83,7 @@ class BuildEnvironmentMetadata extends Equatable {
 
   @override
   List<Object?> get props => [
+        flutterRevision,
         shorebirdVersion,
         operatingSystem,
         operatingSystemVersion,
