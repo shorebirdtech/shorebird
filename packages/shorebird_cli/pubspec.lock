@@ -606,7 +606,7 @@ packages:
       path: "../shorebird_code_push_client"
       relative: true
     source: path
-    version: "0.7.1+1"
+    version: "0.7.2+1"
   shorebird_code_push_protocol:
     dependency: "direct main"
     description:
