@@ -191,193 +191,219 @@ void main() {
     });
 
     group('updateAll', () {
-      group('patch', () {
-        group('when an exception happens', () {
-          test('throws CacheUpdateFailure', () async {
-            const exception = SocketException('test');
-            when(() => httpClient.send(any())).thenThrow(exception);
-            await expectLater(
-              runWithOverrides(cache.updateAll),
-              throwsA(
-                isA<CacheUpdateFailure>().having(
-                  (e) => e.message,
-                  'message',
-                  contains('Failed to download patch: $exception'),
-                ),
-              ),
-            );
-          });
-
-          test('retries and log', () async {
-            const exception = SocketException('test');
-            when(() => httpClient.send(any())).thenThrow(exception);
-
-            await expectLater(
-              runWithOverrides(cache.updateAll),
-              throwsA(
-                isA<CacheUpdateFailure>(),
-              ),
-            );
-
-            verify(() => logger.detail('Failed to update patch, retrying...'))
-                .called(2);
-          });
-        });
-
-        test('throws CacheUpdateFailure if a non-200 is returned', () async {
+      group('when a crc32c checksum is provided', () {
+        const crc32cChecksum = 'checksum';
+        const md5Checksum = 'md5-checksum';
+        setUp(() {
           when(() => httpClient.send(any())).thenAnswer(
             (_) async => http.StreamedResponse(
-              const Stream.empty(),
-              HttpStatus.notFound,
-              reasonPhrase: 'Not Found',
+              Stream.value(ZipEncoder().encode(Archive())!),
+              HttpStatus.ok,
+              headers: {
+                'x-goog-hash': 'crc32c=$crc32cChecksum,md5=$md5Checksum',
+              },
             ),
           );
+        });
+
+        test('verifies checksum', () async {
+          await runWithOverrides(cache.updateAll);
+
+          verify(
+            () => checksumChecker.checkFile(
+              any(),
+              checksum: crc32cChecksum,
+              algorithm: ChecksumAlgorithm.crc32c,
+            ),
+          ).called(2); // once per required artifact
+        });
+      });
+
+      group('when an exception happens', () {
+        test('throws CacheUpdateFailure', () async {
+          const exception = SocketException('test');
+          when(() => httpClient.send(any())).thenThrow(exception);
           await expectLater(
             runWithOverrides(cache.updateAll),
             throwsA(
               isA<CacheUpdateFailure>().having(
                 (e) => e.message,
                 'message',
-                contains('Failed to download patch: 404 Not Found'),
+                contains('Failed to download patch: $exception'),
               ),
             ),
           );
         });
 
-        test('skips optional artifacts if a 404 is returned', () async {
-          when(() => httpClient.send(any())).thenAnswer(
-            (invocation) async {
-              final request =
-                  invocation.positionalArguments.first as http.BaseRequest;
-              final fileName = p.basename(request.url.path);
-              if (fileName.startsWith('aot-tools')) {
-                return http.StreamedResponse(
-                  const Stream.empty(),
-                  HttpStatus.notFound,
-                  reasonPhrase: 'Not Found',
-                );
-              }
-              return http.StreamedResponse(
-                Stream.value(ZipEncoder().encode(Archive())!),
-                HttpStatus.ok,
-              );
-            },
-          );
+        test('retries and log', () async {
+          const exception = SocketException('test');
+          when(() => httpClient.send(any())).thenThrow(exception);
+
           await expectLater(
             runWithOverrides(cache.updateAll),
-            completes,
-          );
-          verify(
-            () => logger.detail(
-              '''[cache] optional artifact: "aot-tools.dill" was not found, skipping...''',
+            throwsA(
+              isA<CacheUpdateFailure>(),
             ),
-          ).called(1);
-        });
-
-        test('downloads correct artifacts', () async {
-          final patchArtifactDirectory = runWithOverrides(
-            () => cache.getArtifactDirectory('patch'),
           );
-          expect(patchArtifactDirectory.existsSync(), isFalse);
-          await expectLater(runWithOverrides(cache.updateAll), completes);
-          expect(patchArtifactDirectory.existsSync(), isTrue);
+
+          verify(() => logger.detail('Failed to update patch, retrying...'))
+              .called(2);
+        });
+      });
+
+      test('throws CacheUpdateFailure if a non-200 is returned', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.notFound,
+            reasonPhrase: 'Not Found',
+          ),
+        );
+        await expectLater(
+          runWithOverrides(cache.updateAll),
+          throwsA(
+            isA<CacheUpdateFailure>().having(
+              (e) => e.message,
+              'message',
+              contains('Failed to download patch: 404 Not Found'),
+            ),
+          ),
+        );
+      });
+
+      test('skips optional artifacts if a 404 is returned', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (invocation) async {
+            final request =
+                invocation.positionalArguments.first as http.BaseRequest;
+            final fileName = p.basename(request.url.path);
+            if (fileName.startsWith('aot-tools')) {
+              return http.StreamedResponse(
+                const Stream.empty(),
+                HttpStatus.notFound,
+                reasonPhrase: 'Not Found',
+              );
+            }
+            return http.StreamedResponse(
+              Stream.value(ZipEncoder().encode(Archive())!),
+              HttpStatus.ok,
+            );
+          },
+        );
+        await expectLater(
+          runWithOverrides(cache.updateAll),
+          completes,
+        );
+        verify(
+          () => logger.detail(
+            '''[cache] optional artifact: "aot-tools.dill" was not found, skipping...''',
+          ),
+        ).called(1);
+      });
+
+      test('downloads correct artifacts', () async {
+        final patchArtifactDirectory = runWithOverrides(
+          () => cache.getArtifactDirectory('patch'),
+        );
+        expect(patchArtifactDirectory.existsSync(), isFalse);
+        await expectLater(runWithOverrides(cache.updateAll), completes);
+        expect(patchArtifactDirectory.existsSync(), isTrue);
+      });
+
+      group('when checksum validation fails', () {
+        setUp(() {
+          when(
+            () => checksumChecker.checkFile(
+              any(),
+              checksum: any(named: 'checksum'),
+              algorithm: any(named: 'algorithm'),
+            ),
+          ).thenReturn(false);
         });
 
-        group('when checksum validation fails', () {
-          setUp(() {
-            when(
-              () => checksumChecker.checkFile(
-                any(),
-                checksum: any(named: 'checksum'),
-                algorithm: any(named: 'algorithm'),
-              ),
-            ).thenReturn(false);
-          });
-
-          test('fails with the correct message', () async {
-            await expectLater(
-              () => runWithOverrides(cache.updateAll),
-              throwsA(
-                isA<CacheUpdateFailure>().having(
-                  (e) => e.message,
-                  'message',
-                  contains(
-                    'Failed to download bundletool.jar: checksum mismatch',
-                  ),
+        test('fails with the correct message', () async {
+          await expectLater(
+            () => runWithOverrides(cache.updateAll),
+            throwsA(
+              isA<CacheUpdateFailure>().having(
+                (e) => e.message,
+                'message',
+                contains(
+                  'Failed to download bundletool.jar: checksum mismatch',
                 ),
               ),
-            );
-          });
+            ),
+          );
         });
+      });
 
-        test('pull correct artifact for MacOS', () async {
-          setMockPlatform(Platform.macOS);
+      test('pull correct artifact for MacOS', () async {
+        setMockPlatform(Platform.macOS);
 
-          await expectLater(runWithOverrides(cache.updateAll), completes);
+        await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          final requests = verify(() => httpClient.send(captureAny()))
-              .captured
-              .cast<http.BaseRequest>()
-              .map((r) => r.url)
-              .toList();
+        final requests = verify(() => httpClient.send(captureAny()))
+            .captured
+            .cast<http.BaseRequest>()
+            .map((r) => r.url)
+            .toList();
 
-          String perEngine(String name) =>
-              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+        String perEngine(String name) =>
+            '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
 
-          final expected = [
-            perEngine('patch-darwin-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
-            perEngine('aot-tools.dill'),
-          ].map(Uri.parse).toList();
+        final expected = [
+          perEngine('patch-darwin-x64.zip'),
+          'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+          perEngine('aot-tools.dill'),
+        ].map(Uri.parse).toList();
 
-          expect(requests, equals(expected));
-        });
+        expect(requests, equals(expected));
+      });
 
-        test('pull correct artifact for Windows', () async {
-          setMockPlatform(Platform.windows);
+      test('pull correct artifact for Windows', () async {
+        setMockPlatform(Platform.windows);
 
-          await expectLater(runWithOverrides(cache.updateAll), completes);
+        await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          final requests = verify(() => httpClient.send(captureAny()))
-              .captured
-              .cast<http.BaseRequest>()
-              .map((r) => r.url)
-              .toList();
+        final requests = verify(() => httpClient.send(captureAny()))
+            .captured
+            .cast<http.BaseRequest>()
+            .map((r) => r.url)
+            .toList();
 
-          String perEngine(String name) =>
-              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+        String perEngine(String name) =>
+            '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
 
-          final expected = [
-            perEngine('patch-windows-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
-            perEngine('aot-tools.dill'),
-          ].map(Uri.parse).toList();
+        final expected = [
+          perEngine('patch-windows-x64.zip'),
+          'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+          perEngine('aot-tools.dill'),
+        ].map(Uri.parse).toList();
 
-          expect(requests, equals(expected));
-        });
+        expect(requests, equals(expected));
+      });
 
-        test('pull correct artifact for Linux', () async {
-          setMockPlatform(Platform.linux);
+      test('pull correct artifact for Linux', () async {
+        setMockPlatform(Platform.linux);
 
-          await expectLater(runWithOverrides(cache.updateAll), completes);
+        await expectLater(runWithOverrides(cache.updateAll), completes);
 
-          final requests = verify(() => httpClient.send(captureAny()))
-              .captured
-              .cast<http.BaseRequest>()
-              .map((r) => r.url)
-              .toList();
+        final requests = verify(() => httpClient.send(captureAny()))
+            .captured
+            .cast<http.BaseRequest>()
+            .map((r) => r.url)
+            .toList();
 
-          String perEngine(String name) =>
-              '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
+        String perEngine(String name) =>
+            '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
 
-          final expected = [
-            perEngine('patch-linux-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
-            perEngine('aot-tools.dill'),
-          ].map(Uri.parse).toList();
+        final expected = [
+          perEngine('patch-linux-x64.zip'),
+          'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+          perEngine('aot-tools.dill'),
+        ].map(Uri.parse).toList();
 
-          expect(requests, equals(expected));
-        });
+        expect(requests, equals(expected));
       });
     });
   });
