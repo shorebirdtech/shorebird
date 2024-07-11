@@ -220,9 +220,13 @@ void main() {
       });
 
       group('when an exception happens', () {
-        test('throws CacheUpdateFailure', () async {
-          const exception = SocketException('test');
+        const exception = SocketException('test');
+
+        setUp(() {
           when(() => httpClient.send(any())).thenThrow(exception);
+        });
+
+        test('throws CacheUpdateFailure', () async {
           await expectLater(
             runWithOverrides(cache.updateAll),
             throwsA(
@@ -236,9 +240,6 @@ void main() {
         });
 
         test('retries and log', () async {
-          const exception = SocketException('test');
-          when(() => httpClient.send(any())).thenThrow(exception);
-
           await expectLater(
             runWithOverrides(cache.updateAll),
             throwsA(
@@ -246,8 +247,23 @@ void main() {
             ),
           );
 
-          verify(() => logger.detail('Failed to update patch, retrying...'))
-              .called(2);
+          verify(
+            () => logger.detail('Failed to update patch, retrying...'),
+          ).called(2); // once per required artifact
+        });
+
+        test('deletes artifact directory if it exists', () async {
+          final patchArtifactDirectory = runWithOverrides(
+            () => cache.getArtifactDirectory('patch'),
+          )..createSync(recursive: true);
+          expect(patchArtifactDirectory.existsSync(), isTrue);
+          await expectLater(
+            runWithOverrides(cache.updateAll),
+            throwsA(
+              isA<CacheUpdateFailure>(),
+            ),
+          );
+          expect(patchArtifactDirectory.existsSync(), isFalse);
         });
       });
 
