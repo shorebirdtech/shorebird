@@ -633,6 +633,7 @@ Looked in:
     group('createPatchMetadata', () {
       const allowAssetDiffs = false;
       const allowNativeDiffs = true;
+      const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
       const operatingSystem = 'Mac OS X';
       const operatingSystemVersion = '10.15.7';
 
@@ -645,6 +646,7 @@ Looked in:
         when(
           () => platform.operatingSystemVersion,
         ).thenReturn(operatingSystemVersion);
+        when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       });
 
       test('returns correct metadata', () async {
@@ -668,6 +670,7 @@ Looked in:
               hasNativeChanges: diffStatus.hasNativeChanges,
               linkPercentage: null,
               environment: const BuildEnvironmentMetadata(
+                flutterRevision: flutterRevision,
                 operatingSystem: operatingSystem,
                 operatingSystemVersion: operatingSystemVersion,
                 shorebirdVersion: packageVersion,

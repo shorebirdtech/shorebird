@@ -15,6 +15,7 @@ void main() {
           hasNativeChanges: false,
           linkPercentage: 99.9,
           environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'linux',
             operatingSystemVersion: '1.0.0',
             shorebirdVersion: '1.2.3',

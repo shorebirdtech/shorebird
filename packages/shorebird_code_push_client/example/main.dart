@@ -52,6 +52,7 @@ Future<void> main() async {
       hasNativeChanges: false,
       linkPercentage: null,
       environment: BuildEnvironmentMetadata(
+        flutterRevision: '<FLUTTER_REVISION>', // e.g. '83305b5088e6'
         operatingSystem: 'Windows',
         operatingSystemVersion: '10',
         shorebirdVersion: '1.2.3',

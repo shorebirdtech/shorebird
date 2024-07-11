@@ -151,6 +151,7 @@ class AarReleaser extends Releaser {
         flutterVersionOverride: argResults['flutter-version'] as String?,
         generatedApks: false,
         environment: BuildEnvironmentMetadata(
+          flutterRevision: shorebirdEnv.flutterRevision,
           operatingSystem: platform.operatingSystem,
           operatingSystemVersion: platform.operatingSystemVersion,
           shorebirdVersion: packageVersion,
