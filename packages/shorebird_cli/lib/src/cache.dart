@@ -49,7 +49,7 @@ class Cache {
   Cache() {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
-    registerArtifact(AotToolsArtifact(cache: this, platform: platform));
+    registerArtifact(AotToolsDillArtifact(cache: this, platform: platform));
   }
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
@@ -138,6 +138,10 @@ abstract class CachedArtifact {
   /// The URL from which the artifact can be downloaded.
   String get storageUrl;
 
+  /// Whether the artifact is required for Shorebird to function.
+  /// If we fail to fetch it we will exit with an error.
+  bool get required => true;
+
   /// The SHA256 checksum of the artifact binary.
   ///
   /// When null, the checksum is not verified and the downloaded artifact
@@ -149,6 +153,8 @@ abstract class CachedArtifact {
       ..createSync(recursive: true);
     return stream.pipe(file.openWrite());
   }
+
+  Directory get location => cache.getArtifactDirectory(fileName);
 
   File get file =>
       File(p.join(cache.getArtifactDirectory(fileName).path, fileName));
@@ -183,20 +189,28 @@ allowed to access $storageUrl.''',
     }
 
     if (response.statusCode != HttpStatus.ok) {
+      if (!required && response.statusCode == HttpStatus.notFound) {
+        logger.detail(
+          '[cache] optional artifact: "$fileName" was not found, skipping...',
+        );
+        return;
+      }
+
       throw CacheUpdateFailure(
         '''Failed to download $fileName: ${response.statusCode} ${response.reasonPhrase}''',
       );
     }
 
-    final artifactDirectory = Directory(p.dirname(file.path));
-    await extractArtifact(response.stream, artifactDirectory.path);
+    await extractArtifact(response.stream, location.path);
 
     final expectedChecksum = checksum;
     if (expectedChecksum != null) {
-      if (!checksumChecker.checkFile(file, expectedChecksum)) {
+      final artifactFile = File(p.join(location.path, fileName));
+
+      if (!checksumChecker.checkFile(artifactFile, expectedChecksum)) {
         // Delete the location, so if the download is retried, it will be
         // re-downloaded.
-        artifactDirectory.deleteSync(recursive: true);
+        location.deleteSync(recursive: true);
         throw CacheUpdateFailure(
           '''Failed to download $fileName: checksum mismatch''',
         );
@@ -210,15 +224,15 @@ allowed to access $storageUrl.''',
     if (!platform.isWindows && isExecutable) {
       final result = await process.start(
         'chmod',
-        ['+x', file.path],
+        ['+x', p.join(location.path, fileName)],
       );
       await result.exitCode;
     }
   }
 }
 
-class AotToolsArtifact extends CachedArtifact {
-  AotToolsArtifact({required super.cache, required super.platform});
+class AotToolsDillArtifact extends CachedArtifact {
+  AotToolsDillArtifact({required super.cache, required super.platform});
 
   @override
   String get fileName => 'aot-tools.dill';
@@ -226,12 +240,15 @@ class AotToolsArtifact extends CachedArtifact {
   @override
   bool get isExecutable => false;
 
+  /// The aot-tools are only available for revisions that support mixed-mode.
   @override
-  File get file => File(
+  bool get required => false;
+
+  @override
+  Directory get location => Directory(
         p.join(
           cache.getArtifactDirectory(fileName).path,
           shorebirdEnv.shorebirdEngineRevision,
-          fileName,
         ),
       );
 

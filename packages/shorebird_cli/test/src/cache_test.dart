@@ -237,6 +237,36 @@ void main() {
           );
         });
 
+        test('skips optional artifacts if a 404 is returned', () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (invocation) async {
+              final request =
+                  invocation.positionalArguments.first as http.BaseRequest;
+              final fileName = p.basename(request.url.path);
+              if (fileName.startsWith('aot-tools')) {
+                return http.StreamedResponse(
+                  const Stream.empty(),
+                  HttpStatus.notFound,
+                  reasonPhrase: 'Not Found',
+                );
+              }
+              return http.StreamedResponse(
+                Stream.value(ZipEncoder().encode(Archive())!),
+                HttpStatus.ok,
+              );
+            },
+          );
+          await expectLater(
+            runWithOverrides(cache.updateAll),
+            completes,
+          );
+          verify(
+            () => logger.detail(
+              '''[cache] optional artifact: "aot-tools.dill" was not found, skipping...''',
+            ),
+          ).called(1);
+        });
+
         test('downloads correct artifacts', () async {
           final patchArtifactDirectory = runWithOverrides(
             () => cache.getArtifactDirectory('patch'),
