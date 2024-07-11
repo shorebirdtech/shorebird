@@ -12,10 +12,14 @@ on:
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
-  FLUTTER_VERSION: 3.22.0
 
 jobs:
   patch:
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter-version: [3.22.2, 3.19.6]
+
     runs-on: ubuntu-latest
 
     env:
@@ -49,7 +53,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: ${{ matrix.flutter-version }}
           cache: true
 
       - name: 🤖 AVD Cache
@@ -85,6 +89,7 @@ jobs:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
         branch: [stable, main]
+        flutter-version: [3.22.2, 3.19.6]
 
     runs-on: ${{ matrix.os }}
 
@@ -140,7 +145,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: ${{ matrix.flutter-version }}
           cache: true
 
       - name: 🧪 Run Integration Tests
