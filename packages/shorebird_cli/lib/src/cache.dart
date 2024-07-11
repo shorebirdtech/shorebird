@@ -203,8 +203,8 @@ abstract class CachedArtifact {
         final result = await process.start('chmod', ['+x', file.path]);
         await result.exitCode;
       }
-    } catch (e) {
-      // Delete the location, so if the download is retried, it will be
+    } catch (_) {
+      // Delete the directory, so if the download is retried, it will be
       // re-downloaded.
       final artifactDirectory = Directory(p.dirname(file.path));
       if (artifactDirectory.existsSync()) {
