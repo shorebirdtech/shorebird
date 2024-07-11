@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.18 (July 11, 2024)
+
+- 🩹 Fix `shorebird release android` when using older Flutter versions
+- 🔎 Include flutter revision in release and patch metadata
+
 ## 1.1.17 (July 10, 2024)
 
 - 📈 Improve iOS patch performance
