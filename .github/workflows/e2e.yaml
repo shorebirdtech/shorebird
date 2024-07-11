@@ -57,7 +57,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: ${{ matrix.flutter-version }}
           cache: true
 
       - name: 🤖 AVD Cache
