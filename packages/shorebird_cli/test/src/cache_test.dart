@@ -88,8 +88,12 @@ void main() {
           outputDirectory: any(named: 'outputDirectory'),
         ),
       ).thenAnswer((invocation) async {
-        (invocation.namedArguments[#outputDirectory] as Directory)
-            .createSync(recursive: true);
+        final targetDirectory = (invocation.namedArguments[#outputDirectory]
+            as Directory)
+          ..createSync(recursive: true);
+        File(p.join(targetDirectory.path, 'test'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync('hello');
       });
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
@@ -244,25 +248,34 @@ void main() {
             ),
           ).called(3);
 
+          // Our mock of extractZip creates a file in the output directory
+          // named 'test'. If the file exists, we can assume that the
+          // extraction was successful.
+          File testFileFromArtifact(CachedArtifact artifact) {
+            return File(p.join(artifact.file.parent.path, 'test'));
+          }
+
           expect(
             runWithOverrides(
-              () => PatchArtifact(cache: cache, platform: platform).file.parent,
+              () => testFileFromArtifact(
+                PatchArtifact(cache: cache, platform: platform),
+              ),
             ).existsSync(),
             isTrue,
           );
           expect(
             runWithOverrides(
-              () => AotToolsArtifact(cache: cache, platform: platform)
-                  .file
-                  .parent,
+              () => testFileFromArtifact(
+                AotToolsArtifact(cache: cache, platform: platform),
+              ),
             ).existsSync(),
             isTrue,
           );
           expect(
             runWithOverrides(
-              () => BundleToolArtifact(cache: cache, platform: platform)
-                  .file
-                  .parent,
+              () => testFileFromArtifact(
+                BundleToolArtifact(cache: cache, platform: platform),
+              ),
             ).existsSync(),
             isTrue,
           );
