@@ -12,10 +12,15 @@ on:
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
-  FLUTTER_VERSION: 3.22.0
+  FLUTTER_VERSION: 3.22.2
 
 jobs:
   patch:
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter-version: [3.22.2, 3.19.6]
+
     runs-on: ubuntu-latest
 
     env:
@@ -49,7 +54,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: ${{ matrix.flutter-version }}
           cache: true
 
       - name: 🤖 AVD Cache
@@ -77,7 +82,7 @@ jobs:
         with:
           api-level: 29
           arch: x86_64
-          script: ./scripts/patch_e2e.sh
+          script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
     strategy:
