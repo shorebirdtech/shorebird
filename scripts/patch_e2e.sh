@@ -12,7 +12,9 @@
 # - Android emulator must be running.
 # - Shorebird must be installed.
 #
-# Usage: ./patch_e2e.sh
+# Usage: ./patch_e2e.sh <flutter-version>
+
+FLUTTER_VERSION=$1
 
 # Intentionally including a space in the path.
 TEMP_DIR=$(mktemp -d -t 'shorebird workspace-XXXXX')
@@ -35,7 +37,7 @@ echo "base_url: https://api-dev.shorebird.dev" >> shorebird.yaml
 APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 
 # Create a new release on Android
-shorebird release android -v
+shorebird release android --flutter-version=$FLUTTER_VERSION -v
 
 # Run the app on Android and ensure that the print statement is printed.
 while IFS= read line; do
