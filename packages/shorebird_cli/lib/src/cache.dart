@@ -56,6 +56,10 @@ class Cache {
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
 
   Future<void> updateAll() async {
+    if (!shorebirdArtifactsDirectory.existsSync()) {
+      shorebirdArtifactsDirectory.createSync(recursive: true);
+    }
+
     for (final artifact in _artifacts) {
       if (await artifact.isValid()) {
         continue;
@@ -182,10 +186,7 @@ abstract class CachedArtifact {
 
       _verifyChecksum(file: tempFile, responseHeaders: response.headers);
 
-      // Create the directory containing the artifact if it does not already
-      // exist. Failing to do this will cause [renameSync] to throw an exception.
-      Directory(p.dirname(file.path)).createSync(recursive: true);
-
+      final parentDirectory = file.parent;
       if (isZip) {
         final unzipDirectory = Directory(
           p.join(p.dirname(tempFile.path), fileName),
@@ -194,8 +195,12 @@ abstract class CachedArtifact {
           zipFile: tempFile,
           outputDirectory: unzipDirectory,
         );
-        unzipDirectory.renameSync(p.dirname(file.path));
+        unzipDirectory.renameSync(parentDirectory.path);
       } else {
+        // Create the directory containing the artifact if it does not already
+        // exist. Failing to do this will cause [renameSync] to throw an
+        // exception.
+        parentDirectory.createSync(recursive: true);
         tempFile.renameSync(file.path);
       }
 

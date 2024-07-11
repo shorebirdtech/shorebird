@@ -221,7 +221,14 @@ void main() {
 
       group('when artifact is downloaded as a zip file', () {
         setUp(() {
-          when(() => httpClient.send(any())).thenAnswer(
+          when(
+            () => httpClient.send(
+              any(
+                that: isA<http.Request>()
+                    .having((r) => r.url.path, 'url', endsWith('.zip')),
+              ),
+            ),
+          ).thenAnswer(
             (_) async => http.StreamedResponse(
               Stream.value(ZipEncoder().encode(Archive())!),
               HttpStatus.ok,
@@ -240,7 +247,10 @@ void main() {
               zipFile: any(named: 'zipFile'),
               outputDirectory: any(named: 'outputDirectory'),
             ),
-          ).called(3); // once per artifact
+          ).called(
+            // We currently only have one artifact stored as a zip file
+            1,
+          );
         });
       });
 
