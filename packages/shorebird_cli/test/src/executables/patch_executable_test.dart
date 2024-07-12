@@ -181,7 +181,7 @@ void main() {
           when(() => platform.isWindows).thenReturn(false);
         });
 
-        test('does not adds the windows specific message', () async {
+        test('does not add the Windows specific message', () async {
           await expectLater(
             () => runWithOverrides(
               () => patchExecutable.run(
