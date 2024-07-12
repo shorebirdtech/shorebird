@@ -49,18 +49,22 @@ class PatchExecutable {
 
     final result = await process.run(diffExecutable, diffArguments);
 
-    if (result.exitCode != ExitCode.success.code) {
-      var messageDetails = '';
+    var messageDetails = '';
 
-      if (result.exitCode == -1073741515 && platform.isWindows) {
-        messageDetails = '''
+    // This is a specific error exit code returned when the VC runtime is not
+    // found.
+    // More info: https://github.com/shorebirdtech/shorebird/issues/2329
+    const vcRuntimeNotFoundExitCode = -1073741515;
+    if (result.exitCode == vcRuntimeNotFoundExitCode && platform.isWindows) {
+      messageDetails = '''
 This indicates that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.
 
 The C++ Runtime can be installed from Microsoft at:
 ${link(uri: Uri.parse('https://www.microsoft.com/en-us/download/details.aspx?id=52685'))}
 ''';
-      }
+    }
 
+    if (result.exitCode != ExitCode.success.code) {
       throw PatchFailedException(
         '''
 Failed to create diff (exit code ${result.exitCode}).$messageDetails
