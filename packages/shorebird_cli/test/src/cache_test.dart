@@ -480,10 +480,14 @@ void main() {
       group('when artifact exists on disk', () {
         setUp(() {
           cachedArtifact.file.createSync(recursive: true);
+          cachedArtifact.stampFile.createSync(recursive: true);
         });
 
-        test('deletes existing artifact before updating', () async {
+        test('deletes existing artifact and stamp file before updating',
+            () async {
           expect(cachedArtifact.file.existsSync(), isTrue);
+          expect(cachedArtifact.stampFile.existsSync(), isTrue);
+
           // This will fail due to the mock http client returning a 404.
           await expectLater(
             () => runWithOverrides(cachedArtifact.update),
@@ -491,6 +495,7 @@ void main() {
           );
 
           expect(cachedArtifact.file.existsSync(), isFalse);
+          expect(cachedArtifact.stampFile.existsSync(), isFalse);
         });
       });
     });
