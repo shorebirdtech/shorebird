@@ -154,11 +154,15 @@ abstract class CachedArtifact {
     return stream.pipe(file.openWrite());
   }
 
+  /// The artifact file on disk.
   File get file =>
       File(p.join(cache.getArtifactDirectory(fileName).path, fileName));
 
+  /// Used to validate that the artifact was fully downloaded and extracted.
+  File get stampFile => File('${file.path}.stamp');
+
   Future<bool> isValid() async {
-    if (!file.existsSync()) {
+    if (!file.existsSync() || !stampFile.existsSync()) {
       return false;
     }
 
@@ -173,6 +177,9 @@ abstract class CachedArtifact {
   }
 
   Future<void> update() async {
+    // Clear any existing artifact files.
+    await _delete();
+
     final request = http.Request('GET', Uri.parse(storageUrl));
     final http.StreamedResponse response;
     try {
@@ -221,6 +228,24 @@ allowed to access $storageUrl.''',
     if (!platform.isWindows && isExecutable) {
       final result = await process.start('chmod', ['+x', file.path]);
       await result.exitCode;
+    }
+
+    _writeStampFile();
+  }
+
+  // Writes a 0-byte file to indicate that the artifact was successfully
+  // installed.
+  void _writeStampFile() {
+    stampFile.createSync(recursive: true);
+  }
+
+  Future<void> _delete() async {
+    if (file.existsSync()) {
+      await file.delete();
+    }
+
+    if (stampFile.existsSync()) {
+      await stampFile.delete();
     }
   }
 }
