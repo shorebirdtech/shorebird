@@ -410,25 +410,20 @@ void main() {
           cachedArtifact.file.createSync(recursive: true);
         });
 
-        group('when there is no expected checksum', () {
-          setUp(() {
-            cachedArtifact.checksumOverride = null;
-          });
-
-          test('returns true', () async {
-            expect(await runWithOverrides(cachedArtifact.isValid), isTrue);
+        group('when the stamp file does not exist', () {
+          test('returns false', () async {
+            expect(await runWithOverrides(cachedArtifact.isValid), isFalse);
           });
         });
 
-        group('when there is an expected checksum', () {
+        group('when the stamp file exists', () {
           setUp(() {
-            cachedArtifact.checksumOverride = 'some-checksum';
+            cachedArtifact.stampFile.createSync();
           });
 
-          group('when the checksum matches', () {
+          group('when there is no expected checksum', () {
             setUp(() {
-              when(() => checksumChecker.checkFile(any(), any()))
-                  .thenReturn(true);
+              cachedArtifact.checksumOverride = null;
             });
 
             test('returns true', () async {
@@ -436,17 +431,34 @@ void main() {
             });
           });
 
-          group('when the checksum does not match', () {
+          group('when there is an expected checksum', () {
             setUp(() {
-              when(() => checksumChecker.checkFile(any(), any()))
-                  .thenReturn(false);
+              cachedArtifact.checksumOverride = 'some-checksum';
             });
 
-            test('returns false', () async {
-              expect(
-                await runWithOverrides(cachedArtifact.isValid),
-                isFalse,
-              );
+            group('when the checksum matches', () {
+              setUp(() {
+                when(() => checksumChecker.checkFile(any(), any()))
+                    .thenReturn(true);
+              });
+
+              test('returns true', () async {
+                expect(await runWithOverrides(cachedArtifact.isValid), isTrue);
+              });
+            });
+
+            group('when the checksum does not match', () {
+              setUp(() {
+                when(() => checksumChecker.checkFile(any(), any()))
+                    .thenReturn(false);
+              });
+
+              test('returns false', () async {
+                expect(
+                  await runWithOverrides(cachedArtifact.isValid),
+                  isFalse,
+                );
+              });
             });
           });
         });
