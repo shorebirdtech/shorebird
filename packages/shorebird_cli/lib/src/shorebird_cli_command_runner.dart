@@ -202,6 +202,13 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         exitCode = await super.runCommand(topLevelResults);
       } on ProcessExit catch (error) {
         exitCode = error.exitCode;
+      } on UsageException catch (e) {
+        logger
+          ..err(e.message)
+          ..info(e.usage);
+        // When on an usage exception we don't need to show the "if you aren't
+        // sure" message, so we do an early return here.
+        return ExitCode.usage.code;
       } catch (error, stackTrace) {
         logger
           ..detail('$error')
