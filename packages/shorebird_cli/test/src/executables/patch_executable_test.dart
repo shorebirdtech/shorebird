@@ -132,25 +132,26 @@ void main() {
       );
     });
 
-    group('when on windows', () {
+    group('when the process exits with code -1073741515', () {
       setUp(() {
-        when(() => platform.isWindows).thenReturn(true);
-      });
-      group('when the process exits with code -1073741515', () {
-        setUp(() {
-          const stdout = 'uh oh';
-          const stderr = 'oops something went wrong';
-          when(() => patchProcessResult.exitCode).thenReturn(-1073741515);
-          when(() => patchProcessResult.stderr).thenReturn(stderr);
-          when(() => patchProcessResult.stdout).thenReturn(stdout);
+        const stdout = 'uh oh';
+        const stderr = 'oops something went wrong';
+        when(() => patchProcessResult.exitCode).thenReturn(-1073741515);
+        when(() => patchProcessResult.stderr).thenReturn(stderr);
+        when(() => patchProcessResult.stdout).thenReturn(stdout);
 
-          when(
-            () => shorebirdProcess.run(
-              any(that: endsWith('patch')),
-              any(),
-              runInShell: any(named: 'runInShell'),
-            ),
-          ).thenAnswer((_) async => patchProcessResult);
+        when(
+          () => shorebirdProcess.run(
+            any(that: endsWith('patch')),
+            any(),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => patchProcessResult);
+      });
+
+      group('when on windows', () {
+        setUp(() {
+          when(() => platform.isWindows).thenReturn(true);
         });
 
         test('throws a missing C++ runtime exception', () async {
@@ -168,6 +169,35 @@ void main() {
                 'exception',
                 contains(
                   '''This indicates that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.''',
+                ),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when not on windows', () {
+        setUp(() {
+          when(() => platform.isWindows).thenReturn(false);
+        });
+
+        test('does not adds the windows specific message', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patchExecutable.run(
+                releaseArtifactPath: 'release',
+                patchArtifactPath: 'patch',
+                diffPath: 'diff',
+              ),
+            ),
+            throwsA(
+              isA<PatchFailedException>().having(
+                (e) => e.toString(),
+                'exception',
+                isNot(
+                  contains(
+                    '''This indicates that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.''',
+                  ),
                 ),
               ),
             ),
