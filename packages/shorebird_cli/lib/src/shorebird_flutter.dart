@@ -224,7 +224,7 @@ class ShorebirdFlutter {
   ///
   /// If [flutterRevision] is null, the current revision will be used.
   /// If [flutterVersion] is null, it will be calculated from the current
-  /// revision using [getVersionString].
+  ///   revision using [getVersionString].
   Future<String> humanReadableVersion({
     String? flutterRevision,
     String? flutterVersion,
