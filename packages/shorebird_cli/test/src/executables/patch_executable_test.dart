@@ -132,7 +132,7 @@ void main() {
       );
     });
 
-    group('when is on windows and we got a -1073741515 exit code', () {
+    group('when running on windows and process exits with code -1073741515', () {
       setUp(() {
         const stdout = 'uh oh';
         const stderr = 'oops something went wrong';
@@ -150,7 +150,8 @@ void main() {
 
         when(() => platform.isWindows).thenReturn(true);
       });
-      test('enhances the message with additional details', () async {
+
+      test('throws a missing C++ runtime exception', () async {
         await expectLater(
           () => runWithOverrides(
             () => patchExecutable.run(

@@ -56,7 +56,7 @@ class PatchExecutable {
         messageDetails = '''
 This indicates that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.
 
-The C++ Runtime can be installed from microsoft at:
+The C++ Runtime can be installed from Microsoft at:
 ${link(uri: Uri.parse('https://www.microsoft.com/en-us/download/details.aspx?id=52685'))}
 ''';
       }
