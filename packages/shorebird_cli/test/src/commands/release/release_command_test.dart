@@ -372,13 +372,12 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android --flavor=$flavor --t
           );
 
           when(
-            () => shorebirdFlutter.humanReadableVersion(
+            () => shorebirdFlutter.getVersionAndRevision(
               flutterRevision: 'different',
-              flutterVersion: '3.12.1',
             ),
           ).thenAnswer((_) async => '3.12.1 (different)');
           when(
-            () => shorebirdFlutter.humanReadableVersion(
+            () => shorebirdFlutter.getVersionAndRevision(
               flutterRevision: flutterRevision,
             ),
           ).thenAnswer((_) async => '3.12.1 (different)');

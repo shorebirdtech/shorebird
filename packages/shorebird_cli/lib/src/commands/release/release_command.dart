@@ -358,15 +358,14 @@ Use `shorebird flutter versions list` to list available versions.
       // All artifacts associated with a given release must be built
       // with the same Flutter revision.
       if (existingRelease.flutterRevision != flutterRevision) {
-        final existingReleaseStringVersion =
-            await shorebirdFlutter.humanReadableVersion(
+        final existingReleaseStringVersionString =
+            await shorebirdFlutter.getVersionAndRevision(
           flutterRevision: existingRelease.flutterRevision,
-          flutterVersion: existingRelease.flutterVersion,
         );
 
-        final stringVersion = await shorebirdFlutter.humanReadableVersion(
+        final releaseVersionString =
+            await shorebirdFlutter.getVersionAndRevision(
           flutterRevision: flutterRevision,
-          flutterVersion: flutterVersionArg,
         );
 
         logger
@@ -375,8 +374,8 @@ ${styleBold.wrap(lightRed.wrap('A release with version $version already exists b
 ''')
           ..info('''
 
-  Existing release built with: ${lightCyan.wrap(existingReleaseStringVersion)}
-  Current release built with: ${lightCyan.wrap(stringVersion)}
+  Existing release built with: ${lightCyan.wrap(existingReleaseStringVersionString)}
+  Current release built with: ${lightCyan.wrap(releaseVersionString)}
 
 ${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built using the same Flutter revision.'))}
 

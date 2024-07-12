@@ -135,13 +135,14 @@ class ShorebirdFlutter {
 
   /// Returns the current Shorebird Flutter version and revision.
   /// Returns unknown if the version check fails.
-  Future<String> getVersionAndRevision() async {
+  Future<String> getVersionAndRevision({String? flutterRevision}) async {
+    final revision = flutterRevision ?? shorebirdEnv.flutterRevision;
     String? version = 'unknown';
     try {
-      version = await getVersionString();
+      version = await getVersionString(revision: revision);
     } catch (_) {}
 
-    return '$version (${shortRevisionString(shorebirdEnv.flutterRevision)})';
+    return '$version (${shortRevisionString(revision)})';
   }
 
   /// Returns the current Shorebird Flutter version.
@@ -217,32 +218,5 @@ class ShorebirdFlutter {
     final useFlutterProgress = logger.progress('Using Flutter $version');
     shorebirdEnv.flutterRevision = revision;
     useFlutterProgress.complete();
-  }
-
-  /// Returns an human readable string from the received [flutterRevision] and
-  /// [flutterVersion].
-  ///
-  /// If [flutterRevision] is null, the current revision will be used.
-  /// If [flutterVersion] is null, it will be calculated from the current
-  ///   revision using [getVersionString].
-  Future<String> humanReadableVersion({
-    String? flutterRevision,
-    String? flutterVersion,
-  }) async {
-    final revision = flutterRevision ?? shorebirdEnv.flutterRevision;
-    var version = 'unknown';
-
-    if (flutterVersion != null) {
-      version = flutterVersion;
-    } else {
-      try {
-        final calculatedValue = await getVersionString(revision: revision);
-        if (calculatedValue != null) {
-          version = calculatedValue;
-        }
-      } catch (_) {}
-    }
-
-    return '$version (${shortRevisionString(revision)})';
   }
 }
