@@ -2,6 +2,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [PatchExecutable] instance.
@@ -49,9 +50,20 @@ class PatchExecutable {
     final result = await process.run(diffExecutable, diffArguments);
 
     if (result.exitCode != ExitCode.success.code) {
+      var messageDetails = '';
+
+      if (result.exitCode < 0 && platform.isWindows) {
+        messageDetails = '''
+This indicates that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.
+
+The C++ Runtime can be installed from microsoft at:
+${link(uri: Uri.parse('https://www.microsoft.com/en-us/download/details.aspx?id=52685'))}
+''';
+      }
+
       throw PatchFailedException(
         '''
-Failed to create diff (exit code ${result.exitCode}).
+Failed to create diff (exit code ${result.exitCode}).$messageDetails
   stdout: ${result.stdout}
   stderr: ${result.stderr}''',
       );
