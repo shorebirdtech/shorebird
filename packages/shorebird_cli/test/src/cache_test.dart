@@ -372,6 +372,7 @@ void main() {
   group(CachedArtifact, () {
     late Cache cache;
     late ChecksumChecker checksumChecker;
+    late http.Client httpClient;
     late ShorebirdLogger logger;
     late Platform platform;
     late _TestCachedArtifact cachedArtifact;
@@ -381,20 +382,30 @@ void main() {
         () => body(),
         values: {
           checksumCheckerRef.overrideWith(() => checksumChecker),
+          httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
         },
       );
     }
 
     setUpAll(() {
+      registerFallbackValue(FakeBaseRequest());
       registerFallbackValue(File(''));
     });
 
     setUp(() {
       cache = MockCache();
       checksumChecker = MockChecksumChecker();
+      httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
       platform = MockPlatform();
+
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(
+          const Stream.empty(),
+          HttpStatus.notFound,
+        ),
+      );
       cachedArtifact = _TestCachedArtifact(cache: cache, platform: platform);
     });
 
@@ -410,25 +421,20 @@ void main() {
           cachedArtifact.file.createSync(recursive: true);
         });
 
-        group('when there is no expected checksum', () {
-          setUp(() {
-            cachedArtifact.checksumOverride = null;
-          });
-
-          test('returns true', () async {
-            expect(await runWithOverrides(cachedArtifact.isValid), isTrue);
+        group('when the stamp file does not exist', () {
+          test('returns false', () async {
+            expect(await runWithOverrides(cachedArtifact.isValid), isFalse);
           });
         });
 
-        group('when there is an expected checksum', () {
+        group('when the stamp file exists', () {
           setUp(() {
-            cachedArtifact.checksumOverride = 'some-checksum';
+            cachedArtifact.stampFile.createSync();
           });
 
-          group('when the checksum matches', () {
+          group('when there is no expected checksum', () {
             setUp(() {
-              when(() => checksumChecker.checkFile(any(), any()))
-                  .thenReturn(true);
+              cachedArtifact.checksumOverride = null;
             });
 
             test('returns true', () async {
@@ -436,19 +442,60 @@ void main() {
             });
           });
 
-          group('when the checksum does not match', () {
+          group('when there is an expected checksum', () {
             setUp(() {
-              when(() => checksumChecker.checkFile(any(), any()))
-                  .thenReturn(false);
+              cachedArtifact.checksumOverride = 'some-checksum';
             });
 
-            test('returns false', () async {
-              expect(
-                await runWithOverrides(cachedArtifact.isValid),
-                isFalse,
-              );
+            group('when the checksum matches', () {
+              setUp(() {
+                when(() => checksumChecker.checkFile(any(), any()))
+                    .thenReturn(true);
+              });
+
+              test('returns true', () async {
+                expect(await runWithOverrides(cachedArtifact.isValid), isTrue);
+              });
+            });
+
+            group('when the checksum does not match', () {
+              setUp(() {
+                when(() => checksumChecker.checkFile(any(), any()))
+                    .thenReturn(false);
+              });
+
+              test('returns false', () async {
+                expect(
+                  await runWithOverrides(cachedArtifact.isValid),
+                  isFalse,
+                );
+              });
             });
           });
+        });
+      });
+    });
+
+    group('update', () {
+      group('when artifact exists on disk', () {
+        setUp(() {
+          cachedArtifact.file.createSync(recursive: true);
+          cachedArtifact.stampFile.createSync(recursive: true);
+        });
+
+        test('deletes existing artifact and stamp file before updating',
+            () async {
+          expect(cachedArtifact.file.existsSync(), isTrue);
+          expect(cachedArtifact.stampFile.existsSync(), isTrue);
+
+          // This will fail due to the mock http client returning a 404.
+          await expectLater(
+            () => runWithOverrides(cachedArtifact.update),
+            throwsException,
+          );
+
+          expect(cachedArtifact.file.existsSync(), isFalse);
+          expect(cachedArtifact.stampFile.existsSync(), isFalse);
         });
       });
     });
@@ -475,5 +522,5 @@ class _TestCachedArtifact extends CachedArtifact {
   File get file => File(p.join(_location.path, fileName));
 
   @override
-  String get storageUrl => throw UnimplementedError();
+  String get storageUrl => 'https://example.com/test_artifact.exe';
 }
