@@ -178,9 +178,7 @@ abstract class CachedArtifact {
 
   Future<void> update() async {
     // Clear any existing artifact files.
-    if (file.parent.existsSync()) {
-      await file.parent.delete(recursive: true);
-    }
+    await _delete();
 
     final request = http.Request('GET', Uri.parse(storageUrl));
     final http.StreamedResponse response;
@@ -239,6 +237,16 @@ allowed to access $storageUrl.''',
   // installed.
   void _writeStampFile() {
     stampFile.createSync(recursive: true);
+  }
+
+  Future<void> _delete() async {
+    if (file.existsSync()) {
+      await file.delete();
+    }
+
+    if (stampFile.existsSync()) {
+      await stampFile.delete();
+    }
   }
 }
 
