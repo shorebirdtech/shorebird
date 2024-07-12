@@ -218,4 +218,31 @@ class ShorebirdFlutter {
     shorebirdEnv.flutterRevision = revision;
     useFlutterProgress.complete();
   }
+
+  /// Returns an human readable string from the received [flutterRevision] and
+  /// [flutterVersion].
+  ///
+  /// If [flutterRevision] is null, the current revision will be used.
+  /// If [flutterVersion] is null, it will be calculated from the current
+  /// revision using [getVersionString].
+  Future<String> humanReadableVersion({
+    String? flutterRevision,
+    String? flutterVersion,
+  }) async {
+    final revision = flutterRevision ?? shorebirdEnv.flutterRevision;
+    var version = 'unknown';
+
+    if (flutterVersion != null) {
+      version = flutterVersion;
+    } else {
+      try {
+        final calculatedValue = await getVersionString(revision: revision);
+        if (calculatedValue != null) {
+          version = calculatedValue;
+        }
+      } catch (_) {}
+    }
+
+    return '$version (${shortRevisionString(revision)})';
+  }
 }

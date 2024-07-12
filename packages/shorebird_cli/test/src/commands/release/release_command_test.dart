@@ -370,6 +370,18 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android --flavor=$flavor --t
             createdAt: DateTime(2023),
             updatedAt: DateTime(2023),
           );
+
+          when(
+            () => shorebirdFlutter.humanReadableVersion(
+              flutterRevision: 'different',
+              flutterVersion: '3.12.1',
+            ),
+          ).thenAnswer((_) async => '3.12.1 (different)');
+          when(
+            () => shorebirdFlutter.humanReadableVersion(
+              flutterRevision: flutterRevision,
+            ),
+          ).thenAnswer((_) async => '3.12.1 (different)');
         });
 
         test('logs error and exits with code 70', () async {

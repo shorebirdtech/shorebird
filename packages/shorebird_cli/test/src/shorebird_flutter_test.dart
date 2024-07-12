@@ -878,5 +878,164 @@ origin/flutter_release/3.10.6''';
         verify(() => shorebirdEnv.flutterRevision = newRevision).called(1);
       });
     });
+
+    group('humanReadableVersion', () {
+      const envRevision = '012345678910112';
+      const envVersion = '3.10.6';
+
+      setUp(() {
+        when(() => shorebirdEnv.flutterRevision).thenReturn(envRevision);
+        when(
+          () => git.forEachRef(
+            directory: any(named: 'directory'),
+            contains: envRevision,
+            format: any(named: 'format'),
+            pattern: any(named: 'pattern'),
+          ),
+        ).thenAnswer((_) async => 'origin/flutter_release/$envVersion');
+      });
+
+      group('when no flutterRevision is provided', () {
+        test('returns the current version on env', () async {
+          final readableVersion = await runWithOverrides(
+            () => shorebirdFlutter.humanReadableVersion(),
+          );
+
+          expect(readableVersion, equals('3.10.6 (0123456789)'));
+        });
+
+        group('when searching for the version returns no results', () {
+          setUp(() {
+            when(
+              () => git.forEachRef(
+                directory: any(named: 'directory'),
+                contains: envRevision,
+                format: any(named: 'format'),
+                pattern: any(named: 'pattern'),
+              ),
+            ).thenAnswer((_) async => '');
+          });
+          test('uses "unknown" for the version', () async {
+            final readableVersion = await runWithOverrides(
+              () => shorebirdFlutter.humanReadableVersion(),
+            );
+
+            expect(readableVersion, equals('unknown (0123456789)'));
+          });
+        });
+
+        group('when searching for the version fails', () {
+          setUp(() {
+            when(
+              () => git.forEachRef(
+                directory: any(named: 'directory'),
+                contains: envRevision,
+                format: any(named: 'format'),
+                pattern: any(named: 'pattern'),
+              ),
+            ).thenThrow(Exception('oh no!'));
+          });
+          test('uses "unknown" for the version', () async {
+            final readableVersion = await runWithOverrides(
+              () => shorebirdFlutter.humanReadableVersion(),
+            );
+
+            expect(readableVersion, equals('unknown (0123456789)'));
+          });
+        });
+      });
+
+      group('when a revision is provided', () {
+        const providedRevision = '109876543210';
+        const providedVersion = '3.10.8';
+
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: providedRevision,
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => 'origin/flutter_release/$providedVersion');
+        });
+
+        test('returns the correct version', () async {
+          final readableVersion = await runWithOverrides(
+            () => shorebirdFlutter.humanReadableVersion(
+              flutterRevision: providedRevision,
+            ),
+          );
+
+          expect(readableVersion, equals('3.10.8 (1098765432)'));
+        });
+
+        group('when searching for the version returns no results', () {
+          setUp(() {
+            when(
+              () => git.forEachRef(
+                directory: any(named: 'directory'),
+                contains: providedRevision,
+                format: any(named: 'format'),
+                pattern: any(named: 'pattern'),
+              ),
+            ).thenAnswer((_) async => '');
+          });
+          test('uses "unknown" for the version', () async {
+            final readableVersion = await runWithOverrides(
+              () => shorebirdFlutter.humanReadableVersion(
+                flutterRevision: providedRevision,
+              ),
+            );
+
+            expect(readableVersion, equals('unknown (1098765432)'));
+          });
+        });
+
+        group('when searching for the version fails', () {
+          setUp(() {
+            when(
+              () => git.forEachRef(
+                directory: any(named: 'directory'),
+                contains: providedRevision,
+                format: any(named: 'format'),
+                pattern: any(named: 'pattern'),
+              ),
+            ).thenThrow(Exception('oh no!'));
+          });
+          test('uses "unknown" for the version', () async {
+            final readableVersion = await runWithOverrides(
+              () => shorebirdFlutter.humanReadableVersion(
+                flutterRevision: providedRevision,
+              ),
+            );
+
+            expect(readableVersion, equals('unknown (1098765432)'));
+          });
+        });
+
+        group('when passing a flutter version', () {
+          test('returns the correct version', () async {
+            final readableVersion = await runWithOverrides(
+              () => shorebirdFlutter.humanReadableVersion(
+                flutterRevision: providedRevision,
+                flutterVersion: providedVersion,
+              ),
+            );
+
+            expect(readableVersion, equals('3.10.8 (1098765432)'));
+            verifyNever(() => shorebirdEnv.flutterRevision);
+            verifyNever(
+              () => git.forEachRef(
+                directory: any(named: 'directory'),
+                contains: any(named: 'contains'),
+                format: any(named: 'format'),
+                pattern: any(named: 'pattern'),
+              ),
+            );
+          });
+        });
+      });
+    });
   });
 }
