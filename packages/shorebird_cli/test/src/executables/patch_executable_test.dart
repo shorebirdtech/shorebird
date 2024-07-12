@@ -1,11 +1,13 @@
-import 'dart:io';
+import 'dart:io' hide Platform;
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -15,6 +17,7 @@ void main() {
   group('PatchExecutable', () {
     late Cache cache;
     late Directory cacheArtifactDirectory;
+    late Platform platform;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdProcessResult patchProcessResult;
     late PatchExecutable patchExecutable;
@@ -24,6 +27,7 @@ void main() {
         body,
         values: {
           cacheRef.overrideWith(() => cache),
+          platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           patchExecutableRef.overrideWith(() => patchExecutable),
         },
@@ -33,6 +37,8 @@ void main() {
     setUp(() {
       patchExecutable = PatchExecutable();
       shorebirdProcess = MockShorebirdProcess();
+      platform = MockPlatform();
+
       when(
         () => shorebirdProcess.run(
           any(that: endsWith('patch')),
@@ -118,12 +124,86 @@ void main() {
           isA<PatchFailedException>().having(
             (e) => e.toString(),
             'exception',
-            'Failed to create diff (exit code 1).\n'
+            'Failed to create diff (exit code 1). \n'
                 '  stdout: $stdout\n'
                 '  stderr: $stderr',
           ),
         ),
       );
+    });
+
+    group('when the process exits with code -1073741515', () {
+      setUp(() {
+        const stdout = 'uh oh';
+        const stderr = 'oops something went wrong';
+        when(() => patchProcessResult.exitCode).thenReturn(-1073741515);
+        when(() => patchProcessResult.stderr).thenReturn(stderr);
+        when(() => patchProcessResult.stdout).thenReturn(stdout);
+
+        when(
+          () => shorebirdProcess.run(
+            any(that: endsWith('patch')),
+            any(),
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => patchProcessResult);
+      });
+
+      group('when on windows', () {
+        setUp(() {
+          when(() => platform.isWindows).thenReturn(true);
+        });
+
+        test('throws a missing C++ runtime exception', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patchExecutable.run(
+                releaseArtifactPath: 'release',
+                patchArtifactPath: 'patch',
+                diffPath: 'diff',
+              ),
+            ),
+            throwsA(
+              isA<PatchFailedException>().having(
+                (e) => e.toString(),
+                'exception',
+                contains(
+                  '''This error code indicates that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.''',
+                ),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when not on windows', () {
+        setUp(() {
+          when(() => platform.isWindows).thenReturn(false);
+        });
+
+        test('does not add the Windows specific message', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patchExecutable.run(
+                releaseArtifactPath: 'release',
+                patchArtifactPath: 'patch',
+                diffPath: 'diff',
+              ),
+            ),
+            throwsA(
+              isA<PatchFailedException>().having(
+                (e) => e.toString(),
+                'exception',
+                isNot(
+                  contains(
+                    '''This indicates that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.''',
+                  ),
+                ),
+              ),
+            ),
+          );
+        });
+      });
     });
   });
 }
