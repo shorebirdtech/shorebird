@@ -372,6 +372,7 @@ void main() {
   group(CachedArtifact, () {
     late Cache cache;
     late ChecksumChecker checksumChecker;
+    late http.Client httpClient;
     late ShorebirdLogger logger;
     late Platform platform;
     late _TestCachedArtifact cachedArtifact;
@@ -381,20 +382,30 @@ void main() {
         () => body(),
         values: {
           checksumCheckerRef.overrideWith(() => checksumChecker),
+          httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
         },
       );
     }
 
     setUpAll(() {
+      registerFallbackValue(FakeBaseRequest());
       registerFallbackValue(File(''));
     });
 
     setUp(() {
       cache = MockCache();
       checksumChecker = MockChecksumChecker();
+      httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
       platform = MockPlatform();
+
+      when(() => httpClient.send(any())).thenAnswer(
+        (_) async => http.StreamedResponse(
+          const Stream.empty(),
+          HttpStatus.notFound,
+        ),
+      );
       cachedArtifact = _TestCachedArtifact(cache: cache, platform: platform);
     });
 
@@ -464,6 +475,25 @@ void main() {
         });
       });
     });
+
+    group('update', () {
+      group('when artifact exists on disk', () {
+        setUp(() {
+          cachedArtifact.file.createSync(recursive: true);
+        });
+
+        test('deletes existing artifact before updating', () async {
+          expect(cachedArtifact.file.existsSync(), isTrue);
+          // This will fail due to the mock http client returning a 404.
+          await expectLater(
+            () => runWithOverrides(cachedArtifact.update),
+            throwsException,
+          );
+
+          expect(cachedArtifact.file.existsSync(), isFalse);
+        });
+      });
+    });
   });
 }
 
@@ -487,5 +517,5 @@ class _TestCachedArtifact extends CachedArtifact {
   File get file => File(p.join(_location.path, fileName));
 
   @override
-  String get storageUrl => throw UnimplementedError();
+  String get storageUrl => 'https://example.com/test_artifact.exe';
 }
