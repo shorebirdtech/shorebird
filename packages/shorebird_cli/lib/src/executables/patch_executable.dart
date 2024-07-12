@@ -51,7 +51,8 @@ class PatchExecutable {
 
     var messageDetails = '';
 
-    // A Windows-specific error code indicating that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.
+    // A Windows-specific error code indicating that the Microsoft C++ runtime
+    // (VCRUNTIME140.dll) could not be found.
     // More info: https://github.com/shorebirdtech/shorebird/issues/2329
     const vcRuntimeNotFoundExitCode = -1073741515;
     if (result.exitCode == vcRuntimeNotFoundExitCode && platform.isWindows) {

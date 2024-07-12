@@ -124,7 +124,7 @@ void main() {
           isA<PatchFailedException>().having(
             (e) => e.toString(),
             'exception',
-            'Failed to create diff (exit code 1).\n'
+            'Failed to create diff (exit code 1). \n'
                 '  stdout: $stdout\n'
                 '  stderr: $stderr',
           ),
@@ -168,7 +168,7 @@ void main() {
                 (e) => e.toString(),
                 'exception',
                 contains(
-                  '''This indicates that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.''',
+                  '''This error code indicates that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.''',
                 ),
               ),
             ),
