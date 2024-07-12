@@ -113,20 +113,23 @@ void main() {
     });
 
     test('handles UsageException', () async {
-      final exception = UsageException('oops!', 'exception usage');
-      var isFirstInvocation = true;
-      when(() => logger.info(any())).thenAnswer((_) {
-        if (isFirstInvocation) {
-          isFirstInvocation = false;
-          throw exception;
-        }
-      });
       final result = await runWithOverrides(
-        () => commandRunner.run(['--version']),
+        // fly_to_the_moon is not a valid command.
+        () => commandRunner.run(['fly_to_the_moon']),
       );
       expect(result, equals(ExitCode.usage.code));
-      verify(() => logger.err(exception.message)).called(1);
-      verify(() => logger.info('exception usage')).called(1);
+      verify(
+        () => logger.err('Could not find a command named "fly_to_the_moon".'),
+      ).called(1);
+      verify(
+        () => logger.info(
+          any(
+            that: contains(
+              'Usage: shorebird <command> [arguments]',
+            ),
+          ),
+        ),
+      ).called(1);
     });
 
     test('handles missing option error', () async {
