@@ -52,7 +52,7 @@ class PatchExecutable {
     if (result.exitCode != ExitCode.success.code) {
       var messageDetails = '';
 
-      if (result.exitCode < 0 && platform.isWindows) {
+      if (result.exitCode == -1073741515 && platform.isWindows) {
         messageDetails = '''
 This indicates that the Microsoft C++ runtime (VCRUNTIME140.dll) could not be found.
 

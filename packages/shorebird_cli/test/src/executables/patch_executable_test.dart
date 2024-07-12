@@ -132,7 +132,7 @@ void main() {
       );
     });
 
-    group('when is on windows and we got a negative exit code', () {
+    group('when is on windows and we got a -1073741515 exit code', () {
       setUp(() {
         const stdout = 'uh oh';
         const stderr = 'oops something went wrong';
