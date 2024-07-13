@@ -133,15 +133,21 @@ class ShorebirdFlutter {
   /// Converts a full git revision to a short revision string.
   String shortRevisionString(String revision) => revision.substring(0, 10);
 
+  /// Given a revision and a version, formats them into a single string.
+  ///
+  /// e.g. 3.16.3 and b9b2390296b9b2390296 -> 3.16.3 (b9b2390296)
+  String formatVersion({required String revision, required String? version}) {
+    version ??= 'unknown';
+    return '$version (${shortRevisionString(revision)})';
+  }
+
   /// Returns the current Shorebird Flutter version and revision.
   /// Returns unknown if the version check fails.
   Future<String> getVersionAndRevision() async {
-    String? version = 'unknown';
-    try {
-      version = await getVersionString();
-    } catch (_) {}
-
-    return '$version (${shortRevisionString(shorebirdEnv.flutterRevision)})';
+    return formatVersion(
+      version: await getVersionString(),
+      revision: shorebirdEnv.flutterRevision,
+    );
   }
 
   /// Returns the current Shorebird Flutter version.
