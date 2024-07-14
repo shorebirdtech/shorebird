@@ -55,8 +55,8 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
 
       when(
-        () => shorebirdFlutter.getVersionString(
-          revision: any(named: 'revision'),
+        () => shorebirdFlutter.getVersionForRevision(
+          flutterRevision: any(named: 'flutterRevision'),
         ),
       ).thenAnswer(
         (_) async => '3.22.0',
@@ -207,7 +207,9 @@ void main() {
       );
 
       when(
-        () => shorebirdFlutter.getVersionString(revision: flutterRevision),
+        () => shorebirdFlutter.getVersionForRevision(
+          flutterRevision: flutterRevision,
+        ),
       ).thenAnswer((_) async => flutterVersion);
     });
 

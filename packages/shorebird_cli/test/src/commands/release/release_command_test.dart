@@ -372,8 +372,8 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android --flavor=$flavor --t
           );
 
           when(
-            () => shorebirdFlutter.getVersionString(
-              revision: flutterRevision,
+            () => shorebirdFlutter.getVersionForRevision(
+              flutterRevision: flutterRevision,
             ),
           ).thenAnswer((_) async => flutterVersion);
 

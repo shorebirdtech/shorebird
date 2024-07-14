@@ -201,33 +201,36 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
     });
 
     group('getVersionAndRevision', () {
-      test('returns unknown (<revision>) when unable to determine version',
-          () async {
+      group('when unable to determine version', () {
         const error = 'oops';
-        when(
-          () => git.forEachRef(
-            directory: any(named: 'directory'),
-            contains: any(named: 'contains'),
-            format: any(named: 'format'),
-            pattern: any(named: 'pattern'),
-          ),
-        ).thenThrow(
-          ProcessException(
-            'git',
-            [
-              'for-each-ref',
-              '--format',
-              '%(refname:short)',
-              'refs/remotes/origin/flutter_release/*',
-            ],
-            error,
-            ExitCode.software.code,
-          ),
-        );
-        await expectLater(
-          runWithOverrides(shorebirdFlutter.getVersionAndRevision),
-          completion(equals('unknown (${flutterRevision.substring(0, 10)})')),
-        );
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenThrow(
+            ProcessException(
+              'git',
+              [
+                'for-each-ref',
+                '--format',
+                '%(refname:short)',
+                'refs/remotes/origin/flutter_release/*',
+              ],
+              error,
+              ExitCode.software.code,
+            ),
+          );
+        });
+        test('returns unknown (<revision>)', () async {
+          await expectLater(
+            runWithOverrides(shorebirdFlutter.getVersionAndRevision),
+            completion(equals('unknown (${flutterRevision.substring(0, 10)})')),
+          );
+        });
       });
 
       test('returns correct version and revision', () async {
@@ -409,7 +412,7 @@ $revision
         });
       });
 
-      group('when getVersionStringReturns an invalid string', () {
+      group('when getVersionString returns an invalid string', () {
         setUp(() {
           when(
             () => git.forEachRef(
@@ -429,7 +432,7 @@ $revision
         });
       });
 
-      group('when getVersionStringReturns a valid string', () {
+      group('when getVersionString returns a valid string', () {
         setUp(() {
           when(
             () => git.forEachRef(

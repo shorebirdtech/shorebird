@@ -44,7 +44,7 @@ class ShorebirdFlutter {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
     if (targetDirectory.existsSync()) return;
 
-    final version = await getVersionString(revision: revision);
+    final version = await getVersionForRevision(flutterRevision: revision);
 
     final installProgress = logger.progress(
       'Installing Flutter $version (${shortRevisionString(revision)})',
@@ -144,8 +144,16 @@ class ShorebirdFlutter {
   /// Returns the current Shorebird Flutter version and revision.
   /// Returns unknown if the version check fails.
   Future<String> getVersionAndRevision() async {
+    late final String? version;
+
+    try {
+      version = await getVersionString();
+    } on ProcessException {
+      version = 'unknown';
+    }
+
     return formatVersion(
-      version: await getVersionString(),
+      version: version,
       revision: shorebirdEnv.flutterRevision,
     );
   }
@@ -154,18 +162,11 @@ class ShorebirdFlutter {
   /// Throws a [ProcessException] if the version check fails.
   /// Returns `null` if the version check succeeds but the version cannot be
   /// parsed.
-  Future<String?> getVersionString({String? revision}) async {
-    final result = await git.forEachRef(
-      contains: revision ?? shorebirdEnv.flutterRevision,
-      format: '%(refname:short)',
-      pattern: 'refs/remotes/origin/flutter_release/*',
-      directory: _workingDirectory(),
+  Future<String?> getVersionString() async {
+    final flutterRevision = shorebirdEnv.flutterRevision;
+    return getVersionForRevision(
+      flutterRevision: flutterRevision,
     );
-
-    return LineSplitter.split(result)
-        .map((e) => e.replaceFirst('origin/flutter_release/', ''))
-        .toList()
-        .firstOrNull;
   }
 
   /// The current Shorebird Flutter version as a [Version]. Returns null if the
@@ -184,6 +185,24 @@ class ShorebirdFlutter {
     }
 
     return version;
+  }
+
+  /// Returns the human readable version for a given git revision
+  /// e.g. b9b2390296b9b2390296 -> 3.16.3
+  Future<String?> getVersionForRevision({
+    required String flutterRevision,
+  }) async {
+    final result = await git.forEachRef(
+      contains: flutterRevision,
+      format: '%(refname:short)',
+      pattern: 'refs/remotes/origin/flutter_release/*',
+      directory: _workingDirectory(),
+    );
+
+    return LineSplitter.split(result)
+        .map((e) => e.replaceFirst('origin/flutter_release/', ''))
+        .toList()
+        .firstOrNull;
   }
 
   /// Returns the git revision for the provided [version].
@@ -219,7 +238,7 @@ class ShorebirdFlutter {
   Future<void> useRevision({required String revision}) async {
     await installRevision(revision: revision);
 
-    final version = await getVersionString(revision: revision);
+    final version = await getVersionForRevision(flutterRevision: revision);
     final useFlutterProgress = logger.progress('Using Flutter $version');
     shorebirdEnv.flutterRevision = revision;
     useFlutterProgress.complete();
