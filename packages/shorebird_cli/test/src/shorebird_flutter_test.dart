@@ -225,6 +225,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
             ),
           );
         });
+
         test('returns unknown (<revision>)', () async {
           await expectLater(
             runWithOverrides(shorebirdFlutter.getVersionAndRevision),
@@ -254,6 +255,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
             ),
           ).thenThrow(exception);
         });
+
         test('throws exception', () async {
           await expectLater(
             runWithOverrides(
@@ -279,6 +281,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
             ),
           ).thenAnswer((_) async => '');
         });
+
         test('returns null', () async {
           await expectLater(
             runWithOverrides(
@@ -309,6 +312,7 @@ $revision
         ''',
           );
         });
+
         test('returns revision', () async {
           await expectLater(
             runWithOverrides(
@@ -352,6 +356,7 @@ $revision
             ),
           );
         });
+
         test('throws ProcessException', () async {
           await expectLater(
             runWithOverrides(shorebirdFlutter.getVersionString),
@@ -379,6 +384,7 @@ $revision
             ),
           ).thenAnswer((_) async => '');
         });
+
         test('returns null', () async {
           await expectLater(
             runWithOverrides(shorebirdFlutter.getVersionString),
