@@ -362,7 +362,7 @@ Use `shorebird flutter versions list` to list available versions.
           flutterRevision: flutterRevision,
         );
 
-        final formattedVersion = shorebirdFlutter.formatVersion(
+        final formattedCurrentReleaseVersion = shorebirdFlutter.formatVersion(
           revision: flutterRevision,
           version: flutterVersion,
         );
@@ -379,7 +379,7 @@ ${styleBold.wrap(lightRed.wrap('A release with version $version already exists b
           ..info('''
 
   Existing release built with: ${lightCyan.wrap(formattedExistingReleaseVersion)}
-  Current release built with: ${lightCyan.wrap(formattedVersion)}
+  Current release built with: ${lightCyan.wrap(formattedCurrentReleaseVersion)}
 
 ${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built using the same Flutter revision.'))}
 

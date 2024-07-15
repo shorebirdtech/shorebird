@@ -148,7 +148,7 @@ class ShorebirdFlutter {
 
     try {
       version = await getVersionString();
-    } on ProcessException {
+    } catch (_) {
       version = 'unknown';
     }
 
