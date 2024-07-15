@@ -255,41 +255,52 @@ void main() {
       when(() => platform.isWindows).thenReturn(false);
     });
 
-    test('exits when validation fails', () async {
+    group('when validation fails', () {
       final exception = ValidationFailedException();
-      when(
-        () => shorebirdValidator.validatePreconditions(
-          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-        ),
-      ).thenThrow(exception);
-      await expectLater(
-        runWithOverrides(command.run),
-        completion(equals(exception.exitCode.code)),
-      );
-      verify(
-        () => shorebirdValidator.validatePreconditions(
-          checkUserIsAuthenticated: true,
-        ),
-      ).called(1);
+      setUp(() {
+        when(
+          () => shorebirdValidator.validatePreconditions(
+            checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          ),
+        ).thenThrow(exception);
+      });
+
+      test('exits with exit code from validation error', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(equals(exception.exitCode.code)),
+        );
+        verify(
+          () => shorebirdValidator.validatePreconditions(
+            checkUserIsAuthenticated: true,
+          ),
+        ).called(1);
+      });
     });
 
-    test('exits with code 70 when querying for releases fails', () async {
+    group('when querying for releases fails', () {
       final exception = Exception('oops');
-      when(
-        () => codePushClientWrapper.getReleases(
-          appId: any(named: 'appId'),
-          sideloadableOnly: any(named: 'sideloadableOnly'),
-        ),
-      ).thenThrow(exception);
-      await expectLater(
-        () => runWithOverrides(command.run),
-        throwsA(exception),
-      );
-      verify(
-        () => codePushClientWrapper.getReleases(
-          appId: appId,
-        ),
-      ).called(1);
+
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        ).thenThrow(exception);
+      });
+
+      test('exits with code 70', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          throwsA(exception),
+        );
+        verify(
+          () => codePushClientWrapper.getReleases(
+            appId: appId,
+          ),
+        ).called(1);
+      });
     });
 
     group('when release is not supported on the current OS', () {
@@ -535,161 +546,205 @@ channel: ${track.channel}
         });
       });
 
-      test('exits with code 70 when querying for release artifact fails',
-          () async {
+      group('when querying for release artifact fails', () {
         final exception = Exception('oops');
-        when(
-          () => codePushClientWrapper.getReleaseArtifact(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            arch: any(named: 'arch'),
-            platform: any(named: 'platform'),
-          ),
-        ).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(
-          () => codePushClientWrapper.getReleaseArtifact(
-            appId: appId,
-            releaseId: releaseId,
-            arch: 'aab',
-            platform: releasePlatform,
-          ),
-        ).called(1);
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: appId,
+              releaseId: releaseId,
+              arch: 'aab',
+              platform: releasePlatform,
+            ),
+          ).called(1);
+        });
       });
 
-      test('exits with code 70 when downloading release artifact fails',
-          () async {
+      group('when downloading release artifact fails', () {
         final exception = Exception('oops');
-        when(
-          () => artifactManager.downloadFile(
-            any(),
-            outputPath: any(named: 'outputPath'),
-          ),
-        ).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(() => logger.progress('Downloading release')).called(1);
-        verify(() => progress.fail('$exception')).called(1);
+        setUp(() {
+          when(
+            () => artifactManager.downloadFile(
+              any(),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => logger.progress('Downloading release')).called(1);
+          verify(() => progress.fail('$exception')).called(1);
+        });
       });
 
-      test('downloading release progress completes when download completes',
-          () async {
-        final mockDownloadingProgress = MockProgress();
-        when(() => logger.progress('Downloading release'))
-            .thenReturn(mockDownloadingProgress);
-        await runWithOverrides(command.run);
-        verify(() => logger.progress('Downloading release')).called(1);
-        verify(mockDownloadingProgress.complete).called(1);
+      group('when download completes', () {
+        late Progress mockDownloadingProgress;
+        setUp(() {
+          mockDownloadingProgress = MockProgress();
+          when(() => logger.progress('Downloading release'))
+              .thenReturn(mockDownloadingProgress);
+        });
+
+        test('downloading release progress completes', () async {
+          await runWithOverrides(command.run);
+          verify(() => logger.progress('Downloading release')).called(1);
+          verify(mockDownloadingProgress.complete).called(1);
+        });
       });
 
-      test('exits with code 70 when unable to find shorebird.yaml', () async {
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(
-          () => progress.fail('Exception: Unable to find shorebird.yaml'),
-        ).called(1);
+      group('when unable to find shorebird.yaml', () {
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => progress.fail('Exception: Unable to find shorebird.yaml'),
+          ).called(1);
+        });
       });
 
-      test('exits with code 70 when extracting metadata fails', () async {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer(setupAndroidShorebirdYaml);
+      group('when extracting metadata fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
+        });
 
-        final exception = Exception('oops');
-        when(() => bundletool.getPackageName(any())).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(() => bundletool.getPackageName(aabPath())).called(1);
+        test('exits with code 70', () async {
+          final exception = Exception('oops');
+          when(() => bundletool.getPackageName(any())).thenThrow(exception);
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => bundletool.getPackageName(aabPath())).called(1);
+        });
       });
 
-      test('exits with code 70 when building apks fails', () async {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer(setupAndroidShorebirdYaml);
+      group('when building apks fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
 
-        final exception = Exception('oops');
-        when(
-          () => bundletool.buildApks(
-            bundle: any(named: 'bundle'),
-            output: any(named: 'output'),
-          ),
-        ).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(
-          () => bundletool.buildApks(bundle: aabPath(), output: apksPath()),
-        ).called(1);
+          final exception = Exception('oops');
+          when(
+            () => bundletool.buildApks(
+              bundle: any(named: 'bundle'),
+              output: any(named: 'output'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => bundletool.buildApks(bundle: aabPath(), output: apksPath()),
+          ).called(1);
+        });
       });
 
-      test('exits with code 70 when installing apks fails', () async {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer(setupAndroidShorebirdYaml);
+      group('when installing apks fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
 
-        final exception = Exception('oops');
-        when(
-          () => bundletool.installApks(apks: any(named: 'apks')),
-        ).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(() => bundletool.installApks(apks: apksPath())).called(1);
+          final exception = Exception('oops');
+          when(
+            () => bundletool.installApks(apks: any(named: 'apks')),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => bundletool.installApks(apks: apksPath())).called(1);
+        });
       });
 
-      test('exits with code 70 when clearing app data fails', () async {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer(setupAndroidShorebirdYaml);
+      group('when clearing app data fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
 
-        final exception = Exception('oops');
-        when(
-          () => adb.clearAppData(package: any(named: 'package')),
-        ).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(() => adb.clearAppData(package: packageName)).called(1);
+          final exception = Exception('oops');
+          when(
+            () => adb.clearAppData(package: any(named: 'package')),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => adb.clearAppData(package: packageName)).called(1);
+        });
       });
 
-      test('exits with code 70 when starting app fails', () async {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer(setupAndroidShorebirdYaml);
+      group('when starting app fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
 
-        final exception = Exception('oops');
-        when(() => adb.startApp(package: any(named: 'package')))
-            .thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(() => adb.startApp(package: packageName)).called(1);
+          final exception = Exception('oops');
+          when(() => adb.startApp(package: any(named: 'package')))
+              .thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => adb.startApp(package: packageName)).called(1);
+        });
       });
 
-      test('exits with non-zero exit code when logcat process fails', () async {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer(setupAndroidShorebirdYaml);
+      group('when logcat process fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
 
-        when(() => process.exitCode).thenAnswer((_) async => 1);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(1));
-        verify(() => adb.logcat(filter: 'flutter')).called(1);
+          when(() => process.exitCode).thenAnswer((_) async => 1);
+        });
+
+        test('exits with non-zero exit code', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(1));
+          verify(() => adb.logcat(filter: 'flutter')).called(1);
+        });
       });
 
       test('pipes stdout output to logger', () async {
@@ -732,199 +787,228 @@ channel: ${track.channel}
         verify(() => logger.err(output)).called(1);
       });
 
-      test(
-          '''does not prompt or query for app when in a shorebird project without flavors''',
-          () async {
-        when(() => shorebirdEnv.getShorebirdYaml())
-            .thenReturn(const ShorebirdYaml(appId: 'test-app-id'));
-        when(() => argResults.wasParsed('app-id')).thenReturn(false);
-        when(() => argResults['app-id']).thenReturn(null);
+      group('when in a shorebird project without flavors', () {
+        setUp(() {
+          when(() => shorebirdEnv.getShorebirdYaml())
+              .thenReturn(const ShorebirdYaml(appId: 'test-app-id'));
+          when(() => argResults.wasParsed('app-id')).thenReturn(false);
+          when(() => argResults['app-id']).thenReturn(null);
+        });
 
-        await runWithOverrides(command.run);
+        test('does not prompt or query for app', () async {
+          await runWithOverrides(command.run);
 
-        verifyNever(
-          () => logger.chooseOne<AppMetadata>(
-            'Which app would you like to preview?',
-            choices: any(named: 'choices'),
-            display: any(named: 'display'),
-          ),
-        );
-        verifyNever(() => codePushClientWrapper.getApps());
+          verifyNever(
+            () => logger.chooseOne<AppMetadata>(
+              'Which app would you like to preview?',
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          );
+          verifyNever(() => codePushClientWrapper.getApps());
+        });
       });
 
-      test('prompts for the flavor when in shorebird project with flavors',
-          () async {
-        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
-          const ShorebirdYaml(
-            appId: 'test-app-id',
-            flavors: {
-              'dev': 'dev-app-id',
-              'prod': 'prod-app-id',
-            },
-          ),
-        );
-        when(() => argResults.wasParsed('app-id')).thenReturn(false);
-        when(() => argResults['app-id']).thenReturn(null);
-        when(
-          () => logger.chooseOne<String>(
-            any(),
-            choices: any(named: 'choices'),
-          ),
-        ).thenReturn('dev');
+      group('when in shorebird project with flavors', () {
+        setUp(() {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+            const ShorebirdYaml(
+              appId: 'test-app-id',
+              flavors: {
+                'dev': 'dev-app-id',
+                'prod': 'prod-app-id',
+              },
+            ),
+          );
+          when(() => argResults.wasParsed('app-id')).thenReturn(false);
+          when(() => argResults['app-id']).thenReturn(null);
+          when(
+            () => logger.chooseOne<String>(
+              any(),
+              choices: any(named: 'choices'),
+            ),
+          ).thenReturn('dev');
+        });
 
-        await runWithOverrides(command.run);
+        test('prompts for the flavor', () async {
+          await runWithOverrides(command.run);
 
-        verify(
-          () => logger.chooseOne<String>(
-            any(),
-            choices: ['dev', 'prod'],
-          ),
-        ).called(1);
+          verify(
+            () => logger.chooseOne<String>(
+              any(),
+              choices: ['dev', 'prod'],
+            ),
+          ).called(1);
+        });
       });
 
-      test('queries for apps when app-id is not specified', () async {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer(setupAndroidShorebirdYaml);
+      group('when app-id is not specified', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
 
-        when(() => argResults.wasParsed('app-id')).thenReturn(false);
-        when(() => argResults['app-id']).thenReturn(null);
-        when(
-          () => logger.chooseOne<AppMetadata>(
-            any(),
-            choices: any(named: 'choices'),
-            display: any(named: 'display'),
-          ),
-        ).thenReturn(app);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.success.code));
-        final captured = verify(
-          () => logger.chooseOne<AppMetadata>(
-            any(),
-            choices: any(named: 'choices'),
-            display: captureAny(named: 'display'),
-          ),
-        ).captured.single as String Function(AppMetadata);
-        expect(captured(app), equals(app.displayName));
-        verify(() => codePushClientWrapper.getApps()).called(1);
+          when(() => argResults.wasParsed('app-id')).thenReturn(false);
+          when(() => argResults['app-id']).thenReturn(null);
+          when(
+            () => logger.chooseOne<AppMetadata>(
+              any(),
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          ).thenReturn(app);
+        });
+
+        test('queries for apps', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          final captured = verify(
+            () => logger.chooseOne<AppMetadata>(
+              any(),
+              choices: any(named: 'choices'),
+              display: captureAny(named: 'display'),
+            ),
+          ).captured.single as String Function(AppMetadata);
+          expect(captured(app), equals(app.displayName));
+          verify(() => codePushClientWrapper.getApps()).called(1);
+        });
       });
 
-      test('prompts for platforms when platform is not specified', () async {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer(setupAndroidShorebirdYaml);
-        // We only prompt when there are multiple platforms to choose from
-        when(() => platform.isMacOS).thenReturn(true);
+      group('when platform is not specified', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
+          // We only prompt when there are multiple platforms to choose from
+          when(() => platform.isMacOS).thenReturn(true);
 
-        when(() => argResults['platform']).thenReturn(null);
-        when(
-          () => logger.chooseOne<String>(
-            any(),
-            choices: any(named: 'choices'),
-            display: any(named: 'display'),
-          ),
-        ).thenReturn(releasePlatform.displayName);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.success.code));
-        final platforms = verify(
-          () => logger.chooseOne<String>(
-            any(),
-            choices: captureAny(named: 'choices'),
-            display: any(named: 'display'),
-          ),
-        ).captured.single as List<String>;
-        expect(
-          platforms,
-          equals([
-            ReleasePlatform.android.displayName,
-            ReleasePlatform.ios.displayName,
-          ]),
-        );
+          when(() => argResults['platform']).thenReturn(null);
+          when(
+            () => logger.chooseOne<String>(
+              any(),
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          ).thenReturn(releasePlatform.displayName);
+        });
+
+        test('prompts for platforms', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          final platforms = verify(
+            () => logger.chooseOne<String>(
+              any(),
+              choices: captureAny(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          ).captured.single as List<String>;
+          expect(
+            platforms,
+            equals([
+              ReleasePlatform.android.displayName,
+              ReleasePlatform.ios.displayName,
+            ]),
+          );
+        });
       });
 
-      test('exits early when no apps are found', () async {
-        when(() => argResults.wasParsed('app-id')).thenReturn(false);
-        when(() => argResults['app-id']).thenReturn(null);
-        when(() => codePushClientWrapper.getApps()).thenAnswer((_) async => []);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.success.code));
-        verifyNever(
-          () => logger.chooseOne<AppMetadata>(
-            any(),
-            choices: any(named: 'choices'),
-            display: captureAny(named: 'display'),
-          ),
-        );
-        verify(() => codePushClientWrapper.getApps()).called(1);
-        verify(() => logger.info('No apps found')).called(1);
+      group('when no apps are found', () {
+        setUp(() {
+          when(() => argResults.wasParsed('app-id')).thenReturn(false);
+          when(() => argResults['app-id']).thenReturn(null);
+          when(() => codePushClientWrapper.getApps())
+              .thenAnswer((_) async => []);
+        });
+
+        test('exits early with success code', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verifyNever(
+            () => logger.chooseOne<AppMetadata>(
+              any(),
+              choices: any(named: 'choices'),
+              display: captureAny(named: 'display'),
+            ),
+          );
+          verify(() => codePushClientWrapper.getApps()).called(1);
+          verify(() => logger.info('No apps found')).called(1);
+        });
       });
 
-      test('exits early when no releases are found', () async {
-        when(() => argResults['release-version']).thenReturn(null);
-        when(
-          () => codePushClientWrapper.getReleases(
-            appId: any(named: 'appId'),
-            sideloadableOnly: any(named: 'sideloadableOnly'),
-          ),
-        ).thenAnswer((_) async => []);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.success.code));
-        verifyNever(
-          () => logger.chooseOne<AppMetadata>(
-            any(),
-            choices: any(named: 'choices'),
-            display: captureAny(named: 'display'),
-          ),
-        );
-        verify(
-          () => codePushClientWrapper.getReleases(
-            appId: appId,
-            sideloadableOnly: true,
-          ),
-        ).called(1);
-        verify(() => logger.info('No previewable releases found')).called(1);
+      group('when no releases are found', () {
+        setUp(() {
+          when(() => argResults['release-version']).thenReturn(null);
+          when(
+            () => codePushClientWrapper.getReleases(
+              appId: any(named: 'appId'),
+              sideloadableOnly: any(named: 'sideloadableOnly'),
+            ),
+          ).thenAnswer((_) async => []);
+        });
+
+        test('exits early', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verifyNever(
+            () => logger.chooseOne<AppMetadata>(
+              any(),
+              choices: any(named: 'choices'),
+              display: captureAny(named: 'display'),
+            ),
+          );
+          verify(
+            () => codePushClientWrapper.getReleases(
+              appId: appId,
+              sideloadableOnly: true,
+            ),
+          ).called(1);
+          verify(() => logger.info('No previewable releases found')).called(1);
+        });
       });
 
-      test(
-          'queries for releases when '
-          'release-version is not specified', () async {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer(setupAndroidShorebirdYaml);
+      group('when release-version is not specified', () {
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer(setupAndroidShorebirdYaml);
 
-        when(() => argResults['release-version']).thenReturn(null);
-        when(
-          () => logger.chooseOne<Release>(
-            any(),
-            choices: any(named: 'choices'),
-            display: any(named: 'display'),
-          ),
-        ).thenReturn(release);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.success.code));
-        final captured = verify(
-          () => logger.chooseOne<Release>(
-            any(),
-            choices: any(named: 'choices'),
-            display: captureAny(named: 'display'),
-          ),
-        ).captured.single as String Function(Release);
-        expect(captured(release), equals(releaseVersion));
-        verify(
-          () => codePushClientWrapper.getReleases(
-            appId: appId,
-            sideloadableOnly: true,
-          ),
-        ).called(1);
+          when(() => argResults['release-version']).thenReturn(null);
+          when(
+            () => logger.chooseOne<Release>(
+              any(),
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          ).thenReturn(release);
+        });
+
+        test('queries for releases', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          final captured = verify(
+            () => logger.chooseOne<Release>(
+              any(),
+              choices: any(named: 'choices'),
+              display: captureAny(named: 'display'),
+            ),
+          ).captured.single as String Function(Release);
+          expect(captured(release), equals(releaseVersion));
+          verify(
+            () => codePushClientWrapper.getReleases(
+              appId: appId,
+              sideloadableOnly: true,
+            ),
+          ).called(1);
+        });
       });
 
       test('forwards deviceId to adb and bundletool', () async {
@@ -1056,64 +1140,77 @@ channel: ${track.channel}
         verify(() => iosDeploy.installIfNeeded()).called(1);
       });
 
-      test('exits with code 70 when querying for release artifact fails',
-          () async {
-        final exception = Exception('oops');
-        when(
-          () => codePushClientWrapper.getReleaseArtifact(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            arch: any(named: 'arch'),
-            platform: any(named: 'platform'),
-          ),
-        ).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(
-          () => codePushClientWrapper.getReleaseArtifact(
-            appId: appId,
-            releaseId: releaseId,
-            arch: 'runner',
-            platform: releasePlatform,
-          ),
-        ).called(1);
+      group('when querying for release artifact fails', () {
+        setUp(() {
+          final exception = Exception('oops');
+          when(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: appId,
+              releaseId: releaseId,
+              arch: 'runner',
+              platform: releasePlatform,
+            ),
+          ).called(1);
+        });
       });
 
-      test('exits with code 70 when downloading release artifact fails',
-          () async {
+      group('when downloading release artifact fails', () {
         final exception = Exception('oops');
-        when(
-          () => artifactManager.downloadFile(any()),
-        ).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(() => progress.fail('$exception')).called(1);
+        setUp(() {
+          when(
+            () => artifactManager.downloadFile(any()),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => progress.fail('$exception')).called(1);
+        });
       });
 
-      test(
-          'exits with code 70 when extracting '
-          'release artifact fails', () async {
+      group('when extracting release artifact fails', () {
         final exception = Exception('oops');
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(() => progress.fail('$exception')).called(1);
+        setUp(() {
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => progress.fail('$exception')).called(1);
+        });
       });
 
-      test('exits with code 70 when unable to find shorebird.yaml', () async {
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(
-          () => progress.fail('Exception: Unable to find shorebird.yaml'),
-        ).called(1);
-        verifyNever(
-          () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
-        );
+      group('when unable to find shorebird.yaml', () {
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => progress.fail('Exception: Unable to find shorebird.yaml'),
+          ).called(1);
+          verifyNever(
+            () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+          );
+        });
       });
 
       group('when device-id arg is provided', () {
@@ -1136,118 +1233,144 @@ channel: ${track.channel}
           );
         });
 
-        test(
-            'falls back to ios-deploy if no devicectl devices have matching id',
-            () async {
-          when(() => argResults['device-id'])
-              .thenAnswer((_) => 'not-a-device-id');
-          setupIOSShorebirdYaml();
-          await runWithOverrides(command.run);
+        group('when no devicectl devices have matching id', () {
+          setUp(() {
+            when(() => argResults['device-id'])
+                .thenAnswer((_) => 'not-a-device-id');
+            setupIOSShorebirdYaml();
+          });
 
+          test('falls back to ios-deploy', () async {
+            await runWithOverrides(command.run);
+
+            verify(
+              () => progress.complete(
+                '''No iOS 17+ device found, looking for devices running iOS 16 or lower''',
+              ),
+            ).called(1);
+            verify(
+              () => iosDeploy.installAndLaunchApp(
+                bundlePath: runnerPath(),
+                deviceId: 'not-a-device-id',
+              ),
+            ).called(1);
+          });
+        });
+      });
+
+      group('when devicectl returns a usable device', () {
+        setUp(() {
+          when(
+            () => devicectl.deviceForLaunch(
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenAnswer((_) async => appleDevice);
+          setupIOSShorebirdYaml();
+        });
+
+        test('uses devicectl', () async {
+          await runWithOverrides(command.run);
           verify(
-            () => progress.complete(
-              '''No iOS 17+ device found, looking for devices running iOS 16 or lower''',
+            () => devicectl.installAndLaunchApp(
+              runnerAppDirectory: any(named: 'runnerAppDirectory'),
+              device: any(named: 'device'),
             ),
           ).called(1);
-          verify(
+          verifyNever(
             () => iosDeploy.installAndLaunchApp(
-              bundlePath: runnerPath(),
-              deviceId: 'not-a-device-id',
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
             ),
+          );
+        });
+      });
+
+      group('when install/launch throws', () {
+        setUp(() {
+          setupIOSShorebirdYaml();
+          final exception = Exception('oops');
+          when(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
           ).called(1);
         });
       });
 
-      test('uses devicectl if devicectl returns a usable device', () async {
-        when(() => devicectl.deviceForLaunch(deviceId: any(named: 'deviceId')))
-            .thenAnswer((_) async => appleDevice);
-        setupIOSShorebirdYaml();
-        await runWithOverrides(command.run);
-        verify(
-          () => devicectl.installAndLaunchApp(
-            runnerAppDirectory: any(named: 'runnerAppDirectory'),
-            device: any(named: 'device'),
-          ),
-        ).called(1);
-        verifyNever(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: any(named: 'bundlePath'),
-            deviceId: any(named: 'deviceId'),
-          ),
-        );
-      });
+      group('when install/launch succeeds (production)', () {
+        late File shorebirdYaml;
+        setUp(() {
+          shorebirdYaml = setupIOSShorebirdYaml();
+          when(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenAnswer((_) async => ExitCode.success.code);
+        });
 
-      test('exits with code 70 when install/launch throws', () async {
-        setupIOSShorebirdYaml();
-        final exception = Exception('oops');
-        when(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: any(named: 'bundlePath'),
-            deviceId: any(named: 'deviceId'),
-          ),
-        ).thenThrow(exception);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.software.code));
-        verify(
-          () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
-        ).called(1);
-      });
-
-      test('exits with code 0 when install/launch succeeds (production)',
-          () async {
-        final shorebirdYaml = setupIOSShorebirdYaml();
-        when(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: any(named: 'bundlePath'),
-            deviceId: any(named: 'deviceId'),
-          ),
-        ).thenAnswer((_) async => ExitCode.success.code);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.success.code));
-        verify(
-          () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
-        ).called(1);
-        expect(
-          shorebirdYaml.readAsStringSync(),
-          equals('''
+        test('exits with code 0', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+          ).called(1);
+          expect(
+            shorebirdYaml.readAsStringSync(),
+            equals('''
 app_id: $appId
 channel: ${track.channel}
 '''),
-        );
+          );
+        });
       });
 
-      test('exits with code 0 when install/launch succeeds (staging)',
-          () async {
-        when(() => argResults['staging']).thenReturn(true);
-        final shorebirdYaml = File(
-          p.join(
-            runnerPath(),
-            'Frameworks',
-            'App.framework',
-            'flutter_assets',
-            'shorebird.yaml',
-          ),
-        )
-          ..createSync(recursive: true)
-          ..writeAsStringSync('app_id: $appId', flush: true);
-        when(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: any(named: 'bundlePath'),
-            deviceId: any(named: 'deviceId'),
-          ),
-        ).thenAnswer((_) async => ExitCode.success.code);
-        final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.success.code));
-        verify(
-          () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
-        ).called(1);
-        expect(
-          shorebirdYaml.readAsStringSync(),
-          equals('''
+      group('when install/launch succeeds (staging)', () {
+        late File shorebirdYaml;
+        setUp(() {
+          when(() => argResults['staging']).thenReturn(true);
+          shorebirdYaml = File(
+            p.join(
+              runnerPath(),
+              'Frameworks',
+              'App.framework',
+              'flutter_assets',
+              'shorebird.yaml',
+            ),
+          )
+            ..createSync(recursive: true)
+            ..writeAsStringSync('app_id: $appId', flush: true);
+          when(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).thenAnswer((_) async => ExitCode.success.code);
+        });
+
+        test('exits with code 0', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+          ).called(1);
+          expect(
+            shorebirdYaml.readAsStringSync(),
+            equals('''
 app_id: $appId
 channel: ${DeploymentTrack.staging.channel}
 '''),
-        );
+          );
+        });
       });
 
       group('when fetching the artifact fails', () {
