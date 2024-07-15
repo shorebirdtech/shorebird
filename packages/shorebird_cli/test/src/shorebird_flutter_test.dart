@@ -201,33 +201,37 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
     });
 
     group('getVersionAndRevision', () {
-      test('returns unknown (<revision>) when unable to determine version',
-          () async {
+      group('when unable to determine version', () {
         const error = 'oops';
-        when(
-          () => git.forEachRef(
-            directory: any(named: 'directory'),
-            contains: any(named: 'contains'),
-            format: any(named: 'format'),
-            pattern: any(named: 'pattern'),
-          ),
-        ).thenThrow(
-          ProcessException(
-            'git',
-            [
-              'for-each-ref',
-              '--format',
-              '%(refname:short)',
-              'refs/remotes/origin/flutter_release/*',
-            ],
-            error,
-            ExitCode.software.code,
-          ),
-        );
-        await expectLater(
-          runWithOverrides(shorebirdFlutter.getVersionAndRevision),
-          completion(equals('unknown (${flutterRevision.substring(0, 10)})')),
-        );
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenThrow(
+            ProcessException(
+              'git',
+              [
+                'for-each-ref',
+                '--format',
+                '%(refname:short)',
+                'refs/remotes/origin/flutter_release/*',
+              ],
+              error,
+              ExitCode.software.code,
+            ),
+          );
+        });
+
+        test('returns unknown (<revision>)', () async {
+          await expectLater(
+            runWithOverrides(shorebirdFlutter.getVersionAndRevision),
+            completion(equals('unknown (${flutterRevision.substring(0, 10)})')),
+          );
+        });
       });
 
       test('returns correct version and revision', () async {
@@ -240,151 +244,178 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
 
     group('getRevisionForVersion', () {
       const version = '3.16.3';
+      const exception = ProcessException('git', ['rev-parse']);
 
-      test('throws exception when process exits with non-zero code', () async {
-        const exception = ProcessException('git', ['rev-parse']);
-        when(
-          () => git.revParse(
-            revision: any(named: 'revision'),
-            directory: any(named: 'directory'),
-          ),
-        ).thenThrow(exception);
-        await expectLater(
-          runWithOverrides(
-            () => shorebirdFlutter.getRevisionForVersion(version),
-          ),
-          throwsA(exception),
-        );
-        verify(
-          () => git.revParse(
-            revision: 'refs/remotes/origin/flutter_release/$version',
-            directory: any(named: 'directory'),
-          ),
-        ).called(1);
+      group('when process exits with non-zero code', () {
+        setUp(() {
+          when(
+            () => git.revParse(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('throws exception', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.getRevisionForVersion(version),
+            ),
+            throwsA(exception),
+          );
+          verify(
+            () => git.revParse(
+              revision: 'refs/remotes/origin/flutter_release/$version',
+              directory: any(named: 'directory'),
+            ),
+          ).called(1);
+        });
       });
 
-      test('returns null when cannot parse revision', () async {
-        when(
-          () => git.revParse(
-            revision: any(named: 'revision'),
-            directory: any(named: 'directory'),
-          ),
-        ).thenAnswer((_) async => '');
-        await expectLater(
-          runWithOverrides(
-            () => shorebirdFlutter.getRevisionForVersion(version),
-          ),
-          completion(isNull),
-        );
-        verify(
-          () => git.revParse(
-            revision: 'refs/remotes/origin/flutter_release/$version',
-            directory: any(named: 'directory'),
-          ),
-        ).called(1);
+      group('when cannot parse revision', () {
+        setUp(() {
+          when(
+            () => git.revParse(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
+            ),
+          ).thenAnswer((_) async => '');
+        });
+
+        test('returns null', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.getRevisionForVersion(version),
+            ),
+            completion(isNull),
+          );
+          verify(
+            () => git.revParse(
+              revision: 'refs/remotes/origin/flutter_release/$version',
+              directory: any(named: 'directory'),
+            ),
+          ).called(1);
+        });
       });
 
-      test('returns revision when able to parse the string', () async {
+      group('when able to parse the string', () {
         const revision = '771d07b2cf97cf107bae6eeedcf41bdc9db772fa';
-        when(
-          () => git.revParse(
-            revision: any(named: 'revision'),
-            directory: any(named: 'directory'),
-          ),
-        ).thenAnswer(
-          (_) async => '''
+        setUp(() {
+          when(
+            () => git.revParse(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
+            ),
+          ).thenAnswer(
+            (_) async => '''
 $revision
         ''',
-        );
-        await expectLater(
-          runWithOverrides(
-            () => shorebirdFlutter.getRevisionForVersion(version),
-          ),
-          completion(equals(revision)),
-        );
-        verify(
-          () => git.revParse(
-            revision: 'refs/remotes/origin/flutter_release/$version',
-            directory: any(named: 'directory'),
-          ),
-        ).called(1);
+          );
+        });
+
+        test('returns revision', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.getRevisionForVersion(version),
+            ),
+            completion(equals(revision)),
+          );
+          verify(
+            () => git.revParse(
+              revision: 'refs/remotes/origin/flutter_release/$version',
+              directory: any(named: 'directory'),
+            ),
+          ).called(1);
+        });
       });
     });
 
     group('getVersionString', () {
-      test('throws ProcessException when process exits with non-zero code',
-          () async {
+      group('when process exits with non-zero code', () {
         const error = 'oops';
-        when(
-          () => git.forEachRef(
-            directory: any(named: 'directory'),
-            contains: any(named: 'contains'),
-            format: any(named: 'format'),
-            pattern: any(named: 'pattern'),
-          ),
-        ).thenThrow(
-          ProcessException(
-            'git',
-            [
-              'for-each-ref',
-              '--format',
-              '%(refname:short)',
-              'refs/remotes/origin/flutter_release/*',
-            ],
-            error,
-            ExitCode.software.code,
-          ),
-        );
-        await expectLater(
-          runWithOverrides(shorebirdFlutter.getVersionString),
-          throwsA(isA<ProcessException>()),
-        );
-        verify(
-          () => git.forEachRef(
-            directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            contains: flutterRevision,
-            format: '%(refname:short)',
-            pattern: 'refs/remotes/origin/flutter_release/*',
-          ),
-        ).called(1);
+
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenThrow(
+            ProcessException(
+              'git',
+              [
+                'for-each-ref',
+                '--format',
+                '%(refname:short)',
+                'refs/remotes/origin/flutter_release/*',
+              ],
+              error,
+              ExitCode.software.code,
+            ),
+          );
+        });
+
+        test('throws ProcessException', () async {
+          await expectLater(
+            runWithOverrides(shorebirdFlutter.getVersionString),
+            throwsA(isA<ProcessException>()),
+          );
+          verify(
+            () => git.forEachRef(
+              directory: p.join(flutterDirectory.parent.path, flutterRevision),
+              contains: flutterRevision,
+              format: '%(refname:short)',
+              pattern: 'refs/remotes/origin/flutter_release/*',
+            ),
+          ).called(1);
+        });
       });
 
-      test('returns null when cannot parse version', () async {
-        when(
-          () => git.forEachRef(
-            directory: any(named: 'directory'),
-            contains: any(named: 'contains'),
-            format: any(named: 'format'),
-            pattern: any(named: 'pattern'),
-          ),
-        ).thenAnswer((_) async => '');
-        await expectLater(
-          runWithOverrides(shorebirdFlutter.getVersionString),
-          completion(isNull),
-        );
-        verify(
-          () => git.forEachRef(
-            directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            contains: flutterRevision,
-            format: '%(refname:short)',
-            pattern: 'refs/remotes/origin/flutter_release/*',
-          ),
-        ).called(1);
+      group('when cannot parse version', () {
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => '');
+        });
+
+        test('returns null', () async {
+          await expectLater(
+            runWithOverrides(shorebirdFlutter.getVersionString),
+            completion(isNull),
+          );
+          verify(
+            () => git.forEachRef(
+              directory: p.join(flutterDirectory.parent.path, flutterRevision),
+              contains: flutterRevision,
+              format: '%(refname:short)',
+              pattern: 'refs/remotes/origin/flutter_release/*',
+            ),
+          ).called(1);
+        });
       });
 
-      test('returns version when able to parse the string', () async {
-        await expectLater(
-          runWithOverrides(shorebirdFlutter.getVersionString),
-          completion(equals('3.10.6')),
-        );
-        verify(
-          () => git.forEachRef(
-            directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            contains: flutterRevision,
-            format: '%(refname:short)',
-            pattern: 'refs/remotes/origin/flutter_release/*',
-          ),
-        ).called(1);
+      group('when able to parse the string', () {
+        test('returns version', () async {
+          await expectLater(
+            runWithOverrides(shorebirdFlutter.getVersionString),
+            completion(equals('3.10.6')),
+          );
+          verify(
+            () => git.forEachRef(
+              directory: p.join(flutterDirectory.parent.path, flutterRevision),
+              contains: flutterRevision,
+              format: '%(refname:short)',
+              pattern: 'refs/remotes/origin/flutter_release/*',
+            ),
+          ).called(1);
+        });
       });
     });
 
@@ -409,7 +440,7 @@ $revision
         });
       });
 
-      group('when getVersionStringReturns an invalid string', () {
+      group('when getVersionString returns an invalid string', () {
         setUp(() {
           when(
             () => git.forEachRef(
@@ -429,7 +460,7 @@ $revision
         });
       });
 
-      group('when getVersionStringReturns a valid string', () {
+      group('when getVersionString returns a valid string', () {
         setUp(() {
           when(
             () => git.forEachRef(
@@ -876,6 +907,38 @@ origin/flutter_release/3.10.6''';
           ),
         );
         verify(() => shorebirdEnv.flutterRevision = newRevision).called(1);
+      });
+    });
+
+    group('formatVersion', () {
+      test('returns the correct formated value', () {
+        expect(
+          runWithOverrides(
+            () => shorebirdFlutter.formatVersion(
+              version: '3.10.6',
+              revision: '771d07b2cf97cf107bae6eeedcf41bdc9db772fa',
+            ),
+          ),
+          equals(
+            '3.10.6 (771d07b2cf)',
+          ),
+        );
+      });
+
+      group('when version is null', () {
+        test('returns unknown for the version', () {
+          expect(
+            runWithOverrides(
+              () => shorebirdFlutter.formatVersion(
+                version: null,
+                revision: '771d07b2cf97cf107bae6eeedcf41bdc9db772fa',
+              ),
+            ),
+            equals(
+              'unknown (771d07b2cf)',
+            ),
+          );
+        });
       });
     });
   });

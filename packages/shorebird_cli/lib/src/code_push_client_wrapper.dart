@@ -261,8 +261,8 @@ Please create a release using "shorebird release" and try again.
     required ReleasePlatform platform,
   }) async {
     final createReleaseProgress = logger.progress('Creating release');
-    final flutterVersion = await shorebirdFlutter.getVersionString(
-      revision: flutterRevision,
+    final flutterVersion = await shorebirdFlutter.getVersionForRevision(
+      flutterRevision: flutterRevision,
     );
     try {
       final release = await codePushClient.createRelease(

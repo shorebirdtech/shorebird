@@ -358,19 +358,33 @@ Use `shorebird flutter versions list` to list available versions.
       // All artifacts associated with a given release must be built
       // with the same Flutter revision.
       if (existingRelease.flutterRevision != flutterRevision) {
+        final flutterVersion = await shorebirdFlutter.getVersionForRevision(
+          flutterRevision: flutterRevision,
+        );
+
+        final formattedCurrentReleaseVersion = shorebirdFlutter.formatVersion(
+          revision: flutterRevision,
+          version: flutterVersion,
+        );
+
+        final formattedExistingReleaseVersion = shorebirdFlutter.formatVersion(
+          revision: existingRelease.flutterRevision,
+          version: existingRelease.flutterVersion,
+        );
+
         logger
           ..err('''
 ${styleBold.wrap(lightRed.wrap('A release with version $version already exists but was built using a different Flutter revision.'))}
 ''')
           ..info('''
 
-  Existing release built with: ${lightCyan.wrap(existingRelease.flutterRevision)}
-  Current release built with: ${lightCyan.wrap(flutterRevision)}
+  Existing release built with: ${lightCyan.wrap(formattedExistingReleaseVersion)}
+  Current release built with: ${lightCyan.wrap(formattedCurrentReleaseVersion)}
 
 ${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built using the same Flutter revision.'))}
 
 To resolve this issue, you can:
-  * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterRevision}')}".
+  * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterVersion ?? existingRelease.flutterRevision}')}".
   * Delete the existing release and re-run the release command with the desired Flutter version.
   * Bump the release version and re-run the release command with the desired Flutter version.''');
         throw ProcessExit(ExitCode.software.code);
