@@ -265,7 +265,7 @@ void main() {
         ).thenThrow(exception);
       });
 
-      test('exits', () async {
+      test('exits with exit code from validation error', () async {
         await expectLater(
           runWithOverrides(command.run),
           completion(equals(exception.exitCode.code)),
@@ -558,6 +558,7 @@ channel: ${track.channel}
             ),
           ).thenThrow(exception);
         });
+
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
@@ -925,7 +926,7 @@ channel: ${track.channel}
               .thenAnswer((_) async => []);
         });
 
-        test('exits early', () async {
+        test('exits early with success code', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
           verifyNever(
