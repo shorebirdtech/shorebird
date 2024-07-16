@@ -6,6 +6,14 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.19 (July 15, 2024)
+
+- 📦 Fix a bug where artifacts (aot_tools.dill, bundletool.jar) could sometimes get corrupted by an interrupted download.
+- 🚨 Better usage exception handling
+- ✨ Display human readable Flutter versions (e.g. 3.22.2) in addition to Flutter version hashes in more places.
+- 🪵 Better error logging on Windows
+- 📊 Improve linker diagnostics
+
 ## 1.1.18 (July 11, 2024)
 
 - 🩹 Fix `shorebird release android` when using older Flutter versions
