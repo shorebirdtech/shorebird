@@ -10,7 +10,7 @@ This section contains past updates we've sent to customers.
 
 - 📦 Fix a bug where artifacts (aot_tools.dill, bundletool.jar) could sometimes get corrupted by an interrupted download.
 - 🚨 Better usage exception handling
-- ✨ Improved Flutter version format
+- ✨ Display human readable Flutter versions (e.g. 3.22.2) in addition to Flutter version hashes in more places.
 - 🪵 Better error logging on Windows
 - 📊 Improve linker diagnostics
 
