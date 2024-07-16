@@ -8,7 +8,7 @@ This section contains past updates we've sent to customers.
 
 ## 1.1.19 (July 15, 2024)
 
-- 📦 Add stamp files to prevent cached artifact corruption
+- 📦 Fix a bug where artifacts (aot_tools.dill, bundletool.jar) could sometimes get corrupted by an interrupted download.
 - 🚨 Better usage exception handling
 - ✨ Improved Flutter version format
 - 🪵 Better error logging on Windows
