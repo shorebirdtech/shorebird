@@ -118,12 +118,12 @@ void main() {
         verifyNoMoreInteractions(logger);
       });
 
-      test('logs releases with max', () async {
+      test('logs releases with limit', () async {
         when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
         when(() => codePushClientWrapper.getReleases(appId: appId))
             .thenAnswer((_) => Future.value([release, release, release]));
 
-        when(() => argResults['max']).thenReturn('1');
+        when(() => argResults['limit']).thenReturn('1');
 
         await runWithOverrides(() => command.run());
 
@@ -132,12 +132,13 @@ void main() {
         verifyNoMoreInteractions(logger);
       });
 
-      test('logs releases when max is greater than releases length', () async {
+      test('logs releases when limit is greater than releases length',
+          () async {
         when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
         when(() => codePushClientWrapper.getReleases(appId: appId))
             .thenAnswer((_) => Future.value([release, release, release]));
 
-        when(() => argResults['max']).thenReturn('10');
+        when(() => argResults['limit']).thenReturn('10');
 
         await runWithOverrides(() => command.run());
 

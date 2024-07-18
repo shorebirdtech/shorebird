@@ -21,13 +21,13 @@ class ListReleasesCommand extends ShorebirdCommand {
         help: 'The product flavor to use when building the app.',
       )
       ..addOption(
-        'max',
-        help: 'The maximum number of releases to list.',
-        defaultsTo: '$_max',
+        'limit',
+        help: 'Limit number of releases to be printed.',
+        defaultsTo: '$_limit',
       );
   }
 
-  static const int _max = 10;
+  static const int _limit = 10;
 
   @override
   String get description => 'List available releases.';
@@ -42,10 +42,10 @@ class ListReleasesCommand extends ShorebirdCommand {
   late String? flavor = results['flavor'] as String?;
 
   /// Whether to only show the latest release for each platform.
-  late int max = int.tryParse(
-        results['max'] as String? ?? '$_max',
+  late int limit = int.tryParse(
+        results['limit'] as String? ?? '$_limit',
       ) ??
-      _max;
+      _limit;
 
   final _dateFormat = DateFormat('MM/dd/yyyy h:mm a');
 
@@ -73,7 +73,7 @@ class ListReleasesCommand extends ShorebirdCommand {
       return 0;
     }
 
-    final toDisplay = releases.take(max).toList();
+    final toDisplay = releases.take(limit).toList();
 
     logger
       ..info('Found ${releases.length} releases for $appId')
