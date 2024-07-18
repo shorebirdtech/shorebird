@@ -8,6 +8,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/commands/list/list_releases_command.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -67,6 +68,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         help: 'The build of the local engine to use as the host platform.',
       );
 
+    addCommand(ListReleasesCommand());
     addCommand(BuildCommand());
     addCommand(CacheCommand());
     addCommand(DoctorCommand());
