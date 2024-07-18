@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.20 (July 18, 2024)
+
+- 🐦 Support for Flutter 3.22.3
+
 ## 1.1.19 (July 15, 2024)
 
 - 📦 Fix a bug where artifacts (aot_tools.dill, bundletool.jar) could sometimes get corrupted by an interrupted download.
