@@ -78,6 +78,10 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    test('default limit is 10', () {
+      expect(ListReleasesCommand.defaultLimit, 10);
+    });
+
     group('#run', () {
       void verifyReleaseLogs(
         Logger logger, {
@@ -139,6 +143,20 @@ void main() {
             .thenAnswer((_) => Future.value([release, release, release]));
 
         when(() => argResults['limit']).thenReturn('10');
+
+        await runWithOverrides(() => command.run());
+
+        verifyReleaseLogs(logger, total: 3, actual: 3, callCount: 3);
+
+        verifyNoMoreInteractions(logger);
+      });
+
+      test('logs default limit when limit is <= 0', () async {
+        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+        when(() => codePushClientWrapper.getReleases(appId: appId))
+            .thenAnswer((_) => Future.value([release, release, release]));
+
+        when(() => argResults['limit']).thenReturn('0');
 
         await runWithOverrides(() => command.run());
 

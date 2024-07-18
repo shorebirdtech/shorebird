@@ -23,11 +23,12 @@ class ListReleasesCommand extends ShorebirdCommand {
       ..addOption(
         'limit',
         help: 'Limit number of releases to be printed.',
-        defaultsTo: '$_limit',
+        defaultsTo: '$defaultLimit',
       );
   }
 
-  static const int _limit = 10;
+  /// The default limit for the number of releases to be printed.
+  static const int defaultLimit = 10;
 
   @override
   String get description => 'List available releases.';
@@ -43,9 +44,9 @@ class ListReleasesCommand extends ShorebirdCommand {
 
   /// Whether to only show the latest release for each platform.
   late int limit = int.tryParse(
-        results['limit'] as String? ?? '$_limit',
+        results['limit'] as String? ?? '$defaultLimit',
       ) ??
-      _limit;
+      defaultLimit;
 
   final _dateFormat = DateFormat('MM/dd/yyyy h:mm a');
 
@@ -67,6 +68,11 @@ class ListReleasesCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     final releases = await codePushClientWrapper.getReleases(appId: appId);
+
+    var limit = this.limit;
+    if (limit <= 0) {
+      limit = defaultLimit;
+    }
 
     if (releases.isEmpty) {
       logger.info('No releases found for $appId');
