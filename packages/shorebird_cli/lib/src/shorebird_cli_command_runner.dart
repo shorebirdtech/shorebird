@@ -8,7 +8,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
-import 'package:shorebird_cli/src/commands/list/list_releases_command.dart';
+import 'package:shorebird_cli/src/commands/releases/releases_command.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -73,7 +73,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(DoctorCommand());
     addCommand(FlutterCommand());
     addCommand(InitCommand());
-    addCommand(ListReleasesCommand());
     addCommand(LoginCommand());
     addCommand(LoginCiCommand());
     addCommand(LogoutCommand());
@@ -81,6 +80,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(PatchesCommand());
     addCommand(PreviewCommand());
     addCommand(ReleaseCommand());
+    addCommand(ReleasesCommand());
     addCommand(RunCommand());
     addCommand(UpgradeCommand());
   }
