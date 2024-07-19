@@ -15,7 +15,7 @@ import 'package:test/test.dart';
 import '../../mocks.dart';
 
 void main() {
-  group('$ListReleasesCommand', () {
+  group(ListReleasesCommand, () {
     const appId = 'test-app-id';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
     const flutterVersion = '3.22.0';
