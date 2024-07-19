@@ -43,10 +43,21 @@ class ListReleasesCommand extends ShorebirdCommand {
   late String? flavor = results['flavor'] as String?;
 
   /// Whether to only show the latest release for each platform.
-  late int limit = int.tryParse(
-        results['limit'] as String? ?? '$defaultLimit',
-      ) ??
-      defaultLimit;
+  int get limit {
+    final arg = int.tryParse(
+      results['limit'] as String? ?? '$defaultLimit',
+    );
+
+    if (arg == null) {
+      return defaultLimit;
+    }
+
+    if (arg <= 0) {
+      return defaultLimit;
+    }
+
+    return arg;
+  }
 
   final _dateFormat = DateFormat('MM/dd/yyyy h:mm a');
 
@@ -69,11 +80,6 @@ class ListReleasesCommand extends ShorebirdCommand {
   Future<int> run() async {
     final releases = await codePushClientWrapper.getReleases(appId: appId);
 
-    var limit = this.limit;
-    if (limit <= 0) {
-      limit = defaultLimit;
-    }
-
     if (releases.isEmpty) {
       logger.info('No releases found for $appId');
       return 0;
@@ -91,6 +97,6 @@ class ListReleasesCommand extends ShorebirdCommand {
       _logRelease(release);
     }
 
-    return 0;
+    return ExitCode.success.code;
   }
 }
