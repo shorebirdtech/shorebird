@@ -11,7 +11,6 @@ class CreatePatchRequest {
   /// {@macro create_patch_request}
   const CreatePatchRequest({
     required this.releaseId,
-    required this.wasForced,
     required this.metadata,
   });
 
@@ -24,9 +23,6 @@ class CreatePatchRequest {
 
   /// The ID of the release.
   final int releaseId;
-
-  /// Whether the user used the --force flag when authoring this patch.
-  final bool? wasForced;
 
   /// Additional information about the command that was run to create the patch
   /// and the environment in which it was run.
