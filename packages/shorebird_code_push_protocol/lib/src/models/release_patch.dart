@@ -7,6 +7,7 @@ part 'release_patch.g.dart';
 /// {@template release_patch}
 /// A patch for a given release.
 /// {@endtemplate}
+// TODO(bryanoltman): consolidate this with [Patch]
 @JsonSerializable()
 class ReleasePatch extends Equatable {
   /// {@macro release_patch}
