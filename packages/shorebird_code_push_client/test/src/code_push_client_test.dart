@@ -1686,6 +1686,7 @@ void main() {
             id: 0,
             number: 1,
             channel: 'stable',
+            isRolledBack: false,
             artifacts: const [],
           );
           response = GetReleasePatchesResponse(patches: [patch]);

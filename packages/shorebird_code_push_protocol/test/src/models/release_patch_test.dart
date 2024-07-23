@@ -11,6 +11,7 @@ void main() {
           id: 0,
           number: 1,
           channel: 'channel',
+          isRolledBack: false,
           artifacts: const [],
         ),
         equals(
@@ -18,6 +19,7 @@ void main() {
             id: 0,
             number: 1,
             channel: 'channel',
+            isRolledBack: false,
             artifacts: const [],
           ),
         ),
