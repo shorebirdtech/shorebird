@@ -263,7 +263,6 @@ class CodePushClient {
   }) async {
     final request = CreatePatchRequest(
       releaseId: releaseId,
-      wasForced: false,
       metadata: metadata,
     );
     final response = await _httpClient.post(

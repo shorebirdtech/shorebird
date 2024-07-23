@@ -6,7 +6,6 @@ void main() {
     test('can be (de)serialized', () {
       final request = CreatePatchRequest(
         releaseId: 1234,
-        wasForced: true,
         metadata: const CreatePatchMetadata(
           releasePlatform: ReleasePlatform.android,
           usedIgnoreAssetChangesFlag: true,
@@ -32,7 +31,6 @@ void main() {
     test('can be (de)serialized without metadata', () {
       final request = CreatePatchRequest(
         releaseId: 1234,
-        wasForced: true,
         metadata: CreatePatchMetadata.forTest().toJson(),
       );
       expect(
