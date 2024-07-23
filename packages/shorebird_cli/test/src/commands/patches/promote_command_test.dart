@@ -42,6 +42,7 @@ void main() {
       id: 0,
       number: 1,
       channel: DeploymentTrack.staging.channel,
+      isRolledBack: false,
       artifacts: const [],
     );
 
@@ -135,6 +136,7 @@ void main() {
           id: 0,
           number: 1,
           channel: DeploymentTrack.production.channel,
+          isRolledBack: false,
           artifacts: const [],
         );
         when(

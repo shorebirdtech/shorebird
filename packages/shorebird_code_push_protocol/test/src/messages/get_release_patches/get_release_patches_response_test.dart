@@ -10,6 +10,7 @@ void main() {
             id: 42,
             number: 1,
             channel: 'stable',
+            isRolledBack: true,
             artifacts: [
               PatchArtifact(
                 id: 1,
@@ -35,6 +36,7 @@ void main() {
             id: 43,
             number: 2,
             channel: null,
+            isRolledBack: false,
             artifacts: [
               PatchArtifact(
                 id: 3,

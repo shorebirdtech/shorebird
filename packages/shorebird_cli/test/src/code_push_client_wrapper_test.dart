@@ -769,6 +769,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             id: 0,
             number: 1,
             channel: DeploymentTrack.production.channel,
+            isRolledBack: false,
             artifacts: const [],
           );
 

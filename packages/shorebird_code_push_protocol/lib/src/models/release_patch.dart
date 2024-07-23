@@ -15,6 +15,7 @@ class ReleasePatch extends Equatable {
     required this.number,
     required this.channel,
     required this.artifacts,
+    required this.isRolledBack,
   });
 
   /// Converts a Map<String, dynamic> to a [ReleasePatch]
@@ -36,6 +37,9 @@ class ReleasePatch extends Equatable {
   /// The associated patch artifacts.
   final List<PatchArtifact> artifacts;
 
+  /// Whether the patch has been rolled back.
+  final bool isRolledBack;
+
   @override
-  List<Object?> get props => [id, number, channel, artifacts];
+  List<Object?> get props => [id, number, channel, artifacts, isRolledBack];
 }
