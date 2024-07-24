@@ -393,7 +393,7 @@ ${styleBold.wrap(lightRed.wrap('A release with version $version already exists b
 ${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built using the same Flutter revision.'))}
 
 To resolve this issue, you can:
-  * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterVersion ?? existingRelease.flutterRevision}')}".
+  * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterRevision}')}".
   * Delete the existing release and re-run the release command with the desired Flutter version.
   * Bump the release version and re-run the release command with the desired Flutter version.''');
         throw ProcessExit(ExitCode.software.code);
