@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.21 (July 23, 2024)
+
+- 🛞 Update API contract with server to support patch rollbacks.
+
 ## 1.1.20 (July 18, 2024)
 
 - 🐦 Support for Flutter 3.22.3
