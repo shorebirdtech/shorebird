@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.22 (July 23, 2024)
+
+- 📈 Improve iOS patch performance
+
 ## 1.1.21 (July 23, 2024)
 
 - 🛞 Update API contract with server to support patch rollbacks.
