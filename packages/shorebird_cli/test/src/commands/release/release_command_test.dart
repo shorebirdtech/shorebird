@@ -520,6 +520,28 @@ $exception''',
             ).called(1);
           });
         });
+
+        group('when flutter-verison is a git hash', () {
+          const revision = 'deadbeef';
+          setUp(() {
+            when(() => argResults['flutter-version']).thenReturn(revision);
+          });
+
+          test(
+              '''installs the flutter version with the provided revision and completes''',
+              () async {
+            await runWithOverrides(command.run);
+
+            verify(() => shorebirdFlutter.installRevision(revision: revision))
+                .called(1);
+            // We should never attempt to treat this as a semver version.
+            verifyNever(
+              () => shorebirdFlutter.getVersionForRevision(
+                flutterRevision: any(named: 'flutterRevision'),
+              ),
+            );
+          });
+        });
       });
     });
 

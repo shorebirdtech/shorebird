@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -85,7 +86,8 @@ class ReleaseCommand extends ShorebirdCommand {
       )
       ..addOption(
         'flutter-version',
-        help: 'The Flutter version to use when building the app (e.g: 3.16.3).',
+        help:
+            '''The Flutter version to use when building the app (e.g: 3.16.3). This option also accepts Flutter commit hashes.''',
       )
       ..addOption(
         'artifact',
@@ -297,41 +299,48 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   /// [shorebirdEnv]. Will exit with [ExitCode.software] if the version
   /// specified by the user is not found/supported.
   Future<String> resolveTargetFlutterRevision() async {
-    if (flutterVersionArg != null) {
-      final String? revision;
-      try {
-        revision = await shorebirdFlutter.getRevisionForVersion(
-          flutterVersionArg!,
-        );
-      } catch (error) {
-        logger.err(
-          '''
+    if (flutterVersionArg == null) {
+      return shorebirdEnv.flutterRevision;
+    }
+
+    final parsedVersion = tryParseVersion(flutterVersionArg!);
+    if (parsedVersion == null) {
+      // If we fail to parse flutterVersionArg as a semver version, attempt to
+      // use the provided value as a revision.
+      return flutterVersionArg!;
+    }
+
+    final String? revision;
+    try {
+      revision = await shorebirdFlutter.getRevisionForVersion(
+        flutterVersionArg!,
+      );
+    } catch (error) {
+      logger.err(
+        '''
 Unable to determine revision for Flutter version: $flutterVersionArg.
 $error''',
-        );
-        throw ProcessExit(ExitCode.software.code);
-      }
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
 
-      if (revision == null) {
-        final openIssueLink = link(
-          uri: Uri.parse(
-            'https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=feat%3A+',
-          ),
-          message: 'open an issue',
-        );
-        logger.err(
-          '''
+    if (revision == null) {
+      final openIssueLink = link(
+        uri: Uri.parse(
+          'https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=feat%3A+',
+        ),
+        message: 'open an issue',
+      );
+      logger.err(
+        '''
 Version $flutterVersionArg not found. Please $openIssueLink to request a new version.
 Use `shorebird flutter versions list` to list available versions.
 ''',
-        );
-        throw ProcessExit(ExitCode.software.code);
-      }
-
-      return revision;
+      );
+      throw ProcessExit(ExitCode.software.code);
     }
 
-    return shorebirdEnv.flutterRevision;
+    return revision;
   }
 
   /// Asserts that a release with version [version] can be released using
@@ -384,7 +393,7 @@ ${styleBold.wrap(lightRed.wrap('A release with version $version already exists b
 ${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built using the same Flutter revision.'))}
 
 To resolve this issue, you can:
-  * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterVersion ?? existingRelease.flutterRevision}')}".
+  * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterRevision}')}".
   * Delete the existing release and re-run the release command with the desired Flutter version.
   * Bump the release version and re-run the release command with the desired Flutter version.''');
         throw ProcessExit(ExitCode.software.code);
