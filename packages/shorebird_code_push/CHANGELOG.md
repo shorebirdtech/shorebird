@@ -1,3 +1,6 @@
+# 1.1.4
+- Run `dart format` over generated files to appease pub static analysis.
+
 # 1.1.3
 
 - Update README to improve example.
