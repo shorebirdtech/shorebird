@@ -6,6 +6,13 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.23 (July 26, 2024)
+
+- 👾 Fix issue where a space in the path to a Flutter project would cause iOS
+  patching to fail.
+- 🛗 Fix issue that would cause `shorebird_code_push` to incorrectly report that
+  a new patch was available for download.
+
 ## 1.1.22 (July 23, 2024)
 
 - 📈 Improve iOS patch performance
