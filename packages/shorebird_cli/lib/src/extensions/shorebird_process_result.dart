@@ -14,6 +14,14 @@ extension FindAppDill on ShorebirdProcessResult {
     final appDillLine = stdout.toString().split('\n').firstWhereOrNull(
           (l) => l.contains('gen_snapshot') && l.endsWith('app.dill'),
         );
-    return appDillLine?.split(' ').last;
+
+    if (appDillLine == null) return null;
+
+    // The last argument in the line is the path to app.dill. Because
+    //   1) paths can contain spaces and
+    //   2) the path to the app.dill is absolute (i.e., it starts with a '/')
+    // we can grab the last space-separated part of the line that starts with
+    // a '/' and assume everything after it is the path to app.dill.
+    return '/${appDillLine.split(' /').last}';
   }
 }
