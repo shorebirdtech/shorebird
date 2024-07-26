@@ -12,6 +12,8 @@ This section contains past updates we've sent to customers.
   patching to fail.
 - 🛗 Fix issue that would cause `shorebird_code_push` to incorrectly report that
   a new patch was available for download.
+- #️⃣ Update release command's `flutter-version` argument to accept Flutter
+  revisions (git commit hashes) in addition to version numbers.
 
 ## 1.1.22 (July 23, 2024)
 
