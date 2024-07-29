@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.1.25 (July 29, 2024)
+
+- 📈 Improve iOS patch performance (tolerate duplicate code objects)
+
 ## 1.1.24 (July 26, 2024)
 
 - 📈 Improve iOS patch performance
