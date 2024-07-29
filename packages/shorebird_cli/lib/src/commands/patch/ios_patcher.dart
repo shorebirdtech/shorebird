@@ -25,7 +25,6 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -146,20 +145,8 @@ This may indicate that the patch contains native changes, which cannot be applie
 
     try {
       final shouldCodesign = argResults['codesign'] == true;
-      final (flutterVersionAndRevision, flutterVersion) = await (
-        shorebirdFlutter.getVersionAndRevision(),
-        shorebirdFlutter.getVersion(),
-      ).wait;
-
-      if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
-          minimumSupportedIosFlutterVersion) {
-        logger.err(
-          '''
-iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-        );
-        throw ProcessExit(ExitCode.software.code);
-      }
+      final flutterVersionAndRevision =
+          await shorebirdFlutter.getVersionAndRevision();
 
       final buildProgress = logger.progress(
         'Building patch with Flutter $flutterVersionAndRevision',
