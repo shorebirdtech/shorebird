@@ -13,6 +13,7 @@ on:
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
   FLUTTER_VERSION: 3.22.3
+  TIMEOUT_MINUTES: 15
 
 jobs:
   patch:
@@ -22,7 +23,7 @@ jobs:
         flutter-version: [3.22.3, 3.22.2, 3.19.6]
 
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: ${{ env.TIMEOUT_MINUTES }}
 
     env:
       SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
@@ -93,7 +94,7 @@ jobs:
         branch: [stable, main]
 
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: ${{ env.TIMEOUT_MINUTES }}
 
     env:
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
