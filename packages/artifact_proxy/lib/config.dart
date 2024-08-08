@@ -85,6 +85,7 @@ final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/android-arm-profile\/darwin-x64\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/android-arm-profile\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/android-arm-profile\/symbols\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/flutter_gpu\.zip',
   r'download.flutter.io\/io\/flutter\/x86_debug\/1\.0\.0-(.*)\/x86_debug-1\.0\.0-(.*)\.pom',
   r'download.flutter.io\/io\/flutter\/x86_64_release\/1\.0\.0-(.*)\/x86_64_release-1\.0\.0-(.*)\.pom\.sha1',
   r'download.flutter.io\/io\/flutter\/x86_64_release\/1\.0\.0-(.*)\/x86_64_release-1\.0\.0-(.*)\.pom',
