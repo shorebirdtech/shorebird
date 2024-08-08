@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.2.0 (August 8, 2024)
+
+- 🐦 Support for Flutter 3.24.0
+
 ## 1.1.27 (August 6, 2024)
 
 - 📈 Improve iOS patch performance (fix gdt detection for orri)
