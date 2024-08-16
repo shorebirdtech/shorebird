@@ -86,7 +86,7 @@ class PreviewCommand extends ShorebirdCommand {
   /// - Warn the user about the platform if that platform is not the one
   ///    the user specified with `--platform`.
   /// - Error out if the user specified a platform that is not previewable.
-  void _assertPreviwableReleases({
+  void _assertPreviewableReleases({
     required Release releaseWithAllPlatforms,
     required Release release,
   }) {
@@ -203,7 +203,7 @@ class PreviewCommand extends ShorebirdCommand {
     final releaseWithAllPlatforms = releasesWithAllPlatforms.firstWhere(
       (r) => r.id == release.id,
     );
-    _assertPreviwableReleases(
+    _assertPreviewableReleases(
       releaseWithAllPlatforms: releaseWithAllPlatforms,
       release: release,
     );

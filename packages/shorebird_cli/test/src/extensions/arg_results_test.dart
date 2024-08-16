@@ -1,3 +1,4 @@
+// cspell:ignore qwer
 import 'package:args/args.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';

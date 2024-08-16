@@ -774,7 +774,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       });
 
       group('createPatchArtifacts', () {
-        const postLinkerFlutterRevision =
+        const postLinkerFlutterRevision = // cspell: disable-next-line
             'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
         const preLinkerFlutterRevision =
             '83305b5088e6fe327fb3334a73ff190828d85713';

@@ -1,3 +1,4 @@
+// cspell:ignore asdfasdf
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';

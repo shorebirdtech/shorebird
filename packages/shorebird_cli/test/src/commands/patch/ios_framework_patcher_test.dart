@@ -441,9 +441,9 @@ void main() {
       });
 
       group('createPatchArtifacts', () {
-        const postLinkerFlutterRevision =
+        const postLinkerFlutterRevision = // cspell: disable-next-line
             'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
-        const preLinkerFlutterRevision =
+        const preLinkerFlutterRevision = // cspell: disable-next-line
             '83305b5088e6fe327fb3334a73ff190828d85713';
         const appId = 'appId';
         const arch = 'aarch64';

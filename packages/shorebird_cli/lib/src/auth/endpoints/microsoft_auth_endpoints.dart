@@ -1,3 +1,4 @@
+// cspell:words microsoftonline
 import 'package:googleapis_auth/googleapis_auth.dart';
 
 /// Endpoints for OAuth authentication with Azure/Entra/Microsoft.

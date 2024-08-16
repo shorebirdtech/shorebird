@@ -45,12 +45,12 @@ void main() {
         });
       });
 
-      group('when version string not parseable', () {
+      group('when version string not parsable', () {
         setUp(() {
           device = const AppleDevice(
             deviceProperties: DeviceProperties(
               name: deviceName,
-              osVersionNumber: 'unparseable version number',
+              osVersionNumber: 'unparsable version number',
             ),
             hardwareProperties: hardwareProperties,
             connectionProperties: connectionProperties,

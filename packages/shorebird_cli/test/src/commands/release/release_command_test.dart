@@ -521,7 +521,7 @@ $exception''',
           });
         });
 
-        group('when flutter-verison is a git hash', () {
+        group('when flutter-version is a git hash', () {
           const revision = 'deadbeef';
           setUp(() {
             when(() => argResults['flutter-version']).thenReturn(revision);

@@ -1,3 +1,4 @@
+<!-- cspell: ignore requirepass -->
 # Contributing
 
 We are happy to accept contributions!

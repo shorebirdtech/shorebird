@@ -1,6 +1,6 @@
 // ignore_for_file: public_member_api_docs
 
-extension NullOrEmtpy on String? {
+extension NullOrEmpty on String? {
   /// Returns `true` if this string is null or empty.
   bool get isNullOrEmpty => this == null || this!.isEmpty;
 }
