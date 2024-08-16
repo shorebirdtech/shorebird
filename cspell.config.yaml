@@ -105,3 +105,5 @@ words:
   - aars # Android Archive
   - orri # Arm64 instruction, Or Register with Immediate
   - unmockable
+  - dorny # From .github dir, doesn't show up in "**" check?
+  - requirepass # From .github dir, doesn't show up in "**" check?
