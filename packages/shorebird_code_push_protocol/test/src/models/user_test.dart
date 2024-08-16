@@ -10,6 +10,7 @@ void main() {
         stripeCustomerId: 'test-customer-id',
         displayName: 'Test User',
         jwtIssuer: 'https://accounts.google.com',
+        patchOverageLimit: 123,
       );
       expect(
         User.fromJson(user.toJson()).toJson(),

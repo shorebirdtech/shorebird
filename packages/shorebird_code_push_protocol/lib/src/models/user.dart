@@ -15,6 +15,7 @@ class User {
     this.hasActiveSubscription = false,
     this.displayName,
     this.stripeCustomerId,
+    this.patchOverageLimit,
   });
 
   /// Converts a Map<String, dynamic> to a [User]
@@ -40,4 +41,8 @@ class User {
 
   /// The JWT issuer used to create the user.
   final String jwtIssuer;
+
+  /// The maximum number of patch installs that the user has agreed to pay for
+  /// as part of a pay-as-you-go plan.
+  final int? patchOverageLimit;
 }

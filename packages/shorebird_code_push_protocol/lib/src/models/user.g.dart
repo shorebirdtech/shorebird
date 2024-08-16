@@ -13,7 +13,7 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
       json,
       ($checkedConvert) {
         final val = User(
-          id: $checkedConvert('id', (v) => v as int),
+          id: $checkedConvert('id', (v) => (v as num).toInt()),
           email: $checkedConvert('email', (v) => v as String),
           jwtIssuer: $checkedConvert('jwt_issuer', (v) => v as String),
           hasActiveSubscription: $checkedConvert(
@@ -21,6 +21,8 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
           displayName: $checkedConvert('display_name', (v) => v as String?),
           stripeCustomerId:
               $checkedConvert('stripe_customer_id', (v) => v as String?),
+          patchOverageLimit: $checkedConvert(
+              'patch_overage_limit', (v) => (v as num?)?.toInt()),
         );
         return val;
       },
@@ -28,7 +30,8 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
         'jwtIssuer': 'jwt_issuer',
         'hasActiveSubscription': 'has_active_subscription',
         'displayName': 'display_name',
-        'stripeCustomerId': 'stripe_customer_id'
+        'stripeCustomerId': 'stripe_customer_id',
+        'patchOverageLimit': 'patch_overage_limit'
       },
     );
 
@@ -39,4 +42,5 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
       'has_active_subscription': instance.hasActiveSubscription,
       'stripe_customer_id': instance.stripeCustomerId,
       'jwt_issuer': instance.jwtIssuer,
+      'patch_overage_limit': instance.patchOverageLimit,
     };
