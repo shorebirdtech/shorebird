@@ -1,0 +1,107 @@
+$schema: https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json
+version: "0.2"
+ignorePaths:
+  ["coverage", "bin/cache", "third_party", "build", "*.xcscheme", "fixtures"]
+words:
+  - pubspec
+  - podfile
+  - Apks
+  - metadatas
+  - logcat
+  - mktemp
+  - gradlew
+  - bundletool
+  - genhtml
+  - sideload
+  - endtemplate
+  - mocktail
+  - libapp
+  - aarch
+  - codesign
+  - xcarchive
+  - xcrun
+  - vmcode
+  - xcodebuild
+  - sideloadable
+  - bryanoltman
+  - signup
+  - lerping
+  - precache
+  - devicectl
+  - exitcode
+  - writeln
+  - xcodeproj
+  - xcschemes
+  - xcshareddata
+  - armeabi
+  - cipd
+  - canvaskit
+  - libimobiledevice
+  - hotreload
+  - libflutter
+  - apigee
+  - pointycastle
+  - pkcs
+  - appbundle
+  - felangel
+  - bitcode
+  - xcscheme
+  - archs
+  - shorebirdtech
+  - aapt
+  - USERPROFILE
+  - LOCALAPPDATA
+  - Unpatchable
+  - multioption
+  - xcframework
+  - deflavored
+  - dylib
+  - libplist
+  - usbmuxd
+  - pwsh
+  - readlink
+  - unawaited
+  - NOAUTH
+  - WRONGPASS
+  - FLUSHALL
+  - pana
+  - idevicesyslog
+  - Entra
+  - xlink
+  - propertylistserialization
+  - Retryable
+  - storyboardc
+  - iphoneos
+  - lproj
+  - iokit
+  - backboardd
+  - dyld
+  - bintools
+  - codesigned
+  - codesigning
+  - previewable
+  - udid # Unique Device Identifier
+  - podspec
+  - exportoptions
+  - ANDROIDD
+  - propertylistserialization
+  - VCRUNTIME
+  - Oltman
+  - xcworkspace
+  - SIGSTOP
+  - lldb
+  - nserror
+  - sysroot
+  - RSAPKCS
+  - PRNG
+  - sideloaded
+  - Azul
+  - altool
+  - aabs
+  - upvote
+  - Verdana
+  - reinit
+  - allprojects # From gradle files
+  - aars # Android Archive
+  - orri # Arm64 instruction, Or Register with Immediate
+  - unmockable
