@@ -51,12 +51,13 @@ class Plan {
   final Decimal? pricePerOverageInstall;
 
   /// The start of the current billing period.
-  /// This will be null for accounts without a subscription.
-  final DateTime? currentPeriodStart;
+  /// If the user is on a free plan, this will be the start of the current
+  /// month.
+  final DateTime currentPeriodStart;
 
   /// The end of the current billing period.
-  /// This will be null for accounts without a subscription.
-  final DateTime? currentPeriodEnd;
+  /// If the user is on a free plan, this will be the start of the next month.
+  final DateTime currentPeriodEnd;
 
   /// Whether the subscription will be canceled at the end of the current
   /// billing period.
