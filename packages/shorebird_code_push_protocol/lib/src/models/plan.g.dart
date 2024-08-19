@@ -18,10 +18,10 @@ Plan _$PlanFromJson(Map<String, dynamic> json) => $checkedCreate(
           basePrice: $checkedConvert('base_price', (v) => (v as num).toInt()),
           baseInstallCount:
               $checkedConvert('base_install_count', (v) => (v as num).toInt()),
-          currentPeriodStart: $checkedConvert('current_period_start',
-              (v) => v == null ? null : DateTime.parse(v as String)),
-          currentPeriodEnd: $checkedConvert('current_period_end',
-              (v) => v == null ? null : DateTime.parse(v as String)),
+          currentPeriodStart: $checkedConvert(
+              'current_period_start', (v) => DateTime.parse(v as String)),
+          currentPeriodEnd: $checkedConvert(
+              'current_period_end', (v) => DateTime.parse(v as String)),
           cancelAtPeriodEnd:
               $checkedConvert('cancel_at_period_end', (v) => v as bool),
           isTiered: $checkedConvert('is_tiered', (v) => v as bool),
@@ -50,8 +50,8 @@ Map<String, dynamic> _$PlanToJson(Plan instance) => <String, dynamic>{
       'base_price': instance.basePrice,
       'base_install_count': instance.baseInstallCount,
       'price_per_overage_install': instance.pricePerOverageInstall?.toJson(),
-      'current_period_start': instance.currentPeriodStart?.toIso8601String(),
-      'current_period_end': instance.currentPeriodEnd?.toIso8601String(),
+      'current_period_start': instance.currentPeriodStart.toIso8601String(),
+      'current_period_end': instance.currentPeriodEnd.toIso8601String(),
       'cancel_at_period_end': instance.cancelAtPeriodEnd,
       'is_tiered': instance.isTiered,
       'max_team_size': instance.maxTeamSize,
