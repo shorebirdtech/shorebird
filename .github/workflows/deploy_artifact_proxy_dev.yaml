@@ -42,7 +42,7 @@ jobs:
           export_environment_variables: true
 
       - name: ☁️ Setup GCloud SDK
-        uses: google-github-actions/setup-gcloud@v2.1.0
+        uses: google-github-actions/setup-gcloud@v2.1.1
         with:
           project_id: ${{ env.PROJECT_ID }}
 
@@ -60,7 +60,7 @@ jobs:
 
       - name: 🚀 Deploy to Cloud Run
         id: deploy
-        uses: google-github-actions/deploy-cloudrun@v2.6.0
+        uses: google-github-actions/deploy-cloudrun@v2.6.1
         with:
           service: ${{ env.SERVICE }}
           image: ${{ env.CONTAINER_REGISTRY }}/${{ env.PROJECT_ID }}/us.gcr.io/${{ env.SERVICE }}:${{ github.sha }}
