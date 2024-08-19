@@ -155,7 +155,7 @@ void main() {
     test('exits with code 0 when logged in successfully', () async {
       const token = CiToken(
         // "shorebird-token" in base64
-        refreshToken: 'c2hvcmViaXJkLXRva2Vu',
+        refreshToken: 'c2hvcmViaXJkLXRva2Vu', // cspell:disable-line
         authProvider: AuthProvider.google,
       );
       when(

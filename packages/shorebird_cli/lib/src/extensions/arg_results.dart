@@ -22,9 +22,9 @@ extension OptionFinder on ArgResults {
       return this[name] as String?;
     }
 
-    // We would ideally check for abbrevations here as well, but ArgResults
+    // We would ideally check for abbreviations here as well, but ArgResults
     // doesn't expose its parser (which we could use to get the list of
-    // [Options] being parsed) or an abbrevations map.
+    // [Options] being parsed) or an abbreviations map.
     final abbr = argParser.options.values
         .firstWhereOrNull((option) => option.name == name)
         ?.abbr;
@@ -105,7 +105,7 @@ extension ForwardedArgs on ArgResults {
   bool _isPositionalArgPlatform(String arg) =>
       ReleaseType.values.any((target) => target.cliName == arg);
 
-  /// All parsed args with the given name. Because of multioptions, there may
+  /// All parsed args with the given name. Because of multi-options, there may
   /// be multiple values for a single name, so we return a potentially empty
   /// [Iterable<String>] instead of a [String?].
   Iterable<String> _argsNamed(String name) {

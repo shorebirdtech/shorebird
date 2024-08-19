@@ -20,7 +20,7 @@ const iOSLinkPercentageUrl = '$statusUrl#link-percentage-ios';
 /// Link to the troubleshooting page on the Shorebird documentation.
 const troubleshootingUrl = '$docsUrl/troubleshooting';
 
-/// Link to the troubshooting section which covers the
+/// Link to the troubleshooting section which covers the
 /// Unsupported class file major version
 const unsupportedClassFileVersionUrl =
     '$troubleshootingUrl#unsupported-class-file-major-version-65';

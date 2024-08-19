@@ -1,3 +1,4 @@
+// cspell:words stableplaystore stableglobal
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';

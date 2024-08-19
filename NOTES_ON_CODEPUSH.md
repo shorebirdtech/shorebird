@@ -1,6 +1,6 @@
 # Code push Notes
 
-Just place to keep running notes about our development of codepush for Flutter.
+Just place to keep running notes about our development of code push for Flutter.
 
 ## Server push vs. code push
 

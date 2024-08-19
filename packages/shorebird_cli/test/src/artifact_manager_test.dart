@@ -122,7 +122,7 @@ void main() {
         );
       });
 
-      test('throws error when patch artfiact file does not exist', () async {
+      test('throws error when patch artifact file does not exist', () async {
         await expectLater(
           () => runWithOverrides(
             () async => artifactManager.createDiff(

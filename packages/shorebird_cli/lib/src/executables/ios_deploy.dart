@@ -300,7 +300,7 @@ Or run on an iOS simulator without code signing
     } catch (exception, stackTrace) {
       logger.detail('[ios-deploy] failed: $exception\n$stackTrace');
       debuggerState = _DebuggerState.detached;
-      logger.err('[ios-deplay] failed: $exception');
+      logger.err('[ios-deploy] failed: $exception');
       return ExitCode.software.code;
     }
   }
@@ -328,7 +328,7 @@ Or run on an iOS simulator without code signing
   }
 }
 
-// Handles interpretting stdout line and logs errors accordingly.
+// Handles interpreting stdout line and logs errors accordingly.
 // Always returns the original line.
 @visibleForTesting
 String detectFailures(String line, Logger logger) {

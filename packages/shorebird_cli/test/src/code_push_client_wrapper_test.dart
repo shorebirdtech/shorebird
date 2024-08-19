@@ -137,13 +137,13 @@ void main() {
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
-    final partchArtifactBundle = PatchArtifactBundle(
+    final patchArtifactBundle = PatchArtifactBundle(
       arch: arch.arch,
       path: 'path',
       hash: '',
       size: 4,
     );
-    final patchArtifactBundles = {arch: partchArtifactBundle};
+    final patchArtifactBundles = {arch: patchArtifactBundle};
     const archs = [Arch.arm64];
     const releaseArtifact = ReleaseArtifact(
       id: 1,
@@ -1332,7 +1332,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verifyNever(() => progress.fail(any()));
         });
 
-        test('completes succesfully when a flavor is provided', () async {
+        test('completes successfully when a flavor is provided', () async {
           const flavorName = 'myFlavor';
           when(
             () => codePushClient.createReleaseArtifact(
@@ -1598,7 +1598,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verifyNever(() => progress.fail(any()));
         });
 
-        test('completes succesfully when a flavor is provided', () async {
+        test('completes successfully when a flavor is provided', () async {
           const flavorName = 'myFlavor';
           when(
             () => codePushClient.createReleaseArtifact(
@@ -2139,11 +2139,11 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(
             () => codePushClient.createPatchArtifact(
               appId: appId,
-              artifactPath: partchArtifactBundle.path,
+              artifactPath: patchArtifactBundle.path,
               patchId: patchId,
               arch: arch.arch,
               platform: releasePlatform,
-              hash: partchArtifactBundle.hash,
+              hash: patchArtifactBundle.hash,
             ),
           ).called(1);
         });
@@ -2202,11 +2202,11 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(
             () => codePushClient.createPatchArtifact(
               appId: appId,
-              artifactPath: partchArtifactBundle.path,
+              artifactPath: patchArtifactBundle.path,
               patchId: patchId,
               arch: arch.arch,
               platform: releasePlatform,
-              hash: partchArtifactBundle.hash,
+              hash: patchArtifactBundle.hash,
             ),
           ).called(1);
           verify(() => codePushClient.getChannels(appId: appId)).called(1);
@@ -2258,11 +2258,11 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(
             () => codePushClient.createPatchArtifact(
               appId: appId,
-              artifactPath: partchArtifactBundle.path,
+              artifactPath: patchArtifactBundle.path,
               patchId: patchId,
               arch: arch.arch,
               platform: releasePlatform,
-              hash: partchArtifactBundle.hash,
+              hash: patchArtifactBundle.hash,
             ),
           ).called(1);
           verify(() => codePushClient.getChannels(appId: appId)).called(1);

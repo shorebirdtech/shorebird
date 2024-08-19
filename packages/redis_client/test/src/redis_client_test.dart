@@ -250,7 +250,7 @@ void main() {
               },
             },
           };
-          const other = {'qux': 'quux'};
+          const other = {'qux': 'quux'}; // cspell:disable-line
           await expectLater(client.json.get(key: key), completion(isNull));
           await expectLater(client.json.set(key: key, value: value), completes);
           await expectLater(

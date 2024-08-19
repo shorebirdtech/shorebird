@@ -47,7 +47,7 @@ void main() {
       expect(results, isEmpty);
     });
 
-    test('retursn an error when shorebird version cannot be determined',
+    test('returns an error when shorebird version cannot be determined',
         () async {
       when(shorebirdVersion.isLatest).thenThrow(
         const ProcessException('git', ['rev-parse', 'HEAD']),

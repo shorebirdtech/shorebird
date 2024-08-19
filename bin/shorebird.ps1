@@ -1,5 +1,5 @@
 # This is the windows equivalent of the `third_party/flutter/bin/internal/shared.sh` script
-# compiles `shorebird_cli/bin/shorebird_cli.dart` to `bin/cache/shorebird.shapshot`
+# compiles `shorebird_cli/bin/shorebird_cli.dart` to `bin/cache/shorebird.snapshot`
 
 $ErrorActionPreference = "Stop"
 

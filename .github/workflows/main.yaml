@@ -15,6 +15,12 @@ jobs:
     name: ✅ Semantic Pull Request
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
 
+  cspell:
+    name: 🔤 Check Spelling
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/spell_check.yml@v1
+    with:
+      config: cspell.config.yaml
+
   changes:
     runs-on: ubuntu-latest
 

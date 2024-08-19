@@ -82,7 +82,7 @@ class PatchDiffChecker {
         ..info(
           yellow.wrap('''
 
-If you don't know why you're seeing this error, visit our troublshooting page at ${troubleshootingUrl.toLink()}'''),
+If you don't know why you're seeing this error, visit our troubleshooting page at ${troubleshootingUrl.toLink()}'''),
         );
 
       if (!allowNativeChanges) {

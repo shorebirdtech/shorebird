@@ -116,7 +116,7 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
-      test('returns null if reponse is a 404', () async {
+      test('returns null if response is a 404', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             const Stream.empty(),

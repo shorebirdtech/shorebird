@@ -166,7 +166,7 @@ class Ios {
         .toSet();
   }
 
-  /// Parses the .xcsheme file to determine if it was created for an app
+  /// Parses the .xcscheme file to determine if it was created for an app
   /// extension. We don't want to include these schemes as app flavors.
   ///
   /// xcschemes are XML files that contain metadata about the scheme, including

@@ -1,3 +1,4 @@
+// cspell:words revis
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -911,7 +912,7 @@ origin/flutter_release/3.10.6''';
     });
 
     group('formatVersion', () {
-      test('returns the correct formated value', () {
+      test('returns the correct formatted value', () {
         expect(
           runWithOverrides(
             () => shorebirdFlutter.formatVersion(
