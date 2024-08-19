@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.2.1 (August 19, 2024)
+
+- 📈 Improve iOS patch performance (exclude static field loads from op hash)
+
 ## 1.2.0 (August 8, 2024)
 
 - 🐦 Support for Flutter 3.24.0
