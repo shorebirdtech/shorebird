@@ -107,3 +107,8 @@ words:
   - unmockable
   - dorny # From .github dir, doesn't show up in "**" check?
   - requirepass # From .github dir, doesn't show up in "**" check?
+  - temurin # From .github dir, doesn't show up in "**" check?
+  - subosito # From .github dir, doesn't show up in "**" check?
+  - reactivecircus # From .github dir, doesn't show up in "**" check?
+  - swiftshader # From .github dir, doesn't show up in "**" check?
+  - noaudio # From .github dir, doesn't show up in "**" check?
