@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.2.2 (August 21, 2024)
+
+- 🐦 Support for Flutter 3.24.1
+- 📈 Improve iOS patch performance (exclude selector offsets from op hash)
+
 ## 1.2.1 (August 19, 2024)
 
 - 📈 Improve iOS patch performance (exclude static field loads from op hash)
