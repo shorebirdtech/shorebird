@@ -418,13 +418,7 @@ void main() {
       });
     });
 
-    group('releaseMetadata', () {
-      const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
-
-      setUp(() {
-        when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
-      });
-
+    group('updatedReleaseMetadata', () {
       test('returns expected metadata', () async {
         final metadata = UpdateReleaseMetadata.forTest();
         expect(

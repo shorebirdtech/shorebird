@@ -1580,7 +1580,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         });
       });
 
-      group('createPatchMetadata', () {
+      group('updatedCreatePatchMetadata', () {
         const allowAssetDiffs = false;
         const allowNativeDiffs = true;
         const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';

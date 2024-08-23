@@ -515,10 +515,6 @@ void main() {
       const operatingSystem = 'Mac OS X';
       const operatingSystemVersion = '10.15.7';
 
-      setUp(() {
-        when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
-      });
-
       test('returns correct metadata', () async {
         const metadata = CreatePatchMetadata(
           releasePlatform: ReleasePlatform.android,

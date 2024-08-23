@@ -657,10 +657,6 @@ To change the version of this release, change your app's version in your pubspec
         ),
       );
 
-      setUp(() {
-        when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
-      });
-
       group('when an apk is generated', () {
         setUp(() {
           when(() => argResults['artifact']).thenReturn('apk');

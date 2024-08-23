@@ -815,7 +815,7 @@ void main() {
         });
       });
 
-      group('createPatchMetadata', () {
+      group('updatedCreatePatchMetadata', () {
         const allowAssetDiffs = false;
         const allowNativeDiffs = true;
         const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
@@ -824,7 +824,6 @@ void main() {
         const xcodeVersion = '11';
 
         setUp(() {
-          when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
           when(
             () => xcodeBuild.version(),
           ).thenAnswer((_) async => xcodeVersion);
