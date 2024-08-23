@@ -316,14 +316,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
             shorebirdVersion: packageVersion,
           ),
         );
-        final updatedMeatadata = await patcher.updatedCreatePatchMetadata(
+        final updateMetadata = await patcher.updatedCreatePatchMetadata(
           baseMetadata,
         );
 
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          metadata: updatedMeatadata.toJson(),
+          metadata: updateMetadata.toJson(),
           platform: patcher.releaseType.releasePlatform,
           track:
               isStaging ? DeploymentTrack.staging : DeploymentTrack.production,
