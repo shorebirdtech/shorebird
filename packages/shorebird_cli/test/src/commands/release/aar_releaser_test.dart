@@ -4,7 +4,6 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -12,7 +11,6 @@ import 'package:shorebird_cli/src/commands/release/aar_releaser.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
@@ -20,7 +18,6 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -35,7 +32,6 @@ void main() {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late CodePushClientWrapper codePushClientWrapper;
-    late Platform platform;
     late Directory projectRoot;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
@@ -56,7 +52,6 @@ void main() {
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
-          platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -77,7 +72,6 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       codePushClientWrapper = MockCodePushClientWrapper();
       operatingSystemInterface = MockOperatingSystemInterface();
-      platform = MockPlatform();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
       logger = MockShorebirdLogger();
@@ -426,34 +420,16 @@ void main() {
 
     group('releaseMetadata', () {
       const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
-      const operatingSystem = 'macos';
-      const operatingSystemVersion = '11.0.0';
 
       setUp(() {
-        when(() => platform.operatingSystem).thenReturn(operatingSystem);
-        when(
-          () => platform.operatingSystemVersion,
-        ).thenReturn(operatingSystemVersion);
         when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       });
 
       test('returns expected metadata', () async {
+        final metadata = UpdateReleaseMetadata.forTest();
         expect(
-          await runWithOverrides(aarReleaser.releaseMetadata),
-          equals(
-            const UpdateReleaseMetadata(
-              releasePlatform: ReleasePlatform.android,
-              flutterVersionOverride: null,
-              generatedApks: false,
-              environment: BuildEnvironmentMetadata(
-                flutterRevision: flutterRevision,
-                operatingSystem: operatingSystem,
-                operatingSystemVersion: operatingSystemVersion,
-                shorebirdVersion: packageVersion,
-                xcodeVersion: null,
-              ),
-            ),
-          ),
+          aarReleaser.updatedReleaseMetadata(metadata),
+          completion(metadata),
         );
       });
     });

@@ -81,6 +81,7 @@ void main() {
       registerFallbackValue(release);
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(ReleaseStatus.draft);
+      registerFallbackValue(UpdateReleaseMetadata.forTest());
     });
 
     setUp(() {
@@ -153,7 +154,7 @@ void main() {
       ).thenReturn(postReleaseInstructions);
       when(() => releaser.releaseType).thenReturn(ReleaseType.android);
       when(
-        () => releaser.releaseMetadata(),
+        () => releaser.updatedReleaseMetadata(any()),
       ).thenAnswer((_) async => UpdateReleaseMetadata.forTest());
       when(() => releaser.requiresReleaseVersionArg).thenReturn(false);
 

@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -18,6 +19,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -476,12 +478,23 @@ ${summary.join('\n')}
     required Release release,
     required Releaser releaser,
   }) async {
+    final baseMetadata = UpdateReleaseMetadata(
+      releasePlatform: releaser.releaseType.releasePlatform,
+      flutterVersionOverride: results['flutter-version'] as String?,
+      environment: BuildEnvironmentMetadata(
+        flutterRevision: shorebirdEnv.flutterRevision,
+        operatingSystem: platform.operatingSystem,
+        operatingSystemVersion: platform.operatingSystemVersion,
+        shorebirdVersion: packageVersion,
+      ),
+    );
+
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
       releaseId: release.id,
       platform: releaser.releaseType.releasePlatform,
       status: ReleaseStatus.active,
-      metadata: await releaser.releaseMetadata(),
+      metadata: await releaser.updatedReleaseMetadata(baseMetadata),
     );
   }
 

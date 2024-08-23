@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
@@ -22,7 +21,6 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
-import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template ios_releaser}
@@ -199,6 +197,16 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   }
 
   @override
+  Future<UpdateReleaseMetadata> updatedReleaseMetadata(
+    UpdateReleaseMetadata metadata,
+  ) async =>
+      metadata.copyWith(
+        environment: metadata.environment.copyWith(
+          xcodeVersion: await xcodeBuild.version(),
+        ),
+      );
+
+  @override
   String get postReleaseInstructions {
     final relativeArchivePath = p.relative(
       artifactManager.getXcarchiveDirectory()!.path,
@@ -227,19 +235,4 @@ ${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or els
 ''';
     }
   }
-
-  @override
-  Future<UpdateReleaseMetadata> releaseMetadata() async =>
-      UpdateReleaseMetadata(
-        releasePlatform: releaseType.releasePlatform,
-        flutterVersionOverride: argResults['flutter-version'] as String?,
-        generatedApks: false,
-        environment: BuildEnvironmentMetadata(
-          flutterRevision: shorebirdEnv.flutterRevision,
-          operatingSystem: platform.operatingSystem,
-          operatingSystemVersion: platform.operatingSystemVersion,
-          shorebirdVersion: packageVersion,
-          xcodeVersion: await xcodeBuild.version(),
-        ),
-      );
 }

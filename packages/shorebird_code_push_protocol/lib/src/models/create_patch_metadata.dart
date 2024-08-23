@@ -23,8 +23,8 @@ class CreatePatchMetadata extends Equatable {
     required this.hasAssetChanges,
     required this.usedIgnoreNativeChangesFlag,
     required this.hasNativeChanges,
-    required this.linkPercentage,
     required this.environment,
+    this.linkPercentage,
   });
 
   // coverage:ignore-start
@@ -56,6 +56,29 @@ class CreatePatchMetadata extends Equatable {
 
   /// Converts a [CreatePatchMetadata] to a Map<String, dynamic>
   Map<String, dynamic> toJson() => _$CreatePatchMetadataToJson(this);
+
+  /// Returns a copy of this [CreatePatchMetadata] with the given fields
+  /// replaced by the new values.
+  CreatePatchMetadata copyWith({
+    ReleasePlatform? releasePlatform,
+    bool? usedIgnoreAssetChangesFlag,
+    bool? hasAssetChanges,
+    bool? usedIgnoreNativeChangesFlag,
+    bool? hasNativeChanges,
+    double? linkPercentage,
+    BuildEnvironmentMetadata? environment,
+  }) =>
+      CreatePatchMetadata(
+        releasePlatform: releasePlatform ?? this.releasePlatform,
+        usedIgnoreAssetChangesFlag:
+            usedIgnoreAssetChangesFlag ?? this.usedIgnoreAssetChangesFlag,
+        hasAssetChanges: hasAssetChanges ?? this.hasAssetChanges,
+        usedIgnoreNativeChangesFlag:
+            usedIgnoreNativeChangesFlag ?? this.usedIgnoreNativeChangesFlag,
+        hasNativeChanges: hasNativeChanges ?? this.hasNativeChanges,
+        linkPercentage: linkPercentage ?? this.linkPercentage,
+        environment: environment ?? this.environment,
+      );
 
   /// The platform for which the patch was created.
   final ReleasePlatform releasePlatform;

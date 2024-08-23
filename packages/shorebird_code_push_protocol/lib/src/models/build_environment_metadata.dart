@@ -21,7 +21,7 @@ class BuildEnvironmentMetadata extends Equatable {
     required this.shorebirdVersion,
     required this.operatingSystem,
     required this.operatingSystemVersion,
-    required this.xcodeVersion,
+    this.xcodeVersion,
   });
 
   /// coverage:ignore-start
@@ -49,6 +49,24 @@ class BuildEnvironmentMetadata extends Equatable {
 
   /// Converts a [BuildEnvironmentMetadata] to a Map<String, dynamic>
   Map<String, dynamic> toJson() => _$BuildEnvironmentMetadataToJson(this);
+
+  /// Creates a copy of this [BuildEnvironmentMetadata] with the given fields
+  /// replaced by the new values.
+  BuildEnvironmentMetadata copyWith({
+    String? flutterRevision,
+    String? shorebirdVersion,
+    String? operatingSystem,
+    String? operatingSystemVersion,
+    String? xcodeVersion,
+  }) =>
+      BuildEnvironmentMetadata(
+        flutterRevision: flutterRevision ?? this.flutterRevision,
+        shorebirdVersion: shorebirdVersion ?? this.shorebirdVersion,
+        operatingSystem: operatingSystem ?? this.operatingSystem,
+        operatingSystemVersion:
+            operatingSystemVersion ?? this.operatingSystemVersion,
+        xcodeVersion: xcodeVersion ?? this.xcodeVersion,
+      );
 
   /// The revision of Flutter used to run the command.
   ///

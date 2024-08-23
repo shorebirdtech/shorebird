@@ -5,7 +5,6 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
@@ -18,7 +17,6 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -43,7 +41,6 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late CodeSigner codeSigner;
     late Doctor doctor;
-    late Platform platform;
     late Directory projectRoot;
     late ShorebirdLogger logger;
     late PatchDiffChecker patchDiffChecker;
@@ -97,7 +94,6 @@ void main() {
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
-          platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -125,7 +121,6 @@ void main() {
       codeSigner = MockCodeSigner();
       doctor = MockDoctor();
       patchDiffChecker = MockPatchDiffChecker();
-      platform = MockPlatform();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
       logger = MockShorebirdLogger();
@@ -637,47 +632,24 @@ Looked in:
       const operatingSystem = 'Mac OS X';
       const operatingSystemVersion = '10.15.7';
 
-      setUp(() {
-        when(() => argResults['allow-asset-diffs']).thenReturn(allowAssetDiffs);
-        when(
-          () => argResults['allow-native-diffs'],
-        ).thenReturn(allowNativeDiffs);
-        when(() => platform.operatingSystem).thenReturn(operatingSystem);
-        when(
-          () => platform.operatingSystemVersion,
-        ).thenReturn(operatingSystemVersion);
-        when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
-      });
-
       test('returns correct metadata', () async {
-        const diffStatus = DiffStatus(
+        const metadata = CreatePatchMetadata(
+          releasePlatform: ReleasePlatform.android,
+          usedIgnoreAssetChangesFlag: allowAssetDiffs,
           hasAssetChanges: false,
+          usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: false,
-        );
-
-        final metadata = await runWithOverrides(
-          () => patcher.createPatchMetadata(diffStatus),
+          environment: BuildEnvironmentMetadata(
+            flutterRevision: flutterRevision,
+            operatingSystem: operatingSystem,
+            operatingSystemVersion: operatingSystemVersion,
+            shorebirdVersion: packageVersion,
+          ),
         );
 
         expect(
-          metadata,
-          equals(
-            CreatePatchMetadata(
-              releasePlatform: ReleasePlatform.android,
-              usedIgnoreAssetChangesFlag: allowAssetDiffs,
-              hasAssetChanges: diffStatus.hasAssetChanges,
-              usedIgnoreNativeChangesFlag: allowNativeDiffs,
-              hasNativeChanges: diffStatus.hasNativeChanges,
-              linkPercentage: null,
-              environment: const BuildEnvironmentMetadata(
-                flutterRevision: flutterRevision,
-                operatingSystem: operatingSystem,
-                operatingSystemVersion: operatingSystemVersion,
-                shorebirdVersion: packageVersion,
-                xcodeVersion: null,
-              ),
-            ),
-          ),
+          runWithOverrides(() => patcher.updatedCreatePatchMetadata(metadata)),
+          completion(metadata),
         );
       });
     });

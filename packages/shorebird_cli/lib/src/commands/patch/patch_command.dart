@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -24,6 +25,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 typedef ResolvePatcher = Patcher Function(ReleaseType releaseType);
@@ -148,6 +150,12 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   /// The target script, if provided.
   late String? target = results.findOption('target', argParser: argParser);
+
+  /// Whether to allow changes in assets (--allow-asset-diffs).
+  bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
+
+  /// Whether to allow changes in native code (--allow-native-diffs).
+  bool get allowNativeDiffs => results['allow-native-diffs'] == true;
 
   bool get isStaging => results['staging'] == true;
 
@@ -293,10 +301,25 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           patcher: patcher,
           patchArtifactBundles: patchArtifactBundles,
         );
+
+        final baseMetadata = CreatePatchMetadata(
+          releasePlatform: patcher.releaseType.releasePlatform,
+          usedIgnoreAssetChangesFlag: allowAssetDiffs,
+          hasAssetChanges: diffStatus.hasAssetChanges,
+          usedIgnoreNativeChangesFlag: allowNativeDiffs,
+          hasNativeChanges: diffStatus.hasNativeChanges,
+          environment: BuildEnvironmentMetadata(
+            flutterRevision: shorebirdEnv.flutterRevision,
+            operatingSystem: platform.operatingSystem,
+            operatingSystemVersion: platform.operatingSystemVersion,
+            shorebirdVersion: packageVersion,
+          ),
+        );
+
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          metadata: await patcher.createPatchMetadata(diffStatus),
+          metadata: await patcher.updatedCreatePatchMetadata(baseMetadata),
           platform: patcher.releaseType.releasePlatform,
           track:
               isStaging ? DeploymentTrack.staging : DeploymentTrack.production,

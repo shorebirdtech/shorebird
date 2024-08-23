@@ -19,7 +19,6 @@ import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -52,7 +51,6 @@ void main() {
       late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
       late PatchDiffChecker patchDiffChecker;
-      late Platform platform;
       late Progress progress;
       late ShorebirdArtifacts shorebirdArtifacts;
       late ShorebirdFlutterValidator flutterValidator;
@@ -76,7 +74,6 @@ void main() {
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
             patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
-            platformRef.overrideWith(() => platform),
             processRef.overrideWith(() => shorebirdProcess),
             shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
             shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -105,7 +102,6 @@ void main() {
         engineConfig = MockEngineConfig();
         operatingSystemInterface = MockOperatingSystemInterface();
         patchDiffChecker = MockPatchDiffChecker();
-        platform = MockPlatform();
         progress = MockProgress();
         projectRoot = Directory.systemTemp.createTempSync();
         logger = MockShorebirdLogger();
@@ -828,16 +824,6 @@ void main() {
         const xcodeVersion = '11';
 
         setUp(() {
-          when(
-            () => argResults['allow-asset-diffs'],
-          ).thenReturn(allowAssetDiffs);
-          when(
-            () => argResults['allow-native-diffs'],
-          ).thenReturn(allowNativeDiffs);
-          when(() => platform.operatingSystem).thenReturn(operatingSystem);
-          when(
-            () => platform.operatingSystemVersion,
-          ).thenReturn(operatingSystemVersion);
           when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
           when(
             () => xcodeBuild.version(),
@@ -846,26 +832,32 @@ void main() {
 
         group('when linker is not enabled', () {
           test('returns correct metadata', () async {
-            const diffStatus = DiffStatus(
-              hasAssetChanges: false,
-              hasNativeChanges: false,
-            );
-
-            final metadata = await runWithOverrides(
-              () => patcher.createPatchMetadata(diffStatus),
+            const metadata = CreatePatchMetadata(
+              releasePlatform: ReleasePlatform.ios,
+              usedIgnoreAssetChangesFlag: allowAssetDiffs,
+              hasAssetChanges: true,
+              usedIgnoreNativeChangesFlag: allowNativeDiffs,
+              hasNativeChanges: true,
+              environment: BuildEnvironmentMetadata(
+                flutterRevision: flutterRevision,
+                operatingSystem: operatingSystem,
+                operatingSystemVersion: operatingSystemVersion,
+                shorebirdVersion: packageVersion,
+              ),
             );
 
             expect(
-              metadata,
-              equals(
-                CreatePatchMetadata(
+              runWithOverrides(
+                () => patcher.updatedCreatePatchMetadata(metadata),
+              ),
+              completion(
+                const CreatePatchMetadata(
                   releasePlatform: ReleasePlatform.ios,
                   usedIgnoreAssetChangesFlag: allowAssetDiffs,
-                  hasAssetChanges: diffStatus.hasAssetChanges,
+                  hasAssetChanges: true,
                   usedIgnoreNativeChangesFlag: allowNativeDiffs,
-                  hasNativeChanges: diffStatus.hasNativeChanges,
-                  linkPercentage: null,
-                  environment: const BuildEnvironmentMetadata(
+                  hasNativeChanges: true,
+                  environment: BuildEnvironmentMetadata(
                     flutterRevision: flutterRevision,
                     operatingSystem: operatingSystem,
                     operatingSystemVersion: operatingSystemVersion,
@@ -886,26 +878,33 @@ void main() {
           });
 
           test('returns correct metadata', () async {
-            const diffStatus = DiffStatus(
+            const metadata = CreatePatchMetadata(
+              releasePlatform: ReleasePlatform.ios,
+              usedIgnoreAssetChangesFlag: allowAssetDiffs,
               hasAssetChanges: false,
+              usedIgnoreNativeChangesFlag: allowNativeDiffs,
               hasNativeChanges: false,
-            );
-
-            final metadata = await runWithOverrides(
-              () => patcher.createPatchMetadata(diffStatus),
+              environment: BuildEnvironmentMetadata(
+                flutterRevision: flutterRevision,
+                operatingSystem: operatingSystem,
+                operatingSystemVersion: operatingSystemVersion,
+                shorebirdVersion: packageVersion,
+              ),
             );
 
             expect(
-              metadata,
-              equals(
-                CreatePatchMetadata(
+              runWithOverrides(
+                () => patcher.updatedCreatePatchMetadata(metadata),
+              ),
+              completion(
+                const CreatePatchMetadata(
                   releasePlatform: ReleasePlatform.ios,
                   usedIgnoreAssetChangesFlag: allowAssetDiffs,
-                  hasAssetChanges: diffStatus.hasAssetChanges,
+                  hasAssetChanges: false,
                   usedIgnoreNativeChangesFlag: allowNativeDiffs,
-                  hasNativeChanges: diffStatus.hasNativeChanges,
+                  hasNativeChanges: false,
                   linkPercentage: linkPercentage,
-                  environment: const BuildEnvironmentMetadata(
+                  environment: BuildEnvironmentMetadata(
                     flutterRevision: flutterRevision,
                     operatingSystem: operatingSystem,
                     operatingSystemVersion: operatingSystemVersion,
