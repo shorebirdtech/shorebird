@@ -305,7 +305,7 @@ BUILD FAILED in 3s
       });
 
       group(
-        'when flavors are mixed, starting with upper case, finishing with camel',
+        '''when flavors are mixed, starting with upper case, finishing with camel''',
         () {
           test(
             'extracts flavors',
