@@ -54,9 +54,12 @@ abstract class Releaser {
     required String appId,
   });
 
-  /// Metadata to attach to the release when creating it, used for debugging
-  /// and support.
-  Future<UpdateReleaseMetadata> releaseMetadata();
+  /// Creates a copy of [metadata] with releaser-specific fields updated.
+  Future<UpdateReleaseMetadata> updatedReleaseMetadata(
+    UpdateReleaseMetadata metadata,
+  ) async {
+    return metadata;
+  }
 
   /// Instructions explaining next steps after running `shorebird release`. This
   /// could include how to upload the generated artifact to a store and how to

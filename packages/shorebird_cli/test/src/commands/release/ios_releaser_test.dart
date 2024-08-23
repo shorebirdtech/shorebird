@@ -18,7 +18,6 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
@@ -45,7 +44,6 @@ void main() {
       late CodeSigner codeSigner;
       late Directory projectRoot;
       late Doctor doctor;
-      late Platform platform;
       late Progress progress;
       late ShorebirdLogger logger;
       late Ios ios;
@@ -70,7 +68,6 @@ void main() {
             iosRef.overrideWith(() => ios),
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
-            platformRef.overrideWith(() => platform),
             processRef.overrideWith(() => shorebirdProcess),
             shorebirdEnvRef.overrideWith(() => shorebirdEnv),
             shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -93,7 +90,6 @@ void main() {
         codePushClientWrapper = MockCodePushClientWrapper();
         codeSigner = MockCodeSigner();
         doctor = MockDoctor();
-        platform = MockPlatform();
         projectRoot = Directory.systemTemp.createTempSync();
         operatingSystemInterface = MockOperatingSystemInterface();
         progress = MockProgress();
@@ -757,22 +753,24 @@ To change the version of this release, change your app's version in your pubspec
         });
       });
 
-      group('releaseMetadata', () {
+      group('updatedReleaseMetadata', () {
         const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
         const operatingSystem = 'macOS';
         const operatingSystemVersion = '11.0.0';
         const xcodeVersion = '123';
         const flutterVersionOverride = '1.2.3';
+        const metadata = UpdateReleaseMetadata(
+          releasePlatform: ReleasePlatform.ios,
+          flutterVersionOverride: flutterVersionOverride,
+          environment: BuildEnvironmentMetadata(
+            flutterRevision: flutterRevision,
+            operatingSystem: operatingSystem,
+            operatingSystemVersion: operatingSystemVersion,
+            shorebirdVersion: packageVersion,
+          ),
+        );
 
         setUp(() {
-          when(
-            () => argResults['flutter-version'],
-          ).thenReturn(flutterVersionOverride);
-          when(() => platform.operatingSystem).thenReturn(operatingSystem);
-          when(
-            () => platform.operatingSystemVersion,
-          ).thenReturn(operatingSystemVersion);
-          when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
           when(
             () => xcodeBuild.version(),
           ).thenAnswer((_) async => xcodeVersion);
@@ -780,17 +778,20 @@ To change the version of this release, change your app's version in your pubspec
 
         test('returns expected metadata', () async {
           expect(
-            await runWithOverrides(iosReleaser.releaseMetadata),
-            const UpdateReleaseMetadata(
-              releasePlatform: ReleasePlatform.ios,
-              flutterVersionOverride: flutterVersionOverride,
-              generatedApks: false,
-              environment: BuildEnvironmentMetadata(
-                flutterRevision: flutterRevision,
-                operatingSystem: operatingSystem,
-                operatingSystemVersion: operatingSystemVersion,
-                shorebirdVersion: packageVersion,
-                xcodeVersion: xcodeVersion,
+            runWithOverrides(
+              () => iosReleaser.updatedReleaseMetadata(metadata),
+            ),
+            completion(
+              const UpdateReleaseMetadata(
+                releasePlatform: ReleasePlatform.ios,
+                flutterVersionOverride: flutterVersionOverride,
+                environment: BuildEnvironmentMetadata(
+                  flutterRevision: flutterRevision,
+                  operatingSystem: operatingSystem,
+                  operatingSystemVersion: operatingSystemVersion,
+                  shorebirdVersion: packageVersion,
+                  xcodeVersion: xcodeVersion,
+                ),
               ),
             ),
           );

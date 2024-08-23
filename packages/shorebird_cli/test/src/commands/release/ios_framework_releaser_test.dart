@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -37,7 +36,6 @@ void main() {
       late ArtifactManager artifactManager;
       late CodePushClientWrapper codePushClientWrapper;
       late Doctor doctor;
-      late Platform platform;
       late Directory projectRoot;
       late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
@@ -60,7 +58,6 @@ void main() {
             doctorRef.overrideWith(() => doctor),
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
-            platformRef.overrideWith(() => platform),
             processRef.overrideWith(() => shorebirdProcess),
             shorebirdEnvRef.overrideWith(() => shorebirdEnv),
             shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -82,7 +79,6 @@ void main() {
         codePushClientWrapper = MockCodePushClientWrapper();
         doctor = MockDoctor();
         operatingSystemInterface = MockOperatingSystemInterface();
-        platform = MockPlatform();
         progress = MockProgress();
         projectRoot = Directory.systemTemp.createTempSync();
         logger = MockShorebirdLogger();
@@ -388,18 +384,23 @@ void main() {
         });
       });
 
-      group('releaseMetadata', () {
+      group('updatedReleaseMetadata', () {
         const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
         const operatingSystem = 'macos';
         const operatingSystemVersion = '11.0.0';
         const xcodeVersion = '123';
+        const metadata = UpdateReleaseMetadata(
+          releasePlatform: ReleasePlatform.ios,
+          flutterVersionOverride: null,
+          environment: BuildEnvironmentMetadata(
+            flutterRevision: flutterRevision,
+            operatingSystem: operatingSystem,
+            operatingSystemVersion: operatingSystemVersion,
+            shorebirdVersion: packageVersion,
+          ),
+        );
 
         setUp(() {
-          when(() => platform.operatingSystem).thenReturn(operatingSystem);
-          when(
-            () => platform.operatingSystemVersion,
-          ).thenReturn(operatingSystemVersion);
-          when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
           when(
             () => xcodeBuild.version(),
           ).thenAnswer((_) async => xcodeVersion);
@@ -407,12 +408,13 @@ void main() {
 
         test('returns expected metadata', () async {
           expect(
-            await runWithOverrides(iosFrameworkReleaser.releaseMetadata),
-            equals(
+            runWithOverrides(
+              () => iosFrameworkReleaser.updatedReleaseMetadata(metadata),
+            ),
+            completion(
               const UpdateReleaseMetadata(
                 releasePlatform: ReleasePlatform.ios,
                 flutterVersionOverride: null,
-                generatedApks: false,
                 environment: BuildEnvironmentMetadata(
                   flutterRevision: flutterRevision,
                   operatingSystem: operatingSystem,

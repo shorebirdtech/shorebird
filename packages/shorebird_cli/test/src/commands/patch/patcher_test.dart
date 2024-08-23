@@ -193,7 +193,9 @@ class _TestPatcher extends Patcher {
   }
 
   @override
-  Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus) {
+  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
+    CreatePatchMetadata metadata,
+  ) {
     throw UnimplementedError();
   }
 

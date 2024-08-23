@@ -14,15 +14,12 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
-import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template android_patcher}
@@ -202,25 +199,6 @@ Looked in:
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
     return shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
       artifact.path,
-    );
-  }
-
-  @override
-  Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus) async {
-    return CreatePatchMetadata(
-      releasePlatform: releaseType.releasePlatform,
-      usedIgnoreAssetChangesFlag: allowAssetDiffs,
-      hasAssetChanges: diffStatus.hasAssetChanges,
-      usedIgnoreNativeChangesFlag: allowNativeDiffs,
-      hasNativeChanges: diffStatus.hasNativeChanges,
-      linkPercentage: null,
-      environment: BuildEnvironmentMetadata(
-        flutterRevision: shorebirdEnv.flutterRevision,
-        operatingSystem: platform.operatingSystem,
-        operatingSystemVersion: platform.operatingSystemVersion,
-        shorebirdVersion: packageVersion,
-        xcodeVersion: null,
-      ),
     );
   }
 }

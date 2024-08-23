@@ -49,6 +49,10 @@ void main() {
       ),
     };
     const shorebirdYaml = ShorebirdYaml(appId: appId);
+    const diffStatus = DiffStatus(
+      hasAssetChanges: false,
+      hasNativeChanges: false,
+    );
     final patchMetadata = CreatePatchMetadata.forTest();
 
     final appMetadata = AppMetadata(
@@ -241,7 +245,7 @@ void main() {
         ),
       ).thenAnswer((_) async => patchArtifactBundles);
       when(
-        () => patcher.createPatchMetadata(any()),
+        () => patcher.updatedCreatePatchMetadata(any()),
       ).thenAnswer((_) async => patchMetadata);
       when(
         () => patcher.assertUnpatchableDiffs(
@@ -249,7 +253,7 @@ void main() {
           releaseArchive: any(named: 'releaseArchive'),
           patchArchive: any(named: 'patchArchive'),
         ),
-      ).thenAnswer((_) async => FakeDiffStatus());
+      ).thenAnswer((_) async => diffStatus);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
@@ -596,7 +600,7 @@ void main() {
                 releaseArtifact: any(named: 'releaseArtifact'),
               ),
           () => logger.confirm('Would you like to continue?'),
-          () => patcher.createPatchMetadata(any()),
+          () => patcher.updatedCreatePatchMetadata(any()),
           () => codePushClientWrapper.publishPatch(
                 appId: appId,
                 releaseId: release.id,

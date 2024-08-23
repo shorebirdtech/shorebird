@@ -20,8 +20,8 @@ class UpdateReleaseMetadata extends Equatable {
   const UpdateReleaseMetadata({
     required this.releasePlatform,
     required this.flutterVersionOverride,
-    required this.generatedApks,
     required this.environment,
+    this.generatedApks,
   });
 
   // coverage:ignore-start
@@ -47,6 +47,22 @@ class UpdateReleaseMetadata extends Equatable {
 
   /// Converts a [UpdateReleaseMetadata] to a Map<String, dynamic>.
   Map<String, dynamic> toJson() => _$UpdateReleaseMetadataToJson(this);
+
+  /// Returns a copy of this [UpdateReleaseMetadata] with the given fields
+  /// replaced by the new values.
+  UpdateReleaseMetadata copyWith({
+    ReleasePlatform? releasePlatform,
+    String? flutterVersionOverride,
+    bool? generatedApks,
+    BuildEnvironmentMetadata? environment,
+  }) =>
+      UpdateReleaseMetadata(
+        releasePlatform: releasePlatform ?? this.releasePlatform,
+        flutterVersionOverride:
+            flutterVersionOverride ?? this.flutterVersionOverride,
+        generatedApks: generatedApks ?? this.generatedApks,
+        environment: environment ?? this.environment,
+      );
 
   /// The platform for which the patch was created.
   final ReleasePlatform releasePlatform;

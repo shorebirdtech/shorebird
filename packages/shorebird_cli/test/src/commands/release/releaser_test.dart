@@ -46,7 +46,10 @@ class FakeReleaser extends Releaser {
   String get postReleaseInstructions => throw UnimplementedError();
 
   @override
-  Future<UpdateReleaseMetadata> releaseMetadata() => throw UnimplementedError();
+  Future<UpdateReleaseMetadata> updatedReleaseMetadata(
+    UpdateReleaseMetadata metadata,
+  ) =>
+      throw UnimplementedError();
 
   @override
   ReleaseType get releaseType => throw UnimplementedError();

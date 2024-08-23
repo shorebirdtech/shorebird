@@ -21,7 +21,6 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -30,7 +29,6 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
-import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -339,23 +337,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   }
 
   @override
-  Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus) async {
-    return CreatePatchMetadata(
-      releasePlatform: releaseType.releasePlatform,
-      usedIgnoreAssetChangesFlag: allowAssetDiffs,
-      hasAssetChanges: diffStatus.hasAssetChanges,
-      usedIgnoreNativeChangesFlag: allowNativeDiffs,
-      hasNativeChanges: diffStatus.hasNativeChanges,
-      linkPercentage: lastBuildLinkPercentage,
-      environment: BuildEnvironmentMetadata(
-        flutterRevision: shorebirdEnv.flutterRevision,
-        operatingSystem: platform.operatingSystem,
-        operatingSystemVersion: platform.operatingSystemVersion,
-        shorebirdVersion: packageVersion,
-        xcodeVersion: await xcodeBuild.version(),
-      ),
-    );
-  }
+  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
+    CreatePatchMetadata metadata,
+  ) async =>
+      metadata.copyWith(
+        linkPercentage: lastBuildLinkPercentage,
+        environment: metadata.environment.copyWith(
+          xcodeVersion: await xcodeBuild.version(),
+        ),
+      );
 
   Future<_LinkResult> _runLinker({
     required File releaseArtifact,

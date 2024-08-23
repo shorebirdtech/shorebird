@@ -92,9 +92,12 @@ ${iOSLinkPercentageUrl.toLink()}
     required File releaseArtifact,
   });
 
-  /// Metadata to attach to the patch when creating it, used for debugging
-  /// and support.
-  Future<CreatePatchMetadata> createPatchMetadata(DiffStatus diffStatus);
+  /// Updates the provided metadata to include patcher-specific fields.
+  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
+    CreatePatchMetadata metadata,
+  ) async {
+    return metadata;
+  }
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
   bool get allowAssetDiffs => argResults['allow-asset-diffs'] == true;

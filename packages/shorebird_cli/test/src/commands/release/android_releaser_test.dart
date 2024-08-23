@@ -4,7 +4,6 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -15,7 +14,6 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
@@ -38,7 +36,6 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late CodeSigner codeSigner;
     late Doctor doctor;
-    late Platform platform;
     late Directory projectRoot;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
@@ -62,7 +59,6 @@ void main() {
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
-          platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -86,7 +82,6 @@ void main() {
       codeSigner = MockCodeSigner();
       doctor = MockDoctor();
       operatingSystemInterface = MockOperatingSystemInterface();
-      platform = MockPlatform();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
       logger = MockShorebirdLogger();
@@ -647,18 +642,20 @@ To change the version of this release, change your app's version in your pubspec
       });
     });
 
-    group('releaseMetadata', () {
+    group('updatedReleaseMetadata', () {
       const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
       const operatingSystem = 'macos';
       const operatingSystemVersion = '11.0.0';
-
-      setUp(() {
-        when(() => platform.operatingSystem).thenReturn(operatingSystem);
-        when(
-          () => platform.operatingSystemVersion,
-        ).thenReturn(operatingSystemVersion);
-        when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
-      });
+      const metadata = UpdateReleaseMetadata(
+        releasePlatform: ReleasePlatform.android,
+        flutterVersionOverride: null,
+        environment: BuildEnvironmentMetadata(
+          flutterRevision: flutterRevision,
+          operatingSystem: operatingSystem,
+          operatingSystemVersion: operatingSystemVersion,
+          shorebirdVersion: packageVersion,
+        ),
+      );
 
       group('when an apk is generated', () {
         setUp(() {
@@ -667,17 +664,20 @@ To change the version of this release, change your app's version in your pubspec
 
         test('returns expected metadata', () async {
           expect(
-            await runWithOverrides(() => androidReleaser.releaseMetadata()),
-            const UpdateReleaseMetadata(
-              releasePlatform: ReleasePlatform.android,
-              flutterVersionOverride: null,
-              generatedApks: true,
-              environment: BuildEnvironmentMetadata(
-                flutterRevision: flutterRevision,
-                operatingSystem: operatingSystem,
-                operatingSystemVersion: operatingSystemVersion,
-                shorebirdVersion: packageVersion,
-                xcodeVersion: null,
+            runWithOverrides(
+              () => androidReleaser.updatedReleaseMetadata(metadata),
+            ),
+            completion(
+              const UpdateReleaseMetadata(
+                releasePlatform: ReleasePlatform.android,
+                flutterVersionOverride: null,
+                generatedApks: true,
+                environment: BuildEnvironmentMetadata(
+                  flutterRevision: flutterRevision,
+                  operatingSystem: operatingSystem,
+                  operatingSystemVersion: operatingSystemVersion,
+                  shorebirdVersion: packageVersion,
+                ),
               ),
             ),
           );
@@ -691,17 +691,20 @@ To change the version of this release, change your app's version in your pubspec
 
         test('returns expected metadata', () async {
           expect(
-            await runWithOverrides(() => androidReleaser.releaseMetadata()),
-            const UpdateReleaseMetadata(
-              releasePlatform: ReleasePlatform.android,
-              flutterVersionOverride: null,
-              generatedApks: false,
-              environment: BuildEnvironmentMetadata(
-                flutterRevision: flutterRevision,
-                operatingSystem: operatingSystem,
-                operatingSystemVersion: operatingSystemVersion,
-                shorebirdVersion: packageVersion,
-                xcodeVersion: null,
+            runWithOverrides(
+              () => androidReleaser.updatedReleaseMetadata(metadata),
+            ),
+            completion(
+              const UpdateReleaseMetadata(
+                releasePlatform: ReleasePlatform.android,
+                flutterVersionOverride: null,
+                generatedApks: false,
+                environment: BuildEnvironmentMetadata(
+                  flutterRevision: flutterRevision,
+                  operatingSystem: operatingSystem,
+                  operatingSystemVersion: operatingSystemVersion,
+                  shorebirdVersion: packageVersion,
+                ),
               ),
             ),
           );
