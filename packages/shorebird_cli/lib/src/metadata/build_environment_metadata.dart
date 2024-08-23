@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 
 part 'build_environment_metadata.g.dart';
 
@@ -21,6 +22,7 @@ class BuildEnvironmentMetadata extends Equatable {
     required this.shorebirdVersion,
     required this.operatingSystem,
     required this.operatingSystemVersion,
+    required this.shorebirdYaml,
     this.xcodeVersion,
   });
 
@@ -32,6 +34,7 @@ class BuildEnvironmentMetadata extends Equatable {
     String shorebirdVersion = '4.5.6',
     String operatingSystem = 'macos',
     String operatingSystemVersion = '1.2.3',
+    ShorebirdYaml shorebirdYaml = const ShorebirdYaml(appId: '123'),
     String? xcodeVersion = '15.0',
   }) =>
       BuildEnvironmentMetadata(
@@ -39,6 +42,7 @@ class BuildEnvironmentMetadata extends Equatable {
         shorebirdVersion: shorebirdVersion,
         operatingSystem: operatingSystem,
         operatingSystemVersion: operatingSystemVersion,
+        shorebirdYaml: shorebirdYaml,
         xcodeVersion: xcodeVersion,
       );
   // coverage:ignore-end
@@ -57,6 +61,7 @@ class BuildEnvironmentMetadata extends Equatable {
     String? shorebirdVersion,
     String? operatingSystem,
     String? operatingSystemVersion,
+    ShorebirdYaml? shorebirdYaml,
     String? xcodeVersion,
   }) =>
       BuildEnvironmentMetadata(
@@ -65,6 +70,7 @@ class BuildEnvironmentMetadata extends Equatable {
         operatingSystem: operatingSystem ?? this.operatingSystem,
         operatingSystemVersion:
             operatingSystemVersion ?? this.operatingSystemVersion,
+        shorebirdYaml: shorebirdYaml ?? this.shorebirdYaml,
         xcodeVersion: xcodeVersion ?? this.xcodeVersion,
       );
 
@@ -92,6 +98,9 @@ class BuildEnvironmentMetadata extends Equatable {
   /// Reason: issues may occur on some OS versions and not others.
   final String operatingSystemVersion;
 
+  /// The shorebird.yaml file for this project.
+  final ShorebirdYaml shorebirdYaml;
+
   /// The version of Xcode used to build the patch. Only provided for iOS
   /// patches.
   ///
@@ -105,6 +114,7 @@ class BuildEnvironmentMetadata extends Equatable {
         shorebirdVersion,
         operatingSystem,
         operatingSystemVersion,
+        shorebirdYaml,
         xcodeVersion,
       ];
 }

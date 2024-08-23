@@ -487,6 +487,7 @@ ${summary.join('\n')}
         operatingSystem: platform.operatingSystem,
         operatingSystemVersion: platform.operatingSystemVersion,
         shorebirdVersion: packageVersion,
+        shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
       ),
     );
     final updatedMetadata = await releaser.updatedReleaseMetadata(baseMetadata);

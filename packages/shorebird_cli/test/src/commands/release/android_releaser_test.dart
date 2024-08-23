@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/android_releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
@@ -655,6 +656,7 @@ To change the version of this release, change your app's version in your pubspec
           operatingSystem: operatingSystem,
           operatingSystemVersion: operatingSystemVersion,
           shorebirdVersion: packageVersion,
+          shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
         ),
       );
 
@@ -678,6 +680,7 @@ To change the version of this release, change your app's version in your pubspec
                   operatingSystem: operatingSystem,
                   operatingSystemVersion: operatingSystemVersion,
                   shorebirdVersion: packageVersion,
+                  shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
                 ),
               ),
             ),
@@ -705,6 +708,7 @@ To change the version of this release, change your app's version in your pubspec
                   operatingSystem: operatingSystem,
                   operatingSystemVersion: operatingSystemVersion,
                   shorebirdVersion: packageVersion,
+                  shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
                 ),
               ),
             ),

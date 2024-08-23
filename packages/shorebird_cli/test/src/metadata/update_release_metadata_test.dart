@@ -1,3 +1,4 @@
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
@@ -14,6 +15,7 @@ void main() {
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
+          shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           xcodeVersion: '15.0',
         ),
       );
@@ -34,6 +36,7 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
             xcodeVersion: '15.0',
           ),
         );
@@ -51,6 +54,7 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
             xcodeVersion: '15.0',
           ),
         );
@@ -64,6 +68,7 @@ void main() {
             operatingSystem: 'windows',
             operatingSystemVersion: '11',
             shorebirdVersion: '1.2.3',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
             xcodeVersion: '14.0',
           ),
         );
@@ -80,6 +85,7 @@ void main() {
                 operatingSystem: 'windows',
                 operatingSystemVersion: '11',
                 shorebirdVersion: '1.2.3',
+                shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
                 xcodeVersion: '14.0',
               ),
             ),
@@ -99,6 +105,7 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
             xcodeVersion: '15.0',
           ),
         );
@@ -111,6 +118,7 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
             xcodeVersion: '15.0',
           ),
         );
@@ -127,6 +135,7 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
             xcodeVersion: '15.0',
           ),
         );
@@ -139,6 +148,7 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
             xcodeVersion: '15.0',
           ),
         );

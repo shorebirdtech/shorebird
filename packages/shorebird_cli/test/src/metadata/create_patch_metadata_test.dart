@@ -1,3 +1,4 @@
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
@@ -18,6 +19,7 @@ void main() {
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
           xcodeVersion: '15.0',
+          shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
         ),
       );
       expect(
@@ -41,6 +43,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             xcodeVersion: '15.0',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           ),
         );
 
@@ -61,6 +64,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             xcodeVersion: '15.0',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           ),
         );
 
@@ -77,6 +81,7 @@ void main() {
             operatingSystemVersion: '11',
             shorebirdVersion: '1.2.3',
             xcodeVersion: '14.0',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           ),
         );
 
@@ -96,6 +101,7 @@ void main() {
                 operatingSystemVersion: '11',
                 shorebirdVersion: '1.2.3',
                 xcodeVersion: '14.0',
+                shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
               ),
             ),
           ),
@@ -118,6 +124,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             xcodeVersion: '15.0',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           ),
         );
         const otherMetadata = CreatePatchMetadata(
@@ -133,6 +140,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             xcodeVersion: '15.0',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           ),
         );
         expect(metadata, equals(otherMetadata));
@@ -151,6 +159,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             xcodeVersion: '15.0',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           ),
         );
         const otherMetadata = CreatePatchMetadata(
@@ -165,6 +174,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             xcodeVersion: '15.0',
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           ),
         );
         expect(metadata, isNot(equals(otherMetadata)));

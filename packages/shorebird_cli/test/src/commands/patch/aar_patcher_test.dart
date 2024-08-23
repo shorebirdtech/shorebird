@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -528,6 +529,7 @@ void main() {
             operatingSystem: operatingSystem,
             operatingSystemVersion: operatingSystemVersion,
             shorebirdVersion: packageVersion,
+            shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           ),
         );
 

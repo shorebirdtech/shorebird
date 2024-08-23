@@ -314,6 +314,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
             operatingSystem: platform.operatingSystem,
             operatingSystemVersion: platform.operatingSystemVersion,
             shorebirdVersion: packageVersion,
+            shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
           ),
         );
         final updateMetadata = await patcher.updatedCreatePatchMetadata(
