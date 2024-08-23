@@ -16,6 +16,7 @@ coverage:
 # and enforce that all changes have 100% coverage of affected lines.
 ignore:
   - third_party
+  - lib/**.g.dart
 
 flag_management:
   default_rules: # the rules that will be followed for any flag added, generally
