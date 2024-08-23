@@ -18,7 +18,6 @@ void main() {
             operatingSystem: 'linux',
             operatingSystemVersion: '1.0.0',
             shorebirdVersion: '1.2.3',
-            xcodeVersion: null,
           ),
         ).toJson(),
       );

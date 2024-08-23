@@ -144,7 +144,6 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
-          linkPercentage: null,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -159,7 +158,6 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
-          linkPercentage: null,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
