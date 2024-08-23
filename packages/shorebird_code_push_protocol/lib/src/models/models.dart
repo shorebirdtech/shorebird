@@ -1,9 +1,7 @@
 export 'app.dart';
 export 'app_metadata.dart';
 export 'auth_provider.dart';
-export 'build_environment_metadata.dart';
 export 'channel.dart';
-export 'create_patch_metadata.dart';
 export 'error_response.dart';
 export 'patch.dart';
 export 'patch_artifact.dart';
@@ -13,5 +11,4 @@ export 'release_artifact.dart';
 export 'release_patch.dart';
 export 'release_platform.dart';
 export 'release_status.dart';
-export 'update_release_metadata.dart';
 export 'user.dart';

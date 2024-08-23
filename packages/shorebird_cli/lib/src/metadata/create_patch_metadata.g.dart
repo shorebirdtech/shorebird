@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-// ignore_for_file: implicit_dynamic_parameter, require_trailing_commas, cast_nullable_to_non_nullable, lines_longer_than_80_chars
+// ignore_for_file: implicit_dynamic_parameter, require_trailing_commas, cast_nullable_to_non_nullable, lines_longer_than_80_chars, strict_raw_type, unnecessary_lambdas
 
 part of 'create_patch_metadata.dart';
 
@@ -24,12 +24,12 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(Map<String, dynamic> json) =>
               'used_ignore_native_changes_flag', (v) => v as bool),
           hasNativeChanges:
               $checkedConvert('has_native_changes', (v) => v as bool),
-          linkPercentage: $checkedConvert(
-              'link_percentage', (v) => (v as num?)?.toDouble()),
           environment: $checkedConvert(
               'environment',
               (v) =>
                   BuildEnvironmentMetadata.fromJson(v as Map<String, dynamic>)),
+          linkPercentage: $checkedConvert(
+              'link_percentage', (v) => (v as num?)?.toDouble()),
         );
         return val;
       },

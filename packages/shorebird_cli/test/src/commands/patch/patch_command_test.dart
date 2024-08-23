@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -604,7 +605,7 @@ void main() {
           () => codePushClientWrapper.publishPatch(
                 appId: appId,
                 releaseId: release.id,
-                metadata: patchMetadata,
+                metadata: patchMetadata.toJson(),
                 platform: releasePlatform,
                 patchArtifactBundles: any(named: 'patchArtifactBundles'),
                 track: DeploymentTrack.production,

@@ -905,13 +905,11 @@ void main() {
       const releaseId = 0;
 
       test('makes the correct request', () async {
-        codePushClient
-            .createPatch(
-              appId: appId,
-              releaseId: releaseId,
-              metadata: CreatePatchMetadata.forTest().toJson(),
-            )
-            .ignore();
+        codePushClient.createPatch(
+          appId: appId,
+          releaseId: releaseId,
+          metadata: {'foo': 'bar'},
+        ).ignore();
         final request = verify(() => httpClient.send(captureAny()))
             .captured
             .single as http.BaseRequest;
@@ -932,7 +930,7 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            metadata: CreatePatchMetadata.forTest().toJson(),
+            metadata: {'foo': 'bar'},
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -956,7 +954,7 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            metadata: CreatePatchMetadata.forTest().toJson(),
+            metadata: {'foo': 'bar'},
           ),
           throwsA(
             isA<CodePushException>().having(
@@ -986,7 +984,7 @@ void main() {
           codePushClient.createPatch(
             appId: appId,
             releaseId: releaseId,
-            metadata: CreatePatchMetadata.forTest().toJson(),
+            metadata: {'foo': 'bar'},
           ),
           completion(
             equals(

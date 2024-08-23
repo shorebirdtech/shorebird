@@ -1,16 +1,14 @@
+import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group(CreatePatchMetadata, () {
+  group(UpdateReleaseMetadata, () {
     test('can be (de)serialized', () {
-      const metadata = CreatePatchMetadata(
+      const metadata = UpdateReleaseMetadata(
         releasePlatform: ReleasePlatform.android,
-        usedIgnoreAssetChangesFlag: false,
-        hasAssetChanges: false,
-        usedIgnoreNativeChangesFlag: false,
-        hasNativeChanges: false,
-        linkPercentage: 99.9,
+        flutterVersionOverride: '1.2.3',
+        generatedApks: false,
         environment: BuildEnvironmentMetadata(
           flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
@@ -20,20 +18,17 @@ void main() {
         ),
       );
       expect(
-        CreatePatchMetadata.fromJson(metadata.toJson()).toJson(),
+        UpdateReleaseMetadata.fromJson(metadata.toJson()).toJson(),
         equals(metadata.toJson()),
       );
     });
 
     group('copyWith', () {
       test('creates a copy with the same fields', () {
-        const metadata = CreatePatchMetadata(
+        const metadata = UpdateReleaseMetadata(
           releasePlatform: ReleasePlatform.android,
-          usedIgnoreAssetChangesFlag: false,
-          hasAssetChanges: false,
-          usedIgnoreNativeChangesFlag: false,
-          hasNativeChanges: false,
-          linkPercentage: 99.9,
+          flutterVersionOverride: '1.2.3',
+          generatedApks: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -47,13 +42,10 @@ void main() {
       });
 
       test('creates a copy with the given fields replaced', () {
-        const metadata = CreatePatchMetadata(
+        const metadata = UpdateReleaseMetadata(
           releasePlatform: ReleasePlatform.android,
-          usedIgnoreAssetChangesFlag: false,
-          hasAssetChanges: false,
-          usedIgnoreNativeChangesFlag: false,
-          hasNativeChanges: false,
-          linkPercentage: 99.9,
+          flutterVersionOverride: '1.2.3',
+          generatedApks: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -65,11 +57,8 @@ void main() {
 
         final newMetadata = metadata.copyWith(
           releasePlatform: ReleasePlatform.ios,
-          usedIgnoreAssetChangesFlag: true,
-          hasAssetChanges: true,
-          usedIgnoreNativeChangesFlag: true,
-          hasNativeChanges: true,
-          linkPercentage: 99.8,
+          flutterVersionOverride: '1.2.4',
+          generatedApks: true,
           environment: const BuildEnvironmentMetadata(
             flutterRevision: 'asdf',
             operatingSystem: 'windows',
@@ -82,13 +71,10 @@ void main() {
         expect(
           newMetadata,
           equals(
-            const CreatePatchMetadata(
+            const UpdateReleaseMetadata(
               releasePlatform: ReleasePlatform.ios,
-              usedIgnoreAssetChangesFlag: true,
-              hasAssetChanges: true,
-              usedIgnoreNativeChangesFlag: true,
-              hasNativeChanges: true,
-              linkPercentage: 99.8,
+              flutterVersionOverride: '1.2.4',
+              generatedApks: true,
               environment: BuildEnvironmentMetadata(
                 flutterRevision: 'asdf',
                 operatingSystem: 'windows',
@@ -104,13 +90,10 @@ void main() {
 
     group('equatable', () {
       test('two metadatas with the same properties are equal', () {
-        const metadata = CreatePatchMetadata(
+        const metadata = UpdateReleaseMetadata(
           releasePlatform: ReleasePlatform.android,
-          usedIgnoreAssetChangesFlag: false,
-          hasAssetChanges: false,
-          usedIgnoreNativeChangesFlag: false,
-          hasNativeChanges: false,
-          linkPercentage: 99.9,
+          flutterVersionOverride: '1.2.3',
+          generatedApks: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -119,13 +102,10 @@ void main() {
             xcodeVersion: '15.0',
           ),
         );
-        const otherMetadata = CreatePatchMetadata(
+        const otherMetadata = UpdateReleaseMetadata(
           releasePlatform: ReleasePlatform.android,
-          usedIgnoreAssetChangesFlag: false,
-          hasAssetChanges: false,
-          usedIgnoreNativeChangesFlag: false,
-          hasNativeChanges: false,
-          linkPercentage: 99.9,
+          flutterVersionOverride: '1.2.3',
+          generatedApks: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -138,12 +118,10 @@ void main() {
       });
 
       test('two metadatas with different properties are not equal', () {
-        const metadata = CreatePatchMetadata(
+        const metadata = UpdateReleaseMetadata(
           releasePlatform: ReleasePlatform.android,
-          usedIgnoreAssetChangesFlag: false,
-          hasAssetChanges: false,
-          usedIgnoreNativeChangesFlag: false,
-          hasNativeChanges: false,
+          flutterVersionOverride: '1.2.3',
+          generatedApks: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -152,12 +130,10 @@ void main() {
             xcodeVersion: '15.0',
           ),
         );
-        const otherMetadata = CreatePatchMetadata(
-          releasePlatform: ReleasePlatform.ios,
-          usedIgnoreAssetChangesFlag: false,
-          hasAssetChanges: false,
-          usedIgnoreNativeChangesFlag: false,
-          hasNativeChanges: false,
+        const otherMetadata = UpdateReleaseMetadata(
+          releasePlatform: ReleasePlatform.android,
+          flutterVersionOverride: '1.2.4',
+          generatedApks: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',

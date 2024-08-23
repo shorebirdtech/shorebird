@@ -44,19 +44,10 @@ Future<void> main() async {
   final patch = await client.createPatch(
     appId: app.id,
     releaseId: release.id,
-    metadata: const CreatePatchMetadata(
-      releasePlatform: ReleasePlatform.android,
-      usedIgnoreAssetChangesFlag: false,
-      hasAssetChanges: false,
-      usedIgnoreNativeChangesFlag: false,
-      hasNativeChanges: false,
-      environment: BuildEnvironmentMetadata(
-        flutterRevision: '<FLUTTER_REVISION>', // e.g. '83305b5088e6'
-        operatingSystem: 'Windows',
-        operatingSystemVersion: '10',
-        shorebirdVersion: '1.2.3',
-      ),
-    ).toJson(),
+    metadata: {
+      'releasePlatform': 'android',
+      'usedIgnoreAssetChangesFlag': false,
+    },
   );
 
   // Create a patch artifact.

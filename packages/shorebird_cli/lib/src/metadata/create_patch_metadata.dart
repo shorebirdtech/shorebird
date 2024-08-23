@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/src/models/models.dart';
+import 'package:shorebird_cli/src/metadata/build_environment_metadata.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'create_patch_metadata.g.dart';
 

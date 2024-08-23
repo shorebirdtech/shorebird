@@ -8,7 +8,6 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_code_push_protocol/src/models/create_patch_metadata.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_artifact.dart';
 import 'package:test/test.dart';
 
@@ -189,13 +188,6 @@ class _TestPatcher extends Patcher {
     required int releaseId,
     required File releaseArtifact,
   }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
-    CreatePatchMetadata metadata,
-  ) {
     throw UnimplementedError();
   }
 

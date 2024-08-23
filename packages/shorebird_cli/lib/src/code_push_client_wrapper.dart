@@ -289,7 +289,7 @@ Please create a release using "shorebird release" and try again.
     required int releaseId,
     required ReleasePlatform platform,
     required ReleaseStatus status,
-    UpdateReleaseMetadata? metadata,
+    Json? metadata,
   }) async {
     final updateStatusProgress = logger.progress('Updating release status');
     try {
@@ -298,7 +298,7 @@ Please create a release using "shorebird release" and try again.
         releaseId: releaseId,
         platform: platform,
         status: status,
-        metadata: metadata?.toJson(),
+        metadata: metadata,
       );
       updateStatusProgress.complete();
     } catch (error) {
@@ -693,14 +693,14 @@ aar artifact already exists, continuing...''',
   Future<Patch> createPatch({
     required String appId,
     required int releaseId,
-    required CreatePatchMetadata metadata,
+    required Json metadata,
   }) async {
     final createPatchProgress = logger.progress('Creating patch');
     try {
       final patch = await codePushClient.createPatch(
         appId: appId,
         releaseId: releaseId,
-        metadata: metadata.toJson(),
+        metadata: metadata,
       );
       createPatchProgress.complete();
       return patch;
@@ -758,7 +758,7 @@ aar artifact already exists, continuing...''',
   Future<void> publishPatch({
     required String appId,
     required int releaseId,
-    required CreatePatchMetadata metadata,
+    required Json metadata,
     required ReleasePlatform platform,
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,

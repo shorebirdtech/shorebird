@@ -8,7 +8,6 @@ part 'shorebird_yaml.g.dart';
 @JsonSerializable(
   anyMap: true,
   disallowUnrecognizedKeys: true,
-  createToJson: false,
 )
 class ShorebirdYaml {
   /// {@macro shorebird_yaml}
