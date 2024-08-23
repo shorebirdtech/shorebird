@@ -19,6 +19,18 @@ void main() {
     });
 
     group('copyWith', () {
+      test('creates a copy with the same fields', () {
+        const metadata = BuildEnvironmentMetadata(
+          flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
+          operatingSystem: 'macos',
+          operatingSystemVersion: '1.2.3',
+          shorebirdVersion: '4.5.6',
+          xcodeVersion: '15.0',
+        );
+
+        expect(metadata.copyWith(), equals(metadata));
+      });
+
       test('returns a new instance with the given fields replaced', () {
         const metadata = BuildEnvironmentMetadata(
           flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',

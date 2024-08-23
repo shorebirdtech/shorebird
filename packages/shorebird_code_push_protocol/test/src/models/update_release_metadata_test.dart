@@ -23,6 +23,23 @@ void main() {
     });
 
     group('copyWith', () {
+      test('creates a copy with the same fields', () {
+        const metadata = UpdateReleaseMetadata(
+          releasePlatform: ReleasePlatform.android,
+          flutterVersionOverride: '1.2.3',
+          generatedApks: false,
+          environment: BuildEnvironmentMetadata(
+            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
+            operatingSystem: 'macos',
+            operatingSystemVersion: '1.2.3',
+            shorebirdVersion: '4.5.6',
+            xcodeVersion: '15.0',
+          ),
+        );
+
+        expect(metadata.copyWith(), equals(metadata));
+      });
+
       test('creates a copy with the given fields replaced', () {
         const metadata = UpdateReleaseMetadata(
           releasePlatform: ReleasePlatform.android,
