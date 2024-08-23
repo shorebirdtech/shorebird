@@ -3,112 +3,113 @@ version: "0.2"
 ignorePaths:
   ["coverage", "bin/cache", "third_party", "build", "*.xcscheme", "fixtures"]
 words:
-  - pubspec
-  - podfile
+  - ANDROIDD
   - Apks
-  - metadatas
-  - logcat
-  - mktemp
-  - gradlew
-  - bundletool
-  - genhtml
-  - sideload
-  - endtemplate
-  - mocktail
-  - libapp
-  - aarch
-  - codesign
-  - xcarchive
-  - xcrun
-  - vmcode
-  - xcodebuild
-  - sideloadable
-  - bryanoltman
-  - signup
-  - lerping
-  - precache
-  - devicectl
-  - exitcode
-  - writeln
-  - xcodeproj
-  - xcschemes
-  - xcshareddata
-  - armeabi
-  - cipd
-  - canvaskit
-  - libimobiledevice
-  - hotreload
-  - libflutter
-  - apigee
-  - pointycastle
-  - pkcs
-  - appbundle
-  - felangel
-  - bitcode
-  - xcscheme
-  - archs
-  - shorebirdtech
-  - aapt
-  - USERPROFILE
-  - LOCALAPPDATA
-  - Unpatchable
-  - multioption
-  - xcframework
-  - deflavored
-  - dylib
-  - libplist
-  - usbmuxd
-  - pwsh
-  - readlink
-  - unawaited
-  - NOAUTH
-  - WRONGPASS
-  - FLUSHALL
-  - pana
-  - idevicesyslog
+  - Azul
   - Entra
-  - xlink
-  - propertylistserialization
+  - FLUSHALL
+  - LOCALAPPDATA
+  - NOAUTH
+  - Oltman
+  - PRNG
+  - RSAPKCS
   - Retryable
-  - storyboardc
-  - iphoneos
-  - lproj
-  - iokit
+  - SIGSTOP
+  - USERPROFILE
+  - Unpatchable
+  - VCRUNTIME
+  - Verdana
+  - WRONGPASS
+  - aabs
+  - aapt
+  - aarch
+  - aars # Android Archive
+  - allprojects # From gradle files
+  - altool
+  - apigee
+  - appbundle
+  - archs
+  - armeabi
   - backboardd
-  - dyld
   - bintools
+  - bitcode
+  - bryanoltman
+  - bundletool
+  - canvaskit
+  - carryforward
+  - cipd
+  - codesign
   - codesigned
   - codesigning
-  - previewable
-  - udid # Unique Device Identifier
-  - podspec
-  - exportoptions
-  - ANDROIDD
-  - propertylistserialization
-  - VCRUNTIME
-  - Oltman
-  - xcworkspace
-  - SIGSTOP
-  - lldb
-  - nserror
-  - sysroot
-  - RSAPKCS
-  - PRNG
-  - sideloaded
-  - Azul
-  - altool
-  - aabs
-  - upvote
-  - Verdana
-  - reinit
-  - allprojects # From gradle files
-  - aars # Android Archive
-  - orri # Arm64 instruction, Or Register with Immediate
-  - unmockable
+  - deflavored
+  - devicectl
   - dorny # From .github dir, doesn't show up in "**" check?
-  - requirepass # From .github dir, doesn't show up in "**" check?
-  - temurin # From .github dir, doesn't show up in "**" check?
-  - subosito # From .github dir, doesn't show up in "**" check?
-  - reactivecircus # From .github dir, doesn't show up in "**" check?
-  - swiftshader # From .github dir, doesn't show up in "**" check?
+  - dyld
+  - dylib
+  - endtemplate
+  - exitcode
+  - exportoptions
+  - felangel
+  - genhtml
+  - gradlew
+  - hotreload
+  - idevicesyslog
+  - iokit
+  - iphoneos
+  - lerping
+  - libapp
+  - libflutter
+  - libimobiledevice
+  - libplist
+  - lldb
+  - logcat
+  - lproj
+  - metadatas
+  - mktemp
+  - mocktail
+  - multioption
   - noaudio # From .github dir, doesn't show up in "**" check?
+  - nserror
+  - orri # Arm64 instruction, Or Register with Immediate
+  - pana
+  - pkcs
+  - podfile
+  - podspec
+  - pointycastle
+  - precache
+  - previewable
+  - propertylistserialization
+  - propertylistserialization
+  - pubspec
+  - pwsh
+  - reactivecircus # From .github dir, doesn't show up in "**" check?
+  - readlink
+  - reinit
+  - requirepass # From .github dir, doesn't show up in "**" check?
+  - shorebirdtech
+  - sideload
+  - sideloadable
+  - sideloaded
+  - signup
+  - storyboardc
+  - subosito # From .github dir, doesn't show up in "**" check?
+  - swiftshader # From .github dir, doesn't show up in "**" check?
+  - sysroot
+  - temurin # From .github dir, doesn't show up in "**" check?
+  - udid # Unique Device Identifier
+  - unawaited
+  - unmockable
+  - upvote
+  - usbmuxd
+  - vmcode
+  - writeln
+  - xcarchive
+  - xcframework
+  - xcodebuild
+  - xcodeproj
+  - xcrun
+  - xcscheme
+  - xcschemes
+  - xcshareddata
+  - xcworkspace
+  - xlink
