@@ -143,12 +143,6 @@ class AarReleaser extends Releaser {
   }
 
   @override
-  Future<UpdateReleaseMetadata> updatedReleaseMetadata(
-    UpdateReleaseMetadata metadata,
-  ) async =>
-      metadata;
-
-  @override
   String get postReleaseInstructions {
     final targetLibraryDirectory = Directory(
       p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),

@@ -57,7 +57,9 @@ abstract class Releaser {
   /// Creates a copy of [metadata] with releaser-specific fields updated.
   Future<UpdateReleaseMetadata> updatedReleaseMetadata(
     UpdateReleaseMetadata metadata,
-  );
+  ) async {
+    return metadata;
+  }
 
   /// Instructions explaining next steps after running `shorebird release`. This
   /// could include how to upload the generated artifact to a store and how to

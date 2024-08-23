@@ -201,10 +201,4 @@ Looked in:
       artifact.path,
     );
   }
-
-  @override
-  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
-    CreatePatchMetadata metadata,
-  ) async =>
-      metadata;
 }

@@ -95,7 +95,9 @@ ${iOSLinkPercentageUrl.toLink()}
   /// Updates the provided metadata to include patcher-specific fields.
   Future<CreatePatchMetadata> updatedCreatePatchMetadata(
     CreatePatchMetadata metadata,
-  );
+  ) async {
+    return metadata;
+  }
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
   bool get allowAssetDiffs => argResults['allow-asset-diffs'] == true;

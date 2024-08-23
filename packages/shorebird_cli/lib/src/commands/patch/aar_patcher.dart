@@ -178,10 +178,4 @@ class AarPatcher extends Patcher {
       'Release version must be specified using --release-version.',
     );
   }
-
-  @override
-  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
-    CreatePatchMetadata metadata,
-  ) async =>
-      metadata;
 }
