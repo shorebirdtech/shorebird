@@ -1,5 +1,4 @@
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-import 'package:shorebird_code_push_protocol/src/models/build_environment_metadata.dart';
+import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:test/test.dart';
 
 void main() {

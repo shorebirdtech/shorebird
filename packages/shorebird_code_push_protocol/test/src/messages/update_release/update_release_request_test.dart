@@ -4,20 +4,10 @@ import 'package:test/test.dart';
 void main() {
   group(UpdateReleaseRequest, () {
     test('can be (de)serialized', () {
-      final request = UpdateReleaseRequest(
+      const request = UpdateReleaseRequest(
         platform: ReleasePlatform.android,
         status: ReleaseStatus.active,
-        metadata: const UpdateReleaseMetadata(
-          releasePlatform: ReleasePlatform.ios,
-          flutterVersionOverride: null,
-          environment: BuildEnvironmentMetadata(
-            flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
-            operatingSystem: 'macos',
-            operatingSystemVersion: '11.1',
-            shorebirdVersion: '1.2.3',
-            xcodeVersion: '15.3',
-          ),
-        ).toJson(),
+        metadata: {'foo': 'bar'},
       );
       expect(
         UpdateReleaseRequest.fromJson(request.toJson()).toJson(),

@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -315,11 +316,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
             shorebirdVersion: packageVersion,
           ),
         );
+        final updatedMeatadata = await patcher.updatedCreatePatchMetadata(
+          baseMetadata,
+        );
 
         await codePushClientWrapper.publishPatch(
           appId: appId,
           releaseId: release.id,
-          metadata: await patcher.updatedCreatePatchMetadata(baseMetadata),
+          metadata: updatedMeatadata.toJson(),
           platform: patcher.releaseType.releasePlatform,
           track:
               isStaging ? DeploymentTrack.staging : DeploymentTrack.production,

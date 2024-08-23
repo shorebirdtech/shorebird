@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -488,13 +489,13 @@ ${summary.join('\n')}
         shorebirdVersion: packageVersion,
       ),
     );
-
+    final updatedMetadata = await releaser.updatedReleaseMetadata(baseMetadata);
     await codePushClientWrapper.updateReleaseStatus(
       appId: appId,
       releaseId: release.id,
       platform: releaser.releaseType.releasePlatform,
       status: ReleaseStatus.active,
-      metadata: await releaser.updatedReleaseMetadata(baseMetadata),
+      metadata: updatedMetadata.toJson(),
     );
   }
 

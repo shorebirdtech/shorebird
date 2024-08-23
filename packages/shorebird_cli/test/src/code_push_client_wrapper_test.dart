@@ -35,7 +35,6 @@ void main() {
     late ShorebirdFlutter shorebirdFlutter;
 
     setUpAll(() {
-      registerFallbackValue(CreatePatchMetadata.forTest());
       registerFallbackValue(FakeBaseRequest());
     });
 
@@ -1972,7 +1971,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               releaseId: releaseId,
               platform: releasePlatform,
               status: ReleaseStatus.active,
-              metadata: UpdateReleaseMetadata.forTest(),
+              metadata: {'foo': 'bar'},
             ),
           );
 
@@ -1982,7 +1981,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               releaseId: releaseId,
               platform: releasePlatform,
               status: ReleaseStatus.active,
-              metadata: UpdateReleaseMetadata.forTest().toJson(),
+              metadata: {'foo': 'bar'},
             ),
           ).called(1);
           verify(() => progress.complete()).called(1);
@@ -2007,7 +2006,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               () => codePushClientWrapper.createPatch(
                 appId: appId,
                 releaseId: releaseId,
-                metadata: CreatePatchMetadata.forTest(),
+                metadata: {'foo': 'bar'},
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -2028,7 +2027,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             () => codePushClientWrapper.createPatch(
               appId: appId,
               releaseId: releaseId,
-              metadata: CreatePatchMetadata.forTest(),
+              metadata: {'foo': 'bar'},
             ),
           );
 
@@ -2188,7 +2187,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: releasePlatform,
               track: track,
               patchArtifactBundles: patchArtifactBundles,
-              metadata: CreatePatchMetadata.forTest(),
+              metadata: {'foo': 'bar'},
             ),
           );
 
@@ -2196,7 +2195,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
-              metadata: CreatePatchMetadata.forTest().toJson(),
+              metadata: {'foo': 'bar'},
             ),
           ).called(1);
           verify(
@@ -2244,7 +2243,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: releasePlatform,
               track: track,
               patchArtifactBundles: patchArtifactBundles,
-              metadata: CreatePatchMetadata.forTest(),
+              metadata: {'foo': 'bar'},
             ),
           );
 
@@ -2252,7 +2251,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             () => codePushClient.createPatch(
               appId: appId,
               releaseId: releaseId,
-              metadata: CreatePatchMetadata.forTest().toJson(),
+              metadata: {'foo': 'bar'},
             ),
           ).called(1);
           verify(
@@ -2289,7 +2288,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               platform: releasePlatform,
               track: track,
               patchArtifactBundles: patchArtifactBundles,
-              metadata: CreatePatchMetadata.forTest(),
+              metadata: {'foo': 'bar'},
             ),
           );
 
