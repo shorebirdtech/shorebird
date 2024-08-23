@@ -34,3 +34,11 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
         'autoUpdate': 'auto_update'
       },
     );
+
+Map<String, dynamic> _$ShorebirdYamlToJson(ShorebirdYaml instance) =>
+    <String, dynamic>{
+      'app_id': instance.appId,
+      'flavors': instance.flavors,
+      'base_url': instance.baseUrl,
+      'auto_update': instance.autoUpdate,
+    };
