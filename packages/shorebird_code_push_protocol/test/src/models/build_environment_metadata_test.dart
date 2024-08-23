@@ -28,18 +28,21 @@ void main() {
           xcodeVersion: '15.0',
         );
         final newMetadata = metadata.copyWith(
+          flutterRevision: 'asdf',
           operatingSystem: 'windows',
           operatingSystemVersion: '11',
+          shorebirdVersion: '1.2.3',
+          xcodeVersion: '14.0',
         );
         expect(
           newMetadata,
           equals(
-            BuildEnvironmentMetadata(
-              flutterRevision: metadata.flutterRevision,
-              shorebirdVersion: metadata.shorebirdVersion,
+            const BuildEnvironmentMetadata(
+              flutterRevision: 'asdf',
               operatingSystem: 'windows',
               operatingSystemVersion: '11',
-              xcodeVersion: metadata.xcodeVersion,
+              shorebirdVersion: '1.2.3',
+              xcodeVersion: '14.0',
             ),
           ),
         );
