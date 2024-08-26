@@ -23,6 +23,8 @@ BuildEnvironmentMetadata _$BuildEnvironmentMetadataFromJson(
               $checkedConvert('operating_system', (v) => v as String),
           operatingSystemVersion:
               $checkedConvert('operating_system_version', (v) => v as String),
+          shorebirdYaml: $checkedConvert('shorebird_yaml',
+              (v) => ShorebirdYaml.fromJson(v as Map<String, dynamic>)),
           xcodeVersion: $checkedConvert('xcode_version', (v) => v as String?),
         );
         return val;
@@ -32,6 +34,7 @@ BuildEnvironmentMetadata _$BuildEnvironmentMetadataFromJson(
         'shorebirdVersion': 'shorebird_version',
         'operatingSystem': 'operating_system',
         'operatingSystemVersion': 'operating_system_version',
+        'shorebirdYaml': 'shorebird_yaml',
         'xcodeVersion': 'xcode_version'
       },
     );
@@ -43,5 +46,6 @@ Map<String, dynamic> _$BuildEnvironmentMetadataToJson(
       'shorebird_version': instance.shorebirdVersion,
       'operating_system': instance.operatingSystem,
       'operating_system_version': instance.operatingSystemVersion,
+      'shorebird_yaml': instance.shorebirdYaml.toJson(),
       'xcode_version': instance.xcodeVersion,
     };

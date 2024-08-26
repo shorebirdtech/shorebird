@@ -22,6 +22,9 @@ class ShorebirdYaml {
   factory ShorebirdYaml.fromJson(Map<dynamic, dynamic> json) =>
       _$ShorebirdYamlFromJson(json);
 
+  /// Converts this [ShorebirdYaml] to a JSON map.
+  Map<String, dynamic> toJson() => _$ShorebirdYamlToJson(this);
+
   /// The base app id.
   ///
   /// Example:

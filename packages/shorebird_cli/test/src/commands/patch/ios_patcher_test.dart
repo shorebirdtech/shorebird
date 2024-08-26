@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
@@ -1608,6 +1609,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 operatingSystem: operatingSystem,
                 operatingSystemVersion: operatingSystemVersion,
                 shorebirdVersion: packageVersion,
+                shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
               ),
             );
 
@@ -1627,6 +1629,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                     operatingSystem: operatingSystem,
                     operatingSystemVersion: operatingSystemVersion,
                     shorebirdVersion: packageVersion,
+                    shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
                     xcodeVersion: xcodeVersion,
                   ),
                 ),
@@ -1654,6 +1657,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 operatingSystem: operatingSystem,
                 operatingSystemVersion: operatingSystemVersion,
                 shorebirdVersion: packageVersion,
+                shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
               ),
             );
 
@@ -1675,6 +1679,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                     operatingSystemVersion: operatingSystemVersion,
                     shorebirdVersion: packageVersion,
                     xcodeVersion: xcodeVersion,
+                    shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
                   ),
                 ),
               ),
