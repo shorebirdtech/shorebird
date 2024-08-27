@@ -213,7 +213,12 @@ allowed to access $storageUrl.''',
 
     final extractProgress = logger.progress('Extracting $fileName...');
     final artifactDirectory = Directory(p.dirname(file.path));
-    await extractArtifact(response.stream, artifactDirectory.path);
+    try {
+      await extractArtifact(response.stream, artifactDirectory.path);
+    } catch (_) {
+      extractProgress.fail();
+      rethrow;
+    }
 
     final expectedChecksum = checksum;
     if (expectedChecksum != null) {
