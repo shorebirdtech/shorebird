@@ -180,6 +180,8 @@ abstract class CachedArtifact {
     // Clear any existing artifact files.
     await _delete();
 
+    final updateProgress = logger.progress('Downloading $fileName...');
+
     final request = http.Request('GET', Uri.parse(storageUrl));
     final http.StreamedResponse response;
     try {
@@ -194,6 +196,7 @@ allowed to access $storageUrl.''',
     }
 
     if (response.statusCode != HttpStatus.ok) {
+      updateProgress.fail();
       if (!required && response.statusCode == HttpStatus.notFound) {
         logger.detail(
           '[cache] optional artifact: "$fileName" was not found, skipping...',
@@ -206,12 +209,16 @@ allowed to access $storageUrl.''',
       );
     }
 
+    updateProgress.complete();
+
+    final extractProgress = logger.progress('Extracting $fileName...');
     final artifactDirectory = Directory(p.dirname(file.path));
     await extractArtifact(response.stream, artifactDirectory.path);
 
     final expectedChecksum = checksum;
     if (expectedChecksum != null) {
       if (!checksumChecker.checkFile(file, expectedChecksum)) {
+        extractProgress.fail();
         // Delete the artifact directory, so if the download is retried, it will
         // be re-downloaded.
         artifactDirectory.deleteSync(recursive: true);
@@ -230,6 +237,7 @@ allowed to access $storageUrl.''',
       await result.exitCode;
     }
 
+    extractProgress.complete();
     _writeStampFile();
   }
 
