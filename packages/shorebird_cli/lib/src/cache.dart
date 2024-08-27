@@ -196,7 +196,6 @@ allowed to access $storageUrl.''',
     }
 
     if (response.statusCode != HttpStatus.ok) {
-      updateProgress.fail();
       if (!required && response.statusCode == HttpStatus.notFound) {
         logger.detail(
           '[cache] optional artifact: "$fileName" was not found, skipping...',
@@ -204,6 +203,7 @@ allowed to access $storageUrl.''',
         return;
       }
 
+      updateProgress.fail();
       throw CacheUpdateFailure(
         '''Failed to download $fileName: ${response.statusCode} ${response.reasonPhrase}''',
       );
