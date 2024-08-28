@@ -32,6 +32,7 @@ void main() {
     late ShorebirdLogger logger;
     late Platform platform;
     late Process chmodProcess;
+    late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
 
@@ -77,6 +78,7 @@ void main() {
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
       platform = MockPlatform();
+      progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
 
@@ -90,6 +92,7 @@ void main() {
         (invocation.namedArguments[#outputDirectory] as Directory)
             .createSync(recursive: true);
       });
+      when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
@@ -276,11 +279,31 @@ void main() {
           expect(patchArtifactDirectory.existsSync(), isTrue);
         });
 
+        group('when extraction fails', () {
+          setUp(() {
+            when(
+              () => artifactManager.extractZip(
+                zipFile: any(named: 'zipFile'),
+                outputDirectory: any(named: 'outputDirectory'),
+              ),
+            ).thenThrow(Exception('test'));
+          });
+
+          test('throws exception, logs failure', () async {
+            await expectLater(
+              () => runWithOverrides(cache.updateAll),
+              throwsException,
+            );
+            verify(() => progress.fail()).called(3);
+          });
+        });
+
         group('when checksum validation fails', () {
           setUp(() {
             when(() => checksumChecker.checkFile(any(), any()))
                 .thenReturn(false);
           });
+
           test('fails with the correct message', () async {
             await expectLater(
               () => runWithOverrides(cache.updateAll),
@@ -294,6 +317,8 @@ void main() {
                 ),
               ),
             );
+
+            verify(() => progress.fail()).called(3);
           });
         });
 
@@ -375,6 +400,7 @@ void main() {
     late http.Client httpClient;
     late ShorebirdLogger logger;
     late Platform platform;
+    late Progress progress;
     late _TestCachedArtifact cachedArtifact;
 
     R runWithOverrides<R>(R Function() body) {
@@ -399,6 +425,7 @@ void main() {
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
       platform = MockPlatform();
+      progress = MockProgress();
 
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
@@ -406,6 +433,9 @@ void main() {
           HttpStatus.notFound,
         ),
       );
+
+      when(() => logger.progress(any())).thenReturn(progress);
+
       cachedArtifact = _TestCachedArtifact(cache: cache, platform: platform);
     });
 
