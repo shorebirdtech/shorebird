@@ -6,6 +6,13 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.3.0 (August 28, 2024)
+
+- ❗️**BREAKING** Remove deprecated `shorebird build` commands
+- 📉 Reduce FFI memory usage
+- ✨ Show progress when updating cached artifacts
+- 🗒️ Include `shorebird.yaml` in diagnostic metadata
+
 ## 1.2.2 (August 21, 2024)
 
 - 🐦 Support for Flutter 3.24.1
