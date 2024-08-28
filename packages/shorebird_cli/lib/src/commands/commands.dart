@@ -1,4 +1,3 @@
-export 'build/build_command.dart';
 export 'cache/cache.dart';
 export 'doctor_command.dart';
 export 'flutter/flutter.dart';
