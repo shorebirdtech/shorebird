@@ -279,11 +279,31 @@ void main() {
           expect(patchArtifactDirectory.existsSync(), isTrue);
         });
 
+        group('when extraction fails', () {
+          setUp(() {
+            when(
+              () => artifactManager.extractZip(
+                zipFile: any(named: 'zipFile'),
+                outputDirectory: any(named: 'outputDirectory'),
+              ),
+            ).thenThrow(Exception('test'));
+          });
+
+          test('throws exception, logs failure', () async {
+            await expectLater(
+              () => runWithOverrides(cache.updateAll),
+              throwsException,
+            );
+            verify(() => progress.fail()).called(3);
+          });
+        });
+
         group('when checksum validation fails', () {
           setUp(() {
             when(() => checksumChecker.checkFile(any(), any()))
                 .thenReturn(false);
           });
+
           test('fails with the correct message', () async {
             await expectLater(
               () => runWithOverrides(cache.updateAll),
@@ -297,6 +317,8 @@ void main() {
                 ),
               ),
             );
+
+            verify(() => progress.fail()).called(3);
           });
         });
 
