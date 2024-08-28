@@ -1,6 +1,0 @@
-# This file is a workaround for https://github.com/dart-lang/sdk/issues/56047
-name: _
-environment: 
-  sdk: ^3.5.0
-dev_dependencies:
-  very_good_analysis: ^6.0.0
