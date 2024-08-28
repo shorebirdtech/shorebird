@@ -193,7 +193,7 @@ void main() {
             const exception = SocketException('test');
             when(() => httpClient.send(any())).thenThrow(exception);
             await expectLater(
-              runWithOverrides(cache.updateAll),
+              runWithOverrides(() => cache.updateAll(Duration.zero)),
               throwsA(
                 isA<CacheUpdateFailure>().having(
                   (e) => e.message,
@@ -209,7 +209,7 @@ void main() {
             when(() => httpClient.send(any())).thenThrow(exception);
 
             await expectLater(
-              runWithOverrides(cache.updateAll),
+              runWithOverrides(() => cache.updateAll(Duration.zero)),
               throwsA(
                 isA<CacheUpdateFailure>(),
               ),
@@ -229,7 +229,7 @@ void main() {
             ),
           );
           await expectLater(
-            runWithOverrides(cache.updateAll),
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
             throwsA(
               isA<CacheUpdateFailure>().having(
                 (e) => e.message,
@@ -260,7 +260,7 @@ void main() {
             },
           );
           await expectLater(
-            runWithOverrides(cache.updateAll),
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
             completes,
           );
           verify(
@@ -275,7 +275,10 @@ void main() {
             () => cache.getArtifactDirectory('patch'),
           );
           expect(patchArtifactDirectory.existsSync(), isFalse);
-          await expectLater(runWithOverrides(cache.updateAll), completes);
+          await expectLater(
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
+            completes,
+          );
           expect(patchArtifactDirectory.existsSync(), isTrue);
         });
 
@@ -291,7 +294,7 @@ void main() {
 
           test('throws exception, logs failure', () async {
             await expectLater(
-              () => runWithOverrides(cache.updateAll),
+              () => runWithOverrides(() => cache.updateAll(Duration.zero)),
               throwsException,
             );
             verify(() => progress.fail()).called(3);
@@ -306,7 +309,7 @@ void main() {
 
           test('fails with the correct message', () async {
             await expectLater(
-              () => runWithOverrides(cache.updateAll),
+              () => runWithOverrides(() => cache.updateAll(Duration.zero)),
               throwsA(
                 isA<CacheUpdateFailure>().having(
                   (e) => e.message,
@@ -325,7 +328,10 @@ void main() {
         test('pull correct artifact for MacOS', () async {
           setMockPlatform(Platform.macOS);
 
-          await expectLater(runWithOverrides(cache.updateAll), completes);
+          await expectLater(
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
+            completes,
+          );
 
           final requests = verify(() => httpClient.send(captureAny()))
               .captured
@@ -348,7 +354,10 @@ void main() {
         test('pull correct artifact for Windows', () async {
           setMockPlatform(Platform.windows);
 
-          await expectLater(runWithOverrides(cache.updateAll), completes);
+          await expectLater(
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
+            completes,
+          );
 
           final requests = verify(() => httpClient.send(captureAny()))
               .captured
@@ -371,7 +380,10 @@ void main() {
         test('pull correct artifact for Linux', () async {
           setMockPlatform(Platform.linux);
 
-          await expectLater(runWithOverrides(cache.updateAll), completes);
+          await expectLater(
+            runWithOverrides(() => cache.updateAll(Duration.zero)),
+            completes,
+          );
 
           final requests = verify(() => httpClient.send(captureAny()))
               .captured

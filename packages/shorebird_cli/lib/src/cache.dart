@@ -54,7 +54,14 @@ class Cache {
 
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
 
-  Future<void> updateAll() async {
+  /// Update all artifacts in the cache.
+  ///
+  /// [retryDelayFactor] is the delay between retries that doubles after every
+  /// attempt. The default from the retry package is 200ms. This is settable for
+  /// testing.
+  Future<void> updateAll([
+    Duration retryDelayFactor = const Duration(milliseconds: 200),
+  ]) async {
     for (final artifact in _artifacts) {
       if (await artifact.isValid()) {
         continue;
@@ -63,6 +70,7 @@ class Cache {
       await retry(
         artifact.update,
         maxAttempts: 3,
+        delayFactor: retryDelayFactor,
         onRetry: (e) {
           logger
             ..detail('Failed to update ${artifact.fileName}, retrying...')
