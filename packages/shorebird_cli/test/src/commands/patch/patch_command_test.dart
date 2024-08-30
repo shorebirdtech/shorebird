@@ -522,7 +522,6 @@ void main() {
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
             '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
             '🟢 Track: ${lightCyan.wrap('Production')}',
-            '''🔗 Running ${lightCyan.wrap('${patcher.linkPercentage!.toStringAsFixed(1)}%')} on CPU''',
             '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
           ];
           await expectLater(
