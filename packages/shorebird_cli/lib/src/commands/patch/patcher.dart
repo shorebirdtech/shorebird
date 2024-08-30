@@ -29,12 +29,6 @@ abstract class Patcher {
   });
 
   // Link percentage that is considered the minimum before a user might notice.
-  // Our early testing has shown that about:
-  // - 1/3rd of patches link at 99%
-  // - 1/3rd of patches link between 20% and 99%
-  // - 1/3rd of patches link below 20%
-  // Most lowering is likely due to:
-  // https://github.com/shorebirdtech/shorebird/issues/1825
   static const double minLinkPercentage = 75;
 
   /// The standard link percentage warning.
