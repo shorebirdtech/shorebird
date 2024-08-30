@@ -188,6 +188,7 @@ void main() {
           equals(
             p.join(
               localEngineSrcPath,
+              'flutter',
               'third_party',
               'dart',
               'pkg',

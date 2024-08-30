@@ -145,6 +145,7 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
     return File(
       p.join(
         engineConfig.localEngineSrcPath!,
+        'flutter',
         'third_party',
         'dart',
         'pkg',
