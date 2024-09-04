@@ -217,9 +217,14 @@ class ShorebirdFlutter {
     }
 
     // If we were unable to parse the version, assume it's a revision hash.
-    final version = await getVersionForRevision(flutterRevision: versionOrHash);
-    if (version != null) {
-      return versionOrHash;
+    try {
+      final version =
+          await getVersionForRevision(flutterRevision: versionOrHash);
+      if (version != null) {
+        return versionOrHash;
+      }
+    } catch (_) {
+      return null;
     }
 
     return null;
@@ -235,10 +240,14 @@ class ShorebirdFlutter {
       return parsedVersion;
     }
 
-    // If we were unable to parse the version, assume it's a revision hash.
-    final versionString =
-        await getVersionForRevision(flutterRevision: versionOrHash);
-    return versionString != null ? tryParseVersion(versionString) : null;
+    try {
+      // If we were unable to parse the version, assume it's a revision hash.
+      final versionString =
+          await getVersionForRevision(flutterRevision: versionOrHash);
+      return versionString != null ? tryParseVersion(versionString) : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Returns the git revision for the provided [version].
