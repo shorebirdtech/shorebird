@@ -243,6 +243,111 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
       });
     });
 
+    group('resolveFlutterRevision', () {
+      group('when input is a semver version', () {
+        test('returns the revision associated with the version if it exists',
+            () async {
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterRevision('3.10.6'),
+          );
+          expect(revision, equals(flutterRevision));
+        });
+      });
+
+      group('when input is a commit hash that maps to a Flutter version', () {
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => 'origin/flutter_release/1.2.3');
+        });
+
+        test('returns the input string', () async {
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterRevision('deadbeef'),
+          );
+          expect(revision, equals('deadbeef'));
+        });
+      });
+
+      group('when input is not a commit hash that maps to a Flutter version',
+          () {
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => '');
+        });
+
+        test('returns the input string', () async {
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterRevision('not-a-version'),
+          );
+          expect(revision, isNull);
+        });
+      });
+    });
+
+    group('resolveFlutterVersion', () {
+      group('when input is a semver version', () {
+        test('returns the revision associated with the version if it exists',
+            () async {
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterVersion('3.10.6'),
+          );
+          expect(revision, equals(Version(3, 10, 6)));
+        });
+      });
+
+      group('when input is not a recognized commit hash', () {
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => '');
+        });
+
+        test('returns null', () async {
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterVersion('not-a-version'),
+          );
+          expect(revision, isNull);
+        });
+      });
+
+      group('when input is a recognized commit hash', () {
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => 'origin/flutter_release/1.2.3');
+        });
+
+        test('returns a parsed version', () async {
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterVersion('deadbeef'),
+          );
+          expect(revision, equals(Version(1, 2, 3)));
+        });
+      });
+    });
+
     group('getRevisionForVersion', () {
       const version = '3.16.3';
       const exception = ProcessException('git', ['rev-parse']);

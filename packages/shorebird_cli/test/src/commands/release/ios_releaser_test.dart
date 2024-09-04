@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -123,9 +124,13 @@ void main() {
       });
 
       group('assertPreconditions', () {
+        final flutterVersion = Version(3, 0, 0);
+
         setUp(() {
           when(() => doctor.iosCommandValidators)
               .thenReturn([flutterValidator]);
+          when(() => shorebirdFlutter.resolveFlutterVersion(any()))
+              .thenAnswer((_) async => flutterVersion);
           when(flutterValidator.validate).thenAnswer((_) async => []);
         });
 

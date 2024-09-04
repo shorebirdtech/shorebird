@@ -441,7 +441,7 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android --flavor=$flavor --t
         final exception = Exception('oops');
         setUp(() {
           when(
-            () => shorebirdFlutter.getRevisionForVersion(any()),
+            () => shorebirdFlutter.resolveFlutterRevision(any()),
           ).thenThrow(exception);
         });
 
@@ -463,7 +463,7 @@ $exception''',
       group('when flutter version is not supported', () {
         setUp(() {
           when(
-            () => shorebirdFlutter.getRevisionForVersion(any()),
+            () => shorebirdFlutter.resolveFlutterRevision(any()),
           ).thenAnswer((_) async => null);
         });
 
@@ -484,7 +484,7 @@ $exception''',
         const revision = '771d07b2cf';
         setUp(() {
           when(
-            () => shorebirdFlutter.getRevisionForVersion(any()),
+            () => shorebirdFlutter.resolveFlutterRevision(any()),
           ).thenAnswer((_) async => revision);
         });
 
@@ -520,28 +520,6 @@ $exception''',
             verify(
               () => shorebirdFlutter.installRevision(revision: revision),
             ).called(1);
-          });
-        });
-
-        group('when flutter-version is a git hash', () {
-          const revision = 'deadbeef';
-          setUp(() {
-            when(() => argResults['flutter-version']).thenReturn(revision);
-          });
-
-          test(
-              '''installs the flutter version with the provided revision and completes''',
-              () async {
-            await runWithOverrides(command.run);
-
-            verify(() => shorebirdFlutter.installRevision(revision: revision))
-                .called(1);
-            // We should never attempt to treat this as a semver version.
-            verifyNever(
-              () => shorebirdFlutter.getVersionForRevision(
-                flutterRevision: any(named: 'flutterRevision'),
-              ),
-            );
           });
         });
       });
