@@ -9,7 +9,8 @@ This section contains past updates we've sent to customers.
 ## 1.3.1 (September 4, 2024)
 
 - 🔧 Fix an issue where certain packages could interact poorly with the
-  Shorebird updater, causing patches to be unexpectedly uninstalled.
+  Shorebird updater, causing patches to be unexpectedly uninstalled. See
+  https://github.com/shorebirdtech/updater/issues/211 for more information.
 - 🔗 Remove link percentage from `shorebird patch ios` summary logs.
 
 ## 1.3.0 (August 28, 2024)
