@@ -12,6 +12,8 @@ This section contains past updates we've sent to customers.
   Shorebird updater, causing patches to be unexpectedly uninstalled. See
   https://github.com/shorebirdtech/updater/issues/211 for more information.
 - 🔗 Remove link percentage from `shorebird patch ios` summary logs.
+- #️⃣ Fix issue where `shorebird release ios` would not accept git commit hashes
+  for the `--flutter-version` argument.
 
 ## 1.3.0 (August 28, 2024)
 
