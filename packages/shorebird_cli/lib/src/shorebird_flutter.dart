@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -203,6 +204,50 @@ class ShorebirdFlutter {
         .map((e) => e.replaceFirst('origin/flutter_release/', ''))
         .toList()
         .firstOrNull;
+  }
+
+  /// Translates [versionOrHash] into a Flutter revision. If this is a semver
+  /// version, it will simply parse that into a [Version]. If not, it will
+  /// attempt to look up the Flutter version for the provided revision hash and
+  /// return the hash if a version is found, or null if not.
+  Future<String?> resolveFlutterRevision(String versionOrHash) async {
+    final parsedVersion = tryParseVersion(versionOrHash);
+    if (parsedVersion != null) {
+      return getRevisionForVersion(versionOrHash);
+    }
+
+    // If we were unable to parse the version, assume it's a revision hash.
+    try {
+      final version =
+          await getVersionForRevision(flutterRevision: versionOrHash);
+      if (version != null) {
+        return versionOrHash;
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
+  }
+
+  /// Translates [versionOrHash] into a Flutter [Version]. If [versionOrHash]
+  /// is semver version string, it will simply parse that into a [Version]. If
+  /// not, it will assume that the input is a git commit hash and attempt to
+  /// map it to a Flutter version.
+  Future<Version?> resolveFlutterVersion(String versionOrHash) async {
+    final parsedVersion = tryParseVersion(versionOrHash);
+    if (parsedVersion != null) {
+      return parsedVersion;
+    }
+
+    try {
+      // If we were unable to parse the version, assume it's a revision hash.
+      final versionString =
+          await getVersionForRevision(flutterRevision: versionOrHash);
+      return versionString != null ? tryParseVersion(versionString) : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Returns the git revision for the provided [version].

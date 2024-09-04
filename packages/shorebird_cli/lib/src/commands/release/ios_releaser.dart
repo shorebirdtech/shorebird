@@ -4,7 +4,6 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive_analysis/plist.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -82,8 +81,9 @@ To change the version of this release, change your app's version in your pubspec
 
     final flutterVersionArg = argResults['flutter-version'] as String?;
     if (flutterVersionArg != null) {
-      if (Version.parse(flutterVersionArg) <
-          minimumSupportedIosFlutterVersion) {
+      final version =
+          await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
+      if (version != null && version < minimumSupportedIosFlutterVersion) {
         logger.err(
           '''
 iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.

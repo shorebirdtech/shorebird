@@ -9,7 +9,6 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -306,16 +305,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       return shorebirdEnv.flutterRevision;
     }
 
-    final parsedVersion = tryParseVersion(flutterVersionArg!);
-    if (parsedVersion == null) {
-      // If we fail to parse flutterVersionArg as a semver version, attempt to
-      // use the provided value as a revision.
-      return flutterVersionArg!;
-    }
-
     final String? revision;
     try {
-      revision = await shorebirdFlutter.getRevisionForVersion(
+      revision = await shorebirdFlutter.resolveFlutterRevision(
         flutterVersionArg!,
       );
     } catch (error) {
