@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.3.2 (September 4, 2024)
+
+- 🐦 Support for Flutter 3.24.2
+
 ## 1.3.1 (September 4, 2024)
 
 - 🔧 Fix an issue where certain packages could interact poorly with the
