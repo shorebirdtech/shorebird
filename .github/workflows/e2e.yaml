@@ -5,6 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  pull_request:
   workflow_dispatch:
   schedule:
     # At the end of every day
@@ -73,6 +74,7 @@ jobs:
         with:
           api-level: 34
           arch: x86_64
+          target: aosp_atd
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -83,6 +85,10 @@ jobs:
         with:
           api-level: 34
           arch: x86_64
+          target: aosp_atd
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
           script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
