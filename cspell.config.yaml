@@ -4,6 +4,7 @@ ignorePaths:
   ["coverage", "bin/cache", "third_party", "build", "*.xcscheme", "fixtures"]
 words:
   - ANDROIDD
+  - aosp # E2E workflow
   - Apks
   - Azul
   - Entra
