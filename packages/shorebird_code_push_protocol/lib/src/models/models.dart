@@ -1,4 +1,5 @@
 export 'app.dart';
+export 'app_collaborator_role.dart';
 export 'app_metadata.dart';
 export 'auth_provider.dart';
 export 'channel.dart';

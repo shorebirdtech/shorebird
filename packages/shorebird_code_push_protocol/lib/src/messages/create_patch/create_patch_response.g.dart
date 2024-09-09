@@ -14,8 +14,8 @@ CreatePatchResponse _$CreatePatchResponseFromJson(Map<String, dynamic> json) =>
       json,
       ($checkedConvert) {
         final val = CreatePatchResponse(
-          id: $checkedConvert('id', (v) => v as int),
-          number: $checkedConvert('number', (v) => v as int),
+          id: $checkedConvert('id', (v) => (v as num).toInt()),
+          number: $checkedConvert('number', (v) => (v as num).toInt()),
         );
         return val;
       },
