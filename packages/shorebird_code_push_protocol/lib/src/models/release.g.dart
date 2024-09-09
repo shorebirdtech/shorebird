@@ -13,7 +13,7 @@ Release _$ReleaseFromJson(Map<String, dynamic> json) => $checkedCreate(
       json,
       ($checkedConvert) {
         final val = Release(
-          id: $checkedConvert('id', (v) => v as int),
+          id: $checkedConvert('id', (v) => (v as num).toInt()),
           appId: $checkedConvert('app_id', (v) => v as String),
           version: $checkedConvert('version', (v) => v as String),
           flutterRevision:
