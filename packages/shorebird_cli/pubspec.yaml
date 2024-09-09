@@ -26,7 +26,7 @@ dependencies:
   json_path: ^0.7.1
   jwt:
     path: ../jwt
-  mason_logger: ^0.3.0
+  mason_logger: ^0.3.1
   meta: ^1.14.0
   path: ^1.9.0
   pem: ^2.0.5

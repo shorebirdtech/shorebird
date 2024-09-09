@@ -412,10 +412,10 @@ packages:
     dependency: "direct main"
     description:
       name: mason_logger
-      sha256: "3a1dee14867763e925bc30e4be903ca800845191dde3d3a95dae225705e630b5"
+      sha256: b6d6d159927a4165f197ffc5993ea680dd41c59daf35bff23bae28390c09a36e
       url: "https://pub.dev"
     source: hosted
-    version: "0.3.0"
+    version: "0.3.1"
   matcher:
     dependency: transitive
     description:
