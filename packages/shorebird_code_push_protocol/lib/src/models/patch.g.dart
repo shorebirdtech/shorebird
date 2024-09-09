@@ -13,8 +13,8 @@ Patch _$PatchFromJson(Map<String, dynamic> json) => $checkedCreate(
       json,
       ($checkedConvert) {
         final val = Patch(
-          id: $checkedConvert('id', (v) => v as int),
-          number: $checkedConvert('number', (v) => v as int),
+          id: $checkedConvert('id', (v) => (v as num).toInt()),
+          number: $checkedConvert('number', (v) => (v as num).toInt()),
         );
         return val;
       },

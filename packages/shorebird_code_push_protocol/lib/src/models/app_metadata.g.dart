@@ -21,8 +21,8 @@ AppMetadata _$AppMetadataFromJson(Map<String, dynamic> json) => $checkedCreate(
               $checkedConvert('updated_at', (v) => DateTime.parse(v as String)),
           latestReleaseVersion:
               $checkedConvert('latest_release_version', (v) => v as String?),
-          latestPatchNumber:
-              $checkedConvert('latest_patch_number', (v) => v as int?),
+          latestPatchNumber: $checkedConvert(
+              'latest_patch_number', (v) => (v as num?)?.toInt()),
         );
         return val;
       },

@@ -14,8 +14,8 @@ PromotePatchRequest _$PromotePatchRequestFromJson(Map<String, dynamic> json) =>
       json,
       ($checkedConvert) {
         final val = PromotePatchRequest(
-          patchId: $checkedConvert('patch_id', (v) => v as int),
-          channelId: $checkedConvert('channel_id', (v) => v as int),
+          patchId: $checkedConvert('patch_id', (v) => (v as num).toInt()),
+          channelId: $checkedConvert('channel_id', (v) => (v as num).toInt()),
         );
         return val;
       },

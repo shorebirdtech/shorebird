@@ -14,8 +14,8 @@ ReleasePatch _$ReleasePatchFromJson(Map<String, dynamic> json) =>
       json,
       ($checkedConvert) {
         final val = ReleasePatch(
-          id: $checkedConvert('id', (v) => v as int),
-          number: $checkedConvert('number', (v) => v as int),
+          id: $checkedConvert('id', (v) => (v as num).toInt()),
+          number: $checkedConvert('number', (v) => (v as num).toInt()),
           channel: $checkedConvert('channel', (v) => v as String?),
           artifacts: $checkedConvert(
               'artifacts',

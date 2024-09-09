@@ -14,7 +14,7 @@ CreatePatchRequest _$CreatePatchRequestFromJson(Map<String, dynamic> json) =>
       json,
       ($checkedConvert) {
         final val = CreatePatchRequest(
-          releaseId: $checkedConvert('release_id', (v) => v as int),
+          releaseId: $checkedConvert('release_id', (v) => (v as num).toInt()),
           metadata:
               $checkedConvert('metadata', (v) => v as Map<String, dynamic>),
         );
