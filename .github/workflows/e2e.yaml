@@ -84,7 +84,7 @@ jobs:
         with:
           api-level: 29
           arch: x86_64
-          script: flutter create foo; && cd foo; && flutter run -d emulator --release
+          script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
     strategy:
