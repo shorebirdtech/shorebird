@@ -30,6 +30,9 @@ echo "void main() { print('hello world'); }" >lib/main.dart
 # Initialize Shorebird
 shorebird init --force -v
 
+# Run Shorebird doctor to ensure that the project is set up correctly.
+shorebird doctor --verbose
+
 # Point to the development environment
 echo "base_url: https://api-dev.shorebird.dev" >> shorebird.yaml
 
