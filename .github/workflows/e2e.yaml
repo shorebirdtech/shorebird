@@ -5,6 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  pull_request:
   workflow_dispatch:
   schedule:
     # At the end of every day
@@ -19,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flutter-version: [3.24.1, 3.24.0, 3.22.3, 3.22.2, 3.19.6]
+        flutter-version: [3.24.3, 3.24.1, 3.24.0, 3.22.3, 3.22.2, 3.19.6]
 
     runs-on: ubuntu-latest
     timeout-minutes: 15
