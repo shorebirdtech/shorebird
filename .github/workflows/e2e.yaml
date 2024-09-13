@@ -79,9 +79,6 @@ jobs:
           disable-animations: false
           script: echo "Generated AVD Snapshot"
 
-      - name: 🗑️ Clear gradle cache
-        run: rm -rf $HOME/.gradle/caches
-
       - name: 🧪 Run Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
