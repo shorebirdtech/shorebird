@@ -23,7 +23,7 @@ jobs:
         flutter-version: [3.24.3] #, 3.24.1, 3.24.0, 3.22.3, 3.22.2, 3.19.6]
 
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     env:
       SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
