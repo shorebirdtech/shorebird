@@ -52,6 +52,9 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
+      - name: 🤖 Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: 🎯 Set up Flutter
         uses: subosito/flutter-action@v2
         with:
