@@ -39,9 +39,6 @@ APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 # Create a new release on Android
 shorebird release android --flutter-version=$FLUTTER_VERSION --split-debug-info=./build/symbols -v
 
-# Uninstall the app from the emulator in case it was already installed.
-adb -d uninstall com.example.e2e_test || true
-
 # Run the app on Android and ensure that the print statement is printed.
 while IFS= read line; do
     if [[ "$line" == *"I flutter : hello world"* ]]; then
