@@ -30,7 +30,8 @@ echo "void main() { print('hello world'); }" >lib/main.dart
 # Initialize Shorebird
 shorebird init --force -v
 
-# Run Shorebird doctor to ensure that the project is set up correctly.
+# Run Flutter & Shorebird doctor to ensure that the project is set up correctly.
+flutter doctor --verbose
 shorebird doctor --verbose
 
 # Point to the development environment
