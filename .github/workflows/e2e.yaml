@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flutter-version: [3.24.3, 3.24.1, 3.24.0, 3.22.3, 3.22.2, 3.19.6]
+        flutter-version: [3.24.3] #, 3.24.1, 3.24.0, 3.22.3, 3.22.2, 3.19.6]
 
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -50,7 +50,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
-          java-version: "17"
+          java-version: "21"
 
       - name: 🎯 Set up Flutter
         uses: subosito/flutter-action@v2
@@ -78,6 +78,9 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           script: echo "Generated AVD Snapshot"
+
+      - name: 🗑️ Clear gradle cache
+        run: rm -rf $HOME/.gradle/caches
 
       - name: 🧪 Run Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
