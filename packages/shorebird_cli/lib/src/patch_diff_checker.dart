@@ -50,7 +50,6 @@ class PatchDiffChecker {
     required ArchiveDiffer archiveDiffer,
     required bool allowAssetChanges,
     required bool allowNativeChanges,
-    bool checkAssetChanges = true,
     bool confirmNativeChanges = true,
   }) async {
     final progress =
@@ -96,7 +95,7 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
       }
     }
 
-    if (status.hasAssetChanges && checkAssetChanges) {
+    if (status.hasAssetChanges) {
       logger
         ..warn(
           '''Your app contains asset changes, which will not be included in the patch.''',
