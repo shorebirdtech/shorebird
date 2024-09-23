@@ -24,68 +24,66 @@ cd "$TEMP_DIR"
 flutter create e2e_test --empty --platforms android
 cd e2e_test
 
-flutter run -d emulator --release
+# Replace the contents of "lib/main.dart" with a single print statement.
+echo "void main() { print('hello world'); }" >lib/main.dart
 
-# # Replace the contents of "lib/main.dart" with a single print statement.
-# echo "void main() { print('hello world'); }" >lib/main.dart
+# Initialize Shorebird
+shorebird init --force -v
 
-# # Initialize Shorebird
-# shorebird init --force -v
+# Run Flutter & Shorebird doctor to ensure that the project is set up correctly.
+flutter doctor --verbose
+shorebird doctor --verbose
 
-# # Run Flutter & Shorebird doctor to ensure that the project is set up correctly.
-# flutter doctor --verbose
-# shorebird doctor --verbose
+# Point to the development environment
+echo "base_url: https://api-dev.shorebird.dev" >>shorebird.yaml
 
-# # Point to the development environment
-# echo "base_url: https://api-dev.shorebird.dev" >> shorebird.yaml
+# Extract the app_id from the "shorebird.yaml"
+APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 
 # Create a new release on Android
 shorebird release android --flutter-version=$FLUTTER_VERSION --split-debug-info=./build/symbols -v
 
-# # Create a new release on Android
-# shorebird release android --flutter-version=$FLUTTER_VERSION -v
+# Run the app on Android and ensure that the print statement is printed.
+while IFS= read line; do
+    if [[ "$line" == *"I flutter : hello world"* ]]; then
+        adb kill-server
+        echo "✅ 'hello world' was printed"
+        break
+    fi
+done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
 
-# # Run the app on Android and ensure that the print statement is printed.
-# while IFS= read line; do
-#     if [[ "$line" == *"I flutter : hello world"* ]]; then
-#         adb kill-server
-#         echo "✅ 'hello world' was printed"
-#         break
-#     fi
-# done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
+# Replace lib/main.dart "hello world" to "hello shorebird"
+sed -i 's/hello world/hello shorebird/g' lib/main.dart
 
-# # Replace lib/main.dart "hello world" to "hello shorebird"
-# sed -i 's/hello world/hello shorebird/g' lib/main.dart
+echo "lib/main.dart is now:"
+cat lib/main.dart
 
 # Create a patch
 shorebird patch android --split-debug-info=./build/symbols -v
 
-# # Create a patch
-# shorebird patch android -v
+# Run the app on Android and ensure that the original print statement is printed.
+while IFS= read line; do
+    if [[ "$line" == *"Patch 1 successfully"* ]]; then
+        # Kill the app so we can boot the patch
+        adb shell am force-stop com.example.e2e_test
+        echo "✅ Patch 1 successfully installed"
+        break
+    fi
+done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
 
-# # Run the app on Android and ensure that the original print statement is printed.
-# while IFS= read line; do
-#     if [[ "$line" == *"Patch 1 successfully"* ]]; then
-#         # Kill the app so we can boot the patch
-#         adb shell am force-stop com.example.e2e_test
-#         echo "✅ Patch 1 successfully installed"
-#         break
-#     fi
-# done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
+# Re-run the app, *not* using shorebird preview, as that installs the base release.
+adb shell monkey -p com.example.e2e_test -c android.intent.category.LAUNCHER 1
 
-# # Re-run the app, *not* using shorebird preview, as that installs the base release.
-# adb shell monkey -p com.example.e2e_test -c android.intent.category.LAUNCHER 1
+# Re-run the app on Android and ensure that the new print statement is printed,
+# tailing adb logs and printing the last 10 seconds of logs in case the
+# "hello shorebird" statement was printed before entering the loop.
+while IFS= read line; do
+    if [[ "$line" == *"I flutter : hello shorebird"* ]]; then
+        adb kill-server
+        echo "✅ 'hello shorebird' was printed"
+        break
+    fi
+done < <(adb logcat -T '10.0')
 
-# # Re-run the app on Android and ensure that the new print statement is printed,
-# # tailing adb logs and printing the last 10 seconds of logs in case the
-# # "hello shorebird" statement was printed before entering the loop.
-# while IFS= read line; do
-#     if [[ "$line" == *"I flutter : hello shorebird"* ]]; then
-#         adb kill-server
-#         echo "✅ 'hello shorebird' was printed"
-#         break
-#     fi
-# done < <(adb logcat -T '10.0')
-
-# echo "✅ All tests passed!"
-# exit 0
+echo "✅ All tests passed!"
+exit 0
