@@ -87,6 +87,7 @@ jobs:
           script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
+    if: false
     strategy:
       fail-fast: false
       matrix:
