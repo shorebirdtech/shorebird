@@ -303,8 +303,9 @@ void main() {
 
         group('when checksum validation fails', () {
           setUp(() {
-            when(() => checksumChecker.checkFile(any(), any()))
-                .thenReturn(false);
+            when(
+              () => checksumChecker.checkFile(any(), any()),
+            ).thenReturn(false);
           });
 
           test('fails with the correct message', () async {
@@ -344,7 +345,7 @@ void main() {
 
           final expected = [
             perEngine('patch-darwin-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
             perEngine('aot-tools.dill'),
           ].map(Uri.parse).toList();
 
@@ -370,7 +371,7 @@ void main() {
 
           final expected = [
             perEngine('patch-windows-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
             perEngine('aot-tools.dill'),
           ].map(Uri.parse).toList();
 
@@ -396,7 +397,7 @@ void main() {
 
           final expected = [
             perEngine('patch-linux-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
             perEngine('aot-tools.dill'),
           ].map(Uri.parse).toList();
 
