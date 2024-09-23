@@ -53,7 +53,6 @@ class Bundletool {
         '--overwrite',
         '--bundle=$bundle',
         '--output=$output',
-        if (universal) '--mode=universal',
       ],
     );
     if (result.exitCode != 0) {
