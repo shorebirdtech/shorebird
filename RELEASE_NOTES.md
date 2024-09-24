@@ -8,9 +8,9 @@ This section contains past updates we've sent to customers.
 
 ## 1.3.4 (September 24, 2024)
 
-- 🪵 improve logging for link failures
-- 🛜 add api.shorebird.dev validator to `shorebird doctor`
-- 🍄 upgrade bundletool to 1.17.1
+- 🪵 Improve logging for link failures
+- 🛜 Add api.shorebird.dev validator to `shorebird doctor`
+- 🍄 Upgrade bundletool to 1.17.1
 
 ## 1.3.3 (September 12, 2024)
 
