@@ -229,7 +229,10 @@ class AotTools {
     );
 
     if (result.exitCode != 0) {
-      throw Exception('Failed to link: ${result.stderr}');
+      throw Exception('''
+Failed to link:
+stdout: ${result.stdout}
+stderr: ${result.stderr}''');
     }
 
     return linkerUsesGenSnapshot
