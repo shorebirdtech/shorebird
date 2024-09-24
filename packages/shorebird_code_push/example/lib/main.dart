@@ -130,6 +130,22 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  void _showErrorBanner() {
+    ScaffoldMessenger.of(context).showMaterialBanner(
+      MaterialBanner(
+        content: const Text('An error occurred while downloading the update.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+            },
+            child: const Text('Dismiss'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _downloadUpdate() async {
     _showDownloadingBanner();
 
@@ -139,10 +155,17 @@ class _MyHomePageState extends State<MyHomePage> {
       Future<void>.delayed(const Duration(milliseconds: 250)),
     ]);
 
+    final isUpdateReadyToInstall =
+        await _shorebirdCodePush.isNewPatchReadyToInstall();
+
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
-    _showRestartBanner();
+    if (isUpdateReadyToInstall) {
+      _showRestartBanner();
+    } else {
+      _showErrorBanner();
+    }
   }
 
   @override
