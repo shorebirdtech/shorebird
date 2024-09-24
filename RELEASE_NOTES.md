@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.3.4 (September 24, 2024)
+
+- 🪵 improve logging for link failures
+- 🛜 add api.shorebird.dev validator to `shorebird doctor`
+- 🍄 upgrade bundletool to 1.17.1
+
 ## 1.3.3 (September 12, 2024)
 
 - 🐦 Support for Flutter 3.24.3
