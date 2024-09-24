@@ -1,4 +1,9 @@
+# 1.1.5
+
+- Update example to use isNewPatchReadyToInstall.
+
 # 1.1.4
+
 - Run `dart format` over generated files to appease pub static analysis.
 
 # 1.1.3
