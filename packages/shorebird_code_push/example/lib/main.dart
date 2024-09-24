@@ -146,6 +146,9 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  // Note: this is only run if an update is reported as available.
+  // [isNewPatchReadyToInstall] returning false does not always indicate an
+  // error with the download.
   Future<void> _downloadUpdate() async {
     _showDownloadingBanner();
 
