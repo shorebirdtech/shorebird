@@ -96,10 +96,12 @@ void main() {
           (_) async {
             final mockProcess = MockProcess();
             when(() => mockProcess.exitCode).thenAnswer((_) async => 1);
-            when(() => mockProcess.stdout)
-                .thenAnswer((_) => const Stream.empty());
-            when(() => mockProcess.stderr)
-                .thenAnswer((_) => Stream.value(utf8.encode('error')));
+            when(
+              () => mockProcess.stdout,
+            ).thenAnswer((_) => Stream.value(utf8.encode('info')));
+            when(
+              () => mockProcess.stderr,
+            ).thenAnswer((_) => Stream.value(utf8.encode('error')));
 
             return mockProcess;
           },
@@ -119,7 +121,10 @@ void main() {
             isA<Exception>().having(
               (e) => '$e',
               'exception',
-              'Exception: Failed to link: error',
+              '''
+Exception: Failed to link:
+stdout: info
+stderr: error''',
             ),
           ),
         );
@@ -160,10 +165,12 @@ void main() {
             (_) async {
               final mockProcess = MockProcess();
               when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
-              when(() => mockProcess.stdout)
-                  .thenAnswer((_) => const Stream.empty());
-              when(() => mockProcess.stderr)
-                  .thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
 
               return mockProcess;
             },
@@ -222,10 +229,12 @@ void main() {
             (_) async {
               final mockProcess = MockProcess();
               when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
-              when(() => mockProcess.stdout)
-                  .thenAnswer((_) => Stream.value(utf8.encode('stdout')));
-              when(() => mockProcess.stderr)
-                  .thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => Stream.value(utf8.encode('stdout')));
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
 
               return mockProcess;
             },
@@ -285,10 +294,12 @@ void main() {
               (_) async {
                 final mockProcess = MockProcess();
                 when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
-                when(() => mockProcess.stdout)
-                    .thenAnswer((_) => const Stream.empty());
-                when(() => mockProcess.stderr)
-                    .thenAnswer((_) => const Stream.empty());
+                when(
+                  () => mockProcess.stdout,
+                ).thenAnswer((_) => const Stream.empty());
+                when(
+                  () => mockProcess.stderr,
+                ).thenAnswer((_) => const Stream.empty());
 
                 return mockProcess;
               },
@@ -362,10 +373,12 @@ void main() {
             (_) async {
               final mockProcess = MockProcess();
               when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
-              when(() => mockProcess.stdout)
-                  .thenAnswer((_) => const Stream.empty());
-              when(() => mockProcess.stderr)
-                  .thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
               return mockProcess;
             },
           );
@@ -437,10 +450,12 @@ void main() {
             (_) async {
               final mockProcess = MockProcess();
               when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
-              when(() => mockProcess.stdout)
-                  .thenAnswer((_) => const Stream.empty());
-              when(() => mockProcess.stderr)
-                  .thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
 
               return mockProcess;
             },
@@ -513,10 +528,12 @@ void main() {
             (_) async {
               final mockProcess = MockProcess();
               when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
-              when(() => mockProcess.stdout)
-                  .thenAnswer((_) => const Stream.empty());
-              when(() => mockProcess.stderr)
-                  .thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
 
               return mockProcess;
             },
@@ -588,10 +605,12 @@ void main() {
 
               final mockProcess = MockProcess();
               when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
-              when(() => mockProcess.stdout)
-                  .thenAnswer((_) => const Stream.empty());
-              when(() => mockProcess.stderr)
-                  .thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
 
               return mockProcess;
             },
