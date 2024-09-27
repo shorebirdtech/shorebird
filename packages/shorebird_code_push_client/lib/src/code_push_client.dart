@@ -111,7 +111,7 @@ class CodePushClient {
   Uri get _v1 => Uri.parse('$hostedUri/api/v1');
 
   /// Fetches the currently logged-in user.
-  Future<User?> getCurrentUser() async {
+  Future<FullUser?> getCurrentUser() async {
     final uri = Uri.parse('$_v1/users/me');
     final response = await _httpClient.get(uri);
 
@@ -122,7 +122,7 @@ class CodePushClient {
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return User.fromJson(json);
+    return FullUser.fromJson(json);
   }
 
   /// Create a new artifact for a specific [patchId].
@@ -331,7 +331,7 @@ class CodePushClient {
   /// Create a new Shorebird user with the provided [name].
   ///
   /// The email associated with the user's JWT will be used as the user's email.
-  Future<User> createUser({
+  Future<FullUser> createUser({
     required String name,
   }) async {
     final response = await _httpClient.post(
@@ -344,7 +344,7 @@ class CodePushClient {
     }
 
     final body = json.decode(response.body) as Json;
-    return User.fromJson(body);
+    return FullUser.fromJson(body);
   }
 
   /// Delete the app with the provided [appId].

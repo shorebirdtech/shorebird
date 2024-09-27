@@ -4,6 +4,7 @@ export 'app_metadata.dart';
 export 'auth_provider.dart';
 export 'channel.dart';
 export 'error_response.dart';
+export 'full_user.dart';
 export 'organization.dart';
 export 'organization_membership.dart';
 export 'organization_user.dart';

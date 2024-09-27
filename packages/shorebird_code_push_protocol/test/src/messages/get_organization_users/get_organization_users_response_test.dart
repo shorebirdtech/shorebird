@@ -6,7 +6,10 @@ void main() {
     test('can be (de)serialized', () {
       final getOrganizationUsersRequest = GetOrganizationUsersResponse(
         users: [
-          OrganizationUser(user: User.forTest(), role: OrganizationRole.owner),
+          OrganizationUser(
+            user: User.fromFullUser(FullUser.forTest()),
+            role: OrganizationRole.owner,
+          ),
         ],
       );
       expect(

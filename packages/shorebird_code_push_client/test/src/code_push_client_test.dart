@@ -100,7 +100,7 @@ void main() {
     });
 
     group('getCurrentUser', () {
-      const user = User(
+      const user = FullUser(
         id: 123,
         email: 'tester@shorebird.dev',
         jwtIssuer: 'https://accounts.google.com',
@@ -1221,7 +1221,7 @@ void main() {
 
     group('createUser', () {
       const userName = 'Jane Doe';
-      final user = User(
+      final user = FullUser(
         id: 1,
         email: 'tester@shorebird.dev',
         displayName: userName,
