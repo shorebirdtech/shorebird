@@ -7,7 +7,7 @@ void main() {
       final getOrganizationUsersRequest = GetOrganizationUsersResponse(
         users: [
           OrganizationUser(
-            user: User.fromFullUser(FullUser.forTest()),
+            user: PublicUser.fromPrivateUser(PrivateUser.forTest()),
             role: OrganizationRole.owner,
           ),
         ],

@@ -15,7 +15,7 @@ OrganizationUser _$OrganizationUserFromJson(Map<String, dynamic> json) =>
       ($checkedConvert) {
         final val = OrganizationUser(
           user: $checkedConvert(
-              'user', (v) => User.fromJson(v as Map<String, dynamic>)),
+              'user', (v) => PublicUser.fromJson(v as Map<String, dynamic>)),
           role: $checkedConvert(
               'role', (v) => $enumDecode(_$OrganizationRoleEnumMap, v)),
         );

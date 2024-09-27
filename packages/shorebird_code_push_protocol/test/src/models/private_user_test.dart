@@ -2,9 +2,9 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group(FullUser, () {
+  group(PrivateUser, () {
     test('can be (de)serialized', () {
-      const user = FullUser(
+      const user = PrivateUser(
         id: 1,
         email: 'test@shorebird.dev',
         stripeCustomerId: 'test-customer-id',
@@ -13,7 +13,7 @@ void main() {
         patchOverageLimit: 123,
       );
       expect(
-        FullUser.fromJson(user.toJson()).toJson(),
+        PrivateUser.fromJson(user.toJson()).toJson(),
         equals(user.toJson()),
       );
     });
