@@ -22,7 +22,7 @@ class OrganizationUser {
   Map<String, dynamic> toJson() => _$OrganizationUserToJson(this);
 
   /// The user that is a member of the organization.
-  final User user;
+  final PublicUser user;
 
   /// The role [user] has in the organization.
   final OrganizationRole role;

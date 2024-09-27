@@ -127,7 +127,7 @@ void main() {
       authProvider: AuthProvider.google,
     );
     const email = 'test@email.com';
-    const user = User(
+    const user = PrivateUser(
       id: 42,
       email: email,
       jwtIssuer: googleJwtIssuer,
