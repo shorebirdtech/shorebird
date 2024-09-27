@@ -7,6 +7,14 @@ abstract class ShorebirdCodePushBase {
 
   /// Checks whether a new patch is available for download.
   ///
+  /// Returns true when there is a new patch for this app on Shorebird servers
+  /// but not yet downloaded to this device.
+  ///
+  /// Returns false in all other cases, including when a new patch is installed
+  /// locally but not yet booted from.
+  /// Use [isNewPatchReadyToInstall] to check if a new patch has been downloaded
+  /// and is ready to boot from on next restart.
+  ///
   /// Runs in a separate isolate to avoid blocking the UI thread.
   Future<bool> isNewPatchAvailableForDownload();
 
@@ -22,6 +30,7 @@ abstract class ShorebirdCodePushBase {
   Future<int?> nextPatchNumber();
 
   /// Downloads the latest patch, if available.
+  /// Does nothing if there is no new patch available.
   Future<void> downloadUpdateIfAvailable();
 
   /// Whether a new patch has been downloaded and is ready to install.
