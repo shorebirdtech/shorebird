@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
@@ -118,11 +117,11 @@ void main() {
             ),
           ),
           throwsA(
-            isA<Exception>().having(
+            isA<AotToolsExecutionFailure>().having(
               (e) => '$e',
-              'exception',
+              'toString',
               '''
-Exception: Failed to link:
+aot_tools link --base=./path/to/base.aot --patch=./path/to/patch.aot --analyze-snapshot=./path/to/analyze_snapshot --output=./path/to/out.vmcode --verbose failed with exit code 1
 stdout: info
 stderr: error''',
             ),
@@ -207,19 +206,6 @@ stderr: error''',
 
         test('forwards stdout from aot_tools link to the logger', () async {
           when(
-            () => process.run(
-              aotToolsPath,
-              any(),
-              workingDirectory: any(named: 'workingDirectory'),
-            ),
-          ).thenAnswer((_) async {
-            return const ShorebirdProcessResult(
-              exitCode: 0,
-              stdout: '',
-              stderr: '',
-            );
-          });
-          when(
             () => process.start(
               aotToolsPath,
               any(),
@@ -252,7 +238,8 @@ stderr: error''',
             ),
           );
 
-          verify(() => logger.detail('stdout')).called(1);
+          // One for --version and one for the link command.
+          verify(() => logger.detail('stdout')).called(2);
         });
       });
 
@@ -506,17 +493,23 @@ stderr: error''',
 
         test('passes gen_snapshot to aot_tools', () async {
           when(
-            () => process.run(
+            () => process.start(
               aotToolsPath,
               ['--version'],
               workingDirectory: any(named: 'workingDirectory'),
             ),
           ).thenAnswer(
-            (_) async => const ShorebirdProcessResult(
-              exitCode: 0,
-              stdout: '0.0.1',
-              stderr: '',
-            ),
+            (_) async {
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => Stream.value(utf8.encode('0.0.1')));
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
+              return mockProcess;
+            },
           );
           when(
             () => process.start(
@@ -576,18 +569,24 @@ stderr: error''',
         test('returns link percentage', () async {
           workingDirectory = Directory.systemTemp.createTempSync();
           when(
-            () => process.run(
+            () => process.start(
               aotToolsPath,
               ['--version'],
               workingDirectory: any(named: 'workingDirectory'),
             ),
-          ).thenAnswer((_) async {
-            return const ShorebirdProcessResult(
-              exitCode: 0,
-              stdout: '0.0.1',
-              stderr: '',
-            );
-          });
+          ).thenAnswer(
+            (_) async {
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => Stream.value(utf8.encode('0.0.1')));
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
+              return mockProcess;
+            },
+          );
           when(
             () => process.start(
               aotToolsPath,
@@ -653,9 +652,18 @@ stderr: error''',
 
       group('isLinkDebugInfoSupported', () {
         test('returns true when the argument is present in the help', () async {
-          final result = MockShorebirdProcessResult();
-          when(() => result.exitCode).thenReturn(ExitCode.success.code);
-          when(() => result.stdout).thenReturn('''
+          when(
+            () => process.start(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((_) async {
+            final mockProcess = MockProcess();
+            when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+            when(() => mockProcess.stdout).thenAnswer(
+              (_) => Stream.value(
+                utf8.encode('''
 Link two aot snapshots.
 
 Usage: aot_tools link [arguments]
@@ -677,15 +685,14 @@ Usage: aot_tools link [arguments]
     --redirect-to                     Redirect output to a file.
 
 Run "aot_tools help" to see global options.
-''');
-
-          when(
-            () => process.run(
-              any(),
-              any(),
-              workingDirectory: any(named: 'workingDirectory'),
-            ),
-          ).thenAnswer((_) async => result);
+'''),
+              ),
+            );
+            when(
+              () => mockProcess.stderr,
+            ).thenAnswer((_) => const Stream.empty());
+            return mockProcess;
+          });
 
           await expectLater(
             runWithOverrides(() => aotTools.isLinkDebugInfoSupported()),
@@ -696,9 +703,18 @@ Run "aot_tools help" to see global options.
         test(
           'returns false when the argument is not present in the help',
           () async {
-            final result = MockShorebirdProcessResult();
-            when(() => result.exitCode).thenReturn(ExitCode.success.code);
-            when(() => result.stdout).thenReturn('''
+            when(
+              () => process.start(
+                any(),
+                any(),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer((_) async {
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+              when(() => mockProcess.stdout).thenAnswer(
+                (_) => Stream.value(
+                  utf8.encode('''
 Link two aot snapshots.
 
 Usage: aot_tools link [arguments]
@@ -719,15 +735,14 @@ Usage: aot_tools link [arguments]
     --redirect-to                     Redirect output to a file.
 
 Run "aot_tools help" to see global options.
-''');
-
-            when(
-              () => process.run(
-                any(),
-                any(),
-                workingDirectory: any(named: 'workingDirectory'),
-              ),
-            ).thenAnswer((_) async => result);
+'''),
+                ),
+              );
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
+              return mockProcess;
+            });
 
             await expectLater(
               runWithOverrides(() => aotTools.isLinkDebugInfoSupported()),
@@ -742,17 +757,23 @@ Run "aot_tools help" to see global options.
       var stdout = '';
       setUp(() {
         when(
-          () => process.run(
+          () => process.start(
             dartBinaryFile.path,
             any(),
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer(
-          (_) async => ShorebirdProcessResult(
-            exitCode: ExitCode.success.code,
-            stdout: stdout,
-            stderr: '',
-          ),
+          (_) async {
+            final mockProcess = MockProcess();
+            when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+            when(
+              () => mockProcess.stdout,
+            ).thenAnswer((_) => Stream.value(utf8.encode(stdout)));
+            when(
+              () => mockProcess.stderr,
+            ).thenAnswer((_) => const Stream.empty());
+            return mockProcess;
+          },
         );
       });
 
@@ -812,37 +833,39 @@ Run "aot_tools help <command>" for more information about a command.
     });
 
     group('generatePatchDiffBase', () {
+      late int exitCode;
+      late String stdout;
+      late String stderr;
+
       setUp(() {
+        exitCode = 0;
+        stdout = '';
+        stderr = '';
         when(
-          () => process.run(
+          () => process.start(
             any(),
             any(),
             workingDirectory: any(named: 'workingDirectory'),
           ),
         ).thenAnswer(
-          (_) async => const ShorebirdProcessResult(
-            exitCode: 0,
-            stdout: '',
-            stderr: 'error',
-          ),
+          (_) async {
+            final mockProcess = MockProcess();
+            when(() => mockProcess.exitCode).thenAnswer((_) async => exitCode);
+            when(
+              () => mockProcess.stdout,
+            ).thenAnswer((_) => Stream.value(utf8.encode(stdout)));
+            when(
+              () => mockProcess.stderr,
+            ).thenAnswer((_) => Stream.value(utf8.encode(stderr)));
+            return mockProcess;
+          },
         );
       });
 
       group('when command returns non-zero exit code', () {
         setUp(() {
-          when(
-            () => process.run(
-              any(),
-              any(),
-              workingDirectory: any(named: 'workingDirectory'),
-            ),
-          ).thenAnswer(
-            (_) async => const ShorebirdProcessResult(
-              exitCode: 1,
-              stdout: '',
-              stderr: 'error',
-            ),
-          );
+          exitCode = 1;
+          stderr = 'error';
         });
 
         test('throws exception', () async {
@@ -854,10 +877,10 @@ Run "aot_tools help <command>" for more information about a command.
               ),
             ),
             throwsA(
-              isA<Exception>().having(
+              isA<AotToolsExecutionFailure>().having(
                 (e) => '$e',
-                'exception',
-                'Exception: Failed to generate patch diff base: error',
+                'toString',
+                contains('stderr: error'),
               ),
             ),
           );
@@ -865,22 +888,6 @@ Run "aot_tools help <command>" for more information about a command.
       });
 
       group('when out file does not exist', () {
-        setUp(() {
-          when(
-            () => process.run(
-              any(),
-              any(),
-              workingDirectory: any(named: 'workingDirectory'),
-            ),
-          ).thenAnswer(
-            (_) async => const ShorebirdProcessResult(
-              exitCode: 0,
-              stdout: '',
-              stderr: '',
-            ),
-          );
-        });
-
         test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(
@@ -903,7 +910,7 @@ Run "aot_tools help <command>" for more information about a command.
       group('when out file is created', () {
         setUp(() {
           when(
-            () => process.run(
+            () => process.start(
               any(),
               any(),
               workingDirectory: any(named: 'workingDirectory'),
@@ -915,11 +922,15 @@ Run "aot_tools help <command>" for more information about a command.
                     .split('=')
                     .last;
             File(outArgument).createSync(recursive: true);
-            return const ShorebirdProcessResult(
-              exitCode: 0,
-              stdout: '',
-              stderr: '',
-            );
+            final mockProcess = MockProcess();
+            when(() => mockProcess.exitCode).thenAnswer((_) async => exitCode);
+            when(
+              () => mockProcess.stdout,
+            ).thenAnswer((_) => Stream.value(utf8.encode(stdout)));
+            when(
+              () => mockProcess.stderr,
+            ).thenAnswer((_) => Stream.value(utf8.encode(stderr)));
+            return mockProcess;
           });
         });
 

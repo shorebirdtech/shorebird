@@ -67,6 +67,39 @@ const _preLinkerFlutterRevisions = <String>{
   '1a6115bebe31e63508c312d14e69e973e1a59dbf',
 };
 
+/// {@template aot_tools_execution_failure}
+/// Exception thrown when aot_tools execution exits with a non-zero exit code.
+/// {@endtemplate}
+class AotToolsExecutionFailure implements Exception {
+  /// {@macro aot_tools_execution_failure}
+  const AotToolsExecutionFailure({
+    required this.exitCode,
+    required this.stdout,
+    required this.stderr,
+    required this.command,
+  });
+
+  /// The exit code of the failed aot_tools execution.
+  final int exitCode;
+
+  /// The standard output of the failed aot_tools execution.
+  final String stdout;
+
+  /// The standard error of the failed aot_tools execution.
+  final String stderr;
+
+  /// The command that was executed.
+  final String command;
+
+  @override
+  String toString() {
+    return '''
+$command failed with exit code $exitCode
+stdout: $stdout
+stderr: $stderr''';
+  }
+}
+
 /// Wrapper around the shorebird `aot-tools` executable.
 class AotTools {
   /// Returns true if the linker should be used for the given Flutter revision.
@@ -86,17 +119,13 @@ class AotTools {
   /// Runs the `aot-tools` executable with the given [command] and await for
   /// its completion.
   ///
-  /// If no [runCommand] is provided, [ShorebirdProcess.run] is used.
+  /// If the command exits with a non-zero exit code, an
+  /// [AotToolsExecutionFailure] is thrown.
   Future<ShorebirdProcessResult> _exec(
     List<String> command, {
-    Future<ShorebirdProcessResult> Function(
-      String,
-      List<String>, {
-      String? workingDirectory,
-    })? runCommand,
     String? workingDirectory,
+    bool throwOnError = true,
   }) async {
-    final runFn = runCommand ?? process.run;
     await cache.updateAll();
 
     // This will be a path to either a kernel (.dill) file or a Dart script if
@@ -105,68 +134,78 @@ class AotTools {
       artifact: ShorebirdArtifact.aotTools,
     );
 
+    final ShorebirdProcessResult result;
+
+    // Similar to [ShorebirdProcess.run] but uses [ShorebirdProcess.start]
+    // instead and captures the live stdout and stderr of the process.
+    Future<ShorebirdProcessResult> execute(
+      String exe,
+      List<String> args, {
+      String? workingDirectory,
+    }) async {
+      final subprocess = await process.start(
+        exe,
+        args,
+        workingDirectory: workingDirectory,
+      );
+
+      final stdout = StringBuffer();
+      final stderr = StringBuffer();
+
+      final stdoutSubscription = subprocess.stdout.map(utf8.decode).listen(
+        (data) {
+          logger.detail(data);
+          stdout.write(data);
+        },
+      );
+
+      final stderrSubscription = subprocess.stderr.map(utf8.decode).listen(
+        (data) {
+          logger.detail(data);
+          stderr.write(data);
+        },
+      );
+
+      final exitCode = await subprocess.exitCode;
+
+      stdoutSubscription.cancel().ignore();
+      stderrSubscription.cancel().ignore();
+
+      return ShorebirdProcessResult(
+        exitCode: exitCode,
+        stdout: stdout.toString(),
+        stderr: stderr.toString(),
+      );
+    }
+
     // Fallback behavior for older versions of shorebird where aot-tools was
     // distributed as an executable.
     final extension = p.extension(artifactPath);
     if (extension != '.dill' && extension != '.dart') {
-      return runFn(
+      result = await execute(
         artifactPath,
         command,
         workingDirectory: workingDirectory,
       );
+    } else {
+      // local engine versions use .dart and we distribute aot-tools as a .dill
+      result = await execute(
+        shorebirdEnv.dartBinaryFile.path,
+        ['run', artifactPath, ...command],
+        workingDirectory: workingDirectory,
+      );
     }
 
-    // local engine versions use .dart and we distribute aot-tools as a .dill
-    return runFn(
-      shorebirdEnv.dartBinaryFile.path,
-      ['run', artifactPath, ...command],
-      workingDirectory: workingDirectory,
-    );
-  }
+    if (throwOnError && result.exitCode != 0) {
+      throw AotToolsExecutionFailure(
+        exitCode: result.exitCode,
+        stdout: result.stdout.toString(),
+        stderr: result.stderr.toString(),
+        command: ['aot_tools', ...command].join(' '),
+      );
+    }
 
-  /// Similar to [_exec], but logs the sub process stdout and stderr
-  /// as they are emitted.
-  Future<ShorebirdProcessResult> _execWithLiveLogs(
-    List<String> command, {
-    String? workingDirectory,
-  }) {
-    return _exec(
-      command,
-      runCommand: (
-        String exe,
-        List<String> args, {
-        String? workingDirectory,
-      }) async {
-        final spawnedProcess = await process.start(
-          exe,
-          args,
-          workingDirectory: workingDirectory,
-        );
-
-        final stdout = StringBuffer();
-        final stderr = StringBuffer();
-
-        final stdoutSub = spawnedProcess.stdout.map(utf8.decode).listen((data) {
-          logger.detail(data);
-          stdout.write(data);
-        });
-
-        final stderrSub =
-            spawnedProcess.stderr.map(utf8.decode).listen(stderr.write);
-
-        final exitCode = await spawnedProcess.exitCode;
-
-        await stdoutSub.cancel();
-        await stderrSub.cancel();
-
-        return ShorebirdProcessResult(
-          exitCode: exitCode,
-          stdout: stdout.toString(),
-          stderr: stderr.toString(),
-        );
-      },
-      workingDirectory: workingDirectory,
-    );
+    return result;
   }
 
   Future<bool> _linkerUsesGenSnapshot() async {
@@ -179,7 +218,7 @@ class AotTools {
     // If callers need to care about null, we can change this function to
     // return Version?.
     final noVersion = Version(0, 0, 0);
-    final result = await _exec(['--version']);
+    final result = await _exec(['--version'], throwOnError: false);
     if (result.exitCode != ExitCode.success.code) {
       return noVersion;
     }
@@ -209,7 +248,7 @@ class AotTools {
     const linkJson = 'link.jsonl';
     final outputDir = p.dirname(outputPath);
     final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
-    final result = await _execWithLiveLogs(
+    await _exec(
       [
         'link',
         '--base=$base',
@@ -227,13 +266,6 @@ class AotTools {
       ],
       workingDirectory: workingDirectory,
     );
-
-    if (result.exitCode != 0) {
-      throw Exception('''
-Failed to link:
-stdout: ${result.stdout}
-stderr: ${result.stderr}''');
-    }
 
     return linkerUsesGenSnapshot
         ? _extractLinkPercentage(File(p.join(workingDirectory!, linkJson)))
@@ -275,7 +307,7 @@ stderr: ${result.stderr}''');
   }) async {
     final tmpDir = Directory.systemTemp.createTempSync();
     final outFile = File(p.join(tmpDir.path, 'diff_base'));
-    final result = await _exec(
+    await _exec(
       [
         'dump_blobs',
         '--analyze-snapshot=$analyzeSnapshotPath',
@@ -283,10 +315,6 @@ stderr: ${result.stderr}''');
         '--snapshot=${releaseSnapshot.path}',
       ],
     );
-
-    if (result.exitCode != ExitCode.success.code) {
-      throw Exception('Failed to generate patch diff base: ${result.stderr}');
-    }
 
     if (!outFile.existsSync()) {
       throw Exception(
