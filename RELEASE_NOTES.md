@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.3.5 (September 30, 2024)
+
+- 🪵 Improve AOT Tools logging and exception reporting
+- 🏢 Preparation for organizations support
+
 ## 1.3.4 (September 24, 2024)
 
 - 🪵 Improve logging for link failures
