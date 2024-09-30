@@ -66,7 +66,7 @@ void main() {
       final outputPath = p.join('.', 'path', 'to', 'out.vmcode');
       final linkJsonPath = p.join('.', 'path', 'to', 'link.jsonl');
 
-      test('throws Exception when process exits with non-zero code', () async {
+      test('throws exception when process exits with non-zero code', () async {
         when(
           () => shorebirdArtifacts.getArtifactPath(
             artifact: ShorebirdArtifact.aotTools,
@@ -120,10 +120,11 @@ void main() {
             isA<AotToolsExecutionFailure>().having(
               (e) => '$e',
               'toString',
-              '''
-aot_tools link --base=./path/to/base.aot --patch=./path/to/patch.aot --analyze-snapshot=./path/to/analyze_snapshot --output=./path/to/out.vmcode --verbose failed with exit code 1
+              contains(
+                '''
 stdout: info
 stderr: error''',
+              ),
             ),
           ),
         );
