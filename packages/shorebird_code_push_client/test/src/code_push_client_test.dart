@@ -1913,6 +1913,56 @@ void main() {
       });
     });
 
+    group('getOrganizationMemberships', () {
+      group('when repsonse is not success', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.failedDependency,
+            ),
+          );
+        });
+
+        test('throws exception', () async {
+          expect(
+            () async => codePushClient.getOrganizationMemberships(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                CodePushClient.unknownErrorMessage,
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when response is successful', () {
+        late GetOrganizationsResponse response;
+        late OrganizationMembership membership;
+
+        setUp(() {
+          membership = OrganizationMembership(
+            role: OrganizationRole.admin,
+            organization: Organization.forTest(),
+          );
+          response = GetOrganizationsResponse(organizations: [membership]);
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(response))),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('deserializes GetOrganizationMembershipsResponse', () async {
+          final memberships = await codePushClient.getOrganizationMemberships();
+          expect(memberships, equals([membership]));
+        });
+      });
+    });
+
     group('close', () {
       test('closes the underlying client', () {
         codePushClient.close();

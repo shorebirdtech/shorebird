@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
@@ -35,7 +36,7 @@ enum OrganizationType {
 /// [stripeCustomerId] may have a subscription.
 /// {@endtemplate}
 @JsonSerializable()
-class Organization {
+class Organization extends Equatable {
   /// {@macro organization}
   const Organization({
     required this.id,
@@ -91,4 +92,14 @@ class Organization {
 
   /// When this organization was last updated.
   final DateTime updatedAt;
+
+  @override
+  List<Object?> get props => [
+        id,
+        name,
+        organizationType,
+        stripeCustomerId,
+        createdAt,
+        updatedAt,
+      ];
 }
