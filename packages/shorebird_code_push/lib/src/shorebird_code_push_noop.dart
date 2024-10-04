@@ -11,6 +11,9 @@ class ShorebirdCodePushNoop implements ShorebirdCodePushBase {
     // ignore: avoid_print
     print('''
 [ShorebirdCodePush]: Shorebird Engine not available, using no-op implementation.
+This occurs when using package:shorebird_code_push in an app that does not
+contain the Shorebird Engine. Most commonly this is due to building with
+`flutter build` or `flutter run` instead of `shorebird release`.
 ''');
   }
   @override

@@ -23,7 +23,9 @@ void main() {
     test('logs warning when instantiated', () {
       const expected = '''
 [ShorebirdCodePush]: Shorebird Engine not available, using no-op implementation.
-''';
+This occurs when using package:shorebird_code_push in an app that does not
+contain the Shorebird Engine. Most commonly this is due to building with
+`flutter build` or `flutter run` instead of `shorebird release`.\n''';
       expect(printLogs, equals([expected]));
     });
 
