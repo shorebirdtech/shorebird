@@ -5,6 +5,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/organization.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
@@ -63,6 +64,26 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     } catch (error) {
       logger.err('Error parsing "pubspec.yaml": $error');
       return ExitCode.software.code;
+    }
+
+    final orgs = await codePushClientWrapper.getOrganizationMemberships();
+    if (orgs.isEmpty) {
+      logger.err('''
+You do not have any organizations.
+Please create an organization on the Shorebird website before continuing.
+''');
+      return ExitCode.software.code;
+    }
+
+    final Organization organization;
+    if (orgs.length > 1) {
+      organization = logger.chooseOne(
+        'Which organization should this app belong to?',
+        choices: orgs.map((o) => o.organization).toList(),
+        display: (o) => o.displayName,
+      );
+    } else {
+      organization = orgs.first.organization;
     }
 
     final force = results['force'] == true;
@@ -130,6 +151,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       for (final flavor in newFlavors) {
         final app = await codePushClientWrapper.createApp(
           appName: '$deflavoredAppName ($flavor)',
+          organizationId: organization.id,
         );
         flavorsToAppIds[flavor] = app.id;
       }
@@ -171,17 +193,24 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       if (hasNoFlavors) {
         // No platforms have any flavors so we just create a single app
         // and assign it as the default.
-        final app = await codePushClientWrapper.createApp(appName: displayName);
+        final app = await codePushClientWrapper.createApp(
+          appName: displayName,
+          organizationId: organization.id,
+        );
         appId = app.id;
       } else if (hasSomeFlavors) {
         // Some platforms have flavors and some do not so we create an app
         // for the default (no flavor) and then create an app per flavor.
-        final app = await codePushClientWrapper.createApp(appName: displayName);
+        final app = await codePushClientWrapper.createApp(
+          appName: displayName,
+          organizationId: organization.id,
+        );
         appId = app.id;
         final values = <String, String>{};
         for (final flavor in productFlavors) {
           final app = await codePushClientWrapper.createApp(
             appName: '$displayName ($flavor)',
+            organizationId: organization.id,
           );
           values[flavor] = app.id;
         }
@@ -193,6 +222,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         for (final flavor in productFlavors) {
           final app = await codePushClientWrapper.createApp(
             appName: '$displayName ($flavor)',
+            organizationId: organization.id,
           );
           values[flavor] = app.id;
         }

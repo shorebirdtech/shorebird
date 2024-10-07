@@ -250,6 +250,45 @@ void main() {
         });
       });
 
+      group('getOrganizationMemberships', () {
+        test('exits with code 70 when getting organization memberships fails',
+            () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getOrganizationMemberships())
+              .thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              codePushClientWrapper.getOrganizationMemberships,
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns organization memberships on success', () async {
+          final expectedMemberships = [
+            OrganizationMembership(
+              organization: Organization.forTest(),
+              role: OrganizationRole.admin,
+            ),
+            OrganizationMembership(
+              organization: Organization.forTest(),
+              role: OrganizationRole.member,
+            ),
+          ];
+          when(() => codePushClient.getOrganizationMemberships())
+              .thenAnswer((_) async => expectedMemberships);
+
+          final memberships = await runWithOverrides(
+            codePushClientWrapper.getOrganizationMemberships,
+          );
+
+          expect(memberships, equals(expectedMemberships));
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('getApps', () {
         test('exits with code 70 when getting apps fails', () async {
           const error = 'something went wrong';

@@ -80,7 +80,10 @@ class CodePushClientWrapper {
 
   final CodePushClient codePushClient;
 
-  Future<App> createApp({String? appName}) async {
+  Future<App> createApp({
+    String? appName,
+    int? organizationId,
+  }) async {
     late final String displayName;
     if (appName == null) {
       String? defaultAppName;
@@ -96,7 +99,23 @@ class CodePushClientWrapper {
       displayName = appName;
     }
 
-    return codePushClient.createApp(displayName: displayName);
+    return codePushClient.createApp(
+      displayName: displayName,
+      organizationId: organizationId,
+    );
+  }
+
+  Future<List<OrganizationMembership>> getOrganizationMemberships() async {
+    final progress = logger.progress('Fetching organizations');
+    final List<OrganizationMembership> memberships;
+    try {
+      memberships = await codePushClient.getOrganizationMemberships();
+      progress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+
+    return memberships;
   }
 
   Future<List<AppMetadata>> getApps() async {
