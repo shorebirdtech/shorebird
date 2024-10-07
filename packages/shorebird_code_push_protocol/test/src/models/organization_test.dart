@@ -17,5 +17,53 @@ void main() {
         equals(organization.toJson()),
       );
     });
+
+    group('Equatable', () {
+      final date = DateTime.now();
+
+      group('when two instances are equal', () {
+        test('returns true', () {
+          final organization = Organization(
+            id: 1,
+            name: 'name',
+            createdAt: date,
+            updatedAt: date,
+            organizationType: OrganizationType.team,
+            stripeCustomerId: 'cus_123',
+          );
+          final otherOrganization = Organization(
+            id: 1,
+            name: 'name',
+            createdAt: date,
+            updatedAt: date,
+            organizationType: OrganizationType.team,
+            stripeCustomerId: 'cus_123',
+          );
+          expect(organization, equals(otherOrganization));
+        });
+      });
+
+      group('when two instances are not equal', () {
+        test('returns false', () {
+          final organization = Organization(
+            id: 1,
+            name: 'name',
+            createdAt: date,
+            updatedAt: date,
+            organizationType: OrganizationType.team,
+            stripeCustomerId: 'cus_123',
+          );
+          final otherOrganization = Organization(
+            id: 1,
+            name: 'name',
+            createdAt: date,
+            updatedAt: date,
+            organizationType: OrganizationType.team,
+            stripeCustomerId: 'cus_456',
+          );
+          expect(organization, isNot(equals(otherOrganization)));
+        });
+      });
+    });
   });
 }

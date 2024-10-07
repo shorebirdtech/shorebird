@@ -13,5 +13,49 @@ void main() {
         equals(membership.toJson()),
       );
     });
+
+    group('Equatable', () {
+      final date = DateTime.now();
+
+      group('when two instances are equal', () {
+        test('returns true', () {
+          final membership = OrganizationMembership(
+            organization: Organization.forTest(
+              createdAt: date,
+              updatedAt: date,
+            ),
+            role: OrganizationRole.member,
+          );
+          final otherMembership = OrganizationMembership(
+            organization: Organization.forTest(
+              createdAt: date,
+              updatedAt: date,
+            ),
+            role: OrganizationRole.member,
+          );
+          expect(membership, equals(otherMembership));
+        });
+      });
+
+      group('when two instances are not equal', () {
+        test('returns false', () {
+          final membership = OrganizationMembership(
+            organization: Organization.forTest(
+              createdAt: date,
+              updatedAt: date,
+            ),
+            role: OrganizationRole.member,
+          );
+          final otherMembership = OrganizationMembership(
+            organization: Organization.forTest(
+              createdAt: date,
+              updatedAt: date,
+            ),
+            role: OrganizationRole.admin,
+          );
+          expect(membership, isNot(equals(otherMembership)));
+        });
+      });
+    });
   });
 }
