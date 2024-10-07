@@ -81,8 +81,8 @@ class CodePushClientWrapper {
   final CodePushClient codePushClient;
 
   Future<App> createApp({
+    required int organizationId,
     String? appName,
-    int? organizationId,
   }) async {
     late final String displayName;
     if (appName == null) {

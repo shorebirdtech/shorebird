@@ -280,6 +280,110 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       expect(exitCode, ExitCode.software.code);
     });
 
+    group('when user has no organizations', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getOrganizationMemberships(),
+        ).thenAnswer((_) async => []);
+      });
+
+      test('exits with software error code', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err(
+            '''You do not have any organizations. This should never happen. Please contact us on Discord or send us an email at contact@shorebird.dev.''',
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when user has only one organization', () {
+      setUp(() {
+        when(() => codePushClientWrapper.getOrganizationMemberships())
+            .thenAnswer(
+          (_) async => [
+            OrganizationMembership(
+              role: OrganizationRole.owner,
+              organization: Organization.forTest(id: organizationId),
+            ),
+          ],
+        );
+      });
+
+      test('does not prompt for organization, uses that org id to create app',
+          () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        verifyNever(
+          () => logger.chooseOne(
+            'Which organization should this app belong to?',
+            choices: any(named: 'choices'),
+          ),
+        );
+        verify(
+          () => codePushClientWrapper.createApp(
+            appName: appName,
+            organizationId: organizationId,
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when user has multiple organizations', () {
+      final org1 = Organization.forTest(
+        name: 'org1',
+        id: 1,
+      );
+      final org2 = Organization.forTest(
+        name: 'org2',
+        id: 2,
+        organizationType: OrganizationType.team,
+      );
+
+      setUp(() {
+        when(() => codePushClientWrapper.getOrganizationMemberships())
+            .thenAnswer(
+          (_) async => [
+            OrganizationMembership(
+              role: OrganizationRole.owner,
+              organization: org1,
+            ),
+            OrganizationMembership(
+              role: OrganizationRole.owner,
+              organization: org2,
+            ),
+          ],
+        );
+        when(
+          () => logger.chooseOne<Organization>(
+            'Which organization should this app belong to?',
+            choices: any(named: 'choices'),
+            display: any(named: 'display'),
+          ),
+        ).thenReturn(org2);
+      });
+
+      test('prompts for organization and uses that org id to create app',
+          () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        verify(
+          () => logger.chooseOne<Organization>(
+            'Which organization should this app belong to?',
+            choices: [org1, org2],
+            display: any(named: 'display'),
+          ),
+        ).called(1);
+        verify(
+          () => codePushClientWrapper.createApp(
+            appName: appName,
+            organizationId: org2.id,
+          ),
+        ).called(1);
+      });
+    });
+
     group('on non MacOS', () {
       setUp(() {
         when(() => platform.isMacOS).thenReturn(false);

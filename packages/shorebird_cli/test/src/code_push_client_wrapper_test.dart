@@ -213,39 +213,62 @@ void main() {
     });
 
     group('app', () {
+      const organizationId = 123;
+
       group('createApp', () {
         test('prompts for displayName when not provided', () async {
           const appName = 'test app';
           const app = App(id: appId, displayName: 'Test App');
           when(() => logger.prompt(any())).thenReturn(appName);
-          when(() => codePushClient.createApp(displayName: appName)).thenAnswer(
+          when(
+            () => codePushClient.createApp(
+              displayName: appName,
+              organizationId: any(named: 'organizationId'),
+            ),
+          ).thenAnswer(
             (_) async => app,
           );
 
           await runWithOverrides(
-            () => codePushClientWrapper.createApp(),
+            () => codePushClientWrapper.createApp(
+              organizationId: organizationId,
+            ),
           );
 
           verify(() => logger.prompt(any())).called(1);
           verify(
-            () => codePushClient.createApp(displayName: appName),
+            () => codePushClient.createApp(
+              displayName: appName,
+              organizationId: organizationId,
+            ),
           ).called(1);
         });
 
         test('does not prompt for displayName when not provided', () async {
           const appName = 'test app';
           const app = App(id: appId, displayName: 'Test App');
-          when(() => codePushClient.createApp(displayName: appName)).thenAnswer(
+          when(
+            () => codePushClient.createApp(
+              displayName: appName,
+              organizationId: any(named: 'organizationId'),
+            ),
+          ).thenAnswer(
             (_) async => app,
           );
 
           await runWithOverrides(
-            () => codePushClientWrapper.createApp(appName: appName),
+            () => codePushClientWrapper.createApp(
+              appName: appName,
+              organizationId: organizationId,
+            ),
           );
 
           verifyNever(() => logger.prompt(any()));
           verify(
-            () => codePushClient.createApp(displayName: appName),
+            () => codePushClient.createApp(
+              displayName: appName,
+              organizationId: organizationId,
+            ),
           ).called(1);
         });
       });

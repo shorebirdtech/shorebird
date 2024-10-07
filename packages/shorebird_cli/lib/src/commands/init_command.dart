@@ -68,10 +68,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
 
     final orgs = await codePushClientWrapper.getOrganizationMemberships();
     if (orgs.isEmpty) {
-      logger.err('''
-You do not have any organizations.
-Please create an organization on the Shorebird website before continuing.
-''');
+      logger.err(
+        '''You do not have any organizations. This should never happen. Please contact us on Discord or send us an email at contact@shorebird.dev.''',
+      );
       return ExitCode.software.code;
     }
 

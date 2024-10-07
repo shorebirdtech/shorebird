@@ -226,8 +226,8 @@ class CodePushClient {
   /// Create a new app with the provided [displayName].
   /// Returns the newly created app.
   Future<App> createApp({
+    required int organizationId,
     required String displayName,
-    int? organizationId,
   }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps'),
