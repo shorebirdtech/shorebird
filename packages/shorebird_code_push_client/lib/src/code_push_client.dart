@@ -477,6 +477,22 @@ class CodePushClient {
     }
   }
 
+  /// Gets the list of organizations the user is a member of, along with the
+  /// user's role in each organization.
+  Future<List<OrganizationMembership>> getOrganizationMemberships() async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/organizations'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetOrganizationsResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    ).organizations;
+  }
+
   /// Closes the client.
   void close() => _httpClient.close();
 
