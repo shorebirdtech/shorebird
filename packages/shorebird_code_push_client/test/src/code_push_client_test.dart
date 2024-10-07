@@ -1914,7 +1914,7 @@ void main() {
     });
 
     group('getOrganizationMemberships', () {
-      group('when repsonse is not success', () {
+      group('when response is not success', () {
         setUp(() {
           when(() => httpClient.send(any())).thenAnswer(
             (_) async => http.StreamedResponse(
