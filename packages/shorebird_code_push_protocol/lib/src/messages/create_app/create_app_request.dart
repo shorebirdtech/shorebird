@@ -8,7 +8,10 @@ part 'create_app_request.g.dart';
 @JsonSerializable()
 class CreateAppRequest {
   /// {@macro create_app_request}
-  const CreateAppRequest({required this.displayName});
+  const CreateAppRequest({
+    required this.displayName,
+    this.organizationId,
+  });
 
   /// Converts a Map<String, dynamic> to a [CreateAppRequest]
   factory CreateAppRequest.fromJson(Map<String, dynamic> json) =>
@@ -19,4 +22,8 @@ class CreateAppRequest {
 
   /// The display name of the app.
   final String displayName;
+
+  /// The id of organization that this app will belong to. If no id is provided,
+  /// this app will belong to the user's personal organization.
+  final int? organizationId;
 }
