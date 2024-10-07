@@ -368,13 +368,15 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           () async {
         final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
-        verify(
+        final capturedDisplay = verify(
           () => logger.chooseOne<Organization>(
             'Which organization should this app belong to?',
             choices: [org1, org2],
-            display: any(named: 'display'),
+            display: captureAny(named: 'display'),
           ),
-        ).called(1);
+        ).captured.single as String Function(Organization);
+        expect(capturedDisplay(org1), equals('Personal'));
+        expect(capturedDisplay(org2), equals('org2'));
         verify(
           () => codePushClientWrapper.createApp(
             appName: appName,
