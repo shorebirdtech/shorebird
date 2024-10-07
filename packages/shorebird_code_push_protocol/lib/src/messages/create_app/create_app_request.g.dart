@@ -15,13 +15,19 @@ CreateAppRequest _$CreateAppRequestFromJson(Map<String, dynamic> json) =>
       ($checkedConvert) {
         final val = CreateAppRequest(
           displayName: $checkedConvert('display_name', (v) => v as String),
+          organizationId:
+              $checkedConvert('organization_id', (v) => (v as num?)?.toInt()),
         );
         return val;
       },
-      fieldKeyMap: const {'displayName': 'display_name'},
+      fieldKeyMap: const {
+        'displayName': 'display_name',
+        'organizationId': 'organization_id'
+      },
     );
 
 Map<String, dynamic> _$CreateAppRequestToJson(CreateAppRequest instance) =>
     <String, dynamic>{
       'display_name': instance.displayName,
+      'organization_id': instance.organizationId,
     };
