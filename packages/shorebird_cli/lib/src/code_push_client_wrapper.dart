@@ -412,7 +412,7 @@ Please create a release using "shorebird release" and try again.
     required Iterable<Arch> architectures,
     String? flavor,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
     final archsDir = ArtifactManager.androidArchsDirectory(
       projectRoot: Directory(projectRoot),
       flavor: flavor,
@@ -511,7 +511,7 @@ aab artifact already exists, continuing...''',
     required String extractedAarDir,
     required Iterable<Arch> architectures,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
 
     for (final arch in architectures) {
       final artifactPath = p.join(
@@ -606,7 +606,7 @@ aar artifact already exists, continuing...''',
     required bool isCodesigned,
     required String? podfileLockHash,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
     final thinnedArchiveDirectory =
         await _thinXcarchive(xcarchivePath: xcarchivePath);
     final zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
@@ -658,7 +658,7 @@ aar artifact already exists, continuing...''',
     required int releaseId,
     required String appFrameworkPath,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
     final appFrameworkDirectory = Directory(appFrameworkPath);
     await Isolate.run(
       () => ZipFileEncoder().zipDirectory(appFrameworkDirectory),

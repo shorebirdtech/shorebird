@@ -138,7 +138,7 @@ class AarPatcher extends Patcher {
     );
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
 
-    final createDiffProgress = logger.progress('Creating artifacts');
+    final createDiffProgress = logger.progress('Uploading artifacts');
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
       final arch = releaseArtifactPath.key;
       final artifactPath = p.join(

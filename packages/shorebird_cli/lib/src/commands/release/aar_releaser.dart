@@ -121,7 +121,7 @@ class AarReleaser extends Releaser {
     required Release release,
     required String appId,
   }) async {
-    final extractAarProgress = logger.progress('Creating artifacts');
+    final extractAarProgress = logger.progress('Uploading artifacts');
     final extractedAarDir = await shorebirdAndroidArtifacts.extractAar(
       packageName: shorebirdEnv.androidPackageName!,
       buildNumber: buildNumber,
