@@ -10,12 +10,33 @@ void main() {
           organizationType: OrganizationType.team,
           name: 'My Organization',
         );
-        expect(organization.displayName, 'My Organization');
+        expect(
+          organization.displayName(user: PrivateUser.forTest()),
+          equals('My Organization'),
+        );
       });
 
-      test('should return "Personal" for a personal organization', () {
-        final organization = Organization.forTest();
-        expect(organization.displayName, 'Personal');
+      group('for a personal organization', () {
+        group('when the user has a display name', () {
+          final user = PrivateUser.forTest(displayName: 'John Doe');
+
+          test("should return the user's display name", () {
+            final organization = Organization.forTest();
+            expect(organization.displayName(user: user), 'John Doe');
+          });
+        });
+
+        group('when the user does not have a display name', () {
+          final user = PrivateUser.forTest(email: 'test@test.com');
+
+          test("should return the user's email", () {
+            final organization = Organization.forTest();
+            expect(
+              organization.displayName(user: user),
+              equals('test@test.com'),
+            );
+          });
+        });
       });
     });
   });

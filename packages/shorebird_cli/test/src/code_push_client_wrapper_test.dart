@@ -212,6 +212,41 @@ void main() {
       ).thenAnswer((_) async => flutterVersion);
     });
 
+    group('getCurrentUser', () {
+      group('when getCurrentUser request fails', () {
+        setUp(() {
+          when(
+            () => codePushClient.getCurrentUser(),
+          ).thenThrow(Exception('something went wrong'));
+        });
+
+        test('exits with code 70', () async {
+          await expectLater(
+            () async => runWithOverrides(codePushClientWrapper.getCurrentUser),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(any())).called(1);
+        });
+      });
+
+      group('when getCurrentUser request succeeds', () {
+        final user = PrivateUser.forTest();
+        setUp(() {
+          when(() => codePushClient.getCurrentUser()).thenAnswer(
+            (_) async => user,
+          );
+        });
+
+        test('returns current user', () async {
+          final result = await runWithOverrides(
+            codePushClientWrapper.getCurrentUser,
+          );
+          expect(result, user);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+    });
+
     group('app', () {
       const organizationId = 123;
 

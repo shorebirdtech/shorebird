@@ -5,8 +5,8 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// {@endtemplate}
 extension OrganizationDisplay on Organization {
   /// {@macro organization_display}
-  String get displayName => switch (organizationType) {
+  String displayName({required PrivateUser user}) => switch (organizationType) {
         OrganizationType.team => name,
-        OrganizationType.personal => 'Personal',
+        OrganizationType.personal => user.displayName ?? user.email,
       };
 }

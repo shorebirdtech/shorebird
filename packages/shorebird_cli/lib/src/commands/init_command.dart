@@ -74,12 +74,13 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       return ExitCode.software.code;
     }
 
+    final user = await codePushClientWrapper.getCurrentUser();
     final Organization organization;
     if (orgs.length > 1) {
       organization = logger.chooseOne(
         'Which organization should this app belong to?',
         choices: orgs.map((o) => o.organization).toList(),
-        display: (o) => o.displayName,
+        display: (o) => o.displayName(user: user!),
       );
     } else {
       organization = orgs.first.organization;
