@@ -212,41 +212,138 @@ void main() {
       ).thenAnswer((_) async => flutterVersion);
     });
 
+    group('getCurrentUser', () {
+      group('when getCurrentUser request fails', () {
+        setUp(() {
+          when(
+            () => codePushClient.getCurrentUser(),
+          ).thenThrow(Exception('something went wrong'));
+        });
+
+        test('exits with code 70', () async {
+          await expectLater(
+            () async => runWithOverrides(codePushClientWrapper.getCurrentUser),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(any())).called(1);
+        });
+      });
+
+      group('when getCurrentUser request succeeds', () {
+        final user = PrivateUser.forTest();
+        setUp(() {
+          when(() => codePushClient.getCurrentUser()).thenAnswer(
+            (_) async => user,
+          );
+        });
+
+        test('returns current user', () async {
+          final result = await runWithOverrides(
+            codePushClientWrapper.getCurrentUser,
+          );
+          expect(result, user);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+    });
+
     group('app', () {
+      const organizationId = 123;
+
       group('createApp', () {
         test('prompts for displayName when not provided', () async {
           const appName = 'test app';
           const app = App(id: appId, displayName: 'Test App');
           when(() => logger.prompt(any())).thenReturn(appName);
-          when(() => codePushClient.createApp(displayName: appName)).thenAnswer(
+          when(
+            () => codePushClient.createApp(
+              displayName: appName,
+              organizationId: any(named: 'organizationId'),
+            ),
+          ).thenAnswer(
             (_) async => app,
           );
 
           await runWithOverrides(
-            () => codePushClientWrapper.createApp(),
+            () => codePushClientWrapper.createApp(
+              organizationId: organizationId,
+            ),
           );
 
           verify(() => logger.prompt(any())).called(1);
           verify(
-            () => codePushClient.createApp(displayName: appName),
+            () => codePushClient.createApp(
+              displayName: appName,
+              organizationId: organizationId,
+            ),
           ).called(1);
         });
 
         test('does not prompt for displayName when not provided', () async {
           const appName = 'test app';
           const app = App(id: appId, displayName: 'Test App');
-          when(() => codePushClient.createApp(displayName: appName)).thenAnswer(
+          when(
+            () => codePushClient.createApp(
+              displayName: appName,
+              organizationId: any(named: 'organizationId'),
+            ),
+          ).thenAnswer(
             (_) async => app,
           );
 
           await runWithOverrides(
-            () => codePushClientWrapper.createApp(appName: appName),
+            () => codePushClientWrapper.createApp(
+              appName: appName,
+              organizationId: organizationId,
+            ),
           );
 
           verifyNever(() => logger.prompt(any()));
           verify(
-            () => codePushClient.createApp(displayName: appName),
+            () => codePushClient.createApp(
+              displayName: appName,
+              organizationId: organizationId,
+            ),
           ).called(1);
+        });
+      });
+
+      group('getOrganizationMemberships', () {
+        test('exits with code 70 when getting organization memberships fails',
+            () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getOrganizationMemberships())
+              .thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              codePushClientWrapper.getOrganizationMemberships,
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns organization memberships on success', () async {
+          final expectedMemberships = [
+            OrganizationMembership(
+              organization: Organization.forTest(),
+              role: OrganizationRole.admin,
+            ),
+            OrganizationMembership(
+              organization: Organization.forTest(),
+              role: OrganizationRole.member,
+            ),
+          ];
+          when(() => codePushClient.getOrganizationMemberships())
+              .thenAnswer((_) async => expectedMemberships);
+
+          final memberships = await runWithOverrides(
+            codePushClientWrapper.getOrganizationMemberships,
+          );
+
+          expect(memberships, equals(expectedMemberships));
+          verify(() => progress.complete()).called(1);
         });
       });
 
