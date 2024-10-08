@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:shorebird_code_push_protocol/src/models/organization.dart';
 
@@ -7,9 +8,9 @@ part 'organization_membership.g.dart';
 /// An organization and the current user's role in that organization.
 /// {@endtemplate}
 @JsonSerializable()
-class OrganizationMembership {
+class OrganizationMembership extends Equatable {
   /// {@macro organization_membership}
-  OrganizationMembership({
+  const OrganizationMembership({
     required this.organization,
     required this.role,
   });
@@ -26,4 +27,10 @@ class OrganizationMembership {
 
   /// The user's role in the organization.
   final OrganizationRole role;
+
+  @override
+  List<Object?> get props => [
+        organization,
+        role,
+      ];
 }
