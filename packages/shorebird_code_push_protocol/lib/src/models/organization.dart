@@ -15,7 +15,11 @@ enum OrganizationRole {
   admin,
 
   /// Users who are part of the organization but have limited permissions.
-  member;
+  member,
+
+  /// Users who are not part of the organization but have visibility into it via
+  /// app collaborator permissions.
+  none;
 }
 
 /// {@template organization_type}

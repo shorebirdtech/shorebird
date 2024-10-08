@@ -33,4 +33,5 @@ const _$OrganizationRoleEnumMap = {
   OrganizationRole.owner: 'owner',
   OrganizationRole.admin: 'admin',
   OrganizationRole.member: 'member',
+  OrganizationRole.none: 'none',
 };
