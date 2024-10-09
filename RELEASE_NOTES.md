@@ -8,7 +8,7 @@ This section contains past updates we've sent to customers.
 
 ## 1.4.0 (October 9, 2024)
 
-- 🧑‍💼 Support for organizations!
+- 🏢 Support for organizations!
 
 ## 1.3.5 (September 30, 2024)
 
