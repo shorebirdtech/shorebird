@@ -523,14 +523,8 @@ void main() {
           );
         });
 
-        test('prints warning message when token string is not valid base64',
-            () async {
-          auth = buildAuth();
-          verify(
-            () => logger.warn('''
-SHOREBIRD_TOKEN needs to be updated before the next major release.
-Run `shorebird login:ci` to obtain a new token.'''),
-          ).called(1);
+        test('throws error when token string is not valid base64', () async {
+          expect(buildAuth, throwsA(isFormatException));
         });
       });
 
