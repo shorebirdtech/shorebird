@@ -18,8 +18,6 @@ Organization _$OrganizationFromJson(Map<String, dynamic> json) =>
           name: $checkedConvert('name', (v) => v as String),
           organizationType: $checkedConvert('organization_type',
               (v) => $enumDecode(_$OrganizationTypeEnumMap, v)),
-          stripeCustomerId:
-              $checkedConvert('stripe_customer_id', (v) => v as String?),
           createdAt:
               $checkedConvert('created_at', (v) => DateTime.parse(v as String)),
           updatedAt:
@@ -29,7 +27,6 @@ Organization _$OrganizationFromJson(Map<String, dynamic> json) =>
       },
       fieldKeyMap: const {
         'organizationType': 'organization_type',
-        'stripeCustomerId': 'stripe_customer_id',
         'createdAt': 'created_at',
         'updatedAt': 'updated_at'
       },
@@ -41,7 +38,6 @@ Map<String, dynamic> _$OrganizationToJson(Organization instance) =>
       'name': instance.name,
       'organization_type':
           _$OrganizationTypeEnumMap[instance.organizationType]!,
-      'stripe_customer_id': instance.stripeCustomerId,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
     };

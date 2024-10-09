@@ -36,8 +36,8 @@ enum OrganizationType {
 
 /// {@template organization}
 /// An Organization groups users and apps together. Organizations can be
-/// personal (single-user) or team (multi-user). An Organization with a
-/// [stripeCustomerId] may have a subscription.
+/// personal (single-user) or team (multi-user). Organizations have exactly one
+/// owner, but can have multiple admins and members.
 /// {@endtemplate}
 @JsonSerializable()
 class Organization extends Equatable {
@@ -46,7 +46,6 @@ class Organization extends Equatable {
     required this.id,
     required this.name,
     required this.organizationType,
-    required this.stripeCustomerId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -62,7 +61,6 @@ class Organization extends Equatable {
     int id = 42,
     String name = 'Test Organization',
     OrganizationType organizationType = OrganizationType.personal,
-    String? stripeCustomerId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -70,7 +68,6 @@ class Organization extends Equatable {
         id: id,
         name: name,
         organizationType: organizationType,
-        stripeCustomerId: stripeCustomerId,
         createdAt: createdAt ?? DateTime.now(),
         updatedAt: updatedAt ?? DateTime.now(),
       );
@@ -88,9 +85,6 @@ class Organization extends Equatable {
   /// The type of organization.
   final OrganizationType organizationType;
 
-  /// The Stripe customer ID for the organization, if one exists.
-  final String? stripeCustomerId;
-
   /// When this organization was created.
   final DateTime createdAt;
 
@@ -102,7 +96,6 @@ class Organization extends Equatable {
         id,
         name,
         organizationType,
-        stripeCustomerId,
         createdAt,
         updatedAt,
       ];
