@@ -11,6 +11,7 @@ void main() {
         updatedAt: DateTime.now(),
         organizationType: OrganizationType.team,
         stripeCustomerId: 'cus_123',
+        patchOverageLimit: 123,
       );
       expect(
         Organization.fromJson(organization.toJson()).toJson(),
@@ -30,6 +31,7 @@ void main() {
             updatedAt: date,
             organizationType: OrganizationType.team,
             stripeCustomerId: 'cus_123',
+            patchOverageLimit: 123,
           );
           final otherOrganization = Organization(
             id: 1,
@@ -38,6 +40,7 @@ void main() {
             updatedAt: date,
             organizationType: OrganizationType.team,
             stripeCustomerId: 'cus_123',
+            patchOverageLimit: 123,
           );
           expect(organization, equals(otherOrganization));
         });
@@ -52,6 +55,7 @@ void main() {
             updatedAt: date,
             organizationType: OrganizationType.team,
             stripeCustomerId: 'cus_123',
+            patchOverageLimit: null,
           );
           final otherOrganization = Organization(
             id: 1,
@@ -60,6 +64,7 @@ void main() {
             updatedAt: date,
             organizationType: OrganizationType.team,
             stripeCustomerId: 'cus_456',
+            patchOverageLimit: null,
           );
           expect(organization, isNot(equals(otherOrganization)));
         });
