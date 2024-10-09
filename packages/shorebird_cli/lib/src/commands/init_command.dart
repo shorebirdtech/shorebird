@@ -5,7 +5,6 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/extensions/organization.dart';
 import 'package:shorebird_cli/src/logger.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
@@ -74,13 +73,12 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       return ExitCode.software.code;
     }
 
-    final user = await codePushClientWrapper.getCurrentUser();
     final Organization organization;
     if (orgs.length > 1) {
       organization = logger.chooseOne(
         'Which organization should this app belong to?',
         choices: orgs.map((o) => o.organization).toList(),
-        display: (o) => o.displayName(user: user!),
+        display: (o) => o.name,
       );
     } else {
       organization = orgs.first.organization;
