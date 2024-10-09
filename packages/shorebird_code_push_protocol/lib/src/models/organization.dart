@@ -49,6 +49,7 @@ class Organization extends Equatable {
     required this.stripeCustomerId,
     required this.createdAt,
     required this.updatedAt,
+    required this.patchOverageLimit,
   });
 
   /// Converts a [Map<String, dynamic>] to an [Organization].
@@ -65,6 +66,7 @@ class Organization extends Equatable {
     String? stripeCustomerId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? patchOverageLimit,
   }) =>
       Organization(
         id: id,
@@ -73,6 +75,7 @@ class Organization extends Equatable {
         stripeCustomerId: stripeCustomerId,
         createdAt: createdAt ?? DateTime.now(),
         updatedAt: updatedAt ?? DateTime.now(),
+        patchOverageLimit: patchOverageLimit ?? 0,
       );
   // coverage:ignore-end
 
@@ -97,6 +100,10 @@ class Organization extends Equatable {
   /// When this organization was last updated.
   final DateTime updatedAt;
 
+  /// The maximum number of patch installs that the user has agreed to pay for
+  /// as part of a pay-as-you-go plan.
+  final int? patchOverageLimit;
+
   @override
   List<Object?> get props => [
         id,
@@ -105,5 +112,6 @@ class Organization extends Equatable {
         stripeCustomerId,
         createdAt,
         updatedAt,
+        patchOverageLimit,
       ];
 }

@@ -24,6 +24,8 @@ Organization _$OrganizationFromJson(Map<String, dynamic> json) =>
               $checkedConvert('created_at', (v) => DateTime.parse(v as String)),
           updatedAt:
               $checkedConvert('updated_at', (v) => DateTime.parse(v as String)),
+          patchOverageLimit: $checkedConvert(
+              'patch_overage_limit', (v) => (v as num?)?.toInt()),
         );
         return val;
       },
@@ -31,7 +33,8 @@ Organization _$OrganizationFromJson(Map<String, dynamic> json) =>
         'organizationType': 'organization_type',
         'stripeCustomerId': 'stripe_customer_id',
         'createdAt': 'created_at',
-        'updatedAt': 'updated_at'
+        'updatedAt': 'updated_at',
+        'patchOverageLimit': 'patch_overage_limit'
       },
     );
 
@@ -44,6 +47,7 @@ Map<String, dynamic> _$OrganizationToJson(Organization instance) =>
       'stripe_customer_id': instance.stripeCustomerId,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
+      'patch_overage_limit': instance.patchOverageLimit,
     };
 
 const _$OrganizationTypeEnumMap = {
