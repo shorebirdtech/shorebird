@@ -10,7 +10,7 @@ class CreateAppRequest {
   /// {@macro create_app_request}
   const CreateAppRequest({
     required this.displayName,
-    this.organizationId,
+    required this.organizationId,
   });
 
   /// Converts a Map<String, dynamic> to a [CreateAppRequest]
@@ -23,7 +23,6 @@ class CreateAppRequest {
   /// The display name of the app.
   final String displayName;
 
-  /// The id of organization that this app will belong to. If no id is provided,
-  /// this app will belong to the user's personal organization.
-  final int? organizationId;
+  /// The id of organization that this app will belong to.
+  final int organizationId;
 }
