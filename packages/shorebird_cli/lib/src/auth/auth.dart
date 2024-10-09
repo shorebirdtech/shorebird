@@ -316,19 +316,7 @@ class Auth {
   void _loadCredentials() {
     final envToken = platform.environment[shorebirdTokenEnvVar];
     if (envToken != null) {
-      try {
-        _token = CiToken.fromBase64(envToken);
-      } catch (_) {
-        // TODO(bryanoltman): Remove this legacy behavior after July 2024 or
-        // next major release.
-        logger.warn('''
-$shorebirdTokenEnvVar needs to be updated before the next major release.
-Run `shorebird login:ci` to obtain a new token.''');
-        _token = CiToken(
-          refreshToken: envToken,
-          authProvider: AuthProvider.google,
-        );
-      }
+      _token = CiToken.fromBase64(envToken);
       return;
     }
 
