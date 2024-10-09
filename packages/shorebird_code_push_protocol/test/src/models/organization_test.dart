@@ -10,7 +10,6 @@ void main() {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
         organizationType: OrganizationType.team,
-        stripeCustomerId: 'cus_123',
       );
       expect(
         Organization.fromJson(organization.toJson()).toJson(),
@@ -29,7 +28,6 @@ void main() {
             createdAt: date,
             updatedAt: date,
             organizationType: OrganizationType.team,
-            stripeCustomerId: 'cus_123',
           );
           final otherOrganization = Organization(
             id: 1,
@@ -37,7 +35,6 @@ void main() {
             createdAt: date,
             updatedAt: date,
             organizationType: OrganizationType.team,
-            stripeCustomerId: 'cus_123',
           );
           expect(organization, equals(otherOrganization));
         });
@@ -51,15 +48,13 @@ void main() {
             createdAt: date,
             updatedAt: date,
             organizationType: OrganizationType.team,
-            stripeCustomerId: 'cus_123',
           );
           final otherOrganization = Organization(
             id: 1,
-            name: 'name',
+            name: 'name 2',
             createdAt: date,
             updatedAt: date,
             organizationType: OrganizationType.team,
-            stripeCustomerId: 'cus_456',
           );
           expect(organization, isNot(equals(otherOrganization)));
         });
