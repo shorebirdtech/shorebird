@@ -16,7 +16,7 @@ CreateAppRequest _$CreateAppRequestFromJson(Map<String, dynamic> json) =>
         final val = CreateAppRequest(
           displayName: $checkedConvert('display_name', (v) => v as String),
           organizationId:
-              $checkedConvert('organization_id', (v) => (v as num?)?.toInt()),
+              $checkedConvert('organization_id', (v) => (v as num).toInt()),
         );
         return val;
       },
