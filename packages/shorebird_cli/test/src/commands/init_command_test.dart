@@ -36,7 +36,6 @@ version: $version
 environment:
   sdk: ">=2.19.0 <3.0.0"''';
     const organizationId = 123;
-    final currentUser = PrivateUser.forTest();
 
     late ArgResults argResults;
     late Doctor doctor;
@@ -94,9 +93,6 @@ environment:
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
 
-      when(() => codePushClientWrapper.getCurrentUser()).thenAnswer(
-        (_) async => currentUser,
-      );
       when(() => codePushClientWrapper.getOrganizationMemberships()).thenAnswer(
         (_) async => [
           OrganizationMembership(
@@ -379,8 +375,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             display: captureAny(named: 'display'),
           ),
         ).captured.single as String Function(Organization);
-        expect(capturedDisplay(org1), equals(currentUser.email));
-        expect(capturedDisplay(org2), equals('org2'));
+        expect(capturedDisplay(org1), equals(org1.name));
+        expect(capturedDisplay(org2), equals(org2.name));
         verify(
           () => codePushClientWrapper.createApp(
             appName: appName,
