@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/iterable.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -73,7 +74,7 @@ ${iOSLinkPercentageUrl.toLink()}
     required File patchArchive,
   });
 
-  /// Builds the release artifacts for the given platform. Returns the "primary"
+  /// Builds the patch artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
   Future<File> buildPatchArtifact({String? releaseVersion});
 
@@ -92,6 +93,24 @@ ${iOSLinkPercentageUrl.toLink()}
     CreatePatchMetadata metadata,
   ) async {
     return metadata;
+  }
+
+  /// Uploads the patch artifacts to the CodePush server.
+  Future<void> uploadPatchArtifacts({
+    required String appId,
+    required int releaseId,
+    required Map<String, dynamic> metadata,
+    required Map<Arch, PatchArtifactBundle> artifacts,
+    required DeploymentTrack track,
+  }) async {
+    await codePushClientWrapper.publishPatch(
+      appId: appId,
+      releaseId: releaseId,
+      metadata: metadata,
+      platform: releaseType.releasePlatform,
+      track: track,
+      patchArtifactBundles: artifacts,
+    );
   }
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
