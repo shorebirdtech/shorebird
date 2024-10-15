@@ -431,7 +431,7 @@ Please create a release using "shorebird release" and try again.
     required Iterable<Arch> architectures,
     String? flavor,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
     final archsDir = ArtifactManager.androidArchsDirectory(
       projectRoot: Directory(projectRoot),
       flavor: flavor,
@@ -463,7 +463,7 @@ Looked in:
       );
       final artifact = File(artifactPath);
       final hash = sha256.convert(await artifact.readAsBytes()).toString();
-      logger.detail('Creating artifact for $artifactPath');
+      logger.detail('Uploading artifact for $artifactPath');
 
       try {
         await codePushClient.createReleaseArtifact(
@@ -493,7 +493,7 @@ ${arch.arch} artifact already exists, continuing...''',
     }
 
     try {
-      logger.detail('Creating artifact for $aabPath');
+      logger.detail('Uploading artifact for $aabPath');
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
@@ -530,7 +530,7 @@ aab artifact already exists, continuing...''',
     required String extractedAarDir,
     required Iterable<Arch> architectures,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
 
     for (final arch in architectures) {
       final artifactPath = p.join(
@@ -541,7 +541,7 @@ aab artifact already exists, continuing...''',
       );
       final artifact = File(artifactPath);
       final hash = sha256.convert(await artifact.readAsBytes()).toString();
-      logger.detail('Creating artifact for $artifactPath');
+      logger.detail('Uploading artifact for $artifactPath');
 
       try {
         await codePushClient.createReleaseArtifact(
@@ -571,7 +571,7 @@ ${arch.arch} artifact already exists, continuing...''',
     }
 
     try {
-      logger.detail('Creating artifact for $aarPath');
+      logger.detail('Uploading artifact for $aarPath');
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
@@ -625,7 +625,7 @@ aar artifact already exists, continuing...''',
     required bool isCodesigned,
     required String? podfileLockHash,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
     final thinnedArchiveDirectory =
         await _thinXcarchive(xcarchivePath: xcarchivePath);
     final zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
@@ -677,7 +677,7 @@ aar artifact already exists, continuing...''',
     required int releaseId,
     required String appFrameworkPath,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
     final appFrameworkDirectory = Directory(appFrameworkPath);
     await Isolate.run(
       () => ZipFileEncoder().zipDirectory(appFrameworkDirectory),
