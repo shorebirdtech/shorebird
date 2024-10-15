@@ -133,7 +133,7 @@ void main() {
             async.elapse(const Duration(minutes: 2));
 
             verify(
-              () => progress.fail('CP speed test aborted: upload timed out'),
+              () => progress.fail('GCP speed test aborted: upload timed out'),
             ).called(1);
           });
         });
