@@ -321,14 +321,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           baseMetadata,
         );
 
-        await codePushClientWrapper.publishPatch(
+        await patcher.uploadPatchArtifacts(
           appId: appId,
           releaseId: release.id,
           metadata: updateMetadata.toJson(),
-          platform: patcher.releaseType.releasePlatform,
           track:
               isStaging ? DeploymentTrack.staging : DeploymentTrack.production,
-          patchArtifactBundles: patchArtifactBundles,
+          artifacts: patchArtifactBundles,
         );
       },
       values: {

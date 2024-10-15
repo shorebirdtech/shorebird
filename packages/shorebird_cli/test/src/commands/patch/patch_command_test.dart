@@ -159,10 +159,12 @@ void main() {
       when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults.wasParsed(any())).thenReturn(true);
-      when(() => argResults.wasParsed(CommonArguments.privateKeyArg.name))
-          .thenReturn(false);
-      when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
-          .thenReturn(false);
+      when(
+        () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+      ).thenReturn(false);
+      when(
+        () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+      ).thenReturn(false);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
@@ -172,23 +174,24 @@ void main() {
 
       when(() => cache.updateAll()).thenAnswer((_) async => {});
 
-      when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
-          .thenAnswer((_) async => appMetadata);
+      when(
+        () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => appMetadata);
       when(
         () => codePushClientWrapper.getRelease(
           appId: any(named: 'appId'),
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
-      when(() => codePushClientWrapper.getReleases(appId: any(named: 'appId')))
-          .thenAnswer((_) async => [release]);
       when(
-        () => codePushClientWrapper.publishPatch(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
+      when(
+        () => patcher.uploadPatchArtifacts(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
           track: any(named: 'track'),
-          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          artifacts: any(named: 'artifacts'),
           metadata: any(named: 'metadata'),
         ),
       ).thenAnswer((_) async {});
@@ -298,13 +301,12 @@ void main() {
         await runWithOverrides(() => command.createPatch(patcher));
 
         verify(
-          () => codePushClientWrapper.publishPatch(
+          () => patcher.uploadPatchArtifacts(
             appId: appId,
             releaseId: any(named: 'releaseId'),
             metadata: any(named: 'metadata'),
-            platform: any(named: 'platform'),
             track: any(named: 'track'),
-            patchArtifactBundles: patchArtifactBundles,
+            artifacts: patchArtifactBundles,
           ),
         ).called(1);
       });
@@ -601,12 +603,11 @@ void main() {
               ),
           () => logger.confirm('Would you like to continue?'),
           () => patcher.updatedCreatePatchMetadata(any()),
-          () => codePushClientWrapper.publishPatch(
+          () => patcher.uploadPatchArtifacts(
                 appId: appId,
                 releaseId: release.id,
                 metadata: patchMetadata.toJson(),
-                platform: releasePlatform,
-                patchArtifactBundles: any(named: 'patchArtifactBundles'),
+                artifacts: any(named: 'artifacts'),
                 track: DeploymentTrack.production,
               ),
         ]);
@@ -652,12 +653,11 @@ void main() {
                 releaseArtifact: any(named: 'releaseArtifact'),
               ),
           () => logger.confirm('Would you like to continue?'),
-          () => codePushClientWrapper.publishPatch(
+          () => patcher.uploadPatchArtifacts(
                 appId: appId,
                 releaseId: release.id,
                 metadata: any(named: 'metadata'),
-                platform: releasePlatform,
-                patchArtifactBundles: any(named: 'patchArtifactBundles'),
+                artifacts: any(named: 'artifacts'),
                 track: DeploymentTrack.production,
               ),
         ]);
@@ -774,12 +774,11 @@ void main() {
 
         verifyNever(() => logger.confirm(any()));
         verifyNever(
-          () => codePushClientWrapper.publishPatch(
+          () => patcher.uploadPatchArtifacts(
             appId: appId,
             releaseId: release.id,
             metadata: any(named: 'metadata'),
-            platform: releasePlatform,
-            patchArtifactBundles: any(named: 'patchArtifactBundles'),
+            artifacts: any(named: 'artifacts'),
             track: DeploymentTrack.production,
           ),
         );
@@ -958,12 +957,11 @@ Please re-run the release command for this version or create a new release.''',
         expect(exitCode, equals(ExitCode.success.code));
 
         verify(
-          () => codePushClientWrapper.publishPatch(
+          () => patcher.uploadPatchArtifacts(
             appId: appId,
             releaseId: release.id,
             metadata: any(named: 'metadata'),
-            platform: releasePlatform,
-            patchArtifactBundles: any(named: 'patchArtifactBundles'),
+            artifacts: any(named: 'artifacts'),
             track: DeploymentTrack.staging,
           ),
         ).called(1);
