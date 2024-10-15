@@ -101,7 +101,11 @@ Android Toolchain
     logger.info('');
 
     if (verbose) {
-      await networkChecker.performGCPSpeedTest();
+      try {
+        await networkChecker.performGCPSpeedTest();
+      } catch (error) {
+        logger.detail('$error');
+      }
     }
 
     await doctor.runValidators(doctor.generalValidators, applyFixes: shouldFix);

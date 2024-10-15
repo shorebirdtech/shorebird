@@ -504,7 +504,7 @@ class CodePushClient {
   /// Returns a GCP upload link for measuring upload speed.
   Future<Uri> getGCPSpeedTestUrl() async {
     final response = await _httpClient.get(
-      Uri.parse('$_v1/speedtest'),
+      Uri.parse('$_v1/diagnostics/gcp_upload'),
     );
 
     if (!response.isSuccess) {

@@ -48,6 +48,10 @@ class NetworkChecker {
     // Test with a 5MB file.
     const uploadMBs = 5;
     const fileSize = uploadMBs * 1000 * 1000;
+
+    // If they can't upload the file in two minutes, we can just say it's slow.
+    const uploadTimeout = Duration(minutes: 2);
+
     final tempDir = Directory.systemTemp.createTempSync();
     final testFile = File(p.join(tempDir.path, 'speed_test_file'))
       ..writeAsBytesSync(ByteData(fileSize).buffer.asUint8List());
@@ -58,7 +62,13 @@ class NetworkChecker {
     final start = DateTime.now();
     final file = await http.MultipartFile.fromPath('file', testFile.path);
     final uploadRequest = http.MultipartRequest('POST', uri)..files.add(file);
-    final uploadResponse = await httpClient.send(uploadRequest);
+    final uploadResponse = await httpClient.send(uploadRequest).timeout(
+      uploadTimeout,
+      onTimeout: () {
+        progress.fail('GCP speed test aborted: upload timed out');
+        throw Exception('GCP speed test aborted: upload timed out');
+      },
+    );
     if (uploadResponse.statusCode != HttpStatus.noContent) {
       final body = await uploadResponse.stream.bytesToString();
       progress.fail('Failed to upload file');
