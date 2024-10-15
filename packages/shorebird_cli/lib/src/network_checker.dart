@@ -18,6 +18,8 @@ class NetworkChecker {
     'https://api.shorebird.dev',
     'https://console.shorebird.dev',
     'https://oauth2.googleapis.com',
+    'https://storage.googleapis.com',
+    'https://cdn.shorebird.cloud',
   ].map(Uri.parse).toList();
 
   /// Verify that each of [urlsToCheck] responds to an HTTP GET request.
