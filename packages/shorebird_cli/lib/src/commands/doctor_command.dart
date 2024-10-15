@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -93,6 +94,11 @@ Android Toolchain
     }
 
     logger.info(output.toString());
+
+    // ignore: cascade_invocations
+    logger.info('URL reachability:');
+    await networkChecker.checkReachability();
+    logger.info('');
 
     await doctor.runValidators(doctor.generalValidators, applyFixes: shouldFix);
 

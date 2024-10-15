@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -30,6 +31,7 @@ void main() {
     late Doctor doctor;
     late Gradlew gradlew;
     late Java java;
+    late NetworkChecker networkChecker;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
@@ -46,6 +48,7 @@ void main() {
           gradlewRef.overrideWith(() => gradlew),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
+          networkCheckerRef.overrideWith(() => networkChecker),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
@@ -61,6 +64,7 @@ void main() {
       logsDirectory = Directory.systemTemp.createTempSync('shorebird_logs');
       java = MockJava();
       logger = MockShorebirdLogger();
+      networkChecker = MockNetworkChecker();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       validator = MockValidator();
@@ -72,6 +76,9 @@ void main() {
       when(() => androidSdk.adbPath).thenReturn(null);
       when(() => gradlew.exists(any())).thenReturn(false);
       when(() => java.home).thenReturn(null);
+      when(
+        () => networkChecker.checkReachability(),
+      ).thenAnswer((_) async => {});
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
@@ -104,8 +111,8 @@ Engine • revision $shorebirdEngineRevision
     });
 
     test(
-        'prints shorebird version, flutter revision, '
-        'flutter version, and engine revision', () async {
+        '''prints shorebird version, flutter revision, flutter version, and engine revision''',
+        () async {
       const flutterVersion = '1.2.3';
       when(
         () => shorebirdFlutter.getVersionString(),
@@ -120,6 +127,7 @@ Flutter $flutterVersion • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 '''),
       ).called(1);
+      verify(() => networkChecker.checkReachability()).called(1);
     });
 
     group('--verbose', () {
@@ -197,6 +205,8 @@ Android Toolchain
 ''',
           ),
         );
+
+        verify(() => networkChecker.checkReachability()).called(1);
       });
 
       group('when a gradlew executable exists', () {

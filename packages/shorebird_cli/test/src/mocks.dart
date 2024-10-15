@@ -26,6 +26,7 @@ import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -111,6 +112,8 @@ class MockJava extends Mock implements Java {}
 class MockJwtHeader extends Mock implements JwtHeader {}
 
 class MockJwtPayload extends Mock implements JwtPayload {}
+
+class MockNetworkChecker extends Mock implements NetworkChecker {}
 
 class MockOperatingSystemInterface extends Mock
     implements OperatingSystemInterface {}
