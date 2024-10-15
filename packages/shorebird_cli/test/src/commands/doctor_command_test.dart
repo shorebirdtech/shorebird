@@ -135,8 +135,11 @@ Engine • revision $shorebirdEngineRevision
     });
 
     group('--verbose', () {
-      test('prints additional information (not detected)', () async {
+      setUp(() {
         when(() => argResults['verbose']).thenReturn(true);
+      });
+
+      test('prints additional information (not detected)', () async {
         await runWithOverrides(command.run);
 
         final notDetectedText = red.wrap('not detected');
@@ -164,7 +167,6 @@ Android Toolchain
       });
 
       test('prints additional information (detected)', () async {
-        when(() => argResults['verbose']).thenReturn(true);
         when(() => androidStudio.path).thenReturn('test-studio-path');
         when(() => androidSdk.path).thenReturn('test-sdk-path');
         when(() => androidSdk.adbPath).thenReturn('test-adb-path');
@@ -218,7 +220,6 @@ Android Toolchain
         setUp(() {
           when(() => gradlew.exists(any())).thenReturn(true);
           when(() => gradlew.version(any())).thenAnswer((_) async => '7.6.3');
-          when(() => argResults['verbose']).thenReturn(true);
           when(() => androidStudio.path).thenReturn('test-studio-path');
           when(() => androidSdk.path).thenReturn('test-sdk-path');
           when(() => androidSdk.adbPath).thenReturn('test-adb-path');
@@ -265,6 +266,27 @@ Android Toolchain
 ''',
             ),
           );
+        });
+      });
+
+      group('when gcp speed test fails', () {
+        setUp(() {
+          const flutterVersion = '1.2.3';
+          when(
+            () => shorebirdFlutter.getVersionString(),
+          ).thenAnswer((_) async => flutterVersion);
+          when(
+            () => networkChecker.performGCPSpeedTest(),
+          ).thenThrow(Exception('oops'));
+        });
+
+        test('logs error as detail, continues', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            completes,
+          );
+
+          verify(() => logger.detail('Exception: oops')).called(1);
         });
       });
     });
