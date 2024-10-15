@@ -1,4 +1,10 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logger.dart';
 
@@ -35,5 +41,36 @@ class NetworkChecker {
         logger.detail('Failed to reach $url: $e');
       }
     }
+  }
+
+  /// Uploads a file to GCP to measure upload speed.
+  Future<void> performGCPSpeedTest() async {
+    // Test with a 50MB file.
+    const uploadMBs = 50;
+    const fileSize = uploadMBs * 1000 * 1000;
+    final tempDir = Directory.systemTemp.createTempSync();
+    final testFile = File(p.join(tempDir.path, 'speed_test_file'))
+      ..writeAsBytesSync(ByteData(fileSize).buffer.asUint8List());
+
+    final progress = logger.progress('Performing GCP speed test');
+
+    final uri = await codePushClientWrapper.getGCPSpeedTestUrl();
+    final start = DateTime.now();
+    final file = await http.MultipartFile.fromPath('file', testFile.path);
+    final uploadRequest = http.MultipartRequest('POST', uri)..files.add(file);
+    final uploadResponse = await httpClient.send(uploadRequest);
+    if (uploadResponse.statusCode != HttpStatus.noContent) {
+      final body = await uploadResponse.stream.bytesToString();
+      progress.fail('Failed to upload file');
+      throw Exception(
+        'Failed to upload file: $body ${uploadResponse.statusCode}',
+      );
+    }
+
+    final end = DateTime.now();
+    final uploadRate = fileSize / (end.difference(start).inMilliseconds * 1000);
+    progress.complete(
+      'GCP Upload Speed: ${uploadRate.toStringAsFixed(2)} MB/s',
+    );
   }
 }

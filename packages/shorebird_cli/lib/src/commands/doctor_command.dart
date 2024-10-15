@@ -100,6 +100,10 @@ Android Toolchain
     await networkChecker.checkReachability();
     logger.info('');
 
+    if (verbose) {
+      await networkChecker.performGCPSpeedTest();
+    }
+
     await doctor.runValidators(doctor.generalValidators, applyFixes: shouldFix);
 
     return ExitCode.success.code;

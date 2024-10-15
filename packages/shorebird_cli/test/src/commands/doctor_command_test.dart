@@ -80,6 +80,9 @@ void main() {
         () => networkChecker.checkReachability(),
       ).thenAnswer((_) async => {});
       when(
+        () => networkChecker.performGCPSpeedTest(),
+      ).thenAnswer((_) async => {});
+      when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
       when(
@@ -128,6 +131,7 @@ Engine • revision $shorebirdEngineRevision
 '''),
       ).called(1);
       verify(() => networkChecker.checkReachability()).called(1);
+      verifyNever(() => networkChecker.performGCPSpeedTest());
     });
 
     group('--verbose', () {
@@ -207,6 +211,7 @@ Android Toolchain
         );
 
         verify(() => networkChecker.checkReachability()).called(1);
+        verify(() => networkChecker.performGCPSpeedTest()).called(1);
       });
 
       group('when a gradlew executable exists', () {
