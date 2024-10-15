@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -108,6 +110,32 @@ void main() {
           verify(
             () => progress.fail(any(that: contains('Failed to upload file'))),
           ).called(1);
+        });
+      });
+
+      group('when upload times out', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.noContent,
+            ),
+          );
+        });
+
+        test('progress fails by printing error', () {
+          fakeAsync((async) {
+            expect(
+              runWithOverrides(networkChecker.performGCPSpeedTest),
+              throwsException,
+            );
+
+            async.elapse(const Duration(minutes: 2));
+
+            verify(
+              () => progress.fail('CP speed test aborted: upload timed out'),
+            ).called(1);
+          });
         });
       });
 
