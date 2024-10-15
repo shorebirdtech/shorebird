@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:fake_async/fake_async.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -114,28 +113,33 @@ void main() {
       });
 
       group('when upload times out', () {
+        const uploadTimeout = Duration(milliseconds: 1);
+        final responseTime = uploadTimeout * 2;
         setUp(() {
           when(() => httpClient.send(any())).thenAnswer(
-            (_) async => http.StreamedResponse(
-              const Stream.empty(),
-              HttpStatus.noContent,
-            ),
+            (_) async {
+              await Future<void>.delayed(responseTime);
+              return http.StreamedResponse(
+                const Stream.empty(),
+                HttpStatus.noContent,
+              );
+            },
           );
         });
 
-        test('progress fails by printing error', () {
-          fakeAsync((async) {
-            expect(
-              runWithOverrides(networkChecker.performGCPSpeedTest),
-              throwsException,
-            );
+        test('progress fails by printing error', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => networkChecker.performGCPSpeedTest(
+                uploadTimeout: uploadTimeout,
+              ),
+            ),
+            throwsException,
+          );
 
-            async.elapse(const Duration(minutes: 2));
-
-            verify(
-              () => progress.fail('GCP speed test aborted: upload timed out'),
-            ).called(1);
-          });
+          verify(
+            () => progress.fail('GCP speed test aborted: upload timed out'),
+          ).called(1);
         });
       });
 

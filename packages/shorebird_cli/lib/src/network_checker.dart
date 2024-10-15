@@ -44,13 +44,13 @@ class NetworkChecker {
   }
 
   /// Uploads a file to GCP to measure upload speed.
-  Future<void> performGCPSpeedTest() async {
+  Future<void> performGCPSpeedTest({
+    // If they can't upload the file in two minutes, we can just say it's slow.
+    Duration uploadTimeout = const Duration(minutes: 2),
+  }) async {
     // Test with a 5MB file.
     const uploadMBs = 5;
     const fileSize = uploadMBs * 1000 * 1000;
-
-    // If they can't upload the file in two minutes, we can just say it's slow.
-    const uploadTimeout = Duration(minutes: 2);
 
     final tempDir = Directory.systemTemp.createTempSync();
     final testFile = File(p.join(tempDir.path, 'speed_test_file'))
