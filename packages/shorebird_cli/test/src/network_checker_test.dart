@@ -117,7 +117,9 @@ void main() {
 
       group('when upload times out', () {
         const uploadTimeout = Duration(milliseconds: 1);
-        final responseTime = uploadTimeout * 2;
+        // Make this a healthy multiple of the upload timeout to avoid flakiness
+        // on slow (read: Windows) CI machines.
+        final responseTime = uploadTimeout * 5;
         setUp(() {
           when(() => httpClient.send(any())).thenAnswer(
             (_) async {
