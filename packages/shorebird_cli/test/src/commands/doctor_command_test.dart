@@ -32,6 +32,7 @@ void main() {
     late Gradlew gradlew;
     late Java java;
     late NetworkChecker networkChecker;
+    late Progress progress;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
@@ -65,6 +66,7 @@ void main() {
       java = MockJava();
       logger = MockShorebirdLogger();
       networkChecker = MockNetworkChecker();
+      progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       validator = MockValidator();
@@ -76,12 +78,13 @@ void main() {
       when(() => androidSdk.adbPath).thenReturn(null);
       when(() => gradlew.exists(any())).thenReturn(false);
       when(() => java.home).thenReturn(null);
+      when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => networkChecker.checkReachability(),
       ).thenAnswer((_) async => {});
       when(
         () => networkChecker.performGCPSpeedTest(),
-      ).thenAnswer((_) async => {});
+      ).thenAnswer((_) async => 1.0);
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
@@ -137,6 +140,9 @@ Engine • revision $shorebirdEngineRevision
     group('--verbose', () {
       setUp(() {
         when(() => argResults['verbose']).thenReturn(true);
+        when(
+          () => networkChecker.performGCPSpeedTest(),
+        ).thenAnswer((_) async => 1.23456789);
       });
 
       test('prints additional information (not detected)', () async {
@@ -214,6 +220,9 @@ Android Toolchain
 
         verify(() => networkChecker.checkReachability()).called(1);
         verify(() => networkChecker.performGCPSpeedTest()).called(1);
+        verify(
+          () => progress.complete('GCP Upload Speed: 1.23 MB/s'),
+        ).called(1);
       });
 
       group('when a gradlew executable exists', () {
@@ -275,18 +284,44 @@ Android Toolchain
           when(
             () => shorebirdFlutter.getVersionString(),
           ).thenAnswer((_) async => flutterVersion);
-          when(
-            () => networkChecker.performGCPSpeedTest(),
-          ).thenThrow(Exception('oops'));
         });
 
-        test('logs error as detail, continues', () async {
-          await expectLater(
-            runWithOverrides(command.run),
-            completes,
-          );
+        group('with NetworkCheckerException', () {
+          setUp(() {
+            when(
+              () => networkChecker.performGCPSpeedTest(),
+            ).thenThrow(const NetworkCheckerException('oops'));
+          });
 
-          verify(() => logger.detail('Exception: oops')).called(1);
+          test('logs error as detail, continues', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              completes,
+            );
+
+            verify(
+              () => progress.fail('GCP speed test failed: oops'),
+            ).called(1);
+          });
+        });
+
+        group('with generic Exception', () {
+          setUp(() {
+            when(
+              () => networkChecker.performGCPSpeedTest(),
+            ).thenThrow(Exception('oops'));
+          });
+
+          test('logs error as detail, continues', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              completes,
+            );
+
+            verify(
+              () => progress.fail('GCP speed test failed: Exception: oops'),
+            ).called(1);
+          });
         });
       });
     });

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -100,22 +101,23 @@ void main() {
           );
         });
 
-        test('progress fails by printing error', () async {
+        test('throws a NetworkCheckerException', () async {
           await expectLater(
             runWithOverrides(networkChecker.performGCPSpeedTest),
-            completes,
+            throwsA(
+              isA<NetworkCheckerException>().having(
+                (e) => e.message,
+                'message',
+                contains('Failed to upload file'),
+              ),
+            ),
           );
-
-          verify(
-            () => progress.fail(any(that: contains('Failed to upload file'))),
-          ).called(1);
         });
       });
 
       group('when upload times out', () {
         const uploadTimeout = Duration(milliseconds: 1);
         final responseTime = uploadTimeout * 2;
-
         setUp(() {
           when(() => httpClient.send(any())).thenAnswer(
             (_) async {
@@ -128,21 +130,18 @@ void main() {
           );
         });
 
-        test('progress fails by printing error', () async {
+        test('throws a NetworkCheckerException', () async {
           await expectLater(
-            runWithOverrides(
+            () => runWithOverrides(
               () => networkChecker.performGCPSpeedTest(
                 uploadTimeout: uploadTimeout,
               ),
             ),
-            completes,
-          );
-
-          verify(
-            () => progress.fail(
-              'GCP speed test failed: Exception: Upload timed out',
+            throwsA(
+              isA<NetworkCheckerException>().having(
+                  (e) => e.message, 'message', equals('Upload timed out')),
             ),
-          ).called(1);
+          );
         });
       });
 
@@ -156,17 +155,34 @@ void main() {
           );
         });
 
-        test('progress completes by printing rate', () async {
-          await runWithOverrides(networkChecker.performGCPSpeedTest);
+        test('returns upload rate in MB/s', () async {
+          /// 2024-10-16 00:00:00
+          final start = DateTime.fromMillisecondsSinceEpoch(1729051200000);
 
-          final capturedRequest = verify(() => httpClient.send(captureAny()))
-              .captured
-              .last as http.MultipartRequest;
-          expect(capturedRequest.method, equals('POST'));
-          expect(capturedRequest.url, equals(gcpUri));
-          verify(
-            () => progress.complete(any(that: endsWith('MB/s'))),
-          ).called(1);
+          /// 2024-10-16 00:00:01
+          final end = DateTime.fromMillisecondsSinceEpoch(1729051201000);
+          var hasReturnedStart = false;
+
+          final clock = Clock(() {
+            if (hasReturnedStart) {
+              return end;
+            } else {
+              hasReturnedStart = true;
+              return start;
+            }
+          });
+          await withClock(clock, () async {
+            final speed =
+                await runWithOverrides(networkChecker.performGCPSpeedTest);
+            // Our 5MB file took 1 second to upload, so our speed is 5 MB/s.
+            expect(speed, equals(5.0));
+
+            final capturedRequest = verify(() => httpClient.send(captureAny()))
+                .captured
+                .last as http.MultipartRequest;
+            expect(capturedRequest.method, equals('POST'));
+            expect(capturedRequest.url, equals(gcpUri));
+          });
         });
       });
     });

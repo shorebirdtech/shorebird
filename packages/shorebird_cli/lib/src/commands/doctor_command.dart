@@ -101,10 +101,15 @@ Android Toolchain
     logger.info('');
 
     if (verbose) {
+      final progress = logger.progress('Performing GCP speed test');
+
       try {
-        await networkChecker.performGCPSpeedTest();
+        final speed = await networkChecker.performGCPSpeedTest();
+        progress.complete('GCP Upload Speed: ${speed.toStringAsFixed(2)} MB/s');
+      } on NetworkCheckerException catch (error) {
+        progress.fail('GCP speed test failed: ${error.message}');
       } catch (error) {
-        logger.detail('$error');
+        progress.fail('GCP speed test failed: $error');
       }
     }
 

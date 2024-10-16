@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
@@ -13,6 +14,17 @@ final networkCheckerRef = create(NetworkChecker.new);
 
 /// The [NetworkChecker] instance available in the current zone.
 NetworkChecker get networkChecker => read(networkCheckerRef);
+
+/// {@template network_checker_exception}
+/// Thrown when a network check fails.
+/// {@endtemplate}
+class NetworkCheckerException implements Exception {
+  /// {@macro network_checker_exception}
+  const NetworkCheckerException(this.message);
+
+  /// The message associated with the exception.
+  final String message;
+}
 
 /// {@template network_checker}
 /// Checks reachability of various Shorebird-related endpoints and logs the
@@ -43,8 +55,9 @@ class NetworkChecker {
     }
   }
 
-  /// Uploads a file to GCP to measure upload speed.
-  Future<void> performGCPSpeedTest({
+  /// Uploads a file to GCP to measure upload speed. Returns the upload rate
+  /// in MB/s.
+  Future<double> performGCPSpeedTest({
     // If they can't upload the file in two minutes, we can just say it's slow.
     Duration uploadTimeout = const Duration(minutes: 2),
   }) async {
@@ -55,35 +68,27 @@ class NetworkChecker {
     final tempDir = Directory.systemTemp.createTempSync();
     final testFile = File(p.join(tempDir.path, 'speed_test_file'))
       ..writeAsBytesSync(ByteData(fileSize).buffer.asUint8List());
-
-    final progress = logger.progress('Performing GCP speed test');
-
     try {
       final uri = await codePushClientWrapper.getGCPSpeedTestUrl();
-      final start = DateTime.now();
+      final start = clock.now();
       final file = await http.MultipartFile.fromPath('file', testFile.path);
       final uploadRequest = http.MultipartRequest('POST', uri)..files.add(file);
       final uploadResponse = await httpClient.send(uploadRequest).timeout(
         uploadTimeout,
         onTimeout: () {
-          throw Exception('Upload timed out');
+          throw const NetworkCheckerException('Upload timed out');
         },
       );
       if (uploadResponse.statusCode != HttpStatus.noContent) {
         final body = await uploadResponse.stream.bytesToString();
-        throw Exception(
+        throw NetworkCheckerException(
           'Failed to upload file: $body ${uploadResponse.statusCode}',
         );
       }
 
-      final end = DateTime.now();
-      final uploadRate =
-          fileSize / (end.difference(start).inMilliseconds * 1000);
-      progress.complete(
-        'GCP Upload Speed: ${uploadRate.toStringAsFixed(2)} MB/s',
-      );
-    } catch (error) {
-      progress.fail('GCP speed test failed: $error');
+      final end = clock.now();
+      return fileSize / (end.difference(start).inMilliseconds * 1000);
+    } finally {
       testFile.deleteSync();
       tempDir.deleteSync();
     }
