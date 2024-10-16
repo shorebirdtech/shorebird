@@ -58,29 +58,34 @@ class NetworkChecker {
 
     final progress = logger.progress('Performing GCP speed test');
 
-    final uri = await codePushClientWrapper.getGCPSpeedTestUrl();
-    final start = DateTime.now();
-    final file = await http.MultipartFile.fromPath('file', testFile.path);
-    final uploadRequest = http.MultipartRequest('POST', uri)..files.add(file);
-    final uploadResponse = await httpClient.send(uploadRequest).timeout(
-      uploadTimeout,
-      onTimeout: () {
-        progress.fail('GCP speed test aborted: upload timed out');
-        throw Exception('GCP speed test aborted: upload timed out');
-      },
-    );
-    if (uploadResponse.statusCode != HttpStatus.noContent) {
-      final body = await uploadResponse.stream.bytesToString();
-      progress.fail('Failed to upload file');
-      throw Exception(
-        'Failed to upload file: $body ${uploadResponse.statusCode}',
+    try {
+      final uri = await codePushClientWrapper.getGCPSpeedTestUrl();
+      final start = DateTime.now();
+      final file = await http.MultipartFile.fromPath('file', testFile.path);
+      final uploadRequest = http.MultipartRequest('POST', uri)..files.add(file);
+      final uploadResponse = await httpClient.send(uploadRequest).timeout(
+        uploadTimeout,
+        onTimeout: () {
+          throw Exception('Upload timed out');
+        },
       );
-    }
+      if (uploadResponse.statusCode != HttpStatus.noContent) {
+        final body = await uploadResponse.stream.bytesToString();
+        throw Exception(
+          'Failed to upload file: $body ${uploadResponse.statusCode}',
+        );
+      }
 
-    final end = DateTime.now();
-    final uploadRate = fileSize / (end.difference(start).inMilliseconds * 1000);
-    progress.complete(
-      'GCP Upload Speed: ${uploadRate.toStringAsFixed(2)} MB/s',
-    );
+      final end = DateTime.now();
+      final uploadRate =
+          fileSize / (end.difference(start).inMilliseconds * 1000);
+      progress.complete(
+        'GCP Upload Speed: ${uploadRate.toStringAsFixed(2)} MB/s',
+      );
+    } catch (error) {
+      progress.fail('GCP speed test failed: $error');
+      testFile.deleteSync();
+      tempDir.deleteSync();
+    }
   }
 }

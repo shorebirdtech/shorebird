@@ -103,7 +103,7 @@ void main() {
         test('progress fails by printing error', () async {
           await expectLater(
             runWithOverrides(networkChecker.performGCPSpeedTest),
-            throwsException,
+            completes,
           );
 
           verify(
@@ -115,6 +115,7 @@ void main() {
       group('when upload times out', () {
         const uploadTimeout = Duration(milliseconds: 1);
         final responseTime = uploadTimeout * 2;
+
         setUp(() {
           when(() => httpClient.send(any())).thenAnswer(
             (_) async {
@@ -129,16 +130,18 @@ void main() {
 
         test('progress fails by printing error', () async {
           await expectLater(
-            () => runWithOverrides(
+            runWithOverrides(
               () => networkChecker.performGCPSpeedTest(
                 uploadTimeout: uploadTimeout,
               ),
             ),
-            throwsException,
+            completes,
           );
 
           verify(
-            () => progress.fail('GCP speed test aborted: upload timed out'),
+            () => progress.fail(
+              'GCP speed test failed: Exception: Upload timed out',
+            ),
           ).called(1);
         });
       });
