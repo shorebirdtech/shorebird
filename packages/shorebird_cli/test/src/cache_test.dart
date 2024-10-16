@@ -189,31 +189,31 @@ void main() {
     group('updateAll', () {
       group('patch', () {
         group('fileName', () {
-          group(
-            'when on Windows',
-            () {
-              test('has exe extension', () {
-                final artifact =
-                    PatchArtifact(cache: cache, platform: platform);
-                expect(artifact.fileName, equals('patch.exe'));
-              });
-            },
-            testOn: 'windows',
-          );
+          group('when on Windows', () {
+            setUp(() {
+              setMockPlatform(Platform.windows);
+            });
 
-          group(
-            'when not on Windows',
-            () {
-              test('does not have exe extension', () {
-                final artifact =
-                    PatchArtifact(cache: cache, platform: platform);
-                expect(artifact.fileName, equals('patch'));
-              });
-            },
-            onPlatform: {
-              'windows': const Skip(),
-            },
-          );
+            test('has exe extension', () {
+              final fileName = runWithOverrides(
+                () => PatchArtifact(cache: cache, platform: platform).fileName,
+              );
+              expect(fileName, equals('patch.exe'));
+            });
+          });
+
+          group('when not on Windows', () {
+            setUp(() {
+              setMockPlatform(Platform.linux);
+            });
+
+            test('does not have exe extension', () {
+              final fileName = runWithOverrides(
+                () => PatchArtifact(cache: cache, platform: platform).fileName,
+              );
+              expect(fileName, equals('patch'));
+            });
+          });
         });
 
         group('when an exception happens', () {
