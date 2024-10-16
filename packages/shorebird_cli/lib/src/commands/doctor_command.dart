@@ -100,6 +100,19 @@ Android Toolchain
     await networkChecker.checkReachability();
     logger.info('');
 
+    if (verbose) {
+      final progress = logger.progress('Performing GCP speed test');
+
+      try {
+        final speed = await networkChecker.performGCPSpeedTest();
+        progress.complete('GCP Upload Speed: ${speed.toStringAsFixed(2)} MB/s');
+      } on NetworkCheckerException catch (error) {
+        progress.fail('GCP speed test failed: ${error.message}');
+      } catch (error) {
+        progress.fail('GCP speed test failed: $error');
+      }
+    }
+
     await doctor.runValidators(doctor.generalValidators, applyFixes: shouldFix);
 
     return ExitCode.success.code;

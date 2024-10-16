@@ -809,6 +809,9 @@ aar artifact already exists, continuing...''',
     logger.success('\n✅ Published Patch ${patch.number}!');
   }
 
+  /// Returns a GCP upload link for measuring upload speed.
+  Future<Uri> getGCPSpeedTestUrl() => codePushClient.getGCPSpeedTestUrl();
+
   /// Prints an appropriate error message for the given error and exits with
   /// code 70. If [progress] is provided, it will be failed with the given
   /// [message] or [error.toString()] if [message] is null.

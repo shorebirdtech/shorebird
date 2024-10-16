@@ -188,6 +188,34 @@ void main() {
 
     group('updateAll', () {
       group('patch', () {
+        group('fileName', () {
+          group('when on Windows', () {
+            setUp(() {
+              setMockPlatform(Platform.windows);
+            });
+
+            test('has exe extension', () {
+              final fileName = runWithOverrides(
+                () => PatchArtifact(cache: cache, platform: platform).fileName,
+              );
+              expect(fileName, equals('patch.exe'));
+            });
+          });
+
+          group('when not on Windows', () {
+            setUp(() {
+              setMockPlatform(Platform.linux);
+            });
+
+            test('does not have exe extension', () {
+              final fileName = runWithOverrides(
+                () => PatchArtifact(cache: cache, platform: platform).fileName,
+              );
+              expect(fileName, equals('patch'));
+            });
+          });
+        });
+
         group('when an exception happens', () {
           test('throws CacheUpdateFailure', () async {
             const exception = SocketException('test');
@@ -326,7 +354,7 @@ void main() {
           });
         });
 
-        test('pull correct artifact for MacOS', () async {
+        test('pulls correct artifact for MacOS', () async {
           setMockPlatform(Platform.macOS);
 
           await expectLater(
@@ -352,7 +380,7 @@ void main() {
           expect(requests, equals(expected));
         });
 
-        test('pull correct artifact for Windows', () async {
+        test('pulls correct artifact for Windows', () async {
           setMockPlatform(Platform.windows);
 
           await expectLater(
@@ -378,7 +406,7 @@ void main() {
           expect(requests, equals(expected));
         });
 
-        test('pull correct artifact for Linux', () async {
+        test('pulls correct artifact for Linux', () async {
           setMockPlatform(Platform.linux);
 
           await expectLater(
