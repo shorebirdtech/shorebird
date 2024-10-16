@@ -1,3 +1,7 @@
+# 1.1.6
+
+- Update log messages to explain what "using no-op implementation" means.
+
 # 1.1.5
 
 - Update example to use isNewPatchReadyToInstall.
