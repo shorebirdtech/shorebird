@@ -210,7 +210,7 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         return ExitCode.usage.code;
       } catch (error, stackTrace) {
         logger
-          ..detail('$error')
+          ..err('$error')
           ..detail('$stackTrace');
         exitCode = ExitCode.software.code;
       }
