@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.1 (October 15, 2024)
+
+- 🪵 Improve progress logs for artifact uploads
+- 🛜 Add various URL reachability checks to `shorebird doctor`
+- 👨‍🔧 Fix bug which caused unnecessary artifact downloads on windows
+
 ## 1.4.0 (October 9, 2024)
 
 - 🏢 Support for organizations! (Sharing groups of apps with groups of people.)
