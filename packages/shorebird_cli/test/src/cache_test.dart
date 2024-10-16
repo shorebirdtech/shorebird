@@ -354,7 +354,7 @@ void main() {
           });
         });
 
-        test('pull correct artifact for MacOS', () async {
+        test('pulls correct artifact for MacOS', () async {
           setMockPlatform(Platform.macOS);
 
           await expectLater(
@@ -380,7 +380,7 @@ void main() {
           expect(requests, equals(expected));
         });
 
-        test('pull correct artifact for Windows', () async {
+        test('pulls correct artifact for Windows', () async {
           setMockPlatform(Platform.windows);
 
           await expectLater(
@@ -406,7 +406,7 @@ void main() {
           expect(requests, equals(expected));
         });
 
-        test('pull correct artifact for Linux', () async {
+        test('pulls correct artifact for Linux', () async {
           setMockPlatform(Platform.linux);
 
           await expectLater(
