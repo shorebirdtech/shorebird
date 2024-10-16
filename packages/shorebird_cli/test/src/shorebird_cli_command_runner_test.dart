@@ -272,7 +272,7 @@ Engine • revision $shorebirdEngineRevision''',
         await runWithOverrides(
           () => commandRunner.run(['release', 'android', '--verbose']),
         );
-        verify(() => logger.detail(any(that: contains('Bad state')))).called(1);
+        verify(() => logger.err(any(that: contains('Bad state')))).called(1);
         verify(() => logger.detail(any(that: contains('#0')))).called(1);
       });
 
