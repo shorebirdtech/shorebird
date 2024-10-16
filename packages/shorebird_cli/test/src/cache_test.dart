@@ -188,6 +188,34 @@ void main() {
 
     group('updateAll', () {
       group('patch', () {
+        group('fileName', () {
+          group(
+            'when on Windows',
+            () {
+              test('has exe extension', () {
+                final artifact =
+                    PatchArtifact(cache: cache, platform: platform);
+                expect(artifact.fileName, equals('patch.exe'));
+              });
+            },
+            testOn: 'windows',
+          );
+
+          group(
+            'when not on Windows',
+            () {
+              test('does not have exe extension', () {
+                final artifact =
+                    PatchArtifact(cache: cache, platform: platform);
+                expect(artifact.fileName, equals('patch'));
+              });
+            },
+            onPlatform: {
+              'windows': const Skip(),
+            },
+          );
+        });
+
         group('when an exception happens', () {
           test('throws CacheUpdateFailure', () async {
             const exception = SocketException('test');
