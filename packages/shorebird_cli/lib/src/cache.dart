@@ -305,7 +305,7 @@ class PatchArtifact extends CachedArtifact {
   PatchArtifact({required super.cache, required super.platform});
 
   @override
-  String get fileName => 'patch';
+  String get fileName => platform.isWindows ? 'patch.exe' : 'patch';
 
   @override
   bool get isExecutable => true;
