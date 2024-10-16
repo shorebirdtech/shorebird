@@ -10,6 +10,7 @@ This section contains past updates we've sent to customers.
 
 - 🪵 Improve progress logs for artifact uploads
 - 🛜 Add various URL reachability checks to `shorebird doctor`
+- 👨‍🔧 Fix bug which caused unnecessary artifact downloads on windows
 
 ## 1.4.0 (October 9, 2024)
 
