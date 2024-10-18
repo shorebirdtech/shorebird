@@ -141,7 +141,10 @@ void main() {
             ),
             throwsA(
               isA<NetworkCheckerException>().having(
-                  (e) => e.message, 'message', equals('Upload timed out')),
+                (e) => e.message,
+                'message',
+                equals('Upload timed out'),
+              ),
             ),
           );
         });
