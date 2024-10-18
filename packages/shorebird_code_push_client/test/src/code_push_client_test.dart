@@ -2022,6 +2022,50 @@ void main() {
       });
     });
 
+    group('getGCPDownloadSpeedTestUrl', () {
+      group('when request fails', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.failedDependency,
+            ),
+          );
+        });
+
+        test('throws exception', () async {
+          expect(
+            () async => codePushClient.getGCPDownloadSpeedTestUrl(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                CodePushClient.unknownErrorMessage,
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when request succeeds', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(
+                utf8.encode('{"download_url": "https://example.com"}'),
+              ),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('returns download_url as parsed Uri', () async {
+          final url = await codePushClient.getGCPDownloadSpeedTestUrl();
+          expect(url, equals(Uri.parse('https://example.com')));
+        });
+      });
+    });
+
     group('close', () {
       test('closes the underlying client', () {
         codePushClient.close();
