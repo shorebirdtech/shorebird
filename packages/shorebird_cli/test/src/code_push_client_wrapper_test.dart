@@ -2361,11 +2361,11 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
       });
     });
 
-    group('getGCPSpeedTestUrl', () {
+    group('getGCPUploadSpeedTestUrl', () {
       final gcpSpeedTestUrl = Uri.parse('https://speedtest.gcp.com');
 
       setUp(() {
-        when(() => codePushClient.getGCPSpeedTestUrl()).thenAnswer(
+        when(() => codePushClient.getGCPUploadSpeedTestUrl()).thenAnswer(
           (_) async => gcpSpeedTestUrl,
         );
       });
@@ -2373,12 +2373,12 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
       test('calls codePushClient method', () async {
         await expectLater(
           runWithOverrides(
-            () => codePushClientWrapper.getGCPSpeedTestUrl(),
+            () => codePushClientWrapper.getGCPUploadSpeedTestUrl(),
           ),
           completion(gcpSpeedTestUrl),
         );
 
-        verify(() => codePushClient.getGCPSpeedTestUrl()).called(1);
+        verify(() => codePushClient.getGCPUploadSpeedTestUrl()).called(1);
       });
     });
   });

@@ -82,11 +82,11 @@ void main() {
       });
     });
 
-    group('performGCPSpeedTest', () {
+    group('performGCPUploadSpeedTest', () {
       final gcpUri = Uri.parse('http://localhost');
 
       setUp(() {
-        when(() => codePushClientWrapper.getGCPSpeedTestUrl()).thenAnswer(
+        when(() => codePushClientWrapper.getGCPUploadSpeedTestUrl()).thenAnswer(
           (_) async => gcpUri,
         );
       });
@@ -103,7 +103,7 @@ void main() {
 
         test('throws a NetworkCheckerException', () async {
           await expectLater(
-            runWithOverrides(networkChecker.performGCPSpeedTest),
+            runWithOverrides(networkChecker.performGCPUploadSpeedTest),
             throwsA(
               isA<NetworkCheckerException>().having(
                 (e) => e.message,
@@ -135,7 +135,7 @@ void main() {
         test('throws a NetworkCheckerException', () async {
           await expectLater(
             () => runWithOverrides(
-              () => networkChecker.performGCPSpeedTest(
+              () => networkChecker.performGCPUploadSpeedTest(
                 uploadTimeout: uploadTimeout,
               ),
             ),
@@ -177,8 +177,9 @@ void main() {
             }
           });
           await withClock(clock, () async {
-            final speed =
-                await runWithOverrides(networkChecker.performGCPSpeedTest);
+            final speed = await runWithOverrides(
+              networkChecker.performGCPUploadSpeedTest,
+            );
             // Our 5MB file took 1 second to upload, so our speed is 5 MB/s.
             expect(speed, equals(5.0));
 

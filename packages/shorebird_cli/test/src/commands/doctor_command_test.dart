@@ -83,7 +83,7 @@ void main() {
         () => networkChecker.checkReachability(),
       ).thenAnswer((_) async => {});
       when(
-        () => networkChecker.performGCPSpeedTest(),
+        () => networkChecker.performGCPUploadSpeedTest(),
       ).thenAnswer((_) async => 1.0);
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
@@ -134,14 +134,14 @@ Engine • revision $shorebirdEngineRevision
 '''),
       ).called(1);
       verify(() => networkChecker.checkReachability()).called(1);
-      verifyNever(() => networkChecker.performGCPSpeedTest());
+      verifyNever(() => networkChecker.performGCPUploadSpeedTest());
     });
 
     group('--verbose', () {
       setUp(() {
         when(() => argResults['verbose']).thenReturn(true);
         when(
-          () => networkChecker.performGCPSpeedTest(),
+          () => networkChecker.performGCPUploadSpeedTest(),
         ).thenAnswer((_) async => 1.23456789);
       });
 
@@ -219,7 +219,7 @@ Android Toolchain
         );
 
         verify(() => networkChecker.checkReachability()).called(1);
-        verify(() => networkChecker.performGCPSpeedTest()).called(1);
+        verify(() => networkChecker.performGCPUploadSpeedTest()).called(1);
         verify(
           () => progress.complete('GCP Upload Speed: 1.23 MB/s'),
         ).called(1);
@@ -289,7 +289,7 @@ Android Toolchain
         group('with NetworkCheckerException', () {
           setUp(() {
             when(
-              () => networkChecker.performGCPSpeedTest(),
+              () => networkChecker.performGCPUploadSpeedTest(),
             ).thenThrow(const NetworkCheckerException('oops'));
           });
 
@@ -300,7 +300,7 @@ Android Toolchain
             );
 
             verify(
-              () => progress.fail('GCP speed test failed: oops'),
+              () => progress.fail('GCP upload speed test failed: oops'),
             ).called(1);
           });
         });
@@ -308,7 +308,7 @@ Android Toolchain
         group('with generic Exception', () {
           setUp(() {
             when(
-              () => networkChecker.performGCPSpeedTest(),
+              () => networkChecker.performGCPUploadSpeedTest(),
             ).thenThrow(Exception('oops'));
           });
 
@@ -319,7 +319,9 @@ Android Toolchain
             );
 
             verify(
-              () => progress.fail('GCP speed test failed: Exception: oops'),
+              () => progress.fail(
+                'GCP upload speed test failed: Exception: oops',
+              ),
             ).called(1);
           });
         });

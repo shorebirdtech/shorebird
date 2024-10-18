@@ -810,7 +810,9 @@ aar artifact already exists, continuing...''',
   }
 
   /// Returns a GCP upload link for measuring upload speed.
-  Future<Uri> getGCPSpeedTestUrl() => codePushClient.getGCPSpeedTestUrl();
+  Future<Uri> getGCPUploadSpeedTestUrl() {
+    return codePushClient.getGCPUploadSpeedTestUrl();
+  }
 
   /// Prints an appropriate error message for the given error and exits with
   /// code 70. If [progress] is provided, it will be failed with the given

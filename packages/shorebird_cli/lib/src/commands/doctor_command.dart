@@ -104,12 +104,14 @@ Android Toolchain
       final progress = logger.progress('Performing GCP speed test');
 
       try {
-        final speed = await networkChecker.performGCPSpeedTest();
-        progress.complete('GCP Upload Speed: ${speed.toStringAsFixed(2)} MB/s');
+        final uploadSpeed = await networkChecker.performGCPUploadSpeedTest();
+        progress.complete(
+          'GCP Upload Speed: ${uploadSpeed.toStringAsFixed(2)} MB/s',
+        );
       } on NetworkCheckerException catch (error) {
-        progress.fail('GCP speed test failed: ${error.message}');
+        progress.fail('GCP upload speed test failed: ${error.message}');
       } catch (error) {
-        progress.fail('GCP speed test failed: $error');
+        progress.fail('GCP upload speed test failed: $error');
       }
     }
 
