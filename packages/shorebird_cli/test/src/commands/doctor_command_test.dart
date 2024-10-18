@@ -83,6 +83,9 @@ void main() {
         () => networkChecker.checkReachability(),
       ).thenAnswer((_) async => {});
       when(
+        () => networkChecker.performGCPDownloadSpeedTest(),
+      ).thenAnswer((_) async => 1.0);
+      when(
         () => networkChecker.performGCPUploadSpeedTest(),
       ).thenAnswer((_) async => 1.0);
       when(
@@ -134,12 +137,16 @@ Engine • revision $shorebirdEngineRevision
 '''),
       ).called(1);
       verify(() => networkChecker.checkReachability()).called(1);
+      verifyNever(() => networkChecker.performGCPDownloadSpeedTest());
       verifyNever(() => networkChecker.performGCPUploadSpeedTest());
     });
 
     group('--verbose', () {
       setUp(() {
         when(() => argResults['verbose']).thenReturn(true);
+        when(
+          () => networkChecker.performGCPDownloadSpeedTest(),
+        ).thenAnswer((_) async => 1.987654321);
         when(
           () => networkChecker.performGCPUploadSpeedTest(),
         ).thenAnswer((_) async => 1.23456789);
@@ -219,6 +226,10 @@ Android Toolchain
         );
 
         verify(() => networkChecker.checkReachability()).called(1);
+        verify(() => networkChecker.performGCPDownloadSpeedTest()).called(1);
+        verify(
+          () => progress.complete('GCP Download Speed: 1.99 MB/s'),
+        ).called(1);
         verify(() => networkChecker.performGCPUploadSpeedTest()).called(1);
         verify(
           () => progress.complete('GCP Upload Speed: 1.23 MB/s'),
@@ -278,7 +289,7 @@ Android Toolchain
         });
       });
 
-      group('when gcp speed test fails', () {
+      group('when gcp upload speed test fails', () {
         setUp(() {
           const flutterVersion = '1.2.3';
           when(
@@ -321,6 +332,55 @@ Android Toolchain
             verify(
               () => progress.fail(
                 'GCP upload speed test failed: Exception: oops',
+              ),
+            ).called(1);
+          });
+        });
+      });
+
+      group('when gcp download speed test fails', () {
+        setUp(() {
+          const flutterVersion = '1.2.3';
+          when(
+            () => shorebirdFlutter.getVersionString(),
+          ).thenAnswer((_) async => flutterVersion);
+        });
+
+        group('with NetworkCheckerException', () {
+          setUp(() {
+            when(
+              () => networkChecker.performGCPDownloadSpeedTest(),
+            ).thenThrow(const NetworkCheckerException('oops'));
+          });
+
+          test('logs error as detail, continues', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              completes,
+            );
+
+            verify(
+              () => progress.fail('GCP download speed test failed: oops'),
+            ).called(1);
+          });
+        });
+
+        group('with generic Exception', () {
+          setUp(() {
+            when(
+              () => networkChecker.performGCPDownloadSpeedTest(),
+            ).thenThrow(Exception('oops'));
+          });
+
+          test('logs error as detail, continues', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              completes,
+            );
+
+            verify(
+              () => progress.fail(
+                'GCP download speed test failed: Exception: oops',
               ),
             ).called(1);
           });

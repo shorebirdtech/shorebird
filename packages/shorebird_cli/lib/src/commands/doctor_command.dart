@@ -96,23 +96,43 @@ Android Toolchain
     logger.info(output.toString());
 
     // ignore: cascade_invocations
-    logger.info('URL reachability:');
+    logger.info('URL Reachability');
     await networkChecker.checkReachability();
     logger.info('');
 
     if (verbose) {
-      final progress = logger.progress('Performing GCP speed test');
+      logger.info('Network Speed');
+      final uploadProgress = logger.progress('Measuring GCP upload speed');
 
       try {
         final uploadSpeed = await networkChecker.performGCPUploadSpeedTest();
-        progress.complete(
+        uploadProgress.complete(
           'GCP Upload Speed: ${uploadSpeed.toStringAsFixed(2)} MB/s',
         );
       } on NetworkCheckerException catch (error) {
-        progress.fail('GCP upload speed test failed: ${error.message}');
+        uploadProgress.fail('GCP upload speed test failed: ${error.message}');
       } catch (error) {
-        progress.fail('GCP upload speed test failed: $error');
+        uploadProgress.fail('GCP upload speed test failed: $error');
       }
+
+      final downloadProgress = logger.progress('Measuring GCP download speed');
+
+      try {
+        final downloadSpeed =
+            await networkChecker.performGCPDownloadSpeedTest();
+        downloadProgress.complete(
+          'GCP Download Speed: ${downloadSpeed.toStringAsFixed(2)} MB/s',
+        );
+      } on NetworkCheckerException catch (error) {
+        downloadProgress.fail(
+          'GCP download speed test failed: ${error.message}',
+        );
+      } catch (error) {
+        downloadProgress.fail(
+          'GCP download speed test failed: $error',
+        );
+      }
+      logger.info('');
     }
 
     await doctor.runValidators(doctor.generalValidators, applyFixes: shouldFix);

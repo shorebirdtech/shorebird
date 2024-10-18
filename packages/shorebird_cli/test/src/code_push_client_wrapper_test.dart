@@ -2361,8 +2361,29 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
       });
     });
 
+    group('getGCPDownloadSpeedTestUrl', () {
+      final gcpSpeedTestUrl = Uri.parse('https://download.speedtest.gcp.com');
+
+      setUp(() {
+        when(() => codePushClient.getGCPDownloadSpeedTestUrl()).thenAnswer(
+          (_) async => gcpSpeedTestUrl,
+        );
+      });
+
+      test('calls codePushClient method', () async {
+        await expectLater(
+          runWithOverrides(
+            () => codePushClientWrapper.getGCPDownloadSpeedTestUrl(),
+          ),
+          completion(gcpSpeedTestUrl),
+        );
+
+        verify(() => codePushClient.getGCPDownloadSpeedTestUrl()).called(1);
+      });
+    });
+
     group('getGCPUploadSpeedTestUrl', () {
-      final gcpSpeedTestUrl = Uri.parse('https://speedtest.gcp.com');
+      final gcpSpeedTestUrl = Uri.parse('https://upload.speedtest.gcp.com');
 
       setUp(() {
         when(() => codePushClient.getGCPUploadSpeedTestUrl()).thenAnswer(
