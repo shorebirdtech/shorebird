@@ -57,7 +57,7 @@ class NetworkChecker {
 
   /// Uploads a file to GCP to measure upload speed. Returns the upload rate
   /// in MB/s.
-  Future<double> performGCPSpeedTest({
+  Future<double> performGCPUploadSpeedTest({
     // If they can't upload the file in two minutes, we can just say it's slow.
     Duration uploadTimeout = const Duration(minutes: 2),
   }) async {
@@ -69,7 +69,7 @@ class NetworkChecker {
     final testFile = File(p.join(tempDir.path, 'speed_test_file'))
       ..writeAsBytesSync(ByteData(fileSize).buffer.asUint8List());
     try {
-      final uri = await codePushClientWrapper.getGCPSpeedTestUrl();
+      final uri = await codePushClientWrapper.getGCPUploadSpeedTestUrl();
       final start = clock.now();
       final file = await http.MultipartFile.fromPath('file', testFile.path);
       final uploadRequest = http.MultipartRequest('POST', uri)..files.add(file);

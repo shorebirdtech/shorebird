@@ -1978,7 +1978,7 @@ void main() {
       });
     });
 
-    group('getGCPSpeedTestUrl', () {
+    group('getGCPUploadSpeedTestUrl', () {
       group('when request fails', () {
         setUp(() {
           when(() => httpClient.send(any())).thenAnswer(
@@ -1991,7 +1991,7 @@ void main() {
 
         test('throws exception', () async {
           expect(
-            () async => codePushClient.getGCPSpeedTestUrl(),
+            () async => codePushClient.getGCPUploadSpeedTestUrl(),
             throwsA(
               isA<CodePushException>().having(
                 (e) => e.message,
@@ -2016,7 +2016,7 @@ void main() {
         });
 
         test('returns upload_url as parsed Uri', () async {
-          final url = await codePushClient.getGCPSpeedTestUrl();
+          final url = await codePushClient.getGCPUploadSpeedTestUrl();
           expect(url, equals(Uri.parse('https://example.com')));
         });
       });
