@@ -809,6 +809,11 @@ aar artifact already exists, continuing...''',
     logger.success('\n✅ Published Patch ${patch.number}!');
   }
 
+  /// Returns a GCP download link for measuring download speed.
+  Future<Uri> getGCPDownloadSpeedTestUrl() {
+    return codePushClient.getGCPDownloadSpeedTestUrl();
+  }
+
   /// Returns a GCP upload link for measuring upload speed.
   Future<Uri> getGCPUploadSpeedTestUrl() {
     return codePushClient.getGCPUploadSpeedTestUrl();
