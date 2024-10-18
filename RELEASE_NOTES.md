@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.2 (October 18, 2024)
+
+- 📦 Include artifact download speed check in `shorebird doctor -v`
+
 ## 1.4.1 (October 15, 2024)
 
 - 🪵 Improve progress logs for artifact uploads
