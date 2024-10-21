@@ -439,14 +439,21 @@ Looked in:
             Arch.x86_64: releaseArtifact,
           },
         );
-        when(() => artifactManager.downloadFile(any()))
-            .thenAnswer((_) async => File(''));
+        when(
+          () => artifactManager.downloadFile(
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((_) async => File(''));
       });
 
       group('when release artifact fails to download', () {
         setUp(() {
           when(
-            () => artifactManager.downloadFile(any()),
+            () => artifactManager.downloadFile(
+              any(),
+              onProgress: any(named: 'onProgress'),
+            ),
           ).thenThrow(Exception('error'));
         });
 
@@ -542,6 +549,31 @@ Looked in:
           for (final bundle in result.values) {
             expect(bundle.hashSignature, isNull);
           }
+        });
+
+        test('updates progress with download percentage', () async {
+          await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: 'appId',
+              releaseId: 0,
+              releaseArtifact: File('release.aab'),
+            ),
+          );
+
+          final capturedOnProgress = verify(
+            () => artifactManager.downloadFile(
+              any(),
+              onProgress: captureAny(named: 'onProgress'),
+            ),
+          ).captured.first as ProgressCallback;
+
+          capturedOnProgress(0.5);
+
+          verify(
+            () => progress.update(
+              'Downloading release artifact 1/3 (50%)',
+            ),
+          ).called(1);
         });
 
         group('when a private key is provided', () {

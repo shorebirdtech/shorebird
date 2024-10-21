@@ -169,7 +169,10 @@ void main() {
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
       when(
-        () => artifactManager.downloadFile(any()),
+        () => artifactManager.downloadFile(
+          any(),
+          onProgress: any(named: 'onProgress'),
+        ),
       ).thenAnswer((_) async => File(''));
 
       when(() => cache.updateAll()).thenAnswer((_) async => {});
@@ -888,7 +891,12 @@ Please re-run the release command for this version or create a new release.''',
       final error = Exception('Failed to download primary release artifact.');
 
       setUp(() {
-        when(() => artifactManager.downloadFile(any())).thenThrow(error);
+        when(
+          () => artifactManager.downloadFile(
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenThrow(error);
       });
 
       test('logs error and exits with code 70', () async {
@@ -965,6 +973,33 @@ Please re-run the release command for this version or create a new release.''',
             track: DeploymentTrack.staging,
           ),
         ).called(1);
+      });
+    });
+
+    group('downloadPrimaryReleaseArtifact', () {
+      setUp(() {
+        final releaseArtifact = MockReleaseArtifact();
+        when(() => releaseArtifact.url).thenReturn('http://example.com');
+      });
+
+      test('updates progress with download percentage', () async {
+        await runWithOverrides(
+          () => command.downloadPrimaryReleaseArtifact(
+            releaseArtifact: releaseArtifact,
+            patcher: patcher,
+          ),
+        );
+
+        final capturedOnProgress = verify(
+          () => artifactManager.downloadFile(
+            Uri.parse(releaseArtifact.url),
+            onProgress: captureAny(named: 'onProgress'),
+          ),
+        ).captured.single as ProgressCallback;
+
+        capturedOnProgress(0.5);
+
+        verify(() => progress.update('Downloading aab (50%)')).called(1);
       });
     });
   });

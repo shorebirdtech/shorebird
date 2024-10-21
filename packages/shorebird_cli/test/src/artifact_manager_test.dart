@@ -242,6 +242,64 @@ void main() {
 
         expect(result.path, equals(outFile.path));
       });
+
+      group('with progress update', () {
+        group('when response contentLength is null', () {
+          setUp(() {
+            when(() => httpClient.send(any())).thenAnswer(
+              (_) async => http.StreamedResponse(
+                Stream.fromIterable([
+                  [1],
+                  [2],
+                  [3],
+                ]),
+                HttpStatus.ok,
+              ),
+            );
+          });
+
+          test('does not call onProgress callback', () async {
+            await runWithOverrides(
+              () => artifactManager.downloadFile(
+                Uri.parse('https://example.com'),
+                onProgress: (progress) {
+                  fail(
+                    '''onProgress should not be called when the response does not have a contentLength''',
+                  );
+                },
+              ),
+            );
+          });
+        });
+
+        group('when response contentLength is not null', () {
+          setUp(() {
+            when(() => httpClient.send(any())).thenAnswer(
+              (_) async => http.StreamedResponse(
+                Stream.fromIterable([
+                  [1],
+                  [2],
+                  [3],
+                ]),
+                HttpStatus.ok,
+                contentLength: 3,
+              ),
+            );
+          });
+
+          test('calls onProgress with correct percentage', () async {
+            final progressUpdates = <double>[];
+            await runWithOverrides(
+              () => artifactManager.downloadFile(
+                Uri.parse('https://example.com'),
+                onProgress: progressUpdates.add,
+              ),
+            );
+
+            expect(progressUpdates, equals([1 / 3, 2 / 3, 3 / 3]));
+          });
+        });
+      });
     });
 
     group('extractZip', () {
