@@ -439,14 +439,21 @@ Looked in:
             Arch.x86_64: releaseArtifact,
           },
         );
-        when(() => artifactManager.downloadFile(any()))
-            .thenAnswer((_) async => File(''));
+        when(
+          () => artifactManager.downloadFile(
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((_) async => File(''));
       });
 
       group('when release artifact fails to download', () {
         setUp(() {
           when(
-            () => artifactManager.downloadFile(any()),
+            () => artifactManager.downloadFile(
+              any(),
+              onProgress: any(named: 'onProgress'),
+            ),
           ).thenThrow(Exception('error'));
         });
 

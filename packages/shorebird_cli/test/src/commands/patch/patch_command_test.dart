@@ -169,7 +169,10 @@ void main() {
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
       when(
-        () => artifactManager.downloadFile(any()),
+        () => artifactManager.downloadFile(
+          any(),
+          onProgress: any(named: 'onProgress'),
+        ),
       ).thenAnswer((_) async => File(''));
 
       when(() => cache.updateAll()).thenAnswer((_) async => {});
@@ -888,7 +891,12 @@ Please re-run the release command for this version or create a new release.''',
       final error = Exception('Failed to download primary release artifact.');
 
       setUp(() {
-        when(() => artifactManager.downloadFile(any())).thenThrow(error);
+        when(
+          () => artifactManager.downloadFile(
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenThrow(error);
       });
 
       test('logs error and exits with code 70', () async {

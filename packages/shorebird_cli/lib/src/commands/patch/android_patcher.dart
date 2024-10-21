@@ -127,11 +127,19 @@ Looked in:
     final downloadReleaseArtifactProgress = logger.progress(
       'Downloading release artifacts',
     );
+    final numArtifacts = releaseArtifacts.length;
 
-    for (final releaseArtifact in releaseArtifacts.entries) {
+    for (final (i, releaseArtifact) in releaseArtifacts.entries.indexed) {
+      final baseMessage = 'Downloading release artifact ${i + 1}/$numArtifacts';
       try {
+        downloadReleaseArtifactProgress.update(baseMessage);
         final releaseArtifactFile = await artifactManager.downloadFile(
           Uri.parse(releaseArtifact.value.url),
+          onProgress: (progress) {
+            downloadReleaseArtifactProgress.update(
+              '$baseMessage (${(progress * 100).toStringAsFixed(0)}%)',
+            );
+          },
         );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
       } catch (error) {
