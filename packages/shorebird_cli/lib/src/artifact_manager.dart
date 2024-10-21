@@ -18,6 +18,9 @@ final artifactManagerRef = create(ArtifactManager.new);
 /// The [ArtifactManager] instance available in the current zone.
 ArtifactManager get artifactManager => read(artifactManagerRef);
 
+/// A callback that reports progress as a double between 0 and 1.
+typedef ProgressCallback = void Function(double progress);
+
 /// Manages artifacts for the Shorebird CLI.
 class ArtifactManager {
   /// Generates a binary diff between two files and returns the path to the
@@ -59,7 +62,7 @@ class ArtifactManager {
   Future<File> downloadFile(
     Uri uri, {
     String? outputPath,
-    void Function(double)? onProgress,
+    ProgressCallback? onProgress,
   }) async {
     final request = http.Request('GET', uri);
     final response = await httpClient.send(request);

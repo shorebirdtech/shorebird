@@ -975,5 +975,32 @@ Please re-run the release command for this version or create a new release.''',
         ).called(1);
       });
     });
+
+    group('downloadPrimaryReleaseArtifact', () {
+      setUp(() {
+        final releaseArtifact = MockReleaseArtifact();
+        when(() => releaseArtifact.url).thenReturn('http://example.com');
+      });
+
+      test('updates progress with download percentage', () async {
+        await runWithOverrides(
+          () => command.downloadPrimaryReleaseArtifact(
+            releaseArtifact: releaseArtifact,
+            patcher: patcher,
+          ),
+        );
+
+        final capturedOnProgress = verify(
+          () => artifactManager.downloadFile(
+            Uri.parse(releaseArtifact.url),
+            onProgress: captureAny(named: 'onProgress'),
+          ),
+        ).captured.single as ProgressCallback;
+
+        capturedOnProgress(0.5);
+
+        verify(() => progress.update('Downloading aab (50%)')).called(1);
+      });
+    });
   });
 }
