@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.3 (October 21, 2024)
+
+- 🧑‍⚕️ Fix `shorebird doctor -v` download speed test on Windows
+- 🍎 Enforce minimum Flutter version for `shorebird release ios-framework`
+
 ## 1.4.2 (October 18, 2024)
 
 - 📦 Include artifact download speed test in `shorebird doctor -v`
