@@ -79,7 +79,12 @@ class ArtifactManager {
       outFile.createSync();
     }
 
-    await outFile.openWrite().addStream(response.stream);
+    final ioSink = outFile.openWrite();
+    try {
+      await ioSink.addStream(response.stream);
+    } finally {
+      await ioSink.close();
+    }
     return outFile;
   }
 
