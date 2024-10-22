@@ -124,31 +124,20 @@ Looked in:
       platform: releaseType.releasePlatform,
     );
     final releaseArtifactPaths = <Arch, String>{};
-    final downloadReleaseArtifactProgress = logger.progress(
-      'Downloading release artifacts',
-    );
     final numArtifacts = releaseArtifacts.length;
 
     for (final (i, releaseArtifact) in releaseArtifacts.entries.indexed) {
-      final baseMessage = 'Downloading release artifact ${i + 1}/$numArtifacts';
       try {
-        downloadReleaseArtifactProgress.update(baseMessage);
-        final releaseArtifactFile = await artifactManager.downloadFile(
+        final releaseArtifactFile =
+            await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseArtifact.value.url),
-          onProgress: (progress) {
-            downloadReleaseArtifactProgress.update(
-              '$baseMessage (${(progress * 100).toStringAsFixed(0)}%)',
-            );
-          },
+          message: 'Downloading release artifact ${i + 1}/$numArtifacts',
         );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
       } catch (error) {
-        downloadReleaseArtifactProgress.fail('$error');
         throw ProcessExit(ExitCode.software.code);
       }
     }
-
-    downloadReleaseArtifactProgress.complete();
 
     final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
       projectRoot: projectRoot,

@@ -451,24 +451,16 @@ ${summary.join('\n')}
     required ReleaseArtifact releaseArtifact,
     required Patcher patcher,
   }) async {
-    final downloadMessage = 'Downloading ${patcher.primaryReleaseArtifactArch}';
-    final downloadProgress = logger.progress(downloadMessage);
     final File artifactFile;
     try {
-      artifactFile = await artifactManager.downloadFile(
+      artifactFile = await artifactManager.downloadWithProgressUpdates(
         Uri.parse(releaseArtifact.url),
-        onProgress: (progress) {
-          downloadProgress.update(
-            '$downloadMessage (${(progress * 100).toStringAsFixed(0)}%)',
-          );
-        },
+        message: 'Downloading ${patcher.primaryReleaseArtifactArch}',
       );
-    } catch (e) {
-      downloadProgress.fail(e.toString());
+    } catch (_) {
       throw ProcessExit(ExitCode.software.code);
     }
 
-    downloadProgress.complete();
     return artifactFile;
   }
 }
