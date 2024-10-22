@@ -133,7 +133,9 @@ class ArtifactManager {
           }
         }
       } finally {
-        await progressStreamController.close();
+        // Don't await, as this future will never complete if there are no
+        // listeners.
+        unawaited(progressStreamController.close());
         await ioSink.close();
       }
 

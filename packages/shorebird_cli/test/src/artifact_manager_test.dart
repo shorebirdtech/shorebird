@@ -366,10 +366,10 @@ void main() {
             ..add([1])
             ..add([1])
             ..add([1]);
-          await Future<void>.delayed(const Duration(milliseconds: 60));
+          await Future<void>.delayed(const Duration(milliseconds: 70));
           // Download the last 2/5, bringing the total to 5/5
           responseStreamController.add([1, 1]);
-          await Future<void>.delayed(const Duration(milliseconds: 60));
+          await Future<void>.delayed(const Duration(milliseconds: 70));
           verifyInOrder([
             () => progress.update('hello (20%)'),
             () => progress.update('hello (60%)'),
