@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.4 (October 22, 2024)
+
+- 📈 Add download progress to patch commands
+
 ## 1.4.3 (October 21, 2024)
 
 - 🧑‍⚕️ Fix `shorebird doctor -v` download speed test on Windows
