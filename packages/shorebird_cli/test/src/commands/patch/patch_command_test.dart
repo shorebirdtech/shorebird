@@ -169,9 +169,9 @@ void main() {
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
       when(
-        () => artifactManager.downloadFile(
+        () => artifactManager.downloadWithProgressUpdates(
           any(),
-          onProgress: any(named: 'onProgress'),
+          message: any(named: 'message'),
         ),
       ).thenAnswer((_) async => File(''));
 
@@ -892,9 +892,9 @@ Please re-run the release command for this version or create a new release.''',
 
       setUp(() {
         when(
-          () => artifactManager.downloadFile(
+          () => artifactManager.downloadWithProgressUpdates(
             any(),
-            onProgress: any(named: 'onProgress'),
+            message: any(named: 'message'),
           ),
         ).thenThrow(error);
       });
@@ -904,12 +904,6 @@ Please re-run the release command for this version or create a new release.''',
           () => runWithOverrides(command.run),
           exitsWithCode(ExitCode.software),
         );
-
-        verify(
-          () => progress.fail(
-            'Exception: Failed to download primary release artifact.',
-          ),
-        ).called(1);
       });
     });
 
@@ -973,33 +967,6 @@ Please re-run the release command for this version or create a new release.''',
             track: DeploymentTrack.staging,
           ),
         ).called(1);
-      });
-    });
-
-    group('downloadPrimaryReleaseArtifact', () {
-      setUp(() {
-        final releaseArtifact = MockReleaseArtifact();
-        when(() => releaseArtifact.url).thenReturn('http://example.com');
-      });
-
-      test('updates progress with download percentage', () async {
-        await runWithOverrides(
-          () => command.downloadPrimaryReleaseArtifact(
-            releaseArtifact: releaseArtifact,
-            patcher: patcher,
-          ),
-        );
-
-        final capturedOnProgress = verify(
-          () => artifactManager.downloadFile(
-            Uri.parse(releaseArtifact.url),
-            onProgress: captureAny(named: 'onProgress'),
-          ),
-        ).captured.single as ProgressCallback;
-
-        capturedOnProgress(0.5);
-
-        verify(() => progress.update('Downloading aab (50%)')).called(1);
       });
     });
   });
