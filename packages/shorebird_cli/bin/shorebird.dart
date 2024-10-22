@@ -36,6 +36,15 @@ Future<void> main(List<String> args) async {
     values: {shorebirdEnvRef},
   );
 
+  // Write the current command to the top of the log file.
+  currentRunLogFile.writeAsStringSync(
+    '''
+Command: shorebird ${args.join(' ')}
+
+''',
+    mode: FileMode.append,
+  );
+
   await IOOverrides.runZoned(
     () async => _flushThenExit(
       await runScoped(
