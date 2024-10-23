@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.5 (October 23, 2024)
+
+- 🧑‍🔧 Fix bug when patching with `--split-debug-info` on iOS
+  - `shorebird release` and `shorebird patch` now have first party support for `--split-debug-info`
+- 🪵 Do not output error message when `-h` flag is passed
+
 ## 1.4.4 (October 22, 2024)
 
 - 📈 Add download progress to patch commands
