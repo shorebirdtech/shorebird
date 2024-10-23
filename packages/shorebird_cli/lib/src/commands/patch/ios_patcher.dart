@@ -52,6 +52,30 @@ class IosPatcher extends Patcher {
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
 
+  /// The value of --split-debug-info-path if specified.
+  String? get splitDebugInfoPath =>
+      argResults[CommonArguments.splitDebugInfoArg.name] as String?;
+
+  // TODO(felangel): make this dynamic based on the platform and arch.
+  /// The name of the split debug info file.
+  static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
+
+  /// The additional gen_snapshot arguments to use when building the patch with
+  /// `--split-debug-info`.
+  List<String> get splitDebugInfoArgs {
+    return splitDebugInfoPath != null
+        ? [
+            '--dwarf-stack-traces',
+            '--resolve-dwarf-paths',
+            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath!)}''',
+          ]
+        : <String>[];
+  }
+
+  /// The path to save the split debug info file.
+  String saveDebuggingInfoPath(String directory) =>
+      p.join(p.absolute(directory), splitDebugInfoFileName);
+
   @visibleForTesting
   double? lastBuildLinkPercentage;
 
@@ -186,9 +210,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       }
 
       try {
+        if (splitDebugInfoPath != null) {
+          Directory(splitDebugInfoPath!).createSync(recursive: true);
+        }
         await artifactBuilder.buildElfAotSnapshot(
           appDillPath: ipaBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
+          additionalArgs: [...splitDebugInfoArgs],
         );
       } catch (error) {
         buildProgress.fail('$error');
@@ -398,6 +426,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         workingDirectory: buildDirectory.path,
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
+        additionalArgs: [...splitDebugInfoArgs],
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');

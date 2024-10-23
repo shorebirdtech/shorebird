@@ -284,6 +284,20 @@ void main() {
 
             expect(download.progress, emitsInOrder([1 / 3, 2 / 3, 3 / 3]));
           });
+
+          test('uses outputPath when specified', () async {
+            final tempDir = Directory.systemTemp.createTempSync();
+            final outputPath = p.join(tempDir.path, 'output-file.txt');
+            final download = await runWithOverrides(
+              () => artifactManager.startFileDownload(
+                Uri.parse('https://example.com'),
+                outputPath: outputPath,
+              ),
+            );
+            final file = await download.file;
+            expect(file.path, equals(outputPath));
+            expect(file.lengthSync(), equals(3));
+          });
         });
       });
     });

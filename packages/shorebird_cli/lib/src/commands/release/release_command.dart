@@ -132,6 +132,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       ..addOption(
         CommonArguments.publicKeyArg.name,
         help: CommonArguments.publicKeyArg.description,
+      )
+      ..addOption(
+        CommonArguments.splitDebugInfoArg.name,
+        help: CommonArguments.splitDebugInfoArg.description,
       );
   }
 

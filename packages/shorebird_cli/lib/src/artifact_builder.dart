@@ -406,11 +406,13 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   Future<File> buildElfAotSnapshot({
     required String appDillPath,
     required String outFilePath,
+    List<String> additionalArgs = const [],
   }) async {
     final arguments = [
       '--deterministic',
       '--snapshot-kind=app-aot-elf',
       '--elf=$outFilePath',
+      ...additionalArgs,
       appDillPath,
     ];
 

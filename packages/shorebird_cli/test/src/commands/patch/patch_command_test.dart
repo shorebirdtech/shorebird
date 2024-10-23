@@ -299,6 +299,19 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    group('splitDebugInfoPath', () {
+      test('returns null when --split-debug-info is not provided', () {
+        when(() => argResults['split-debug-info']).thenReturn(null);
+        expect(command.splitDebugInfoPath, isNull);
+      });
+
+      test('returns the path when --split-debug-info is provided', () {
+        const path = './build/symbols';
+        when(() => argResults['split-debug-info']).thenReturn(path);
+        expect(command.splitDebugInfoPath, equals(path));
+      });
+    });
+
     group('createPatch', () {
       test('publishes the patch', () async {
         await runWithOverrides(() => command.createPatch(patcher));
@@ -319,8 +332,9 @@ void main() {
           test('validates successfully', () async {
             await runWithOverrides(() => command.createPatch(patcher));
 
-            verify(() => shorebirdValidator.validateFlavors(flavorArg: null))
-                .called(1);
+            verify(
+              () => shorebirdValidator.validateFlavors(flavorArg: null),
+            ).called(1);
           });
         });
 
@@ -333,8 +347,9 @@ void main() {
           test('validates successfully', () async {
             await runWithOverrides(() => command.createPatch(patcher));
 
-            verify(() => shorebirdValidator.validateFlavors(flavorArg: flavor))
-                .called(1);
+            verify(
+              () => shorebirdValidator.validateFlavors(flavorArg: flavor),
+            ).called(1);
           });
         });
       });
@@ -382,8 +397,9 @@ void main() {
               when(
                 () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
               ).thenReturn(false);
-              when(() => argResults[CommonArguments.privateKeyArg.name])
-                  .thenReturn(createTempFile('private.pem').path);
+              when(
+                () => argResults[CommonArguments.privateKeyArg.name],
+              ).thenReturn(createTempFile('private.pem').path);
 
               await expectLater(
                 runWithOverrides(() => command.createPatch(patcher)),
@@ -408,8 +424,9 @@ void main() {
               when(
                 () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
               ).thenReturn(true);
-              when(() => argResults[CommonArguments.publicKeyArg.name])
-                  .thenReturn(createTempFile('public.pem').path);
+              when(
+                () => argResults[CommonArguments.publicKeyArg.name],
+              ).thenReturn(createTempFile('public.pem').path);
 
               await expectLater(
                 runWithOverrides(() => command.createPatch(patcher)),

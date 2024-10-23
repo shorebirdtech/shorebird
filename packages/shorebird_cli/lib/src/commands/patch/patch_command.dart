@@ -123,6 +123,10 @@ of the iOS app that is using this module.''',
       ..addOption(
         CommonArguments.publicKeyArg.name,
         help: CommonArguments.publicKeyArg.description,
+      )
+      ..addOption(
+        CommonArguments.splitDebugInfoArg.name,
+        help: CommonArguments.splitDebugInfoArg.description,
       );
   }
 
@@ -159,6 +163,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   bool get allowNativeDiffs => results['allow-native-diffs'] == true;
 
   bool get isStaging => results['staging'] == true;
+
+  /// The value of the --split-debug-info option.
+  String? get splitDebugInfoPath {
+    return results.findOption(
+      CommonArguments.splitDebugInfoArg.name,
+      argParser: argParser,
+    );
+  }
 
   @override
   Future<int> run() async {

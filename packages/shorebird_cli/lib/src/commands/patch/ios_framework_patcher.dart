@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
@@ -50,6 +51,30 @@ class IosFrameworkPatcher extends Patcher {
 
   @override
   double? get linkPercentage => lastBuildLinkPercentage;
+
+  /// The value of --split-debug-info-path if specified.
+  String? get splitDebugInfoPath =>
+      argResults[CommonArguments.splitDebugInfoArg.name] as String?;
+
+  // TODO(felangel): make this dynamic based on the platform and arch.
+  /// The name of the split debug info file.
+  static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
+
+  /// The additional gen_snapshot arguments to use when building the patch with
+  /// `--split-debug-info`.
+  List<String> get splitDebugInfoArgs {
+    return splitDebugInfoPath != null
+        ? [
+            '--dwarf-stack-traces',
+            '--resolve-dwarf-paths',
+            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath!)}''',
+          ]
+        : <String>[];
+  }
+
+  /// The path to save the split debug info file.
+  String saveDebuggingInfoPath(String directory) =>
+      p.join(p.absolute(directory), splitDebugInfoFileName);
 
   /// The last build link percentage.
   @visibleForTesting
@@ -108,6 +133,9 @@ class IosFrameworkPatcher extends Patcher {
       throw ProcessExit(ExitCode.software.code);
     }
     try {
+      if (splitDebugInfoPath != null) {
+        Directory(splitDebugInfoPath!).createSync(recursive: true);
+      }
       await artifactBuilder.buildElfAotSnapshot(
         appDillPath: buildResult.kernelFile.path,
         outFilePath: p.join(
@@ -115,6 +143,7 @@ class IosFrameworkPatcher extends Patcher {
           'build',
           'out.aot',
         ),
+        additionalArgs: [...splitDebugInfoArgs],
       );
     } catch (error) {
       buildProgress.fail('$error');
@@ -271,6 +300,7 @@ class IosFrameworkPatcher extends Patcher {
         kernel: _appDillCopyPath,
         outputPath: _vmcodeOutputPath,
         workingDirectory: buildDirectory.path,
+        additionalArgs: [...splitDebugInfoArgs],
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');

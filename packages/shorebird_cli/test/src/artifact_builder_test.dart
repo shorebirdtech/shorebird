@@ -999,10 +999,35 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
             ).thenReturn('gen_snapshot');
           });
 
+          test('passes additional args to gen_snapshot', () async {
+            await runWithOverrides(
+              () => builder.buildElfAotSnapshot(
+                appDillPath: '/app/dill/path',
+                outFilePath: '/path/to/out',
+                additionalArgs: ['--foo', 'bar'],
+              ),
+            );
+
+            verify(
+              () => shorebirdProcess.run(
+                'gen_snapshot',
+                [
+                  '--deterministic',
+                  '--snapshot-kind=app-aot-elf',
+                  '--elf=/path/to/out',
+                  '--foo',
+                  'bar',
+                  '/app/dill/path',
+                ],
+              ),
+            ).called(1);
+          });
+
           group('when build fails', () {
             setUp(() {
-              when(() => buildProcessResult.exitCode)
-                  .thenReturn(ExitCode.software.code);
+              when(
+                () => buildProcessResult.exitCode,
+              ).thenReturn(ExitCode.software.code);
             });
 
             test('throws ArtifactBuildException', () {

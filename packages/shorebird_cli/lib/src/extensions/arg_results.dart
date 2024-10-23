@@ -137,6 +137,7 @@ extension ForwardedArgs on ArgResults {
         ..._argsNamed(CommonArguments.dartDefineFromFileArg.name),
         ..._argsNamed(CommonArguments.buildNameArg.name),
         ..._argsNamed(CommonArguments.buildNumberArg.name),
+        ..._argsNamed(CommonArguments.splitDebugInfoArg.name),
       ],
     );
 
