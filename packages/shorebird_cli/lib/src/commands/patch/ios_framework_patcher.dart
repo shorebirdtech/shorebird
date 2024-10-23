@@ -11,7 +11,6 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
@@ -35,6 +34,7 @@ class IosFrameworkPatcher extends Patcher {
   /// {@macro ios_framework_patcher}
   IosFrameworkPatcher({
     required super.argResults,
+    required super.argParser,
     required super.flavor,
     required super.target,
   });
@@ -52,14 +52,6 @@ class IosFrameworkPatcher extends Patcher {
   @override
   double? get linkPercentage => lastBuildLinkPercentage;
 
-  /// The value of --split-debug-info-path if specified.
-  String? get splitDebugInfoPath =>
-      argResults[CommonArguments.splitDebugInfoArg.name] as String?;
-
-  // TODO(felangel): make this dynamic based on the platform and arch.
-  /// The name of the split debug info file.
-  static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
-
   /// The additional gen_snapshot arguments to use when building the patch with
   /// `--split-debug-info`.
   List<String> get splitDebugInfoArgs {
@@ -67,14 +59,10 @@ class IosFrameworkPatcher extends Patcher {
         ? [
             '--dwarf-stack-traces',
             '--resolve-dwarf-paths',
-            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath!)}''',
+            '''--save-debugging-info=${IosPatcher.saveDebuggingInfoPath(splitDebugInfoPath!)}''',
           ]
         : <String>[];
   }
-
-  /// The path to save the split debug info file.
-  String saveDebuggingInfoPath(String directory) =>
-      p.join(p.absolute(directory), splitDebugInfoFileName);
 
   /// The last build link percentage.
   @visibleForTesting

@@ -164,14 +164,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   bool get isStaging => results['staging'] == true;
 
-  /// The value of the --split-debug-info option.
-  String? get splitDebugInfoPath {
-    return results.findOption(
-      CommonArguments.splitDebugInfoArg.name,
-      argParser: argParser,
-    );
-  }
-
   @override
   Future<int> run() async {
     final patcherFutures =
@@ -190,24 +182,28 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       case ReleaseType.android:
         return AndroidPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );
       case ReleaseType.ios:
         return IosPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );
       case ReleaseType.iosFramework:
         return IosFrameworkPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );
       case ReleaseType.aar:
         return AarPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );

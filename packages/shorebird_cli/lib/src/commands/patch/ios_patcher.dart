@@ -42,6 +42,7 @@ class IosPatcher extends Patcher {
   /// {@macro ios_patcher}
   IosPatcher({
     required super.argResults,
+    required super.argParser,
     required super.flavor,
     required super.target,
   });
@@ -51,10 +52,6 @@ class IosPatcher extends Patcher {
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
-
-  /// The value of --split-debug-info-path if specified.
-  String? get splitDebugInfoPath =>
-      argResults[CommonArguments.splitDebugInfoArg.name] as String?;
 
   // TODO(felangel): make this dynamic based on the platform and arch.
   /// The name of the split debug info file.
@@ -73,8 +70,9 @@ class IosPatcher extends Patcher {
   }
 
   /// The path to save the split debug info file.
-  String saveDebuggingInfoPath(String directory) =>
-      p.join(p.absolute(directory), splitDebugInfoFileName);
+  static String saveDebuggingInfoPath(String directory) {
+    return p.join(p.absolute(directory), splitDebugInfoFileName);
+  }
 
   @visibleForTesting
   double? lastBuildLinkPercentage;

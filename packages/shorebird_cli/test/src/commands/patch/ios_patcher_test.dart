@@ -48,6 +48,7 @@ void main() {
     IosPatcher,
     () {
       late AotTools aotTools;
+      late ArgParser argParser;
       late ArgResults argResults;
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
@@ -107,6 +108,7 @@ void main() {
 
       setUp(() {
         aotTools = MockAotTools();
+        argParser = MockArgParser();
         argResults = MockArgResults();
         artifactBuilder = MockArtifactBuilder();
         artifactManager = MockArtifactManager();
@@ -128,6 +130,8 @@ void main() {
         shorebirdValidator = MockShorebirdValidator();
         xcodeBuild = MockXcodeBuild();
 
+        when(() => argParser.options).thenReturn({});
+
         when(() => argResults.options).thenReturn([]);
         when(() => argResults.rest).thenReturn([]);
         when(() => argResults.wasParsed(any())).thenReturn(false);
@@ -143,6 +147,7 @@ void main() {
         when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
 
         patcher = IosPatcher(
+          argParser: argParser,
           argResults: argResults,
           flavor: null,
           target: null,
@@ -682,7 +687,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             );
             setUp(() {
               when(
-                () => argResults['split-debug-info'],
+                () => argResults.wasParsed(
+                  CommonArguments.splitDebugInfoArg.name,
+                ),
+              ).thenReturn(true);
+              when(
+                () => argResults[CommonArguments.splitDebugInfoArg.name],
               ).thenReturn(splitDebugInfoPath);
             });
 
@@ -1122,7 +1132,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               );
               setUp(() {
                 when(
-                  () => argResults['split-debug-info'],
+                  () => argResults.wasParsed(
+                    CommonArguments.splitDebugInfoArg.name,
+                  ),
+                ).thenReturn(true);
+                when(
+                  () => argResults[CommonArguments.splitDebugInfoArg.name],
                 ).thenReturn(splitDebugInfoPath);
                 setUpProjectRootArtifacts();
               });

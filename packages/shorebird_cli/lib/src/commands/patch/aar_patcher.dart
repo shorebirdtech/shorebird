@@ -29,6 +29,7 @@ class AarPatcher extends Patcher {
   /// {@macro aar_patcher}
   AarPatcher({
     required super.argResults,
+    required super.argParser,
     required super.flavor,
     required super.target,
   });

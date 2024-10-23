@@ -42,6 +42,7 @@ void main() {
     IosFrameworkPatcher,
     () {
       late AotTools aotTools;
+      late ArgParser argParser;
       late ArgResults argResults;
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
@@ -96,6 +97,7 @@ void main() {
 
       setUp(() {
         aotTools = MockAotTools();
+        argParser = MockArgParser();
         argResults = MockArgResults();
         artifactBuilder = MockArtifactBuilder();
         artifactManager = MockArtifactManager();
@@ -115,13 +117,11 @@ void main() {
         shorebirdValidator = MockShorebirdValidator();
         xcodeBuild = MockXcodeBuild();
 
+        when(() => argParser.options).thenReturn({});
+
         when(() => argResults['build-number']).thenReturn('1.0');
         when(() => argResults.rest).thenReturn([]);
         when(() => argResults.wasParsed(any())).thenReturn(false);
-        when(() => argResults.wasParsed(CommonArguments.privateKeyArg.name))
-            .thenReturn(false);
-        when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
-            .thenReturn(false);
 
         when(() => logger.progress(any())).thenReturn(progress);
 
@@ -130,6 +130,7 @@ void main() {
         ).thenReturn(projectRoot);
 
         patcher = IosFrameworkPatcher(
+          argParser: argParser,
           argResults: argResults,
           flavor: null,
           target: null,
@@ -356,6 +357,7 @@ void main() {
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
                 outFilePath: any(named: 'outFilePath'),
+                additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenThrow(const FileSystemException('error'));
           });
@@ -413,6 +415,11 @@ void main() {
               p.join(splitDebugInfoPath, 'app.ios-arm64.symbols'),
             );
             setUp(() {
+              when(
+                () => argResults.wasParsed(
+                  CommonArguments.splitDebugInfoArg.name,
+                ),
+              ).thenReturn(true);
               when(
                 () => argResults['split-debug-info'],
               ).thenReturn(splitDebugInfoPath);
@@ -670,7 +677,12 @@ void main() {
               );
               setUp(() {
                 when(
-                  () => argResults['split-debug-info'],
+                  () => argResults.wasParsed(
+                    CommonArguments.splitDebugInfoArg.name,
+                  ),
+                ).thenReturn(true);
+                when(
+                  () => argResults[CommonArguments.splitDebugInfoArg.name],
                 ).thenReturn(splitDebugInfoPath);
                 setUpProjectRootArtifacts();
               });
