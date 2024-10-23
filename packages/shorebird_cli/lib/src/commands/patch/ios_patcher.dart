@@ -53,8 +53,7 @@ class IosPatcher extends Patcher {
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
 
-  // TODO(felangel): make this dynamic based on the platform and arch.
-  /// The name of the split debug info file.
+  /// The name of the split debug info file when the target is iOS.
   static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
 
   /// The additional gen_snapshot arguments to use when building the patch with
