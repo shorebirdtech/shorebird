@@ -216,7 +216,10 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
       }
     }
 
-    if (exitCode != ExitCode.success.code && logger.level != Level.verbose) {
+    // `runCommand` returns null in when the --help flag is passed.
+    if (exitCode != null &&
+        exitCode != ExitCode.success.code &&
+        logger.level != Level.verbose) {
       final fileAnIssue = link(
         uri: Uri.parse(
           'https://github.com/shorebirdtech/shorebird/issues/new/choose',

@@ -112,6 +112,20 @@ void main() {
       verify(() => logger.info(commandRunner.usage)).called(1);
     });
 
+    group('when runCommand returns null exitCode', () {
+      test('does not print failure text', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['--help']),
+        );
+        expect(result, equals(ExitCode.success.code));
+        verifyNever(
+          () => logger.info(
+            any(that: contains("If you aren't sure why this command failed")),
+          ),
+        );
+      });
+    });
+
     test('handles UsageException', () async {
       final result = await runWithOverrides(
         // fly_to_the_moon is not a valid command.
