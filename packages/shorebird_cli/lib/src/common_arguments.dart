@@ -102,8 +102,8 @@ The path for a private key .pem file that will be used to sign the patch artifac
 ''',
   );
 
-  /// An argument that allows the user to specify a file where program symbols
-  /// are stored.
+  /// An argument that allows the user to specify a directory where program
+  /// symbols are stored.
   static const splitDebugInfoArg = ArgumentDescriber(
     name: 'split-debug-info',
     description: '''
