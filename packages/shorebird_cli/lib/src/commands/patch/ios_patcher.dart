@@ -59,12 +59,12 @@ class IosPatcher extends Patcher {
 
   /// The additional gen_snapshot arguments to use when building the patch with
   /// `--split-debug-info`.
-  List<String> get splitDebugInfoArgs {
+  static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) {
     return splitDebugInfoPath != null
         ? [
             '--dwarf-stack-traces',
             '--resolve-dwarf-paths',
-            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath!)}''',
+            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
           ]
         : <String>[];
   }
@@ -214,7 +214,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         await artifactBuilder.buildElfAotSnapshot(
           appDillPath: ipaBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
-          additionalArgs: splitDebugInfoArgs,
+          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
         );
       } catch (error) {
         buildProgress.fail('$error');
@@ -424,7 +424,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         workingDirectory: buildDirectory.path,
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
-        additionalArgs: splitDebugInfoArgs,
+        additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');

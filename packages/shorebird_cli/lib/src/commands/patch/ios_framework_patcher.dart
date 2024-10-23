@@ -52,18 +52,6 @@ class IosFrameworkPatcher extends Patcher {
   @override
   double? get linkPercentage => lastBuildLinkPercentage;
 
-  /// The additional gen_snapshot arguments to use when building the patch with
-  /// `--split-debug-info`.
-  List<String> get splitDebugInfoArgs {
-    return splitDebugInfoPath != null
-        ? [
-            '--dwarf-stack-traces',
-            '--resolve-dwarf-paths',
-            '''--save-debugging-info=${IosPatcher.saveDebuggingInfoPath(splitDebugInfoPath!)}''',
-          ]
-        : <String>[];
-  }
-
   /// The last build link percentage.
   @visibleForTesting
   double? lastBuildLinkPercentage;
@@ -131,7 +119,7 @@ class IosFrameworkPatcher extends Patcher {
           'build',
           'out.aot',
         ),
-        additionalArgs: splitDebugInfoArgs,
+        additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       buildProgress.fail('$error');
@@ -288,7 +276,7 @@ class IosFrameworkPatcher extends Patcher {
         kernel: _appDillCopyPath,
         outputPath: _vmcodeOutputPath,
         workingDirectory: buildDirectory.path,
-        additionalArgs: splitDebugInfoArgs,
+        additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
