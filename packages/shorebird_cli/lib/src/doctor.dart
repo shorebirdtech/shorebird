@@ -29,8 +29,6 @@ class Doctor {
     ShorebirdVersionValidator(),
     ShorebirdFlutterValidator(),
     AndroidInternetPermissionValidator(),
-    ShorebirdApiAccessValidator(),
-    StorageAccessValidator(),
     ShorebirdYamlAssetValidator(),
   ];
 
