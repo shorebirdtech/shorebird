@@ -129,7 +129,7 @@ ${iOSLinkPercentageUrl.toLink()}
   /// step has not yet been run.
   double? get linkPercentage => null;
 
-  /// The value of --split-debug-info-path if specified.
+  /// The value of `--split-debug-info-path` if specified.
   String? get splitDebugInfoPath {
     return argResults.findOption(
       CommonArguments.splitDebugInfoArg.name,
