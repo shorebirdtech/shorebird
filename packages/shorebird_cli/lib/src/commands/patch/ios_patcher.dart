@@ -214,7 +214,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         await artifactBuilder.buildElfAotSnapshot(
           appDillPath: ipaBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
-          additionalArgs: [...splitDebugInfoArgs],
+          additionalArgs: splitDebugInfoArgs,
         );
       } catch (error) {
         buildProgress.fail('$error');
@@ -424,7 +424,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         workingDirectory: buildDirectory.path,
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
-        additionalArgs: [...splitDebugInfoArgs],
+        additionalArgs: splitDebugInfoArgs,
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');

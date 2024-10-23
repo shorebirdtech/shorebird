@@ -131,7 +131,7 @@ class IosFrameworkPatcher extends Patcher {
           'build',
           'out.aot',
         ),
-        additionalArgs: [...splitDebugInfoArgs],
+        additionalArgs: splitDebugInfoArgs,
       );
     } catch (error) {
       buildProgress.fail('$error');
@@ -288,7 +288,7 @@ class IosFrameworkPatcher extends Patcher {
         kernel: _appDillCopyPath,
         outputPath: _vmcodeOutputPath,
         workingDirectory: buildDirectory.path,
-        additionalArgs: [...splitDebugInfoArgs],
+        additionalArgs: splitDebugInfoArgs,
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
