@@ -42,6 +42,7 @@ void main() {
     IosFrameworkPatcher,
     () {
       late AotTools aotTools;
+      late ArgParser argParser;
       late ArgResults argResults;
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
@@ -96,6 +97,7 @@ void main() {
 
       setUp(() {
         aotTools = MockAotTools();
+        argParser = MockArgParser();
         argResults = MockArgResults();
         artifactBuilder = MockArtifactBuilder();
         artifactManager = MockArtifactManager();
@@ -115,13 +117,11 @@ void main() {
         shorebirdValidator = MockShorebirdValidator();
         xcodeBuild = MockXcodeBuild();
 
+        when(() => argParser.options).thenReturn({});
+
         when(() => argResults['build-number']).thenReturn('1.0');
         when(() => argResults.rest).thenReturn([]);
         when(() => argResults.wasParsed(any())).thenReturn(false);
-        when(() => argResults.wasParsed(CommonArguments.privateKeyArg.name))
-            .thenReturn(false);
-        when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
-            .thenReturn(false);
 
         when(() => logger.progress(any())).thenReturn(progress);
 
@@ -130,6 +130,7 @@ void main() {
         ).thenReturn(projectRoot);
 
         patcher = IosFrameworkPatcher(
+          argParser: argParser,
           argResults: argResults,
           flavor: null,
           target: null,
@@ -356,6 +357,7 @@ void main() {
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
                 outFilePath: any(named: 'outFilePath'),
+                additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenThrow(const FileSystemException('error'));
           });
@@ -390,6 +392,7 @@ void main() {
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
                 outFilePath: any(named: 'outFilePath'),
+                additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenAnswer(
               (invocation) async =>
@@ -400,8 +403,44 @@ void main() {
             Directory(
               p.join(projectRoot.path, ArtifactManager.appXcframeworkName),
             ).createSync(recursive: true);
-            when(() => artifactManager.getAppXcframeworkDirectory())
-                .thenReturn(projectRoot);
+            when(
+              () => artifactManager.getAppXcframeworkDirectory(),
+            ).thenReturn(projectRoot);
+          });
+
+          group('when --split-debug-info is provided', () {
+            final tempDir = Directory.systemTemp.createTempSync();
+            final splitDebugInfoPath = p.join(tempDir.path, 'symbols');
+            final splitDebugInfoFile = File(
+              p.join(splitDebugInfoPath, 'app.ios-arm64.symbols'),
+            );
+            setUp(() {
+              when(
+                () => argResults.wasParsed(
+                  CommonArguments.splitDebugInfoArg.name,
+                ),
+              ).thenReturn(true);
+              when(
+                () => argResults['split-debug-info'],
+              ).thenReturn(splitDebugInfoPath);
+            });
+
+            test('forwards --split-debug-info to builder', () async {
+              try {
+                await runWithOverrides(patcher.buildPatchArtifact);
+              } catch (_) {}
+              verify(
+                () => artifactBuilder.buildElfAotSnapshot(
+                  appDillPath: any(named: 'appDillPath'),
+                  outFilePath: any(named: 'outFilePath'),
+                  additionalArgs: [
+                    '--dwarf-stack-traces',
+                    '--resolve-dwarf-paths',
+                    '--save-debugging-info=${splitDebugInfoFile.path}',
+                  ],
+                ),
+              ).called(1);
+            });
           });
 
           group('when platform was specified via arg results rest', () {
@@ -562,10 +601,12 @@ void main() {
                 kernel: any(named: 'kernel'),
                 outputPath: any(named: 'outputPath'),
                 workingDirectory: any(named: 'workingDirectory'),
+                additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenAnswer((_) async => linkPercentage);
-            when(() => shorebirdEnv.flutterRevision)
-                .thenReturn(postLinkerFlutterRevision);
+            when(
+              () => shorebirdEnv.flutterRevision,
+            ).thenReturn(postLinkerFlutterRevision);
             when(
               () => shorebirdArtifacts.getArtifactPath(
                 artifact: ShorebirdArtifact.analyzeSnapshot,
@@ -624,6 +665,54 @@ void main() {
 
                 verify(
                   () => logger.err('Unable to find analyze_snapshot at '),
+                ).called(1);
+              });
+            });
+
+            group('when --split-debug-info is provided', () {
+              final tempDirectory = Directory.systemTemp.createTempSync();
+              final splitDebugInfoPath = p.join(tempDirectory.path, 'symbols');
+              final splitDebugInfoFile = File(
+                p.join(splitDebugInfoPath, 'app.ios-arm64.symbols'),
+              );
+              setUp(() {
+                when(
+                  () => argResults.wasParsed(
+                    CommonArguments.splitDebugInfoArg.name,
+                  ),
+                ).thenReturn(true);
+                when(
+                  () => argResults[CommonArguments.splitDebugInfoArg.name],
+                ).thenReturn(splitDebugInfoPath);
+                setUpProjectRootArtifacts();
+              });
+
+              test('forwards correct args to linker', () async {
+                try {
+                  await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                    ),
+                  );
+                } catch (_) {}
+                verify(
+                  () => aotTools.link(
+                    base: any(named: 'base'),
+                    patch: any(named: 'patch'),
+                    analyzeSnapshot: analyzeSnapshotFile.path,
+                    genSnapshot: genSnapshotFile.path,
+                    kernel: any(named: 'kernel'),
+                    outputPath: any(named: 'outputPath'),
+                    workingDirectory: any(named: 'workingDirectory'),
+                    dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+                    additionalArgs: [
+                      '--dwarf-stack-traces',
+                      '--resolve-dwarf-paths',
+                      '--save-debugging-info=${splitDebugInfoFile.path}',
+                    ],
+                  ),
                 ).called(1);
               });
             });

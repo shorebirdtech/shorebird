@@ -42,6 +42,7 @@ class IosPatcher extends Patcher {
   /// {@macro ios_patcher}
   IosPatcher({
     required super.argResults,
+    required super.argParser,
     required super.flavor,
     required super.target,
   });
@@ -51,6 +52,26 @@ class IosPatcher extends Patcher {
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
+
+  /// The name of the split debug info file when the target is iOS.
+  static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
+
+  /// The additional gen_snapshot arguments to use when building the patch with
+  /// `--split-debug-info`.
+  static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) {
+    return splitDebugInfoPath != null
+        ? [
+            '--dwarf-stack-traces',
+            '--resolve-dwarf-paths',
+            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
+          ]
+        : <String>[];
+  }
+
+  /// The path to save the split debug info file.
+  static String saveDebuggingInfoPath(String directory) {
+    return p.join(p.absolute(directory), splitDebugInfoFileName);
+  }
 
   @visibleForTesting
   double? lastBuildLinkPercentage;
@@ -186,9 +207,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       }
 
       try {
+        if (splitDebugInfoPath != null) {
+          Directory(splitDebugInfoPath!).createSync(recursive: true);
+        }
         await artifactBuilder.buildElfAotSnapshot(
           appDillPath: ipaBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
+          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
         );
       } catch (error) {
         buildProgress.fail('$error');
@@ -398,6 +423,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         workingDirectory: buildDirectory.path,
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
+        additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');

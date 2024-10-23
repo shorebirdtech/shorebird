@@ -123,6 +123,10 @@ of the iOS app that is using this module.''',
       ..addOption(
         CommonArguments.publicKeyArg.name,
         help: CommonArguments.publicKeyArg.description,
+      )
+      ..addOption(
+        CommonArguments.splitDebugInfoArg.name,
+        help: CommonArguments.splitDebugInfoArg.description,
       );
   }
 
@@ -178,24 +182,28 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       case ReleaseType.android:
         return AndroidPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );
       case ReleaseType.ios:
         return IosPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );
       case ReleaseType.iosFramework:
         return IosFrameworkPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );
       case ReleaseType.aar:
         return AarPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );

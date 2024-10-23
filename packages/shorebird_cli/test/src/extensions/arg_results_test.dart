@@ -107,6 +107,10 @@ void main() {
           CommonArguments.buildNumberArg.name,
           help: CommonArguments.buildNumberArg.description,
         )
+        ..addOption(
+          CommonArguments.splitDebugInfoArg.name,
+          help: CommonArguments.splitDebugInfoArg.description,
+        )
         ..addMultiOption(
           'platforms',
           allowed: ReleaseType.values.map((e) => e.cliName),
@@ -227,6 +231,37 @@ void main() {
               '--build-number=4',
             ],
           ),
+        );
+      });
+    });
+
+    group('when split-debug-info is provided before the --', () {
+      test('forwards it', () {
+        final args = [
+          '--verbose',
+          '--split-debug-info=build/symbols',
+        ];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, hasLength(1));
+        expect(
+          result.forwardedArgs,
+          contains('--split-debug-info=build/symbols'),
+        );
+      });
+    });
+
+    group('when split-debug-info is provided after the --', () {
+      test('forwards it', () {
+        final args = [
+          '--verbose',
+          '--',
+          '--split-debug-info=build/symbols',
+        ];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, hasLength(1));
+        expect(
+          result.forwardedArgs,
+          contains('--split-debug-info=build/symbols'),
         );
       });
     });

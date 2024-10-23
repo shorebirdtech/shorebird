@@ -243,6 +243,7 @@ class AotTools {
     required String outputPath,
     String? workingDirectory,
     String? dumpDebugInfoPath,
+    List<String> additionalArgs = const [],
   }) async {
     // We use the json lines format. https://jsonlines.org
     const linkJson = 'link.jsonl';
@@ -263,6 +264,10 @@ class AotTools {
           '--redirect-to=${p.join(outputDir, linkJson)}',
         ],
         if (dumpDebugInfoPath != null) '--dump-debug-info=$dumpDebugInfoPath',
+        if (additionalArgs.isNotEmpty) ...[
+          '--',
+          ...additionalArgs,
+        ]
       ],
       workingDirectory: workingDirectory,
     );

@@ -35,6 +35,7 @@ void main() {
     const packageName = 'com.example.my_flutter_module';
     const buildNumber = '1.0';
 
+    late ArgParser argParser;
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
@@ -93,6 +94,7 @@ void main() {
     });
 
     setUp(() {
+      argParser = MockArgParser();
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
@@ -117,7 +119,12 @@ void main() {
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
 
-      patcher = AarPatcher(argResults: argResults, flavor: null, target: null);
+      patcher = AarPatcher(
+        argParser: argParser,
+        argResults: argResults,
+        flavor: null,
+        target: null,
+      );
     });
 
     group('buildNumber', () {

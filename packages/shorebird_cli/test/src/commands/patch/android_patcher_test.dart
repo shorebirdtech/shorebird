@@ -37,6 +37,7 @@ import '../../mocks.dart';
 
 void main() {
   group(AndroidPatcher, () {
+    late ArgParser argParser;
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
@@ -116,6 +117,7 @@ void main() {
     });
 
     setUp(() {
+      argParser = MockArgParser();
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
@@ -144,6 +146,7 @@ void main() {
       ).thenReturn(projectRoot);
 
       patcher = AndroidPatcher(
+        argParser: argParser,
         argResults: argResults,
         flavor: null,
         target: null,

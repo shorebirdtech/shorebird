@@ -48,6 +48,7 @@ void main() {
     IosPatcher,
     () {
       late AotTools aotTools;
+      late ArgParser argParser;
       late ArgResults argResults;
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
@@ -107,6 +108,7 @@ void main() {
 
       setUp(() {
         aotTools = MockAotTools();
+        argParser = MockArgParser();
         argResults = MockArgResults();
         artifactBuilder = MockArtifactBuilder();
         artifactManager = MockArtifactManager();
@@ -128,6 +130,8 @@ void main() {
         shorebirdValidator = MockShorebirdValidator();
         xcodeBuild = MockXcodeBuild();
 
+        when(() => argParser.options).thenReturn({});
+
         when(() => argResults.options).thenReturn([]);
         when(() => argResults.rest).thenReturn([]);
         when(() => argResults.wasParsed(any())).thenReturn(false);
@@ -143,6 +147,7 @@ void main() {
         when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
 
         patcher = IosPatcher(
+          argParser: argParser,
           argResults: argResults,
           flavor: null,
           target: null,
@@ -665,12 +670,48 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
                 outFilePath: any(named: 'outFilePath'),
+                additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenAnswer(
               (invocation) async =>
                   File(invocation.namedArguments[#outFilePath] as String)
                     ..createSync(recursive: true),
             );
+          });
+
+          group('when --split-debug-info is provided', () {
+            final tempDir = Directory.systemTemp.createTempSync();
+            final splitDebugInfoPath = p.join(tempDir.path, 'symbols');
+            final splitDebugInfoFile = File(
+              p.join(splitDebugInfoPath, 'app.ios-arm64.symbols'),
+            );
+            setUp(() {
+              when(
+                () => argResults.wasParsed(
+                  CommonArguments.splitDebugInfoArg.name,
+                ),
+              ).thenReturn(true);
+              when(
+                () => argResults[CommonArguments.splitDebugInfoArg.name],
+              ).thenReturn(splitDebugInfoPath);
+            });
+
+            test('forwards --split-debug-info to builder', () async {
+              try {
+                await runWithOverrides(patcher.buildPatchArtifact);
+              } catch (_) {}
+              verify(
+                () => artifactBuilder.buildElfAotSnapshot(
+                  appDillPath: any(named: 'appDillPath'),
+                  outFilePath: any(named: 'outFilePath'),
+                  additionalArgs: [
+                    '--dwarf-stack-traces',
+                    '--resolve-dwarf-paths',
+                    '--save-debugging-info=${splitDebugInfoFile.path}',
+                  ],
+                ),
+              ).called(1);
+            });
           });
 
           group('when releaseVersion is provided', () {
@@ -718,8 +759,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
           group('when the key pair is provided', () {
             setUp(() {
-              when(() => codeSigner.base64PublicKey(any()))
-                  .thenReturn('public_key_encoded');
+              when(
+                () => codeSigner.base64PublicKey(any()),
+              ).thenReturn('public_key_encoded');
             });
 
             test('calls the buildIpa passing the key', () async {
@@ -730,13 +772,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               final key = createTempFile('public.pem')
                 ..writeAsStringSync('public_key');
 
-              when(() => argResults[CommonArguments.publicKeyArg.name])
-                  .thenReturn(key.path);
-              when(() => argResults[CommonArguments.publicKeyArg.name])
-                  .thenReturn(key.path);
-              await runWithOverrides(
-                patcher.buildPatchArtifact,
-              );
+              when(
+                () => argResults[CommonArguments.publicKeyArg.name],
+              ).thenReturn(key.path);
+              when(
+                () => argResults[CommonArguments.publicKeyArg.name],
+              ).thenReturn(key.path);
+              await runWithOverrides(patcher.buildPatchArtifact);
 
               verify(
                 () => artifactBuilder.buildIpa(
@@ -950,6 +992,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 outputPath: any(named: 'outputPath'),
                 workingDirectory: any(named: 'workingDirectory'),
                 dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+                additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenAnswer((_) async => linkPercentage);
             when(
@@ -983,8 +1026,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 ),
               ),
             );
-            when(() => shorebirdEnv.flutterRevision)
-                .thenReturn(postLinkerFlutterRevision);
+            when(
+              () => shorebirdEnv.flutterRevision,
+            ).thenReturn(postLinkerFlutterRevision);
             when(
               () => shorebirdArtifacts.getArtifactPath(
                 artifact: ShorebirdArtifact.analyzeSnapshot,
@@ -1080,6 +1124,54 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               });
             });
 
+            group('when --split-debug-info is provided', () {
+              final tempDirectory = Directory.systemTemp.createTempSync();
+              final splitDebugInfoPath = p.join(tempDirectory.path, 'symbols');
+              final splitDebugInfoFile = File(
+                p.join(splitDebugInfoPath, 'app.ios-arm64.symbols'),
+              );
+              setUp(() {
+                when(
+                  () => argResults.wasParsed(
+                    CommonArguments.splitDebugInfoArg.name,
+                  ),
+                ).thenReturn(true);
+                when(
+                  () => argResults[CommonArguments.splitDebugInfoArg.name],
+                ).thenReturn(splitDebugInfoPath);
+                setUpProjectRootArtifacts();
+              });
+
+              test('forwards correct args to linker', () async {
+                try {
+                  await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                    ),
+                  );
+                } catch (_) {}
+                verify(
+                  () => aotTools.link(
+                    base: any(named: 'base'),
+                    patch: any(named: 'patch'),
+                    analyzeSnapshot: analyzeSnapshotFile.path,
+                    genSnapshot: genSnapshotFile.path,
+                    kernel: any(named: 'kernel'),
+                    outputPath: any(named: 'outputPath'),
+                    workingDirectory: any(named: 'workingDirectory'),
+                    dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+                    additionalArgs: [
+                      '--dwarf-stack-traces',
+                      '--resolve-dwarf-paths',
+                      '--save-debugging-info=${splitDebugInfoFile.path}',
+                    ],
+                  ),
+                ).called(1);
+              });
+            });
+
             group('when call to aotTools.link fails', () {
               setUp(() {
                 when(
@@ -1092,6 +1184,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                     outputPath: any(named: 'outputPath'),
                     workingDirectory: any(named: 'workingDirectory'),
                     dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+                    additionalArgs: any(named: 'additionalArgs'),
                   ),
                 ).thenThrow(Exception('oops'));
 

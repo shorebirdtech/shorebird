@@ -34,6 +34,7 @@ class IosFrameworkPatcher extends Patcher {
   /// {@macro ios_framework_patcher}
   IosFrameworkPatcher({
     required super.argResults,
+    required super.argParser,
     required super.flavor,
     required super.target,
   });
@@ -108,6 +109,9 @@ class IosFrameworkPatcher extends Patcher {
       throw ProcessExit(ExitCode.software.code);
     }
     try {
+      if (splitDebugInfoPath != null) {
+        Directory(splitDebugInfoPath!).createSync(recursive: true);
+      }
       await artifactBuilder.buildElfAotSnapshot(
         appDillPath: buildResult.kernelFile.path,
         outFilePath: p.join(
@@ -115,6 +119,7 @@ class IosFrameworkPatcher extends Patcher {
           'build',
           'out.aot',
         ),
+        additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       buildProgress.fail('$error');
@@ -271,6 +276,7 @@ class IosFrameworkPatcher extends Patcher {
         kernel: _appDillCopyPath,
         outputPath: _vmcodeOutputPath,
         workingDirectory: buildDirectory.path,
+        additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');

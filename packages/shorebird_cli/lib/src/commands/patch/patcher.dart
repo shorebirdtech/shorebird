@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/iterable.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -24,6 +25,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 abstract class Patcher {
   /// {@macro patcher}
   Patcher({
+    required this.argParser,
     required this.argResults,
     required this.flavor,
     required this.target,
@@ -40,6 +42,9 @@ This means the patched code may execute slower than expected.
 ${iOSLinkPercentageUrl.toLink()}
 ''';
   }
+
+  /// The parser for the arguments passed to the command.
+  final ArgParser argParser;
 
   /// The arguments passed to the command.
   final ArgResults argResults;
@@ -123,6 +128,14 @@ ${iOSLinkPercentageUrl.toLink()}
   /// Returns `null` if the platform does not use a linker or if the linking
   /// step has not yet been run.
   double? get linkPercentage => null;
+
+  /// The value of `--split-debug-info-path` if specified.
+  String? get splitDebugInfoPath {
+    return argResults.findOption(
+      CommonArguments.splitDebugInfoArg.name,
+      argParser: argParser,
+    );
+  }
 
   /// The build directory of the respective shorebird project.
   Directory get buildDirectory {

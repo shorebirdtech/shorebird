@@ -29,6 +29,7 @@ class AndroidPatcher extends Patcher {
   /// {@macro android_patcher}
   AndroidPatcher({
     required super.argResults,
+    required super.argParser,
     required super.flavor,
     required super.target,
   });

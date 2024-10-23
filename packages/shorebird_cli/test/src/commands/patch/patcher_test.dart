@@ -26,6 +26,7 @@ void main() {
       test('defaults to null', () {
         expect(
           _TestPatcher(
+            argParser: MockArgParser(),
             argResults: MockArgResults(),
             flavor: null,
             target: null,
@@ -39,6 +40,7 @@ void main() {
       test('has no validations by default', () {
         expect(
           _TestPatcher(
+            argParser: MockArgParser(),
             argResults: MockArgResults(),
             flavor: null,
             target: null,
@@ -59,6 +61,7 @@ void main() {
         test('returns an empty list', () {
           expect(
             _TestPatcher(
+              argParser: MockArgParser(),
               argResults: MockArgResults(),
               flavor: null,
               target: null,
@@ -72,6 +75,7 @@ void main() {
         test('returns an empty list', () {
           expect(
             _TestPatcher(
+              argParser: MockArgParser(),
               argResults: argResults,
               flavor: null,
               target: null,
@@ -90,6 +94,7 @@ void main() {
           test('returns an empty list', () {
             expect(
               _TestPatcher(
+                argParser: MockArgParser(),
                 argResults: argResults,
                 flavor: null,
                 target: null,
@@ -107,6 +112,7 @@ void main() {
           test('returns an empty list', () {
             expect(
               _TestPatcher(
+                argParser: MockArgParser(),
                 argResults: argResults,
                 flavor: null,
                 target: null,
@@ -122,6 +128,7 @@ void main() {
 
             expect(
               _TestPatcher(
+                argParser: MockArgParser(),
                 argResults: argResults,
                 flavor: null,
                 target: null,
@@ -150,6 +157,7 @@ void main() {
           test('returns an empty list', () {
             expect(
               _TestPatcher(
+                argParser: MockArgParser(),
                 argResults: argResults,
                 flavor: null,
                 target: null,
@@ -167,6 +175,7 @@ void main() {
           'with correct args', () async {
         final args = MockArgResults();
         final patcher = _TestPatcher(
+          argParser: MockArgParser(),
           argResults: args,
           flavor: null,
           target: null,
@@ -219,6 +228,7 @@ void main() {
 
 class _TestPatcher extends Patcher {
   _TestPatcher({
+    required super.argParser,
     required super.argResults,
     required super.flavor,
     required super.target,
