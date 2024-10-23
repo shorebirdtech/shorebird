@@ -108,9 +108,9 @@ The path for a private key .pem file that will be used to sign the patch artifac
     name: 'split-debug-info',
     description: '''
 In a release build, this flag reduces application size by storing Dart program symbols in a separate file on the host rather than
-                                                             in the application. The value of the flag should be a directory where program symbol files can be stored for later use. These
-                                                             symbol files contain the information needed to symbolize Dart stack traces. For an app built with this flag, the "flutter
-                                                             symbolize" command with the right program symbol file is required to obtain a human readable stack trace.
+in the application. The value of the flag should be a directory where program symbol files can be stored for later use. These
+symbol files contain the information needed to symbolize Dart stack traces. For an app built with this flag, the "flutter
+symbolize" command with the right program symbol file is required to obtain a human readable stack trace.
 ''',
   );
 }
