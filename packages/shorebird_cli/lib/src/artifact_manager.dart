@@ -284,6 +284,10 @@ class ArtifactManager {
         .whereType<Directory>()
         // Get the most recently modified xcarchive to handle cases where an app
         // may produce multiple xcarchives with different names.
+        // This still could grab the wrong ipa, if multiple `flutter` commands
+        // are running in parallel or the clock is/was broken on the machine.
+        // If either of those occurs in the wild we can check the contents of the
+        // xcarchives, but this should be good enough for now.
         .sorted(
           (a, b) => b.statSync().modified.compareTo(a.statSync().modified),
         )
