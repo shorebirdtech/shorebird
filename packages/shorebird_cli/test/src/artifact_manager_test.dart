@@ -609,6 +609,9 @@ void main() {
                 'Runner.xcarchive',
               ),
             )..createSync(recursive: true);
+            // Wait to ensure the new archive directory is created after the old
+            // archive directory.
+            await Future<void>.delayed(const Duration(milliseconds: 50));
             newArchiveDirectory = Directory(
               p.join(
                 projectRoot.path,
