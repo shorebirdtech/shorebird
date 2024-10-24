@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.6 (October 24, 2024)
+
+- 🍧 Fix issue with `shorebird release ios` where flavored apps would sometimes
+  upload the incorrect binary.
+
 ## 1.4.5 (October 23, 2024)
 
 - 🧑‍🔧 Fix bug when patching with `--split-debug-info` on iOS
