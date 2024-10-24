@@ -593,6 +593,57 @@ void main() {
         });
       });
 
+      group('when multiple xcarchive directories exist', () {
+        late Directory oldArchiveDirectory;
+        late Directory newArchiveDirectory;
+
+        setUp(() {
+          oldArchiveDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner.xcarchive',
+            ),
+          )..createSync(recursive: true);
+          newArchiveDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner2.xcarchive',
+            ),
+          )..createSync(recursive: true);
+        });
+
+        test('selects the most recently updated', () async {
+          final firstResult = runWithOverrides(
+            () => artifactManager.getXcarchiveDirectory(),
+          );
+          // The new archive directory should be selected because it was created
+          // after the old archive directory.
+          expect(firstResult!.path, equals(newArchiveDirectory.path));
+
+          // Now recreate the old archive directory and ensure it is selected.
+          oldArchiveDirectory.deleteSync(recursive: true);
+          oldArchiveDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner.xcarchive',
+            ),
+          )..createSync(recursive: true);
+          final secondResult = runWithOverrides(
+            () => artifactManager.getXcarchiveDirectory(),
+          );
+          expect(secondResult!.path, equals(oldArchiveDirectory.path));
+        });
+      });
+
       group('when archive directory does not exist', () {
         test('returns null', () {
           expect(
