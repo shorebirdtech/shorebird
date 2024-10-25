@@ -114,6 +114,9 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         targetPlatforms: architectures,
         args: argResults.forwardedArgs,
         base64PublicKey: base64PublicKey,
+        baseProgressMessage:
+            'Building app bundle with Flutter $flutterVersionString',
+        buildProgress: buildAppBundleProgress,
       );
     } on ArtifactBuildException catch (e) {
       buildAppBundleProgress.fail(e.message);

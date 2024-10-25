@@ -81,6 +81,9 @@ class AndroidPatcher extends Patcher {
         args: argResults.forwardedArgs +
             buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
         base64PublicKey: argResults.encodedPublicKey,
+        baseProgressMessage:
+            'Building patch with Flutter $flutterVersionString',
+        buildProgress: buildProgress,
       );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {

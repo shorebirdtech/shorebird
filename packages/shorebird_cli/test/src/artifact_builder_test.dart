@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -39,6 +40,7 @@ void main() {
     late ShorebirdProcessResult buildProcessResult;
     late ShorebirdProcessResult pubGetProcessResult;
     late ArtifactBuilder builder;
+    late Process buildProcess;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -71,6 +73,7 @@ void main() {
       shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
+      buildProcess = MockProcess();
 
       when(
         () => shorebirdProcess.run(
@@ -89,6 +92,13 @@ void main() {
           runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => buildProcessResult);
+      when(
+        () => shorebirdProcess.start(
+          any(),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
+      ).thenAnswer((_) async => buildProcess);
       when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
       when(() => buildProcessResult.stdout).thenReturn(
         '''
@@ -156,7 +166,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           await testCall();
 
           verifyNever(
-            () => shorebirdProcess.run(
+            () => shorebirdProcess.start(
               'flutter',
               ['--no-version-check', 'pub', 'get', '--offline'],
               runInShell: any(named: 'runInShell'),
@@ -175,13 +185,28 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             flavor: any(named: 'flavor'),
           ),
         ).thenReturn(File('app-release.aab'));
+        when(() => buildProcess.stdout).thenAnswer(
+          (_) => Stream.fromIterable(
+            [
+              'TODO',
+            ].map(utf8.encode),
+          ),
+        );
+        when(() => buildProcess.stderr).thenAnswer(
+          (_) => Stream.fromIterable(
+            [
+              'TODO',
+            ].map(utf8.encode),
+          ),
+        );
+        when(() => buildProcess.exitCode).thenAnswer((_) async => 0);
       });
 
       test('invokes the correct flutter build command', () async {
         await runWithOverrides(() => builder.buildAppBundle());
 
         verify(
-          () => shorebirdProcess.run(
+          () => shorebirdProcess.start(
             'flutter',
             ['build', 'appbundle', '--release'],
             runInShell: any(named: 'runInShell'),
@@ -223,7 +248,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
         setUp(() {
           when(
-            () => shorebirdProcess.run(
+            () => shorebirdProcess.start(
               'flutter',
               [
                 'build',
@@ -238,7 +263,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
               },
             ),
-          ).thenAnswer((_) async => buildProcessResult);
+          ).thenAnswer((_) async => buildProcess);
         });
 
         test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
