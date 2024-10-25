@@ -29,7 +29,7 @@ void main() {
     });
   });
 
-  group(ArtifactBuilder, () {
+  group('ArtifactBuilder', () {
     late Ios ios;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
@@ -166,7 +166,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           await testCall();
 
           verifyNever(
-            () => shorebirdProcess.start(
+            () => shorebirdProcess.run(
               'flutter',
               ['--no-version-check', 'pub', 'get', '--offline'],
               runInShell: any(named: 'runInShell'),
@@ -226,7 +226,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         );
 
         verify(
-          () => shorebirdProcess.run(
+          () => shorebirdProcess.start(
             'flutter',
             [
               'build',
@@ -277,7 +277,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           );
 
           verify(
-            () => shorebirdProcess.run(
+            () => shorebirdProcess.start(
               'flutter',
               [
                 'build',
@@ -354,11 +354,19 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         });
       });
 
+      // group('updates progress with gradle tasks if provided', () {
+      //   setUp(() {});
+
+      //   test('asdf', () async {
+      //     await runWithOverrides(() => builder.buildAppBundle());
+      //   });
+      // });
+
       group('after a build', () {
         group('when the build is successful', () {
           setUp(() {
-            when(() => buildProcessResult.exitCode)
-                .thenReturn(ExitCode.success.code);
+            when(() => buildProcess.exitCode)
+                .thenAnswer((_) async => ExitCode.success.code);
           });
 
           verifyCorrectFlutterPubGet(
@@ -367,8 +375,8 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
           group('when the build fails', () {
             setUp(() {
-              when(() => buildProcessResult.exitCode)
-                  .thenReturn(ExitCode.software.code);
+              when(() => buildProcess.exitCode)
+                  .thenAnswer((_) async => ExitCode.software.code);
             });
 
             verifyCorrectFlutterPubGet(
