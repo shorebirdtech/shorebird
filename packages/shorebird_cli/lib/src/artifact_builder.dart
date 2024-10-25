@@ -125,7 +125,7 @@ class ArtifactBuilder {
         if (match != null) {
           final captured = match.group(1);
           if (captured != null) {
-            buildProgress.update('$baseProgressMessage (${match.group(1)!})');
+            buildProgress.update('$baseProgressMessage ($captured)');
           }
         }
       });
