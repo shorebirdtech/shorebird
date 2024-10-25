@@ -99,6 +99,7 @@ words:
   - udid # Unique Device Identifier
   - unawaited
   - unmockable
+  - unsets
   - upvote
   - usbmuxd
   - vmcode

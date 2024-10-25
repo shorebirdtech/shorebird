@@ -100,8 +100,9 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
 
-    final buildAppBundleProgress = logger
-        .progress('Building app bundle with Flutter $flutterVersionString');
+    final buildAppBundleProgress = logger.detailProgress(
+      'Building app bundle with Flutter $flutterVersionString',
+    );
 
     final File aab;
 
@@ -114,6 +115,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         targetPlatforms: architectures,
         args: argResults.forwardedArgs,
         base64PublicKey: base64PublicKey,
+        buildProgress: buildAppBundleProgress,
       );
     } on ArtifactBuildException catch (e) {
       buildAppBundleProgress.fail(e.message);

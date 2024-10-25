@@ -289,6 +289,7 @@ To change the version of this release, change your app's version in your pubspec
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
+            buildProgress: any(named: 'buildProgress'),
           ),
         ).thenAnswer((_) async => aabFile);
         when(
@@ -320,6 +321,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
+              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenThrow(ArtifactBuildException('Uh oh'));
         });
@@ -375,6 +377,7 @@ To change the version of this release, change your app's version in your pubspec
               () => artifactBuilder.buildAppBundle(
                 targetPlatforms: Arch.values,
                 args: ['--verbose'],
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           });
@@ -389,6 +392,7 @@ To change the version of this release, change your app's version in your pubspec
             () => artifactBuilder.buildAppBundle(
               targetPlatforms: Arch.values,
               args: [],
+              buildProgress: any(named: 'buildProgress'),
             ),
           ).called(1);
         });
@@ -429,6 +433,7 @@ To change the version of this release, change your app's version in your pubspec
               target: target,
               targetPlatforms: Arch.values,
               args: [],
+              buildProgress: any(named: 'buildProgress'),
             ),
           ).called(1);
           verify(
@@ -462,6 +467,7 @@ To change the version of this release, change your app's version in your pubspec
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer((_) async => aabFile);
           when(
@@ -492,6 +498,7 @@ To change the version of this release, change your app's version in your pubspec
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           },
@@ -516,6 +523,7 @@ To change the version of this release, change your app's version in your pubspec
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
                   base64PublicKey: base64PublicKey,
+                  buildProgress: any(named: 'buildProgress'),
                 ),
               ).called(1);
 
