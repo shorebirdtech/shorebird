@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
@@ -51,4 +52,19 @@ class ShorebirdLogger extends Logger {
       writeToLogFile(message ?? '', logFile: currentRunLogFile);
     }
   }
+}
+
+/// Writes the given [message] to the [logFile] on its own line, prefixed with
+/// the current timestamp.
+void writeToLogFile(Object? message, {required File logFile}) {
+  if (message == null) {
+    return;
+  }
+
+  final timestampString = DateTime.now().toIso8601String();
+  final messageString = message.toString().removeAnsiEscapes();
+  logFile.writeAsStringSync(
+    '$timestampString $messageString\n',
+    mode: FileMode.append,
+  );
 }

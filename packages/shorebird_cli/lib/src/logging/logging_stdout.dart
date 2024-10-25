@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:shorebird_cli/src/extensions/string.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 
 /// {@template logging_stdout}
 /// A [Stdout] implementation that logs output to a file after forwarding
@@ -112,19 +112,4 @@ class LoggingStdout implements Stdout {
   void _writeLog(Object? object) {
     writeToLogFile(object, logFile: logFile);
   }
-}
-
-/// Writes the given [message] to the [logFile] on its own line, prefixed with
-/// the current timestamp.
-void writeToLogFile(Object? message, {required File logFile}) {
-  if (message == null) {
-    return;
-  }
-
-  final timestampString = DateTime.now().toIso8601String();
-  final messageString = message.toString().removeAnsiEscapes();
-  logFile.writeAsStringSync(
-    '$timestampString $messageString\n',
-    mode: FileMode.append,
-  );
 }
