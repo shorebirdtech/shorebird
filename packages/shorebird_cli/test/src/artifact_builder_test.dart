@@ -354,14 +354,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         });
       });
 
-      // group('updates progress with gradle tasks if provided', () {
-      //   setUp(() {});
-
-      //   test('asdf', () async {
-      //     await runWithOverrides(() => builder.buildAppBundle());
-      //   });
-      // });
-
       group('after a build', () {
         group('when the build is successful', () {
           setUp(() {
