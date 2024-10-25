@@ -29,7 +29,7 @@ void main() {
     });
   });
 
-  group('ArtifactBuilder', () {
+  group(ArtifactBuilder, () {
     late Ios ios;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
@@ -188,14 +188,14 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         when(() => buildProcess.stdout).thenAnswer(
           (_) => Stream.fromIterable(
             [
-              'TODO',
+              'Some build output',
             ].map(utf8.encode),
           ),
         );
         when(() => buildProcess.stderr).thenAnswer(
           (_) => Stream.fromIterable(
             [
-              'TODO',
+              'Some build output',
             ].map(utf8.encode),
           ),
         );
@@ -350,6 +350,58 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '''Build succeeded, but could not find the AAB in the build directory. Expected to find app-release.aab''',
               ),
             ),
+          );
+        });
+      });
+
+      group('when output contains gradle task names', () {
+        late Progress progress;
+        setUp(() {
+          progress = MockProgress();
+
+          when(() => buildProcess.stdout).thenAnswer(
+            (_) => Stream.fromIterable(
+              [
+                'Some build output',
+                '[  ] > Task :app:bundleRelease',
+                'More build output',
+                '[  ] > Task :app:someOtherTask',
+                'Even more build output',
+              ]
+                  .map((line) => '$line${Platform.lineTerminator}')
+                  .map(utf8.encode),
+            ),
+          );
+          when(() => buildProcess.stderr).thenAnswer(
+            (_) => Stream.fromIterable(
+              ['Some build output'].map(utf8.encode),
+            ),
+          );
+        });
+
+        test('updates progress with gradle task names', () async {
+          await expectLater(
+            runWithOverrides(
+              () => builder.buildAppBundle(
+                baseProgressMessage: 'hello',
+                buildProgress: progress,
+              ),
+            ),
+            completes,
+          );
+
+          // Required to trigger stdout stream events
+          await pumpEventQueue();
+
+          // Ensure we update the progress in the correct order and with the
+          // correct messages, and reset to the base message after the build
+          // completes.
+          verifyInOrder(
+            [
+              () => progress.update('hello (Task :app:bundleRelease)'),
+              () => progress.update('hello (Task :app:someOtherTask)'),
+              () => progress.update('hello'),
+            ],
           );
         });
       });
