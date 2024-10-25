@@ -281,7 +281,6 @@ void main() {
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
             base64PublicKey: any(named: 'base64PublicKey'),
-            baseProgressMessage: any(named: 'baseProgressMessage'),
             buildProgress: any(named: 'buildProgress'),
           ),
         ).thenAnswer((_) async => aabFile);
@@ -298,7 +297,6 @@ void main() {
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              baseProgressMessage: any(named: 'baseProgressMessage'),
               buildProgress: any(named: 'buildProgress'),
             ),
           ).thenThrow(exception);
@@ -357,7 +355,6 @@ Looked in:
                 that: containsAll(['--build-name=1.2.3', '--build-number=4']),
               ),
               buildProgress: any(named: 'buildProgress'),
-              baseProgressMessage: any(named: 'baseProgressMessage'),
             ),
           ).called(1);
         });
@@ -378,7 +375,6 @@ Looked in:
               () => artifactBuilder.buildAppBundle(
                 args: ['--verbose'],
                 buildProgress: any(named: 'buildProgress'),
-                baseProgressMessage: any(named: 'baseProgressMessage'),
               ),
             ).called(1);
           });
@@ -412,7 +408,6 @@ Looked in:
                 target: any(named: 'target'),
                 base64PublicKey: 'public_key_encoded',
                 buildProgress: any(named: 'buildProgress'),
-                baseProgressMessage: any(named: 'baseProgressMessage'),
               ),
             ).called(1);
           });

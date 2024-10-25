@@ -355,9 +355,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       });
 
       group('when output contains gradle task names', () {
-        late Progress progress;
+        late DetailProgress progress;
+
         setUp(() {
-          progress = MockProgress();
+          progress = MockDetailProgress();
 
           when(() => buildProcess.stdout).thenAnswer(
             (_) => Stream.fromIterable(
@@ -383,7 +384,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           await expectLater(
             runWithOverrides(
               () => builder.buildAppBundle(
-                baseProgressMessage: 'hello',
                 buildProgress: progress,
               ),
             ),
@@ -398,9 +398,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           // completes.
           verifyInOrder(
             [
-              () => progress.update('hello (Task :app:bundleRelease)'),
-              () => progress.update('hello (Task :app:someOtherTask)'),
-              () => progress.update('hello'),
+              () => progress.updateDetailMessage('Task :app:bundleRelease'),
+              () => progress.updateDetailMessage('Task :app:someOtherTask'),
+              () => progress.updateDetailMessage(null),
             ],
           );
         });

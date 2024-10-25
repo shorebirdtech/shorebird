@@ -87,8 +87,7 @@ class ArtifactBuilder {
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
-    String? baseProgressMessage,
-    Progress? buildProgress,
+    DetailProgress? buildProgress,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -118,14 +117,14 @@ class ArtifactBuilder {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        if (buildProgress == null || baseProgressMessage == null) {
+        if (buildProgress == null) {
           return;
         }
         final match = gradleTaskRegex.firstMatch(line);
         if (match != null) {
           final captured = match.group(1);
           if (captured != null) {
-            buildProgress.update('$baseProgressMessage ($captured)');
+            buildProgress.updateDetailMessage(captured);
           }
         }
       });
@@ -144,9 +143,7 @@ class ArtifactBuilder {
     // If we've been updating the progress with gradle tasks, reset it to the
     // original base message so as not to leave the user with a confusing
     // message.
-    if (buildProgress != null && baseProgressMessage != null) {
-      buildProgress.update(baseProgressMessage);
-    }
+    buildProgress?.updateDetailMessage(null);
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     try {
