@@ -120,12 +120,9 @@ class ArtifactBuilder {
         if (buildProgress == null) {
           return;
         }
-        final match = gradleTaskRegex.firstMatch(line);
-        if (match != null) {
-          final captured = match.group(1);
-          if (captured != null) {
-            buildProgress.updateDetailMessage(captured);
-          }
+        final captured = gradleTaskRegex.firstMatch(line)?.group(1);
+        if (captured != null) {
+          buildProgress.updateDetailMessage(captured);
         }
       });
 
