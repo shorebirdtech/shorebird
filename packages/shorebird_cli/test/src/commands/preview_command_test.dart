@@ -443,6 +443,14 @@ void main() {
           });
         });
 
+        test('outputs apks path', () async {
+          await runWithOverrides(command.run);
+
+          verify(
+            () => progress.complete(any(that: contains(apksPath()))),
+          ).called(1);
+        });
+
         test('does not prompt for platform, uses android', () async {
           await runWithOverrides(command.run);
 
