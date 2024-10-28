@@ -1,7 +1,7 @@
 import 'package:shorebird_cli/src/commands/releases/releases.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
-/// {@template patchesreleases_command}
+/// {@template releases_command}
 /// Commands for managing Shorebird releases.
 /// {@endtemplate}
 class ReleasesCommand extends ShorebirdCommand {
