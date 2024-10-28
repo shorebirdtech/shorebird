@@ -168,6 +168,10 @@ void main() {
       command = GetApkCommand()..testArgResults = argResults;
     });
 
+    test('has a description', () {
+      expect(command.description, isNotEmpty);
+    });
+
     group('when validation fails', () {
       final exception = ValidationFailedException();
       setUp(() {
@@ -207,7 +211,11 @@ void main() {
         await expectLater(
           () => runWithOverrides(command.run),
           throwsA(
-            isA<ProcessExit>().having((e) => e.exitCode, 'exitCode', 70),
+            isA<ProcessExit>().having(
+              (e) => e.exitCode,
+              'exitCode',
+              ExitCode.software.code,
+            ),
           ),
         );
         verify(
@@ -235,9 +243,117 @@ void main() {
         await expectLater(
           () => runWithOverrides(command.run),
           throwsA(
-            isA<ProcessExit>().having((e) => e.exitCode, 'exitCode', 70),
+            isA<ProcessExit>().having(
+              (e) => e.exitCode,
+              'exitCode',
+              ExitCode.software.code,
+            ),
           ),
         );
+      });
+    });
+
+    group('when app does not have any releases', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleases(
+            appId: appId,
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        ).thenAnswer((_) async => []);
+      });
+
+      test('exits with code 70', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          throwsA(
+            isA<ProcessExit>().having(
+              (e) => e.exitCode,
+              'exitCode',
+              ExitCode.usage.code,
+            ),
+          ),
+        );
+        verify(
+          () => codePushClientWrapper.getReleases(
+            appId: appId,
+            sideloadableOnly: true,
+          ),
+        ).called(1);
+        verify(() => logger.err('No releases found for app $appId')).called(1);
+      });
+    });
+
+    group('when release version is not specified', () {
+      setUp(() {
+        when(() => argResults.wasParsed('release-version')).thenReturn(false);
+      });
+
+      test('prompts for release', () async {
+        await runWithOverrides(command.run);
+
+        final capturedDisplay = verify(
+          () => logger.chooseOne<Release>(
+            any(),
+            choices: any(named: 'choices'),
+            display: captureAny(named: 'display'),
+          ),
+        ).captured.single as String Function(Release);
+
+        expect(capturedDisplay(release), equals(releaseVersion));
+      });
+    });
+
+    group('when release version is specified', () {
+      const releaseVersionArg = '1.2.3';
+
+      setUp(() {
+        when(() => argResults['release-version']).thenReturn(releaseVersionArg);
+        when(() => argResults.wasParsed('release-version')).thenReturn(true);
+      });
+
+      test('queries for release with specified version', () async {
+        await runWithOverrides(command.run);
+
+        verify(
+          () => codePushClientWrapper.getRelease(
+            appId: appId,
+            releaseVersion: releaseVersionArg,
+          ),
+        ).called(1);
+      });
+
+      test('does not prompt for release', () async {
+        await runWithOverrides(command.run);
+
+        verifyNever(
+          () => logger.chooseOne<Release>(
+            any(),
+            choices: any(named: 'choices'),
+            display: any(named: 'display'),
+          ),
+        );
+      });
+    });
+
+    group('when buildApk fails', () {
+      final exception = Exception('oops');
+
+      setUp(() {
+        when(
+          () => bundletool.buildApks(
+            bundle: any(named: 'bundle'),
+            output: any(named: 'output'),
+          ),
+        ).thenThrow(exception);
+      });
+
+      test('exits with code 70', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(ExitCode.software.code),
+        );
+        verify(() => progress.fail('$exception')).called(1);
       });
     });
 
@@ -246,6 +362,9 @@ void main() {
 
       setUp(() {
         outDirectory = Directory.systemTemp.createTempSync();
+        // Delete to ensure the command creates the directory if needed
+        // ignore: cascade_invocations
+        outDirectory.deleteSync();
         when(() => argResults['out']).thenReturn(outDirectory.path);
         when(() => argResults.wasParsed('out')).thenReturn(true);
       });

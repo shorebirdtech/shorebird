@@ -157,9 +157,7 @@ class GetApkCommand extends ShorebirdCommand {
     );
 
     if (releases.isEmpty) {
-      logger.warn(
-        '''No releases found for app $appId. You need to make first a release before you can create a patch.''',
-      );
+      logger.err('No releases found for app $appId');
       throw ProcessExit(ExitCode.usage.code);
     }
 
