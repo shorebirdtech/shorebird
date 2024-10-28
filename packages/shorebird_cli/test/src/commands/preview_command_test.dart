@@ -445,9 +445,9 @@ void main() {
 
         test('outputs apks path', () async {
           await runWithOverrides(command.run);
-
+          final apksLink = link(uri: Uri.parse(apksPath()));
           verify(
-            () => progress.complete(any(that: contains(apksPath()))),
+            () => progress.complete('Built apks: ${cyan.wrap(apksLink)}'),
           ).called(1);
         });
 
