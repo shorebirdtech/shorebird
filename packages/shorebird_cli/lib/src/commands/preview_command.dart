@@ -13,6 +13,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -43,8 +44,8 @@ class PreviewCommand extends ShorebirdCommand {
         help: 'The ID of the app to preview the release for.',
       )
       ..addOption(
-        'release-version',
-        help: 'The version of the release (e.g. "1.0.0").',
+        CommonArguments.releaseVersionArg.name,
+        help: CommonArguments.releaseVersionArg.description,
       )
       ..addOption(
         'platform',
