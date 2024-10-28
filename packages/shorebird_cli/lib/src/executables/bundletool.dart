@@ -44,6 +44,7 @@ class Bundletool {
   Future<void> buildApks({
     required String bundle,
     required String output,
+    bool universal = true,
   }) async {
     final result = await _exec(
       [
@@ -51,7 +52,7 @@ class Bundletool {
         '--overwrite',
         '--bundle=$bundle',
         '--output=$output',
-        '--mode=universal',
+        if (universal) '--mode=universal',
       ],
     );
     if (result.exitCode != 0) {

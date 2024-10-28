@@ -84,6 +84,14 @@ Entries from "--dart-define" with identical keys take precedence over entries fr
         '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
   );
 
+  /// An argument that allows the user to specify a build flavor. You will most
+  /// likely want to provide a custom description for this argument that more
+  /// thoroughly explains what the flavor is used for.
+  static const flavorArg = ArgumentDescriber(
+    name: 'flavor',
+    description: 'The app flavor',
+  );
+
   /// An argument that allows the user to specify a public key file that will be
   /// used to validate patch signatures.
   static const publicKeyArg = ArgumentDescriber(
@@ -100,6 +108,14 @@ The path for a public key .pem file that will be used to validate patch signatur
     description: '''
 The path for a private key .pem file that will be used to sign the patch artifact.
 ''',
+  );
+
+  /// An argument that allows the user to specify a release version. You will
+  /// most likely want to provide a custom description for this argument that
+  /// more thoroughly explains what the release version is used for.
+  static const releaseVersionArg = ArgumentDescriber(
+    name: 'release-version',
+    description: 'The version of the release (e.g. "1.0.0").',
   );
 
   /// An argument that allows the user to specify a directory where program
