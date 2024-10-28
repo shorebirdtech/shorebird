@@ -362,7 +362,8 @@ class PreviewCommand extends ShorebirdCommand {
     final buildApksProgress = logger.progress('Building apks');
     try {
       await bundletool.buildApks(bundle: aabFile.path, output: apksPath);
-      buildApksProgress.complete();
+      final apksLink = link(uri: Uri.parse(apksPath));
+      buildApksProgress.complete('Built apks: ${cyan.wrap(apksLink)}');
     } catch (error) {
       buildApksProgress.fail('$error');
       return ExitCode.software.code;
