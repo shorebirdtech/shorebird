@@ -44,7 +44,7 @@ class GetApkCommand extends ShorebirdCommand {
 
   @override
   String get description =>
-      'Generates an apk for the specified release version';
+      'Generates a universal apk for the specified release version';
 
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
