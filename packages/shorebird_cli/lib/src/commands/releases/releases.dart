@@ -1,2 +1,2 @@
-export 'get_apk_command.dart';
+export 'get_apks_command.dart';
 export 'releases_command.dart';

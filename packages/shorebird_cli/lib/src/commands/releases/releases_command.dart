@@ -7,7 +7,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 class ReleasesCommand extends ShorebirdCommand {
   /// {@macro releases_command}
   ReleasesCommand() {
-    addSubcommand(GetApkCommand());
+    addSubcommand(GetApksCommand());
   }
 
   @override

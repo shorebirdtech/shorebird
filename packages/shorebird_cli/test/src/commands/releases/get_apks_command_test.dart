@@ -21,7 +21,7 @@ import 'package:test/test.dart';
 import '../../mocks.dart';
 
 void main() {
-  group(GetApkCommand, () {
+  group(GetApksCommand, () {
     const appId = 'test-app-id';
     const releaseId = 123;
     const releaseVersion = '1.2.3';
@@ -41,7 +41,7 @@ void main() {
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdYaml shorebirdYaml;
 
-    late GetApkCommand command;
+    late GetApksCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -94,6 +94,7 @@ void main() {
       shorebirdYaml = MockShorebirdYaml();
 
       when(() => argResults.wasParsed(any())).thenReturn(false);
+      when(() => argResults['universal']).thenReturn(true);
       when(() => argResults.rest).thenReturn([]);
 
       when(
@@ -107,6 +108,7 @@ void main() {
         () => bundletool.buildApks(
           bundle: any(named: 'bundle'),
           output: any(named: 'output'),
+          universal: any(named: 'universal'),
         ),
       ).thenAnswer((invocation) async {
         final apksFile = await createTempApksFile();
@@ -165,7 +167,7 @@ void main() {
 
       when(() => shorebirdYaml.appId).thenReturn(appId);
 
-      command = GetApkCommand()..testArgResults = argResults;
+      command = GetApksCommand()..testArgResults = argResults;
     });
 
     test('has a description', () {
@@ -344,6 +346,7 @@ void main() {
           () => bundletool.buildApks(
             bundle: any(named: 'bundle'),
             output: any(named: 'output'),
+            universal: any(named: 'universal'),
           ),
         ).thenThrow(exception);
       });
@@ -375,7 +378,7 @@ void main() {
           completion(ExitCode.success.code),
         );
         final expectedMessage =
-            '''apk generated at ${lightCyan.wrap(p.join(outDirectory.path, apkFileName))}''';
+            '''apk(s) generated at ${lightCyan.wrap(outDirectory.path)}''';
         verify(() => logger.info(expectedMessage)).called(1);
       });
     });
@@ -393,10 +396,28 @@ void main() {
           'app',
           'outputs',
           'shorebird-apk',
-          apkFileName,
         );
-        final expectedMessage = 'apk generated at ${lightCyan.wrap(apkPath)}';
+        final expectedMessage =
+            'apk(s) generated at ${lightCyan.wrap(apkPath)}';
         verify(() => logger.info(expectedMessage)).called(1);
+      });
+    });
+
+    group('when user passes --no-universal', () {
+      setUp(() {
+        when(() => argResults['universal']).thenReturn(false);
+      });
+
+      test('builds apks without universal flag', () async {
+        await runWithOverrides(command.run);
+
+        verify(
+          () => bundletool.buildApks(
+            bundle: any(named: 'bundle'),
+            output: any(named: 'output'),
+            universal: false,
+          ),
+        ).called(1);
       });
     });
   });

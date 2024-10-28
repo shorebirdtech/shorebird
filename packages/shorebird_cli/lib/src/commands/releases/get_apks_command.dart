@@ -20,31 +20,36 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@template get_apk_command}
 /// Generates an APK for the release with the specified version.
 /// {@endtemplate}
-class GetApkCommand extends ShorebirdCommand {
+class GetApksCommand extends ShorebirdCommand {
   /// {@macro get_apk_command}
-  GetApkCommand() {
+  GetApksCommand() {
     argParser
       ..addOption(
         CommonArguments.releaseVersionArg.name,
-        help: 'The release version to generate an apk for',
+        help: 'The release version to generate apks for',
       )
       ..addOption(
         CommonArguments.flavorArg.name,
-        help: 'The build flavor to generate an apk for',
+        help: 'The build flavor to generate an apks for',
       )
       ..addOption(
         'out',
         abbr: 'o',
         help: 'The output directory for the generated apks',
+      )
+      ..addFlag(
+        'universal',
+        defaultsTo: true,
+        help: 'Whether to generate a universal apk. Defaults to true.',
       );
   }
 
   @override
-  String get name => 'get-apk';
+  String get name => 'get-apks';
 
   @override
   String get description =>
-      'Generates a universal apk for the specified release version';
+      'Generates apk(s) for the specified release version';
 
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
@@ -57,7 +62,7 @@ class GetApkCommand extends ShorebirdCommand {
 
   /// The output directory path for the generated apks. Defaults to the
   /// project's build directory if not provided.
-  late String? outDirectoryPath = results.findOption(
+  late String? outDirectoryArg = results.findOption(
     'out',
     argParser: argParser,
   );
@@ -104,7 +109,11 @@ class GetApkCommand extends ShorebirdCommand {
       'Building apks for release ${release.version} (app: $appId)',
     );
     try {
-      await bundletool.buildApks(bundle: aabFile.path, output: apksFile.path);
+      await bundletool.buildApks(
+        bundle: aabFile.path,
+        output: apksFile.path,
+        universal: results['universal'] as bool,
+      );
       buildApksProgress.complete();
     } catch (error) {
       buildApksProgress.fail('$error');
@@ -112,41 +121,33 @@ class GetApkCommand extends ShorebirdCommand {
     }
 
     final apksZipFile = apksFile.renameSync('${apksFile.path}.zip');
-    final apkDirectory = Directory(apksFile.path.replaceAll('.apks', ''));
-    await extractFileToDisk(
-      apksZipFile.path,
-      apkDirectory.path,
-    );
 
-    final apkFile = apkDirectory
-        .listSync()
-        .firstWhere((f) => p.extension(f.path) == '.apk') as File;
-
-    final File outApkFile;
-    if (outDirectoryPath != null) {
-      final outDirectory = Directory(outDirectoryPath!);
-      if (!outDirectory.existsSync()) {
-        outDirectory.createSync(recursive: true);
+    final Directory outputDirectory;
+    if (outDirectoryArg != null) {
+      outputDirectory = Directory(outDirectoryArg!);
+      if (!outputDirectory.existsSync()) {
+        outputDirectory.createSync(recursive: true);
       }
-
-      outApkFile = File(p.join(outDirectory.path, p.basename(apkFile.path)));
     } else {
       // The output of `flutter build apk` is build/app/outputs/flutter-apk,
       // so we move the generated apk to build/app/outputs/shorebird-apk.
-      outApkFile = File(
+      outputDirectory = Directory(
         p.join(
           shorebirdEnv.getShorebirdProjectRoot()!.path,
           'build',
           'app',
           'outputs',
           'shorebird-apk',
-          '${appId}_${release.version}.apk',
         ),
       )..createSync(recursive: true);
     }
 
-    apkFile.renameSync(outApkFile.path);
-    logger.info('apk generated at ${lightCyan.wrap(outApkFile.path)}');
+    await extractFileToDisk(
+      apksZipFile.path,
+      outputDirectory.path,
+    );
+
+    logger.info('apk(s) generated at ${lightCyan.wrap(outputDirectory.path)}');
     return ExitCode.success.code;
   }
 
