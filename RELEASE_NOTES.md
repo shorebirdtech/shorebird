@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.7 (October 28, 2024)
+
+- 🐦 Support for Flutter 3.24.4
+- 🪵 Include gradle tasks when releasing android
+
 ## 1.4.6 (October 24, 2024)
 
 - 🍧 Fix issue with `shorebird release ios` where flavored apps would sometimes
