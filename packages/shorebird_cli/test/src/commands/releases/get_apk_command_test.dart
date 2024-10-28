@@ -256,7 +256,7 @@ void main() {
           completion(ExitCode.success.code),
         );
         final expectedMessage =
-            'apk generated at ${p.join(outDirectory.path, apkFileName)}';
+            '''apk generated at ${lightCyan.wrap(p.join(outDirectory.path, apkFileName))}''';
         verify(() => logger.info(expectedMessage)).called(1);
       });
     });
@@ -276,7 +276,7 @@ void main() {
           'shorebird-apk',
           apkFileName,
         );
-        final expectedMessage = 'apk generated at $apkPath';
+        final expectedMessage = 'apk generated at ${lightCyan.wrap(apkPath)}';
         verify(() => logger.info(expectedMessage)).called(1);
       });
     });
