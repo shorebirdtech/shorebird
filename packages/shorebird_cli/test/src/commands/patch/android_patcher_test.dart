@@ -605,6 +605,40 @@ Looked in:
             expect(signatures, equals(expectedSignatures));
           });
         });
+
+        group('when artifacts download takes longer than provided timeout', () {
+          setUp(() {
+            when(
+              () => artifactManager.downloadWithProgressUpdates(
+                any(),
+                message: any(named: 'message'),
+              ),
+            ).thenAnswer((_) async {
+              await Future<void>.delayed(const Duration(milliseconds: 100));
+              return File('');
+            });
+          });
+
+          test('prints message directing users to github issue', () async {
+            await runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: 'appId',
+                releaseId: 0,
+                releaseArtifact: File('release.aab'),
+                downloadMessageTimeout: const Duration(milliseconds: 50),
+              ),
+            );
+
+            verify(
+              () => logger.info(
+                any(
+                  that: contains(
+                      'https://github.com/shorebirdtech/shorebird/issues/2532'),
+                ),
+              ),
+            ).called(1);
+          });
+        });
       });
     });
 

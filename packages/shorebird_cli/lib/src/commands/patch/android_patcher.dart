@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:io/io.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
@@ -118,6 +120,7 @@ Looked in:
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    Duration downloadMessageTimeout = const Duration(minutes: 1),
   }) async {
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       appId: appId,
@@ -127,6 +130,24 @@ Looked in:
     );
     final releaseArtifactPaths = <Arch, String>{};
     final numArtifacts = releaseArtifacts.length;
+
+    // Direct users to https://github.com/shorebirdtech/shorebird/issues/2532
+    // until we can provide a better solution.
+    var artifactsDownloadCompleted = false;
+    unawaited(
+      Future<void>.delayed(downloadMessageTimeout).then(
+        (_) {
+          if (artifactsDownloadCompleted) {
+            return;
+          }
+          logger.info(
+            '''
+It seems like your download is taking longer than expected. If you are on Windows, this is a known issue.
+Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/2532'))} for potential workarounds.''',
+          );
+        },
+      ),
+    );
 
     for (final (i, releaseArtifact) in releaseArtifacts.entries.indexed) {
       try {
@@ -140,6 +161,8 @@ Looked in:
         throw ProcessExit(ExitCode.software.code);
       }
     }
+
+    artifactsDownloadCompleted = true;
 
     final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
       projectRoot: projectRoot,
