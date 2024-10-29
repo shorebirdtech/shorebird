@@ -633,7 +633,8 @@ Looked in:
               () => logger.info(
                 any(
                   that: contains(
-                      'https://github.com/shorebirdtech/shorebird/issues/2532'),
+                    'https://github.com/shorebirdtech/shorebird/issues/2532',
+                  ),
                 ),
               ),
             ).called(1);

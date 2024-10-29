@@ -627,8 +627,8 @@ void main() {
             final firstResult = runWithOverrides(
               () => artifactManager.getXcarchiveDirectory(),
             );
-            // The new archive directory should be selected because it was created
-            // after the old archive directory.
+            // The new archive directory should be selected because it was
+            // created after the old archive directory.
             expect(firstResult!.path, equals(newArchiveDirectory.path));
 
             // Now recreate the old archive directory and ensure it is selected.
