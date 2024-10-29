@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
-import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
