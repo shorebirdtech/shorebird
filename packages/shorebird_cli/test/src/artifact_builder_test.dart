@@ -877,7 +877,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             });
           });
 
-          group('with error message in stderr', () {
+          group('with error message in stderr (Xcode <= 15.x)', () {
             setUp(() {
               when(() => buildProcessResult.exitCode)
                   .thenReturn(ExitCode.success.code);
@@ -896,6 +896,47 @@ error: exportArchive: Communication with Apple failed
 error: exportArchive: No signing certificate "iOS Distribution" found
 error: exportArchive: Communication with Apple failed
 error: exportArchive: No signing certificate "iOS Distribution" found''',
+              );
+            });
+
+            test('throws ArtifactBuildException with error message', () {
+              expect(
+                () => runWithOverrides(() => builder.buildIpa(codesign: false)),
+                throwsA(
+                  isA<ArtifactBuildException>().having(
+                    (e) => e.message,
+                    'message',
+                    '''
+Failed to build:
+    Communication with Apple failed
+    No signing certificate "iOS Distribution" found
+    Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+    No profiles for 'com.example.co' were found''',
+                  ),
+                ),
+              );
+            });
+          });
+
+          group('with error message in stderr (Xcode >= 16.x)', () {
+            setUp(() {
+              when(() => buildProcessResult.exitCode)
+                  .thenReturn(ExitCode.success.code);
+              when(() => buildProcessResult.stderr).thenReturn(
+                '''
+Encountered error while creating the IPA:
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+error: exportArchive No profiles for 'com.example.co' were found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found''',
               );
             });
 

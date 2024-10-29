@@ -372,8 +372,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
     //    error: exportArchive: Communication with Apple failed
     //    error: exportArchive: No signing certificate "iOS Distribution" found
     //    error: exportArchive: Communication with Apple failed
-    final exportArchiveRegex = RegExp(r'error: exportArchive: (.+)$');
-
+    final exportArchiveRegex = RegExp(r'error: exportArchive:? (.+)$');
     return stderr
         .split('\n')
         .map((l) => l.trim())
