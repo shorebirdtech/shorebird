@@ -267,7 +267,7 @@ class AotTools {
         if (additionalArgs.isNotEmpty) ...[
           '--',
           ...additionalArgs,
-        ]
+        ],
       ],
       workingDirectory: workingDirectory,
     );
