@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.8 (October 29, 2024)
+
+- 📦 Add `shorebird releases get-apk` command
+- 🛠️ Fix error handling when building ipa fails using Xcode 16
+- 🐌 Add warning when windows artifact download is slower than expected
+
 ## 1.4.7 (October 28, 2024)
 
 - 🐦 Support for Flutter 3.24.4
