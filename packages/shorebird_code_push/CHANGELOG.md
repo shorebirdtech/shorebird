@@ -1,3 +1,8 @@
+# 2.0.0-dev.1
+
+- **BREAKING**: revamp the updater API
+  - Remove `ShorebirdCodePush` in favor of `ShorebirdUpdater`
+
 # 1.1.6
 
 - Update log messages to explain what "using no-op implementation" means.

@@ -10,12 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  restart_app: ^1.3.2
   shorebird_code_push:
     path: ../
 
 dev_dependencies:
-  flutter_lints: ^2.0.0
   flutter_test:
     sdk: flutter
   very_good_analysis: ^5.0.0

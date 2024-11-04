@@ -1,3 +1,6 @@
+import 'dart:ffi';
+
+import 'package:ffi/ffi.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_code_push/src/generated/updater_bindings.g.dart';
 import 'package:shorebird_code_push/src/updater.dart';
@@ -9,6 +12,10 @@ void main() {
   group(Updater, () {
     late UpdaterBindings updaterBindings;
     late Updater updater;
+
+    setUpAll(() {
+      registerFallbackValue(Pointer.fromAddress(0));
+    });
 
     setUp(() {
       updaterBindings = _MockUpdaterBindings();
@@ -60,6 +67,26 @@ void main() {
         when(() => updaterBindings.shorebird_update()).thenReturn(null);
         updater.downloadUpdate();
         verify(() => updaterBindings.shorebird_update()).called(1);
+      });
+    });
+
+    group('update', () {
+      test('calls bindings.shorebird_update_with_result', () {
+        when(
+          () => updaterBindings.shorebird_update_with_result(),
+        ).thenReturn(nullptr);
+        updater.update();
+        verify(() => updaterBindings.shorebird_update_with_result()).called(1);
+      });
+    });
+
+    group('freeUpdateResult', () {
+      test('calls bindings.shorebird_free_update_result', () {
+        final result = calloc.allocate<UpdateResult>(sizeOf<UpdateResult>());
+        updater.freeUpdateResult(result);
+        verify(
+          () => updaterBindings.shorebird_free_update_result(any()),
+        ).called(1);
       });
     });
   });

@@ -1,4 +1,5 @@
 import 'dart:ffi' as ffi;
+import 'dart:ffi';
 
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push/src/generated/updater_bindings.g.dart';
@@ -28,4 +29,12 @@ class Updater {
 
   /// Downloads the latest patch, if available.
   void downloadUpdate() => bindings.shorebird_update();
+
+  /// Downloads the latest patch, if available and returns an [UpdateResult]
+  /// to indicate whether the update was successful.
+  Pointer<UpdateResult> update() => bindings.shorebird_update_with_result();
+
+  /// Frees an update result allocated by the updater.
+  void freeUpdateResult(Pointer<UpdateResult> ptr) =>
+      bindings.shorebird_free_update_result(ptr);
 }

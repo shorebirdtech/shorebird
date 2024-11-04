@@ -34,13 +34,11 @@ this:
 // Import the library
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
-// Create an instance of the ShorebirdCodePush class
-final shorebirdCodePush = ShorebirdCodePush();
+// Create an instance of the updater class
+final updater = ShorebirdUpdater();
 
 // Launch your app
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
 // [Other code here]
 
@@ -49,20 +47,24 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
 
-    // Get the current patch number and print it to the console. It will be
-    // null if no patches are installed.
-    shorebirdCodePush
-        .currentPatchNumber()
-        .then((value) => print('current patch number is $value'));
+    // Get the current patch number and print it to the console.
+    // It will be `null` if no patches are installed.
+    updater.readCurrentPatch().then((currentPatch) {
+      print('The current patch number is: ${currentPatch.number}');
+    });
   }
 
   Future<void> _checkForUpdates() async {
-    // Check whether a patch is available to install.
-    final isUpdateAvailable = await shorebirdCodePush.isNewPatchAvailableForDownload();
+    // Check whether a new update is available.
+    final status = await updater.checkForUpdates();
 
-    if (isUpdateAvailable) {
-      // Download the new patch if it's available.
-      await shorebirdCodePush.downloadUpdateIfAvailable();
+    if (status == UpdateStatus.outdated) {
+      try {
+        // Perform the update
+        await updater.update();
+      } on UpdateException catch (error) {
+        // Handle any errors that occur while updating.
+      }
     }
   }
 
