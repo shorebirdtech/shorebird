@@ -443,7 +443,7 @@ BUILD FAILED in 3s
           when(() => result.stdout).thenReturn('''
 
 ------------------------------------------------------------
-Gradle 7.6.3
+Gradle 12.34.56
 ------------------------------------------------------------
 
 Build time:   2023-10-04 15:59:47 UTC
@@ -463,7 +463,7 @@ OS:           Mac OS X 14.4.1 aarch64
             final version = await runWithOverrides(
               () => gradlew.version(tempDir.path),
             );
-            expect(version, equals('7.6.3'));
+            expect(version, equals('12.34.56'));
           },
           testOn: 'linux || mac-os',
         );
@@ -474,7 +474,7 @@ OS:           Mac OS X 14.4.1 aarch64
           when(() => result.stdout).thenReturn('''
 
 ------------------------------------------------------------
-Gradle 8.3
+Gradle 12.34
 ------------------------------------------------------------
 
 Build time:   2023-10-04 15:59:47 UTC
@@ -494,7 +494,7 @@ OS:           Mac OS X 14.4.1 aarch64
             final version = await runWithOverrides(
               () => gradlew.version(tempDir.path),
             );
-            expect(version, equals('8.3'));
+            expect(version, equals('12.34'));
           },
           testOn: 'linux || mac-os',
         );

@@ -128,7 +128,7 @@ class Gradlew {
 
     // Tries to match version string in the output (e.g. "Gradle 7.6.3" or
     // "Grade 8.3")
-    final versionPattern = RegExp(r'Gradle (\d+\.\d+\.?\d?)');
+    final versionPattern = RegExp(r'Gradle (\d+\.\d+(\.\d+)?)');
     final match = versionPattern.firstMatch(result.stdout.toString());
 
     return match?.group(1) ?? 'unknown';
