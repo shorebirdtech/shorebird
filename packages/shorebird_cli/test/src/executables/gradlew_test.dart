@@ -436,10 +436,14 @@ BUILD FAILED in 3s
         File(
           p.join(tempDir.path, 'android', 'gradlew'),
         ).createSync(recursive: true);
-        when(() => result.stdout).thenReturn('''
+      });
+
+      group('when version string has a patch version', () {
+        setUp(() {
+          when(() => result.stdout).thenReturn('''
 
 ------------------------------------------------------------
-Gradle 7.6.3
+Gradle 12.34.56
 ------------------------------------------------------------
 
 Build time:   2023-10-04 15:59:47 UTC
@@ -451,18 +455,50 @@ Ant:          Apache Ant(TM) version 1.10.11 compiled on July 10 2021
 JVM:          11.0.23 (Azul Systems, Inc. 11.0.23+9-LTS)
 OS:           Mac OS X 14.4.1 aarch64
 ''');
+        });
+
+        test(
+          'returns the correct version',
+          () async {
+            final version = await runWithOverrides(
+              () => gradlew.version(tempDir.path),
+            );
+            expect(version, equals('12.34.56'));
+          },
+          testOn: 'linux || mac-os',
+        );
       });
 
-      test(
-        'returns the correct version',
-        () async {
-          final version = await runWithOverrides(
-            () => gradlew.version(tempDir.path),
-          );
-          expect(version, '7.6.3');
-        },
-        testOn: 'linux || mac-os',
-      );
+      group('when version string has only major and minor versions', () {
+        setUp(() {
+          when(() => result.stdout).thenReturn('''
+
+------------------------------------------------------------
+Gradle 12.34
+------------------------------------------------------------
+
+Build time:   2023-10-04 15:59:47 UTC
+Revision:     1694251d59e0d4752d547e1fd5b5020b798a7e71
+
+Kotlin:       1.7.10
+Groovy:       3.0.13
+Ant:          Apache Ant(TM) version 1.10.11 compiled on July 10 2021
+JVM:          11.0.23 (Azul Systems, Inc. 11.0.23+9-LTS)
+OS:           Mac OS X 14.4.1 aarch64
+''');
+        });
+
+        test(
+          'returns the correct version',
+          () async {
+            final version = await runWithOverrides(
+              () => gradlew.version(tempDir.path),
+            );
+            expect(version, equals('12.34'));
+          },
+          testOn: 'linux || mac-os',
+        );
+      });
 
       group('when the output cannot be parsed', () {
         setUp(() {
