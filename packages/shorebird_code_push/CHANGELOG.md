@@ -1,3 +1,7 @@
+# 2.0.0-dev.2
+
+- fix: tighten library exports
+
 # 2.0.0-dev.1
 
 - **BREAKING**: revamp the updater API
