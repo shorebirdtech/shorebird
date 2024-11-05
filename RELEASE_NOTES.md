@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.9 (November 4, 2024)
+
+- 📦 Release new Flutter 3.24.4 revision to support `package:shorebird_code_push` rewrite (v2.0.0-dev.1)
+- 🦀 Improved logs in the Shorebird Updater
+- 🧑‍🔧 Fix gradle version detection in `shorebird doctor`
+
 ## 1.4.8 (October 29, 2024)
 
 - 📦 Add `shorebird releases get-apk` command
