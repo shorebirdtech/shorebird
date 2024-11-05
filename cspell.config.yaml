@@ -86,6 +86,7 @@ words:
   - readlink
   - reinit
   - requirepass # From .github dir, doesn't show up in "**" check?
+  - rollouts
   - shorebirdtech
   - sideload
   - sideloadable
