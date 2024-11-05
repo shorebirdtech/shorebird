@@ -34,15 +34,15 @@ this:
 // Import the library
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
-// Create an instance of the updater class
-final updater = ShorebirdUpdater();
-
 // Launch your app
 void main() => runApp(const MyApp());
 
 // [Other code here]
 
 class _MyHomePageState extends State<MyHomePage> {
+  // Create an instance of the updater class
+  final updater = ShorebirdUpdater();
+
   @override
   void initState() {
     super.initState();
