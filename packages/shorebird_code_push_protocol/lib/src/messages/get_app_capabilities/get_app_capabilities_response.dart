@@ -5,6 +5,8 @@ part 'get_app_capabilities_response.g.dart';
 
 /// {@template get_app_capabilities_response}
 /// The capabilities of the requesting user for the specified app.
+///
+/// Response body for api/v1/apps/:appId/capabilities.
 /// {@endtemplate}
 @JsonSerializable()
 class GetAppCapabilitiesResponse {
