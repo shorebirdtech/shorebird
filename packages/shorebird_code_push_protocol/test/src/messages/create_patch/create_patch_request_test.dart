@@ -24,5 +24,17 @@ void main() {
         equals(request.toJson()),
       );
     });
+
+    test('can be (de)serialized with a rollout percentage', () {
+      const request = CreatePatchRequest(
+        releaseId: 1234,
+        metadata: {'foo': 'bar'},
+        rolloutPercentage: 40,
+      );
+      expect(
+        CreatePatchRequest.fromJson(request.toJson()).toJson(),
+        equals(request.toJson()),
+      );
+    });
   });
 }

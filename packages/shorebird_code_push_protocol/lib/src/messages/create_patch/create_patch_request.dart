@@ -12,6 +12,7 @@ class CreatePatchRequest {
   const CreatePatchRequest({
     required this.releaseId,
     required this.metadata,
+    this.rolloutPercentage,
   });
 
   /// Converts a Map<String, dynamic> to a [CreatePatchRequest]
@@ -27,4 +28,11 @@ class CreatePatchRequest {
   /// Additional information about the command that was run to create the patch
   /// and the environment in which it was run.
   final Json metadata;
+
+  /// The percentage of users this release should be distributed to. If not
+  /// provided, this patch will be distributed to all users immediately.
+  ///
+  /// To use this feature, the account that owns the app must have a
+  /// subscription that supports percentage-based rollouts.
+  final int? rolloutPercentage;
 }

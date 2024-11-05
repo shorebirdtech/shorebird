@@ -17,14 +17,20 @@ CreatePatchRequest _$CreatePatchRequestFromJson(Map<String, dynamic> json) =>
           releaseId: $checkedConvert('release_id', (v) => (v as num).toInt()),
           metadata:
               $checkedConvert('metadata', (v) => v as Map<String, dynamic>),
+          rolloutPercentage: $checkedConvert(
+              'rollout_percentage', (v) => (v as num?)?.toInt()),
         );
         return val;
       },
-      fieldKeyMap: const {'releaseId': 'release_id'},
+      fieldKeyMap: const {
+        'releaseId': 'release_id',
+        'rolloutPercentage': 'rollout_percentage'
+      },
     );
 
 Map<String, dynamic> _$CreatePatchRequestToJson(CreatePatchRequest instance) =>
     <String, dynamic>{
       'release_id': instance.releaseId,
       'metadata': instance.metadata,
+      'rollout_percentage': instance.rolloutPercentage,
     };
