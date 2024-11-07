@@ -87,16 +87,16 @@ of the iOS app that is using this module.''',
         negatable: false,
       )
       ..addOption(
-        'channel',
+        'track',
         allowed: DeploymentTrack.values.map((v) => v.channel),
-        help: 'The channel to publish the patch to.',
+        help: 'The track to publish the patch to.',
         defaultsTo: DeploymentTrack.production.channel,
       )
       ..addFlag(
         'staging',
         negatable: false,
         help: '''
-[DEPRECATED] Whether to publish the patch to the staging environment. Use --channel=staging instead.''',
+[DEPRECATED] Whether to publish the patch to the staging environment. Use --track=staging instead.''',
         hide: true,
       )
       ..addOption(
@@ -173,7 +173,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   bool get isStaging => track == DeploymentTrack.staging;
 
   DeploymentTrack get track {
-    final channel = results['channel'] as String;
+    final channel = results['track'] as String;
     return DeploymentTrack.values.firstWhere((t) => t.channel == channel);
   }
 
@@ -181,7 +181,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   Future<int> run() async {
     if (results.wasParsed('staging')) {
       logger.err(
-        '''The --staging flag is deprecated and will be removed in a future release. Use --channel=staging instead.''',
+        '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
       );
       return ExitCode.usage.code;
     }
