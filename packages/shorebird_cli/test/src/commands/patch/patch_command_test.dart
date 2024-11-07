@@ -158,7 +158,11 @@ void main() {
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
+      when(
+        () => argResults['track'],
+      ).thenReturn(DeploymentTrack.production.channel);
       when(() => argResults.wasParsed(any())).thenReturn(true);
+      when(() => argResults.wasParsed('staging')).thenReturn(false);
       when(
         () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
       ).thenReturn(false);
@@ -297,6 +301,28 @@ void main() {
 
     test('has non-empty description', () {
       expect(command.description, isNotEmpty);
+    });
+
+    group('run', () {
+      group('when --staging is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('staging')).thenReturn(true);
+        });
+
+        test(
+            '''warns that staging flag will be deprecated and exits with usage code''',
+            () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            completion(equals(ExitCode.usage.code)),
+          );
+          verify(
+            () => logger.err(
+              '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
+            ),
+          ).called(1);
+        });
+      });
     });
 
     group('createPatch', () {
@@ -487,7 +513,9 @@ void main() {
 
       group('when is staging', () {
         setUp(() {
-          when(() => argResults['staging']).thenReturn(true);
+          when(
+            () => argResults['track'],
+          ).thenReturn(DeploymentTrack.staging.channel);
         });
 
         test('logs correct summary', () async {
@@ -955,7 +983,9 @@ Please re-run the release command for this version or create a new release.''',
 
     group('when patching to the staging track', () {
       setUp(() {
-        when(() => argResults['staging']).thenReturn(true);
+        when(
+          () => argResults['track'],
+        ).thenReturn(DeploymentTrack.staging.channel);
       });
 
       test('publishes to the staging track', () async {
