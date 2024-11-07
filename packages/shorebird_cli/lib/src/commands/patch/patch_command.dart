@@ -86,10 +86,18 @@ of the iOS app that is using this module.''',
         help: allowAssetDiffsHelpText,
         negatable: false,
       )
+      ..addOption(
+        'channel',
+        allowed: DeploymentTrack.values.map((v) => v.channel),
+        help: 'The channel to publish the patch to.',
+        defaultsTo: DeploymentTrack.production.channel,
+      )
       ..addFlag(
         'staging',
         negatable: false,
-        help: 'Whether to publish the patch to the staging environment.',
+        help: '''
+[DEPRECATED] Whether to publish the patch to the staging environment. Use --channel=staging instead.''',
+        hide: true,
       )
       ..addOption(
         CommonArguments.exportOptionsPlistArg.name,
@@ -162,10 +170,22 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => results['allow-native-diffs'] == true;
 
-  bool get isStaging => results['staging'] == true;
+  bool get isStaging => track == DeploymentTrack.staging;
+
+  DeploymentTrack get track {
+    final channel = results['channel'] as String;
+    return DeploymentTrack.values.firstWhere((t) => t.channel == channel);
+  }
 
   @override
   Future<int> run() async {
+    if (results.wasParsed('staging')) {
+      logger.err(
+        '''The --staging flag is deprecated and will be removed in a future release. Use --channel=staging instead.''',
+      );
+      return ExitCode.usage.code;
+    }
+
     final patcherFutures =
         results.releaseTypes.map(_resolvePatcher).map(createPatch);
 
@@ -333,8 +353,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           appId: appId,
           releaseId: release.id,
           metadata: updateMetadata.toJson(),
-          track:
-              isStaging ? DeploymentTrack.staging : DeploymentTrack.production,
+          track: track,
           artifacts: patchArtifactBundles,
         );
       },
