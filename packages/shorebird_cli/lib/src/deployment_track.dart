@@ -3,6 +3,9 @@ enum DeploymentTrack {
   /// An internal track for validating changes.
   staging('staging'),
 
+  /// A public track for publishing changes to a limited audience.
+  beta('beta'),
+
   /// A public track for publishing changes to production.
   production('stable');
 
