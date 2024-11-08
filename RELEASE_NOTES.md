@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.10 (November 8, 2024)
+
+- 🛠️ Fix Updater issuer where older patches would be used if state failed to deserialize (https://github.com/shorebirdtech/shorebird/issues/2612)
+
 ## 1.4.9 (November 4, 2024)
 
 - 📦 Release new Flutter 3.24.4 revision to support `package:shorebird_code_push` rewrite (v2.0.0-dev.1)
