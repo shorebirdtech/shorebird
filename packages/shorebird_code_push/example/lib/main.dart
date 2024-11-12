@@ -29,6 +29,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final _updater = ShorebirdUpdater();
   late final bool _isUpdaterAvailable;
+  var _currentTrack = UpdateTrack.stable;
   var _isCheckingForUpdates = false;
   Patch? _currentPatch;
 
@@ -54,10 +55,20 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       setState(() => _isCheckingForUpdates = true);
       // Check if there's an update available.
-      final status = await _updater.checkForUpdate();
+      final status = await _updater.checkForUpdate(track: _currentTrack);
       if (!mounted) return;
       // If there is an update available, show a banner.
-      if (status == UpdateStatus.outdated) _showUpdateAvailableBanner();
+      switch (status) {
+        case UpdateStatus.upToDate:
+          _showNoUpdateAvailableBanner();
+        case UpdateStatus.outdated:
+          _showUpdateAvailableBanner();
+        case UpdateStatus.restartRequired:
+          _showRestartBanner();
+        case UpdateStatus.unavailable:
+        // Do nothing, there is already a warning displayed at the top of the
+        // screen.
+      }
     } catch (error) {
       // If an error occurs, we log it for now.
       debugPrint('Error checking for update: $error');
@@ -88,7 +99,9 @@ class _MyHomePageState extends State<MyHomePage> {
       ..hideCurrentMaterialBanner()
       ..showMaterialBanner(
         MaterialBanner(
-          content: const Text('Update available'),
+          content: Text(
+            'Update available for the ${_currentTrack.name} track.',
+          ),
           actions: [
             TextButton(
               onPressed: () async {
@@ -98,6 +111,26 @@ class _MyHomePageState extends State<MyHomePage> {
                 ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
               },
               child: const Text('Download'),
+            ),
+          ],
+        ),
+      );
+  }
+
+  void _showNoUpdateAvailableBanner() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentMaterialBanner()
+      ..showMaterialBanner(
+        MaterialBanner(
+          content: Text(
+            'No update available on the ${_currentTrack.name} track.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+              },
+              child: const Text('Dismiss'),
             ),
           ],
         ),
@@ -145,8 +178,10 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _downloadUpdate() async {
     _showDownloadingBanner();
     try {
-      // Perform the update (e.g download the latest patch).
-      await _updater.update();
+      // Perform the update (e.g download the latest patch on [_currentTrack]).
+      // Note that [track] is optional. Not passing it will default to the
+      // stable track.
+      await _updater.update(track: _currentTrack);
       if (!mounted) return;
       // Show a banner to inform the user that the update is ready and that they
       // need to restart the app.
@@ -166,9 +201,21 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: theme.colorScheme.inversePrimary,
         title: const Text('Shorebird Code Push'),
       ),
-      body: _isUpdaterAvailable
-          ? _CurrentPatchVersion(patch: _currentPatch)
-          : const _ShorebirdUnavailable(),
+      body: Column(
+        children: [
+          if (!_isUpdaterAvailable) const _ShorebirdUnavailable(),
+          const Spacer(),
+          _CurrentPatchVersion(patch: _currentPatch),
+          const SizedBox(height: 12),
+          _TrackPicker(
+            currentTrack: _currentTrack,
+            onChanged: (track) {
+              setState(() => _currentTrack = track);
+            },
+          ),
+          const Spacer(),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _isCheckingForUpdates ? null : _checkForUpdate,
         tooltip: 'Check for update',
@@ -220,6 +267,47 @@ class _CurrentPatchVersion extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Widget that allows selection of update track.
+class _TrackPicker extends StatelessWidget {
+  const _TrackPicker({
+    required this.currentTrack,
+    required this.onChanged,
+  });
+
+  final UpdateTrack currentTrack;
+
+  final ValueChanged<UpdateTrack> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Text('Update track:'),
+        SegmentedButton<UpdateTrack>(
+          segments: const [
+            ButtonSegment(
+              label: Text('Stable'),
+              value: UpdateTrack.stable,
+            ),
+            ButtonSegment(
+              label: Text('Beta'),
+              icon: Icon(Icons.science),
+              value: UpdateTrack.beta,
+            ),
+            ButtonSegment(
+              label: Text('Staging'),
+              icon: Icon(Icons.construction),
+              value: UpdateTrack.staging,
+            ),
+          ],
+          selected: {currentTrack},
+          onSelectionChanged: (tracks) => onChanged(tracks.single),
+        ),
+      ],
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart';
 import 'package:shorebird_code_push/src/generated/updater_bindings.g.dart';
 import 'package:shorebird_code_push/src/updater.dart';
 import 'package:test/test.dart';
@@ -38,17 +39,55 @@ void main() {
       });
     });
 
-    group('checkForUpdate', () {
+    group('checkForDownloadableUpdate', () {
       test('forwards the result of shorebird_check_for_update', () {
         when(
-          () => updaterBindings.shorebird_check_for_update(),
+          () => updaterBindings.shorebird_check_for_downloadable_update(
+            nullptr,
+          ),
         ).thenReturn(true);
-        expect(updater.checkForUpdate(), isTrue);
+        expect(updater.checkForDownloadableUpdate(), isTrue);
 
         when(
-          () => updaterBindings.shorebird_check_for_update(),
+          () => updaterBindings.shorebird_check_for_downloadable_update(
+            nullptr,
+          ),
         ).thenReturn(false);
-        expect(updater.checkForUpdate(), isFalse);
+        expect(updater.checkForDownloadableUpdate(), isFalse);
+      });
+
+      group('when a track is provided', () {
+        setUp(() {
+          when(
+            () => updaterBindings.shorebird_check_for_downloadable_update(
+              any(),
+            ),
+          ).thenReturn(true);
+        });
+
+        test('forwards the result of shorebird_check_for_update', () {
+          expect(
+            updater.checkForDownloadableUpdate(track: UpdateTrack.beta),
+            isTrue,
+          );
+
+          expect(
+            updater.checkForDownloadableUpdate(track: UpdateTrack.stable),
+            isTrue,
+          );
+
+          final captured = verify(
+            () => updaterBindings.shorebird_check_for_downloadable_update(
+              captureAny(),
+            ),
+          ).captured;
+          expect(
+            captured.map(
+              (cstr) => (cstr as Pointer<Char>).cast<Utf8>().toDartString(),
+            ),
+            equals(['beta', 'stable']),
+          );
+        });
       });
     });
 
@@ -73,10 +112,12 @@ void main() {
     group('update', () {
       test('calls bindings.shorebird_update_with_result', () {
         when(
-          () => updaterBindings.shorebird_update_with_result(),
+          () => updaterBindings.shorebird_update_with_result(nullptr),
         ).thenReturn(nullptr);
         updater.update();
-        verify(() => updaterBindings.shorebird_update_with_result()).called(1);
+        verify(
+          () => updaterBindings.shorebird_update_with_result(nullptr),
+        ).called(1);
       });
     });
 

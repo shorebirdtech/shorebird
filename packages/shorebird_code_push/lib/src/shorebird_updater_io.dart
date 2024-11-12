@@ -66,12 +66,16 @@ class ShorebirdUpdaterImpl implements ShorebirdUpdater {
   }
 
   @override
-  Future<UpdateStatus> checkForUpdate() async {
+  Future<UpdateStatus> checkForUpdate({UpdateTrack? track}) async {
     if (!_isAvailable) return UpdateStatus.unavailable;
 
-    final isUpdateAvailable = await _run(_updater.checkForUpdate);
+    // First, check to see whether an update is available for download.
+    final isUpdateAvailable =
+        await _run(() => _updater.checkForDownloadableUpdate(track: track));
     if (isUpdateAvailable) return UpdateStatus.outdated;
 
+    // If no new update is available for download, see if a new patch exists
+    // on disk that requires a restart.
     final (current, next) = await (readCurrentPatch(), readNextPatch()).wait;
     return next != null && current?.number != next.number
         ? UpdateStatus.restartRequired
@@ -79,13 +83,13 @@ class ShorebirdUpdaterImpl implements ShorebirdUpdater {
   }
 
   @override
-  Future<void> update() async {
+  Future<void> update({UpdateTrack? track}) async {
     if (!_isAvailable) return;
 
     Pointer<UpdateResult> result = nullptr;
 
     try {
-      result = await _run(_updater.update);
+      result = await _run(() => _updater.update(track: track));
     } catch (_) {
       return _legacyFallback();
     }

@@ -121,8 +121,7 @@ abstract class ShorebirdUpdater {
   /// Checks for available updates and returns the [UpdateStatus].
   /// This method should be used to determine the update status before calling
   /// [update].
-  /// Returns `null` if the updater is not available.
-  Future<UpdateStatus?> checkForUpdate();
+  Future<UpdateStatus> checkForUpdate({UpdateTrack? track});
 
   /// Updates the app to the latest patch (if available).
   /// Future will complete once the update is fully downloaded and ready
@@ -136,5 +135,17 @@ abstract class ShorebirdUpdater {
   /// * [isAvailable], which indicates whether the updater is available.
   /// * [checkForUpdate], which should be called to check if an update is
   ///   available before calling this method.
-  Future<void> update();
+  Future<void> update({UpdateTrack? track});
+}
+
+/// The track to check for updates on.
+enum UpdateTrack {
+  /// The staging track used for internal testing.
+  staging,
+
+  /// The beta track used for public testing.
+  beta,
+
+  /// The stable track used for general availability.
+  stable,
 }

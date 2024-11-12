@@ -189,13 +189,13 @@ class UpdaterBindings {
       _waitpidPtr.asFunction<int Function(int, ffi.Pointer<ffi.Int>, int)>();
 
   int waitid(
-    idtype_t arg0,
-    Dart__uint32_t arg1,
+    int arg0,
+    int arg1,
     ffi.Pointer<siginfo_t> arg2,
     int arg3,
   ) {
     return _waitid(
-      arg0.value,
+      arg0,
       arg1,
       arg2,
       arg3,
@@ -204,8 +204,8 @@ class UpdaterBindings {
 
   late final _waitidPtr = _lookup<
       ffi.NativeFunction<
-          ffi.Int Function(ffi.UnsignedInt, id_t, ffi.Pointer<siginfo_t>,
-              ffi.Int)>>('waitid');
+          ffi.Int Function(
+              ffi.Int32, id_t, ffi.Pointer<siginfo_t>, ffi.Int)>>('waitid');
   late final _waitid = _waitidPtr
       .asFunction<int Function(int, int, ffi.Pointer<siginfo_t>, int)>();
 
@@ -2456,16 +2456,26 @@ class UpdaterBindings {
   late final _shorebird_free_update_result = _shorebird_free_update_resultPtr
       .asFunction<void Function(ffi.Pointer<UpdateResult>)>();
 
-  /// Check for an update.  Returns true if an update is available.
-  bool shorebird_check_for_update() {
-    return _shorebird_check_for_update();
+  /// Check for an update on the first non-null channel of:
+  /// 1. `c_channel`
+  /// 2. The channel specified in shorebird.yaml
+  /// 3. The default "stable" channel
+  ///
+  /// Returns true if an update exists that has not yet been downloaded.
+  bool shorebird_check_for_downloadable_update(
+    ffi.Pointer<ffi.Char> c_channel,
+  ) {
+    return _shorebird_check_for_downloadable_update(
+      c_channel,
+    );
   }
 
-  late final _shorebird_check_for_updatePtr =
-      _lookup<ffi.NativeFunction<ffi.Bool Function()>>(
-          'shorebird_check_for_update');
-  late final _shorebird_check_for_update =
-      _shorebird_check_for_updatePtr.asFunction<bool Function()>();
+  late final _shorebird_check_for_downloadable_updatePtr =
+      _lookup<ffi.NativeFunction<ffi.Bool Function(ffi.Pointer<ffi.Char>)>>(
+          'shorebird_check_for_downloadable_update');
+  late final _shorebird_check_for_downloadable_update =
+      _shorebird_check_for_downloadable_updatePtr
+          .asFunction<bool Function(ffi.Pointer<ffi.Char>)>();
 
   /// Synchronously download an update if one is available.
   void shorebird_update() {
@@ -2477,17 +2487,26 @@ class UpdaterBindings {
   late final _shorebird_update =
       _shorebird_updatePtr.asFunction<void Function()>();
 
-  /// Synchronously download an update if one is available.
+  /// Synchronously download an update on the first non-null channel of:
+  /// 1. `c_channel`
+  /// 2. The channel specified in shorebird.yaml
+  /// 3. The default "stable" channel
+  ///
   /// Returns an [UpdateResult] indicating whether the update was successful.
-  ffi.Pointer<UpdateResult> shorebird_update_with_result() {
-    return _shorebird_update_with_result();
+  ffi.Pointer<UpdateResult> shorebird_update_with_result(
+    ffi.Pointer<ffi.Char> c_channel,
+  ) {
+    return _shorebird_update_with_result(
+      c_channel,
+    );
   }
 
-  late final _shorebird_update_with_resultPtr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<UpdateResult> Function()>>(
-          'shorebird_update_with_result');
+  late final _shorebird_update_with_resultPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<UpdateResult> Function(
+              ffi.Pointer<ffi.Char>)>>('shorebird_update_with_result');
   late final _shorebird_update_with_result = _shorebird_update_with_resultPtr
-      .asFunction<ffi.Pointer<UpdateResult> Function()>();
+      .asFunction<ffi.Pointer<UpdateResult> Function(ffi.Pointer<ffi.Char>)>();
 
   /// Start a thread to download an update if one is available.
   void shorebird_start_update_thread() {
@@ -2640,20 +2659,10 @@ final class _opaque_pthread_t extends ffi.Struct {
   external ffi.Array<ffi.Char> __opaque;
 }
 
-enum idtype_t {
-  P_ALL(0),
-  P_PID(1),
-  P_PGID(2);
-
-  final int value;
-  const idtype_t(this.value);
-
-  static idtype_t fromValue(int value) => switch (value) {
-        0 => P_ALL,
-        1 => P_PID,
-        2 => P_PGID,
-        _ => throw ArgumentError("Unknown value for idtype_t: $value"),
-      };
+abstract class idtype_t {
+  static const int P_ALL = 0;
+  static const int P_PID = 1;
+  static const int P_PGID = 2;
 }
 
 final class __darwin_arm_exception_state extends ffi.Struct {
@@ -4060,6 +4069,8 @@ const int __MAC_14_5 = 140500;
 
 const int __MAC_15_0 = 150000;
 
+const int __MAC_15_1 = 150100;
+
 const int __IPHONE_2_0 = 20000;
 
 const int __IPHONE_2_1 = 20100;
@@ -4220,6 +4231,8 @@ const int __IPHONE_17_5 = 170500;
 
 const int __IPHONE_18_0 = 180000;
 
+const int __IPHONE_18_1 = 180100;
+
 const int __WATCHOS_1_0 = 10000;
 
 const int __WATCHOS_2_0 = 20000;
@@ -4315,6 +4328,8 @@ const int __WATCHOS_10_4 = 100400;
 const int __WATCHOS_10_5 = 100500;
 
 const int __WATCHOS_11_0 = 110000;
+
+const int __WATCHOS_11_1 = 110100;
 
 const int __TVOS_9_0 = 90000;
 
@@ -4414,6 +4429,8 @@ const int __TVOS_17_5 = 170500;
 
 const int __TVOS_18_0 = 180000;
 
+const int __TVOS_18_1 = 180100;
+
 const int __BRIDGEOS_2_0 = 20000;
 
 const int __BRIDGEOS_3_0 = 30000;
@@ -4468,6 +4485,8 @@ const int __BRIDGEOS_8_5 = 80500;
 
 const int __BRIDGEOS_9_0 = 90000;
 
+const int __BRIDGEOS_9_1 = 90100;
+
 const int __DRIVERKIT_19_0 = 190000;
 
 const int __DRIVERKIT_20_0 = 200000;
@@ -4496,6 +4515,8 @@ const int __DRIVERKIT_23_5 = 230500;
 
 const int __DRIVERKIT_24_0 = 240000;
 
+const int __DRIVERKIT_24_1 = 240100;
+
 const int __VISIONOS_1_0 = 10000;
 
 const int __VISIONOS_1_1 = 10100;
@@ -4503,6 +4524,8 @@ const int __VISIONOS_1_1 = 10100;
 const int __VISIONOS_1_2 = 10200;
 
 const int __VISIONOS_2_0 = 20000;
+
+const int __VISIONOS_2_1 = 20100;
 
 const int MAC_OS_X_VERSION_10_0 = 1000;
 
@@ -4628,9 +4651,11 @@ const int MAC_OS_VERSION_14_5 = 140500;
 
 const int MAC_OS_VERSION_15_0 = 150000;
 
-const int __MAC_OS_X_VERSION_MIN_REQUIRED = 140000;
+const int MAC_OS_VERSION_15_1 = 150100;
 
-const int __MAC_OS_X_VERSION_MAX_ALLOWED = 150000;
+const int __MAC_OS_X_VERSION_MIN_REQUIRED = 150000;
+
+const int __MAC_OS_X_VERSION_MAX_ALLOWED = 150100;
 
 const int __ENABLE_LEGACY_MAC_AVAILABILITY = 1;
 

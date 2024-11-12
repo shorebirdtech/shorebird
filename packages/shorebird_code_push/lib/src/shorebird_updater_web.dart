@@ -23,8 +23,9 @@ class ShorebirdUpdaterImpl implements ShorebirdUpdater {
   Future<Patch?> readNextPatch() async => null;
 
   @override
-  Future<UpdateStatus> checkForUpdate() async => UpdateStatus.unavailable;
+  Future<UpdateStatus> checkForUpdate({UpdateTrack? track}) async =>
+      UpdateStatus.unavailable;
 
   @override
-  Future<void> update() async {}
+  Future<void> update({UpdateTrack? track}) async {}
 }
