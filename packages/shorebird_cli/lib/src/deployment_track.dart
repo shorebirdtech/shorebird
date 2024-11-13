@@ -7,7 +7,7 @@ enum DeploymentTrack {
   beta('beta'),
 
   /// A public track for publishing changes to production.
-  production('stable');
+  stable('stable');
 
   const DeploymentTrack(this.channel);
 

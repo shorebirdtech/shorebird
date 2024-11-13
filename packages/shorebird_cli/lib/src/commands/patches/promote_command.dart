@@ -65,14 +65,14 @@ class PromoteCommand extends ShorebirdCommand {
       return ExitCode.usage.code;
     }
 
-    if (patchToPromote.channel == DeploymentTrack.production.channel) {
+    if (patchToPromote.channel == DeploymentTrack.stable.channel) {
       logger.err('Patch ${patchToPromote.number} is already live');
       return ExitCode.usage.code;
     }
 
     final channel = await codePushClientWrapper.maybeGetChannel(
       appId: appId,
-      name: DeploymentTrack.production.channel,
+      name: DeploymentTrack.stable.channel,
     );
     if (channel == null) {
       // This is a symptom that something bigger is wrong. Apps should always

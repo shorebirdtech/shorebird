@@ -34,7 +34,7 @@ void main() {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
     const releaseVersion = '1.2.3';
-    const track = DeploymentTrack.production;
+    const track = DeploymentTrack.stable;
     const releaseId = 42;
     const androidArtifactId = 21;
     const iosArtifactId = 12;
@@ -479,7 +479,7 @@ void main() {
               await runWithOverrides(
                 () => command.setChannelOnAab(
                   aabFile: aabFile,
-                  channel: DeploymentTrack.production.channel,
+                  channel: DeploymentTrack.stable.channel,
                 ),
               );
 

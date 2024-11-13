@@ -228,8 +228,7 @@ class PreviewCommand extends ShorebirdCommand {
 
     final deviceId = results['device-id'] as String?;
     final isStaging = results['staging'] == true;
-    final track =
-        isStaging ? DeploymentTrack.staging : DeploymentTrack.production;
+    final track = isStaging ? DeploymentTrack.staging : DeploymentTrack.stable;
 
     return switch (releasePlatform) {
       ReleasePlatform.android => installAndLaunchAndroid(
@@ -589,8 +588,7 @@ class PreviewCommand extends ShorebirdCommand {
       final yaml = loadYaml(yamlText) as YamlMap;
       final yamlChannel = yaml['channel'];
 
-      if (yamlChannel == null &&
-          channel == DeploymentTrack.production.channel) {
+      if (yamlChannel == null && channel == DeploymentTrack.stable.channel) {
         // We would be updating the channel to the default value.
         return;
       }
