@@ -441,21 +441,20 @@ Please re-run the release command for this version or create a new release.''');
       final size = formatBytes(patchArtifactBundles[arch]!.size);
       return '${arch.name} ($size)';
     });
-
-    String trackSummary() {
+    final trackSummary = (() {
       return switch (track) {
         DeploymentTrack.staging => '🟠 Track: ${lightCyan.wrap('Staging')}',
         DeploymentTrack.beta => '🔵 Track: ${lightCyan.wrap('Beta')}',
         DeploymentTrack.stable => '🟢 Track: ${lightCyan.wrap('Stable')}',
       };
-    }
+    })();
 
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
-      trackSummary(),
+      trackSummary,
       if (patcher.linkPercentage != null &&
           patcher.linkPercentage! < Patcher.minLinkPercentage)
         '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
