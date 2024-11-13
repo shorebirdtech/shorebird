@@ -90,7 +90,7 @@ of the iOS app that is using this module.''',
         'track',
         allowed: DeploymentTrack.values.map((v) => v.channel),
         help: 'The track to publish the patch to.',
-        defaultsTo: DeploymentTrack.production.channel,
+        defaultsTo: DeploymentTrack.stable.channel,
       )
       ..addFlag(
         'staging',
@@ -449,7 +449,7 @@ Please re-run the release command for this version or create a new release.''');
       if (isStaging)
         '🟠 Track: ${lightCyan.wrap('Staging')}'
       else
-        '🟢 Track: ${lightCyan.wrap('Production')}',
+        '🟢 Track: ${lightCyan.wrap('Stable')}',
       if (patcher.linkPercentage != null &&
           patcher.linkPercentage! < Patcher.minLinkPercentage)
         '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',

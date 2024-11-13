@@ -113,7 +113,7 @@ void main() {
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
-    const track = DeploymentTrack.production;
+    const track = DeploymentTrack.stable;
     final channel = Channel(id: 0, appId: appId, name: track.channel);
     const patchId = 1;
     const patchNumber = 2;
@@ -829,7 +829,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           final patch = ReleasePatch(
             id: 0,
             number: 1,
-            channel: DeploymentTrack.production.channel,
+            channel: DeploymentTrack.stable.channel,
             isRolledBack: false,
             artifacts: const [],
           );

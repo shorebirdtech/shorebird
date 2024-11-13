@@ -130,7 +130,7 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(CreatePatchMetadata.forTest());
-      registerFallbackValue(DeploymentTrack.production);
+      registerFallbackValue(DeploymentTrack.stable);
       registerFallbackValue(FakeDiffStatus());
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
@@ -160,7 +160,7 @@ void main() {
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(
         () => argResults['track'],
-      ).thenReturn(DeploymentTrack.production.channel);
+      ).thenReturn(DeploymentTrack.stable.channel);
       when(() => argResults.wasParsed(any())).thenReturn(true);
       when(() => argResults.wasParsed('staging')).thenReturn(false);
       when(
@@ -490,7 +490,7 @@ void main() {
             '🍧 Flavor: ${lightCyan.wrap(flavor)}',
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
             '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
-            '🟢 Track: ${lightCyan.wrap('Production')}',
+            '🟢 Track: ${lightCyan.wrap('Stable')}',
           ];
           await expectLater(
             runWithOverrides(
@@ -558,7 +558,7 @@ void main() {
             '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
             '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
-            '🟢 Track: ${lightCyan.wrap('Production')}',
+            '🟢 Track: ${lightCyan.wrap('Stable')}',
             '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
           ];
           await expectLater(
@@ -643,7 +643,7 @@ void main() {
                 releaseId: release.id,
                 metadata: patchMetadata.toJson(),
                 artifacts: any(named: 'artifacts'),
-                track: DeploymentTrack.production,
+                track: DeploymentTrack.stable,
               ),
         ]);
       });
@@ -693,7 +693,7 @@ void main() {
                 releaseId: release.id,
                 metadata: any(named: 'metadata'),
                 artifacts: any(named: 'artifacts'),
-                track: DeploymentTrack.production,
+                track: DeploymentTrack.stable,
               ),
         ]);
 
@@ -814,7 +814,7 @@ void main() {
             releaseId: release.id,
             metadata: any(named: 'metadata'),
             artifacts: any(named: 'artifacts'),
-            track: DeploymentTrack.production,
+            track: DeploymentTrack.stable,
           ),
         );
       });

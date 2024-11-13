@@ -19,7 +19,7 @@ void main() {
   group(Patcher, () {
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
-      registerFallbackValue(DeploymentTrack.production);
+      registerFallbackValue(DeploymentTrack.stable);
     });
 
     group('linkPercentage', () {
@@ -185,7 +185,7 @@ void main() {
         const releaseId = 42;
         const metadata = <String, String>{};
         const artifacts = <Arch, PatchArtifactBundle>{};
-        const track = DeploymentTrack.production;
+        const track = DeploymentTrack.stable;
         final codePushClientWrapper = MockCodePushClientWrapper();
         when(
           () => codePushClientWrapper.publishPatch(
