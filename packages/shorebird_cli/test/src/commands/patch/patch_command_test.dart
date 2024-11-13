@@ -544,6 +544,39 @@ void main() {
         });
       });
 
+      group('when is beta', () {
+        setUp(() {
+          when(
+            () => argResults['track'],
+          ).thenReturn(DeploymentTrack.beta.channel);
+        });
+
+        test('logs correct summary', () async {
+          final expectedSummary = [
+            '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
+            '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+            '🔵 Track: ${lightCyan.wrap('Beta')}',
+          ];
+          await expectLater(
+            runWithOverrides(
+              () => command.confirmCreatePatch(
+                app: appMetadata,
+                releaseVersion: releaseVersion,
+                patcher: patcher,
+                patchArtifactBundles: patchArtifactBundles,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => logger.info(
+              any(that: contains(expectedSummary.join('\n'))),
+            ),
+          ).called(1);
+        });
+      });
+
       group('when has link percentage', () {
         const linkPercentage = 42.1337;
         final debugInfoFile = File('debug-info.txt');
