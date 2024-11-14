@@ -6,6 +6,16 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.12 (November 14, 2024)
+
+- 🍎 Remove logic to provide custom ExportOptions.plist to iOS builds. This was
+  in place to prevent Xcode from changing build numbers post-build, which
+  confuses Shorebird. This no longer seems to be an issue, and the
+  ExportOptions.plist behavior was causing issues with apps using extensions
+  (see https://github.com/shorebirdtech/shorebird/issues/1956). If you see
+  a different version of your app in App Store Connect than in your Shorebird
+  release, this is likely caused by this change, and you should let us know.
+
 ## 1.4.11 (November 14, 2024)
 
 - 🐦 Support for Flutter 3.24.5
