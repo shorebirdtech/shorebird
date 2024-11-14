@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.11 (November 14, 2024)
+
+- 🐦 Support for Flutter 3.24.5
+
 ## 1.4.10 (November 8, 2024)
 
 - 🛠️ Fix Updater issuer where older patches would be used if state failed to deserialize (https://github.com/shorebirdtech/shorebird/issues/2612)
