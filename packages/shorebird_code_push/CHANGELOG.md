@@ -1,3 +1,9 @@
+# 2.0.0
+
+- **BREAKING**: more updates to the Updater API. We now support Stable, Beta,
+  and Staging tracks for patches, meaning you have more control over who gets
+  your patches and when. Check out the example for a demo.
+
 # 2.0.0-dev.2
 
 - fix: tighten library exports
