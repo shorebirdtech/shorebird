@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -710,14 +709,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     group(
       'buildIpa',
       () {
-        late File exportOptionsPlist;
-
-        setUp(() {
-          final tempDir = Directory.systemTemp.createTempSync();
-          exportOptionsPlist =
-              File(p.join(tempDir.path, 'exportoptions.plist'));
-        });
-
         group('with default arguments', () {
           test('invokes flutter build with an export options plist', () async {
             final result = await runWithOverrides(builder.buildIpa);
@@ -729,7 +720,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                   'build',
                   'ipa',
                   '--release',
-                  '--export-options-plist=${exportOptionsPlist.path}',
                 ],
                 runInShell: true,
                 environment: any(named: 'environment'),
@@ -778,25 +768,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 environment: {
                   'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
                 },
-              ),
-            ).called(1);
-          });
-        });
-
-        group('when export options plist is provided', () {
-          test('forwards to flutter build', () async {
-            await runWithOverrides(builder.buildIpa);
-
-            verify(
-              () => shorebirdProcess.run(
-                'flutter',
-                [
-                  'build',
-                  'ipa',
-                  '--release',
-                  '--export-options-plist=custom_exportoptions.plist',
-                ],
-                runInShell: any(named: 'runInShell'),
               ),
             ).called(1);
           });
