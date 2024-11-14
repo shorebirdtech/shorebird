@@ -138,6 +138,8 @@ extension ForwardedArgs on ArgResults {
         ..._argsNamed(CommonArguments.buildNameArg.name),
         ..._argsNamed(CommonArguments.buildNumberArg.name),
         ..._argsNamed(CommonArguments.splitDebugInfoArg.name),
+        ..._argsNamed(CommonArguments.exportMethodArg.name),
+        ..._argsNamed(CommonArguments.exportOptionsPlistArg.name),
       ],
     );
 

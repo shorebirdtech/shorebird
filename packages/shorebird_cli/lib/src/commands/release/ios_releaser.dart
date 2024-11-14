@@ -106,14 +106,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         );
     }
 
-    final File exportOptionsPlist;
-    try {
-      exportOptionsPlist = ios.exportOptionsPlistFromArgs(argResults);
-    } catch (error) {
-      logger.err('$error');
-      throw ProcessExit(ExitCode.usage.code);
-    }
-
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     final buildProgress =
         logger.progress('Building ipa with Flutter $flutterVersionString');
@@ -121,7 +113,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     try {
       await artifactBuilder.buildIpa(
         codesign: codesign,
-        exportOptionsPlist: exportOptionsPlist,
         flavor: flavor,
         target: target,
         args: argResults.forwardedArgs,

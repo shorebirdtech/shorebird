@@ -716,7 +716,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           final tempDir = Directory.systemTemp.createTempSync();
           exportOptionsPlist =
               File(p.join(tempDir.path, 'exportoptions.plist'));
-          when(ios.createExportOptionsPlist).thenReturn(exportOptionsPlist);
         });
 
         group('with default arguments', () {
@@ -751,7 +750,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                   'build',
                   'ipa',
                   '--release',
-                  '--export-options-plist=${exportOptionsPlist.path}',
                 ],
                 runInShell: any(named: 'runInShell'),
                 environment: {
@@ -775,7 +773,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                   'build',
                   'ipa',
                   '--release',
-                  '--export-options-plist=${exportOptionsPlist.path}',
                 ],
                 runInShell: any(named: 'runInShell'),
                 environment: {
@@ -788,11 +785,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
         group('when export options plist is provided', () {
           test('forwards to flutter build', () async {
-            await runWithOverrides(
-              () => builder.buildIpa(
-                exportOptionsPlist: File('custom_exportoptions.plist'),
-              ),
-            );
+            await runWithOverrides(builder.buildIpa);
 
             verify(
               () => shorebirdProcess.run(
@@ -809,35 +802,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           });
         });
 
-        test('does not provide export options plist without codesigning',
-            () async {
-          await runWithOverrides(
-            () => builder.buildIpa(
-              codesign: false,
-              exportOptionsPlist: File('exportOptionsPlist.plist'),
-            ),
-          );
-
-          verify(
-            () => shorebirdProcess.run(
-              'flutter',
-              [
-                'build',
-                'ipa',
-                '--release',
-                '--no-codesign',
-              ],
-              runInShell: any(named: 'runInShell'),
-              environment: any(named: 'environment'),
-            ),
-          ).called(1);
-        });
-
         test('forwards extra arguments to flutter build', () async {
           await runWithOverrides(
             () => builder.buildIpa(
               codesign: false,
-              exportOptionsPlist: File('exportOptionsPlist.plist'),
               flavor: 'flavor',
               target: 'target.dart',
               args: ['--foo', 'bar'],

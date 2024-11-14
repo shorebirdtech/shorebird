@@ -105,7 +105,6 @@ of the iOS app that is using this module.''',
       )
       ..addOption(
         CommonArguments.exportMethodArg.name,
-        defaultsTo: ExportMethod.appStore.argName,
         allowed: ExportMethod.values.map((e) => e.argName),
         help: CommonArguments.exportMethodArg.description,
         allowedHelp: {

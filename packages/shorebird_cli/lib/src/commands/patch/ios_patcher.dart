@@ -156,14 +156,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final File exportOptionsPlist;
-    try {
-      exportOptionsPlist = ios.exportOptionsPlistFromArgs(argResults);
-    } catch (error) {
-      logger.err('$error');
-      throw ProcessExit(ExitCode.usage.code);
-    }
-
     try {
       final shouldCodesign = argResults['codesign'] == true;
       final (flutterVersionAndRevision, flutterVersion) = await (
@@ -190,7 +182,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         // release was, we will erroneously report native diffs.
         ipaBuildResult = await artifactBuilder.buildIpa(
           codesign: shouldCodesign,
-          exportOptionsPlist: exportOptionsPlist,
           flavor: flavor,
           target: target,
           args: argResults.forwardedArgs +
