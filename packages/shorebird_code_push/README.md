@@ -50,13 +50,13 @@ class _MyHomePageState extends State<MyHomePage> {
     // Get the current patch number and print it to the console.
     // It will be `null` if no patches are installed.
     updater.readCurrentPatch().then((currentPatch) {
-      print('The current patch number is: ${currentPatch.number}');
+      print('The current patch number is: ${currentPatch?.number}');
     });
   }
 
   Future<void> _checkForUpdates() async {
     // Check whether a new update is available.
-    final status = await updater.checkForUpdates();
+    final status = await updater.checkForUpdate();
 
     if (status == UpdateStatus.outdated) {
       try {
