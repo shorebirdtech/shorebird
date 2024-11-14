@@ -332,7 +332,6 @@ To change the version of this release, change your app's version in your pubspec
           when(
             () => artifactBuilder.buildIpa(
               codesign: any(named: 'codesign'),
-              exportOptionsPlist: any(named: 'exportOptionsPlist'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
@@ -353,10 +352,6 @@ To change the version of this release, change your app's version in your pubspec
 
           when(() => codeSigner.base64PublicKey(any()))
               .thenReturn(base64PublicKey);
-
-          when(
-            () => ios.exportOptionsPlistFromArgs(argResults),
-          ).thenReturn(File(''));
 
           when(() => shorebirdEnv.getShorebirdProjectRoot())
               .thenReturn(projectRoot);
@@ -379,7 +374,6 @@ To change the version of this release, change your app's version in your pubspec
             when(
               () => artifactBuilder.buildIpa(
                 codesign: any(named: 'codesign'),
-                exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 args: any(named: 'args'),
@@ -402,7 +396,6 @@ To change the version of this release, change your app's version in your pubspec
               verify(
                 () => artifactBuilder.buildIpa(
                   codesign: any(named: 'codesign'),
-                  exportOptionsPlist: any(named: 'exportOptionsPlist'),
                   flavor: any(named: 'flavor'),
                   target: any(named: 'target'),
                   args: any(named: 'args'),
@@ -434,32 +427,11 @@ To change the version of this release, change your app's version in your pubspec
           });
         });
 
-        group('when export options plist fails to generate', () {
-          const error = 'error';
-          setUp(() {
-            when(
-              () => ios.exportOptionsPlistFromArgs(argResults),
-            ).thenThrow(error);
-          });
-
-          test('logs error and exits with code 64', () async {
-            await expectLater(
-              () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
-              exitsWithCode(ExitCode.usage),
-            );
-
-            verify(
-              () => logger.err(error),
-            ).called(1);
-          });
-        });
-
         group('when build fails', () {
           setUp(() {
             when(
               () => artifactBuilder.buildIpa(
                 codesign: any(named: 'codesign'),
-                exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 args: any(named: 'args'),
@@ -501,7 +473,6 @@ To change the version of this release, change your app's version in your pubspec
                 ).called(1);
                 verify(
                   () => artifactBuilder.buildIpa(
-                    exportOptionsPlist: any(named: 'exportOptionsPlist'),
                     args: ['--verbose'],
                   ),
                 ).called(1);

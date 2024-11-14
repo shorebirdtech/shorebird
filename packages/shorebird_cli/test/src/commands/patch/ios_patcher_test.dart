@@ -142,8 +142,6 @@ void main() {
           () => shorebirdEnv.getShorebirdProjectRoot(),
         ).thenReturn(projectRoot);
 
-        when(() => ios.exportOptionsPlistFromArgs(any())).thenReturn(File(''));
-
         when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
 
         patcher = IosPatcher(
@@ -533,26 +531,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           });
         });
 
-        group('when exportOptionsPlist fails', () {
-          setUp(() {
-            when(() => ios.exportOptionsPlistFromArgs(any())).thenThrow(
-              const FileSystemException('error'),
-            );
-          });
-
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(patcher.buildPatchArtifact),
-              exitsWithCode(ExitCode.usage),
-            );
-          });
-        });
-
         group('when build fails with ProcessException', () {
           setUp(() {
             when(
               () => artifactBuilder.buildIpa(
-                exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 codesign: any(named: 'codesign'),
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
@@ -581,7 +563,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           setUp(() {
             when(
               () => artifactBuilder.buildIpa(
-                exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 codesign: any(named: 'codesign'),
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
@@ -606,7 +587,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           setUp(() {
             when(
               () => artifactBuilder.buildIpa(
-                exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 codesign: any(named: 'codesign'),
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
@@ -644,7 +624,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             )..createSync(recursive: true);
             when(
               () => artifactBuilder.buildIpa(
-                exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 codesign: any(named: 'codesign'),
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
@@ -723,7 +702,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               verify(
                 () => artifactBuilder.buildIpa(
                   flavor: any(named: 'flavor'),
-                  exportOptionsPlist: any(named: 'exportOptionsPlist'),
                   codesign: any(named: 'codesign'),
                   target: any(named: 'target'),
                   args: any(
@@ -749,7 +727,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               expect(p.basename(artifact.path), endsWith('.zip'));
               verify(
                 () => artifactBuilder.buildIpa(
-                  exportOptionsPlist: any(named: 'exportOptionsPlist'),
                   codesign: any(named: 'codesign'),
                   args: ['--verbose'],
                 ),
@@ -782,7 +759,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
               verify(
                 () => artifactBuilder.buildIpa(
-                  exportOptionsPlist: any(named: 'exportOptionsPlist'),
                   codesign: any(named: 'codesign'),
                   args: any(named: 'args'),
                   flavor: any(named: 'flavor'),

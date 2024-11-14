@@ -111,6 +111,14 @@ void main() {
           CommonArguments.splitDebugInfoArg.name,
           help: CommonArguments.splitDebugInfoArg.description,
         )
+        ..addOption(
+          CommonArguments.exportMethodArg.name,
+          help: CommonArguments.exportMethodArg.description,
+        )
+        ..addOption(
+          CommonArguments.exportOptionsPlistArg.name,
+          help: CommonArguments.exportOptionsPlistArg.description,
+        )
         ..addMultiOption(
           'platforms',
           allowed: ReleaseType.values.map((e) => e.cliName),
@@ -262,6 +270,68 @@ void main() {
         expect(
           result.forwardedArgs,
           contains('--split-debug-info=build/symbols'),
+        );
+      });
+    });
+
+    group('when export method is provided before the --', () {
+      test('forwards it', () {
+        final args = [
+          '--verbose',
+          '--export-method=development',
+        ];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, hasLength(1));
+        expect(
+          result.forwardedArgs,
+          contains('--export-method=development'),
+        );
+      });
+    });
+
+    group('when export method is provided after the --', () {
+      test('forwards it', () {
+        final args = [
+          '--verbose',
+          '--',
+          '--export-method=development',
+        ];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, hasLength(1));
+        expect(
+          result.forwardedArgs,
+          contains('--export-method=development'),
+        );
+      });
+    });
+
+    group('when export options plist is provided before the --', () {
+      test('forwards it', () {
+        final args = [
+          '--verbose',
+          '--export-options-plist=build/ExportOptions.plist',
+        ];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, hasLength(1));
+        expect(
+          result.forwardedArgs,
+          contains('--export-options-plist=build/ExportOptions.plist'),
+        );
+      });
+    });
+
+    group('when export options plist is provided after the --', () {
+      test('forwards it', () {
+        final args = [
+          '--verbose',
+          '--',
+          '--export-options-plist=build/ExportOptions.plist',
+        ];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, hasLength(1));
+        expect(
+          result.forwardedArgs,
+          contains('--export-options-plist=build/ExportOptions.plist'),
         );
       });
     });

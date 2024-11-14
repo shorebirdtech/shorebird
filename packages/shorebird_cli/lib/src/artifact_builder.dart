@@ -259,7 +259,6 @@ class ArtifactBuilder {
   /// an .xcarchive and _not_ an .ipa.
   Future<IpaBuildResult> buildIpa({
     bool codesign = true,
-    File? exportOptionsPlist,
     String? flavor,
     String? target,
     List<String> args = const [],
@@ -268,8 +267,6 @@ class ArtifactBuilder {
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final exportOptionsPlistPath =
-          (exportOptionsPlist ?? ios.createExportOptionsPlist()).path;
       final arguments = [
         'build',
         'ipa',
@@ -277,7 +274,6 @@ class ArtifactBuilder {
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        if (codesign) '''--export-options-plist=$exportOptionsPlistPath''',
         ...args,
       ];
 
