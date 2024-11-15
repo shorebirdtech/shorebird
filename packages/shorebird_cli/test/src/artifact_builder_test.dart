@@ -811,6 +811,71 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           ).called(1);
         });
 
+        group('when progress contains known build steps', () {
+          late DetailProgress progress;
+
+          setUp(() {
+            progress = MockDetailProgress();
+
+            when(() => buildProcess.stdout).thenAnswer(
+              (_) => Stream.fromIterable(
+                [
+                  '''
+                  [        ] Will strip AOT snapshot manually after build and dSYM generation.
+                  [        ] executing: /bin/cache/artifacts/engine/ios-release/gen_snapshot_arm64 --deterministic --snapshot_kind=app-aot-assembly --assembly=snapshot_assembly.S /path/to/app.dill
+                  [+3688 ms] executing: sysctl hw.optional.arm64''',
+                  '[  +10 ms] Generating /Users/bryanoltman/Documents/sandbox/notification_extension/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java',
+                  '[  +50 ms] executing: [/Users/bryanoltman/Documents/sandbox/notification_extension/ios/] /usr/bin/arch -arm64e xcrun xcodebuild -list',
+                  '[+32333 ms] Command line invocation:',
+                  '[   +6 ms] Exit code 0 from: mkfifo /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout',
+                  '[   +1 ms] Running Xcode build...',
+                  '[        ] executing: [/Users/bryanoltman/Documents/sandbox/notification_extension/ios/] /usr/bin/arch -arm64e xcrun xcodebuild -configuration Release VERBOSE_SCRIPT_LOGGING=YES -workspace Runner.xcworkspace -scheme Runner -sdk iphoneos -destination generic/platform=iOS SCRIPT_OUTPUT_STREAM_FILE=/var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout -resultBundlePath /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/temporary_xcresult_bundle -resultBundleVersion 3 FLUTTER_SUPPRESS_ANALYTICS=true COMPILER_INDEX_STORE_ENABLE=NO -archivePath /Users/bryanoltman/Documents/sandbox/notification_extension/build/ios/archive/Runner archive',
+                  '[+62601 ms] Running Xcode build... (completed in 62.6s)',
+                  '[        ]  └─Compiling, linking and signing...',
+                  '[+5925 ms] Command line invocation:',
+                  '/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -configuration Release VERBOSE_SCRIPT_LOGGING=YES -workspace Runner.xcworkspace -scheme Runner -sdk iphoneos -destination generic/platform=iOS SCRIPT_OUTPUT_STREAM_FILE=/var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout -resultBundlePath /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/temporary_xcresult_bundle -resultBundleVersion 3 FLUTTER_SUPPRESS_ANALYTICS=true COMPILER_INDEX_STORE_ENABLE=NO -archivePath /Users/bryanoltman/Documents/sandbox/notification_extension/build/ios/archive/Runner archive',
+                ]
+                    .map((line) => '$line${Platform.lineTerminator}')
+                    .map(utf8.encode),
+              ),
+            );
+            when(() => buildProcess.stderr).thenAnswer(
+              (_) => Stream.fromIterable(
+                ['Some build output'].map(utf8.encode),
+              ),
+            );
+          });
+
+          test('updates progress with known build steps', () async {
+            await expectLater(
+              runWithOverrides(
+                () => builder.buildIpa(
+                  buildProgress: progress,
+                ),
+              ),
+              completes,
+            );
+
+            // Required to trigger stdout stream events
+            await pumpEventQueue();
+
+            // Ensure we update the progress in the correct order and with the
+            // correct messages, and reset to the base message after the build
+            // completes.
+            verifyInOrder(
+              [
+                () => progress.updateDetailMessage('Collecting schemes'),
+                () => progress.updateDetailMessage('Running Xcode build'),
+                () => progress.updateDetailMessage('Running Xcode build'),
+                () => progress.updateDetailMessage(
+                      'Compiling, linking and signing',
+                    ),
+                // () => progress.updateDetailMessage(null),
+              ],
+            );
+          });
+        });
+
         group('when the build fails', () {
           group('with non-zero exit code', () {
             setUp(() {
