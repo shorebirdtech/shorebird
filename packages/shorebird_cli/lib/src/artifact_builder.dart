@@ -3,9 +3,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/extensions/shorebird_process_result.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -263,6 +264,7 @@ class ArtifactBuilder {
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
+    DetailProgress? buildProgress,
   }) async {
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
@@ -277,30 +279,50 @@ class ArtifactBuilder {
         ...args,
       ];
 
-      final result = await process.run(
+      final buildProcess = await process.start(
         executable,
         arguments,
         runInShell: true,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
-      if (result.exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('Failed to build: ${result.stderr}');
+      final stdoutLines = <String>[];
+      buildProcess.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        stdoutLines.add(line);
+        if (buildProgress == null) {
+          return;
+        }
+
+        final update = _progressUpdateFromIpaBuildLog(line);
+        if (update != null) {
+          buildProgress.updateDetailMessage(update);
+        }
+      });
+
+      final stderrLines = await buildProcess.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .toList();
+      final stdErr = stderrLines.join('\n');
+      final stdOut = stdoutLines.join('\n');
+      final exitCode = await buildProcess.exitCode;
+
+      if (exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('Failed to build: $stdErr');
       }
 
-      if (result.stderr
-          .toString()
-          .contains('Encountered error while creating the IPA')) {
-        final errorMessage = _failedToCreateIpaErrorMessage(
-          stderr: result.stderr.toString(),
-        );
+      if (stdErr.contains('Encountered error while creating the IPA')) {
+        final errorMessage = _failedToCreateIpaErrorMessage(stderr: stdErr);
 
         throw ArtifactBuildException('''
 Failed to build:
 $errorMessage''');
       }
 
-      appDillPath = result.findAppDill();
+      appDillPath = findAppDill(stdout: stdOut);
     });
 
     if (appDillPath == null) {
@@ -338,7 +360,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
         throw ArtifactBuildException('Failed to build: ${result.stderr}');
       }
 
-      appDillPath = result.findAppDill();
+      appDillPath = findAppDill(stdout: result.stdout.toString());
     });
 
     if (appDillPath == null) {
@@ -453,5 +475,64 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     }
 
     return File(outFilePath);
+  }
+
+  /// Given a log of verbose output from `flutter build ipa`, returns a
+  /// progress update message to display to the user if the line contains
+  /// a known progress update step. Returns null (no update) otherwise.
+  String? _progressUpdateFromIpaBuildLog(String line) {
+    // xcodebuild -list is a command run early in `flutter build ipa` to read
+    // build settings and schemes. Most users aren't familiar with this command,
+    // so we translate it to "Collecting schemes" below.
+    final collectingSchemesRegex =
+        RegExp(r'\[.*\] executing:.*xcrun xcodebuild -list$');
+    final archivingRegex = RegExp(r'^\[.*\] (Archiving .+$)');
+    final runningXcodeBuildRegex = RegExp(r'^\[.*\] (Running Xcode build).*$');
+    final compilingLinkingSigningRegex =
+        RegExp(r'^\[.*\]\s+└─(Compiling, linking and signing).*$');
+    final buildingAppStoreIpaRegex =
+        RegExp(r'^\[.*\] (Building App Store IPA).*$');
+    final builtAppStoreIpaRegex = RegExp(r'^\[.*\] ✓ (Built IPA to \S+).*$');
+
+    final regexes = [
+      archivingRegex,
+      collectingSchemesRegex,
+      runningXcodeBuildRegex,
+      compilingLinkingSigningRegex,
+      buildingAppStoreIpaRegex,
+      builtAppStoreIpaRegex,
+    ];
+
+    for (final regex in regexes) {
+      final match = regex.firstMatch(line);
+      if (match == null) continue;
+
+      // See the note above about the collectingSchemesRegex.
+      if (regex == collectingSchemesRegex) {
+        return 'Collecting schemes';
+      }
+
+      return match.group(1);
+    }
+
+    return null;
+  }
+
+  /// Given the full stdout from a `flutter build ipa` command, finds the path
+  /// to the app.dill file that was built.
+  @visibleForTesting
+  String? findAppDill({required String stdout}) {
+    final appDillLine = stdout.split('\n').firstWhereOrNull(
+          (l) => l.contains('gen_snapshot') && l.endsWith('app.dill'),
+        );
+
+    if (appDillLine == null) return null;
+
+    // The last argument in the line is the path to app.dill. Because
+    //   1) paths can contain spaces and
+    //   2) the path to the app.dill is absolute (i.e., it starts with a '/')
+    // we can grab the last space-separated part of the line that starts with
+    // a '/' and assume everything after it is the path to app.dill.
+    return '/${appDillLine.split(' /').last}';
   }
 }

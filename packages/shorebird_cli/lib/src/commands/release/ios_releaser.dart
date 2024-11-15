@@ -107,8 +107,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-    final buildProgress =
-        logger.progress('Building ipa with Flutter $flutterVersionString');
+    final buildProgress = logger.detailProgress(
+      'Building app bundle with Flutter $flutterVersionString',
+    );
 
     try {
       await artifactBuilder.buildIpa(
@@ -117,6 +118,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         target: target,
         args: argResults.forwardedArgs,
         base64PublicKey: argResults.encodedPublicKey,
+        buildProgress: buildProgress,
       );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
