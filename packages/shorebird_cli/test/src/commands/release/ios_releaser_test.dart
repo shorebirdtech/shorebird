@@ -335,6 +335,7 @@ To change the version of this release, change your app's version in your pubspec
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
+              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer(
             (_) async => IpaBuildResult(
@@ -378,6 +379,7 @@ To change the version of this release, change your app's version in your pubspec
                 target: any(named: 'target'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).thenAnswer(
               (_) async => IpaBuildResult(
@@ -400,6 +402,7 @@ To change the version of this release, change your app's version in your pubspec
                   target: any(named: 'target'),
                   args: any(named: 'args'),
                   base64PublicKey: base64PublicKey,
+                  buildProgress: any(named: 'buildProgress'),
                 ),
               ).called(1);
             },
@@ -435,6 +438,7 @@ To change the version of this release, change your app's version in your pubspec
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 args: any(named: 'args'),
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).thenThrow(ArtifactBuildException('Failed to build'));
           });
@@ -452,31 +456,30 @@ To change the version of this release, change your app's version in your pubspec
         });
 
         group('when build succeeds', () {
-          group('when build succeeds', () {
-            group('when platform was specified via arg results rest', () {
-              setUp(() {
-                when(() => argResults.rest).thenReturn(['ios', '--verbose']);
-              });
+          group('when platform was specified via arg results rest', () {
+            setUp(() {
+              when(() => argResults.rest).thenReturn(['ios', '--verbose']);
+            });
 
-              test('verifies artifacts exist and returns xcarchive path',
-                  () async {
-                expect(
-                  await runWithOverrides(iosReleaser.buildReleaseArtifacts),
-                  equals(xcarchiveDirectory),
-                );
+            test('verifies artifacts exist and returns xcarchive path',
+                () async {
+              expect(
+                await runWithOverrides(iosReleaser.buildReleaseArtifacts),
+                equals(xcarchiveDirectory),
+              );
 
-                verify(() => artifactManager.getXcarchiveDirectory()).called(1);
-                verify(
-                  () => artifactManager.getIosAppDirectory(
-                    xcarchiveDirectory: xcarchiveDirectory,
-                  ),
-                ).called(1);
-                verify(
-                  () => artifactBuilder.buildIpa(
-                    args: ['--verbose'],
-                  ),
-                ).called(1);
-              });
+              verify(() => artifactManager.getXcarchiveDirectory()).called(1);
+              verify(
+                () => artifactManager.getIosAppDirectory(
+                  xcarchiveDirectory: xcarchiveDirectory,
+                ),
+              ).called(1);
+              verify(
+                () => artifactBuilder.buildIpa(
+                  args: ['--verbose'],
+                  buildProgress: any(named: 'buildProgress'),
+                ),
+              ).called(1);
             });
           });
 
