@@ -173,7 +173,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         throw ProcessExit(ExitCode.software.code);
       }
 
-      final buildProgress = logger.progress(
+      final buildProgress = logger.detailProgress(
         'Building patch with Flutter $flutterVersionAndRevision',
       );
       final IpaBuildResult ipaBuildResult;
@@ -187,6 +187,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           args: argResults.forwardedArgs +
               buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
           base64PublicKey: argResults.encodedPublicKey,
+          buildProgress: buildProgress,
         );
       } on ProcessException catch (error) {
         buildProgress.fail('Failed to build: ${error.message}');
