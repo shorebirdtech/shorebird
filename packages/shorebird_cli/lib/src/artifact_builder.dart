@@ -306,8 +306,8 @@ class ArtifactBuilder {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .toList();
-      final stdErr = stderrLines.join('\n');
-      final stdOut = stdoutLines.join('\n');
+      final stderr = stderrLines.join('\n');
+      final stdout = stdoutLines.join('\n');
       final exitCode = await buildProcess.exitCode;
 
       // If we've been updating the progress, reset it to the original base
@@ -315,18 +315,18 @@ class ArtifactBuilder {
       buildProgress?.updateDetailMessage(null);
 
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('Failed to build: $stdErr');
+        throw ArtifactBuildException('Failed to build: $stderr');
       }
 
-      if (stdErr.contains('Encountered error while creating the IPA')) {
-        final errorMessage = _failedToCreateIpaErrorMessage(stderr: stdErr);
+      if (stderr.contains('Encountered error while creating the IPA')) {
+        final errorMessage = _failedToCreateIpaErrorMessage(stderr: stderr);
 
         throw ArtifactBuildException('''
 Failed to build:
 $errorMessage''');
       }
 
-      appDillPath = findAppDill(stdout: stdOut);
+      appDillPath = findAppDill(stdout: stdout);
     });
 
     if (appDillPath == null) {
