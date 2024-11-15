@@ -539,6 +539,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).thenThrow(
               const ProcessException(
@@ -567,6 +568,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).thenThrow(
               ArtifactBuildException('Build failed'),
@@ -591,6 +593,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 args: any(named: 'args'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).thenAnswer(
               (_) async =>
@@ -629,6 +632,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).thenAnswer(
               (_) async => IpaBuildResult(kernelFile: kernelFile),
@@ -710,6 +714,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       ['--build-name=1.2.3', '--build-number=4'],
                     ),
                   ),
+                  buildProgress: any(named: 'buildProgress'),
                 ),
               ).called(1);
             });
@@ -729,6 +734,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 () => artifactBuilder.buildIpa(
                   codesign: any(named: 'codesign'),
                   args: ['--verbose'],
+                  buildProgress: any(named: 'buildProgress'),
                 ),
               ).called(1);
             });
@@ -764,6 +770,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                   flavor: any(named: 'flavor'),
                   target: any(named: 'target'),
                   base64PublicKey: 'public_key_encoded',
+                  buildProgress: any(named: 'buildProgress'),
                 ),
               ).called(1);
             });
