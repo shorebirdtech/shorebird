@@ -872,7 +872,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 () => progress.updateDetailMessage(
                       'Compiling, linking and signing',
                     ),
-                // () => progress.updateDetailMessage(null),
               ],
             );
           });
