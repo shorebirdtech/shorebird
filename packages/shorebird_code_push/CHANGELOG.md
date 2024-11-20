@@ -1,3 +1,8 @@
+# 2.0.2
+
+- fix: unbreak web platform
+- chore: minor improvements to example
+
 # 2.0.1
 
 - Update the minimum Flutter version from 3.24.4 to 3.24.5 (3.24.4 does not
