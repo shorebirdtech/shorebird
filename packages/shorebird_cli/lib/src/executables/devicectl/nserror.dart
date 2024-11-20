@@ -92,7 +92,7 @@ UserInfo(
 
 @JsonSerializable(fieldRename: FieldRename.none)
 class StringContainer extends Equatable {
-  const StringContainer({required this.string});
+  const StringContainer(this.string);
 
   final String string;
 

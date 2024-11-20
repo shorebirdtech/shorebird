@@ -77,7 +77,7 @@ StringContainer _$StringContainerFromJson(Map<String, dynamic> json) =>
       json,
       ($checkedConvert) {
         final val = StringContainer(
-          string: $checkedConvert('string', (v) => v as String),
+          $checkedConvert('string', (v) => v as String),
         );
         return val;
       },
