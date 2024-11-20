@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.13 (November 20, 2024)
+
+- 🍎 Provide more build status updates for iOS release and patch
+- 👀 Improve error messages for iOS preview
+
 ## 1.4.12 (November 14, 2024)
 
 - 🍎 Remove logic to provide custom ExportOptions.plist to iOS builds. This was
