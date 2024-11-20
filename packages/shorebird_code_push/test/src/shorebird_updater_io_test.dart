@@ -37,7 +37,7 @@ void main() {
       group('when updater is available', () {
         setUp(() {
           when(updater.currentPatchNumber).thenReturn(1);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('returns true', () {
@@ -53,7 +53,7 @@ void main() {
         test(
           'returns false',
           overridePrint((_) {
-            shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+            shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
             expect(shorebirdUpdater.isAvailable, isFalse);
           }),
         );
@@ -69,7 +69,7 @@ void main() {
         test(
           'returns null',
           overridePrint((_) async {
-            shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+            shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
             await expectLater(
               shorebirdUpdater.readCurrentPatch(),
               completion(isNull),
@@ -86,7 +86,7 @@ void main() {
         setUp(() {
           when(updater.currentPatchNumber).thenReturn(0);
           when(updater.nextPatchNumber).thenReturn(0);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('returns null', () async {
@@ -107,7 +107,7 @@ void main() {
         setUp(() {
           when(updater.currentPatchNumber).thenReturn(currentPatchNumber);
           when(updater.nextPatchNumber).thenReturn(nextPatchNumber);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('returns correct patch numbers', () async {
@@ -134,7 +134,7 @@ void main() {
         setUp(() {
           when(updater.currentPatchNumber).thenReturn(currentPatchNumber);
           when(updater.nextPatchNumber).thenReturn(nextPatchNumber);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('returns correct patch numbers', () async {
@@ -169,7 +169,7 @@ void main() {
         setUp(() {
           when(updater.currentPatchNumber).thenReturn(currentPatchNumber);
           when(updater.nextPatchNumber).thenReturn(nextPatchNumber);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('returns correct patch numbers', () async {
@@ -205,7 +205,7 @@ void main() {
             return value;
           });
           when(updater.nextPatchNumber).thenThrow(Exception('oops'));
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('throws $ReadPatchException', () async {
@@ -230,7 +230,7 @@ void main() {
         test(
           'returns UpdateStatus.unavailable',
           overridePrint((_) async {
-            shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+            shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
             await expectLater(
               shorebirdUpdater.checkForUpdate(),
               completion(equals(UpdateStatus.unavailable)),
@@ -243,7 +243,7 @@ void main() {
         setUp(() {
           when(updater.currentPatchNumber).thenReturn(0);
           when(updater.checkForDownloadableUpdate).thenReturn(true);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('returns UpdateStatus.outdated', () async {
@@ -259,7 +259,7 @@ void main() {
           when(updater.currentPatchNumber).thenReturn(0);
           when(updater.nextPatchNumber).thenReturn(1);
           when(updater.checkForDownloadableUpdate).thenReturn(false);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('returns UpdateStatus.restartRequired', () async {
@@ -275,7 +275,7 @@ void main() {
           when(updater.currentPatchNumber).thenReturn(1);
           when(updater.nextPatchNumber).thenReturn(1);
           when(updater.checkForDownloadableUpdate).thenReturn(false);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('returns UpdateStatus.upToDate', () async {
@@ -294,7 +294,7 @@ void main() {
           when(
             () => updater.checkForDownloadableUpdate(track: track),
           ).thenReturn(true);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('forwards the provided track to the underlying updater call',
@@ -318,7 +318,7 @@ void main() {
         test(
           'does nothing',
           overridePrint((_) async {
-            shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+            shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
             await expectLater(shorebirdUpdater.update(), completes);
             verifyNever(updater.downloadUpdate);
           }),
@@ -329,7 +329,7 @@ void main() {
         setUp(() {
           when(() => updater.currentPatchNumber()).thenReturn(0);
           when(() => updater.update()).thenReturn(nullptr);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('throws $UpdateException', () async {
@@ -365,7 +365,7 @@ void main() {
               ..free(result);
           });
           when(() => updater.update()).thenReturn(result);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('throws $UpdateException', () async {
@@ -402,7 +402,7 @@ void main() {
               ..free(result);
           });
           when(() => updater.update()).thenReturn(result);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('throws $UpdateException', () async {
@@ -439,7 +439,7 @@ void main() {
               ..free(result);
           });
           when(() => updater.update()).thenReturn(result);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('throws $UpdateException', () async {
@@ -467,7 +467,7 @@ void main() {
           result.ref.status = SHOREBIRD_UPDATE_ERROR;
           addTearDown(() => calloc.free(result));
           when(() => updater.update()).thenReturn(result);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('throws $UpdateException', () async {
@@ -497,7 +497,7 @@ void main() {
           when(updater.currentPatchNumber).thenReturn(0);
           when(updater.nextPatchNumber).thenReturn(1);
           when(() => updater.update()).thenThrow(Exception('oops'));
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('falls back to downloadUpdate', () async {
@@ -511,7 +511,7 @@ void main() {
           setUp(() {
             when(updater.currentPatchNumber).thenReturn(0);
             when(updater.nextPatchNumber).thenReturn(0);
-            shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+            shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
           });
 
           test('throws if legacy update fails', () async {
@@ -546,7 +546,7 @@ Please upgrade the Shorebird Engine for improved error messages.''',
           result.ref.message = nullptr;
           addTearDown(() => calloc.free(result));
           when(() => updater.update()).thenReturn(result);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('throws $UpdateException', () async {
@@ -578,7 +578,7 @@ Please upgrade the Shorebird Engine for improved error messages.''',
           result.ref.status = SHOREBIRD_UPDATE_INSTALLED;
           addTearDown(() => calloc.free(result));
           when(() => updater.update()).thenReturn(result);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('completes', () async {
@@ -597,7 +597,7 @@ Please upgrade the Shorebird Engine for improved error messages.''',
           result.ref.status = SHOREBIRD_UPDATE_INSTALLED;
           addTearDown(() => calloc.free(result));
           when(() => updater.update(track: track)).thenReturn(result);
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater, run: run);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
         test('forwards the provided track to the underlying updater call',

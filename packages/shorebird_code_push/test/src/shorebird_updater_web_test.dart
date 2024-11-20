@@ -1,26 +1,17 @@
-import 'package:mocktail/mocktail.dart';
 import 'package:shorebird_code_push/src/shorebird_updater.dart';
 import 'package:shorebird_code_push/src/shorebird_updater_web.dart';
-import 'package:shorebird_code_push/src/updater.dart';
 import 'package:test/test.dart';
 
 import '../override_print.dart';
 
-class _MockUpdater extends Mock implements Updater {}
-
 void main() {
   group(ShorebirdUpdaterImpl, () {
-    late Updater updater;
     late ShorebirdUpdaterImpl shorebirdUpdater;
-
-    setUp(() {
-      updater = _MockUpdater();
-    });
 
     test(
       'logs unavailable error',
       overridePrint((logs) {
-        shorebirdUpdater = ShorebirdUpdaterImpl(updater);
+        shorebirdUpdater = ShorebirdUpdaterImpl();
         expect(
           logs,
           contains(
@@ -40,7 +31,7 @@ void main() {
       test(
         'returns false',
         overridePrint((_) {
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater);
+          shorebirdUpdater = ShorebirdUpdaterImpl();
           expect(shorebirdUpdater.isAvailable, isFalse);
         }),
       );
@@ -79,7 +70,6 @@ void main() {
         'does nothing',
         overridePrint((_) async {
           await expectLater(shorebirdUpdater.update(), completes);
-          verifyNever(updater.downloadUpdate);
         }),
       );
     });

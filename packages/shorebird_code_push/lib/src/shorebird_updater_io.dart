@@ -21,8 +21,9 @@ typedef IsolateRun = Future<R> Function<R>(
 /// {@endtemplate}
 class ShorebirdUpdaterImpl implements ShorebirdUpdater {
   /// {@macro shorebird_updater_io}
-  ShorebirdUpdaterImpl(this._updater, {IsolateRun? run})
-      : _run = run ?? Isolate.run {
+  ShorebirdUpdaterImpl({Updater? updater, IsolateRun? run})
+      : _updater = updater ?? const Updater(),
+        _run = run ?? Isolate.run {
     try {
       // If the Shorebird Engine is not available, this will throw an exception.
       // FIXME: Run this in an isolate or refactor the updater to avoid risking

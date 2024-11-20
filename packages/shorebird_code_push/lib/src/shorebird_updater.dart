@@ -1,6 +1,5 @@
 import 'package:shorebird_code_push/src/shorebird_updater_io.dart'
     if (dart.library.js_interop) './shorebird_updater_web.dart';
-import 'package:shorebird_code_push/src/updater.dart';
 
 /// The reason a call to [ShorebirdUpdater.update] failed.
 enum UpdateFailureReason {
@@ -95,7 +94,7 @@ enum UpdateStatus {
 /// {@endtemplate}
 abstract class ShorebirdUpdater {
   /// {@macro shorebird_updater}
-  factory ShorebirdUpdater() => ShorebirdUpdaterImpl(const Updater());
+  factory ShorebirdUpdater() => ShorebirdUpdaterImpl();
 
   /// Whether the updater is available on the current platform.
   /// The most common reasons for this returning false are:
