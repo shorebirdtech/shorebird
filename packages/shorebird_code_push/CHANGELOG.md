@@ -1,6 +1,6 @@
 # 2.0.2
 
-- fix: unbreak web platform
+- fix: un-break web platform
 - chore: minor improvements to example
 
 # 2.0.1
