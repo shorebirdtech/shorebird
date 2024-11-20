@@ -398,9 +398,9 @@ void main() {
           deviceListJsonOutput = File(
             '$fixturesPath/device_list_success.json',
           ).readAsStringSync();
-          // I was not able to get this command to fail, so just use an empty
-          // string as the output.
-          installJsonOutput = '';
+          installJsonOutput = File(
+            '$fixturesPath/install_failure.json',
+          ).readAsStringSync();
         });
 
         test('returns exit code 70 ', () async {
@@ -413,6 +413,10 @@ void main() {
             ),
             equals(ExitCode.software.code),
           );
+
+          verify(
+            () => progress.fail(any(that: contains('Operation timed out'))),
+          ).called(1);
         });
       });
 
@@ -437,6 +441,16 @@ void main() {
             ),
             equals(ExitCode.software.code),
           );
+
+          verify(
+            () => progress.fail(
+              any(
+                that: contains(
+                  '''Unable to launch dev.shorebird.ios-test because the device was not, or could not be, unlocked.''',
+                ),
+              ),
+            ),
+          ).called(1);
         });
       });
 

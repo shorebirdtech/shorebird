@@ -301,6 +301,8 @@ class Devicectl {
     }
 
     return rootError.userInfo.localizedFailureReason?.string ??
+        rootError.userInfo.localizedDescription?.string ??
+        rootError.userInfo.description?.string ??
         'unknown failure reason';
   }
 }

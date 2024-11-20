@@ -22,11 +22,22 @@ NSError _$NSErrorFromJson(Map<String, dynamic> json) => $checkedCreate(
       },
     );
 
+Map<String, dynamic> _$NSErrorToJson(NSError instance) => <String, dynamic>{
+      'code': instance.code,
+      'domain': instance.domain,
+      'userInfo': instance.userInfo.toJson(),
+    };
+
 UserInfo _$UserInfoFromJson(Map<String, dynamic> json) => $checkedCreate(
       'UserInfo',
       json,
       ($checkedConvert) {
         final val = UserInfo(
+          description: $checkedConvert(
+              'NSDescription',
+              (v) => v == null
+                  ? null
+                  : StringContainer.fromJson(v as Map<String, dynamic>)),
           localizedDescription: $checkedConvert(
               'NSLocalizedDescription',
               (v) => v == null
@@ -46,11 +57,19 @@ UserInfo _$UserInfoFromJson(Map<String, dynamic> json) => $checkedCreate(
         return val;
       },
       fieldKeyMap: const {
+        'description': 'NSDescription',
         'localizedDescription': 'NSLocalizedDescription',
         'localizedFailureReason': 'NSLocalizedFailureReason',
         'underlyingError': 'NSUnderlyingError'
       },
     );
+
+Map<String, dynamic> _$UserInfoToJson(UserInfo instance) => <String, dynamic>{
+      'NSDescription': instance.description?.toJson(),
+      'NSLocalizedDescription': instance.localizedDescription?.toJson(),
+      'NSLocalizedFailureReason': instance.localizedFailureReason?.toJson(),
+      'NSUnderlyingError': instance.underlyingError?.toJson(),
+    };
 
 StringContainer _$StringContainerFromJson(Map<String, dynamic> json) =>
     $checkedCreate(
@@ -58,11 +77,16 @@ StringContainer _$StringContainerFromJson(Map<String, dynamic> json) =>
       json,
       ($checkedConvert) {
         final val = StringContainer(
-          string: $checkedConvert('string', (v) => v as String),
+          $checkedConvert('string', (v) => v as String),
         );
         return val;
       },
     );
+
+Map<String, dynamic> _$StringContainerToJson(StringContainer instance) =>
+    <String, dynamic>{
+      'string': instance.string,
+    };
 
 NSUnderlyingError _$NSUnderlyingErrorFromJson(Map<String, dynamic> json) =>
     $checkedCreate(
@@ -79,3 +103,8 @@ NSUnderlyingError _$NSUnderlyingErrorFromJson(Map<String, dynamic> json) =>
         return val;
       },
     );
+
+Map<String, dynamic> _$NSUnderlyingErrorToJson(NSUnderlyingError instance) =>
+    <String, dynamic>{
+      'error': instance.error?.toJson(),
+    };
