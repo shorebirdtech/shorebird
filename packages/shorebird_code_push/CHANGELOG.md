@@ -1,3 +1,8 @@
+# 2.0.1
+
+- Update the mimimum Flutter version from 3.24.4 to 3.24.5 (3.24.4 does not
+  include the updater changes required to support the new API).
+
 # 2.0.0
 
 - **BREAKING**: more updates to the Updater API. We now support Stable, Beta,
