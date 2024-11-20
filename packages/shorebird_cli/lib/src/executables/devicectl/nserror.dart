@@ -33,7 +33,7 @@ class NSError extends Equatable {
   String toString() => '''
 NSError(
   code: $code,
-  domain: $domain, 
+  domain: $domain,
   userInfo: $userInfo
 )''';
 
