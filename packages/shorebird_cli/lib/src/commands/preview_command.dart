@@ -237,6 +237,7 @@ class PreviewCommand extends ShorebirdCommand {
           deviceId: deviceId,
           track: track,
         ),
+      ReleasePlatform.macos => throw UnimplementedError(),
       ReleasePlatform.ios => installAndLaunchIos(
           appId: appId,
           release: release,
