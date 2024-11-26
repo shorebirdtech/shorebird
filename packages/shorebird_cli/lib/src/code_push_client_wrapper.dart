@@ -321,6 +321,7 @@ Please create a release using "shorebird release" and try again.
       );
       updateStatusProgress.complete();
     } catch (error) {
+      print('failed to update release status $error');
       _handleErrorAndExit(error, progress: updateStatusProgress);
     }
   }
@@ -614,6 +615,37 @@ aar artifact already exists, continuing...''',
         .where((file) => p.extension(file.path) == '.dylib')
         .forEach((file) => file.deleteSync());
     return thinnedArchiveDirectory;
+  }
+
+  Future<void> createMacosReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required String appPath,
+    // required String runnerPath,
+    required bool isCodesigned,
+    // required String? podfileLockHash,
+  }) async {
+    final createArtifactProgress = logger.progress('Uploading artifacts');
+    final zippedApp = await Directory(appPath).zipToTempFile();
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedApp.path,
+        arch: 'app',
+        platform: ReleasePlatform.ios,
+        hash: sha256.convert(await zippedApp.readAsBytes()).toString(),
+        canSideload: false,
+        podfileLockHash: null,
+        // podfileLockHash: podfileLockHash,
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading xcarchive: $error',
+      );
+    }
   }
 
   /// Uploads a release .xcarchive and .app to the Shorebird server.

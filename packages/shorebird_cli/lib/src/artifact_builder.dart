@@ -256,6 +256,90 @@ class ArtifactBuilder {
     });
   }
 
+  /// TODO
+  Future<void> buildMacos({
+    bool codesign = true,
+    String? flavor,
+    String? target,
+    List<String> args = const [],
+    String? base64PublicKey,
+    DetailProgress? buildProgress,
+  }) async {
+    String? appDillPath;
+    await _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'macos',
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        if (!codesign) '--no-codesign',
+        ...args,
+      ];
+
+      final buildProcess = await process.start(
+        executable,
+        arguments,
+        runInShell: true,
+        environment: base64PublicKey?.toPublicKeyEnv(),
+      );
+
+      final stdoutLines = <String>[];
+      buildProcess.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        stdoutLines.add(line);
+        if (buildProgress == null) {
+          return;
+        }
+
+        final update = _progressUpdateFromIpaBuildLog(line);
+        if (update != null) {
+          buildProgress.updateDetailMessage(update);
+        }
+      });
+
+      final stderrLines = await buildProcess.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .toList();
+      final stderr = stderrLines.join('\n');
+      final stdout = stdoutLines.join('\n');
+      final exitCode = await buildProcess.exitCode;
+
+      // If we've been updating the progress, reset it to the original base
+      // message so as not to leave the user with a confusing message.
+      buildProgress?.updateDetailMessage(null);
+
+      if (exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('Failed to build: $stderr');
+      }
+
+      if (stderr.contains('Encountered error while creating the IPA')) {
+        final errorMessage = _failedToCreateIpaErrorMessage(stderr: stderr);
+
+        throw ArtifactBuildException('''
+Failed to build:
+$errorMessage''');
+      }
+
+      appDillPath = findAppDill(stdout: stdout);
+    });
+
+//     if (appDillPath == null) {
+//       throw ArtifactBuildException('''
+// Unable to find app.dill file.
+// Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+// ''');
+//     }
+
+    print('appDill path: $appDillPath');
+
+    // return IpaBuildResult(kernelFile: File(appDillPath!));
+  }
+
   /// Calls `flutter build ipa`. If [codesign] is false, this will only build
   /// an .xcarchive and _not_ an .ipa.
   Future<IpaBuildResult> buildIpa({
