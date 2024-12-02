@@ -21,6 +21,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -237,7 +238,11 @@ class PreviewCommand extends ShorebirdCommand {
           deviceId: deviceId,
           track: track,
         ),
-      ReleasePlatform.macos => throw UnimplementedError(),
+      ReleasePlatform.macos => installAndLaunchMacos(
+          appId: appId,
+          release: release,
+          track: track,
+        ),
       ReleasePlatform.ios => installAndLaunchIos(
           appId: appId,
           release: release,
@@ -277,6 +282,89 @@ class PreviewCommand extends ShorebirdCommand {
       choices: platformNames,
     );
     return ReleasePlatform.values.firstWhere((p) => p.displayName == platform);
+  }
+
+  Future<int> installAndLaunchMacos({
+    required String appId,
+    required Release release,
+    required DeploymentTrack track,
+  }) async {
+    // TODO: this doesn't fully work:
+    // 1. Downloaded unsigned apps need to be given permission to run in macOS
+    //    System settings ("Privacy and Security -> open anyway") after
+    //    the first attempt to launch the app.
+    // 2. package:archive seems to have some trouble properly zipping and
+    //    unzipping a .app file. I've been using ditto to package and
+    //    have been downloading directly from the GCP storage bucket.
+    const platform = ReleasePlatform.macos;
+    final downloadArtifactProgress = logger.progress('Downloading release');
+    late Directory appFile;
+    late ReleaseArtifact releaseAabArtifact;
+
+    try {
+      releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        arch: 'app',
+        platform: platform,
+      );
+    } catch (e, s) {
+      logger
+        ..err('Error getting release artifact: $e')
+        ..detail('Stack trace: $s');
+      return ExitCode.software.code;
+    }
+
+    try {
+      appFile = Directory(
+        getArtifactPath(
+          appId: appId,
+          release: release,
+          artifact: releaseAabArtifact,
+          platform: platform,
+          extension: 'app',
+        ),
+      );
+
+      // if (!appFile.existsSync()) {
+      // appFile.createSync(recursive: true);
+
+      final tempDir = Directory.systemTemp.createTempSync();
+      final zippedFilePath = p.join(tempDir.path, 'app.zip');
+
+      await artifactManager.downloadFile(
+        Uri.parse(releaseAabArtifact.url),
+        outputPath: zippedFilePath,
+      );
+      // }
+
+      downloadArtifactProgress.complete();
+
+      await artifactManager.extractZip(
+        zipFile: File(zippedFilePath),
+        outputDirectory: appFile.parent,
+      );
+      print('unzipped to $appFile');
+    } catch (error) {
+      downloadArtifactProgress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    await Process.run('chmod', ['+x', appFile.path]);
+    print('appFile is $appFile');
+
+    final proc = await process.start(appFile.path, []);
+    proc.stdout.transform(utf8.decoder).listen((event) {
+      print(event);
+    });
+
+    proc.stderr.transform(utf8.decoder).listen((event) {
+      print(event);
+    });
+
+    final result = await proc.exitCode;
+
+    return result;
   }
 
   Future<int> installAndLaunchAndroid({

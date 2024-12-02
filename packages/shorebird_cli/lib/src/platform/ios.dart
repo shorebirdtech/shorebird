@@ -75,6 +75,10 @@ class InvalidExportOptionsPlistException implements Exception {
 /// The minimum allowed Flutter version for creating iOS releases.
 final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
 
+/// The minimum allowed Flutter version for creating macOS releases.
+// TODO: update this
+final minimumSupportedMacosFlutterVersion = Version(3, 24, 5);
+
 /// A reference to a [Ios] instance.
 final iosRef = create(Ios.new);
 

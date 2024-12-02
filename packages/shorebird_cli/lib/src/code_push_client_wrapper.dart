@@ -626,16 +626,33 @@ aar artifact already exists, continuing...''',
     // required String? podfileLockHash,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-    final zippedApp = await Directory(appPath).zipToTempFile();
+    final tempDir = await Directory.systemTemp.createTemp();
+    final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
+    // FIXME: using ditto here because zipToTempFile is not properly capturing
+    // the app folder structure (the top folder after zipping is Content,
+    // instead of the MyApp.app directory).
+    // package:archive also seems to be having some trouble unzipping .app files
+    //
+    // final zippedApp = await Directory(appPath).zipToTempFile();
+    await Process.run('ditto', [
+      '-c',
+      '-k',
+      '--sequesterRsrc',
+      '--keepParent',
+      appPath,
+      zippedApp.path,
+    ]);
+    print('appPath is $appPath');
+
     try {
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
         artifactPath: zippedApp.path,
         arch: 'app',
-        platform: ReleasePlatform.ios,
+        platform: ReleasePlatform.macos,
         hash: sha256.convert(await zippedApp.readAsBytes()).toString(),
-        canSideload: false,
+        canSideload: true,
         podfileLockHash: null,
         // podfileLockHash: podfileLockHash,
       );

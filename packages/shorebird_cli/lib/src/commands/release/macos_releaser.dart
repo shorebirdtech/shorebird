@@ -40,6 +40,7 @@ class MacOSReleaser extends Releaser {
   @override
   Future<void> assertPreconditions() async {
     // TODO: implement assertPreconditions
+    // TODO: ensure app has network capabilities
   }
 
   @override

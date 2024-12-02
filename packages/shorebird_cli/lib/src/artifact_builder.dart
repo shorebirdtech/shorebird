@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -257,7 +258,7 @@ class ArtifactBuilder {
   }
 
   /// TODO
-  Future<void> buildMacos({
+  Future<IpaBuildResult> buildMacos({
     bool codesign = true,
     String? flavor,
     String? target,
@@ -265,6 +266,14 @@ class ArtifactBuilder {
     String? base64PublicKey,
     DetailProgress? buildProgress,
   }) async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    // Delete the .dart_tool directory to ensure that the app is rebuilt.
+    // Without this, the build command will not print the app.dill path
+    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
+    if (dartToolDir.existsSync()) {
+      dartToolDir.deleteSync(recursive: true);
+    }
+
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -325,19 +334,19 @@ Failed to build:
 $errorMessage''');
       }
 
-      appDillPath = findAppDill(stdout: stdout);
+      appDillPath = findMacosAppDill(stdout: stdout);
     });
 
-//     if (appDillPath == null) {
-//       throw ArtifactBuildException('''
-// Unable to find app.dill file.
-// Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
-// ''');
-//     }
+    if (appDillPath == null) {
+      throw ArtifactBuildException('''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''');
+    }
 
     print('appDill path: $appDillPath');
 
-    // return IpaBuildResult(kernelFile: File(appDillPath!));
+    return IpaBuildResult(kernelFile: File(appDillPath!));
   }
 
   /// Calls `flutter build ipa`. If [codesign] is false, this will only build
@@ -410,7 +419,7 @@ Failed to build:
 $errorMessage''');
       }
 
-      appDillPath = findAppDill(stdout: stdout);
+      appDillPath = findIosAppDill(stdout: stdout);
     });
 
     if (appDillPath == null) {
@@ -448,7 +457,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
         throw ArtifactBuildException('Failed to build: ${result.stderr}');
       }
 
-      appDillPath = findAppDill(stdout: result.stdout.toString());
+      appDillPath = findIosAppDill(stdout: result.stdout.toString());
     });
 
     if (appDillPath == null) {
@@ -609,7 +618,28 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   /// Given the full stdout from a `flutter build ipa` command, finds the path
   /// to the app.dill file that was built.
   @visibleForTesting
-  String? findAppDill({required String stdout}) {
+  String? findIosAppDill({required String stdout}) {
+    // TODO: make this work for gen_snapshot_x64 as well
+    final appDillLine = stdout.split('\n').firstWhereOrNull(
+          (l) => l.contains('gen_snapshot_arm64') && l.endsWith('app.dill'),
+        );
+
+    if (appDillLine == null) return null;
+
+    // The last argument in the line is the path to app.dill. Because
+    //   1) paths can contain spaces and
+    //   2) the path to the app.dill is absolute (i.e., it starts with a '/')
+    // we can grab the last space-separated part of the line that starts with
+    // a '/' and assume everything after it is the path to app.dill.
+    return '/${appDillLine.split(' /').last}';
+  }
+
+  /// Given the full stdout from a `flutter build macos` command, finds the path
+  /// to the app.dill file that was built.
+  /// NOTE: This line will only be present if the app.dill is created. I've been
+  /// manually deleting .dart_tool in between builds to force this
+  @visibleForTesting
+  String? findMacosAppDill({required String stdout}) {
     final appDillLine = stdout.split('\n').firstWhereOrNull(
           (l) => l.contains('gen_snapshot') && l.endsWith('app.dill'),
         );
