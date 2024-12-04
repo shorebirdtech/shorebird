@@ -677,6 +677,7 @@ To change the version of this release, change your app's version in your pubspec
 
         late Directory xcarchiveDirectory;
         late Directory iosAppDirectory;
+        late Directory supplementDirectory;
         late File podfileLockFile;
 
         setUp(() {
@@ -684,6 +685,7 @@ To change the version of this release, change your app's version in your pubspec
 
           xcarchiveDirectory = Directory.systemTemp.createTempSync();
           iosAppDirectory = Directory.systemTemp.createTempSync();
+          supplementDirectory = Directory.systemTemp.createTempSync();
           podfileLockFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
@@ -700,6 +702,9 @@ To change the version of this release, change your app's version in your pubspec
             ),
           ).thenReturn(iosAppDirectory);
           when(
+            () => artifactManager.getIosReleaseSupplementPath(),
+          ).thenReturn(supplementDirectory);
+          when(
             () => codePushClientWrapper.createIosReleaseArtifacts(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
@@ -707,6 +712,7 @@ To change the version of this release, change your app's version in your pubspec
               runnerPath: any(named: 'runnerPath'),
               isCodesigned: any(named: 'isCodesigned'),
               podfileLockHash: any(named: 'podfileLockHash'),
+              supplementPath: any(named: 'supplementPath'),
             ),
           ).thenAnswer((_) async => {});
           when(() => shorebirdEnv.podfileLockFile).thenReturn(podfileLockFile);
@@ -728,7 +734,8 @@ To change the version of this release, change your app's version in your pubspec
               runnerPath: iosAppDirectory.path,
               isCodesigned: codesign,
               podfileLockHash:
-                  sha256.convert(utf8.encode(podfileLockContent)).toString(),
+                  '${sha256.convert(utf8.encode(podfileLockContent))}',
+              supplementPath: supplementDirectory.path,
             ),
           ).called(1);
         });

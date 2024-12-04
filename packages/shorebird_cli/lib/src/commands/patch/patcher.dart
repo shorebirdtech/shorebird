@@ -62,6 +62,9 @@ ${iOSLinkPercentageUrl.toLink()}
   /// For example, 'aab' for Android, 'xcarchive' for iOS.
   String get primaryReleaseArtifactArch;
 
+  /// The identifier used for any supplementary release artifacts.
+  String? get supplementaryReleaseArtifactArch => null;
+
   /// The root directory of the current project.
   Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;
 
@@ -91,6 +94,7 @@ ${iOSLinkPercentageUrl.toLink()}
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? releaseSupplementArtifact,
   });
 
   /// Updates the provided metadata to include patcher-specific fields.

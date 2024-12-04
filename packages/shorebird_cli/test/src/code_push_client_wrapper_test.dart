@@ -1709,6 +1709,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
       const podfileLockHash = 'podfile-lock-hash';
       final xcarchivePath = p.join('path', 'to', 'app.xcarchive');
       final runnerPath = p.join('path', 'to', 'runner.app');
+      final releaseSupplementPath = p.join('path', 'to', 'supplement');
 
       void setUpProjectRoot({String? flavor}) {
         Directory(
@@ -1716,6 +1717,9 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         ).createSync(recursive: true);
         Directory(
           p.join(projectRoot.path, runnerPath),
+        ).createSync(recursive: true);
+        Directory(
+          p.join(projectRoot.path, releaseSupplementPath),
         ).createSync(recursive: true);
       }
 
@@ -1761,6 +1765,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: true,
               podfileLockHash: podfileLockHash,
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1798,6 +1803,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: false,
               podfileLockHash: podfileLockHash,
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1835,6 +1841,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: false,
               podfileLockHash: podfileLockHash,
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1866,6 +1873,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             runnerPath: p.join(projectRoot.path, runnerPath),
             isCodesigned: true,
             podfileLockHash: podfileLockHash,
+            supplementPath: p.join(projectRoot.path, releaseSupplementPath),
           ),
         );
 

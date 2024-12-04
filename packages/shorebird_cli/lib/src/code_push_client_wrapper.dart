@@ -616,7 +616,8 @@ aar artifact already exists, continuing...''',
     return thinnedArchiveDirectory;
   }
 
-  /// Uploads a release .xcarchive and .app to the Shorebird server.
+  /// Uploads a release .xcarchive, .app, and supplemental files to the
+  /// Shorebird server.
   Future<void> createIosReleaseArtifacts({
     required String appId,
     required int releaseId,
@@ -624,6 +625,7 @@ aar artifact already exists, continuing...''',
     required String runnerPath,
     required bool isCodesigned,
     required String? podfileLockHash,
+    required String? supplementPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final thinnedArchiveDirectory =
@@ -666,6 +668,30 @@ aar artifact already exists, continuing...''',
         progress: createArtifactProgress,
         message: 'Error uploading runner.app: $error',
       );
+    }
+
+    if (supplementPath != null) {
+      final zippedSupplement = await Directory(supplementPath).zipToTempFile(
+        name: 'supplement',
+      );
+      try {
+        await codePushClient.createReleaseArtifact(
+          appId: appId,
+          releaseId: releaseId,
+          artifactPath: zippedSupplement.path,
+          arch: 'supplement',
+          platform: ReleasePlatform.ios,
+          hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
+          canSideload: false,
+          podfileLockHash: podfileLockHash,
+        );
+      } catch (error) {
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading release supplements: $error',
+        );
+      }
     }
 
     createArtifactProgress.complete();

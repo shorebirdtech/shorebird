@@ -187,6 +187,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           .path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
+      supplementPath: artifactManager.getIosReleaseSupplementPath()?.path,
     );
   }
 

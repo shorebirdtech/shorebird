@@ -145,6 +145,7 @@ class IosFrameworkPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? releaseSupplementArtifact,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
     final tempDir = Directory.systemTemp.createTempSync();

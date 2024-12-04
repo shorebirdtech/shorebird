@@ -261,6 +261,7 @@ class _TestPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? releaseSupplementArtifact,
   }) {
     throw UnimplementedError();
   }
