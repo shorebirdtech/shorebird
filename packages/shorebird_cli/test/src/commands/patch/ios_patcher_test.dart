@@ -158,6 +158,12 @@ void main() {
         });
       });
 
+      group('supplementaryReleaseArtifactArch', () {
+        test('is "supplement"', () {
+          expect(patcher.supplementaryReleaseArtifactArch, 'supplement');
+        });
+      });
+
       group('releaseType', () {
         test('is ReleaseType.ios', () {
           expect(patcher.releaseType, ReleaseType.ios);

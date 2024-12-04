@@ -36,6 +36,20 @@ void main() {
       });
     });
 
+    group('supplementaryReleaseArtifactArch', () {
+      test('defaults to null', () {
+        expect(
+          _TestPatcher(
+            argParser: MockArgParser(),
+            argResults: MockArgResults(),
+            flavor: null,
+            target: null,
+          ).supplementaryReleaseArtifactArch,
+          isNull,
+        );
+      });
+    });
+
     group('assertArgsAreValid', () {
       test('has no validations by default', () {
         expect(

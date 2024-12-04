@@ -1850,6 +1850,44 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         verify(() => progress.fail(any(that: contains(error)))).called(1);
       });
 
+      test('exits with code 70 when supplement artifact creation fails',
+          () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('supplement.zip'),
+            ),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          ),
+        ).thenThrow(error);
+        setUpProjectRoot();
+
+        await expectLater(
+          () async => runWithOverrides(
+            () async => codePushClientWrapper.createIosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
+              runnerPath: p.join(projectRoot.path, runnerPath),
+              isCodesigned: false,
+              podfileLockHash: podfileLockHash,
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
+            ),
+          ),
+          exitsWithCode(ExitCode.software),
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
       test('completes successfully when artifact is created', () async {
         when(
           () => codePushClient.createReleaseArtifact(
