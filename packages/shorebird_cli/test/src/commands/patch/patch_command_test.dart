@@ -95,6 +95,17 @@ void main() {
       podfileLockHash: null,
       canSideload: true,
     );
+    const supplementArtifact = ReleaseArtifact(
+      id: 0,
+      releaseId: 0,
+      arch: arch,
+      platform: releasePlatform,
+      hash: '#',
+      size: 422,
+      url: 'https://example.com/supplement.zip',
+      podfileLockHash: null,
+      canSideload: false,
+    );
 
     late AotTools aotTools;
     late ArgResults argResults;
@@ -225,6 +236,14 @@ void main() {
           platform: ReleasePlatform.android,
         ),
       ).thenAnswer((_) async => aabArtifact);
+      when(
+        () => codePushClientWrapper.getReleaseArtifact(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          arch: 'supplement',
+          platform: ReleasePlatform.android,
+        ),
+      ).thenAnswer((_) async => supplementArtifact);
 
       when(
         () => logger.chooseOne<Release>(
@@ -253,6 +272,7 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           releaseArtifact: any(named: 'releaseArtifact'),
+          releaseSupplementArtifact: any(named: 'releaseSupplementArtifact'),
         ),
       ).thenAnswer((_) async => patchArtifactBundles);
       when(
@@ -427,32 +447,88 @@ void main() {
           },
         );
 
-        group(
-          'when given an existing public key and nonexistent private key',
-          () {
-            test('fails and logs the err', () async {
-              when(
-                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
-              ).thenReturn(false);
-              when(
-                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-              ).thenReturn(true);
-              when(
-                () => argResults[CommonArguments.publicKeyArg.name],
-              ).thenReturn(createTempFile('public.pem').path);
+        group('when given an existing public key and nonexistent private key',
+            () {
+          test('fails and logs the err', () async {
+            when(
+              () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+            ).thenReturn(false);
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+            ).thenReturn(true);
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(createTempFile('public.pem').path);
 
-              await expectLater(
-                runWithOverrides(() => command.createPatch(patcher)),
-                exitsWithCode(ExitCode.usage),
-              );
+            await expectLater(
+              runWithOverrides(() => command.createPatch(patcher)),
+              exitsWithCode(ExitCode.usage),
+            );
+            verify(
+              () => logger.err(
+                'Both public and private keys must be provided.',
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when a supplemental release artifact exists', () {
+          setUp(() {
+            when(
+              () => patcher.supplementaryReleaseArtifactArch,
+            ).thenReturn('supplement');
+          });
+
+          test('downloads the supplemental release artifact', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(
+              () => codePushClientWrapper.getReleaseArtifact(
+                appId: appId,
+                releaseId: release.id,
+                arch: 'supplement',
+                platform: releasePlatform,
+              ),
+            ).called(1);
+            verify(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: release.id,
+                releaseArtifact: any(named: 'releaseArtifact'),
+                releaseSupplementArtifact: any(
+                  named: 'releaseSupplementArtifact',
+                ),
+              ),
+            ).called(1);
+          });
+
+          group('when the artifact is not found', () {
+            setUp(() {
+              when(
+                () => codePushClientWrapper.getReleaseArtifact(
+                  appId: appId,
+                  releaseId: release.id,
+                  arch: 'supplement',
+                  platform: releasePlatform,
+                ),
+              ).thenThrow(CodePushNotFoundException(message: 'Not found'));
+            });
+
+            test('gracefully continues to create patch', () async {
+              await runWithOverrides(() => command.createPatch(patcher));
               verify(
-                () => logger.err(
-                  'Both public and private keys must be provided.',
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: release.id,
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  releaseSupplementArtifact: any(
+                    named: 'releaseSupplementArtifact',
+                  ),
                 ),
               ).called(1);
             });
-          },
-        );
+          });
+        });
       });
     });
 
@@ -516,6 +592,10 @@ void main() {
           when(
             () => argResults['track'],
           ).thenReturn(DeploymentTrack.staging.channel);
+        });
+
+        test('isStaging returns true', () {
+          expect(command.isStaging, isTrue);
         });
 
         test('logs correct summary', () async {
