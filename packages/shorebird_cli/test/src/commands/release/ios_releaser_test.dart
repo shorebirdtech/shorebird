@@ -702,7 +702,7 @@ To change the version of this release, change your app's version in your pubspec
             ),
           ).thenReturn(iosAppDirectory);
           when(
-            () => artifactManager.getIosReleaseSupplementPath(),
+            () => artifactManager.getIosReleaseSupplementDirectory(),
           ).thenReturn(supplementDirectory);
           when(
             () => codePushClientWrapper.createIosReleaseArtifacts(

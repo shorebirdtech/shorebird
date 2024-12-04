@@ -357,11 +357,11 @@ class ArtifactManager {
     return ipaFiles.single;
   }
 
-  /// Returns the path to the shorebird release supplement bundle on iOS.
+  /// Returns the path to the shorebird release supplement directory on iOS.
   ///
-  /// Returns null if there is no supplement bundle
+  /// Returns null if there is no supplement directory
   /// (e.g. when using older Flutter revisions).
-  Directory? getIosReleaseSupplementPath() {
+  Directory? getIosReleaseSupplementDirectory() {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     final releaseSupplementDir = Directory(
       p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
