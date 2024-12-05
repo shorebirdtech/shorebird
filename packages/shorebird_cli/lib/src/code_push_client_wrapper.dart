@@ -621,7 +621,6 @@ aar artifact already exists, continuing...''',
     required String appId,
     required int releaseId,
     required String appPath,
-    // required String runnerPath,
     required bool isCodesigned,
     // required String? podfileLockHash,
   }) async {
@@ -642,7 +641,6 @@ aar artifact already exists, continuing...''',
       appPath,
       zippedApp.path,
     ]);
-    print('appPath is $appPath');
 
     try {
       await codePushClient.createReleaseArtifact(
