@@ -806,5 +806,45 @@ void main() {
         );
       });
     });
+
+    group('getIosReleaseSupplementDirectory', () {
+      group('when the directory does not exist', () {
+        test('returns null', () {
+          expect(
+            runWithOverrides(artifactManager.getIosReleaseSupplementDirectory),
+            isNull,
+          );
+        });
+      });
+
+      group('when the directory exists', () {
+        setUp(() {
+          Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'shorebird',
+            ),
+          ).createSync(recursive: true);
+        });
+
+        test('returns path to the directory', () {
+          expect(
+            runWithOverrides(
+              artifactManager.getIosReleaseSupplementDirectory,
+            )?.path,
+            equals(
+              p.join(
+                projectRoot.path,
+                'build',
+                'ios',
+                'shorebird',
+              ),
+            ),
+          );
+        });
+      });
+    });
   });
 }

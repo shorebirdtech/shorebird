@@ -47,6 +47,9 @@ class IosPatcher extends Patcher {
     required super.target,
   });
 
+  String get _patchClassTableLinkInfoPath =>
+      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.ct.link');
+
   String get _aotOutputPath => p.join(buildDirectory.path, 'out.aot');
 
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
@@ -84,6 +87,9 @@ class IosPatcher extends Patcher {
 
   @override
   String get primaryReleaseArtifactArch => 'xcarchive';
+
+  @override
+  String? get supplementaryReleaseArtifactArch => 'ios_supplement';
 
   @override
   Future<void> assertPreconditions() async {
@@ -229,6 +235,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? supplementArtifact,
   }) async {
     // Verify that we have built a patch .xcarchive
     if (artifactManager.getXcarchiveDirectory()?.path == null) {
@@ -237,12 +244,31 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     final unzipProgress = logger.progress('Extracting release artifact');
-    final tempDir = Directory.systemTemp.createTempSync();
-    await artifactManager.extractZip(
-      zipFile: releaseArtifact,
-      outputDirectory: tempDir,
-    );
-    final releaseXcarchivePath = tempDir.path;
+
+    late final String releaseXcarchivePath;
+    {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: releaseArtifact,
+        outputDirectory: tempDir,
+      );
+      releaseXcarchivePath = tempDir.path;
+    }
+
+    File? releaseClassTableLinkInfoFile;
+    if (supplementArtifact != null) {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: supplementArtifact,
+        outputDirectory: tempDir,
+      );
+      releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));
+
+      if (!releaseClassTableLinkInfoFile.existsSync()) {
+        logger.err('Unable to find class table link info file');
+        throw ProcessExit(ExitCode.software.code);
+      }
+    }
 
     unzipProgress.complete();
     final appDirectory = artifactManager.getIosAppDirectory(
@@ -263,6 +289,22 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
+      // If we're using a newer version of the linker, we need to also copy the
+      // necessary class table link information alongside the snapshots.
+      if (releaseClassTableLinkInfoFile != null) {
+        // Copy the release's class table link info file next to the release
+        // snapshot so that it can be used to generate a patch.
+        releaseClassTableLinkInfoFile.copySync(
+          p.join(releaseArtifactFile.parent.path, 'App.ct.link'),
+        );
+
+        // Copy the patch's class table link info file to the build directory
+        // so that it can be used to generate a patch.
+        File(_patchClassTableLinkInfoPath).copySync(
+          p.join(buildDirectory.path, 'out.ct.link'),
+        );
+      }
+
       final (:exitCode, :linkPercentage) = await _runLinker(
         releaseArtifact: releaseArtifactFile,
         kernelFile: File(_appDillCopyPath),

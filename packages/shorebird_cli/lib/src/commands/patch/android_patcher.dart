@@ -138,6 +138,7 @@ Looked in:
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? supplementArtifact,
     Duration downloadMessageTimeout = const Duration(minutes: 1),
   }) async {
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(

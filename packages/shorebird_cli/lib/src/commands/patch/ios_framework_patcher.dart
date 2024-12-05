@@ -39,12 +39,18 @@ class IosFrameworkPatcher extends Patcher {
     required super.target,
   });
 
+  String get _patchClassTableLinkInfoFile =>
+      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.ct.link');
+
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
 
   @override
   String get primaryReleaseArtifactArch => 'xcframework';
+
+  @override
+  String? get supplementaryReleaseArtifactArch => 'ios_framework_supplement';
 
   @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
@@ -145,17 +151,37 @@ class IosFrameworkPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? supplementArtifact,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
-    final tempDir = Directory.systemTemp.createTempSync();
-    await artifactManager.extractZip(
-      zipFile: releaseArtifact,
-      outputDirectory: tempDir,
-    );
-    final releaseXcframeworkPath = tempDir.path;
+    late final String releaseXcframeworkPath;
+    {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: releaseArtifact,
+        outputDirectory: tempDir,
+      );
+      releaseXcframeworkPath = tempDir.path;
+    }
 
-    unzipProgress
-        .complete('Extracted release artifact to $releaseXcframeworkPath');
+    File? releaseClassTableLinkInfoFile;
+    if (supplementArtifact != null) {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: supplementArtifact,
+        outputDirectory: tempDir,
+      );
+      releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));
+
+      if (!releaseClassTableLinkInfoFile.existsSync()) {
+        logger.err('Unable to find class table link info file');
+        throw ProcessExit(ExitCode.software.code);
+      }
+    }
+
+    unzipProgress.complete(
+      'Extracted release artifact to $releaseXcframeworkPath',
+    );
     final releaseArtifactFile = File(
       p.join(
         releaseXcframeworkPath,
@@ -174,6 +200,22 @@ class IosFrameworkPatcher extends Patcher {
     );
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
+      // If we're using a newer version of the linker, we need to also copy the
+      // necessary class table link information alongside the snapshots.
+      if (releaseClassTableLinkInfoFile != null) {
+        // Copy the release's class table link info file next to the release
+        // snapshot so that it can be used to generate a patch.
+        releaseClassTableLinkInfoFile.copySync(
+          p.join(releaseArtifactFile.parent.path, 'App.ct.link'),
+        );
+
+        // Copy the patch's class table link info file to the build directory
+        // so that it can be used to generate a patch.
+        File(_patchClassTableLinkInfoFile).copySync(
+          p.join(buildDirectory.path, 'out.ct.link'),
+        );
+      }
+
       await _runLinker(
         aotSnapshot: aotSnapshotFile,
         releaseArtifact: releaseArtifactFile,
