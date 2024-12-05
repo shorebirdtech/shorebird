@@ -616,7 +616,7 @@ aar artifact already exists, continuing...''',
     return thinnedArchiveDirectory;
   }
 
-  /// Uploads a release .xcarchive, .app, and supplemental files to the
+  /// Uploads a release .xcarchive, .app, and supplementary files to the
   /// Shorebird server.
   Future<void> createIosReleaseArtifacts({
     required String appId,
@@ -697,7 +697,8 @@ aar artifact already exists, continuing...''',
     createArtifactProgress.complete();
   }
 
-  /// Zips and uploads a release xcframework to the Shorebird server.
+  /// Zips and uploads a release xcframework and supplementary files to the
+  /// Shorebird server.
   Future<void> createIosFrameworkReleaseArtifacts({
     required String appId,
     required int releaseId,
