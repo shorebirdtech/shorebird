@@ -159,8 +159,8 @@ void main() {
       });
 
       group('supplementaryReleaseArtifactArch', () {
-        test('is "supplement"', () {
-          expect(patcher.supplementaryReleaseArtifactArch, 'supplement');
+        test('is "ios_supplement"', () {
+          expect(patcher.supplementaryReleaseArtifactArch, 'ios_supplement');
         });
       });
 

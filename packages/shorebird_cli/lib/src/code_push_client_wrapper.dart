@@ -672,14 +672,14 @@ aar artifact already exists, continuing...''',
 
     if (supplementPath != null) {
       final zippedSupplement = await Directory(supplementPath).zipToTempFile(
-        name: 'supplement',
+        name: 'ios_supplement',
       );
       try {
         await codePushClient.createReleaseArtifact(
           appId: appId,
           releaseId: releaseId,
           artifactPath: zippedSupplement.path,
-          arch: 'supplement',
+          arch: 'ios_supplement',
           platform: ReleasePlatform.ios,
           hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
           canSideload: false,
@@ -702,6 +702,7 @@ aar artifact already exists, continuing...''',
     required String appId,
     required int releaseId,
     required String appFrameworkPath,
+    required String? supplementPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final appFrameworkDirectory = Directory(appFrameworkPath);
@@ -729,6 +730,30 @@ aar artifact already exists, continuing...''',
         progress: createArtifactProgress,
         message: 'Error uploading xcframework: $error',
       );
+    }
+
+    if (supplementPath != null) {
+      final zippedSupplement = await Directory(supplementPath).zipToTempFile(
+        name: 'ios_framework_supplement',
+      );
+      try {
+        await codePushClient.createReleaseArtifact(
+          appId: appId,
+          releaseId: releaseId,
+          artifactPath: zippedSupplement.path,
+          arch: 'ios_framework_supplement',
+          platform: ReleasePlatform.ios,
+          hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
+          canSideload: false,
+          podfileLockHash: null,
+        );
+      } catch (error) {
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading release supplements: $error',
+        );
+      }
     }
 
     createArtifactProgress.complete();

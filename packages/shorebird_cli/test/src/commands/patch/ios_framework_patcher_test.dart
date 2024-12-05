@@ -143,6 +143,15 @@ void main() {
         });
       });
 
+      group('supplementaryReleaseArtifactArch', () {
+        test('is "ios_framework_supplement"', () {
+          expect(
+            patcher.supplementaryReleaseArtifactArch,
+            'ios_framework_supplement',
+          );
+        });
+      });
+
       group('releaseType', () {
         test('is ReleaseType.iosFramework', () {
           expect(patcher.releaseType, ReleaseType.iosFramework);
