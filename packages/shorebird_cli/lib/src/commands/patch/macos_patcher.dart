@@ -194,7 +194,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     final releaseAppPath = tempDir.path;
 
     unzipProgress.complete();
-    print('release app path is $releaseAppPath');
     final appDirectory = artifactManager.getMacosAppDirectory(
       parentDirectory: Directory(releaseAppPath),
     );
@@ -211,7 +210,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         'App',
       ),
     );
-    print('release artifact file is $releaseArtifactFile');
 
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {

@@ -344,8 +344,6 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
 ''');
     }
 
-    print('appDill path: $appDillPath');
-
     return IpaBuildResult(kernelFile: File(appDillPath!));
   }
 

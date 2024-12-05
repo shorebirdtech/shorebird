@@ -7,6 +7,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// All Shorebird artifacts used explicitly by Shorebird.
 enum ShorebirdArtifact {
@@ -117,6 +118,8 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
   /// {@macro shorebird_local_engine_artifacts}
   const ShorebirdLocalEngineArtifacts();
 
+  // final ReleasePlatform platform;
+
   @override
   String getArtifactPath({required ShorebirdArtifact artifact}) {
     switch (artifact) {
@@ -136,7 +139,8 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
         'out',
         engineConfig.localEngine,
         'clang_x64',
-        'analyze_snapshot_arm64',
+        // 'analyze_snapshot_arm64',
+        'analyze_snapshot',
       ),
     );
   }
@@ -163,7 +167,8 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
         'out',
         engineConfig.localEngine,
         'clang_x64',
-        'gen_snapshot_arm64',
+        // 'gen_snapshot_arm64',
+        'gen_snapshot',
       ),
     );
   }
