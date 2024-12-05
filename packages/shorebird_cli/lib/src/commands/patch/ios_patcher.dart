@@ -256,6 +256,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     File? releaseClassTableLinkInfoFile;
+    File? releaseClassTableLinkDebugInfoFile;
     if (supplementArtifact != null) {
       final tempDir = Directory.systemTemp.createTempSync();
       await artifactManager.extractZip(
@@ -263,9 +264,16 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         outputDirectory: tempDir,
       );
       releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));
-
       if (!releaseClassTableLinkInfoFile.existsSync()) {
         logger.err('Unable to find class table link info file');
+        throw ProcessExit(ExitCode.software.code);
+      }
+
+      releaseClassTableLinkDebugInfoFile = File(
+        p.join(tempDir.path, 'App.class_table.json'),
+      );
+      if (!releaseClassTableLinkDebugInfoFile.existsSync()) {
+        logger.err('Unable to find class table link debug info file');
         throw ProcessExit(ExitCode.software.code);
       }
     }
@@ -291,11 +299,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     if (useLinker) {
       // If we're using a newer version of the linker, we need to also copy the
       // necessary class table link information alongside the snapshots.
-      if (releaseClassTableLinkInfoFile != null) {
+      if (releaseClassTableLinkInfoFile != null &&
+          releaseClassTableLinkDebugInfoFile != null) {
         // Copy the release's class table link info file next to the release
         // snapshot so that it can be used to generate a patch.
         releaseClassTableLinkInfoFile.copySync(
           p.join(releaseArtifactFile.parent.path, 'App.ct.link'),
+        );
+        releaseClassTableLinkDebugInfoFile.copySync(
+          p.join(releaseArtifactFile.parent.path, 'App.class_table.json'),
         );
 
         // Copy the patch's class table link info file to the build directory
