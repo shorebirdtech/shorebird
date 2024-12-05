@@ -94,7 +94,7 @@ ${iOSLinkPercentageUrl.toLink()}
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? releaseSupplementArtifact,
+    File? supplementArtifact,
   });
 
   /// Updates the provided metadata to include patcher-specific fields.

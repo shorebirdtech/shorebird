@@ -508,7 +508,7 @@ void main() {
           canSideload: true,
         );
         late File releaseArtifactFile;
-        late File releaseSupplementArtifactFile;
+        late File supplementArtifactFile;
 
         void setUpProjectRootArtifacts() {
           File(p.join(projectRoot.path, 'build', elfAotSnapshotFileName))
@@ -549,7 +549,7 @@ void main() {
               'release.xcframework',
             ),
           )..createSync(recursive: true);
-          releaseSupplementArtifactFile = File(
+          supplementArtifactFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
               'ios_framework_supplement.zip',
@@ -859,7 +859,7 @@ void main() {
                 setUp(() {
                   when(
                     () => artifactManager.extractZip(
-                      zipFile: releaseSupplementArtifactFile,
+                      zipFile: supplementArtifactFile,
                       outputDirectory: any(named: 'outputDirectory'),
                     ),
                   ).thenAnswer((invocation) async {});
@@ -872,8 +872,7 @@ void main() {
                         appId: appId,
                         releaseId: releaseId,
                         releaseArtifact: releaseArtifactFile,
-                        releaseSupplementArtifact:
-                            releaseSupplementArtifactFile,
+                        supplementArtifact: supplementArtifactFile,
                       ),
                     ),
                     exitsWithCode(ExitCode.software),
@@ -908,7 +907,7 @@ void main() {
                   });
                   when(
                     () => artifactManager.extractZip(
-                      zipFile: releaseSupplementArtifactFile,
+                      zipFile: supplementArtifactFile,
                       outputDirectory: any(named: 'outputDirectory'),
                     ),
                   ).thenAnswer((invocation) async {
@@ -926,7 +925,7 @@ void main() {
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
-                      releaseSupplementArtifact: releaseSupplementArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   );
 

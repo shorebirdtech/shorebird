@@ -151,7 +151,7 @@ class IosFrameworkPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? releaseSupplementArtifact,
+    File? supplementArtifact,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
     late final String releaseXcframeworkPath;
@@ -165,10 +165,10 @@ class IosFrameworkPatcher extends Patcher {
     }
 
     File? releaseClassTableLinkInfoFile;
-    if (releaseSupplementArtifact != null) {
+    if (supplementArtifact != null) {
       final tempDir = Directory.systemTemp.createTempSync();
       await artifactManager.extractZip(
-        zipFile: releaseSupplementArtifact,
+        zipFile: supplementArtifact,
         outputDirectory: tempDir,
       );
       releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));

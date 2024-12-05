@@ -24,7 +24,6 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../../fakes.dart';
@@ -272,7 +271,7 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           releaseArtifact: any(named: 'releaseArtifact'),
-          releaseSupplementArtifact: any(named: 'releaseSupplementArtifact'),
+          supplementArtifact: any(named: 'supplementArtifact'),
         ),
       ).thenAnswer((_) async => patchArtifactBundles);
       when(
@@ -495,9 +494,7 @@ void main() {
                 appId: appId,
                 releaseId: release.id,
                 releaseArtifact: any(named: 'releaseArtifact'),
-                releaseSupplementArtifact: any(
-                  named: 'releaseSupplementArtifact',
-                ),
+                supplementArtifact: any(named: 'supplementArtifact'),
               ),
             ).called(1);
           });
@@ -521,9 +518,7 @@ void main() {
                   appId: appId,
                   releaseId: release.id,
                   releaseArtifact: any(named: 'releaseArtifact'),
-                  releaseSupplementArtifact: any(
-                    named: 'releaseSupplementArtifact',
-                  ),
+                  supplementArtifact: any(named: 'supplementArtifact'),
                 ),
               ).called(1);
             });

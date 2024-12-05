@@ -824,7 +824,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           canSideload: true,
         );
         late File releaseArtifactFile;
-        late File releaseSupplementArtifactFile;
+        late File supplementArtifactFile;
 
         void setUpProjectRootArtifacts() {
           File(
@@ -877,7 +877,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               'release.xcarchive',
             ),
           )..createSync(recursive: true);
-          releaseSupplementArtifactFile = File(
+          supplementArtifactFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
               'ios_supplement.zip',
@@ -1293,7 +1293,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 setUp(() {
                   when(
                     () => artifactManager.extractZip(
-                      zipFile: releaseSupplementArtifactFile,
+                      zipFile: supplementArtifactFile,
                       outputDirectory: any(named: 'outputDirectory'),
                     ),
                   ).thenAnswer((invocation) async {});
@@ -1306,8 +1306,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                         appId: appId,
                         releaseId: releaseId,
                         releaseArtifact: releaseArtifactFile,
-                        releaseSupplementArtifact:
-                            releaseSupplementArtifactFile,
+                        supplementArtifact: supplementArtifactFile,
                       ),
                     ),
                     exitsWithCode(ExitCode.software),
@@ -1325,7 +1324,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 setUp(() {
                   when(
                     () => artifactManager.extractZip(
-                      zipFile: releaseSupplementArtifactFile,
+                      zipFile: supplementArtifactFile,
                       outputDirectory: any(named: 'outputDirectory'),
                     ),
                   ).thenAnswer((invocation) async {
@@ -1343,7 +1342,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
-                      releaseSupplementArtifact: releaseSupplementArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   );
 

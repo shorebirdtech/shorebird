@@ -235,7 +235,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? releaseSupplementArtifact,
+    File? supplementArtifact,
   }) async {
     // Verify that we have built a patch .xcarchive
     if (artifactManager.getXcarchiveDirectory()?.path == null) {
@@ -256,10 +256,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     File? releaseClassTableLinkInfoFile;
-    if (releaseSupplementArtifact != null) {
+    if (supplementArtifact != null) {
       final tempDir = Directory.systemTemp.createTempSync();
       await artifactManager.extractZip(
-        zipFile: releaseSupplementArtifact,
+        zipFile: supplementArtifact,
         outputDirectory: tempDir,
       );
       releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));

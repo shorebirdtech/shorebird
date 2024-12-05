@@ -297,7 +297,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       releaseArtifact: releaseArtifact,
     );
 
-    final releaseSupplementArchive = supplementalArtifact != null
+    final supplementArchive = supplementalArtifact != null
         ? await downloadReleaseArtifact(releaseArtifact: supplementalArtifact)
         : null;
 
@@ -326,7 +326,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           appId: appId,
           releaseId: release.id,
           releaseArtifact: releaseArchive,
-          releaseSupplementArtifact: releaseSupplementArchive,
+          supplementArtifact: supplementArchive,
         );
 
         final dryRun = results['dry-run'] == true;
