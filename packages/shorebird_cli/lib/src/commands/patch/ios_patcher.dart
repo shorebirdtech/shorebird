@@ -49,6 +49,9 @@ class IosPatcher extends Patcher {
 
   String get _patchClassTableLinkInfoPath =>
       p.join(buildDirectory.path, 'ios', 'shorebird', 'App.ct.link');
+  
+  String get _patchClassTableLinkDebugInfoPath =>
+      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.class_table.json');
 
   String get _aotOutputPath => p.join(buildDirectory.path, 'out.aot');
 
@@ -314,6 +317,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         // so that it can be used to generate a patch.
         File(_patchClassTableLinkInfoPath).copySync(
           p.join(buildDirectory.path, 'out.ct.link'),
+        );
+        File(_patchClassTableLinkDebugInfoPath).copySync(
+          p.join(buildDirectory.path, 'out.class_table.json'),
         );
       }
 

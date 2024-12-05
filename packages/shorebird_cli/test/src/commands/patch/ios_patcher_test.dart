@@ -866,6 +866,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             ),
           ).createSync(recursive: true);
           File(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'shorebird',
+              'App.class_table.json',
+            ),
+          ).createSync(recursive: true);
+          File(
             p.join(projectRoot.path, 'build', linkFileName),
           ).createSync(recursive: true);
         }

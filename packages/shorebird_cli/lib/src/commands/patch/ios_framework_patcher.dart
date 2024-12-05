@@ -42,6 +42,9 @@ class IosFrameworkPatcher extends Patcher {
   String get _patchClassTableLinkInfoFile =>
       p.join(buildDirectory.path, 'ios', 'shorebird', 'App.ct.link');
 
+  String get _patchClassTableLinkDebugInfoPath =>
+      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.class_table.json');
+
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
@@ -225,6 +228,9 @@ class IosFrameworkPatcher extends Patcher {
         // so that it can be used to generate a patch.
         File(_patchClassTableLinkInfoFile).copySync(
           p.join(buildDirectory.path, 'out.ct.link'),
+        );
+        File(_patchClassTableLinkDebugInfoPath).copySync(
+          p.join(buildDirectory.path, 'out.class_table.json'),
         );
       }
 

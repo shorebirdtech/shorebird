@@ -540,6 +540,15 @@ void main() {
               'App.ct.link',
             ),
           ).createSync(recursive: true);
+          File(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'shorebird',
+              'App.class_table.json',
+            ),
+          ).createSync(recursive: true);
         }
 
         setUp(() {
