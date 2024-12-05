@@ -47,6 +47,9 @@ class MacosPatcher extends Patcher {
 
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
+  @override
+  String? get supplementaryReleaseArtifactArch => 'macos_supplement';
+
   @visibleForTesting
   double? lastBuildLinkPercentage;
 

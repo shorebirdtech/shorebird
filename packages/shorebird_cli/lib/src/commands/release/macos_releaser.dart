@@ -138,6 +138,8 @@ class MacOSReleaser extends Releaser {
       //     .path,
       isCodesigned: codesign,
       // podfileLockHash: podfileLockHash,
+      supplementPath:
+          artifactManager.getMacosReleaseSupplementDirectory()?.path,
     );
   }
 }

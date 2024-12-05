@@ -394,7 +394,7 @@ class ArtifactManager {
     return ipaFiles.single;
   }
 
-  /// Returns the path to the shorebird release supplement directory on iOS.
+  /// Returns the path to the shorebird release supplement directory for iOS.
   ///
   /// Returns null if there is no supplement directory
   /// (e.g. when using older Flutter revisions).
@@ -407,6 +407,26 @@ class ArtifactManager {
     if (!releaseSupplementDir.existsSync()) {
       logger.detail(
         'No iOS release supplements found at ${releaseSupplementDir.path}',
+      );
+      return null;
+    }
+
+    return releaseSupplementDir;
+  }
+
+  /// Returns the path to the shorebird release supplement directory for macOS.
+  ///
+  /// Returns null if there is no supplement directory
+  /// (e.g. when using older Flutter revisions).
+  Directory? getMacosReleaseSupplementDirectory() {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    final releaseSupplementDir = Directory(
+      p.join(projectRoot.path, 'build', 'macos', 'shorebird'),
+    );
+
+    if (!releaseSupplementDir.existsSync()) {
+      logger.detail(
+        'No macOS release supplements found at ${releaseSupplementDir.path}',
       );
       return null;
     }
