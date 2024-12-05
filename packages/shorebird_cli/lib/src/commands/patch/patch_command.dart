@@ -285,7 +285,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     final supplementalArtifact =
         patcher.supplementaryReleaseArtifactArch != null
-            ? await codePushClientWrapper.getOptionalReleaseArtifact(
+            ? await codePushClientWrapper.maybeGetReleaseArtifact(
                 appId: appId,
                 releaseId: release.id,
                 arch: patcher.supplementaryReleaseArtifactArch!,
@@ -506,26 +506,5 @@ ${summary.join('\n')}
     }
 
     return artifactFile;
-  }
-}
-
-extension on CodePushClientWrapper {
-  Future<ReleaseArtifact?> getOptionalReleaseArtifact({
-    required String appId,
-    required int releaseId,
-    required String arch,
-    required ReleasePlatform platform,
-  }) async {
-    try {
-      final artifact = await getReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        arch: arch,
-        platform: platform,
-      );
-      return artifact;
-    } on CodePushNotFoundException catch (_) {
-      return null;
-    }
   }
 }

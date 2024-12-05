@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.14 (December 5, 2024)
+
+- 🍎 iOS linker improvements (improved class table sort)
+- 🖥️ Prepare for MacOS support
+- 🍄 Various dependency upgrades
+
 ## 1.4.13 (November 20, 2024)
 
 - 🍎 Provide more build status updates for iOS release and patch

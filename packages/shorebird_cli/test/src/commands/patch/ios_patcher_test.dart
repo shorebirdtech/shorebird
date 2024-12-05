@@ -866,6 +866,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             ),
           ).createSync(recursive: true);
           File(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'shorebird',
+              'App.class_table.json',
+            ),
+          ).createSync(recursive: true);
+          File(
             p.join(projectRoot.path, 'build', linkFileName),
           ).createSync(recursive: true);
         }
@@ -1320,7 +1329,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 });
               });
 
-              group('when class table link info is present', () {
+              group('when debug info is missing', () {
                 setUp(() {
                   when(
                     () => artifactManager.extractZip(
@@ -1332,6 +1341,46 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                         as Directory;
                     File(
                       p.join(outDir.path, 'App.ct.link'),
+                    ).createSync(recursive: true);
+                  });
+                });
+
+                test('exits with code 70', () async {
+                  await expectLater(
+                    () => runWithOverrides(
+                      () => patcher.createPatchArtifacts(
+                        appId: appId,
+                        releaseId: releaseId,
+                        releaseArtifact: releaseArtifactFile,
+                        supplementArtifact: supplementArtifactFile,
+                      ),
+                    ),
+                    exitsWithCode(ExitCode.software),
+                  );
+
+                  verify(
+                    () => logger.err(
+                      'Unable to find class table link debug info file',
+                    ),
+                  ).called(1);
+                });
+              });
+
+              group('when class table link info & debug info are present', () {
+                setUp(() {
+                  when(
+                    () => artifactManager.extractZip(
+                      zipFile: supplementArtifactFile,
+                      outputDirectory: any(named: 'outputDirectory'),
+                    ),
+                  ).thenAnswer((invocation) async {
+                    final outDir = invocation.namedArguments[#outputDirectory]
+                        as Directory;
+                    File(
+                      p.join(outDir.path, 'App.ct.link'),
+                    ).createSync(recursive: true);
+                    File(
+                      p.join(outDir.path, 'App.class_table.json'),
                     ).createSync(recursive: true);
                   });
                 });

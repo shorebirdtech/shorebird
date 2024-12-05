@@ -236,7 +236,7 @@ void main() {
         ),
       ).thenAnswer((_) async => aabArtifact);
       when(
-        () => codePushClientWrapper.getReleaseArtifact(
+        () => codePushClientWrapper.maybeGetReleaseArtifact(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           arch: 'supplement',
@@ -482,7 +482,7 @@ void main() {
             await runWithOverrides(() => command.createPatch(patcher));
 
             verify(
-              () => codePushClientWrapper.getReleaseArtifact(
+              () => codePushClientWrapper.maybeGetReleaseArtifact(
                 appId: appId,
                 releaseId: release.id,
                 arch: 'supplement',
