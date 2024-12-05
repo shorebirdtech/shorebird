@@ -49,7 +49,7 @@ class IosPatcher extends Patcher {
 
   String get _patchClassTableLinkInfoPath =>
       p.join(buildDirectory.path, 'ios', 'shorebird', 'App.ct.link');
-  
+
   String get _patchClassTableLinkDebugInfoPath =>
       p.join(buildDirectory.path, 'ios', 'shorebird', 'App.class_table.json');
 
