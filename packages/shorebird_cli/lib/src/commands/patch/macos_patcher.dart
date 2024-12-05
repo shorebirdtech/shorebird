@@ -174,6 +174,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? supplementArtifact,
   }) async {
     // Verify that we have built a patch .app
     if (artifactManager.getMacOSAppDirectory()?.path == null) {
