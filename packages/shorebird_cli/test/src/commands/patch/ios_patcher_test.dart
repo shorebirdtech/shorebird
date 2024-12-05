@@ -880,7 +880,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           releaseSupplementArtifactFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
-              'supplement.zip',
+              'ios_supplement.zip',
             ),
           )..createSync(recursive: true);
 
