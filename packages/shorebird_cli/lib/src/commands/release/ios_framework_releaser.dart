@@ -144,6 +144,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       appId: appId,
       releaseId: release.id,
       appFrameworkPath: p.join(releaseDirectory.path, 'App.xcframework'),
+      supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,
     );
   }
 

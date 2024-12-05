@@ -1709,6 +1709,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
       const podfileLockHash = 'podfile-lock-hash';
       final xcarchivePath = p.join('path', 'to', 'app.xcarchive');
       final runnerPath = p.join('path', 'to', 'runner.app');
+      final releaseSupplementPath = p.join('path', 'to', 'supplement');
 
       void setUpProjectRoot({String? flavor}) {
         Directory(
@@ -1716,6 +1717,9 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         ).createSync(recursive: true);
         Directory(
           p.join(projectRoot.path, runnerPath),
+        ).createSync(recursive: true);
+        Directory(
+          p.join(projectRoot.path, releaseSupplementPath),
         ).createSync(recursive: true);
       }
 
@@ -1761,6 +1765,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: true,
               podfileLockHash: podfileLockHash,
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1798,6 +1803,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: false,
               podfileLockHash: podfileLockHash,
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1835,6 +1841,45 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               runnerPath: p.join(projectRoot.path, runnerPath),
               isCodesigned: false,
               podfileLockHash: podfileLockHash,
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
+            ),
+          ),
+          exitsWithCode(ExitCode.software),
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('exits with code 70 when supplement artifact creation fails',
+          () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('ios_supplement.zip'),
+            ),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          ),
+        ).thenThrow(error);
+        setUpProjectRoot();
+
+        await expectLater(
+          () async => runWithOverrides(
+            () async => codePushClientWrapper.createIosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
+              runnerPath: p.join(projectRoot.path, runnerPath),
+              isCodesigned: false,
+              podfileLockHash: podfileLockHash,
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
             ),
           ),
           exitsWithCode(ExitCode.software),
@@ -1866,6 +1911,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             runnerPath: p.join(projectRoot.path, runnerPath),
             isCodesigned: true,
             podfileLockHash: podfileLockHash,
+            supplementPath: p.join(projectRoot.path, releaseSupplementPath),
           ),
         );
 
@@ -1891,44 +1937,35 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
 
     group('createIosFrameworkReleaseArtifacts', () {
       final frameworkPath = p.join('path', 'to', 'App.xcframework');
+      final releaseSupplementPath = p.join('path', 'to', 'supplement');
 
       void setUpProjectRoot({String? flavor}) {
         Directory(
           p.join(projectRoot.path, frameworkPath),
         ).createSync(recursive: true);
+        Directory(
+          p.join(projectRoot.path, releaseSupplementPath),
+        ).createSync(recursive: true);
       }
 
-      test(
-        'exits with code 70 when creating xcframework artifact fails',
-        () async {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              artifactPath: any(named: 'artifactPath'),
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(Exception('oh no'));
-          setUpProjectRoot();
+      setUp(() {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath: any(named: 'artifactPath'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          ),
+        ).thenAnswer((_) async {});
+        setUpProjectRoot();
+      });
 
-          await expectLater(
-            () async => runWithOverrides(
-              () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                appFrameworkPath: p.join(projectRoot.path, frameworkPath),
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-        },
-      );
-
-      test('completes successfully when release artifact is created', () async {
+      test('exits with code 70 when creating xcframework artifact fails',
+          () async {
         when(
           () => codePushClient.createReleaseArtifact(
             artifactPath: any(named: 'artifactPath'),
@@ -1940,15 +1977,64 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             canSideload: any(named: 'canSideload'),
             podfileLockHash: any(named: 'podfileLockHash'),
           ),
-        ).thenAnswer((_) async {});
-        setUpProjectRoot();
+        ).thenThrow(Exception('oh no'));
 
+        await expectLater(
+          () async => runWithOverrides(
+            () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appFrameworkPath: p.join(projectRoot.path, frameworkPath),
+              supplementPath: null,
+            ),
+          ),
+          exitsWithCode(ExitCode.software),
+        );
+      });
+
+      test('exits with code 70 when supplement artifact creation fails',
+          () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('ios_framework_supplement.zip'),
+            ),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          ),
+        ).thenThrow(error);
+
+        await expectLater(
+          () async => runWithOverrides(
+            () async =>
+                codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appFrameworkPath: p.join(projectRoot.path, frameworkPath),
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
+            ),
+          ),
+          exitsWithCode(ExitCode.software),
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('completes successfully when release artifact is created', () async {
         await expectLater(
           runWithOverrides(
             () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
               appId: app.appId,
               releaseId: releaseId,
               appFrameworkPath: p.join(projectRoot.path, frameworkPath),
+              supplementPath: null,
             ),
           ),
           completes,

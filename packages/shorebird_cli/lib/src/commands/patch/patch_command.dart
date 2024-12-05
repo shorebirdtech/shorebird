@@ -283,10 +283,23 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       platform: patcher.releaseType.releasePlatform,
     );
 
-    final releaseArchive = await downloadPrimaryReleaseArtifact(
+    final supplementalArtifact =
+        patcher.supplementaryReleaseArtifactArch != null
+            ? await codePushClientWrapper.getOptionalReleaseArtifact(
+                appId: appId,
+                releaseId: release.id,
+                arch: patcher.supplementaryReleaseArtifactArch!,
+                platform: patcher.releaseType.releasePlatform,
+              )
+            : null;
+
+    final releaseArchive = await downloadReleaseArtifact(
       releaseArtifact: releaseArtifact,
-      patcher: patcher,
     );
+
+    final supplementArchive = supplementalArtifact != null
+        ? await downloadReleaseArtifact(releaseArtifact: supplementalArtifact)
+        : null;
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
@@ -313,6 +326,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           appId: appId,
           releaseId: release.id,
           releaseArtifact: releaseArchive,
+          supplementArtifact: supplementArchive,
         );
 
         final dryRun = results['dry-run'] == true;
@@ -478,20 +492,40 @@ ${summary.join('\n')}
     }
   }
 
-  Future<File> downloadPrimaryReleaseArtifact({
+  Future<File> downloadReleaseArtifact({
     required ReleaseArtifact releaseArtifact,
-    required Patcher patcher,
   }) async {
     final File artifactFile;
     try {
       artifactFile = await artifactManager.downloadWithProgressUpdates(
         Uri.parse(releaseArtifact.url),
-        message: 'Downloading ${patcher.primaryReleaseArtifactArch}',
+        message: 'Downloading ${releaseArtifact.arch}',
       );
     } catch (_) {
       throw ProcessExit(ExitCode.software.code);
     }
 
     return artifactFile;
+  }
+}
+
+extension on CodePushClientWrapper {
+  Future<ReleaseArtifact?> getOptionalReleaseArtifact({
+    required String appId,
+    required int releaseId,
+    required String arch,
+    required ReleasePlatform platform,
+  }) async {
+    try {
+      final artifact = await getReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        arch: arch,
+        platform: platform,
+      );
+      return artifact;
+    } on CodePushNotFoundException catch (_) {
+      return null;
+    }
   }
 }

@@ -105,6 +105,7 @@ class AarPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? supplementArtifact,
   }) async {
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       appId: appId,

@@ -399,6 +399,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               appFrameworkPath: any(named: 'appFrameworkPath'),
+              supplementPath: any(named: 'supplementPath'),
             ),
           ).thenAnswer((_) async {});
         });
@@ -420,6 +421,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 'release',
                 ArtifactManager.appXcframeworkName,
               ),
+              supplementPath: null,
             ),
           ).called(1);
         });

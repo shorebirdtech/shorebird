@@ -143,6 +143,15 @@ void main() {
         });
       });
 
+      group('supplementaryReleaseArtifactArch', () {
+        test('is "ios_framework_supplement"', () {
+          expect(
+            patcher.supplementaryReleaseArtifactArch,
+            'ios_framework_supplement',
+          );
+        });
+      });
+
       group('releaseType', () {
         test('is ReleaseType.iosFramework', () {
           expect(patcher.releaseType, ReleaseType.iosFramework);
@@ -499,13 +508,14 @@ void main() {
           canSideload: true,
         );
         late File releaseArtifactFile;
+        late File supplementArtifactFile;
 
         void setUpProjectRootArtifacts() {
           File(p.join(projectRoot.path, 'build', elfAotSnapshotFileName))
               .createSync(
             recursive: true,
           );
-          Directory(
+          File(
             p.join(
               projectRoot.path,
               'build',
@@ -513,12 +523,22 @@ void main() {
               'framework',
               'Release',
               'App.xcframework',
+              'ios-arm64',
+              'App.framework',
+              'App',
             ),
-          ).createSync(
-            recursive: true,
-          );
+          ).createSync(recursive: true);
           File(
             p.join(projectRoot.path, 'build', linkFileName),
+          ).createSync(recursive: true);
+          File(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'shorebird',
+              'App.ct.link',
+            ),
           ).createSync(recursive: true);
         }
 
@@ -527,6 +547,12 @@ void main() {
             p.join(
               Directory.systemTemp.createTempSync().path,
               'release.xcframework',
+            ),
+          )..createSync(recursive: true);
+          supplementArtifactFile = File(
+            p.join(
+              Directory.systemTemp.createTempSync().path,
+              'ios_framework_supplement.zip',
             ),
           )..createSync(recursive: true);
 
@@ -827,6 +853,92 @@ void main() {
                     endsWith(diffPath),
                   ),
                 );
+              });
+
+              group('when class table link info is not present', () {
+                setUp(() {
+                  when(
+                    () => artifactManager.extractZip(
+                      zipFile: supplementArtifactFile,
+                      outputDirectory: any(named: 'outputDirectory'),
+                    ),
+                  ).thenAnswer((invocation) async {});
+                });
+
+                test('exits with code 70', () async {
+                  await expectLater(
+                    () => runWithOverrides(
+                      () => patcher.createPatchArtifacts(
+                        appId: appId,
+                        releaseId: releaseId,
+                        releaseArtifact: releaseArtifactFile,
+                        supplementArtifact: supplementArtifactFile,
+                      ),
+                    ),
+                    exitsWithCode(ExitCode.software),
+                  );
+
+                  verify(
+                    () => logger.err(
+                      'Unable to find class table link info file',
+                    ),
+                  ).called(1);
+                });
+              });
+
+              group('when class table link info is present', () {
+                setUp(() {
+                  when(
+                    () => artifactManager.extractZip(
+                      zipFile: releaseArtifactFile,
+                      outputDirectory: any(named: 'outputDirectory'),
+                    ),
+                  ).thenAnswer((invocation) async {
+                    final outDir = invocation.namedArguments[#outputDirectory]
+                        as Directory;
+                    File(
+                      p.join(
+                        outDir.path,
+                        'ios-arm64',
+                        'App.framework',
+                        'App',
+                      ),
+                    ).createSync(recursive: true);
+                  });
+                  when(
+                    () => artifactManager.extractZip(
+                      zipFile: supplementArtifactFile,
+                      outputDirectory: any(named: 'outputDirectory'),
+                    ),
+                  ).thenAnswer((invocation) async {
+                    final outDir = invocation.namedArguments[#outputDirectory]
+                        as Directory;
+                    File(
+                      p.join(outDir.path, 'App.ct.link'),
+                    ).createSync(recursive: true);
+                  });
+                });
+
+                test('returns linked patch artifact in patch bundle', () async {
+                  final patchBundle = await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
+                    ),
+                  );
+
+                  expect(patchBundle, hasLength(1));
+                  expect(
+                    patchBundle[Arch.arm64],
+                    isA<PatchArtifactBundle>().having(
+                      (b) => b.path,
+                      'path',
+                      endsWith(diffPath),
+                    ),
+                  );
+                });
               });
             });
           });
