@@ -41,6 +41,12 @@ class MacosPatcher extends Patcher {
     required super.target,
   });
 
+  String get _patchClassTableLinkInfoPath =>
+      p.join(buildDirectory.path, 'macos', 'shorebird', 'App.ct.link');
+
+  String get _patchClassTableLinkDebugInfoPath =>
+      p.join(buildDirectory.path, 'macos', 'shorebird', 'App.class_table.json');
+
   String get _aotOutputPath => p.join(buildDirectory.path, 'out.aot');
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
@@ -193,6 +199,29 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     );
     final releaseAppPath = tempDir.path;
 
+    File? releaseClassTableLinkInfoFile;
+    File? releaseClassTableLinkDebugInfoFile;
+    if (supplementArtifact != null) {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: supplementArtifact,
+        outputDirectory: tempDir,
+      );
+      releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));
+      if (!releaseClassTableLinkInfoFile.existsSync()) {
+        logger.err('Unable to find class table link info file');
+        throw ProcessExit(ExitCode.software.code);
+      }
+
+      releaseClassTableLinkDebugInfoFile = File(
+        p.join(tempDir.path, 'App.class_table.json'),
+      );
+      if (!releaseClassTableLinkDebugInfoFile.existsSync()) {
+        logger.err('Unable to find class table link debug info file');
+        throw ProcessExit(ExitCode.software.code);
+      }
+    }
+
     unzipProgress.complete();
     final appDirectory = artifactManager.getMacosAppDirectory(
       parentDirectory: Directory(releaseAppPath),
@@ -213,6 +242,29 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
+      // If we're using a newer version of the linker, we need to also copy the
+      // necessary class table link information alongside the snapshots.
+      if (releaseClassTableLinkInfoFile != null &&
+          releaseClassTableLinkDebugInfoFile != null) {
+        // Copy the release's class table link info file next to the release
+        // snapshot so that it can be used to generate a patch.
+        releaseClassTableLinkInfoFile.copySync(
+          p.join(releaseArtifactFile.parent.path, 'App.ct.link'),
+        );
+        releaseClassTableLinkDebugInfoFile.copySync(
+          p.join(releaseArtifactFile.parent.path, 'App.class_table.json'),
+        );
+
+        // Copy the patch's class table link info file to the build directory
+        // so that it can be used to generate a patch.
+        File(_patchClassTableLinkInfoPath).copySync(
+          p.join(buildDirectory.path, 'out.ct.link'),
+        );
+        File(_patchClassTableLinkDebugInfoPath).copySync(
+          p.join(buildDirectory.path, 'out.class_table.json'),
+        );
+      }
+
       final (:exitCode, :linkPercentage) = await _runLinker(
         releaseArtifact: releaseArtifactFile,
         kernelFile: File(_appDillCopyPath),
