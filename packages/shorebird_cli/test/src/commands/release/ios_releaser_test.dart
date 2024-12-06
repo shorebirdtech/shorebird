@@ -348,14 +348,17 @@ To change the version of this release, change your app's version in your pubspec
               xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
             ),
           ).thenReturn(iosAppDirectory);
-          when(() => artifactManager.getXcarchiveDirectory())
-              .thenReturn(xcarchiveDirectory);
+          when(
+            () => artifactManager.getXcarchiveDirectory(),
+          ).thenReturn(xcarchiveDirectory);
 
-          when(() => codeSigner.base64PublicKey(any()))
-              .thenReturn(base64PublicKey);
+          when(
+            () => codeSigner.base64PublicKey(any()),
+          ).thenReturn(base64PublicKey);
 
-          when(() => shorebirdEnv.getShorebirdProjectRoot())
-              .thenReturn(projectRoot);
+          when(
+            () => shorebirdEnv.getShorebirdProjectRoot(),
+          ).thenReturn(projectRoot);
           when(
             () => shorebirdFlutter.getVersionAndRevision(),
           ).thenAnswer((_) async => flutterVersionAndRevision);
@@ -369,8 +372,9 @@ To change the version of this release, change your app's version in your pubspec
                 'patch-signing-public-key.pem',
               ),
             )..createSync(recursive: true);
-            when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn(patchSigningPublicKeyFile.path);
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(patchSigningPublicKeyFile.path);
 
             when(
               () => artifactBuilder.buildIpa(
@@ -456,6 +460,25 @@ To change the version of this release, change your app's version in your pubspec
         });
 
         group('when build succeeds', () {
+          group('when stale build/ios/shorebird directory exists', () {
+            late Directory shorebirdSupplementDir;
+
+            setUp(() {
+              shorebirdSupplementDir = Directory(
+                p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
+              )..createSync(recursive: true);
+              when(
+                () => artifactManager.getIosReleaseSupplementDirectory(),
+              ).thenReturn(shorebirdSupplementDir);
+            });
+
+            test('deletes the directory', () async {
+              expect(shorebirdSupplementDir.existsSync(), isTrue);
+              await runWithOverrides(iosReleaser.buildReleaseArtifacts);
+              expect(shorebirdSupplementDir.existsSync(), isFalse);
+            });
+          });
+
           group('when platform was specified via arg results rest', () {
             setUp(() {
               when(() => argResults.rest).thenReturn(['ios', '--verbose']);
