@@ -87,11 +87,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     // Delete the Shorebird supplement directory if it exists.
     // This is to ensure that we don't accidentally upload stale artifacts
     // when building with older versions of Flutter.
-    final shorebirdSupplementDir = Directory(
-      p.canonicalize(p.join('build', 'ios', 'shorebird')),
-    );
-    if (shorebirdSupplementDir.existsSync()) {
-      shorebirdSupplementDir.deleteSync(recursive: true);
+    final shorebirdSupplementDir =
+        artifactManager.getIosReleaseSupplementDirectory();
+    if (shorebirdSupplementDir?.existsSync() ?? false) {
+      shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
     final buildProgress = logger.progress(

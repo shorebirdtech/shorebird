@@ -462,21 +462,20 @@ To change the version of this release, change your app's version in your pubspec
         group('when build succeeds', () {
           group('when stale build/ios/shorebird directory exists', () {
             late Directory shorebirdSupplementDir;
+
             setUp(() {
               shorebirdSupplementDir = Directory(
                 p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
               )..createSync(recursive: true);
+              when(
+                () => artifactManager.getIosReleaseSupplementDirectory(),
+              ).thenReturn(shorebirdSupplementDir);
             });
 
             test('deletes the directory', () async {
-              await IOOverrides.runZoned(
-                () async {
-                  expect(shorebirdSupplementDir.existsSync(), isTrue);
-                  await runWithOverrides(iosReleaser.buildReleaseArtifacts);
-                  expect(shorebirdSupplementDir.existsSync(), isFalse);
-                },
-                getCurrentDirectory: () => projectRoot,
-              );
+              expect(shorebirdSupplementDir.existsSync(), isTrue);
+              await runWithOverrides(iosReleaser.buildReleaseArtifacts);
+              expect(shorebirdSupplementDir.existsSync(), isFalse);
             });
           });
 
