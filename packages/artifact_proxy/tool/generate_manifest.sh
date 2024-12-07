@@ -71,11 +71,3 @@ artifact_overrides:
   # Includes unified Flutter.framework for device and simulator (debug)
   - flutter_infra_release/flutter/\$engine/ios-release/artifacts.zip
   - flutter_infra_release/flutter/\$engine/ios-release/Flutter.dSYM.zip
-
-  # macOS release artifacts
-  - flutter_infra_release/flutter/\$engine/darwin-arm64-release/artifacts.zip
-  - flutter_infra_release/flutter/\$engine/darwin-arm64-release/framework.zip
-  - flutter_infra_release/flutter/\$engine/darwin-arm64-release/gen_snapshot.zip
-  - flutter_infra_release/flutter/\$engine/darwin-x64-release/artifacts.zip
-  - flutter_infra_release/flutter/\$engine/darwin-x64-release/framework.zip
-  - flutter_infra_release/flutter/\$engine/darwin-x64-release/gen_snapshot.zip
