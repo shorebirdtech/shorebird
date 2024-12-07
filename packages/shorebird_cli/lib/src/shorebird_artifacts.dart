@@ -117,6 +117,8 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
   /// {@macro shorebird_local_engine_artifacts}
   const ShorebirdLocalEngineArtifacts();
 
+  // final ReleasePlatform platform;
+
   @override
   String getArtifactPath({required ShorebirdArtifact artifact}) {
     switch (artifact) {
@@ -136,7 +138,8 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
         'out',
         engineConfig.localEngine,
         'clang_x64',
-        'analyze_snapshot_arm64',
+        // 'analyze_snapshot_arm64',
+        'analyze_snapshot',
       ),
     );
   }
@@ -163,7 +166,8 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
         'out',
         engineConfig.localEngine,
         'clang_x64',
-        'gen_snapshot_arm64',
+        // 'gen_snapshot_arm64',
+        'gen_snapshot',
       ),
     );
   }

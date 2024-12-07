@@ -9,6 +9,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/patch/macos_patcher.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -216,6 +217,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         return IosFrameworkPatcher(
           argResults: results,
           argParser: argParser,
+          flavor: flavor,
+          target: target,
+        );
+      case ReleaseType.macos:
+        return MacosPatcher(
+          argParser: argParser,
+          argResults: results,
           flavor: flavor,
           target: target,
         );

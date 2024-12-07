@@ -321,6 +321,7 @@ Please create a release using "shorebird release" and try again.
       );
       updateStatusProgress.complete();
     } catch (error) {
+      print('failed to update release status $error');
       _handleErrorAndExit(error, progress: updateStatusProgress);
     }
   }
@@ -614,6 +615,78 @@ aar artifact already exists, continuing...''',
         .where((file) => p.extension(file.path) == '.dylib')
         .forEach((file) => file.deleteSync());
     return thinnedArchiveDirectory;
+  }
+
+  Future<void> createMacosReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required String appPath,
+    required bool isCodesigned,
+    // required String? podfileLockHash,
+    required String? supplementPath,
+  }) async {
+    final createArtifactProgress = logger.progress('Uploading artifacts');
+    final tempDir = await Directory.systemTemp.createTemp();
+    final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
+    // FIXME: using ditto here because zipToTempFile is not properly capturing
+    // the app folder structure (the top folder after zipping is Content,
+    // instead of the MyApp.app directory).
+    // package:archive also seems to be having some trouble unzipping .app files
+    //
+    // final zippedApp = await Directory(appPath).zipToTempFile();
+    await Process.run('ditto', [
+      '-c',
+      '-k',
+      '--sequesterRsrc',
+      '--keepParent',
+      appPath,
+      zippedApp.path,
+    ]);
+
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedApp.path,
+        arch: 'app',
+        platform: ReleasePlatform.macos,
+        hash: sha256.convert(await zippedApp.readAsBytes()).toString(),
+        canSideload: true,
+        podfileLockHash: null,
+        // podfileLockHash: podfileLockHash,
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading xcarchive: $error',
+      );
+    }
+
+    if (supplementPath != null) {
+      final zippedSupplement = await Directory(supplementPath).zipToTempFile(
+        name: 'macos_supplement',
+      );
+      try {
+        await codePushClient.createReleaseArtifact(
+          appId: appId,
+          releaseId: releaseId,
+          artifactPath: zippedSupplement.path,
+          arch: 'macos_supplement',
+          platform: ReleasePlatform.macos,
+          hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
+          canSideload: false,
+          podfileLockHash: null,
+          // podfileLockHash: podileLockHash,
+        );
+      } catch (error) {
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading release supplements: $error',
+        );
+      }
+    }
   }
 
   /// Uploads a release .xcarchive, .app, and supplementary files to the
