@@ -27,7 +27,12 @@ poison the cache of your main Flutter checkout.
 
 ## Updating config.dart
 
-If run into 404s when fetching artifacts, you may need to update the artifact list in `config.dart`.
+If run into 404s when fetching artifacts, ensure that the expected manifest
+exists at
+https://storage.googleapis.com/download.shorebird.dev/shorebird/$engineRevision/artifacts_manifest.yaml.
+
+If it does, you may need to update the artifact list in `config.dart` and, if
+the artifact is one we're providing, add it in `tool/generate_manifest.sh`
 
 To do so, you will need to determine the artifact URLs. Follow these steps:
 
