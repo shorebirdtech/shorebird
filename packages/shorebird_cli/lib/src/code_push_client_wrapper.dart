@@ -674,6 +674,9 @@ aar artifact already exists, continuing...''',
       final zippedSupplement = await Directory(supplementPath).zipToTempFile(
         name: 'ios_supplement',
       );
+      logger.detail(
+        '[archive] zipped ios_supplement to ${zippedSupplement.path}',
+      );
       try {
         await codePushClient.createReleaseArtifact(
           appId: appId,

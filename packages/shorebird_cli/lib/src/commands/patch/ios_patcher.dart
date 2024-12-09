@@ -266,6 +266,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         zipFile: supplementArtifact,
         outputDirectory: tempDir,
       );
+      logger.detail(
+        '[archive] extracted supplement artifact to ${tempDir.path}',
+      );
       releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));
       if (!releaseClassTableLinkInfoFile.existsSync()) {
         logger.err('Unable to find class table link info file');
