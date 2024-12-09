@@ -183,7 +183,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           target: target,
         );
       case ReleaseType.macos:
-        return MacOSReleaser(
+        return MacosReleaser(
           argResults: results,
           flavor: flavor,
           target: target,

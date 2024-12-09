@@ -18,9 +18,9 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@template macos_releaser}
 /// Functions to build and publish a macOS release.
 /// {@endtemplate}
-class MacOSReleaser extends Releaser {
+class MacosReleaser extends Releaser {
   /// {@macro macos_releaser}
-  MacOSReleaser({
+  MacosReleaser({
     required super.argResults,
     required super.flavor,
     required super.target,
