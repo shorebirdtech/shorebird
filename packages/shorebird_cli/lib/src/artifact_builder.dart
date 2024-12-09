@@ -257,7 +257,9 @@ class ArtifactBuilder {
     });
   }
 
-  /// TODO
+  /// Builds a macOS app using `flutter build macos`. Runs `flutter pub get`
+  /// with the system installation of Flutter to reset
+  /// `.dart_tool/package_config.json` after the build completes or fails.
   Future<IpaBuildResult> buildMacos({
     bool codesign = true,
     String? flavor,
@@ -334,7 +336,7 @@ Failed to build:
 $errorMessage''');
       }
 
-      appDillPath = findMacosAppDill(stdout: stdout);
+      appDillPath = findAppDill(stdout: stdout);
     });
 
     if (appDillPath == null) {
@@ -417,7 +419,7 @@ Failed to build:
 $errorMessage''');
       }
 
-      appDillPath = findIosAppDill(stdout: stdout);
+      appDillPath = findAppDill(stdout: stdout);
     });
 
     if (appDillPath == null) {
@@ -455,7 +457,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
         throw ArtifactBuildException('Failed to build: ${result.stderr}');
       }
 
-      appDillPath = findIosAppDill(stdout: result.stdout.toString());
+      appDillPath = findAppDill(stdout: result.stdout.toString());
     });
 
     if (appDillPath == null) {
@@ -613,31 +615,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     return null;
   }
 
-  /// Given the full stdout from a `flutter build ipa` command, finds the path
-  /// to the app.dill file that was built.
+  /// Given the full stdout from a `flutter build ipa` or `flutter build macos`
+  /// command, finds the path to the app.dill file that was built.
   @visibleForTesting
-  String? findIosAppDill({required String stdout}) {
-    // TODO: make this work for gen_snapshot_x64 as well
-    final appDillLine = stdout.split('\n').firstWhereOrNull(
-          (l) => l.contains('gen_snapshot_arm64') && l.endsWith('app.dill'),
-        );
-
-    if (appDillLine == null) return null;
-
-    // The last argument in the line is the path to app.dill. Because
-    //   1) paths can contain spaces and
-    //   2) the path to the app.dill is absolute (i.e., it starts with a '/')
-    // we can grab the last space-separated part of the line that starts with
-    // a '/' and assume everything after it is the path to app.dill.
-    return '/${appDillLine.split(' /').last}';
-  }
-
-  /// Given the full stdout from a `flutter build macos` command, finds the path
-  /// to the app.dill file that was built.
-  /// NOTE: This line will only be present if the app.dill is created. I've been
-  /// manually deleting .dart_tool in between builds to force this
-  @visibleForTesting
-  String? findMacosAppDill({required String stdout}) {
+  String? findAppDill({required String stdout}) {
     final appDillLine = stdout.split('\n').firstWhereOrNull(
           (l) => l.contains('gen_snapshot') && l.endsWith('app.dill'),
         );

@@ -52,7 +52,6 @@ void main() {
       late ShorebirdFlutter shorebirdFlutter;
       late ShorebirdValidator shorebirdValidator;
       late XcodeBuild xcodeBuild;
-      late IosReleaser iosReleaser;
 
       late MacosReleaser releaser;
 

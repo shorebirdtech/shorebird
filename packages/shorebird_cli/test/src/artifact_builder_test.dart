@@ -1229,7 +1229,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
 ''';
 
           expect(
-            builder.findIosAppDill(stdout: result),
+            builder.findAppDill(stdout: result),
             equals(
               '/Users/bryanoltman/Documents/sandbox/ios_signing/.dart_tool/flutter_build/804399dd5f8e05d7b9ec7e0bb4ceb22c/app.dill',
             ),
@@ -1244,7 +1244,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
 ''';
 
           expect(
-            builder.findIosAppDill(stdout: result),
+            builder.findAppDill(stdout: result),
             equals(
               '/Users/felix/Development/github.com/felangel/flutter_and_friends/.dart_tool/flutter_build/ae2d368b5940aefb0c55ff62186de056/app.dill',
             ),
@@ -1263,7 +1263,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
 ''';
 
             expect(
-              builder.findIosAppDill(stdout: result),
+              builder.findAppDill(stdout: result),
               equals(
                 '/Users/bryanoltman/Documents/sandbox/folder with space/ios_patcher/.dart_tool/flutter_build/cd4f4aa272817365910648606e3e4164/app.dill',
               ),
@@ -1277,7 +1277,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
           const result =
               'executing: .../gen_snapshot_arm64 .../snapshot_assembly.S';
 
-          expect(builder.findIosAppDill(stdout: result), isNull);
+          expect(builder.findAppDill(stdout: result), isNull);
         });
       });
     });
