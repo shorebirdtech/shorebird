@@ -622,7 +622,7 @@ aar artifact already exists, continuing...''',
     required int releaseId,
     required String appPath,
     required bool isCodesigned,
-    // required String? podfileLockHash,
+    required String? podfileLockHash,
     required String? supplementPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
@@ -652,8 +652,7 @@ aar artifact already exists, continuing...''',
         platform: ReleasePlatform.macos,
         hash: sha256.convert(await zippedApp.readAsBytes()).toString(),
         canSideload: true,
-        podfileLockHash: null,
-        // podfileLockHash: podfileLockHash,
+        podfileLockHash: podfileLockHash,
       );
     } catch (error) {
       _handleErrorAndExit(
@@ -676,8 +675,7 @@ aar artifact already exists, continuing...''',
           platform: ReleasePlatform.macos,
           hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
           canSideload: false,
-          podfileLockHash: null,
-          // podfileLockHash: podileLockHash,
+          podfileLockHash: podfileLockHash,
         );
       } catch (error) {
         _handleErrorAndExit(

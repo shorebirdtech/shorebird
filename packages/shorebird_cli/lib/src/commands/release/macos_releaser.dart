@@ -1,17 +1,26 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/plist.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
+import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/detail_progress.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
+import 'package:shorebird_cli/src/metadata/update_release_metadata.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -34,13 +43,54 @@ class MacosReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    // TODO: implement assertArgsAreValid
+    if (argResults.wasParsed('release-version')) {
+      logger.err(
+        '''
+The "--release-version" flag is only supported for aar and ios-framework releases.
+        
+To change the version of this release, change your app's version in your pubspec.yaml.''',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    if (argResults.rest.contains('--obfuscate')) {
+      // Obfuscated releases break patching, so we don't support them.
+      // See https://github.com/shorebirdtech/shorebird/issues/1619
+      logger
+        ..err('Shorebird does not currently support obfuscation on macOS.')
+        ..info(
+          '''We hope to support obfuscation in the future. We are tracking this work at ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1619'))}.''',
+        );
+      throw ProcessExit(ExitCode.unavailable.code);
+    }
   }
 
   @override
   Future<void> assertPreconditions() async {
-    // TODO: implement assertPreconditions
-    // TODO: ensure app has network capabilities
+    try {
+      await shorebirdValidator.validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: true,
+        validators: doctor.macosCommandValidators,
+        supportedOperatingSystems: {Platform.macOS},
+      );
+    } on PreconditionFailedException catch (e) {
+      throw ProcessExit(e.exitCode.code);
+    }
+
+    final flutterVersionArg = argResults['flutter-version'] as String?;
+    if (flutterVersionArg != null) {
+      final version =
+          await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
+      if (version != null && version < minimumSupportedMacosFlutterVersion) {
+        logger.err(
+          '''
+macOS releases are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
+        );
+        throw ProcessExit(ExitCode.usage.code);
+      }
+    }
   }
 
   @override
@@ -53,6 +103,15 @@ class MacosReleaser extends Releaser {
         ..warn(
           '''shorebird preview will not work for releases created with "--no-codesign". However, you can still preview your app by signing the generated .xcarchive in Xcode.''',
         );
+    }
+
+    // Delete the Shorebird supplement directory if it exists.
+    // This is to ensure that we don't accidentally upload stale artifacts
+    // when building with older versions of Flutter.
+    final shorebirdSupplementDir =
+        artifactManager.getIosReleaseSupplementDirectory();
+    if (shorebirdSupplementDir?.existsSync() ?? false) {
+      shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
@@ -106,40 +165,46 @@ class MacosReleaser extends Releaser {
     }
   }
 
-  // TODO
-  @override
-  String get postReleaseInstructions => 'TODO';
-
   @override
   Future<void> uploadReleaseArtifacts({
     required Release release,
     required String appId,
   }) async {
-    print("in uploadReleaseArtifacts");
-    final xcarchiveDirectory = artifactManager.getMacOSAppDirectory();
-    if (xcarchiveDirectory == null) {
+    final appDirectory = artifactManager.getMacOSAppDirectory();
+    if (appDirectory == null) {
       logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
     }
-    // final String? podfileLockHash;
-    // if (shorebirdEnv.podfileLockFile.existsSync()) {
-    //   podfileLockHash = sha256
-    //       .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
-    //       .toString();
-    // } else {
-    //   podfileLockHash = null;
-    // }
+    final String? podfileLockHash;
+    if (shorebirdEnv.podfileLockFile.existsSync()) {
+      podfileLockHash = sha256
+          .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
+          .toString();
+    } else {
+      podfileLockHash = null;
+    }
     await codePushClientWrapper.createMacosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
-      appPath: xcarchiveDirectory.path,
-      // runnerPath: artifactManager
-      //     .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
-      //     .path,
+      appPath: appDirectory.path,
       isCodesigned: codesign,
-      // podfileLockHash: podfileLockHash,
+      podfileLockHash: podfileLockHash,
       supplementPath:
           artifactManager.getMacosReleaseSupplementDirectory()?.path,
     );
   }
+
+  @override
+  Future<UpdateReleaseMetadata> updatedReleaseMetadata(
+    UpdateReleaseMetadata metadata,
+  ) async =>
+      metadata.copyWith(
+        environment: metadata.environment.copyWith(
+          xcodeVersion: await xcodeBuild.version(),
+        ),
+      );
+
+  @override
+  String get postReleaseInstructions => '''
+macOS app created at ${artifactManager.getMacOSAppDirectory()!.path}.''';
 }
