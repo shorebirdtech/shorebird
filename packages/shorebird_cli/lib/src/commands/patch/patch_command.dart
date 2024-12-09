@@ -9,7 +9,6 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/patch/macos_patcher.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';

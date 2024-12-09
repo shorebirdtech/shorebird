@@ -108,7 +108,7 @@ void main() {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.genSnapshot,
+              artifact: ShorebirdArtifact.genSnapshotIos,
             ),
           ),
           equals(
@@ -204,7 +204,7 @@ void main() {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.genSnapshot,
+              artifact: ShorebirdArtifact.genSnapshotIos,
             ),
           ),
           equals(

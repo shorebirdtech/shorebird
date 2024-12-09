@@ -448,7 +448,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
-      artifact: ShorebirdArtifact.genSnapshot,
+      artifact: ShorebirdArtifact.genSnapshotIos,
     );
 
     final linkProgress = logger.progress('Linking AOT files');

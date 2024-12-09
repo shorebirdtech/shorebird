@@ -558,7 +558,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
     final result = await process.run(
       shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.genSnapshot,
+        artifact: ShorebirdArtifact.genSnapshotIos,
       ),
       arguments,
     );

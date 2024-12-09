@@ -649,7 +649,7 @@ void main() {
             ).thenReturn(analyzeSnapshotFile.path);
             when(
               () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.genSnapshot,
+                artifact: ShorebirdArtifact.genSnapshotIos,
               ),
             ).thenReturn(genSnapshotFile.path);
           });
