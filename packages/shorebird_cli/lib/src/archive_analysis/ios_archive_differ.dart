@@ -88,7 +88,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
 
   List<ArchiveFile> _filesToUnsign(String archivePath) {
     return ZipDecoder()
-        .decodeBuffer(InputFileStream(archivePath))
+        .decodeStream(InputFileStream(archivePath))
         .files
         .where((file) => file.isFile)
         .where(
@@ -102,7 +102,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
 
   List<ArchiveFile> _carFiles(String archivePath) {
     return ZipDecoder()
-        .decodeBuffer(InputFileStream(archivePath))
+        .decodeStream(InputFileStream(archivePath))
         .files
         .where((file) => file.isFile && p.basename(file.name) == 'Assets.car')
         .toList();

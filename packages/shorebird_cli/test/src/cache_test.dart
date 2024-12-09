@@ -108,7 +108,7 @@ void main() {
       );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
-          Stream.value(ZipEncoder().encode(Archive())!),
+          Stream.value(ZipEncoder().encode(Archive())),
           HttpStatus.ok,
         ),
       );
@@ -282,7 +282,7 @@ void main() {
                 );
               }
               return http.StreamedResponse(
-                Stream.value(ZipEncoder().encode(Archive())!),
+                Stream.value(ZipEncoder().encode(Archive())),
                 HttpStatus.ok,
               );
             },

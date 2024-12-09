@@ -11,9 +11,9 @@ extension DirectoryArchive on Directory {
     final tempDir = await Directory.systemTemp.createTemp();
     final fileName = name ?? p.basename(path);
     final outFile = File(p.join(tempDir.path, '$fileName.zip'));
-    await Isolate.run(() {
-      ZipFileEncoder().zipDirectory(this, filename: outFile.path);
-    });
+    await Isolate.run(
+      () => ZipFileEncoder().zipDirectory(this, filename: outFile.path),
+    );
     return outFile;
   }
 }
