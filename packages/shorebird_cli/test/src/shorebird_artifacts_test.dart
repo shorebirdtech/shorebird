@@ -104,7 +104,7 @@ void main() {
         });
       });
 
-      test('returns correct path for gen_snapshot', () {
+      test('returns correct path for iOS gen_snapshot', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
@@ -119,6 +119,27 @@ void main() {
               'artifacts',
               'engine',
               'ios-release',
+              'gen_snapshot_arm64',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path for macOS gen_snapshot', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.genSnapshotMacOS,
+            ),
+          ),
+          equals(
+            p.join(
+              flutterDirectory.path,
+              'bin',
+              'cache',
+              'artifacts',
+              'engine',
+              'darwin-x64-release',
               'gen_snapshot_arm64',
             ),
           ),
