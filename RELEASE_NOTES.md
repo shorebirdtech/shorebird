@@ -6,6 +6,15 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.4.16 (December 9, 2024)
+
+- 🍎 iOS linker improvements (additional class table improvements)
+- 🖥️ Additional preparation for MacOS support
+
+## 1.4.15 (December 6, 2024)
+
+- 🐛 Fix bug (edge case) where `shorebird release ios` can upload stale supplement artifacts
+
 ## 1.4.14 (December 5, 2024)
 
 - 🍎 iOS linker improvements (improved class table sort)

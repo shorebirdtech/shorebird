@@ -84,6 +84,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
 
+    // Delete the Shorebird supplement directory if it exists.
+    // This is to ensure that we don't accidentally upload stale artifacts
+    // when building with older versions of Flutter.
+    final shorebirdSupplementDir =
+        artifactManager.getIosReleaseSupplementDirectory();
+    if (shorebirdSupplementDir?.existsSync() ?? false) {
+      shorebirdSupplementDir!.deleteSync(recursive: true);
+    }
+
     final buildProgress = logger.progress(
       'Building iOS framework with Flutter $flutterVersionString',
     );
