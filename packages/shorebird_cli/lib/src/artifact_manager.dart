@@ -191,7 +191,7 @@ class ArtifactManager {
   }) async {
     await Isolate.run(() async {
       final inputStream = InputFileStream(zipFile.path);
-      final archive = ZipDecoder().decodeBuffer(inputStream);
+      final archive = ZipDecoder().decodeStream(inputStream);
       await extractArchiveToDisk(archive, outputDirectory.path);
       inputStream.closeSync();
     });
