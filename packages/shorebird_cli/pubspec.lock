@@ -26,10 +26,10 @@ packages:
     dependency: "direct main"
     description:
       name: archive
-      sha256: cb6a278ef2dbb298455e1a713bda08524a175630ec643a242c399c932a0a1f7d
+      sha256: "08064924cbf0ab88280a0c3f60db9dd24fec693927e725ecb176f16c629d1cb8"
       url: "https://pub.dev"
     source: hosted
-    version: "3.6.1"
+    version: "4.0.1"
   args:
     dependency: "direct main"
     description:
@@ -533,6 +533,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.1"
+  posix:
+    dependency: transitive
+    description:
+      name: posix
+      sha256: a0117dc2167805aa9125b82eee515cc891819bac2f538c83646d355b16f58b9a
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.1"
   propertylistserialization:
     dependency: "direct main"
     description:
@@ -743,10 +751,10 @@ packages:
     dependency: "direct dev"
     description:
       name: test
-      sha256: f2a018e2baa6fce7c8daa55b8bdf4b3d7d165f82caac269e4cbe5edd666c0e4c
+      sha256: "22eb7769bee38c7e032d532e8daa2e1cc901b799f603550a4db8f3a5f5173ea2"
       url: "https://pub.dev"
     source: hosted
-    version: "1.25.9"
+    version: "1.25.12"
   test_api:
     dependency: transitive
     description:
@@ -759,10 +767,10 @@ packages:
     dependency: transitive
     description:
       name: test_core
-      sha256: "60ff490bb383858015df7b7a0d883301a426edf9033989f55f091d91efb9dfaf"
+      sha256: "84d17c3486c8dfdbe5e12a50c8ae176d15e2a771b96909a9442b40173649ccaa"
       url: "https://pub.dev"
     source: hosted
-    version: "0.6.6"
+    version: "0.6.8"
   timing:
     dependency: transitive
     description:
