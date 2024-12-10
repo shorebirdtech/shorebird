@@ -99,10 +99,10 @@ class MacosPatcher extends Patcher {
       ).wait;
 
       if ((flutterVersion ?? minimumSupportedMacosFlutterVersion) <
-          minimumSupportedIosFlutterVersion) {
+          minimumSupportedMacosFlutterVersion) {
         logger.err(
           '''
-macos patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
+macOS patches are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         );
         throw ProcessExit(ExitCode.software.code);
@@ -128,7 +128,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         buildProgress.fail('Failed to build: ${error.message}');
         rethrow;
       } on ArtifactBuildException catch (error) {
-        buildProgress.fail('Failed to build macos app');
+        buildProgress.fail('Failed to build macOS app');
         logger.err(error.message);
         rethrow;
       }
@@ -282,7 +282,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     if (useLinker && await aotTools.isGeneratePatchDiffBaseSupported()) {
       final patchBaseProgress = logger.progress('Generating patch diff base');
       final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshotMacos,
+        artifact: ShorebirdArtifact.analyzeSnapshotMacOS,
       );
 
       final File patchBaseFile;
@@ -369,7 +369,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     final analyzeSnapshot = File(
       shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshotMacos,
+        artifact: ShorebirdArtifact.analyzeSnapshotMacOS,
       ),
     );
 

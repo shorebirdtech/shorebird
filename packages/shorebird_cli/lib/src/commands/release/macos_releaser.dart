@@ -109,7 +109,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     // This is to ensure that we don't accidentally upload stale artifacts
     // when building with older versions of Flutter.
     final shorebirdSupplementDir =
-        artifactManager.getIosReleaseSupplementDirectory();
+        artifactManager.getMacosReleaseSupplementDirectory();
     if (shorebirdSupplementDir?.existsSync() ?? false) {
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }
