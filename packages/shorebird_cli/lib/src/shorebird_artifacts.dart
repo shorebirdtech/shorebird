@@ -90,7 +90,7 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
         'artifacts',
         'engine',
         'darwin-x64-release',
-        'analyze_snapshot_arm64',
+        'analyze_snapshot',
       ),
     );
   }
@@ -128,7 +128,7 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
         'artifacts',
         'engine',
         'ios-release',
-        'gen_snapshot_arm64',
+        'gen_snapshot',
       ),
     );
   }
@@ -142,7 +142,7 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
         'artifacts',
         'engine',
         'darwin-x64-release',
-        'gen_snapshot_arm64',
+        'gen_snapshot',
       ),
     );
   }
