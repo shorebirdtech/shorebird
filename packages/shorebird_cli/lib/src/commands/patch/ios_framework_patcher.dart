@@ -128,6 +128,7 @@ class IosFrameworkPatcher extends Patcher {
           'build',
           'out.aot',
         ),
+        genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
         additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {

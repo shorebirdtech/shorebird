@@ -214,6 +214,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         await artifactBuilder.buildElfAotSnapshot(
           appDillPath: ipaBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
+          genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
           additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
         );
       } catch (error) {

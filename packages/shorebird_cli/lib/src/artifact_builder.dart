@@ -548,6 +548,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   Future<File> buildElfAotSnapshot({
     required String appDillPath,
     required String outFilePath,
+    required ShorebirdArtifact genSnapshotArtifact,
     List<String> additionalArgs = const [],
   }) async {
     final arguments = [
@@ -559,9 +560,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     ];
 
     final result = await process.run(
-      shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.genSnapshotIos,
-      ),
+      shorebirdArtifacts.getArtifactPath(artifact: genSnapshotArtifact),
       arguments,
     );
 

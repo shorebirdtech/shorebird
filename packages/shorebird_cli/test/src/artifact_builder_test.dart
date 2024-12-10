@@ -1163,6 +1163,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
               () => builder.buildElfAotSnapshot(
                 appDillPath: '/app/dill/path',
                 outFilePath: '/path/to/out',
+                genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
                 additionalArgs: ['--foo', 'bar'],
               ),
             );
@@ -1195,6 +1196,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
                   () => builder.buildElfAotSnapshot(
                     appDillPath: 'asdf',
                     outFilePath: 'asdf',
+                    genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
                   ),
                 ),
                 throwsA(isA<ArtifactBuildException>()),
@@ -1208,6 +1210,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
                 () => builder.buildElfAotSnapshot(
                   appDillPath: '/app/dill/path',
                   outFilePath: '/path/to/out',
+                  genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
                 ),
               );
 

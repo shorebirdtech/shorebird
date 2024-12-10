@@ -103,6 +103,7 @@ void main() {
         registerFallbackValue(File(''));
         registerFallbackValue(const IosArchiveDiffer());
         registerFallbackValue(ReleasePlatform.ios);
+        registerFallbackValue(ShorebirdArtifact.genSnapshotIos);
         registerFallbackValue(Uri.parse('https://example.com'));
       });
 
@@ -609,6 +610,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
                 outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
               ),
             ).thenThrow(const FileSystemException('error'));
           });
@@ -659,6 +661,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
                 outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
                 additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenAnswer(
@@ -693,6 +696,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 () => artifactBuilder.buildElfAotSnapshot(
                   appDillPath: any(named: 'appDillPath'),
                   outFilePath: any(named: 'outFilePath'),
+                  genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
                   additionalArgs: [
                     '--dwarf-stack-traces',
                     '--resolve-dwarf-paths',

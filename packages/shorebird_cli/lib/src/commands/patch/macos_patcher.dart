@@ -140,6 +140,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         await artifactBuilder.buildElfAotSnapshot(
           appDillPath: ipaBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
+          genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacOS,
           // TODO
           // additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
         );
