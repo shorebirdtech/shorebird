@@ -247,7 +247,7 @@ class IosFrameworkPatcher extends Patcher {
     if (await aotTools.isGeneratePatchDiffBaseSupported()) {
       final patchBaseProgress = logger.progress('Generating patch diff base');
       final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
+        artifact: ShorebirdArtifact.analyzeSnapshotIos,
       );
 
       final File patchBaseFile;
@@ -314,7 +314,7 @@ class IosFrameworkPatcher extends Patcher {
 
     final analyzeSnapshot = File(
       shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
+        artifact: ShorebirdArtifact.analyzeSnapshotIos,
       ),
     );
 

@@ -10,8 +10,11 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// All Shorebird artifacts used explicitly by Shorebird.
 enum ShorebirdArtifact {
-  /// The analyze_snapshot executable.
-  analyzeSnapshot,
+  /// The iOS analyze_snapshot executable.
+  analyzeSnapshotIos,
+
+  /// The macOS analyze_snapshot executable.
+  analyzeSnapshotMacos,
 
   /// The aot_tools executable or kernel file.
   aotTools,
@@ -51,8 +54,10 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
     required ShorebirdArtifact artifact,
   }) {
     switch (artifact) {
-      case ShorebirdArtifact.analyzeSnapshot:
-        return _analyzeSnapshotFile.path;
+      case ShorebirdArtifact.analyzeSnapshotIos:
+        return _analyzeSnapshotIosFile.path;
+      case ShorebirdArtifact.analyzeSnapshotMacos:
+        return _analyzeSnapshotMacosFile.path;
       case ShorebirdArtifact.aotTools:
         return _aotToolsFile.path;
       case ShorebirdArtifact.genSnapshotIos:
@@ -62,7 +67,7 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
     }
   }
 
-  File get _analyzeSnapshotFile {
+  File get _analyzeSnapshotIosFile {
     return File(
       p.join(
         shorebirdEnv.flutterDirectory.path,
@@ -71,6 +76,20 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
         'artifacts',
         'engine',
         'ios-release',
+        'analyze_snapshot_arm64',
+      ),
+    );
+  }
+
+  File get _analyzeSnapshotMacosFile {
+    return File(
+      p.join(
+        shorebirdEnv.flutterDirectory.path,
+        'bin',
+        'cache',
+        'artifacts',
+        'engine',
+        'darwin-x64-release',
         'analyze_snapshot_arm64',
       ),
     );
@@ -136,12 +155,11 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
   /// {@macro shorebird_local_engine_artifacts}
   const ShorebirdLocalEngineArtifacts();
 
-  // final ReleasePlatform platform;
-
   @override
   String getArtifactPath({required ShorebirdArtifact artifact}) {
     switch (artifact) {
-      case ShorebirdArtifact.analyzeSnapshot:
+      case ShorebirdArtifact.analyzeSnapshotIos:
+      case ShorebirdArtifact.analyzeSnapshotMacos:
         return _analyzeSnapshotFile.path;
       case ShorebirdArtifact.aotTools:
         return _aotToolsFile.path;

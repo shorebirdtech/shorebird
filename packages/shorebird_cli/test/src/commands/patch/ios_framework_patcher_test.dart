@@ -648,7 +648,7 @@ void main() {
             ).thenReturn(postLinkerFlutterRevision);
             when(
               () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.analyzeSnapshot,
+                artifact: ShorebirdArtifact.analyzeSnapshotIos,
               ),
             ).thenReturn(analyzeSnapshotFile.path);
             when(
@@ -684,7 +684,7 @@ void main() {
               setUp(() {
                 when(
                   () => shorebirdArtifacts.getArtifactPath(
-                    artifact: ShorebirdArtifact.analyzeSnapshot,
+                    artifact: ShorebirdArtifact.analyzeSnapshotIos,
                   ),
                 ).thenReturn('');
                 setUpProjectRootArtifacts();

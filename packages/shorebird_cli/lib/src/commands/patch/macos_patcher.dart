@@ -175,7 +175,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       appPath,
       zippedApp.path,
     ]);
-    print('appPath is $appPath');
     return zippedApp;
   }
 
@@ -283,7 +282,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     if (useLinker && await aotTools.isGeneratePatchDiffBaseSupported()) {
       final patchBaseProgress = logger.progress('Generating patch diff base');
       final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
+        artifact: ShorebirdArtifact.analyzeSnapshotMacos,
       );
 
       final File patchBaseFile;
@@ -370,7 +369,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     final analyzeSnapshot = File(
       shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
+        artifact: ShorebirdArtifact.analyzeSnapshotMacos,
       ),
     );
 

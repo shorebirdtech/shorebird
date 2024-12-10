@@ -1047,7 +1047,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             ).thenReturn(postLinkerFlutterRevision);
             when(
               () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.analyzeSnapshot,
+                artifact: ShorebirdArtifact.analyzeSnapshotIos,
               ),
             ).thenReturn(analyzeSnapshotFile.path);
             when(
@@ -1116,7 +1116,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               setUp(() {
                 when(
                   () => shorebirdArtifacts.getArtifactPath(
-                    artifact: ShorebirdArtifact.analyzeSnapshot,
+                    artifact: ShorebirdArtifact.analyzeSnapshotIos,
                   ),
                 ).thenReturn('');
                 setUpProjectRootArtifacts();

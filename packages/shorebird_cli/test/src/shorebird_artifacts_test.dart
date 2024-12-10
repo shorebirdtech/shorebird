@@ -146,11 +146,11 @@ void main() {
         );
       });
 
-      test('returns correct path for analyze_snapshot', () {
+      test('returns correct path for analyze_snapshot on iOS', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.analyzeSnapshot,
+              artifact: ShorebirdArtifact.analyzeSnapshotIos,
             ),
           ),
           equals(
@@ -221,7 +221,7 @@ void main() {
         );
       });
 
-      test('returns correct path for gen_snapshot', () {
+      test('returns correct path for gen_snapshot on iOS', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
@@ -240,11 +240,11 @@ void main() {
         );
       });
 
-      test('returns correct path for analyze_snapshot', () {
+      test('returns correct path for analyze_snapshot on iOS', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.analyzeSnapshot,
+              artifact: ShorebirdArtifact.analyzeSnapshotIos,
             ),
           ),
           equals(
