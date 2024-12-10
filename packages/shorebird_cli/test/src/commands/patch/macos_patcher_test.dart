@@ -13,8 +13,7 @@ import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
-import 'package:shorebird_cli/src/executables/aot_tools.dart';
-import 'package:shorebird_cli/src/executables/xcodebuild.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -45,6 +44,7 @@ void main() {
       late ArtifactManager artifactManager;
       late CodePushClientWrapper codePushClientWrapper;
       // late CodeSigner codeSigner;
+      late Ditto ditto;
       late Doctor doctor;
       late EngineConfig engineConfig;
       late Directory flutterDirectory;
@@ -71,6 +71,7 @@ void main() {
             artifactManagerRef.overrideWith(() => artifactManager),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
             // codeSignerRef.overrideWith(() => codeSigner),
+            dittoRef.overrideWith(() => ditto),
             doctorRef.overrideWith(() => doctor),
             engineConfigRef.overrideWith(() => engineConfig),
             // iosRef.overrideWith(() => ios),
@@ -102,6 +103,7 @@ void main() {
         artifactBuilder = MockArtifactBuilder();
         artifactManager = MockArtifactManager();
         codePushClientWrapper = MockCodePushClientWrapper();
+        ditto = MockDitto();
         // codeSigner = MockCodeSigner();
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
