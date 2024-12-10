@@ -194,11 +194,17 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     final unzipProgress = logger.progress('Extracting release artifact');
     final tempDir = Directory.systemTemp.createTempSync();
-    await artifactManager.extractZip(
-      zipFile: releaseArtifact,
-      outputDirectory: tempDir,
-    );
-    final releaseAppPath = tempDir.path;
+    await Process.run('ditto', [
+      '-x',
+      '-k',
+      releaseArtifact.path,
+      tempDir.path,
+    ]);
+    // await artifactManager.extractZip(
+    //   zipFile: releaseArtifact,
+    //   outputDirectory: tempDir,
+    // );
+    final appDirectory = tempDir.path;
 
     File? releaseClassTableLinkInfoFile;
     File? releaseClassTableLinkDebugInfoFile;
@@ -224,16 +230,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     unzipProgress.complete();
-    final appDirectory = artifactManager.getMacosAppDirectory(
-      parentDirectory: Directory(releaseAppPath),
-    );
-    if (appDirectory == null) {
-      logger.err('Unable to find release artifact .app directory');
-      throw ProcessExit(ExitCode.software.code);
-    }
     final releaseArtifactFile = File(
       p.join(
-        appDirectory.path,
+        appDirectory,
         'Contents',
         'Frameworks',
         'App.framework',
