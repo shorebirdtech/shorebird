@@ -361,7 +361,7 @@ To change the version of this release, change your app's version in your pubspec
                 p.join(projectRoot.path, 'build', 'macos', 'shorebird'),
               )..createSync(recursive: true);
               when(
-                () => artifactManager.getIosReleaseSupplementDirectory(),
+                () => artifactManager.getMacosReleaseSupplementDirectory(),
               ).thenReturn(shorebirdSupplementDir);
             });
 
