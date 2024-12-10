@@ -12,10 +12,11 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
-import 'package:shorebird_cli/src/executables/aot_tools.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/detail_progress.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
+import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -355,6 +356,17 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       throw ProcessExit(ExitCode.software.code);
     }
   }
+
+  @override
+  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
+    CreatePatchMetadata metadata,
+  ) async =>
+      metadata.copyWith(
+        linkPercentage: lastBuildLinkPercentage,
+        environment: metadata.environment.copyWith(
+          xcodeVersion: await xcodeBuild.version(),
+        ),
+      );
 
   Future<_LinkResult> _runLinker({
     required File releaseArtifact,
