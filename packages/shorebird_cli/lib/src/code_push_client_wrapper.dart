@@ -626,19 +626,18 @@ aar artifact already exists, continuing...''',
     required String? supplementPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-    final tempDir = await Directory.systemTemp.createTemp();
-    final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
     // FIXME: using ditto here because zipToTempFile is not properly capturing
     // the app folder structure (the top folder after zipping is Content,
     // instead of the MyApp.app directory).
     // package:archive also seems to be having some trouble unzipping .app files
     //
     // final zippedApp = await Directory(appPath).zipToTempFile();
+    final tempDir = await Directory.systemTemp.createTemp();
+    final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
     await Process.run('ditto', [
       '-c',
       '-k',
       '--sequesterRsrc',
-      '--keepParent',
       appPath,
       zippedApp.path,
     ]);
@@ -699,8 +698,9 @@ aar artifact already exists, continuing...''',
     required String? supplementPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-    final thinnedArchiveDirectory =
-        await _thinXcarchive(xcarchivePath: xcarchivePath);
+    final thinnedArchiveDirectory = await _thinXcarchive(
+      xcarchivePath: xcarchivePath,
+    );
     final zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
     try {
       await codePushClient.createReleaseArtifact(
@@ -723,6 +723,7 @@ aar artifact already exists, continuing...''',
 
     final zippedRunner = await Directory(runnerPath).zipToTempFile();
     try {
+      logger.detail('[archive] zipped runner.app to ${zippedRunner.path}');
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,

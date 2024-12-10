@@ -297,12 +297,11 @@ class PreviewCommand extends ShorebirdCommand {
     //    unzipping a .app file. I've been using ditto to package and
     //    have been downloading directly from the GCP storage bucket.
     const platform = ReleasePlatform.macos;
-    final downloadArtifactProgress = logger.progress('Downloading release');
-    late Directory appFile;
-    late ReleaseArtifact releaseAabArtifact;
+    late Directory appDirectory;
+    late ReleaseArtifact releaseRunnerArtifact;
 
     try {
-      releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
+      releaseRunnerArtifact = await codePushClientWrapper.getReleaseArtifact(
         appId: appId,
         releaseId: release.id,
         arch: 'app',
@@ -315,45 +314,41 @@ class PreviewCommand extends ShorebirdCommand {
       return ExitCode.software.code;
     }
 
-    try {
-      appFile = Directory(
-        getArtifactPath(
-          appId: appId,
-          release: release,
-          artifact: releaseAabArtifact,
-          platform: platform,
-          extension: 'app',
-        ),
-      );
+    appDirectory = Directory(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        artifact: releaseRunnerArtifact,
+        platform: platform,
+        extension: 'app',
+      ),
+    );
 
-      // if (!appFile.existsSync()) {
-      // appFile.createSync(recursive: true);
+    if (!appDirectory.existsSync()) {
+      final downloadArtifactProgress = logger.progress('Downloading release');
+      try {
+        if (!appDirectory.existsSync()) {
+          appDirectory.createSync(recursive: true);
+        }
 
-      final tempDir = Directory.systemTemp.createTempSync();
-      final zippedFilePath = p.join(tempDir.path, 'app.zip');
-
-      await artifactManager.downloadFile(
-        Uri.parse(releaseAabArtifact.url),
-        outputPath: zippedFilePath,
-      );
-      // }
-
-      downloadArtifactProgress.complete();
-
-      await artifactManager.extractZip(
-        zipFile: File(zippedFilePath),
-        outputDirectory: appFile.parent,
-      );
-      print('unzipped to $appFile');
-    } catch (error) {
-      downloadArtifactProgress.fail('$error');
-      return ExitCode.software.code;
+        final archiveFile = await artifactManager.downloadFile(
+          Uri.parse(releaseRunnerArtifact.url),
+        );
+        await Process.run('ditto', [
+          '-x',
+          '-k',
+          archiveFile.path,
+          appDirectory.path,
+        ]);
+        downloadArtifactProgress.complete();
+      } catch (error) {
+        downloadArtifactProgress.fail('$error');
+        return ExitCode.software.code;
+      }
     }
 
-    await Process.run('chmod', ['+x', appFile.path]);
-    print('appFile is $appFile');
-
-    final proc = await process.start(appFile.path, []);
+    await Process.run('chmod', ['+x', appDirectory.path]);
+    final proc = await process.start('open', ['-n', appDirectory.path]);
     proc.stdout.transform(utf8.decoder).listen((event) {
       print(event);
     });
