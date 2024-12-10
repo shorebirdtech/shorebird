@@ -1153,7 +1153,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
           setUp(() {
             when(
               () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.genSnapshot,
+                artifact: ShorebirdArtifact.genSnapshotIos,
               ),
             ).thenReturn('gen_snapshot');
           });

@@ -219,6 +219,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           flavor: flavor,
           target: target,
         );
+      case ReleaseType.macos:
+        return MacosPatcher(
+          argParser: argParser,
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.aar:
         return AarPatcher(
           argResults: results,

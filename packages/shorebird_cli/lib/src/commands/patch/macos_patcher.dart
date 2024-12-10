@@ -1,26 +1,21 @@
-// ignore_for_file: public_member_api_docs
-
-import 'dart:async';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/archive/archive.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/archive/directory_archive.dart';
+import 'package:shorebird_cli/src/archive_analysis/plist.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
-import 'package:shorebird_cli/src/commands/patch/patcher.dart';
+import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
-import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/metadata/metadata.dart';
+import 'package:shorebird_cli/src/logging/detail_progress.dart';
+import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -28,84 +23,54 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
+// TODO: consolidate this - this was copied from [IosPatcher]
 typedef _LinkResult = ({int exitCode, double? linkPercentage});
 
-/// {@template ios_patcher}
-/// Functions to create an iOS patch.
+/// {@template macos_patcher}
+/// Functions to create and apply patches to a macOS release.
 /// {@endtemplate}
-class IosPatcher extends Patcher {
-  /// {@macro ios_patcher}
-  IosPatcher({
-    required super.argResults,
+class MacosPatcher extends Patcher {
+  /// {@macro macos_patcher}
+  MacosPatcher({
     required super.argParser,
+    required super.argResults,
     required super.flavor,
     required super.target,
   });
 
   String get _patchClassTableLinkInfoPath =>
-      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.ct.link');
+      p.join(buildDirectory.path, 'macos', 'shorebird', 'App.ct.link');
 
   String get _patchClassTableLinkDebugInfoPath =>
-      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.class_table.json');
+      p.join(buildDirectory.path, 'macos', 'shorebird', 'App.class_table.json');
 
   String get _aotOutputPath => p.join(buildDirectory.path, 'out.aot');
 
-  String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
-
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
 
-  /// The name of the split debug info file when the target is iOS.
-  static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
+  String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
-  /// The additional gen_snapshot arguments to use when building the patch with
-  /// `--split-debug-info`.
-  static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) {
-    return splitDebugInfoPath != null
-        ? [
-            '--dwarf-stack-traces',
-            '--resolve-dwarf-paths',
-            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
-          ]
-        : <String>[];
-  }
-
-  /// The path to save the split debug info file.
-  static String saveDebuggingInfoPath(String directory) {
-    return p.join(p.absolute(directory), splitDebugInfoFileName);
-  }
+  @override
+  String? get supplementaryReleaseArtifactArch => 'macos_supplement';
 
   @visibleForTesting
   double? lastBuildLinkPercentage;
 
   @override
-  double? get linkPercentage => lastBuildLinkPercentage;
+  ReleaseType get releaseType => ReleaseType.macos;
+
+  /// Whether to codesign the release.
+  bool get codesign => argResults['codesign'] == true;
 
   @override
-  ReleaseType get releaseType => ReleaseType.ios;
-
-  @override
-  String get primaryReleaseArtifactArch => 'xcarchive';
-
-  @override
-  String? get supplementaryReleaseArtifactArch => 'ios_supplement';
+  String get primaryReleaseArtifactArch => 'app';
 
   @override
   Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkShorebirdInitialized: true,
-        checkUserIsAuthenticated: true,
-        validators: doctor.iosCommandValidators,
-        supportedOperatingSystems: {Platform.macOS},
-      );
-    } on PreconditionFailedException catch (error) {
-      throw ProcessExit(error.exitCode.code);
-    }
+    // TODO: implement assertPreconditions
   }
 
   @override
@@ -114,53 +79,14 @@ class IosPatcher extends Patcher {
     required File releaseArchive,
     required File patchArchive,
   }) async {
-    // Check for diffs without warning about native changes, as Xcode builds
-    // can be nondeterministic. So we still have some hope of alerting users of
-    // unpatchable native changes, we compare the Podfile.lock hash between the
-    // patch and the release.
-    final diffStatus =
-        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-      localArchive: patchArchive,
-      releaseArchive: releaseArchive,
-      archiveDiffer: const IosArchiveDiffer(),
-      allowAssetChanges: allowAssetDiffs,
-      allowNativeChanges: allowNativeDiffs,
-      confirmNativeChanges: false,
-    );
-
-    if (!diffStatus.hasNativeChanges) {
-      return diffStatus;
-    }
-
-    final String? podfileLockHash;
-    if (shorebirdEnv.podfileLockFile.existsSync()) {
-      podfileLockHash = sha256
-          .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
-          .toString();
-    } else {
-      podfileLockHash = null;
-    }
-
-    if (releaseArtifact.podfileLockHash != null &&
-        podfileLockHash != releaseArtifact.podfileLockHash) {
-      logger.warn(
-        '''
-Your ios/Podfile.lock is different from the one used to build the release.
-This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
-      );
-
-      if (!allowNativeDiffs) {
-        if (!shorebirdEnv.canAcceptUserInput) {
-          throw UnpatchableChangeException();
-        }
-
-        if (!logger.confirm('Continue anyways?')) {
-          throw UserCancelledException();
-        }
-      }
-    }
-
-    return diffStatus;
+    // return DiffStatus({
+    //   hasAssetChanges: false,
+    //   hasNativeChanges: false,
+    // });
+    // TODO: implement assertUnpatchableDiffs
+    // throw UnimplementedError();
+    // TODO
+    return DiffStatus(hasAssetChanges: false, hasNativeChanges: false);
   }
 
   @override
@@ -172,11 +98,11 @@ This may indicate that the patch contains native changes, which cannot be applie
         shorebirdFlutter.getVersion(),
       ).wait;
 
-      if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
+      if ((flutterVersion ?? minimumSupportedMacosFlutterVersion) <
           minimumSupportedIosFlutterVersion) {
         logger.err(
           '''
-iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
+macos patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         );
         throw ProcessExit(ExitCode.software.code);
@@ -189,7 +115,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       try {
         // If buildIpa is called with a different codesign value than the
         // release was, we will erroneously report native diffs.
-        ipaBuildResult = await artifactBuilder.buildIpa(
+        ipaBuildResult = await artifactBuilder.buildMacos(
           codesign: shouldCodesign,
           flavor: flavor,
           target: target,
@@ -202,7 +128,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         buildProgress.fail('Failed to build: ${error.message}');
         rethrow;
       } on ArtifactBuildException catch (error) {
-        buildProgress.fail('Failed to build IPA');
+        buildProgress.fail('Failed to build macos app');
         logger.err(error.message);
         rethrow;
       }
@@ -214,7 +140,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         await artifactBuilder.buildElfAotSnapshot(
           appDillPath: ipaBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
-          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
+          // TODO
+          // additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
         );
       } catch (error) {
         buildProgress.fail('$error');
@@ -230,7 +157,25 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       throw ProcessExit(ExitCode.software.code);
     }
 
-    return artifactManager.getXcarchiveDirectory()!.zipToTempFile();
+    final appPath = artifactManager.getMacOSAppDirectory()!.path;
+    final tempDir = await Directory.systemTemp.createTemp();
+    final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
+    // FIXME: using ditto here because zipToTempFile is not properly capturing
+    // the app folder structure (the top folder after zipping is Content,
+    // instead of the MyApp.app directory).
+    // package:archive also seems to be having some trouble unzipping .app files
+    //
+    // final zippedApp = await Directory(appPath).zipToTempFile();
+    await Process.run('ditto', [
+      '-c',
+      '-k',
+      '--sequesterRsrc',
+      '--keepParent',
+      appPath,
+      zippedApp.path,
+    ]);
+    print('appPath is $appPath');
+    return zippedApp;
   }
 
   @override
@@ -240,23 +185,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     required File releaseArtifact,
     File? supplementArtifact,
   }) async {
-    // Verify that we have built a patch .xcarchive
-    if (artifactManager.getXcarchiveDirectory()?.path == null) {
-      logger.err('Unable to find .xcarchive directory');
+    // Verify that we have built a patch .app
+    if (artifactManager.getMacOSAppDirectory()?.path == null) {
+      logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
     }
 
     final unzipProgress = logger.progress('Extracting release artifact');
-
-    late final String releaseXcarchivePath;
-    {
-      final tempDir = Directory.systemTemp.createTempSync();
-      await artifactManager.extractZip(
-        zipFile: releaseArtifact,
-        outputDirectory: tempDir,
-      );
-      releaseXcarchivePath = tempDir.path;
-    }
+    final tempDir = Directory.systemTemp.createTempSync();
+    await artifactManager.extractZip(
+      zipFile: releaseArtifact,
+      outputDirectory: tempDir,
+    );
+    final releaseAppPath = tempDir.path;
 
     File? releaseClassTableLinkInfoFile;
     File? releaseClassTableLinkDebugInfoFile;
@@ -282,8 +223,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     unzipProgress.complete();
-    final appDirectory = artifactManager.getIosAppDirectory(
-      xcarchiveDirectory: Directory(releaseXcarchivePath),
+    final appDirectory = artifactManager.getMacosAppDirectory(
+      parentDirectory: Directory(releaseAppPath),
     );
     if (appDirectory == null) {
       logger.err('Unable to find release artifact .app directory');
@@ -292,6 +233,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     final releaseArtifactFile = File(
       p.join(
         appDirectory.path,
+        'Contents',
         'Frameworks',
         'App.framework',
         'App',
@@ -378,6 +320,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           )
         : null;
 
+    // TODO: support x86_64
     return {
       Arch.arm64: PatchArtifactBundle(
         arch: 'aarch64',
@@ -391,13 +334,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
   @override
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    final archivePath = artifactManager.getXcarchiveDirectory()?.path;
-    if (archivePath == null) {
-      logger.err('Unable to find .xcarchive directory');
+    final appPath = artifactManager.getMacOSAppDirectory()?.path;
+    if (appPath == null) {
+      logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
     }
 
-    final plistFile = File(p.join(archivePath, 'Info.plist'));
+    final plistFile = File(p.join(appPath, 'Contents', 'Info.plist'));
     if (!plistFile.existsSync()) {
       logger.err('No Info.plist file found at ${plistFile.path}.');
       throw ProcessExit(ExitCode.software.code);
@@ -413,17 +356,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       throw ProcessExit(ExitCode.software.code);
     }
   }
-
-  @override
-  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
-    CreatePatchMetadata metadata,
-  ) async =>
-      metadata.copyWith(
-        linkPercentage: lastBuildLinkPercentage,
-        environment: metadata.environment.copyWith(
-          xcodeVersion: await xcodeBuild.version(),
-        ),
-      );
 
   Future<_LinkResult> _runLinker({
     required File releaseArtifact,
@@ -448,7 +380,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
-      artifact: ShorebirdArtifact.genSnapshotIos,
+      artifact: ShorebirdArtifact.genSnapshotMacOS,
     );
 
     final linkProgress = logger.progress('Linking AOT files');
@@ -475,7 +407,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         workingDirectory: buildDirectory.path,
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
-        additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
+        // TODO
+        // additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
