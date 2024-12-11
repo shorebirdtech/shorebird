@@ -306,7 +306,7 @@ class ArtifactBuilder {
           return;
         }
 
-        final update = _progressUpdateFromIpaBuildLog(line);
+        final update = _progressUpdateFromMacosBuildLog(line);
         if (update != null) {
           buildProgress.updateDetailMessage(update);
         }
@@ -326,14 +326,6 @@ class ArtifactBuilder {
 
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException('Failed to build: $stderr');
-      }
-
-      if (stderr.contains('Encountered error while creating the IPA')) {
-        final errorMessage = _failedToCreateIpaErrorMessage(stderr: stderr);
-
-        throw ArtifactBuildException('''
-Failed to build:
-$errorMessage''');
       }
 
       appDillPath = findAppDill(stdout: stdout);
@@ -611,6 +603,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       return match.group(1);
     }
 
+    return null;
+  }
+
+  String? _progressUpdateFromMacosBuildLog(String line) {
+    // TODO: support progress updates when building mac app
     return null;
   }
 
