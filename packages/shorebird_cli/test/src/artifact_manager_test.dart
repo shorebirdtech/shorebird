@@ -950,7 +950,8 @@ void main() {
         test('returns null', () {
           expect(
             runWithOverrides(
-                artifactManager.getMacosReleaseSupplementDirectory),
+              artifactManager.getMacosReleaseSupplementDirectory,
+            ),
             isNull,
           );
         });
