@@ -65,27 +65,20 @@ void main() {
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
 
-      when(() => shorebirdEnv.getShorebirdProjectRoot())
-          .thenReturn(projectRoot);
+      when(
+        () => shorebirdEnv.getShorebirdProjectRoot(),
+      ).thenReturn(projectRoot);
 
       artifactManager = ArtifactManager();
 
       patchExecutable = MockPatchExecutable();
       when(
         () => patchExecutable.run(
-          releaseArtifactPath: any(
-            named: 'releaseArtifactPath',
-          ),
-          patchArtifactPath: any(
-            named: 'patchArtifactPath',
-          ),
-          diffPath: any(
-            named: 'diffPath',
-          ),
+          releaseArtifactPath: any(named: 'releaseArtifactPath'),
+          patchArtifactPath: any(named: 'patchArtifactPath'),
+          diffPath: any(named: 'diffPath'),
         ),
-      ).thenAnswer(
-        (_) async {},
-      );
+      ).thenAnswer((_) async {});
     });
 
     group('createDiff', () {
@@ -94,10 +87,12 @@ void main() {
 
       setUp(() {
         final tmpDir = Directory.systemTemp.createTempSync();
-        releaseArtifactFile = File(p.join(tmpDir.path, 'release_artifact'))
-          ..createSync(recursive: true);
-        patchArtifactFile = File(p.join(tmpDir.path, 'patch_artifact'))
-          ..createSync(recursive: true);
+        releaseArtifactFile = File(
+          p.join(tmpDir.path, 'release_artifact'),
+        )..createSync(recursive: true);
+        patchArtifactFile = File(
+          p.join(tmpDir.path, 'patch_artifact'),
+        )..createSync(recursive: true);
       });
 
       test('throws error when release artifact file does not exist', () async {
@@ -657,6 +652,109 @@ void main() {
         test('returns null', () {
           expect(
             runWithOverrides(artifactManager.getXcarchiveDirectory),
+            isNull,
+          );
+        });
+      });
+    });
+
+    group('getMacOSAppDirectory', () {
+      group('when .app directory exists', () {
+        late Directory archiveDirectory;
+
+        setUp(() {
+          archiveDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'macos',
+              'Build',
+              'Products',
+              'Release',
+              'Runner.app',
+            ),
+          )..createSync(recursive: true);
+        });
+
+        test('returns path to app directory', () async {
+          final result = runWithOverrides(
+            () => artifactManager.getMacOSAppDirectory(),
+          );
+
+          expect(result!.path, equals(archiveDirectory.path));
+        });
+      });
+
+      group(
+        'when multiple .app directories exist',
+        () {
+          late Directory oldAppDirectory;
+          late Directory newAppDirectory;
+
+          setUp(() async {
+            oldAppDirectory = Directory(
+              p.join(
+                projectRoot.path,
+                'build',
+                'macos',
+                'Build',
+                'Products',
+                'Release',
+                'Runner.app',
+              ),
+            )..createSync(recursive: true);
+            // Wait to ensure the new app directory is created after the old
+            // app directory.
+            await Future<void>.delayed(const Duration(milliseconds: 50));
+            newAppDirectory = Directory(
+              p.join(
+                projectRoot.path,
+                'build',
+                'macos',
+                'Build',
+                'Products',
+                'Release',
+                'Runner2.app',
+              ),
+            )..createSync(recursive: true);
+          });
+
+          test('selects the most recently updated app', () async {
+            final firstResult = runWithOverrides(
+              artifactManager.getMacOSAppDirectory,
+            );
+            // The new app directory should be selected because it was
+            // created after the old app directory.
+            expect(firstResult!.path, equals(newAppDirectory.path));
+
+            // Now recreate the old app directory and ensure it is selected.
+            oldAppDirectory.deleteSync(recursive: true);
+            oldAppDirectory = Directory(
+              p.join(
+                projectRoot.path,
+                'build',
+                'macos',
+                'Build',
+                'Products',
+                'Release',
+                'Runner.app',
+              ),
+            )..createSync(recursive: true);
+            final secondResult = runWithOverrides(
+              artifactManager.getMacOSAppDirectory,
+            );
+            expect(secondResult!.path, equals(oldAppDirectory.path));
+          });
+        },
+        onPlatform: {
+          'windows': const Skip('Flaky on Windows'),
+        },
+      );
+
+      group('when app directory does not exist', () {
+        test('returns null', () {
+          expect(
+            runWithOverrides(artifactManager.getMacOSAppDirectory),
             isNull,
           );
         });
