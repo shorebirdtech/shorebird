@@ -724,7 +724,10 @@ To change the version of this release, change your app's version in your pubspec
         test('prints xcarchive upload steps', () {
           expect(
             runWithOverrides(() => releaser.postReleaseInstructions),
-            equals('macOS app created at ${appDirectory.path}.'),
+            equals('''
+
+macOS app created at ${appDirectory.path}.
+'''),
           );
         });
       });
