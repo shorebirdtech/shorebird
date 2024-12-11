@@ -10,6 +10,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -34,6 +35,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../fakes.dart';
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -47,7 +49,7 @@ void main() {
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
       late CodePushClientWrapper codePushClientWrapper;
-      // late CodeSigner codeSigner;
+      late CodeSigner codeSigner;
       late Ditto ditto;
       late Doctor doctor;
       late EngineConfig engineConfig;
@@ -75,7 +77,7 @@ void main() {
             artifactBuilderRef.overrideWith(() => artifactBuilder),
             artifactManagerRef.overrideWith(() => artifactManager),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
-            // codeSignerRef.overrideWith(() => codeSigner),
+            codeSignerRef.overrideWith(() => codeSigner),
             dittoRef.overrideWith(() => ditto),
             doctorRef.overrideWith(() => doctor),
             engineConfigRef.overrideWith(() => engineConfig),
@@ -108,7 +110,7 @@ void main() {
         artifactManager = MockArtifactManager();
         codePushClientWrapper = MockCodePushClientWrapper();
         ditto = MockDitto();
-        // codeSigner = MockCodeSigner();
+        codeSigner = MockCodeSigner();
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
         operatingSystemInterface = MockOperatingSystemInterface();
@@ -193,7 +195,25 @@ void main() {
         });
       });
 
-      group('linkPercentage', () {});
+      group('linkPercentage', () {
+        group('when linking has not occurred', () {
+          test('returns null', () {
+            expect(patcher.linkPercentage, isNull);
+          });
+        });
+
+        group('when linking has occurred', () {
+          const linkPercentage = 42.1337;
+
+          setUp(() {
+            patcher.lastBuildLinkPercentage = linkPercentage;
+          });
+
+          test('returns correct link percentage', () {
+            expect(patcher.linkPercentage, equals(linkPercentage));
+          });
+        });
+      });
 
       group('assertPreconditions', () {
         setUp(() {
@@ -534,6 +554,42 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       ['--build-name=1.2.3', '--build-number=4'],
                     ),
                   ),
+                  buildProgress: any(named: 'buildProgress'),
+                ),
+              ).called(1);
+            });
+          });
+
+          group('when the key pair is provided', () {
+            setUp(() {
+              when(
+                () => codeSigner.base64PublicKey(any()),
+              ).thenReturn('public_key_encoded');
+            });
+
+            test('calls the buildIpa passing the key', () async {
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+              ).thenReturn(true);
+
+              final key = createTempFile('public.pem')
+                ..writeAsStringSync('public_key');
+
+              when(
+                () => argResults[CommonArguments.publicKeyArg.name],
+              ).thenReturn(key.path);
+              when(
+                () => argResults[CommonArguments.publicKeyArg.name],
+              ).thenReturn(key.path);
+              await runWithOverrides(patcher.buildPatchArtifact);
+
+              verify(
+                () => artifactBuilder.buildMacos(
+                  codesign: any(named: 'codesign'),
+                  args: any(named: 'args'),
+                  flavor: any(named: 'flavor'),
+                  target: any(named: 'target'),
+                  base64PublicKey: 'public_key_encoded',
                   buildProgress: any(named: 'buildProgress'),
                 ),
               ).called(1);
@@ -1294,10 +1350,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       });
 
       group('extractReleaseVersionFromArtifact', () {
-        group('when xcarchive directory does not exist', () {
+        group('when app directory does not exist', () {
           setUp(() {
             when(
-              () => artifactManager.getXcarchiveDirectory(),
+              () => artifactManager.getMacOSAppDirectory(),
             ).thenReturn(null);
           });
 
