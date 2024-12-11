@@ -621,6 +621,28 @@ To change the version of this release, change your app's version in your pubspec
           when(() => shorebirdEnv.podfileLockFile).thenReturn(podfileLockFile);
         });
 
+        group('when app directory does not exist', () {
+          setUp(() {
+            when(() => artifactManager.getMacOSAppDirectory()).thenReturn(null);
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => releaser.uploadReleaseArtifacts(
+                  release: release,
+                  appId: appId,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err('Unable to find .app directory'),
+            ).called(1);
+          });
+        });
+
         test('forwards call to codePushClientWrapper', () async {
           await runWithOverrides(
             () => releaser.uploadReleaseArtifacts(
