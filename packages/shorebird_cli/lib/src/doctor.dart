@@ -26,7 +26,7 @@ class Doctor {
 
   /// Validators that verify shorebird will work on macOS.
   final List<Validator> macosCommandValidators = [
-    // TODO: ensure app has network capabilities
+    // TODO(bryanoltman): ensure app has network capabilities
   ];
 
   /// Validators that should run on all commands.

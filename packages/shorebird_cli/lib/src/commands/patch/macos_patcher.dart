@@ -30,7 +30,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-// TODO: consolidate this - this was copied from [IosPatcher]
+// TODO(bryanoltman): consolidate this - this was copied from [IosPatcher]
 typedef _LinkResult = ({int exitCode, double? linkPercentage});
 
 /// {@template macos_patcher}
@@ -118,7 +118,7 @@ class MacosPatcher extends Patcher {
     required File releaseArchive,
     required File patchArchive,
   }) async {
-    // TODO: implement assertUnpatchableDiffs
+    // TODO(bryanoltman): implement assertUnpatchableDiffs
     return const DiffStatus(hasAssetChanges: false, hasNativeChanges: false);
   }
 
@@ -334,7 +334,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           )
         : null;
 
-    // TODO: support x86_64
+    // TODO(bryanoltman): support x86_64
     return {
       Arch.arm64: PatchArtifactBundle(
         arch: 'aarch64',

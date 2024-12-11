@@ -322,7 +322,7 @@ class ArtifactBuilder {
           return;
         }
 
-        // TODO: update the progress message for macOS builds.
+        // TODO(bryanoltman): update the progress message for macOS builds.
         // final update = _progressUpdateFromMacosBuildLog(line);
         // if (update != null) {
         //   buildProgress.updateDetailMessage(update);
