@@ -286,7 +286,7 @@ class ArtifactManager {
         .whereType<Directory>()
         // Get the most recently modified app to handle cases where an app
         // may produce multiple apps with different names.
-        // This still could grab the wrong ipa, if multiple `flutter` commands
+        // This still could grab the wrong app, if multiple `flutter` commands
         // are running in parallel or the clock is/was broken on the machine.
         // If either of those occurs in the wild we can check the contents of
         // the apps, but this should be good enough for now.

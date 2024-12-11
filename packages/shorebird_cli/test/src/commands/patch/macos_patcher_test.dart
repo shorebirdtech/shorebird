@@ -320,7 +320,7 @@ void main() {
       });
 
       group('buildPatchArtifact', () {
-        const flutterVersionAndRevision = '3.24.5 (83305b5088)';
+        const flutterVersionAndRevision = '3.27.0 (8495dee1fd)';
 
         setUp(() {
           when(
@@ -340,7 +340,7 @@ void main() {
           ).thenAnswer((_) async => flutterVersionAndRevision);
           when(
             () => shorebirdFlutter.getVersion(),
-          ).thenAnswer((_) async => Version(3, 24, 5));
+          ).thenAnswer((_) async => Version(3, 27, 0));
         });
 
         group('when specified flutter version is less than minimum', () {

@@ -617,6 +617,7 @@ aar artifact already exists, continuing...''',
     return thinnedArchiveDirectory;
   }
 
+  /// Registers and uploads macOS release artifacts to the Shorebird server.
   Future<void> createMacosReleaseArtifacts({
     required String appId,
     required int releaseId,

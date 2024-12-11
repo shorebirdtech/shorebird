@@ -15,7 +15,7 @@ enum ReleaseType {
   /// A full Flutter iOS app.
   ios,
 
-  /// TODO
+  /// A full Flutter macOS app.
   macos,
 
   /// An iOS framework used in a hybrid app.

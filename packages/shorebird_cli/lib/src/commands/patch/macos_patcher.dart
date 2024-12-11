@@ -57,7 +57,7 @@ class MacosPatcher extends Patcher {
 
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
-  /// The name of the split debug info file when the target is iOS.
+  /// The name of the split debug info file when the target is macOS.
   // FIXME: this is only the arm symbols, x64 symbols are at
   // app.darwin-x86_64.symbols
   static const splitDebugInfoFileName = 'app.darwin-arm64.symbols';
@@ -145,7 +145,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       );
       final MacosBuildResult macosBuildResult;
       try {
-        // If buildIpa is called with a different codesign value than the
+        // If buildMacos is called with a different codesign value than the
         // release was, we will erroneously report native diffs.
         macosBuildResult = await artifactBuilder.buildMacos(
           codesign: codesign,
