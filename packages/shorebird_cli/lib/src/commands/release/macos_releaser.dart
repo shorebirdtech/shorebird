@@ -206,5 +206,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
   @override
   String get postReleaseInstructions => '''
-macOS app created at ${artifactManager.getMacOSAppDirectory()!.path}.''';
+
+macOS app created at ${artifactManager.getMacOSAppDirectory()!.path}.
+''';
 }

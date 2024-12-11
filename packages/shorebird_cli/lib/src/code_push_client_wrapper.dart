@@ -673,6 +673,8 @@ aar artifact already exists, continuing...''',
         );
       }
     }
+
+    createArtifactProgress.complete();
   }
 
   /// Uploads a release .xcarchive, .app, and supplementary files to the
