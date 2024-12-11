@@ -10,6 +10,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -57,9 +58,7 @@ void main() {
         () => shorebirdFlutter.getVersionForRevision(
           flutterRevision: any(named: 'flutterRevision'),
         ),
-      ).thenAnswer(
-        (_) async => '3.22.0',
-      );
+      ).thenAnswer((_) async => '3.22.0');
     });
 
     test('creates correct instance from environment', () async {
@@ -157,6 +156,7 @@ void main() {
     );
 
     late CodePushClient codePushClient;
+    late Ditto ditto;
     late ShorebirdLogger logger;
     late ShorebirdFlutter shorebirdFlutter;
     late Progress progress;
@@ -182,6 +182,7 @@ void main() {
 
     setUp(() {
       codePushClient = MockCodePushClient();
+      ditto = MockDitto();
       logger = MockShorebirdLogger();
       platform = MockPlatform();
       progress = MockProgress();
@@ -193,6 +194,12 @@ void main() {
 
       shorebirdFlutter = MockShorebirdFlutter();
 
+      when(
+        () => ditto.archive(
+          source: any(named: 'source'),
+          destination: any(named: 'destination'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.script).thenReturn(
         Uri.file(

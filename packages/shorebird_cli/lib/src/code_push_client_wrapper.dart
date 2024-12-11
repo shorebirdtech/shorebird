@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -626,21 +627,9 @@ aar artifact already exists, continuing...''',
     required String? supplementPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-    // FIXME: using ditto here because zipToTempFile is not properly capturing
-    // the app folder structure (the top folder after zipping is Content,
-    // instead of the MyApp.app directory).
-    // package:archive also seems to be having some trouble unzipping .app files
-    //
-    // final zippedApp = await Directory(appPath).zipToTempFile();
     final tempDir = await Directory.systemTemp.createTemp();
     final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
-    await Process.run('ditto', [
-      '-c',
-      '-k',
-      '--sequesterRsrc',
-      appPath,
-      zippedApp.path,
-    ]);
+    await ditto.archive(source: appPath, destination: zippedApp.path);
 
     try {
       await codePushClient.createReleaseArtifact(

@@ -27,4 +27,16 @@ class Ditto {
       throw Exception('Failed to extract: ${result.stderr}');
     }
   }
+
+  /// Archives the contents of [source] to a compressed archive at
+  /// [destination].
+  Future<void> archive({
+    required String source,
+    required String destination,
+  }) async {
+    final result = await _exec('-c -k --sequesterRsrc $source $destination');
+    if (result.exitCode != 0) {
+      throw Exception('Failed to archive: ${result.stderr}');
+    }
+  }
 }
