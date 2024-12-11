@@ -944,5 +944,46 @@ void main() {
         });
       });
     });
+
+    group('getMacosReleaseSupplementDirectory', () {
+      group('when the directory does not exist', () {
+        test('returns null', () {
+          expect(
+            runWithOverrides(
+                artifactManager.getMacosReleaseSupplementDirectory),
+            isNull,
+          );
+        });
+      });
+
+      group('when the directory exists', () {
+        setUp(() {
+          Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'macos',
+              'shorebird',
+            ),
+          ).createSync(recursive: true);
+        });
+
+        test('returns path to the directory', () {
+          expect(
+            runWithOverrides(
+              artifactManager.getMacosReleaseSupplementDirectory,
+            )?.path,
+            equals(
+              p.join(
+                projectRoot.path,
+                'build',
+                'macos',
+                'shorebird',
+              ),
+            ),
+          );
+        });
+      });
+    });
   });
 }
