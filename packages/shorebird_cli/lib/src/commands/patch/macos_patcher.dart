@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/plist.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
@@ -12,6 +13,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/detail_progress.dart';
@@ -24,6 +26,7 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -54,11 +57,37 @@ class MacosPatcher extends Patcher {
 
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
+  /// The name of the split debug info file when the target is iOS.
+  // FIXME: this is only the arm symbols, x64 symbols are at
+  // app.darwin-x86_64.symbols
+  static const splitDebugInfoFileName = 'app.darwin-arm64.symbols';
+
+  /// The additional gen_snapshot arguments to use when building the patch with
+  /// `--split-debug-info`.
+  static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) {
+    return splitDebugInfoPath != null
+        ? [
+            '--dwarf-stack-traces',
+            '--resolve-dwarf-paths',
+            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
+          ]
+        : <String>[];
+  }
+
+  /// The path to save the split debug info file.
+  static String saveDebuggingInfoPath(String directory) {
+    return p.join(p.absolute(directory), splitDebugInfoFileName);
+  }
+
   @override
   String? get supplementaryReleaseArtifactArch => 'macos_supplement';
 
+  /// The link percentage from the most recent patch build.
   @visibleForTesting
   double? lastBuildLinkPercentage;
+
+  @override
+  double? get linkPercentage => lastBuildLinkPercentage;
 
   @override
   ReleaseType get releaseType => ReleaseType.macos;
@@ -71,7 +100,16 @@ class MacosPatcher extends Patcher {
 
   @override
   Future<void> assertPreconditions() async {
-    // TODO: implement assertPreconditions
+    try {
+      await shorebirdValidator.validatePreconditions(
+        checkShorebirdInitialized: true,
+        checkUserIsAuthenticated: true,
+        validators: doctor.macosCommandValidators,
+        supportedOperatingSystems: {Platform.macOS},
+      );
+    } on PreconditionFailedException catch (error) {
+      throw ProcessExit(error.exitCode.code);
+    }
   }
 
   @override
@@ -80,20 +118,13 @@ class MacosPatcher extends Patcher {
     required File releaseArchive,
     required File patchArchive,
   }) async {
-    // return DiffStatus({
-    //   hasAssetChanges: false,
-    //   hasNativeChanges: false,
-    // });
     // TODO: implement assertUnpatchableDiffs
-    // throw UnimplementedError();
-    // TODO
-    return DiffStatus(hasAssetChanges: false, hasNativeChanges: false);
+    return const DiffStatus(hasAssetChanges: false, hasNativeChanges: false);
   }
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     try {
-      final shouldCodesign = argResults['codesign'] == true;
       final (flutterVersionAndRevision, flutterVersion) = await (
         shorebirdFlutter.getVersionAndRevision(),
         shorebirdFlutter.getVersion(),
@@ -117,7 +148,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         // If buildIpa is called with a different codesign value than the
         // release was, we will erroneously report native diffs.
         ipaBuildResult = await artifactBuilder.buildMacos(
-          codesign: shouldCodesign,
+          codesign: codesign,
           flavor: flavor,
           target: target,
           args: argResults.forwardedArgs +
@@ -142,8 +173,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           appDillPath: ipaBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
           genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacOS,
-          // TODO
-          // additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
+          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
         );
       } catch (error) {
         buildProgress.fail('$error');
@@ -402,8 +432,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         workingDirectory: buildDirectory.path,
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
-        // TODO
-        // additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
+        additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');

@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
@@ -17,6 +18,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -30,6 +32,7 @@ import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../fakes.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -197,9 +200,103 @@ void main() {
             () => doctor.macosCommandValidators,
           ).thenReturn([flutterValidator]);
         });
+
+        group('when validation succeeds', () {
+          setUp(() {
+            when(
+              () => shorebirdValidator.validatePreconditions(
+                checkUserIsAuthenticated: any(
+                  named: 'checkUserIsAuthenticated',
+                ),
+                checkShorebirdInitialized: any(
+                  named: 'checkShorebirdInitialized',
+                ),
+                validators: any(named: 'validators'),
+                supportedOperatingSystems: any(
+                  named: 'supportedOperatingSystems',
+                ),
+              ),
+            ).thenAnswer((_) async {});
+          });
+
+          test('returns normally', () async {
+            await expectLater(
+              () => runWithOverrides(patcher.assertPreconditions),
+              returnsNormally,
+            );
+          });
+        });
+
+        group('when validation fails', () {
+          setUp(() {
+            final exception = ValidationFailedException();
+            when(
+              () => shorebirdValidator.validatePreconditions(
+                checkUserIsAuthenticated: any(
+                  named: 'checkUserIsAuthenticated',
+                ),
+                checkShorebirdInitialized: any(
+                  named: 'checkShorebirdInitialized',
+                ),
+                validators: any(
+                  named: 'validators',
+                ),
+              ),
+            ).thenThrow(exception);
+          });
+
+          test('exits with code 70', () async {
+            final exception = ValidationFailedException();
+            when(
+              () => shorebirdValidator.validatePreconditions(
+                checkUserIsAuthenticated: any(
+                  named: 'checkUserIsAuthenticated',
+                ),
+                checkShorebirdInitialized: any(
+                  named: 'checkShorebirdInitialized',
+                ),
+                validators: any(named: 'validators'),
+                supportedOperatingSystems: any(
+                  named: 'supportedOperatingSystems',
+                ),
+              ),
+            ).thenThrow(exception);
+            await expectLater(
+              () => runWithOverrides(patcher.assertPreconditions),
+              exitsWithCode(exception.exitCode),
+            );
+            verify(
+              () => shorebirdValidator.validatePreconditions(
+                checkUserIsAuthenticated: true,
+                checkShorebirdInitialized: true,
+                validators: [flutterValidator],
+                supportedOperatingSystems: {Platform.macOS},
+              ),
+            ).called(1);
+          });
+        });
       });
 
-      group('assertUnpatchableDiffs', () {});
+      group('assertUnpatchableDiffs', () {
+        test('returns no diffs (currently unimplemented)', () async {
+          final diffStatus = await runWithOverrides(
+            () => patcher.assertUnpatchableDiffs(
+              releaseArtifact: FakeReleaseArtifact(),
+              releaseArchive: File(''),
+              patchArchive: File(''),
+            ),
+          );
+          expect(
+            diffStatus,
+            equals(
+              const DiffStatus(
+                hasAssetChanges: false,
+                hasNativeChanges: false,
+              ),
+            ),
+          );
+        });
+      });
 
       group('buildPatchArtifact', () {
         const flutterVersionAndRevision = '3.24.5 (83305b5088)';
