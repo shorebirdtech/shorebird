@@ -545,6 +545,10 @@ void main() {
           command.getPatcher(ReleaseType.iosFramework),
           isA<IosFrameworkPatcher>(),
         );
+        expect(
+          command.getPatcher(ReleaseType.macos),
+          isA<MacosPatcher>(),
+        );
       });
     });
 
