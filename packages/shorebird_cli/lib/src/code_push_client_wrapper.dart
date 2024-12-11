@@ -322,7 +322,6 @@ Please create a release using "shorebird release" and try again.
       );
       updateStatusProgress.complete();
     } catch (error) {
-      print('failed to update release status $error');
       _handleErrorAndExit(error, progress: updateStatusProgress);
     }
   }

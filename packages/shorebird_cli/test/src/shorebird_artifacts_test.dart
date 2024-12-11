@@ -119,7 +119,7 @@ void main() {
               'artifacts',
               'engine',
               'ios-release',
-              'gen_snapshot_arm64',
+              'gen_snapshot',
             ),
           ),
         );
@@ -140,7 +140,7 @@ void main() {
               'artifacts',
               'engine',
               'darwin-x64-release',
-              'gen_snapshot_arm64',
+              'gen_snapshot',
             ),
           ),
         );
