@@ -934,10 +934,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       p.join(outDir.path, 'App.class_table.json'),
                     ).createSync(recursive: true);
                   });
-                  when(() => ditto.extract(
-                          source: any(named: 'source'),
-                          destination: any(named: 'destination')))
-                      .thenAnswer((invocation) async {
+                  when(
+                    () => ditto.extract(
+                      source: any(named: 'source'),
+                      destination: any(named: 'destination'),
+                    ),
+                  ).thenAnswer((invocation) async {
                     final destination =
                         invocation.namedArguments[#destination] as String;
                     File(
