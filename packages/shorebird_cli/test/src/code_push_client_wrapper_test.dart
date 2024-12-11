@@ -2049,11 +2049,13 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
       test('completes successfully when release artifact is created', () async {
         await expectLater(
           runWithOverrides(
-            () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+            () => codePushClientWrapper.createMacosReleaseArtifacts(
               appId: app.appId,
               releaseId: releaseId,
-              appFrameworkPath: p.join(projectRoot.path, appPath),
-              supplementPath: null,
+              appPath: p.join(projectRoot.path, appPath),
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
+              isCodesigned: false,
+              podfileLockHash: null,
             ),
           ),
           completes,
