@@ -567,7 +567,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               ).thenReturn('public_key_encoded');
             });
 
-            test('calls the buildIpa passing the key', () async {
+            test('calls the buildMacos passing the key', () async {
               when(
                 () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
               ).thenReturn(true);
@@ -662,7 +662,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
         void setUpProjectRootArtifacts() {
           File(
-            p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
+            p.join(
+              projectRoot.path,
+              'build',
+              elfAotSnapshotFileName,
+            ),
           ).createSync(recursive: true);
           File(
             p.join(
@@ -702,7 +706,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           releaseArtifactFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
-              'release.xcarchive',
+              'release.app',
             ),
           )..createSync(recursive: true);
           supplementArtifactFile = File(
@@ -1067,6 +1071,56 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       'Unable to find class table link info file',
                     ),
                   ).called(1);
+                });
+              });
+
+              group('when code signing the patch', () {
+                setUp(() {
+                  final privateKey = File(
+                    p.join(
+                      Directory.systemTemp.createTempSync().path,
+                      'test-private.pem',
+                    ),
+                  )..createSync();
+
+                  when(() => argResults[CommonArguments.privateKeyArg.name])
+                      .thenReturn(privateKey.path);
+
+                  when(
+                    () => codeSigner.sign(
+                      message: any(named: 'message'),
+                      privateKeyPemFile: any(named: 'privateKeyPemFile'),
+                    ),
+                  ).thenAnswer((invocation) {
+                    final message =
+                        invocation.namedArguments[#message] as String;
+                    return '$message-signature';
+                  });
+                });
+
+                test(
+                    '''returns patch artifact bundles with proper hash signatures''',
+                    () async {
+                  final result = await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                    ),
+                  );
+
+                  // Hash the patch artifacts and append '-signature' to get the
+                  // expected signatures, per the mock of [codeSigner.sign]
+                  // above.
+                  const expectedSignature =
+                      '''e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-signature''';
+
+                  expect(
+                    result.values.first.hashSignature,
+                    equals(
+                      expectedSignature,
+                    ),
+                  );
                 });
               });
 
