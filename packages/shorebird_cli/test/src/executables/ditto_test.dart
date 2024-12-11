@@ -98,6 +98,7 @@ void main() {
           when(
             () => process.run(
               'ditto',
+              // cspell: disable-next-line
               ['-c', '-k', '--sequesterRsrc', source, destination],
             ),
           ).thenAnswer(
@@ -117,6 +118,7 @@ void main() {
                 [
                   '-c',
                   '-k',
+                  // cspell: disable-next-line
                   '--sequesterRsrc',
                   '--keepParent',
                   source,
@@ -149,6 +151,7 @@ void main() {
                 [
                   '-c',
                   '-k',
+                  // cspell: disable-next-line
                   '--sequesterRsrc',
                   '--keepParent',
                   source,
@@ -169,6 +172,7 @@ void main() {
           verify(
             () => process.run(
               'ditto',
+              // cspell: disable-next-line
               ['-c', '-k', '--sequesterRsrc', source, destination],
             ),
           ).called(1);
@@ -181,6 +185,7 @@ void main() {
           when(
             () => process.run(
               'ditto',
+              // cspell: disable-next-line
               ['-c', '-k', '--sequesterRsrc', source, destination],
             ),
           ).thenAnswer(
