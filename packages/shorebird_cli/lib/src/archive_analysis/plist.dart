@@ -31,6 +31,7 @@ class Plist {
   ///   CFBundleShortVersionString: "1.0.0",
   ///   CFBundleVersion: "1",
   /// },
+  /// This nesting is not present in Info.plist files in app bundles.
   static const applicationPropertiesKey = 'ApplicationProperties';
 
   /// The properties contained in the Info.plist file.

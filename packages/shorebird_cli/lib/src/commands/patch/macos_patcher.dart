@@ -143,11 +143,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       final buildProgress = logger.detailProgress(
         'Building patch with Flutter $flutterVersionAndRevision',
       );
-      final IpaBuildResult ipaBuildResult;
+      final MacosBuildResult macosBuildResult;
       try {
         // If buildIpa is called with a different codesign value than the
         // release was, we will erroneously report native diffs.
-        ipaBuildResult = await artifactBuilder.buildMacos(
+        macosBuildResult = await artifactBuilder.buildMacos(
           codesign: codesign,
           flavor: flavor,
           target: target,
@@ -170,7 +170,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           Directory(splitDebugInfoPath!).createSync(recursive: true);
         }
         await artifactBuilder.buildElfAotSnapshot(
-          appDillPath: ipaBuildResult.kernelFile.path,
+          appDillPath: macosBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
           genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacOS,
           additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
@@ -182,7 +182,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
       // Copy the kernel file to the build directory so that it can be used
       // to generate a patch.
-      ipaBuildResult.kernelFile.copySync(_appDillCopyPath);
+      macosBuildResult.kernelFile.copySync(_appDillCopyPath);
 
       buildProgress.complete();
     } catch (_) {

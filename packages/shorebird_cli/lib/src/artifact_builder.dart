@@ -21,6 +21,11 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 /// Flutter.
 typedef ShorebirdBuildCommand = Future<void> Function();
 
+// FIXME: The following three apple BuildResult classes are identical and
+// should be merged. They are all capturing the idea that we want to get the
+// kernel (app.dill) file generated during a build so we can use it to link
+// when patching.
+
 /// {@template ipa_build_result}
 /// Metadata about the result of a `flutter build ipa` invocation.
 /// {@endtemplate}
@@ -40,6 +45,17 @@ class IosFrameworkBuildResult {
   IosFrameworkBuildResult({
     required this.kernelFile,
   });
+
+  /// The app.dill file produced by this invocation of `flutter build ipa`.
+  final File kernelFile;
+}
+
+/// {@template macos_build_result}
+/// Metadata about the result of a `flutter build macos` invocation.
+/// {@endtemplate}
+class MacosBuildResult {
+  /// {@macro macos_build_result}
+  MacosBuildResult({required this.kernelFile});
 
   /// The app.dill file produced by this invocation of `flutter build ipa`.
   final File kernelFile;
@@ -260,7 +276,7 @@ class ArtifactBuilder {
   /// Builds a macOS app using `flutter build macos`. Runs `flutter pub get`
   /// with the system installation of Flutter to reset
   /// `.dart_tool/package_config.json` after the build completes or fails.
-  Future<IpaBuildResult> buildMacos({
+  Future<MacosBuildResult> buildMacos({
     bool codesign = true,
     String? flavor,
     String? target,
@@ -334,7 +350,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
 ''');
     }
 
-    return IpaBuildResult(kernelFile: File(appDillPath!));
+    return MacosBuildResult(kernelFile: File(appDillPath!));
   }
 
   /// Calls `flutter build ipa`. If [codesign] is false, this will only build

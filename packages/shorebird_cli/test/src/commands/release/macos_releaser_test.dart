@@ -288,7 +288,7 @@ To change the version of this release, change your app's version in your pubspec
               buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer(
-            (_) async => IpaBuildResult(
+            (_) async => MacosBuildResult(
               kernelFile: File('/path/to/app.dill'),
             ),
           );

@@ -446,7 +446,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               ),
             ).thenAnswer(
               (_) async =>
-                  IpaBuildResult(kernelFile: File('/path/to/app.dill')),
+                  MacosBuildResult(kernelFile: File('/path/to/app.dill')),
             );
             when(
               () => artifactBuilder.buildElfAotSnapshot(
@@ -485,7 +485,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 buildProgress: any(named: 'buildProgress'),
               ),
             ).thenAnswer(
-              (_) async => IpaBuildResult(kernelFile: kernelFile),
+              (_) async => MacosBuildResult(kernelFile: kernelFile),
             );
             when(
               () => artifactBuilder.buildElfAotSnapshot(
