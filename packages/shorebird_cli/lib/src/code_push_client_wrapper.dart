@@ -645,7 +645,7 @@ aar artifact already exists, continuing...''',
       _handleErrorAndExit(
         error,
         progress: createArtifactProgress,
-        message: 'Error uploading xcarchive: $error',
+        message: 'Error uploading app: $error',
       );
     }
 

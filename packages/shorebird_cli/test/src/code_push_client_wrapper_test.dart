@@ -168,6 +168,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          dittoRef.overrideWith(() => ditto),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -1939,6 +1940,124 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             podfileLockHash: podfileLockHash,
           ),
         ).called(1);
+      });
+    });
+
+    group('createMacosReleaseArtifacts', () {
+      final appPath = p.join('path', 'to', 'Runner.app');
+      final releaseSupplementPath = p.join('path', 'to', 'supplement');
+
+      void setUpProjectRoot({String? flavor}) {
+        Directory(
+          p.join(projectRoot.path, appPath),
+        ).createSync(recursive: true);
+        Directory(
+          p.join(projectRoot.path, releaseSupplementPath),
+        ).createSync(recursive: true);
+      }
+
+      setUp(() {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath: any(named: 'artifactPath'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => ditto.archive(
+            source: any(named: 'source'),
+            destination: any(named: 'destination'),
+          ),
+        ).thenAnswer((invocation) async {
+          final destination = invocation.namedArguments[#destination] as String;
+          File(destination).createSync(recursive: true);
+        });
+        setUpProjectRoot();
+      });
+
+      test('exits with code 70 when creating app artifact fails', () async {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          ),
+        ).thenThrow(Exception('oh no'));
+
+        await expectLater(
+          () async => runWithOverrides(
+            () => codePushClientWrapper.createMacosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appPath: p.join(projectRoot.path, appPath),
+              isCodesigned: false,
+              supplementPath: null,
+              podfileLockHash: null,
+            ),
+          ),
+          exitsWithCode(ExitCode.software),
+        );
+      });
+
+      test('exits with code 70 when supplement artifact creation fails',
+          () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('macos_supplement.zip'),
+            ),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          ),
+        ).thenThrow(error);
+
+        await expectLater(
+          () async => runWithOverrides(
+            () async => codePushClientWrapper.createMacosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appPath: p.join(projectRoot.path, appPath),
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
+              isCodesigned: false,
+              podfileLockHash: null,
+            ),
+          ),
+          exitsWithCode(ExitCode.software),
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('completes successfully when release artifact is created', () async {
+        await expectLater(
+          runWithOverrides(
+            () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appFrameworkPath: p.join(projectRoot.path, appPath),
+              supplementPath: null,
+            ),
+          ),
+          completes,
+        );
       });
     });
 
