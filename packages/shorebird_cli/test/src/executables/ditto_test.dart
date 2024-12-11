@@ -213,6 +213,7 @@ void main() {
           verify(
             () => process.run(
               'ditto',
+              // cspell: disable-next-line
               ['-c', '-k', '--sequesterRsrc', source, destination],
             ),
           ).called(1);
