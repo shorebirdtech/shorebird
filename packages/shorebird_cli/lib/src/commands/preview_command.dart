@@ -338,18 +338,9 @@ class PreviewCommand extends ShorebirdCommand {
       }
     }
 
+    // TODO(felangel): wrap `open` and stream logs.
     final proc = await process.start('open', ['-n', appDirectory.path]);
-    proc.stdout.transform(utf8.decoder).listen((event) {
-      print(event);
-    });
-
-    proc.stderr.transform(utf8.decoder).listen((event) {
-      print(event);
-    });
-
-    final result = await proc.exitCode;
-
-    return result;
+    return proc.exitCode;
   }
 
   Future<int> installAndLaunchAndroid({
