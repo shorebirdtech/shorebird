@@ -289,13 +289,6 @@ class PreviewCommand extends ShorebirdCommand {
     required Release release,
     required DeploymentTrack track,
   }) async {
-    // TODO: this doesn't fully work:
-    // 1. Downloaded unsigned apps need to be given permission to run in macOS
-    //    System settings ("Privacy and Security -> open anyway") after
-    //    the first attempt to launch the app.
-    // 2. package:archive seems to have some trouble properly zipping and
-    //    unzipping a .app file. I've been using ditto to package and
-    //    have been downloading directly from the GCP storage bucket.
     const platform = ReleasePlatform.macos;
     late Directory appDirectory;
     late ReleaseArtifact releaseRunnerArtifact;
@@ -334,12 +327,10 @@ class PreviewCommand extends ShorebirdCommand {
         final archiveFile = await artifactManager.downloadFile(
           Uri.parse(releaseRunnerArtifact.url),
         );
-        await Process.run('ditto', [
-          '-x',
-          '-k',
-          archiveFile.path,
-          appDirectory.path,
-        ]);
+        await ditto.extract(
+          source: archiveFile.path,
+          destination: appDirectory.path,
+        );
         downloadArtifactProgress.complete();
       } catch (error) {
         downloadArtifactProgress.fail('$error');
@@ -347,7 +338,6 @@ class PreviewCommand extends ShorebirdCommand {
       }
     }
 
-    await Process.run('chmod', ['+x', appDirectory.path]);
     final proc = await process.start('open', ['-n', appDirectory.path]);
     proc.stdout.transform(utf8.decoder).listen((event) {
       print(event);

@@ -322,7 +322,6 @@ Please create a release using "shorebird release" and try again.
       );
       updateStatusProgress.complete();
     } catch (error) {
-      print('failed to update release status $error');
       _handleErrorAndExit(error, progress: updateStatusProgress);
     }
   }
@@ -646,7 +645,7 @@ aar artifact already exists, continuing...''',
       _handleErrorAndExit(
         error,
         progress: createArtifactProgress,
-        message: 'Error uploading xcarchive: $error',
+        message: 'Error uploading app: $error',
       );
     }
 

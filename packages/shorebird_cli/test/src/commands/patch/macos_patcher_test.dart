@@ -126,6 +126,20 @@ void main() {
         when(() => argResults.rest).thenReturn([]);
         when(() => argResults.wasParsed(any())).thenReturn(false);
 
+        when(
+          () => ditto.archive(
+            source: any(named: 'source'),
+            destination: any(named: 'destination'),
+            keepParent: any(named: 'keepParent'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => ditto.extract(
+            source: any(named: 'source'),
+            destination: any(named: 'destination'),
+          ),
+        ).thenAnswer((_) async {});
+
         when(() => logger.progress(any())).thenReturn(progress);
 
         when(
@@ -918,6 +932,22 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                     ).createSync(recursive: true);
                     File(
                       p.join(outDir.path, 'App.class_table.json'),
+                    ).createSync(recursive: true);
+                  });
+                  when(() => ditto.extract(
+                          source: any(named: 'source'),
+                          destination: any(named: 'destination')))
+                      .thenAnswer((invocation) async {
+                    final destination =
+                        invocation.namedArguments[#destination] as String;
+                    File(
+                      p.join(
+                        destination,
+                        'Contents',
+                        'Frameworks',
+                        'App.framework',
+                        'App',
+                      ),
                     ).createSync(recursive: true);
                   });
                 });
