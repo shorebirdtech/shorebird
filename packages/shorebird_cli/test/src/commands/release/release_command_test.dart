@@ -218,6 +218,10 @@ void main() {
           command.getReleaser(ReleaseType.iosFramework),
           isA<IosFrameworkReleaser>(),
         );
+        expect(
+          command.getReleaser(ReleaseType.macos),
+          isA<MacosReleaser>(),
+        );
       });
     });
 
