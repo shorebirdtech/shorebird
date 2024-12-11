@@ -184,10 +184,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     final unzipProgress = logger.progress('Extracting release artifact');
-    final appDirectory = Directory.systemTemp.createTempSync();
+    final releaseAppDirectory = Directory.systemTemp.createTempSync();
     await ditto.extract(
       source: releaseArtifact.path,
-      destination: appDirectory.path,
+      destination: releaseAppDirectory.path,
     );
 
     File? releaseClassTableLinkInfoFile;
@@ -216,7 +216,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     unzipProgress.complete();
     final releaseArtifactFile = File(
       p.join(
-        appDirectory.path,
+        releaseAppDirectory.path,
         'Contents',
         'Frameworks',
         'App.framework',

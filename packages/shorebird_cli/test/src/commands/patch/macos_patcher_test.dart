@@ -49,6 +49,7 @@ void main() {
       late EngineConfig engineConfig;
       late Directory flutterDirectory;
       late Directory projectRoot;
+      late Directory appDirectory;
       late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
       // late PatchDiffChecker patchDiffChecker;
@@ -74,7 +75,6 @@ void main() {
             dittoRef.overrideWith(() => ditto),
             doctorRef.overrideWith(() => doctor),
             engineConfigRef.overrideWith(() => engineConfig),
-            // iosRef.overrideWith(() => ios),
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
             // patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
@@ -134,6 +134,21 @@ void main() {
 
         when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
 
+        appDirectory = Directory(
+          p.join(
+            projectRoot.path,
+            'build',
+            'macos',
+            'Build',
+            'Products',
+            'Release',
+            'my.app',
+          ),
+        )..createSync(recursive: true);
+        when(
+          () => artifactManager.getMacOSAppDirectory(),
+        ).thenReturn(appDirectory);
+
         patcher = MacosPatcher(
           argParser: argParser,
           argResults: argResults,
@@ -176,6 +191,18 @@ void main() {
         const flutterVersionAndRevision = '3.24.5 (83305b5088)';
 
         setUp(() {
+          when(
+            () => ditto.archive(
+              source: any(named: 'source'),
+              destination: any(named: 'destination'),
+              keepParent: any(named: 'keepParent'),
+            ),
+          ).thenAnswer((invocation) async {
+            File(
+              invocation.namedArguments[#destination] as String,
+            ).createSync(recursive: true);
+          });
+
           when(
             () => shorebirdFlutter.getVersionAndRevision(),
           ).thenAnswer((_) async => flutterVersionAndRevision);
@@ -328,18 +355,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             ).thenAnswer(
               (_) async => IpaBuildResult(kernelFile: kernelFile),
             );
-            when(() => artifactManager.getMacOSAppDirectory()).thenReturn(
-              Directory(
-                p.join(
-                  projectRoot.path,
-                  'build',
-                  'ios',
-                  'framework',
-                  'Release',
-                  'App.xcframework',
-                ),
-              )..createSync(recursive: true),
-            );
             when(
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
@@ -379,7 +394,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
           group('when platform was specified via arg results rest', () {
             setUp(() {
-              when(() => argResults.rest).thenReturn(['ios', '--verbose']);
+              when(() => argResults.rest).thenReturn(['macos', '--verbose']);
             });
 
             test('returns app zip', () async {
@@ -520,21 +535,26 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               p.join(outDir.path, '${p.basename(zipFile.path)}.zip'),
             ).createSync();
           });
-          when(() => artifactManager.getMacOSAppDirectory()).thenReturn(
+          when(
+            () => ditto.extract(
+              source: any(named: 'source'),
+              destination: any(named: 'destination'),
+            ),
+          ).thenAnswer((invocation) async {
+            final releaseAppDirectory = Directory(
+              invocation.namedArguments[#destination] as String,
+            )..createSync(recursive: true);
             Directory(
               p.join(
-                projectRoot.path,
-                'build',
-                'macos',
-                'Build',
-                'Products',
-                'Release',
+                releaseAppDirectory.path,
+                'Contents',
+                'Frameworks',
+                'App.framework',
+                'App',
               ),
-            ),
-          );
-          when(
-            () => artifactManager.getMacOSAppDirectory(),
-          ).thenReturn(projectRoot);
+            ).createSync(recursive: true);
+          });
+
           when(() => engineConfig.localEngine).thenReturn(null);
         });
 
@@ -605,21 +625,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenAnswer((_) async => linkPercentage);
-            when(
-              () => artifactManager.getMacOSAppDirectory(),
-            ).thenReturn(
-              Directory(
-                p.join(
-                  projectRoot.path,
-                  'build',
-                  'macos',
-                  'Build',
-                  'Products',
-                  'Release',
-                  'Runner.app',
-                ),
-              ),
-            );
             when(
               () => shorebirdEnv.flutterRevision,
             ).thenReturn(postLinkerFlutterRevision);
@@ -1123,22 +1128,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       });
 
       group('extractReleaseVersionFromArtifact', () {
-        setUp(() {
-          when(() => artifactManager.getMacOSAppDirectory()).thenReturn(
-            Directory(
-              p.join(
-                projectRoot.path,
-                'build',
-                'macos',
-                'Build',
-                'Products',
-                'Release',
-                'Runner.app',
-              ),
-            ),
-          );
-        });
-
         group('when xcarchive directory does not exist', () {
           setUp(() {
             when(
@@ -1161,13 +1150,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             try {
               File(
                 p.join(
-                  projectRoot.path,
-                  'build',
-                  'macos',
-                  'Build',
-                  'Products',
-                  'Release',
-                  'Runner.app',
+                  appDirectory.path,
                   'Contents',
                   'Info.plist',
                 ),
@@ -1189,13 +1172,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           setUp(() {
             File(
               p.join(
-                projectRoot.path,
-                'build',
-                'macos',
-                'Build',
-                'Products',
-                'Release',
-                'Runner.app',
+                appDirectory.path,
                 'Contents',
                 'Info.plist',
               ),
@@ -1231,13 +1208,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           setUp(() {
             File(
               p.join(
-                projectRoot.path,
-                'build',
-                'macos',
-                'Build',
-                'Products',
-                'Release',
-                'Runner.app',
+                appDirectory.path,
                 'Contents',
                 'Info.plist',
               ),
