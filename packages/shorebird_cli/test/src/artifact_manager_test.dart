@@ -953,7 +953,7 @@ void main() {
               artifactManager.getMacosReleaseSupplementDirectory,
             ),
             isNull,
-        );
+          );
         });
       });
 
