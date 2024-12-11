@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
@@ -478,6 +479,42 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                   File(invocation.namedArguments[#outFilePath] as String)
                     ..createSync(recursive: true),
             );
+          });
+
+          group('when --split-debug-info is provided', () {
+            final tempDir = Directory.systemTemp.createTempSync();
+            final splitDebugInfoPath = p.join(tempDir.path, 'symbols');
+            final splitDebugInfoFile = File(
+              p.join(splitDebugInfoPath, 'app.darwin-arm64.symbols'),
+            );
+            setUp(() {
+              when(
+                () => argResults.wasParsed(
+                  CommonArguments.splitDebugInfoArg.name,
+                ),
+              ).thenReturn(true);
+              when(
+                () => argResults[CommonArguments.splitDebugInfoArg.name],
+              ).thenReturn(splitDebugInfoPath);
+            });
+
+            test('forwards --split-debug-info to builder', () async {
+              try {
+                await runWithOverrides(patcher.buildPatchArtifact);
+              } catch (_) {}
+              verify(
+                () => artifactBuilder.buildElfAotSnapshot(
+                  appDillPath: any(named: 'appDillPath'),
+                  outFilePath: any(named: 'outFilePath'),
+                  genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                  additionalArgs: [
+                    '--dwarf-stack-traces',
+                    '--resolve-dwarf-paths',
+                    '--save-debugging-info=${splitDebugInfoFile.path}',
+                  ],
+                ),
+              ).called(1);
+            });
           });
 
           group('when releaseVersion is provided', () {
