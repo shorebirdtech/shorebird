@@ -185,6 +185,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return ExitCode.usage.code;
     }
 
+    if (results.releaseTypes.contains(ReleaseType.macos)) {
+      logger.warn(macosBetaWarning);
+    }
+
     final patcherFutures =
         results.releaseTypes.map(_resolvePatcher).map(createPatch);
 
