@@ -162,20 +162,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     final appPath = artifactManager.getMacOSAppDirectory()!.path;
     final tempDir = await Directory.systemTemp.createTemp();
     final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
-    // FIXME: using ditto here because zipToTempFile is not properly capturing
-    // the app folder structure (the top folder after zipping is Content,
-    // instead of the MyApp.app directory).
-    // package:archive also seems to be having some trouble unzipping .app files
-    //
-    // final zippedApp = await Directory(appPath).zipToTempFile();
-    await Process.run('ditto', [
-      '-c',
-      '-k',
-      '--sequesterRsrc',
-      '--keepParent',
-      appPath,
-      zippedApp.path,
-    ]);
+    await ditto.archive(
+      source: appPath,
+      destination: zippedApp.path,
+      keepParent: true,
+    );
     return zippedApp;
   }
 

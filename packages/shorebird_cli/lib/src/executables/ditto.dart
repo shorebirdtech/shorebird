@@ -33,8 +33,17 @@ class Ditto {
   Future<void> archive({
     required String source,
     required String destination,
+    bool keepParent = false,
   }) async {
-    final result = await _exec('-c -k --sequesterRsrc $source $destination');
+    final args = [
+      '-c',
+      '-k',
+      '--sequesterRsrc',
+      if (keepParent) '--keepParent',
+      source,
+      destination,
+    ];
+    final result = await _exec(args.join(' '));
     if (result.exitCode != 0) {
       throw Exception('Failed to archive: ${result.stderr}');
     }
