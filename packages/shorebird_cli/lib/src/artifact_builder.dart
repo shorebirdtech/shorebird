@@ -306,10 +306,11 @@ class ArtifactBuilder {
           return;
         }
 
-        final update = _progressUpdateFromMacosBuildLog(line);
-        if (update != null) {
-          buildProgress.updateDetailMessage(update);
-        }
+        // TODO: update the progress message for macOS builds.
+        // final update = _progressUpdateFromMacosBuildLog(line);
+        // if (update != null) {
+        //   buildProgress.updateDetailMessage(update);
+        // }
       });
 
       final stderrLines = await buildProcess.stderr
@@ -603,11 +604,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       return match.group(1);
     }
 
-    return null;
-  }
-
-  String? _progressUpdateFromMacosBuildLog(String line) {
-    // TODO: support progress updates when building mac app
     return null;
   }
 

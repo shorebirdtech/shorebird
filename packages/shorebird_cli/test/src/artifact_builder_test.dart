@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -29,6 +30,7 @@ void main() {
   });
 
   group(ArtifactBuilder, () {
+    final projectRoot = Directory.systemTemp.createTempSync();
     late Ios ios;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
@@ -123,9 +125,7 @@ void main() {
           .thenReturn('/path/to/flutter');
       when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
 
-      when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(
-        Directory.systemTemp.createTempSync(),
-      );
+      when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(projectRoot);
 
       builder = ArtifactBuilder();
     });
@@ -727,6 +727,22 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               ].map(utf8.encode),
             ),
           );
+        });
+
+        group('when .dart_tool directory exists', () {
+          late Directory dartToolDir;
+
+          setUp(() {
+            dartToolDir = Directory(
+              p.join(projectRoot.path, '.dart_tool'),
+            )..createSync(recursive: true);
+          });
+
+          test('deletes .dart_tool directory before building', () async {
+            expect(dartToolDir.existsSync(), isTrue);
+            await runWithOverrides(builder.buildMacos);
+            expect(dartToolDir.existsSync(), isFalse);
+          });
         });
 
         group('with default arguments', () {
