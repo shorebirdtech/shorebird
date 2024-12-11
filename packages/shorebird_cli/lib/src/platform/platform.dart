@@ -1,5 +1,6 @@
 export 'android.dart';
 export 'ios.dart';
+export 'macos.dart';
 
 /// {@template arch}
 /// Build architectures supported by Shorebird.

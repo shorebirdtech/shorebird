@@ -103,6 +103,7 @@ void main() {
         registerFallbackValue(File(''));
         registerFallbackValue(const IosArchiveDiffer());
         registerFallbackValue(ReleasePlatform.ios);
+        registerFallbackValue(ShorebirdArtifact.genSnapshotIos);
         registerFallbackValue(Uri.parse('https://example.com'));
       });
 
@@ -609,6 +610,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
                 outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
               ),
             ).thenThrow(const FileSystemException('error'));
           });
@@ -659,6 +661,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
                 outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
                 additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenAnswer(
@@ -693,6 +696,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 () => artifactBuilder.buildElfAotSnapshot(
                   appDillPath: any(named: 'appDillPath'),
                   outFilePath: any(named: 'outFilePath'),
+                  genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
                   additionalArgs: [
                     '--dwarf-stack-traces',
                     '--resolve-dwarf-paths',
@@ -1043,12 +1047,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             ).thenReturn(postLinkerFlutterRevision);
             when(
               () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.analyzeSnapshot,
+                artifact: ShorebirdArtifact.analyzeSnapshotIos,
               ),
             ).thenReturn(analyzeSnapshotFile.path);
             when(
               () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.genSnapshot,
+                artifact: ShorebirdArtifact.genSnapshotIos,
               ),
             ).thenReturn(genSnapshotFile.path);
           });
@@ -1112,7 +1116,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               setUp(() {
                 when(
                   () => shorebirdArtifacts.getArtifactPath(
-                    artifact: ShorebirdArtifact.analyzeSnapshot,
+                    artifact: ShorebirdArtifact.analyzeSnapshotIos,
                   ),
                 ).thenReturn('');
                 setUpProjectRootArtifacts();

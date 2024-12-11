@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -29,6 +30,7 @@ void main() {
   });
 
   group(ArtifactBuilder, () {
+    final projectRoot = Directory.systemTemp.createTempSync();
     late Ios ios;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
@@ -122,7 +124,8 @@ void main() {
       when(() => operatingSystemInterface.which('flutter'))
           .thenReturn('/path/to/flutter');
       when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
-      when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(Directory(''));
+
+      when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(projectRoot);
 
       builder = ArtifactBuilder();
     });
@@ -703,6 +706,220 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     });
 
     group(
+      'buildMacos',
+      () {
+        setUp(() {
+          when(() => buildProcess.stdout).thenAnswer(
+            (_) => Stream.fromIterable(
+              [
+                '''
+[        ] [   +1 ms] targetingApplePlatform = true
+[        ] [        ] extractAppleDebugSymbols = true
+[        ] [        ] Will strip AOT snapshot manually after build and dSYM generation.
+[        ] [        ] executing: /Users/bryanoltman/shorebirdtech/_shorebird/shorebird/bin/cache/flutter/b1fabdf140ab5591c45dbea4196dc3c018a4ed3a/bin/cache/artifacts/engine/darwin-x64-release/gen_snapshot_arm64 --deterministic --print_class_table_link_debug_info_to=/Users/bryanoltman/Documents/sandbox/macos_sandbox/.dart_tool/flutter_build/f9149091b9c399e05076c18d6b754a0f/App.class_table.json --print_class_table_link_info_to=/Users/bryanoltman/Documents/sandbox/macos_sandbox/.dart_tool/flutter_build/f9149091b9c399e05076c18d6b754a0f/App.ct.link --snapshot_kind=app-aot-assembly --assembly=/Users/bryanoltman/Documents/sandbox/macos_sandbox/.dart_tool/flutter_build/f9149091b9c399e05076c18d6b754a0f/arm64/snapshot_assembly.S /path/to/app.dill
+[        ] [        ] targetingApplePlatform = true
+[        ] [        ] extractAppleDebugSymbols = true
+[        ] [        ] Will strip AOT snapshot manually after build and dSYM generation.
+[+5214 ms] [        ] executing: /Users/bryanoltman/shorebirdtech/_shorebird/shorebird/bin/cache/flutter/b1fabdf140ab5591c45dbea4196dc3c018a4ed3a/bin/cache/artifacts/engine/darwin-x64-release/gen_snapshot_x64 --deterministic --print_class_table_link_debug_info_to=/Users/bryanoltman/Documents/sandbox/macos_sandbox/.dart_tool/flutter_build/f9149091b9c399e05076c18d6b754a0f/App.class_table.json --print_class_table_link_info_to=/Users/bryanoltman/Documents/sandbox/macos_sandbox/.dart_tool/flutter_build/f9149091b9c399e05076c18d6b754a0f/App.ct.link --snapshot_kind=app-aot-assembly --assembly=/Users/bryanoltman/Documents/sandbox/macos_sandbox/.dart_tool/flutter_build/f9149091b9c399e05076c18d6b754a0f/x86_64/snapshot_assembly.S /path/to/app.dill
+[        ] [+3527 ms] Building App.framework for x86_64...
+[        ] [   +6 ms] executing: sysctl hw.optional.arm64
+''',
+              ].map(utf8.encode),
+            ),
+          );
+        });
+
+        group('when .dart_tool directory exists', () {
+          late Directory dartToolDir;
+
+          setUp(() {
+            dartToolDir = Directory(
+              p.join(projectRoot.path, '.dart_tool'),
+            )..createSync(recursive: true);
+          });
+
+          test('deletes .dart_tool directory before building', () async {
+            expect(dartToolDir.existsSync(), isTrue);
+            await runWithOverrides(builder.buildMacos);
+            expect(dartToolDir.existsSync(), isFalse);
+          });
+        });
+
+        group('with default arguments', () {
+          test('invokes flutter build with an export options plist', () async {
+            final result = await runWithOverrides(builder.buildMacos);
+
+            verify(
+              () => shorebirdProcess.start(
+                'flutter',
+                [
+                  'build',
+                  'macos',
+                  '--release',
+                ],
+                runInShell: true,
+                environment: any(named: 'environment'),
+              ),
+            ).called(1);
+            expect(result.kernelFile.path, equals('/path/to/app.dill'));
+          });
+        });
+
+        group('when base64PublicKey is not null', () {
+          const base64PublicKey = 'base64PublicKey';
+
+          setUp(() {
+            when(
+              () => shorebirdProcess.start(
+                'flutter',
+                [
+                  'build',
+                  'macos',
+                  '--release',
+                ],
+                runInShell: any(named: 'runInShell'),
+                environment: {
+                  'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+                },
+              ),
+            ).thenAnswer((_) async => buildProcess);
+          });
+
+          test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
+            await runWithOverrides(
+              () => builder.buildMacos(
+                base64PublicKey: base64PublicKey,
+              ),
+            );
+
+            verify(
+              () => shorebirdProcess.start(
+                'flutter',
+                [
+                  'build',
+                  'macos',
+                  '--release',
+                ],
+                runInShell: any(named: 'runInShell'),
+                environment: {
+                  'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+                },
+              ),
+            ).called(1);
+          });
+        });
+
+        test('forwards extra arguments to flutter build', () async {
+          await runWithOverrides(
+            () => builder.buildMacos(
+              codesign: false,
+              flavor: 'flavor',
+              target: 'target.dart',
+              args: ['--foo', 'bar'],
+            ),
+          );
+
+          verify(
+            () => shorebirdProcess.start(
+              'flutter',
+              [
+                'build',
+                'macos',
+                '--release',
+                '--flavor=flavor',
+                '--target=target.dart',
+                '--no-codesign',
+                '--foo',
+                'bar',
+              ],
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).called(1);
+        });
+
+        group('when the build fails', () {
+          group('with non-zero exit code', () {
+            setUp(() {
+              when(() => buildProcess.exitCode)
+                  .thenAnswer((_) async => ExitCode.software.code);
+            });
+
+            test('throws ArtifactBuildException', () {
+              expect(
+                () => runWithOverrides(
+                  () => builder.buildMacos(codesign: false),
+                ),
+                throwsA(isA<ArtifactBuildException>()),
+              );
+            });
+          });
+        });
+
+        group('when an app.dill file is not found in build stdout', () {
+          setUp(() {
+            when(() => buildProcess.stdout).thenAnswer(
+              (_) => Stream.fromIterable(
+                [
+                  'no app.dill',
+                ].map(utf8.encode),
+              ),
+            );
+          });
+
+          test('throws ArtifactBuildException', () {
+            expect(
+              () => runWithOverrides(() => builder.buildMacos(codesign: false)),
+              throwsA(
+                isA<ArtifactBuildException>().having(
+                  (e) => e.message,
+                  'message',
+                  '''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''',
+                ),
+              ),
+            );
+          });
+        });
+
+        group('after a build', () {
+          group('when the build is successful', () {
+            setUp(() {
+              when(
+                () => buildProcess.exitCode,
+              ).thenAnswer((_) async => ExitCode.success.code);
+            });
+
+            verifyCorrectFlutterPubGet(
+              () async => runWithOverrides(
+                () => builder.buildMacos(codesign: false),
+              ),
+            );
+
+            group('when the build fails', () {
+              setUp(() {
+                when(
+                  () => buildProcess.exitCode,
+                ).thenAnswer((_) async => ExitCode.software.code);
+              });
+
+              verifyCorrectFlutterPubGet(
+                () async => expectLater(
+                  () async => runWithOverrides(
+                    () => builder.buildMacos(codesign: false),
+                  ),
+                  throwsA(isA<ArtifactBuildException>()),
+                ),
+              );
+            });
+          });
+        });
+      },
+      testOn: 'mac-os',
+    );
+
+    group(
       'buildIpa',
       () {
         setUp(() {
@@ -1153,7 +1370,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
           setUp(() {
             when(
               () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.genSnapshot,
+                artifact: ShorebirdArtifact.genSnapshotIos,
               ),
             ).thenReturn('gen_snapshot');
           });
@@ -1163,6 +1380,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
               () => builder.buildElfAotSnapshot(
                 appDillPath: '/app/dill/path',
                 outFilePath: '/path/to/out',
+                genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
                 additionalArgs: ['--foo', 'bar'],
               ),
             );
@@ -1195,6 +1413,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
                   () => builder.buildElfAotSnapshot(
                     appDillPath: 'asdf',
                     outFilePath: 'asdf',
+                    genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
                   ),
                 ),
                 throwsA(isA<ArtifactBuildException>()),
@@ -1208,6 +1427,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
                 () => builder.buildElfAotSnapshot(
                   appDillPath: '/app/dill/path',
                   outFilePath: '/path/to/out',
+                  genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
                 ),
               );
 

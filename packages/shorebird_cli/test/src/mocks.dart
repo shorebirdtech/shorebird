@@ -85,6 +85,8 @@ class MockDetailProgress extends Mock implements DetailProgress {}
 
 class MockDevicectl extends Mock implements Devicectl {}
 
+class MockDitto extends Mock implements Ditto {}
+
 class MockDirectory extends Mock implements Directory {}
 
 class MockDoctor extends Mock implements Doctor {}

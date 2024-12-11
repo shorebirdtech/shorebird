@@ -128,6 +128,7 @@ class IosFrameworkPatcher extends Patcher {
           'build',
           'out.aot',
         ),
+        genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
         additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
@@ -246,7 +247,7 @@ class IosFrameworkPatcher extends Patcher {
     if (await aotTools.isGeneratePatchDiffBaseSupported()) {
       final patchBaseProgress = logger.progress('Generating patch diff base');
       final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
+        artifact: ShorebirdArtifact.analyzeSnapshotIos,
       );
 
       final File patchBaseFile;
@@ -313,7 +314,7 @@ class IosFrameworkPatcher extends Patcher {
 
     final analyzeSnapshot = File(
       shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
+        artifact: ShorebirdArtifact.analyzeSnapshotIos,
       ),
     );
 
@@ -323,7 +324,7 @@ class IosFrameworkPatcher extends Patcher {
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
-      artifact: ShorebirdArtifact.genSnapshot,
+      artifact: ShorebirdArtifact.genSnapshotIos,
     );
 
     final linkProgress = logger.progress('Linking AOT files');

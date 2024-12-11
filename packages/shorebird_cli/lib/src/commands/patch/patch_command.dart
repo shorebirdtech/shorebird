@@ -185,6 +185,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return ExitCode.usage.code;
     }
 
+    if (results.releaseTypes.contains(ReleaseType.macos)) {
+      logger.warn(macosBetaWarning);
+    }
+
     final patcherFutures =
         results.releaseTypes.map(_resolvePatcher).map(createPatch);
 
@@ -216,6 +220,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         return IosFrameworkPatcher(
           argResults: results,
           argParser: argParser,
+          flavor: flavor,
+          target: target,
+        );
+      case ReleaseType.macos:
+        return MacosPatcher(
+          argParser: argParser,
+          argResults: results,
           flavor: flavor,
           target: target,
         );

@@ -342,6 +342,12 @@ void main() {
           ).called(1);
         });
       });
+
+      test('prints beta warning when macos platform is selected', () async {
+        when(() => argResults['platforms']).thenReturn(['macos']);
+        await runWithOverrides(command.run);
+        verify(() => logger.warn(macosBetaWarning)).called(1);
+      });
     });
 
     group('createPatch', () {
@@ -544,6 +550,10 @@ void main() {
         expect(
           command.getPatcher(ReleaseType.iosFramework),
           isA<IosFrameworkPatcher>(),
+        );
+        expect(
+          command.getPatcher(ReleaseType.macos),
+          isA<MacosPatcher>(),
         );
       });
     });

@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -19,6 +20,11 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
 /// Flutter.
 typedef ShorebirdBuildCommand = Future<void> Function();
+
+// FIXME: The following three apple BuildResult classes are identical and
+// should be merged. They are all capturing the idea that we want to get the
+// kernel (app.dill) file generated during a build so we can use it to link
+// when patching.
 
 /// {@template ipa_build_result}
 /// Metadata about the result of a `flutter build ipa` invocation.
@@ -39,6 +45,17 @@ class IosFrameworkBuildResult {
   IosFrameworkBuildResult({
     required this.kernelFile,
   });
+
+  /// The app.dill file produced by this invocation of `flutter build ipa`.
+  final File kernelFile;
+}
+
+/// {@template macos_build_result}
+/// Metadata about the result of a `flutter build macos` invocation.
+/// {@endtemplate}
+class MacosBuildResult {
+  /// {@macro macos_build_result}
+  MacosBuildResult({required this.kernelFile});
 
   /// The app.dill file produced by this invocation of `flutter build ipa`.
   final File kernelFile;
@@ -256,6 +273,86 @@ class ArtifactBuilder {
     });
   }
 
+  /// Builds a macOS app using `flutter build macos`. Runs `flutter pub get`
+  /// with the system installation of Flutter to reset
+  /// `.dart_tool/package_config.json` after the build completes or fails.
+  Future<MacosBuildResult> buildMacos({
+    bool codesign = true,
+    String? flavor,
+    String? target,
+    List<String> args = const [],
+    String? base64PublicKey,
+    DetailProgress? buildProgress,
+  }) async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    // Delete the .dart_tool directory to ensure that the app is rebuilt.
+    // Without this, the build command will not print the app.dill path
+    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
+    if (dartToolDir.existsSync()) {
+      dartToolDir.deleteSync(recursive: true);
+    }
+
+    String? appDillPath;
+    await _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'macos',
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        if (!codesign) '--no-codesign',
+        ...args,
+      ];
+
+      final buildProcess = await process.start(
+        executable,
+        arguments,
+        runInShell: true,
+        environment: base64PublicKey?.toPublicKeyEnv(),
+      );
+
+      final stdoutLines = <String>[];
+      buildProcess.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        stdoutLines.add(line);
+        if (buildProgress == null) {
+          return;
+        }
+
+        // TODO(bryanoltman): update the progress message for macOS builds.
+        // final update = _progressUpdateFromMacosBuildLog(line);
+        // if (update != null) {
+        //   buildProgress.updateDetailMessage(update);
+        // }
+      });
+
+      final stderrLines = await buildProcess.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .toList();
+      final stderr = stderrLines.join('\n');
+      final stdout = stdoutLines.join('\n');
+      final exitCode = await buildProcess.exitCode;
+      if (exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('Failed to build: $stderr');
+      }
+
+      appDillPath = findAppDill(stdout: stdout);
+    });
+
+    if (appDillPath == null) {
+      throw ArtifactBuildException('''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''');
+    }
+
+    return MacosBuildResult(kernelFile: File(appDillPath!));
+  }
+
   /// Calls `flutter build ipa`. If [codesign] is false, this will only build
   /// an .xcarchive and _not_ an .ipa.
   Future<IpaBuildResult> buildIpa({
@@ -455,6 +552,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   Future<File> buildElfAotSnapshot({
     required String appDillPath,
     required String outFilePath,
+    required ShorebirdArtifact genSnapshotArtifact,
     List<String> additionalArgs = const [],
   }) async {
     final arguments = [
@@ -466,9 +564,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     ];
 
     final result = await process.run(
-      shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.genSnapshot,
-      ),
+      shorebirdArtifacts.getArtifactPath(artifact: genSnapshotArtifact),
       arguments,
     );
 
@@ -522,8 +618,8 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     return null;
   }
 
-  /// Given the full stdout from a `flutter build ipa` command, finds the path
-  /// to the app.dill file that was built.
+  /// Given the full stdout from a `flutter build ipa` or `flutter build macos`
+  /// command, finds the path to the app.dill file that was built.
   @visibleForTesting
   String? findAppDill({required String stdout}) {
     final appDillLine = stdout.split('\n').firstWhereOrNull(
