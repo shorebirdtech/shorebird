@@ -320,11 +320,6 @@ class ArtifactBuilder {
       final stderr = stderrLines.join('\n');
       final stdout = stdoutLines.join('\n');
       final exitCode = await buildProcess.exitCode;
-
-      // If we've been updating the progress, reset it to the original base
-      // message so as not to leave the user with a confusing message.
-      buildProgress?.updateDetailMessage(null);
-
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException('Failed to build: $stderr');
       }
