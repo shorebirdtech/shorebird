@@ -746,9 +746,7 @@ void main() {
             expect(secondResult!.path, equals(oldAppDirectory.path));
           });
         },
-        onPlatform: {
-          'windows': const Skip('Flaky on Windows'),
-        },
+        testOn: 'mac-os',
       );
 
       group('when app directory does not exist', () {
