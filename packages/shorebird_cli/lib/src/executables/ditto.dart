@@ -44,9 +44,20 @@ class Ditto {
       source,
       destination,
     ];
-    final result = await _exec(args.join(' '));
-    if (result.exitCode != 0) {
-      throw Exception('Failed to archive: ${result.stderr}');
+    final dittoResult = await _exec(args.join(' '));
+    if (dittoResult.exitCode != 0) {
+      throw Exception('Failed to archive: ${dittoResult.stderr}');
+    }
+
+    // ditto includes __MACOSX directories in the archive, which we don't want.
+    // Use the `zip` command to remove them. More on these directories:
+    // https://superuser.com/questions/104500/what-is-macosx-folder-i-keep-seeing-in-zip-files-made-by-people-on-os-x
+    final zipResult = await process.run(
+      'zip',
+      ['-d', destination, r'__MACOSX\/*'],
+    );
+    if (zipResult.exitCode != 0) {
+      throw Exception('Failed to archive: ${zipResult.stderr}');
     }
   }
 }

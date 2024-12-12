@@ -108,6 +108,16 @@ void main() {
               stderr: '',
             ),
           );
+
+          when(
+            () => process.run('zip', ['-d', destination, r'__MACOSX\/*']),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '',
+              stderr: '',
+            ),
+          );
         });
 
         group('when keepParent is true', () {
@@ -162,20 +172,54 @@ void main() {
           });
         });
 
-        test('completes', () async {
-          await expectLater(
-            runWithOverrides(
-              () => ditto.archive(source: source, destination: destination),
-            ),
-            completes,
-          );
-          verify(
-            () => process.run(
-              'ditto',
-              // cspell: disable-next-line
-              ['-c', '-k', '--sequesterRsrc', source, destination],
-            ),
-          ).called(1);
+        group('when keepParent is false', () {
+          test('completes', () async {
+            await expectLater(
+              runWithOverrides(
+                () => ditto.archive(source: source, destination: destination),
+              ),
+              completes,
+            );
+            verify(
+              () => process.run(
+                'ditto',
+                // cspell: disable-next-line
+                ['-c', '-k', '--sequesterRsrc', source, destination],
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when zip process exits with non-zero exit code', () {
+          setUp(() {
+            when(
+              () => process.run('zip', ['-d', destination, r'__MACOSX\/*']),
+            ).thenAnswer(
+              (_) async => const ShorebirdProcessResult(
+                exitCode: 1,
+                stdout: '',
+                stderr: 'oh no',
+              ),
+            );
+          });
+
+          test('throws an exception', () async {
+            await expectLater(
+              runWithOverrides(
+                () => ditto.archive(source: source, destination: destination),
+              ),
+              throwsA(
+                isA<Exception>().having(
+                  (e) => e.toString(),
+                  'message',
+                  contains('Failed to archive: oh no'),
+                ),
+              ),
+            );
+            verify(
+              () => process.run('zip', ['-d', destination, r'__MACOSX\/*']),
+            ).called(1);
+          });
         });
       });
 
