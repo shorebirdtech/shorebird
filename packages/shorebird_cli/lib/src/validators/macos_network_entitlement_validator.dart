@@ -79,12 +79,12 @@ class MacosNetworkEntitlementValidator extends Validator {
   /// Whether the given entitlements plist file has the network client
   /// entitlement.
   @visibleForTesting
-  bool hasNetworkClientEntitlement({required File plistFile}) =>
+  static bool hasNetworkClientEntitlement({required File plistFile}) =>
       Plist(file: plistFile).properties[networkClientEntitlementKey] == true;
 
   /// Adds the network client entitlement to the given entitlements plist file.
   @visibleForTesting
-  void addNetworkEntitlementToPlist(File entitlementsPlist) {
+  static void addNetworkEntitlementToPlist(File entitlementsPlist) {
     final plist = Plist(file: entitlementsPlist);
     plist.properties[networkClientEntitlementKey] = true;
     entitlementsPlist.writeAsStringSync(plist.toString());

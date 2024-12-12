@@ -108,10 +108,12 @@ void main() {
       group('when release entitlements plist does not exist', () {
         setUp(setUpProjectRoot);
 
-        test('returns a validation issue', () async {
+        test('returns a validation issue with no fix', () async {
+          final issues = await runWithOverrides(() => validator.validate());
+          expect(issues, hasLength(1));
           expect(
-            await runWithOverrides(() => validator.validate()),
-            contains(
+            issues[0],
+            equals(
               const ValidationIssue(
                 severity: ValidationIssueSeverity.error,
                 message: 'Unable to find a Release.entitlements file',
@@ -127,20 +129,32 @@ void main() {
             setUpProjectRoot(entitlements: entitlementsPlistWithoutEntitlement);
           });
 
-          test('returns a validation issue', () async {
+          test('returns a validation issue with a fix', () async {
             final validationResults = await runWithOverrides(
               () => validator.validate(),
             );
             expect(validationResults, hasLength(1));
+            final issue = validationResults[0];
+            expect(issue.severity, ValidationIssueSeverity.error);
             expect(
-              validationResults[0].severity,
-              ValidationIssueSeverity.error,
-            );
-            expect(
-              validationResults[0].message,
+              issue.message,
               contains(
                 '''is missing the Outgoing Connections (com.apple.security.network.client) entitlement.''',
               ),
+            );
+            expect(issue.fix, isNotNull);
+            expect(
+              MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
+                plistFile: releaseEntitlementsFile(),
+              ),
+              isFalse,
+            );
+            runWithOverrides(() => issue.fix!());
+            expect(
+              MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
+                plistFile: releaseEntitlementsFile(),
+              ),
+              isTrue,
             );
           });
         });
@@ -166,16 +180,18 @@ void main() {
         test('adds the network client entitlement to the entitlements plist',
             () {
           expect(
-            validator.hasNetworkClientEntitlement(
+            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
               plistFile: releaseEntitlementsFile(),
             ),
             isFalse,
           );
 
-          validator.addNetworkEntitlementToPlist(releaseEntitlementsFile());
+          MacosNetworkEntitlementValidator.addNetworkEntitlementToPlist(
+            releaseEntitlementsFile(),
+          );
 
           expect(
-            validator.hasNetworkClientEntitlement(
+            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
               plistFile: releaseEntitlementsFile(),
             ),
             isTrue,
@@ -191,16 +207,18 @@ void main() {
         test('does not modify the entitlements plist', () {
           final plistContents = releaseEntitlementsFile().readAsStringSync();
           expect(
-            validator.hasNetworkClientEntitlement(
+            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
               plistFile: releaseEntitlementsFile(),
             ),
             isTrue,
           );
 
-          validator.addNetworkEntitlementToPlist(releaseEntitlementsFile());
+          MacosNetworkEntitlementValidator.addNetworkEntitlementToPlist(
+            releaseEntitlementsFile(),
+          );
 
           expect(
-            validator.hasNetworkClientEntitlement(
+            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
               plistFile: releaseEntitlementsFile(),
             ),
             isTrue,
@@ -221,7 +239,7 @@ void main() {
 
         test('returns true', () {
           expect(
-            validator.hasNetworkClientEntitlement(
+            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
               plistFile: releaseEntitlementsFile(),
             ),
             isTrue,
@@ -236,7 +254,7 @@ void main() {
 
         test('returns false', () {
           expect(
-            validator.hasNetworkClientEntitlement(
+            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
               plistFile: releaseEntitlementsFile(),
             ),
             isFalse,
