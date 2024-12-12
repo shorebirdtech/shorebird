@@ -26,7 +26,7 @@ class Doctor {
 
   /// Validators that verify shorebird will work on macOS.
   final List<Validator> macosCommandValidators = [
-    // TODO(bryanoltman): ensure app has network capabilities
+    MacosNetworkEntitlementValidator(),
   ];
 
   /// Validators that should run on all commands.
@@ -34,6 +34,7 @@ class Doctor {
     ShorebirdVersionValidator(),
     ShorebirdFlutterValidator(),
     AndroidInternetPermissionValidator(),
+    MacosNetworkEntitlementValidator(),
     ShorebirdYamlAssetValidator(),
   ];
 
@@ -46,7 +47,7 @@ class Doctor {
     final allIssues = <ValidationIssue>[];
     final allFixableIssues = <ValidationIssue>[];
 
-    var numIssuesFixed = 0;
+    var totalIssuesFixed = 0;
     for (final validator in validators) {
       if (!validator.canRunInCurrentContext()) {
         continue;
@@ -76,13 +77,15 @@ class Doctor {
           // Re-run the validator to see if there are any remaining issues that
           // we couldn't fix.
           unresolvedIssues = await validator.validate();
-          if (unresolvedIssues.isEmpty) {
-            numIssuesFixed += issues.length - unresolvedIssues.length;
+          final numIssuesFixed = issues.length - unresolvedIssues.length;
+          if (numIssuesFixed > 0) {
+            totalIssuesFixed += numIssuesFixed;
             final fixAppliedMessage =
                 '''($numIssuesFixed fix${numIssuesFixed == 1 ? '' : 'es'} applied)''';
             validatorProgress.complete(
               '''${validator.description} ${green.wrap(fixAppliedMessage)}''',
             );
+
             continue;
           }
         } else {
@@ -125,7 +128,7 @@ class Doctor {
       allIssues.addAll(unresolvedIssues);
     }
 
-    if (numIssuesFixed > 0) {
+    if (totalIssuesFixed > 0) {
       return;
     }
 
