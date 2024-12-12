@@ -98,8 +98,7 @@ void main() {
           when(
             () => process.run(
               'ditto',
-              // cspell: disable-next-line
-              ['-c', '-k', '--sequesterRsrc', source, destination],
+              ['-c', '-k', source, destination],
             ),
           ).thenAnswer(
             (_) async => const ShorebirdProcessResult(
@@ -118,8 +117,6 @@ void main() {
                 [
                   '-c',
                   '-k',
-                  // cspell: disable-next-line
-                  '--sequesterRsrc',
                   '--keepParent',
                   source,
                   destination,
@@ -151,8 +148,6 @@ void main() {
                 [
                   '-c',
                   '-k',
-                  // cspell: disable-next-line
-                  '--sequesterRsrc',
                   '--keepParent',
                   source,
                   destination,
@@ -172,8 +167,7 @@ void main() {
           verify(
             () => process.run(
               'ditto',
-              // cspell: disable-next-line
-              ['-c', '-k', '--sequesterRsrc', source, destination],
+              ['-c', '-k', source, destination],
             ),
           ).called(1);
         });
@@ -185,8 +179,7 @@ void main() {
           when(
             () => process.run(
               'ditto',
-              // cspell: disable-next-line
-              ['-c', '-k', '--sequesterRsrc', source, destination],
+              ['-c', '-k', source, destination],
             ),
           ).thenAnswer(
             (_) async => const ShorebirdProcessResult(
@@ -213,8 +206,7 @@ void main() {
           verify(
             () => process.run(
               'ditto',
-              // cspell: disable-next-line
-              ['-c', '-k', '--sequesterRsrc', source, destination],
+              ['-c', '-k', source, destination],
             ),
           ).called(1);
         });
