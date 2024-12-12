@@ -38,8 +38,6 @@ class Ditto {
     final args = [
       '-c',
       '-k',
-      // cspell: disable-next-line
-      '--sequesterRsrc',
       if (keepParent) '--keepParent',
       source,
       destination,
