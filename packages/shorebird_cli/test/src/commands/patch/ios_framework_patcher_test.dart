@@ -6,7 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/archive_analysis/ios_archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -90,7 +90,7 @@ void main() {
       setUpAll(() {
         registerFallbackValue(Directory(''));
         registerFallbackValue(File(''));
-        registerFallbackValue(const IosArchiveDiffer());
+        registerFallbackValue(const AppleArchiveDiffer());
         registerFallbackValue(ReleasePlatform.ios);
         registerFallbackValue(ShorebirdArtifact.genSnapshotIos);
         registerFallbackValue(Uri.parse('https://example.com'));

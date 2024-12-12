@@ -111,7 +111,7 @@ class MockIOSink extends Mock implements IOSink {}
 
 class MockIos extends Mock implements Ios {}
 
-class MockIosArchiveDiffer extends Mock implements IosArchiveDiffer {}
+class MockIosArchiveDiffer extends Mock implements AppleArchiveDiffer {}
 
 class MockJava extends Mock implements Java {}
 

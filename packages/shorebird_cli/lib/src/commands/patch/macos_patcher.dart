@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
+import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/plist.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -112,14 +113,61 @@ class MacosPatcher extends Patcher {
     }
   }
 
+  // FIXME: this is a direct copy of IosPatcher's implementation. We should
+  // consolidate this and other copied code.
   @override
   Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
     required File patchArchive,
   }) async {
-    // TODO(bryanoltman): implement assertUnpatchableDiffs
-    return const DiffStatus(hasAssetChanges: false, hasNativeChanges: false);
+    // Check for diffs without warning about native changes, as Xcode builds
+    // can be nondeterministic. So we still have some hope of alerting users of
+    // unpatchable native changes, we compare the Podfile.lock hash between the
+    // patch and the release.
+    final diffStatus =
+        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArchive: patchArchive,
+      releaseArchive: releaseArchive,
+      archiveDiffer: const AppleArchiveDiffer(),
+      allowAssetChanges: allowAssetDiffs,
+      allowNativeChanges: allowNativeDiffs,
+      confirmNativeChanges: false,
+    );
+
+    if (!diffStatus.hasNativeChanges) {
+      return diffStatus;
+    }
+
+    final String? podfileLockHash;
+    if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
+      podfileLockHash = sha256
+          .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
+          .toString();
+    } else {
+      podfileLockHash = null;
+    }
+
+    if (releaseArtifact.podfileLockHash != null &&
+        podfileLockHash != releaseArtifact.podfileLockHash) {
+      logger.warn(
+        '''
+Your macos/Podfile.lock is different from the one used to build the release.
+This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
+      );
+
+      if (!allowNativeDiffs) {
+        if (!shorebirdEnv.canAcceptUserInput) {
+          throw UnpatchableChangeException();
+        }
+
+        if (!logger.confirm('Continue anyways?')) {
+          throw UserCancelledException();
+        }
+      }
+    }
+
+    return diffStatus;
   }
 
   @override
@@ -195,7 +243,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     await ditto.archive(
       source: appPath,
       destination: zippedApp.path,
-      keepParent: true,
+      // keepParent is false here in order to ensure the directory structure of
+      // this zip file matches what will be provided to the [AppleArchiveDiffer]
+      // (which uses package:archive to stream zip file contents).
     );
     return zippedApp;
   }

@@ -122,7 +122,7 @@ class IosPatcher extends Patcher {
         await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
       localArchive: patchArchive,
       releaseArchive: releaseArchive,
-      archiveDiffer: const IosArchiveDiffer(),
+      archiveDiffer: const AppleArchiveDiffer(),
       allowAssetChanges: allowAssetDiffs,
       allowNativeChanges: allowNativeDiffs,
       confirmNativeChanges: false,
