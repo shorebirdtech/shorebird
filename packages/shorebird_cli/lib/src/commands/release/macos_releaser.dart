@@ -176,9 +176,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       throw ProcessExit(ExitCode.software.code);
     }
     final String? podfileLockHash;
-    if (shorebirdEnv.podfileLockFile.existsSync()) {
+    if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
       podfileLockHash = sha256
-          .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
+          .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
           .toString();
     } else {
       podfileLockHash = null;

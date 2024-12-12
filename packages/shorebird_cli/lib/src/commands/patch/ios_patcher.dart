@@ -133,9 +133,9 @@ class IosPatcher extends Patcher {
     }
 
     final String? podfileLockHash;
-    if (shorebirdEnv.podfileLockFile.existsSync()) {
+    if (shorebirdEnv.iosPodfileLockFile.existsSync()) {
       podfileLockHash = sha256
-          .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
+          .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
           .toString();
     } else {
       podfileLockHash = null;

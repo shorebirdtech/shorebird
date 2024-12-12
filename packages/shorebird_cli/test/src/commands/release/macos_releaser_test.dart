@@ -618,7 +618,8 @@ To change the version of this release, change your app's version in your pubspec
             ),
           ).thenAnswer((_) async => {});
 
-          when(() => shorebirdEnv.podfileLockFile).thenReturn(podfileLockFile);
+          when(() => shorebirdEnv.macosPodfileLockFile)
+              .thenReturn(podfileLockFile);
         });
 
         group('when app directory does not exist', () {

@@ -343,7 +343,7 @@ void main() {
               ..createSync(recursive: true)
               ..writeAsStringSync(podfileLockContents);
 
-            when(() => shorebirdEnv.podfileLockFile)
+            when(() => shorebirdEnv.iosPodfileLockFile)
                 .thenReturn(podfileLockFile);
           });
 
