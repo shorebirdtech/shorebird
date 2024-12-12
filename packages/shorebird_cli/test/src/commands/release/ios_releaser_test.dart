@@ -738,7 +738,8 @@ To change the version of this release, change your app's version in your pubspec
               supplementPath: any(named: 'supplementPath'),
             ),
           ).thenAnswer((_) async => {});
-          when(() => shorebirdEnv.podfileLockFile).thenReturn(podfileLockFile);
+          when(() => shorebirdEnv.iosPodfileLockFile)
+              .thenReturn(podfileLockFile);
         });
 
         test('forwards call to codePushClientWrapper', () async {

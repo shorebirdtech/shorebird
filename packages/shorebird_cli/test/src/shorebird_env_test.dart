@@ -205,7 +205,7 @@ void main() {
         File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
         final podfileLockFile = IOOverrides.runZoned(
           () => runWithOverrides(
-            () => shorebirdEnv.podfileLockFile,
+            () => shorebirdEnv.iosPodfileLockFile,
           ),
           getCurrentDirectory: () => tempDir,
         );

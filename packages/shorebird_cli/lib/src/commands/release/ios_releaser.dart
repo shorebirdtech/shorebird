@@ -180,9 +180,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   }) async {
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory()!;
     final String? podfileLockHash;
-    if (shorebirdEnv.podfileLockFile.existsSync()) {
+    if (shorebirdEnv.iosPodfileLockFile.existsSync()) {
       podfileLockHash = sha256
-          .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
+          .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
           .toString();
     } else {
       podfileLockHash = null;
