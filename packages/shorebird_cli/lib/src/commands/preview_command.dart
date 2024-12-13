@@ -244,6 +244,7 @@ class PreviewCommand extends ShorebirdCommand {
           deviceId: deviceId,
           track: track,
         ),
+      ReleasePlatform.windows => throw UnimplementedError(),
     };
   }
 
