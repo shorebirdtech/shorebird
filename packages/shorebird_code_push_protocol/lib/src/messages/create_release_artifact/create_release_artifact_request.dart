@@ -9,7 +9,7 @@ part 'create_release_artifact_request.g.dart';
 /// Because this request is sent as a http.MultipartRequest, all fields
 /// serialize to strings.
 /// {@endtemplate}
-@JsonSerializable()
+@JsonSerializable(includeIfNull: false)
 class CreateReleaseArtifactRequest {
   /// {@macro create_release_artifact_request}
   const CreateReleaseArtifactRequest({
