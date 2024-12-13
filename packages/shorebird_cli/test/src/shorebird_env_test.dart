@@ -199,7 +199,7 @@ void main() {
       });
     });
 
-    group('podfileLockFile', () {
+    group('iosPodfileLockFile', () {
       test('returns correct path', () {
         final tempDir = Directory.systemTemp.createTempSync();
         File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
@@ -212,6 +212,23 @@ void main() {
         expect(
           podfileLockFile.path,
           equals(p.join(tempDir.path, 'ios', 'Podfile.lock')),
+        );
+      });
+    });
+
+    group('macosPodfileLockFile', () {
+      test('returns correct path', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
+        final podfileLockFile = IOOverrides.runZoned(
+          () => runWithOverrides(
+            () => shorebirdEnv.macosPodfileLockFile,
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          podfileLockFile.path,
+          equals(p.join(tempDir.path, 'macos', 'Podfile.lock')),
         );
       });
     });
