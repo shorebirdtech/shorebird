@@ -36,26 +36,18 @@ CreateReleaseArtifactRequest _$CreateReleaseArtifactRequestFromJson(
     );
 
 Map<String, dynamic> _$CreateReleaseArtifactRequestToJson(
-    CreateReleaseArtifactRequest instance) {
-  final val = <String, dynamic>{
-    'arch': instance.arch,
-    'platform': _$ReleasePlatformEnumMap[instance.platform]!,
-    'hash': instance.hash,
-    'filename': instance.filename,
-    'can_sideload':
-        CreateReleaseArtifactRequest._parseBoolToString(instance.canSideload),
-    'size': CreateReleaseArtifactRequest._parseIntToString(instance.size),
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('podfile_lock_hash', instance.podfileLockHash);
-  return val;
-}
+        CreateReleaseArtifactRequest instance) =>
+    <String, dynamic>{
+      'arch': instance.arch,
+      'platform': _$ReleasePlatformEnumMap[instance.platform]!,
+      'hash': instance.hash,
+      'filename': instance.filename,
+      'can_sideload':
+          CreateReleaseArtifactRequest._parseBoolToString(instance.canSideload),
+      'size': CreateReleaseArtifactRequest._parseIntToString(instance.size),
+      if (instance.podfileLockHash case final value?)
+        'podfile_lock_hash': value,
+    };
 
 const _$ReleasePlatformEnumMap = {
   ReleasePlatform.android: 'android',
