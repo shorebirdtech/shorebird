@@ -325,6 +325,24 @@ void main() {
       });
     });
 
+    group('when releasePlatform is not supported', () {
+      setUp(() {
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.windows: ReleaseStatus.active,
+        });
+        when(
+          () => argResults['platform'],
+        ).thenReturn(ReleasePlatform.windows.name);
+      });
+
+      test('throws an UnimplementedError', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          throwsA(isA<UnimplementedError>()),
+        );
+      });
+    });
+
     group('android', () {
       const releasePlatform = ReleasePlatform.android;
       const releaseArtifactUrl = 'https://example.com/release.aab';
