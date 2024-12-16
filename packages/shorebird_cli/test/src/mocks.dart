@@ -117,6 +117,8 @@ class MockJwtPayload extends Mock implements JwtPayload {}
 
 class MockNetworkChecker extends Mock implements NetworkChecker {}
 
+class MockOpen extends Mock implements Open {}
+
 class MockOperatingSystemInterface extends Mock
     implements OperatingSystemInterface {}
 
