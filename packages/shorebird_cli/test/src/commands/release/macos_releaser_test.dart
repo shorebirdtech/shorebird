@@ -353,25 +353,6 @@ To change the version of this release, change your app's version in your pubspec
         });
 
         group('when build succeeds', () {
-          group('when stale build/ios/shorebird directory exists', () {
-            late Directory shorebirdSupplementDir;
-
-            setUp(() {
-              shorebirdSupplementDir = Directory(
-                p.join(projectRoot.path, 'build', 'macos', 'shorebird'),
-              )..createSync(recursive: true);
-              when(
-                () => artifactManager.getMacosReleaseSupplementDirectory(),
-              ).thenReturn(shorebirdSupplementDir);
-            });
-
-            test('deletes the directory', () async {
-              expect(shorebirdSupplementDir.existsSync(), isTrue);
-              await runWithOverrides(releaser.buildReleaseArtifacts);
-              expect(shorebirdSupplementDir.existsSync(), isFalse);
-            });
-          });
-
           group('when platform was specified via arg results rest', () {
             setUp(() {
               when(() => argResults.rest).thenReturn(['macos', '--verbose']);
@@ -618,8 +599,9 @@ To change the version of this release, change your app's version in your pubspec
             ),
           ).thenAnswer((_) async => {});
 
-          when(() => shorebirdEnv.macosPodfileLockFile)
-              .thenReturn(podfileLockFile);
+          when(
+            () => shorebirdEnv.macosPodfileLockFile,
+          ).thenReturn(podfileLockFile);
         });
 
         group('when app directory does not exist', () {
@@ -640,6 +622,29 @@ To change the version of this release, change your app's version in your pubspec
 
             verify(
               () => logger.err('Unable to find .app directory'),
+            ).called(1);
+          });
+        });
+
+        group('when supplement directory does not exist', () {
+          setUp(() {
+            when(
+              () => artifactManager.getMacosReleaseSupplementDirectory(),
+            ).thenReturn(null);
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => releaser.uploadReleaseArtifacts(
+                  release: release,
+                  appId: appId,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err('Unable to find supplement directory'),
             ).called(1);
           });
         });
