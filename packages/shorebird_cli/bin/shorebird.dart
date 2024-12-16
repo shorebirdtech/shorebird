@@ -75,6 +75,7 @@ Command: shorebird ${args.join(' ')}
           javaRef,
           loggerRef,
           networkCheckerRef,
+          openRef,
           osInterfaceRef,
           patchExecutableRef,
           patchDiffCheckerRef,

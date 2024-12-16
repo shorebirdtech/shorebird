@@ -10,6 +10,7 @@ export 'gradlew.dart';
 export 'idevicesyslog.dart';
 export 'ios_deploy.dart';
 export 'java.dart';
+export 'open.dart';
 export 'patch_executable.dart';
 export 'shorebird_tools.dart';
 export 'xcodebuild.dart';
