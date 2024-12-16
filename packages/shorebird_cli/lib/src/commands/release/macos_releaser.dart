@@ -105,15 +105,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         );
     }
 
-    // Delete the Shorebird supplement directory if it exists.
-    // This is to ensure that we don't accidentally upload stale artifacts
-    // when building with older versions of Flutter.
-    final shorebirdSupplementDir =
-        artifactManager.getMacosReleaseSupplementDirectory();
-    if (shorebirdSupplementDir?.existsSync() ?? false) {
-      shorebirdSupplementDir!.deleteSync(recursive: true);
-    }
-
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     final buildProgress = logger.detailProgress(
       'Building app bundle with Flutter $flutterVersionString',
@@ -175,6 +166,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
     }
+    final supplementDirectory =
+        artifactManager.getMacosReleaseSupplementDirectory();
+    if (supplementDirectory == null) {
+      logger.err('Unable to find supplement directory');
+      throw ProcessExit(ExitCode.software.code);
+    }
+
     final String? podfileLockHash;
     if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
       podfileLockHash = sha256
@@ -189,8 +187,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       appPath: appDirectory.path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
-      supplementPath:
-          artifactManager.getMacosReleaseSupplementDirectory()?.path,
+      supplementPath: supplementDirectory.path,
     );
   }
 

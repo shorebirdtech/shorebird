@@ -24,7 +24,6 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -207,6 +206,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     required File releaseArtifact,
     File? supplementArtifact,
   }) async {
+    if (supplementArtifact == null) {
+      logger.err('Unable to find supplement directory');
+      throw ProcessExit(ExitCode.software.code);
+    }
+
     // Verify that we have built a patch .app
     if (artifactManager.getMacOSAppDirectory()?.path == null) {
       logger.err('Unable to find .app directory');
@@ -222,25 +226,23 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     File? releaseClassTableLinkInfoFile;
     File? releaseClassTableLinkDebugInfoFile;
-    if (supplementArtifact != null) {
-      final tempDir = Directory.systemTemp.createTempSync();
-      await artifactManager.extractZip(
-        zipFile: supplementArtifact,
-        outputDirectory: tempDir,
-      );
-      releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));
-      if (!releaseClassTableLinkInfoFile.existsSync()) {
-        logger.err('Unable to find class table link info file');
-        throw ProcessExit(ExitCode.software.code);
-      }
+    final tempDir = Directory.systemTemp.createTempSync();
+    await artifactManager.extractZip(
+      zipFile: supplementArtifact,
+      outputDirectory: tempDir,
+    );
+    releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));
+    if (!releaseClassTableLinkInfoFile.existsSync()) {
+      logger.err('Unable to find class table link info file');
+      throw ProcessExit(ExitCode.software.code);
+    }
 
-      releaseClassTableLinkDebugInfoFile = File(
-        p.join(tempDir.path, 'App.class_table.json'),
-      );
-      if (!releaseClassTableLinkDebugInfoFile.existsSync()) {
-        logger.err('Unable to find class table link debug info file');
-        throw ProcessExit(ExitCode.software.code);
-      }
+    releaseClassTableLinkDebugInfoFile = File(
+      p.join(tempDir.path, 'App.class_table.json'),
+    );
+    if (!releaseClassTableLinkDebugInfoFile.existsSync()) {
+      logger.err('Unable to find class table link debug info file');
+      throw ProcessExit(ExitCode.software.code);
     }
 
     unzipProgress.complete();
@@ -254,75 +256,61 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       ),
     );
 
-    final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
-    if (useLinker) {
-      // If we're using a newer version of the linker, we need to also copy the
-      // necessary class table link information alongside the snapshots.
-      if (releaseClassTableLinkInfoFile != null &&
-          releaseClassTableLinkDebugInfoFile != null) {
-        // Copy the release's class table link info file next to the release
-        // snapshot so that it can be used to generate a patch.
-        releaseClassTableLinkInfoFile.copySync(
-          p.join(releaseArtifactFile.parent.path, 'App.ct.link'),
-        );
-        releaseClassTableLinkDebugInfoFile.copySync(
-          p.join(releaseArtifactFile.parent.path, 'App.class_table.json'),
-        );
+    // Copy the release's class table link info file next to the release
+    // snapshot so that it can be used to generate a patch.
+    releaseClassTableLinkInfoFile.copySync(
+      p.join(releaseArtifactFile.parent.path, 'App.ct.link'),
+    );
+    releaseClassTableLinkDebugInfoFile.copySync(
+      p.join(releaseArtifactFile.parent.path, 'App.class_table.json'),
+    );
 
-        // Copy the patch's class table link info file to the build directory
-        // so that it can be used to generate a patch.
-        File(_patchClassTableLinkInfoPath).copySync(
-          p.join(buildDirectory.path, 'out.ct.link'),
-        );
-        File(_patchClassTableLinkDebugInfoPath).copySync(
-          p.join(buildDirectory.path, 'out.class_table.json'),
-        );
-      }
+    // Copy the patch's class table link info file to the build directory
+    // so that it can be used to generate a patch.
+    File(_patchClassTableLinkInfoPath).copySync(
+      p.join(buildDirectory.path, 'out.ct.link'),
+    );
+    File(_patchClassTableLinkDebugInfoPath).copySync(
+      p.join(buildDirectory.path, 'out.class_table.json'),
+    );
 
-      final (:exitCode, :linkPercentage) = await _runLinker(
-        releaseArtifact: releaseArtifactFile,
-        kernelFile: File(_appDillCopyPath),
+    final (:exitCode, :linkPercentage) = await _runLinker(
+      releaseArtifact: releaseArtifactFile,
+      kernelFile: File(_appDillCopyPath),
+    );
+    if (exitCode != ExitCode.success.code) throw ProcessExit(exitCode);
+    if (linkPercentage != null && linkPercentage < Patcher.minLinkPercentage) {
+      logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
+    }
+    lastBuildLinkPercentage = linkPercentage;
+
+    final patchBuildFile = File(_vmcodeOutputPath);
+
+    final patchBaseProgress = logger.progress('Generating patch diff base');
+    final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
+      artifact: ShorebirdArtifact.analyzeSnapshotMacOS,
+    );
+
+    final File patchBaseFile;
+    try {
+      // If the aot_tools executable supports the dump_blobs command, we
+      // can generate a stable diff base and use that to create a patch.
+      patchBaseFile = await aotTools.generatePatchDiffBase(
+        analyzeSnapshotPath: analyzeSnapshotPath,
+        releaseSnapshot: releaseArtifactFile,
       );
-      if (exitCode != ExitCode.success.code) throw ProcessExit(exitCode);
-      if (linkPercentage != null &&
-          linkPercentage < Patcher.minLinkPercentage) {
-        logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
-      }
-      lastBuildLinkPercentage = linkPercentage;
+      patchBaseProgress.complete();
+    } catch (error) {
+      patchBaseProgress.fail('$error');
+      throw ProcessExit(ExitCode.software.code);
     }
 
-    final patchBuildFile = File(useLinker ? _vmcodeOutputPath : _aotOutputPath);
-
-    final File patchFile;
-    if (useLinker && await aotTools.isGeneratePatchDiffBaseSupported()) {
-      final patchBaseProgress = logger.progress('Generating patch diff base');
-      final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshotMacOS,
-      );
-
-      final File patchBaseFile;
-      try {
-        // If the aot_tools executable supports the dump_blobs command, we
-        // can generate a stable diff base and use that to create a patch.
-        patchBaseFile = await aotTools.generatePatchDiffBase(
-          analyzeSnapshotPath: analyzeSnapshotPath,
-          releaseSnapshot: releaseArtifactFile,
-        );
-        patchBaseProgress.complete();
-      } catch (error) {
-        patchBaseProgress.fail('$error');
-        throw ProcessExit(ExitCode.software.code);
-      }
-
-      patchFile = File(
-        await artifactManager.createDiff(
-          releaseArtifactPath: patchBaseFile.path,
-          patchArtifactPath: patchBuildFile.path,
-        ),
-      );
-    } else {
-      patchFile = patchBuildFile;
-    }
+    final patchFile = File(
+      await artifactManager.createDiff(
+        releaseArtifactPath: patchBaseFile.path,
+        patchArtifactPath: patchBuildFile.path,
+      ),
+    );
 
     final patchFileSize = patchFile.statSync().size;
     final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);

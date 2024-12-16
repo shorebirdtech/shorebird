@@ -639,8 +639,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       group('createPatchArtifacts', () {
         const postLinkerFlutterRevision = // cspell: disable-next-line
             'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
-        const preLinkerFlutterRevision =
-            '83305b5088e6fe327fb3334a73ff190828d85713';
         const appId = 'appId';
         const arch = 'aarch64';
         const releaseId = 1;
@@ -742,6 +740,21 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             File(
               p.join(outDir.path, '${p.basename(zipFile.path)}.zip'),
             ).createSync();
+          });
+          when(
+            () => artifactManager.extractZip(
+              zipFile: supplementArtifactFile,
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer((invocation) async {
+            final outDir =
+                invocation.namedArguments[#outputDirectory] as Directory;
+            File(
+              p.join(outDir.path, 'App.ct.link'),
+            ).createSync(recursive: true);
+            File(
+              p.join(outDir.path, 'App.class_table.json'),
+            ).createSync(recursive: true);
           });
           when(
             () => ditto.extract(
@@ -849,6 +862,29 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           });
 
           group('when linking fails', () {
+            group('when supplement directory does not exist', () {
+              test('logs error and exits with code 70', () async {
+                await expectLater(
+                  () => runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                    ),
+                  ),
+                  exitsWithCode(ExitCode.software),
+                );
+
+                verify(
+                  () => logger.err(
+                    any(
+                      that: startsWith('Unable to find supplement directory'),
+                    ),
+                  ),
+                ).called(1);
+              });
+            });
+
             group('when .app does not exist', () {
               setUp(() {
                 when(
@@ -863,6 +899,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   ),
                   exitsWithCode(ExitCode.software),
@@ -881,6 +918,17 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             });
 
             group('when aot snapshot does not exist', () {
+              setUp(() {
+                setUpProjectRootArtifacts();
+                File(
+                  p.join(
+                    projectRoot.path,
+                    'build',
+                    elfAotSnapshotFileName,
+                  ),
+                ).deleteSync();
+              });
+
               test('logs error and exits with code 70', () async {
                 await expectLater(
                   () => runWithOverrides(
@@ -888,6 +936,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   ),
                   exitsWithCode(ExitCode.software),
@@ -918,6 +967,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   ),
                   exitsWithCode(ExitCode.software),
@@ -955,6 +1005,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   ),
                   exitsWithCode(ExitCode.software),
@@ -1001,6 +1052,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   ),
                   exitsWithCode(ExitCode.software),
@@ -1029,6 +1081,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                     appId: appId,
                     releaseId: releaseId,
                     releaseArtifact: releaseArtifactFile,
+                    supplementArtifact: supplementArtifactFile,
                   ),
                 );
 
@@ -1106,6 +1159,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   );
 
@@ -1233,6 +1287,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   );
                   verify(
@@ -1287,6 +1342,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                           appId: appId,
                           releaseId: releaseId,
                           releaseArtifact: releaseArtifactFile,
+                          supplementArtifact: supplementArtifactFile,
                         ),
                       ),
                       exitsWithCode(ExitCode.software),
@@ -1317,6 +1373,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   );
                   verify(
@@ -1335,70 +1392,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 });
               });
             });
-          });
-
-          group('when generate patch diff base is not supported', () {
-            setUp(() {
-              when(
-                aotTools.isGeneratePatchDiffBaseSupported,
-              ).thenAnswer((_) async => false);
-              setUpProjectRootArtifacts();
-            });
-
-            test('returns vmcode file as patch file', () async {
-              final patchBundle = await runWithOverrides(
-                () => patcher.createPatchArtifacts(
-                  appId: appId,
-                  releaseId: releaseId,
-                  releaseArtifact: releaseArtifactFile,
-                ),
-              );
-
-              expect(patchBundle, hasLength(1));
-              expect(
-                patchBundle[Arch.arm64],
-                isA<PatchArtifactBundle>().having(
-                  (b) => b.path,
-                  'path',
-                  endsWith('out.vmcode'),
-                ),
-              );
-            });
-          });
-        });
-
-        group('when does not use linker', () {
-          setUp(() {
-            when(
-              () => shorebirdEnv.flutterRevision,
-            ).thenReturn(preLinkerFlutterRevision);
-            when(
-              () => aotTools.isGeneratePatchDiffBaseSupported(),
-            ).thenAnswer((_) async => false);
-
-            setUpProjectRootArtifacts();
-          });
-
-          test('returns base patch artifact in patch bundle', () async {
-            final patchArtifacts = await runWithOverrides(
-              () => patcher.createPatchArtifacts(
-                appId: appId,
-                releaseId: releaseId,
-                releaseArtifact: releaseArtifactFile,
-              ),
-            );
-
-            expect(patchArtifacts, hasLength(1));
-            verifyNever(
-              () => aotTools.link(
-                base: any(named: 'base'),
-                patch: any(named: 'patch'),
-                analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                genSnapshot: any(named: 'genSnapshot'),
-                kernel: any(named: 'kernel'),
-                outputPath: any(named: 'outputPath'),
-              ),
-            );
           });
         });
       });
