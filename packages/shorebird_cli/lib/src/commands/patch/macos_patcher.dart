@@ -68,14 +68,9 @@ class MacosPatcher extends Patcher {
         ? [
             '--dwarf-stack-traces',
             '--resolve-dwarf-paths',
-            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
+            '''--save-debugging-info=${p.join(p.absolute(splitDebugInfoPath), splitDebugInfoFileName)}''',
           ]
         : <String>[];
-  }
-
-  /// The path to save the split debug info file.
-  static String saveDebuggingInfoPath(String directory) {
-    return p.join(p.absolute(directory), splitDebugInfoFileName);
   }
 
   @override
