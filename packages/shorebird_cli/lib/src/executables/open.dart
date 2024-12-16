@@ -17,23 +17,22 @@ class Open {
   /// Opens a new application at the provided [path] and streams the stdout and
   /// stderr.
   Future<Stream<List<int>>> newApplication({required String path}) async {
-    final tmp = Directory.systemTemp.createTempSync();
-    final stdout = File(p.join(tmp.path, 'stdout.log'))..createSync();
-    await process.start(
-      'open',
+    final app = Directory(p.join(path, 'Contents', 'MacOS'))
+        .listSync()
+        .firstWhere((f) => f is File);
+
+    await process.start('open', ['-n', path]);
+
+    final logStreamProcess = await process.start(
+      'log',
       [
-        '-n',
-        path,
-        '--stdout=${stdout.path}',
-        '--stderr=${stdout.path}',
+        'stream',
+        '--style=compact',
+        '--process',
+        p.basenameWithoutExtension(app.path),
       ],
     );
 
-    final stdoutProcess = await process.start(
-      'tail',
-      ['-fn+1', stdout.path],
-    );
-
-    return stdoutProcess.stdout;
+    return logStreamProcess.stdout;
   }
 }
