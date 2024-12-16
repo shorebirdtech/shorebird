@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.5.1 (December 16, 2024)
+
+- 🍎 macOS Desktop beta
+
 ## 1.5.0 (December 13, 2024)
 
 - 🐦 Support for Flutter 3.27.0
