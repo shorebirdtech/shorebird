@@ -22,7 +22,6 @@ import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -1518,8 +1517,7 @@ channel: ${DeploymentTrack.staging.channel}
       const releasePlatform = ReleasePlatform.macos;
 
       late Ditto ditto;
-      late ShorebirdProcess shorebirdProcess;
-      late Process process;
+      late Open open;
 
       R runWithOverrides<R>(R Function() body) {
         return HttpOverrides.runZoned(
@@ -1537,7 +1535,7 @@ channel: ${DeploymentTrack.staging.channel}
               httpClientRef.overrideWith(() => httpClient),
               loggerRef.overrideWith(() => logger),
               platformRef.overrideWith(() => platform),
-              processRef.overrideWith(() => shorebirdProcess),
+              openRef.overrideWith(() => open),
               shorebirdEnvRef.overrideWith(() => shorebirdEnv),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
@@ -1547,8 +1545,7 @@ channel: ${DeploymentTrack.staging.channel}
 
       setUp(() {
         ditto = MockDitto();
-        shorebirdProcess = MockShorebirdProcess();
-        process = MockProcess();
+        open = MockOpen();
 
         when(() => releaseArtifact.id).thenReturn(macosArtifactId);
         when(() => argResults['platform']).thenReturn(releasePlatform.name);
@@ -1572,9 +1569,9 @@ channel: ${DeploymentTrack.staging.channel}
         });
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
         when(() => platform.isMacOS).thenReturn(true);
-        when(() => shorebirdProcess.start(any(), any())).thenAnswer(
-          (_) async => process,
-        );
+        when(
+          () => open.newApplication(path: any(named: 'path')),
+        ).thenAnswer((_) async => Stream.value(utf8.encode('hello world')));
       });
 
       group('when querying for release artifact fails', () {
@@ -1638,16 +1635,10 @@ channel: ${DeploymentTrack.staging.channel}
       });
 
       group('when process completes with exit code 0', () {
-        setUp(() {
-          when(() => process.exitCode).thenAnswer((_) async => 0);
-        });
-
         test('completes successfully', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
-          verify(
-            () => shorebirdProcess.start('open', any()),
-          ).called(1);
+          verify(() => logger.info('hello world')).called(1);
         });
       });
     });

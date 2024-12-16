@@ -21,7 +21,6 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -339,9 +338,15 @@ class PreviewCommand extends ShorebirdCommand {
       }
     }
 
-    // TODO(felangel): wrap `open` and stream logs.
-    final proc = await process.start('open', ['-n', appDirectory.path]);
-    return proc.exitCode;
+    final logs = await open.newApplication(path: appDirectory.path);
+    final completer = Completer<void>();
+
+    logs.listen(
+      (log) => logger.info(utf8.decode(log)),
+      onDone: completer.complete,
+    );
+
+    return completer.future.then((_) => ExitCode.success.code);
   }
 
   Future<int> installAndLaunchAndroid({
