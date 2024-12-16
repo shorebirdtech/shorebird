@@ -10,14 +10,20 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// All Shorebird artifacts used explicitly by Shorebird.
 enum ShorebirdArtifact {
-  /// The analyze_snapshot executable.
-  analyzeSnapshot,
+  /// The iOS analyze_snapshot executable.
+  analyzeSnapshotIos,
+
+  /// The macOS analyze_snapshot executable.
+  analyzeSnapshotMacOS,
 
   /// The aot_tools executable or kernel file.
   aotTools,
 
-  /// The gen_snapshot executable.
-  genSnapshot,
+  /// The gen_snapshot executable for iOS.
+  genSnapshotIos,
+
+  /// The gen_snapshot executable for macOS.
+  genSnapshotMacOS,
 }
 
 /// A reference to a [ShorebirdArtifacts] instance.
@@ -48,16 +54,20 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
     required ShorebirdArtifact artifact,
   }) {
     switch (artifact) {
-      case ShorebirdArtifact.analyzeSnapshot:
-        return _analyzeSnapshotFile.path;
+      case ShorebirdArtifact.analyzeSnapshotIos:
+        return _analyzeSnapshotIosFile.path;
+      case ShorebirdArtifact.analyzeSnapshotMacOS:
+        return _analyzeSnapshotMacosFile.path;
       case ShorebirdArtifact.aotTools:
         return _aotToolsFile.path;
-      case ShorebirdArtifact.genSnapshot:
-        return _genSnapshotFile.path;
+      case ShorebirdArtifact.genSnapshotIos:
+        return _genSnapshotIosFile.path;
+      case ShorebirdArtifact.genSnapshotMacOS:
+        return _genSnapshotMacOSFile.path;
     }
   }
 
-  File get _analyzeSnapshotFile {
+  File get _analyzeSnapshotIosFile {
     return File(
       p.join(
         shorebirdEnv.flutterDirectory.path,
@@ -67,6 +77,20 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
         'engine',
         'ios-release',
         'analyze_snapshot_arm64',
+      ),
+    );
+  }
+
+  File get _analyzeSnapshotMacosFile {
+    return File(
+      p.join(
+        shorebirdEnv.flutterDirectory.path,
+        'bin',
+        'cache',
+        'artifacts',
+        'engine',
+        'darwin-x64-release',
+        'analyze_snapshot',
       ),
     );
   }
@@ -95,7 +119,7 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
     );
   }
 
-  File get _genSnapshotFile {
+  File get _genSnapshotIosFile {
     return File(
       p.join(
         shorebirdEnv.flutterDirectory.path,
@@ -104,7 +128,21 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
         'artifacts',
         'engine',
         'ios-release',
-        'gen_snapshot_arm64',
+        'gen_snapshot',
+      ),
+    );
+  }
+
+  File get _genSnapshotMacOSFile {
+    return File(
+      p.join(
+        shorebirdEnv.flutterDirectory.path,
+        'bin',
+        'cache',
+        'artifacts',
+        'engine',
+        'darwin-x64-release',
+        'gen_snapshot',
       ),
     );
   }
@@ -120,16 +158,20 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
   @override
   String getArtifactPath({required ShorebirdArtifact artifact}) {
     switch (artifact) {
-      case ShorebirdArtifact.analyzeSnapshot:
-        return _analyzeSnapshotFile.path;
+      case ShorebirdArtifact.analyzeSnapshotIos:
+        return _analyzeSnapshotIosFile.path;
+      case ShorebirdArtifact.analyzeSnapshotMacOS:
+        return _analyzeSnapshotMacosFile.path;
       case ShorebirdArtifact.aotTools:
         return _aotToolsFile.path;
-      case ShorebirdArtifact.genSnapshot:
-        return _genSnapshotFile.path;
+      case ShorebirdArtifact.genSnapshotIos:
+        return _genSnapshotIosFile.path;
+      case ShorebirdArtifact.genSnapshotMacOS:
+        return _genSnapshotMacosFile.path;
     }
   }
 
-  File get _analyzeSnapshotFile {
+  File get _analyzeSnapshotIosFile {
     return File(
       p.join(
         engineConfig.localEngineSrcPath!,
@@ -137,6 +179,18 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
         engineConfig.localEngine,
         'clang_x64',
         'analyze_snapshot_arm64',
+      ),
+    );
+  }
+
+  File get _analyzeSnapshotMacosFile {
+    return File(
+      p.join(
+        engineConfig.localEngineSrcPath!,
+        'out',
+        engineConfig.localEngine,
+        'clang_x64',
+        'analyze_snapshot',
       ),
     );
   }
@@ -156,7 +210,7 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
     );
   }
 
-  File get _genSnapshotFile {
+  File get _genSnapshotIosFile {
     return File(
       p.join(
         engineConfig.localEngineSrcPath!,
@@ -164,6 +218,18 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
         engineConfig.localEngine,
         'clang_x64',
         'gen_snapshot_arm64',
+      ),
+    );
+  }
+
+  File get _genSnapshotMacosFile {
+    return File(
+      p.join(
+        engineConfig.localEngineSrcPath!,
+        'out',
+        engineConfig.localEngine,
+        'clang_x64',
+        'gen_snapshot',
       ),
     );
   }

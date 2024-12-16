@@ -10,6 +10,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -57,9 +58,7 @@ void main() {
         () => shorebirdFlutter.getVersionForRevision(
           flutterRevision: any(named: 'flutterRevision'),
         ),
-      ).thenAnswer(
-        (_) async => '3.22.0',
-      );
+      ).thenAnswer((_) async => '3.22.0');
     });
 
     test('creates correct instance from environment', () async {
@@ -157,6 +156,7 @@ void main() {
     );
 
     late CodePushClient codePushClient;
+    late Ditto ditto;
     late ShorebirdLogger logger;
     late ShorebirdFlutter shorebirdFlutter;
     late Progress progress;
@@ -168,6 +168,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          dittoRef.overrideWith(() => ditto),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -182,6 +183,7 @@ void main() {
 
     setUp(() {
       codePushClient = MockCodePushClient();
+      ditto = MockDitto();
       logger = MockShorebirdLogger();
       platform = MockPlatform();
       progress = MockProgress();
@@ -193,6 +195,12 @@ void main() {
 
       shorebirdFlutter = MockShorebirdFlutter();
 
+      when(
+        () => ditto.archive(
+          source: any(named: 'source'),
+          destination: any(named: 'destination'),
+        ),
+      ).thenAnswer((_) async {});
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.script).thenReturn(
         Uri.file(
@@ -1932,6 +1940,126 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             podfileLockHash: podfileLockHash,
           ),
         ).called(1);
+      });
+    });
+
+    group('createMacosReleaseArtifacts', () {
+      final appPath = p.join('path', 'to', 'Runner.app');
+      final releaseSupplementPath = p.join('path', 'to', 'supplement');
+
+      void setUpProjectRoot({String? flavor}) {
+        Directory(
+          p.join(projectRoot.path, appPath),
+        ).createSync(recursive: true);
+        Directory(
+          p.join(projectRoot.path, releaseSupplementPath),
+        ).createSync(recursive: true);
+      }
+
+      setUp(() {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath: any(named: 'artifactPath'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => ditto.archive(
+            source: any(named: 'source'),
+            destination: any(named: 'destination'),
+          ),
+        ).thenAnswer((invocation) async {
+          final destination = invocation.namedArguments[#destination] as String;
+          File(destination).createSync(recursive: true);
+        });
+        setUpProjectRoot();
+      });
+
+      test('exits with code 70 when creating app artifact fails', () async {
+        when(
+          () => codePushClient.createReleaseArtifact(
+            artifactPath: any(named: 'artifactPath'),
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          ),
+        ).thenThrow(Exception('oh no'));
+
+        await expectLater(
+          () async => runWithOverrides(
+            () => codePushClientWrapper.createMacosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appPath: p.join(projectRoot.path, appPath),
+              isCodesigned: false,
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
+              podfileLockHash: null,
+            ),
+          ),
+          exitsWithCode(ExitCode.software),
+        );
+      });
+
+      test('exits with code 70 when supplement artifact creation fails',
+          () async {
+        const error = 'something went wrong';
+        when(
+          () => codePushClient.createReleaseArtifact(
+            appId: any(named: 'appId'),
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('macos_supplement.zip'),
+            ),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+            hash: any(named: 'hash'),
+            canSideload: any(named: 'canSideload'),
+            podfileLockHash: any(named: 'podfileLockHash'),
+          ),
+        ).thenThrow(error);
+
+        await expectLater(
+          () async => runWithOverrides(
+            () async => codePushClientWrapper.createMacosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appPath: p.join(projectRoot.path, appPath),
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
+              isCodesigned: false,
+              podfileLockHash: null,
+            ),
+          ),
+          exitsWithCode(ExitCode.software),
+        );
+
+        verify(() => progress.fail(any(that: contains(error)))).called(1);
+      });
+
+      test('completes successfully when release artifact is created', () async {
+        await expectLater(
+          runWithOverrides(
+            () => codePushClientWrapper.createMacosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              appPath: p.join(projectRoot.path, appPath),
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
+              isCodesigned: false,
+              podfileLockHash: null,
+            ),
+          ),
+          completes,
+        );
       });
     });
 

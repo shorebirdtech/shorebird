@@ -92,6 +92,7 @@ void main() {
         registerFallbackValue(File(''));
         registerFallbackValue(const IosArchiveDiffer());
         registerFallbackValue(ReleasePlatform.ios);
+        registerFallbackValue(ShorebirdArtifact.genSnapshotIos);
         registerFallbackValue(Uri.parse('https://example.com'));
       });
 
@@ -366,6 +367,7 @@ void main() {
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
                 outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
                 additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenThrow(const FileSystemException('error'));
@@ -401,6 +403,7 @@ void main() {
               () => artifactBuilder.buildElfAotSnapshot(
                 appDillPath: any(named: 'appDillPath'),
                 outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
                 additionalArgs: any(named: 'additionalArgs'),
               ),
             ).thenAnswer(
@@ -442,6 +445,7 @@ void main() {
                 () => artifactBuilder.buildElfAotSnapshot(
                   appDillPath: any(named: 'appDillPath'),
                   outFilePath: any(named: 'outFilePath'),
+                  genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
                   additionalArgs: [
                     '--dwarf-stack-traces',
                     '--resolve-dwarf-paths',
@@ -644,12 +648,12 @@ void main() {
             ).thenReturn(postLinkerFlutterRevision);
             when(
               () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.analyzeSnapshot,
+                artifact: ShorebirdArtifact.analyzeSnapshotIos,
               ),
             ).thenReturn(analyzeSnapshotFile.path);
             when(
               () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.genSnapshot,
+                artifact: ShorebirdArtifact.genSnapshotIos,
               ),
             ).thenReturn(genSnapshotFile.path);
           });
@@ -680,7 +684,7 @@ void main() {
               setUp(() {
                 when(
                   () => shorebirdArtifacts.getArtifactPath(
-                    artifact: ShorebirdArtifact.analyzeSnapshot,
+                    artifact: ShorebirdArtifact.analyzeSnapshotIos,
                   ),
                 ).thenReturn('');
                 setUpProjectRootArtifacts();

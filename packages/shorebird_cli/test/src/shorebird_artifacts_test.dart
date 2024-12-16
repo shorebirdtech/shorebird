@@ -104,11 +104,11 @@ void main() {
         });
       });
 
-      test('returns correct path for gen_snapshot', () {
+      test('returns correct path for iOS gen_snapshot', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.genSnapshot,
+              artifact: ShorebirdArtifact.genSnapshotIos,
             ),
           ),
           equals(
@@ -119,17 +119,38 @@ void main() {
               'artifacts',
               'engine',
               'ios-release',
-              'gen_snapshot_arm64',
+              'gen_snapshot',
             ),
           ),
         );
       });
 
-      test('returns correct path for analyze_snapshot', () {
+      test('returns correct path for macOS gen_snapshot', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.analyzeSnapshot,
+              artifact: ShorebirdArtifact.genSnapshotMacOS,
+            ),
+          ),
+          equals(
+            p.join(
+              flutterDirectory.path,
+              'bin',
+              'cache',
+              'artifacts',
+              'engine',
+              'darwin-x64-release',
+              'gen_snapshot',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path for analyze_snapshot on iOS', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshotIos,
             ),
           ),
           equals(
@@ -141,6 +162,27 @@ void main() {
               'engine',
               'ios-release',
               'analyze_snapshot_arm64',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path for analyze_snapshot on macOS', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshotMacOS,
+            ),
+          ),
+          equals(
+            p.join(
+              flutterDirectory.path,
+              'bin',
+              'cache',
+              'artifacts',
+              'engine',
+              'darwin-x64-release',
+              'analyze_snapshot',
             ),
           ),
         );
@@ -200,11 +242,11 @@ void main() {
         );
       });
 
-      test('returns correct path for gen_snapshot', () {
+      test('returns correct path for gen_snapshot on iOS', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.genSnapshot,
+              artifact: ShorebirdArtifact.genSnapshotIos,
             ),
           ),
           equals(
@@ -219,11 +261,30 @@ void main() {
         );
       });
 
-      test('returns correct path for analyze_snapshot', () {
+      test('returns correct path for gen_snapshot on macOS', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.analyzeSnapshot,
+              artifact: ShorebirdArtifact.genSnapshotMacOS,
+            ),
+          ),
+          equals(
+            p.join(
+              localEngineSrcPath,
+              'out',
+              localEngine,
+              'clang_x64',
+              'gen_snapshot',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path for analyze_snapshot on iOS', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshotIos,
             ),
           ),
           equals(
@@ -233,6 +294,25 @@ void main() {
               localEngine,
               'clang_x64',
               'analyze_snapshot_arm64',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path for analyze_snapshot on macOS', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshotMacOS,
+            ),
+          ),
+          equals(
+            p.join(
+              localEngineSrcPath,
+              'out',
+              localEngine,
+              'clang_x64',
+              'analyze_snapshot',
             ),
           ),
         );

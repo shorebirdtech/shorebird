@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -38,6 +39,7 @@ void main() {
     const releaseId = 42;
     const androidArtifactId = 21;
     const iosArtifactId = 12;
+    const macosArtifactId = 13;
 
     late AppMetadata app;
     late AppleDevice appleDevice;
@@ -240,6 +242,7 @@ void main() {
       when(() => release.platformStatuses).thenReturn({
         ReleasePlatform.android: ReleaseStatus.active,
         ReleasePlatform.ios: ReleaseStatus.active,
+        ReleasePlatform.macos: ReleaseStatus.active,
       });
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => progress.fail(any())).thenReturn(null);
@@ -1510,8 +1513,148 @@ channel: ${DeploymentTrack.staging.channel}
       });
     });
 
+    group('macos', () {
+      const releaseArtifactUrl = 'https://example.com/sample.app';
+      const releasePlatform = ReleasePlatform.macos;
+
+      late Ditto ditto;
+      late ShorebirdProcess shorebirdProcess;
+      late Process process;
+
+      R runWithOverrides<R>(R Function() body) {
+        return HttpOverrides.runZoned(
+          () => runScoped(
+            body,
+            values: {
+              adbRef.overrideWith(() => adb),
+              artifactManagerRef.overrideWith(() => artifactManager),
+              authRef.overrideWith(() => auth),
+              bundletoolRef.overrideWith(() => bundletool),
+              cacheRef.overrideWith(() => cache),
+              codePushClientWrapperRef
+                  .overrideWith(() => codePushClientWrapper),
+              dittoRef.overrideWith(() => ditto),
+              httpClientRef.overrideWith(() => httpClient),
+              loggerRef.overrideWith(() => logger),
+              platformRef.overrideWith(() => platform),
+              processRef.overrideWith(() => shorebirdProcess),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+        );
+      }
+
+      setUp(() {
+        ditto = MockDitto();
+        shorebirdProcess = MockShorebirdProcess();
+        process = MockProcess();
+
+        when(() => releaseArtifact.id).thenReturn(macosArtifactId);
+        when(() => argResults['platform']).thenReturn(releasePlatform.name);
+        when(
+          () => artifactManager.downloadFile(any()),
+        ).thenAnswer((_) async => File(''));
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => ditto.extract(
+            source: any(named: 'source'),
+            destination: any(named: 'destination'),
+          ),
+        ).thenAnswer((_) async {});
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.macos: ReleaseStatus.active,
+        });
+        when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
+        when(() => platform.isMacOS).thenReturn(true);
+        when(() => shorebirdProcess.start(any(), any())).thenAnswer(
+          (_) async => process,
+        );
+      });
+
+      group('when querying for release artifact fails', () {
+        setUp(() {
+          final exception = Exception('oops');
+          when(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: appId,
+              releaseId: releaseId,
+              arch: 'app',
+              platform: releasePlatform,
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when downloading release artifact fails', () {
+        final exception = Exception('oops');
+        setUp(() {
+          when(
+            () => artifactManager.downloadFile(any()),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => progress.fail('$exception')).called(1);
+        });
+      });
+
+      group('when extracting release artifact fails', () {
+        final exception = Exception('oops');
+        setUp(() {
+          when(
+            () => ditto.extract(
+              source: any(named: 'source'),
+              destination: any(named: 'destination'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => progress.fail('$exception')).called(1);
+        });
+      });
+
+      group('when process completes with exit code 0', () {
+        setUp(() {
+          when(() => process.exitCode).thenAnswer((_) async => 0);
+        });
+
+        test('completes successfully', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => shorebirdProcess.start('open', any()),
+          ).called(1);
+        });
+      });
+    });
+
     group('when no platform is specified', () {
       const iosReleaseArtifactUrl = 'https://example.com/runner.app';
+      const macosReleaseArtifactUrl = 'https://example.com/sample.app';
       late Devicectl devicectl;
       late IOSDeploy iosDeploy;
 
@@ -1520,6 +1663,7 @@ channel: ${DeploymentTrack.staging.channel}
 
       late ReleaseArtifact iosReleaseArtifact;
       late ReleaseArtifact androidReleaseArtifact;
+      late ReleaseArtifact macosReleaseArtifact;
 
       late Adb adb;
       late Bundletool bundletool;
@@ -1557,6 +1701,7 @@ channel: ${DeploymentTrack.staging.channel}
         iosDeploy = MockIOSDeploy();
         iosReleaseArtifact = MockReleaseArtifact();
         androidReleaseArtifact = MockReleaseArtifact();
+        macosReleaseArtifact = MockReleaseArtifact();
 
         when(() => appleDevice.name).thenReturn('iPhone 12');
         when(() => appleDevice.udid).thenReturn('12345678-1234567890ABCDEF');
@@ -1593,6 +1738,11 @@ channel: ${DeploymentTrack.staging.channel}
         when(() => iosReleaseArtifact.id).thenReturn(iosArtifactId);
         when(() => iosReleaseArtifact.url).thenReturn(iosReleaseArtifactUrl);
 
+        when(() => macosReleaseArtifact.id).thenReturn(macosArtifactId);
+        when(
+          () => macosReleaseArtifact.url,
+        ).thenReturn(macosReleaseArtifactUrl);
+
         when(
           () => codePushClientWrapper.getReleaseArtifact(
             appId: any(named: 'appId'),
@@ -1602,9 +1752,19 @@ channel: ${DeploymentTrack.staging.channel}
           ),
         ).thenAnswer((_) async => iosReleaseArtifact);
 
+        when(
+          () => codePushClientWrapper.getReleaseArtifact(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: ReleasePlatform.macos,
+          ),
+        ).thenAnswer((_) async => macosReleaseArtifact);
+
         when(() => androidReleaseArtifact.id).thenReturn(androidArtifactId);
-        when(() => androidReleaseArtifact.url)
-            .thenReturn(androidReleaseArtifactUrl);
+        when(
+          () => androidReleaseArtifact.url,
+        ).thenReturn(androidReleaseArtifactUrl);
 
         when(
           () => codePushClientWrapper.getReleaseArtifact(

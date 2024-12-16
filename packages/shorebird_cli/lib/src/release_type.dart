@@ -15,6 +15,9 @@ enum ReleaseType {
   /// A full Flutter iOS app.
   ios,
 
+  /// A full Flutter macOS app.
+  macos,
+
   /// An iOS framework used in a hybrid app.
   iosFramework;
 
@@ -27,6 +30,8 @@ enum ReleaseType {
         return 'ios';
       case ReleaseType.iosFramework:
         return 'ios-framework';
+      case ReleaseType.macos:
+        return 'macos';
       case ReleaseType.aar:
         return 'aar';
     }
@@ -41,6 +46,8 @@ enum ReleaseType {
         return ReleasePlatform.android;
       case ReleaseType.ios:
         return ReleasePlatform.ios;
+      case ReleaseType.macos:
+        return ReleasePlatform.macos;
       case ReleaseType.iosFramework:
         return ReleasePlatform.ios;
     }

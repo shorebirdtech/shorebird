@@ -8,13 +8,14 @@ import 'package:shorebird_cli/src/archive_analysis/plist.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/release/releaser.dart';
+import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/metadata/metadata.dart';
-import 'package:shorebird_cli/src/platform/ios.dart';
+import 'package:shorebird_cli/src/logging/detail_progress.dart';
+import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
+import 'package:shorebird_cli/src/metadata/update_release_metadata.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -23,12 +24,12 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template ios_releaser}
-/// Functions to build and publish an iOS release.
+/// {@template macos_releaser}
+/// Functions to build and publish a macOS release.
 /// {@endtemplate}
-class IosReleaser extends Releaser {
-  /// {@macro ios_releaser}
-  IosReleaser({
+class MacosReleaser extends Releaser {
+  /// {@macro macos_releaser}
+  MacosReleaser({
     required super.argResults,
     required super.flavor,
     required super.target,
@@ -38,12 +39,10 @@ class IosReleaser extends Releaser {
   bool get codesign => argResults['codesign'] == true;
 
   @override
-  ReleaseType get releaseType => ReleaseType.ios;
+  ReleaseType get releaseType => ReleaseType.macos;
 
   @override
   Future<void> assertArgsAreValid() async {
-    argResults.assertAbsentOrValidPublicKey();
-
     if (argResults.wasParsed('release-version')) {
       logger.err(
         '''
@@ -58,7 +57,7 @@ To change the version of this release, change your app's version in your pubspec
       // Obfuscated releases break patching, so we don't support them.
       // See https://github.com/shorebirdtech/shorebird/issues/1619
       logger
-        ..err('Shorebird does not currently support obfuscation on iOS.')
+        ..err('Shorebird does not currently support obfuscation on macOS.')
         ..info(
           '''We hope to support obfuscation in the future. We are tracking this work at ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1619'))}.''',
         );
@@ -72,7 +71,7 @@ To change the version of this release, change your app's version in your pubspec
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
-        validators: doctor.iosCommandValidators,
+        validators: doctor.macosCommandValidators,
         supportedOperatingSystems: {Platform.macOS},
       );
     } on PreconditionFailedException catch (e) {
@@ -83,10 +82,10 @@ To change the version of this release, change your app's version in your pubspec
     if (flutterVersionArg != null) {
       final version =
           await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
-      if (version != null && version < minimumSupportedIosFlutterVersion) {
+      if (version != null && version < minimumSupportedMacosFlutterVersion) {
         logger.err(
           '''
-iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
+macOS releases are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         );
         throw ProcessExit(ExitCode.usage.code);
@@ -106,22 +105,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         );
     }
 
-    // Delete the Shorebird supplement directory if it exists.
-    // This is to ensure that we don't accidentally upload stale artifacts
-    // when building with older versions of Flutter.
-    final shorebirdSupplementDir =
-        artifactManager.getIosReleaseSupplementDirectory();
-    if (shorebirdSupplementDir?.existsSync() ?? false) {
-      shorebirdSupplementDir!.deleteSync(recursive: true);
-    }
-
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     final buildProgress = logger.detailProgress(
       'Building app bundle with Flutter $flutterVersionString',
     );
 
     try {
-      await artifactBuilder.buildIpa(
+      await artifactBuilder.buildMacos(
         codesign: codesign,
         flavor: flavor,
         target: target,
@@ -135,29 +125,22 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       throw ProcessExit(ExitCode.software.code);
     }
 
-    final xcarchiveDirectory = artifactManager.getXcarchiveDirectory();
-    if (xcarchiveDirectory == null) {
-      logger.err('Unable to find .xcarchive directory');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    final appDirectory = artifactManager.getIosAppDirectory(
-      xcarchiveDirectory: xcarchiveDirectory,
-    );
-
+    final appDirectory = artifactManager.getMacOSAppDirectory();
     if (appDirectory == null) {
       logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
     }
 
-    return xcarchiveDirectory;
+    return appDirectory;
   }
 
   @override
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    final plistFile = File(p.join(releaseArtifactRoot.path, 'Info.plist'));
+    final plistFile = File(
+      p.join(releaseArtifactRoot.path, 'Contents', 'Info.plist'),
+    );
     if (!plistFile.existsSync()) {
       logger.err('No Info.plist file found at ${plistFile.path}');
       throw ProcessExit(ExitCode.software.code);
@@ -178,25 +161,33 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     required Release release,
     required String appId,
   }) async {
-    final xcarchiveDirectory = artifactManager.getXcarchiveDirectory()!;
+    final appDirectory = artifactManager.getMacOSAppDirectory();
+    if (appDirectory == null) {
+      logger.err('Unable to find .app directory');
+      throw ProcessExit(ExitCode.software.code);
+    }
+    final supplementDirectory =
+        artifactManager.getMacosReleaseSupplementDirectory();
+    if (supplementDirectory == null) {
+      logger.err('Unable to find supplement directory');
+      throw ProcessExit(ExitCode.software.code);
+    }
+
     final String? podfileLockHash;
-    if (shorebirdEnv.iosPodfileLockFile.existsSync()) {
+    if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
       podfileLockHash = sha256
-          .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
+          .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
           .toString();
     } else {
       podfileLockHash = null;
     }
-    await codePushClientWrapper.createIosReleaseArtifacts(
+    await codePushClientWrapper.createMacosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
-      xcarchivePath: xcarchiveDirectory.path,
-      runnerPath: artifactManager
-          .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
-          .path,
+      appPath: appDirectory.path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
-      supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,
+      supplementPath: supplementDirectory.path,
     );
   }
 
@@ -211,32 +202,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       );
 
   @override
-  String get postReleaseInstructions {
-    final relativeArchivePath = p.relative(
-      artifactManager.getXcarchiveDirectory()!.path,
-    );
-    if (codesign) {
-      const ipaSearchString = 'build/ios/ipa/*.ipa';
-      return '''
+  String get postReleaseInstructions => '''
 
-Your next step is to upload your app to App Store Connect.
-
-To upload to the App Store, do one of the following:
-    1. Open ${lightCyan.wrap(relativeArchivePath)} in Xcode and use the "Distribute App" flow.
-    2. Drag and drop the ${lightCyan.wrap(ipaSearchString)} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
-    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $ipaSearchString --apiKey your_api_key --apiIssuer your_issuer_id')}.
-       See "man altool" for details about how to authenticate with the App Store Connect API key.
+macOS app created at ${artifactManager.getMacOSAppDirectory()!.path}.
 ''';
-    } else {
-      return '''
-
-Your next step is to submit the archive at ${lightCyan.wrap(relativeArchivePath)} to the App Store using Xcode.
-
-You can open the archive in Xcode by running:
-    ${lightCyan.wrap('open $relativeArchivePath')}
-
-${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
-''';
-    }
-  }
 }

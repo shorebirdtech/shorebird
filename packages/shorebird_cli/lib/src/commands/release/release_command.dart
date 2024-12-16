@@ -156,6 +156,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       return ExitCode.usage.code;
     }
 
+    if (results.releaseTypes.contains(ReleaseType.macos)) {
+      logger.warn(macosBetaWarning);
+    }
+
     final releaserFutures =
         results.releaseTypes.map(_resolveReleaser).map(createRelease);
 
@@ -178,6 +182,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         );
       case ReleaseType.ios:
         return IosReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
+      case ReleaseType.macos:
+        return MacosReleaser(
           argResults: results,
           flavor: flavor,
           target: target,

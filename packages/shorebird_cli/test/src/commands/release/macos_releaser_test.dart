@@ -12,21 +12,17 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/code_signer.dart';
-import 'package:shorebird_cli/src/commands/release/ios_releaser.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
-import 'package:shorebird_cli/src/os/operating_system_interface.dart';
-import 'package:shorebird_cli/src/platform/ios.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -38,26 +34,26 @@ import '../../mocks.dart';
 
 void main() {
   group(
-    IosReleaser,
+    MacosReleaser,
     () {
       late ArgResults argResults;
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
       late CodePushClientWrapper codePushClientWrapper;
-      late CodeSigner codeSigner;
+      // late CodeSigner codeSigner;
       late Directory projectRoot;
       late Doctor doctor;
       late Progress progress;
       late ShorebirdLogger logger;
-      late Ios ios;
-      late OperatingSystemInterface operatingSystemInterface;
+      // late OperatingSystemInterface operatingSystemInterface;
       late ShorebirdFlutterValidator flutterValidator;
-      late ShorebirdProcess shorebirdProcess;
+      // late ShorebirdProcess shorebirdProcess;
       late ShorebirdEnv shorebirdEnv;
       late ShorebirdFlutter shorebirdFlutter;
       late ShorebirdValidator shorebirdValidator;
       late XcodeBuild xcodeBuild;
-      late IosReleaser iosReleaser;
+
+      late MacosReleaser releaser;
 
       R runWithOverrides<R>(R Function() body) {
         return runScoped(
@@ -66,12 +62,12 @@ void main() {
             artifactBuilderRef.overrideWith(() => artifactBuilder),
             artifactManagerRef.overrideWith(() => artifactManager),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
-            codeSignerRef.overrideWith(() => codeSigner),
+            // codeSignerRef.overrideWith(() => codeSigner),
             doctorRef.overrideWith(() => doctor),
-            iosRef.overrideWith(() => ios),
+            // iosRef.overrideWith(() => ios),
             loggerRef.overrideWith(() => logger),
-            osInterfaceRef.overrideWith(() => operatingSystemInterface),
-            processRef.overrideWith(() => shorebirdProcess),
+            // osInterfaceRef.overrideWith(() => operatingSystemInterface),
+            // processRef.overrideWith(() => shorebirdProcess),
             shorebirdEnvRef.overrideWith(() => shorebirdEnv),
             shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
             shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -80,26 +76,20 @@ void main() {
         );
       }
 
-      setUpAll(() {
-        registerFallbackValue(Directory(''));
-        registerFallbackValue(File(''));
-        registerFallbackValue(ReleasePlatform.android);
-      });
-
       setUp(() {
         argResults = MockArgResults();
         artifactBuilder = MockArtifactBuilder();
         artifactManager = MockArtifactManager();
         codePushClientWrapper = MockCodePushClientWrapper();
-        codeSigner = MockCodeSigner();
+        // codeSigner = MockCodeSigner();
         doctor = MockDoctor();
         projectRoot = Directory.systemTemp.createTempSync();
-        operatingSystemInterface = MockOperatingSystemInterface();
+        // operatingSystemInterface = MockOperatingSystemInterface();
         progress = MockProgress();
         logger = MockShorebirdLogger();
-        ios = MockIos();
+        // ios = MockIos();
         flutterValidator = MockShorebirdFlutterValidator();
-        shorebirdProcess = MockShorebirdProcess();
+        // shorebirdProcess = MockShorebirdProcess();
         shorebirdEnv = MockShorebirdEnv();
         shorebirdFlutter = MockShorebirdFlutter();
         shorebirdValidator = MockShorebirdValidator();
@@ -110,7 +100,7 @@ void main() {
 
         when(() => logger.progress(any())).thenReturn(progress);
 
-        iosReleaser = IosReleaser(
+        releaser = MacosReleaser(
           argResults: argResults,
           flavor: null,
           target: null,
@@ -118,8 +108,8 @@ void main() {
       });
 
       group('releaseType', () {
-        test('is ios', () {
-          expect(iosReleaser.releaseType, ReleaseType.ios);
+        test('is macos', () {
+          expect(releaser.releaseType, ReleaseType.macos);
         });
       });
 
@@ -127,7 +117,7 @@ void main() {
         final flutterVersion = Version(3, 0, 0);
 
         setUp(() {
-          when(() => doctor.iosCommandValidators)
+          when(() => doctor.macosCommandValidators)
               .thenReturn([flutterValidator]);
           when(() => shorebirdFlutter.resolveFlutterVersion(any()))
               .thenAnswer((_) async => flutterVersion);
@@ -151,7 +141,7 @@ void main() {
 
           test('returns normally', () async {
             await expectLater(
-              () => runWithOverrides(iosReleaser.assertPreconditions),
+              () => runWithOverrides(releaser.assertPreconditions),
               returnsNormally,
             );
           });
@@ -176,7 +166,7 @@ void main() {
 
           test('exits with code 70', () async {
             await expectLater(
-              () => runWithOverrides(iosReleaser.assertPreconditions),
+              () => runWithOverrides(releaser.assertPreconditions),
               exitsWithCode(exception.exitCode),
             );
             verify(
@@ -208,14 +198,14 @@ void main() {
 
           test('logs error and exits with code 64', () async {
             await expectLater(
-              () => runWithOverrides(iosReleaser.assertPreconditions),
+              () => runWithOverrides(releaser.assertPreconditions),
               exitsWithCode(ExitCode.usage),
             );
 
             verify(
               () => logger.err(
                 '''
-iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
+macOS releases are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               ),
             ).called(1);
@@ -232,7 +222,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
           test('logs error and exits with usage err', () async {
             await expectLater(
-              () => runWithOverrides(iosReleaser.assertArgsAreValid),
+              () => runWithOverrides(releaser.assertArgsAreValid),
               exitsWithCode(ExitCode.usage),
             );
 
@@ -254,13 +244,13 @@ To change the version of this release, change your app's version in your pubspec
 
           test('logs error and exits', () async {
             await expectLater(
-              runWithOverrides(iosReleaser.assertArgsAreValid),
+              runWithOverrides(releaser.assertArgsAreValid),
               exitsWithCode(ExitCode.unavailable),
             );
 
             verify(
               () => logger.err(
-                'Shorebird does not currently support obfuscation on iOS.',
+                'Shorebird does not currently support obfuscation on macOS.',
               ),
             ).called(1);
             verify(
@@ -274,63 +264,23 @@ To change the version of this release, change your app's version in your pubspec
         group('when --obfuscate is not passed', () {
           test('returns normally', () async {
             await expectLater(
-              runWithOverrides(iosReleaser.assertArgsAreValid),
+              runWithOverrides(releaser.assertArgsAreValid),
               completes,
             );
-          });
-        });
-
-        group('when a public key is provided and it exists', () {
-          setUp(() {
-            final publicKeyFile = File(
-              p.join(
-                Directory.systemTemp.createTempSync().path,
-                'public-key.pem',
-              ),
-            )..writeAsStringSync('public key');
-            when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn(publicKeyFile.path);
-          });
-
-          test('returns normally', () async {
-            expect(
-              () => runWithOverrides(iosReleaser.assertArgsAreValid),
-              returnsNormally,
-            );
-          });
-        });
-
-        group('when the provided public key is a nonexistent file', () {
-          setUp(() {
-            when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn('non-existing-key.pem');
-          });
-
-          test('logs and exits with usage err', () async {
-            await expectLater(
-              () => runWithOverrides(iosReleaser.assertArgsAreValid),
-              exitsWithCode(ExitCode.usage),
-            );
-
-            verify(() => logger.err('No file found at non-existing-key.pem'))
-                .called(1);
           });
         });
       });
 
       group('buildReleaseArtifacts', () {
         const flutterVersionAndRevision = '3.10.6 (83305b5088)';
-        const base64PublicKey = 'base64PublicKey';
 
-        late Directory xcarchiveDirectory;
-        late Directory iosAppDirectory;
+        late Directory appDirectory;
 
         setUp(() {
-          xcarchiveDirectory = Directory.systemTemp.createTempSync();
-          iosAppDirectory = Directory.systemTemp.createTempSync();
           when(() => argResults['codesign']).thenReturn(true);
+
           when(
-            () => artifactBuilder.buildIpa(
+            () => artifactBuilder.buildMacos(
               codesign: any(named: 'codesign'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
@@ -338,23 +288,15 @@ To change the version of this release, change your app's version in your pubspec
               buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer(
-            (_) async => IpaBuildResult(
+            (_) async => MacosBuildResult(
               kernelFile: File('/path/to/app.dill'),
             ),
           );
 
+          appDirectory = Directory.systemTemp.createTempSync();
           when(
-            () => artifactManager.getIosAppDirectory(
-              xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
-            ),
-          ).thenReturn(iosAppDirectory);
-          when(
-            () => artifactManager.getXcarchiveDirectory(),
-          ).thenReturn(xcarchiveDirectory);
-
-          when(
-            () => codeSigner.base64PublicKey(any()),
-          ).thenReturn(base64PublicKey);
+            () => artifactManager.getMacOSAppDirectory(),
+          ).thenReturn(appDirectory);
 
           when(
             () => shorebirdEnv.getShorebirdProjectRoot(),
@@ -364,62 +306,13 @@ To change the version of this release, change your app's version in your pubspec
           ).thenAnswer((_) async => flutterVersionAndRevision);
         });
 
-        group('when a patch signing key path is provided', () {
-          setUp(() {
-            final patchSigningPublicKeyFile = File(
-              p.join(
-                Directory.systemTemp.createTempSync().path,
-                'patch-signing-public-key.pem',
-              ),
-            )..createSync(recursive: true);
-            when(
-              () => argResults[CommonArguments.publicKeyArg.name],
-            ).thenReturn(patchSigningPublicKeyFile.path);
-
-            when(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: any(named: 'args'),
-                base64PublicKey: any(named: 'base64PublicKey'),
-                buildProgress: any(named: 'buildProgress'),
-              ),
-            ).thenAnswer(
-              (_) async => IpaBuildResult(
-                kernelFile: File('/path/to/app.dill'),
-              ),
-            );
-          });
-
-          test(
-            'encodes the patch signing public key and forward it to buildIpa',
-            () async {
-              await runWithOverrides(
-                () => iosReleaser.buildReleaseArtifacts(),
-              );
-
-              verify(
-                () => artifactBuilder.buildIpa(
-                  codesign: any(named: 'codesign'),
-                  flavor: any(named: 'flavor'),
-                  target: any(named: 'target'),
-                  args: any(named: 'args'),
-                  base64PublicKey: base64PublicKey,
-                  buildProgress: any(named: 'buildProgress'),
-                ),
-              ).called(1);
-            },
-          );
-        });
-
         group('when not codesigning', () {
           setUp(() {
             when(() => argResults['codesign']).thenReturn(false);
           });
 
           test('logs warning about patching', () async {
-            await runWithOverrides(iosReleaser.buildReleaseArtifacts);
+            await runWithOverrides(releaser.buildReleaseArtifacts);
 
             verify(
               () => logger.info(
@@ -437,7 +330,7 @@ To change the version of this release, change your app's version in your pubspec
         group('when build fails', () {
           setUp(() {
             when(
-              () => artifactBuilder.buildIpa(
+              () => artifactBuilder.buildMacos(
                 codesign: any(named: 'codesign'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
@@ -449,7 +342,7 @@ To change the version of this release, change your app's version in your pubspec
 
           test('logs error and exits with code 70', () async {
             await expectLater(
-              () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
+              () => runWithOverrides(releaser.buildReleaseArtifacts),
               exitsWithCode(ExitCode.software),
             );
 
@@ -460,45 +353,21 @@ To change the version of this release, change your app's version in your pubspec
         });
 
         group('when build succeeds', () {
-          group('when stale build/ios/shorebird directory exists', () {
-            late Directory shorebirdSupplementDir;
-
-            setUp(() {
-              shorebirdSupplementDir = Directory(
-                p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
-              )..createSync(recursive: true);
-              when(
-                () => artifactManager.getIosReleaseSupplementDirectory(),
-              ).thenReturn(shorebirdSupplementDir);
-            });
-
-            test('deletes the directory', () async {
-              expect(shorebirdSupplementDir.existsSync(), isTrue);
-              await runWithOverrides(iosReleaser.buildReleaseArtifacts);
-              expect(shorebirdSupplementDir.existsSync(), isFalse);
-            });
-          });
-
           group('when platform was specified via arg results rest', () {
             setUp(() {
-              when(() => argResults.rest).thenReturn(['ios', '--verbose']);
+              when(() => argResults.rest).thenReturn(['macos', '--verbose']);
             });
 
             test('verifies artifacts exist and returns xcarchive path',
                 () async {
               expect(
-                await runWithOverrides(iosReleaser.buildReleaseArtifacts),
-                equals(xcarchiveDirectory),
+                await runWithOverrides(releaser.buildReleaseArtifacts),
+                equals(appDirectory),
               );
 
-              verify(() => artifactManager.getXcarchiveDirectory()).called(1);
+              verify(() => artifactManager.getMacOSAppDirectory()).called(1);
               verify(
-                () => artifactManager.getIosAppDirectory(
-                  xcarchiveDirectory: xcarchiveDirectory,
-                ),
-              ).called(1);
-              verify(
-                () => artifactBuilder.buildIpa(
+                () => artifactBuilder.buildMacos(
                   args: ['--verbose'],
                   buildProgress: any(named: 'buildProgress'),
                 ),
@@ -506,35 +375,29 @@ To change the version of this release, change your app's version in your pubspec
             });
           });
 
-          test('verifies artifacts exist and returns xcarchive path', () async {
+          test('verifies artifacts exist and returns app path', () async {
             expect(
-              await runWithOverrides(iosReleaser.buildReleaseArtifacts),
-              equals(xcarchiveDirectory),
+              await runWithOverrides(releaser.buildReleaseArtifacts),
+              equals(appDirectory),
             );
 
-            verify(() => artifactManager.getXcarchiveDirectory()).called(1);
-            verify(
-              () => artifactManager.getIosAppDirectory(
-                xcarchiveDirectory: xcarchiveDirectory,
-              ),
-            ).called(1);
+            verify(() => artifactManager.getMacOSAppDirectory()).called(1);
           });
         });
 
-        group('when xcarchive not found after build', () {
+        group('when app not found after build', () {
           setUp(() {
-            when(() => artifactManager.getXcarchiveDirectory())
-                .thenReturn(null);
+            when(() => artifactManager.getMacOSAppDirectory()).thenReturn(null);
           });
 
           test('logs message and exits with code 70', () async {
             await expectLater(
-              () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
+              () => runWithOverrides(releaser.buildReleaseArtifacts),
               exitsWithCode(ExitCode.software),
             );
 
             verify(
-              () => logger.err('Unable to find .xcarchive directory'),
+              () => logger.err('Unable to find .app directory'),
             ).called(1);
           });
         });
@@ -542,15 +405,13 @@ To change the version of this release, change your app's version in your pubspec
         group('when app not found after build', () {
           setUp(() {
             when(
-              () => artifactManager.getIosAppDirectory(
-                xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
-              ),
+              () => artifactManager.getMacOSAppDirectory(),
             ).thenReturn(null);
           });
 
           test('logs message and exits with code 70', () async {
             await expectLater(
-              () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
+              () => runWithOverrides(releaser.buildReleaseArtifacts),
               exitsWithCode(ExitCode.software),
             );
 
@@ -562,18 +423,22 @@ To change the version of this release, change your app's version in your pubspec
       });
 
       group('getReleaseVersion', () {
-        late Directory xcarchiveDirectory;
+        late Directory appDirectory;
 
         setUp(() {
-          xcarchiveDirectory = Directory.systemTemp.createTempSync();
+          appDirectory = Directory.systemTemp.createTempSync();
+          // The Info.plist file is expected to be in the app directory at
+          // Contents/Info.plist
+          Directory(p.join(appDirectory.path, 'Contents'))
+              .createSync(recursive: true);
         });
 
         group('when plist does not exist', () {
           test('logs error and exits', () async {
             await expectLater(
               () => runWithOverrides(
-                () => iosReleaser.getReleaseVersion(
-                  releaseArtifactRoot: xcarchiveDirectory,
+                () => releaser.getReleaseVersion(
+                  releaseArtifactRoot: appDirectory,
                 ),
               ),
               exitsWithCode(ExitCode.software),
@@ -581,7 +446,7 @@ To change the version of this release, change your app's version in your pubspec
 
             verify(
               () => logger.err(
-                '''No Info.plist file found at ${p.join(xcarchiveDirectory.path, 'Info.plist')}''',
+                '''No Info.plist file found at ${p.join(appDirectory.path, 'Contents', 'Info.plist')}''',
               ),
             ).called(1);
           });
@@ -590,7 +455,7 @@ To change the version of this release, change your app's version in your pubspec
         group('when plist does not contain version number', () {
           late File plist;
           setUp(() {
-            plist = File(p.join(xcarchiveDirectory.path, 'Info.plist'))
+            plist = File(p.join(appDirectory.path, 'Contents', 'Info.plist'))
               ..createSync()
               ..writeAsStringSync(
                 '''
@@ -610,8 +475,8 @@ To change the version of this release, change your app's version in your pubspec
           test('logs error and exits', () async {
             await expectLater(
               () => runWithOverrides(
-                () => iosReleaser.getReleaseVersion(
-                  releaseArtifactRoot: xcarchiveDirectory,
+                () => releaser.getReleaseVersion(
+                  releaseArtifactRoot: appDirectory,
                 ),
               ),
               exitsWithCode(ExitCode.software),
@@ -631,7 +496,7 @@ To change the version of this release, change your app's version in your pubspec
 
         group('when plist contains version number', () {
           setUp(() {
-            File(p.join(xcarchiveDirectory.path, 'Info.plist'))
+            File(p.join(appDirectory.path, 'Contents', 'Info.plist'))
               ..createSync()
               ..writeAsStringSync(
                 '''
@@ -668,8 +533,8 @@ To change the version of this release, change your app's version in your pubspec
           test('returns version number from plist', () async {
             expect(
               await runWithOverrides(
-                () => iosReleaser.getReleaseVersion(
-                  releaseArtifactRoot: xcarchiveDirectory,
+                () => releaser.getReleaseVersion(
+                  releaseArtifactRoot: appDirectory,
                 ),
               ),
               equals('1.2.3+1'),
@@ -698,17 +563,16 @@ To change the version of this release, change your app's version in your pubspec
           updatedAt: DateTime(2023),
         );
 
-        late Directory xcarchiveDirectory;
-        late Directory iosAppDirectory;
+        late Directory appDirectory;
         late Directory supplementDirectory;
         late File podfileLockFile;
 
         setUp(() {
           when(() => argResults['codesign']).thenReturn(codesign);
 
-          xcarchiveDirectory = Directory.systemTemp.createTempSync();
-          iosAppDirectory = Directory.systemTemp.createTempSync();
+          appDirectory = Directory.systemTemp.createTempSync();
           supplementDirectory = Directory.systemTemp.createTempSync();
+
           podfileLockFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
@@ -717,45 +581,87 @@ To change the version of this release, change your app's version in your pubspec
           )
             ..createSync(recursive: true)
             ..writeAsStringSync(podfileLockContent);
-          when(artifactManager.getXcarchiveDirectory)
-              .thenReturn(xcarchiveDirectory);
+
           when(
-            () => artifactManager.getIosAppDirectory(
-              xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
-            ),
-          ).thenReturn(iosAppDirectory);
+            () => artifactManager.getMacOSAppDirectory(),
+          ).thenReturn(appDirectory);
           when(
-            () => artifactManager.getIosReleaseSupplementDirectory(),
+            () => artifactManager.getMacosReleaseSupplementDirectory(),
           ).thenReturn(supplementDirectory);
           when(
-            () => codePushClientWrapper.createIosReleaseArtifacts(
+            () => codePushClientWrapper.createMacosReleaseArtifacts(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
-              xcarchivePath: any(named: 'xcarchivePath'),
-              runnerPath: any(named: 'runnerPath'),
+              appPath: any(named: 'appPath'),
               isCodesigned: any(named: 'isCodesigned'),
               podfileLockHash: any(named: 'podfileLockHash'),
               supplementPath: any(named: 'supplementPath'),
             ),
           ).thenAnswer((_) async => {});
-          when(() => shorebirdEnv.iosPodfileLockFile)
-              .thenReturn(podfileLockFile);
+
+          when(
+            () => shorebirdEnv.macosPodfileLockFile,
+          ).thenReturn(podfileLockFile);
+        });
+
+        group('when app directory does not exist', () {
+          setUp(() {
+            when(() => artifactManager.getMacOSAppDirectory()).thenReturn(null);
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => releaser.uploadReleaseArtifacts(
+                  release: release,
+                  appId: appId,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err('Unable to find .app directory'),
+            ).called(1);
+          });
+        });
+
+        group('when supplement directory does not exist', () {
+          setUp(() {
+            when(
+              () => artifactManager.getMacosReleaseSupplementDirectory(),
+            ).thenReturn(null);
+          });
+
+          test('logs error and exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => releaser.uploadReleaseArtifacts(
+                  release: release,
+                  appId: appId,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err('Unable to find supplement directory'),
+            ).called(1);
+          });
         });
 
         test('forwards call to codePushClientWrapper', () async {
           await runWithOverrides(
-            () => iosReleaser.uploadReleaseArtifacts(
+            () => releaser.uploadReleaseArtifacts(
               release: release,
               appId: appId,
             ),
           );
 
           verify(
-            () => codePushClientWrapper.createIosReleaseArtifacts(
+            () => codePushClientWrapper.createMacosReleaseArtifacts(
               appId: appId,
               releaseId: release.id,
-              xcarchivePath: xcarchiveDirectory.path,
-              runnerPath: iosAppDirectory.path,
+              appPath: appDirectory.path,
               isCodesigned: codesign,
               podfileLockHash:
                   '${sha256.convert(utf8.encode(podfileLockContent))}',
@@ -772,7 +678,7 @@ To change the version of this release, change your app's version in your pubspec
         const xcodeVersion = '123';
         const flutterVersionOverride = '1.2.3';
         const metadata = UpdateReleaseMetadata(
-          releasePlatform: ReleasePlatform.ios,
+          releasePlatform: ReleasePlatform.macos,
           flutterVersionOverride: flutterVersionOverride,
           environment: BuildEnvironmentMetadata(
             flutterRevision: flutterRevision,
@@ -792,11 +698,11 @@ To change the version of this release, change your app's version in your pubspec
         test('returns expected metadata', () async {
           expect(
             runWithOverrides(
-              () => iosReleaser.updatedReleaseMetadata(metadata),
+              () => releaser.updatedReleaseMetadata(metadata),
             ),
             completion(
               const UpdateReleaseMetadata(
-                releasePlatform: ReleasePlatform.ios,
+                releasePlatform: ReleasePlatform.macos,
                 flutterVersionOverride: flutterVersionOverride,
                 environment: BuildEnvironmentMetadata(
                   flutterRevision: flutterRevision,
@@ -813,57 +719,22 @@ To change the version of this release, change your app's version in your pubspec
       });
 
       group('postReleaseInstructions', () {
-        late Directory xcarchiveDirectory;
+        late Directory appDirectory;
 
         setUp(() {
-          xcarchiveDirectory = Directory.systemTemp.createTempSync();
-          when(() => artifactManager.getXcarchiveDirectory())
-              .thenReturn(xcarchiveDirectory);
+          appDirectory = Directory.systemTemp.createTempSync();
+          when(() => artifactManager.getMacOSAppDirectory())
+              .thenReturn(appDirectory);
         });
 
-        group('when codesigning', () {
-          setUp(() {
-            when(() => argResults['codesign']).thenReturn(true);
-          });
+        test('prints xcarchive upload steps', () {
+          expect(
+            runWithOverrides(() => releaser.postReleaseInstructions),
+            equals('''
 
-          test('prints ipa upload steps', () {
-            expect(
-              runWithOverrides(() => iosReleaser.postReleaseInstructions),
-              equals('''
-
-Your next step is to upload your app to App Store Connect.
-
-To upload to the App Store, do one of the following:
-    1. Open ${lightCyan.wrap(p.relative(xcarchiveDirectory.path))} in Xcode and use the "Distribute App" flow.
-    2. Drag and drop the ${lightCyan.wrap('build/ios/ipa/*.ipa')} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
-    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f ${p.relative('build/ios/ipa/*.ipa')} --apiKey your_api_key --apiIssuer your_issuer_id')}.
-       See "man altool" for details about how to authenticate with the App Store Connect API key.
+macOS app created at ${appDirectory.path}.
 '''),
-            );
-          });
-        });
-
-        group('when not codesigning', () {
-          setUp(() {
-            when(() => argResults['codesign']).thenReturn(false);
-          });
-
-          test('prints xcarchive upload steps', () {
-            expect(
-              runWithOverrides(() => iosReleaser.postReleaseInstructions),
-              equals(
-                '''
-
-Your next step is to submit the archive at ${lightCyan.wrap(p.relative(xcarchiveDirectory.path))} to the App Store using Xcode.
-
-You can open the archive in Xcode by running:
-    ${lightCyan.wrap('open ${p.relative(xcarchiveDirectory.path)}')}
-
-${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
-''',
-              ),
-            );
-          });
+          );
         });
       });
     },

@@ -21,6 +21,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -237,7 +238,11 @@ class PreviewCommand extends ShorebirdCommand {
           deviceId: deviceId,
           track: track,
         ),
-      ReleasePlatform.macos => throw UnimplementedError(),
+      ReleasePlatform.macos => installAndLaunchMacos(
+          appId: appId,
+          release: release,
+          track: track,
+        ),
       ReleasePlatform.ios => installAndLaunchIos(
           appId: appId,
           release: release,
@@ -278,6 +283,65 @@ class PreviewCommand extends ShorebirdCommand {
       choices: platformNames,
     );
     return ReleasePlatform.values.firstWhere((p) => p.displayName == platform);
+  }
+
+  Future<int> installAndLaunchMacos({
+    required String appId,
+    required Release release,
+    required DeploymentTrack track,
+  }) async {
+    const platform = ReleasePlatform.macos;
+    late Directory appDirectory;
+    late ReleaseArtifact releaseRunnerArtifact;
+
+    try {
+      releaseRunnerArtifact = await codePushClientWrapper.getReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        arch: 'app',
+        platform: platform,
+      );
+    } catch (e, s) {
+      logger
+        ..err('Error getting release artifact: $e')
+        ..detail('Stack trace: $s');
+      return ExitCode.software.code;
+    }
+
+    appDirectory = Directory(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        artifact: releaseRunnerArtifact,
+        platform: platform,
+        extension: 'app',
+      ),
+    );
+
+    if (!appDirectory.existsSync()) {
+      final downloadArtifactProgress = logger.progress('Downloading release');
+      try {
+        if (!appDirectory.existsSync()) {
+          appDirectory.createSync(recursive: true);
+        }
+
+        final archiveFile = await artifactManager.downloadFile(
+          Uri.parse(releaseRunnerArtifact.url),
+        );
+        await ditto.extract(
+          source: archiveFile.path,
+          destination: appDirectory.path,
+        );
+        downloadArtifactProgress.complete();
+      } catch (error) {
+        downloadArtifactProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
+    // TODO(felangel): wrap `open` and stream logs.
+    final proc = await process.start('open', ['-n', appDirectory.path]);
+    return proc.exitCode;
   }
 
   Future<int> installAndLaunchAndroid({

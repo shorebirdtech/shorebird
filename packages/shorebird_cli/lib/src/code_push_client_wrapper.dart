@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -616,6 +617,64 @@ aar artifact already exists, continuing...''',
     return thinnedArchiveDirectory;
   }
 
+  /// Registers and uploads macOS release artifacts to the Shorebird server.
+  Future<void> createMacosReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required String appPath,
+    required bool isCodesigned,
+    required String? podfileLockHash,
+    required String supplementPath,
+  }) async {
+    final createArtifactProgress = logger.progress('Uploading artifacts');
+    final tempDir = await Directory.systemTemp.createTemp();
+    final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
+    await ditto.archive(source: appPath, destination: zippedApp.path);
+
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedApp.path,
+        arch: 'app',
+        platform: ReleasePlatform.macos,
+        hash: sha256.convert(await zippedApp.readAsBytes()).toString(),
+        canSideload: true,
+        podfileLockHash: podfileLockHash,
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading app: $error',
+      );
+    }
+
+    final zippedSupplement = await Directory(supplementPath).zipToTempFile(
+      name: 'macos_supplement',
+    );
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedSupplement.path,
+        arch: 'macos_supplement',
+        platform: ReleasePlatform.macos,
+        hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
+        canSideload: false,
+        podfileLockHash: podfileLockHash,
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading release supplements: $error',
+      );
+    }
+
+    createArtifactProgress.complete();
+  }
+
   /// Uploads a release .xcarchive, .app, and supplementary files to the
   /// Shorebird server.
   Future<void> createIosReleaseArtifacts({
@@ -628,8 +687,9 @@ aar artifact already exists, continuing...''',
     required String? supplementPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-    final thinnedArchiveDirectory =
-        await _thinXcarchive(xcarchivePath: xcarchivePath);
+    final thinnedArchiveDirectory = await _thinXcarchive(
+      xcarchivePath: xcarchivePath,
+    );
     final zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
     try {
       await codePushClient.createReleaseArtifact(
@@ -652,6 +712,7 @@ aar artifact already exists, continuing...''',
 
     final zippedRunner = await Directory(runnerPath).zipToTempFile();
     try {
+      logger.detail('[archive] zipped runner.app to ${zippedRunner.path}');
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
