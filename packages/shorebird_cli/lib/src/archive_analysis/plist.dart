@@ -53,4 +53,8 @@ class Plist {
         ? releaseVersion
         : '$releaseVersion+$buildNumber';
   }
+
+  @override
+  String toString() =>
+      PropertyListSerialization.stringWithPropertyList(properties);
 }
