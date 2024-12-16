@@ -45,8 +45,6 @@ class MockAccessCredentials extends Mock implements AccessCredentials {}
 
 class MockAdb extends Mock implements Adb {}
 
-class MockAndroidArchiveDiffer extends Mock implements AndroidArchiveDiffer {}
-
 class MockAndroidSdk extends Mock implements AndroidSdk {}
 
 class MockAndroidStudio extends Mock implements AndroidStudio {}
@@ -110,8 +108,6 @@ class MockIOSDeploy extends Mock implements IOSDeploy {}
 class MockIOSink extends Mock implements IOSink {}
 
 class MockIos extends Mock implements Ios {}
-
-class MockIosArchiveDiffer extends Mock implements IosArchiveDiffer {}
 
 class MockJava extends Mock implements Java {}
 

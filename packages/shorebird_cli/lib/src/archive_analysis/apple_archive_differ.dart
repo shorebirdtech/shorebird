@@ -11,8 +11,11 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 import 'package:shorebird_cli/src/archive_analysis/macho.dart';
 
-/// {@template ios_archive_differ}
-/// Finds differences between two IPAs or zipped Xcframeworks.
+/// {@template apple_archive_differ}
+/// Finds differences between two IPAs, zipped Xcframeworks, or zipped macOS
+/// .apps. Note that, due to a quirk in how macOS .app zips are handled by
+/// package:archive, they must *not* include the top-level .app directory (i.e.,
+/// they should unzip to a Contents directory).
 ///
 /// Asset changes will be in the `Assets.car` file (which is a combination of
 /// the `.xcasset` catalogs in the Xcode project) and the `flutter_assets`
@@ -23,9 +26,9 @@ import 'package:shorebird_cli/src/archive_analysis/macho.dart';
 ///
 /// Dart changes will appear in the App.framework/App executable.
 /// {@endtemplate}
-class IosArchiveDiffer extends ArchiveDiffer {
-  /// {@macro ios_archive_differ}
-  const IosArchiveDiffer();
+class AppleArchiveDiffer extends ArchiveDiffer {
+  /// {@macro apple_archive_differ}
+  const AppleArchiveDiffer();
 
   String _hash(List<int> bytes) => sha256.convert(bytes).toString();
 
@@ -34,9 +37,14 @@ class IosArchiveDiffer extends ArchiveDiffer {
     RegExp(r'Flutter.framework/Flutter$'),
   };
 
-  /// The regex pattern for identifying app files within an archive.
-  static final RegExp appRegex = RegExp(
+  /// The regex pattern for identifying app files within an xcarchive.
+  static final RegExp xcFrameworkAppRegex = RegExp(
     r'^Products/Applications/[\w\-. ]+.app/[\w\- ]+$',
+  );
+
+  /// The regex pattern for identifying executable files within a macOS .app.
+  static final RegExp macosAppRegex = RegExp(
+    r'^Contents/MacOS/.+$',
   );
 
   /// Files that have been added, removed, or that have changed between the
@@ -95,7 +103,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
           (file) =>
               _binaryFilePatterns
                   .any((pattern) => pattern.hasMatch(file.name)) ||
-              appRegex.hasMatch(file.name),
+              xcFrameworkAppRegex.hasMatch(file.name),
         )
         .toList();
   }
@@ -170,5 +178,7 @@ class IosArchiveDiffer extends ArchiveDiffer {
       filePath.endsWith('App.framework/App');
 
   @override
-  bool isNativeFilePath(String filePath) => appRegex.hasMatch(filePath);
+  bool isNativeFilePath(String filePath) =>
+      xcFrameworkAppRegex.hasMatch(filePath) ||
+      macosAppRegex.hasMatch(filePath);
 }

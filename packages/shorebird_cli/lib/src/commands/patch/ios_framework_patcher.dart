@@ -6,7 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
-import 'package:shorebird_cli/src/archive_analysis/ios_archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -96,7 +96,7 @@ class IosFrameworkPatcher extends Patcher {
       patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArchive: patchArchive,
         releaseArchive: releaseArchive,
-        archiveDiffer: const IosArchiveDiffer(),
+        archiveDiffer: const AppleArchiveDiffer(),
         allowAssetChanges: allowAssetDiffs,
         allowNativeChanges: allowNativeDiffs,
       );
