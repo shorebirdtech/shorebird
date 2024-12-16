@@ -2002,7 +2002,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               releaseId: releaseId,
               appPath: p.join(projectRoot.path, appPath),
               isCodesigned: false,
-              supplementPath: null,
+              supplementPath: p.join(projectRoot.path, releaseSupplementPath),
               podfileLockHash: null,
             ),
           ),

@@ -434,50 +434,100 @@ void main() {
       const size = 5;
       const canSideload = true;
 
-      test('makes the correct request', () async {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final fixture = File(path.join(tempDir.path, 'release.txt'))
-          ..createSync()
-          ..writeAsStringSync('hello');
-        final expectedRequest = CreateReleaseArtifactRequest(
-          arch: arch,
-          platform: platform,
-          hash: hash,
-          size: size,
-          canSideload: canSideload,
-          filename: 'release.txt',
-          podfileLockHash: podfileLockHash,
-        );
-
-        try {
-          await codePushClient.createReleaseArtifact(
-            appId: appId,
-            artifactPath: fixture.path,
-            releaseId: releaseId,
+      group('when podfileLockHash is provided', () {
+        test('makes the correct request', () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync()
+            ..writeAsStringSync('hello');
+          final expectedRequest = CreateReleaseArtifactRequest(
             arch: arch,
             platform: platform,
             hash: hash,
+            size: size,
             canSideload: canSideload,
+            filename: 'release.txt',
+            podfileLockHash: null,
+          );
+
+          try {
+            await codePushClient.createReleaseArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              releaseId: releaseId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+              canSideload: canSideload,
+              podfileLockHash: null,
+            );
+          } catch (_) {}
+
+          final request = verify(() => httpClient.send(captureAny()))
+              .captured
+              .single as http.MultipartRequest;
+          expect(request.method, equals('POST'));
+          expect(
+            request.url,
+            equals(v1('apps/$appId/releases/$releaseId/artifacts')),
+          );
+          expect(request.hasHeaders(expectedHeaders), isTrue);
+          expect(
+            MapEquality<String, dynamic>().equals(
+              request.fields,
+              expectedRequest.toJson(),
+            ),
+            isTrue,
+          );
+        });
+      });
+
+      group('when podfileLockHash is null', () {
+        test('makes the correct request', () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync()
+            ..writeAsStringSync('hello');
+          final expectedRequest = CreateReleaseArtifactRequest(
+            arch: arch,
+            platform: platform,
+            hash: hash,
+            size: size,
+            canSideload: canSideload,
+            filename: 'release.txt',
             podfileLockHash: podfileLockHash,
           );
-        } catch (_) {}
 
-        final request = verify(() => httpClient.send(captureAny()))
-            .captured
-            .single as http.MultipartRequest;
-        expect(request.method, equals('POST'));
-        expect(
-          request.url,
-          equals(v1('apps/$appId/releases/$releaseId/artifacts')),
-        );
-        expect(request.hasHeaders(expectedHeaders), isTrue);
-        expect(
-          MapEquality<String, dynamic>().equals(
-            request.fields,
-            expectedRequest.toJson(),
-          ),
-          isTrue,
-        );
+          try {
+            await codePushClient.createReleaseArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              releaseId: releaseId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+              canSideload: canSideload,
+              podfileLockHash: podfileLockHash,
+            );
+          } catch (_) {}
+
+          final request = verify(() => httpClient.send(captureAny()))
+              .captured
+              .single as http.MultipartRequest;
+          expect(request.method, equals('POST'));
+          expect(
+            request.url,
+            equals(v1('apps/$appId/releases/$releaseId/artifacts')),
+          );
+          expect(request.hasHeaders(expectedHeaders), isTrue);
+          expect(
+            MapEquality<String, dynamic>().equals(
+              request.fields,
+              expectedRequest.toJson(),
+            ),
+            isTrue,
+          );
+        });
       });
 
       test('throws an exception if the http request fails (unknown)', () async {

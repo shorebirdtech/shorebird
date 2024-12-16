@@ -5,7 +5,9 @@ enum ReleasePlatform {
   // ignore: public_member_api_docs
   macos('macOS'),
   // ignore: public_member_api_docs
-  ios('iOS');
+  ios('iOS'),
+  // ignore: public_member_api_docs
+  windows('Windows');
 
   const ReleasePlatform(this.displayName);
 

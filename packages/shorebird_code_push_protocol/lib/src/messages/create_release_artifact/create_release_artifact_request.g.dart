@@ -45,11 +45,13 @@ Map<String, dynamic> _$CreateReleaseArtifactRequestToJson(
       'can_sideload':
           CreateReleaseArtifactRequest._parseBoolToString(instance.canSideload),
       'size': CreateReleaseArtifactRequest._parseIntToString(instance.size),
-      'podfile_lock_hash': instance.podfileLockHash,
+      if (instance.podfileLockHash case final value?)
+        'podfile_lock_hash': value,
     };
 
 const _$ReleasePlatformEnumMap = {
   ReleasePlatform.android: 'android',
   ReleasePlatform.macos: 'macos',
   ReleasePlatform.ios: 'ios',
+  ReleasePlatform.windows: 'windows',
 };
