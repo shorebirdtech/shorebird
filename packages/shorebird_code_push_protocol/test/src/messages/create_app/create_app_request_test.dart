@@ -4,7 +4,10 @@ import 'package:test/test.dart';
 void main() {
   group(CreateAppRequest, () {
     test('can be (de)serialized', () {
-      const request = CreateAppRequest(displayName: 'display_name');
+      const request = CreateAppRequest(
+        displayName: 'display_name',
+        organizationId: 123,
+      );
       expect(
         CreateAppRequest.fromJson(request.toJson()).toJson(),
         equals(request.toJson()),

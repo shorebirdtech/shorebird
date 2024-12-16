@@ -2,17 +2,17 @@
 
 // ignore_for_file: implicit_dynamic_parameter, require_trailing_commas, cast_nullable_to_non_nullable, lines_longer_than_80_chars
 
-part of 'user.dart';
+part of 'private_user.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'User',
+PrivateUser _$PrivateUserFromJson(Map<String, dynamic> json) => $checkedCreate(
+      'PrivateUser',
       json,
       ($checkedConvert) {
-        final val = User(
+        final val = PrivateUser(
           id: $checkedConvert('id', (v) => (v as num).toInt()),
           email: $checkedConvert('email', (v) => v as String),
           jwtIssuer: $checkedConvert('jwt_issuer', (v) => v as String),
@@ -35,7 +35,8 @@ User _$UserFromJson(Map<String, dynamic> json) => $checkedCreate(
       },
     );
 
-Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
+Map<String, dynamic> _$PrivateUserToJson(PrivateUser instance) =>
+    <String, dynamic>{
       'id': instance.id,
       'email': instance.email,
       'display_name': instance.displayName,

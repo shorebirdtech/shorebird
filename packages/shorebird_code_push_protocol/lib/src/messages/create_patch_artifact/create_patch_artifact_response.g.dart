@@ -43,5 +43,7 @@ Map<String, dynamic> _$CreatePatchArtifactResponseToJson(
 
 const _$ReleasePlatformEnumMap = {
   ReleasePlatform.android: 'android',
+  ReleasePlatform.macos: 'macos',
   ReleasePlatform.ios: 'ios',
+  ReleasePlatform.windows: 'windows',
 };

@@ -2,13 +2,10 @@
 
 import 'dart:io';
 
-import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:xml/xml.dart';
 
@@ -31,7 +28,8 @@ To add iOS, run "flutter create . --platforms ios"''';
 }
 
 /// {@template export_method}
-/// The method used to export the IPA.
+/// The method used to export the IPA. This is passed to the Flutter tool.
+/// Acceptable values can be found by running `flutter build ipa -h`.
 /// {@endtemplate}
 enum ExportMethod {
   appStore('app-store', 'Upload to the App Store'),
@@ -84,43 +82,6 @@ final iosRef = create(Ios.new);
 Ios get ios => read(iosRef);
 
 class Ios {
-  File exportOptionsPlistFromArgs(ArgResults results) {
-    final exportPlistArg =
-        results[CommonArguments.exportOptionsPlistArg.name] as String?;
-    final exportMethodArgExists =
-        results.options.contains(CommonArguments.exportMethodArg.name);
-    if (exportPlistArg != null &&
-        exportMethodArgExists &&
-        results.wasParsed(CommonArguments.exportMethodArg.name)) {
-      throw ArgumentError(
-        '''Cannot specify both --${CommonArguments.exportMethodArg.name} and --${CommonArguments.exportOptionsPlistArg.name}.''',
-      );
-    }
-
-    final File? exportOptionsPlist;
-    if (exportPlistArg != null) {
-      exportOptionsPlist = File(exportPlistArg);
-      _validateExportOptionsPlist(exportOptionsPlist);
-      return exportOptionsPlist;
-    }
-
-    final ExportMethod? exportMethod;
-    if (exportMethodArgExists &&
-        results.wasParsed(CommonArguments.exportMethodArg.name)) {
-      exportMethod = ExportMethod.values.firstWhere(
-        (element) =>
-            element.argName ==
-            results[CommonArguments.exportMethodArg.name] as String,
-      );
-    } else {
-      exportMethod = null;
-    }
-
-    return createExportOptionsPlist(
-      exportMethod: exportMethod ?? ExportMethod.appStore,
-    );
-  }
-
   /// Returns the set of flavors for the iOS project, if the project has an
   /// iOS platform configured.
   Set<String>? flavors() {
@@ -180,61 +141,5 @@ class Ios {
         .any(
           (e) => e.localName == 'wasCreatedForAppExtension' && e.value == 'YES',
         );
-  }
-
-  /// Creates an ExportOptions.plist file, which is used to tell xcodebuild to
-  /// not manage the app version and build number. If we don't do this, then
-  /// xcodebuild will increment the build number if it detects an App Store
-  /// Connect build with the same version and build number. This is a problem
-  /// for us when patching, as patches need to have the same version and build
-  /// number as the release they are patching.
-  /// See
-  /// https://developer.apple.com/forums/thread/690647?answerId=689925022#689925022
-  File createExportOptionsPlist({
-    ExportMethod? exportMethod,
-  }) {
-    exportMethod ??= ExportMethod.appStore;
-    final plistContents = '''
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>manageAppVersionAndBuildNumber</key>
-  <false/>
-  <key>signingStyle</key>
-  <string>automatic</string>
-  <key>uploadBitcode</key>
-  <false/>
-  <key>method</key>
-  <string>${exportMethod.argName}</string>
-</dict>
-</plist>
-''';
-    final tempDir = Directory.systemTemp.createTempSync();
-    final exportPlistFile = File(p.join(tempDir.path, 'ExportOptions.plist'))
-      ..createSync(recursive: true)
-      ..writeAsStringSync(plistContents);
-    return exportPlistFile;
-  }
-
-  /// Verifies that [exportOptionsPlistFile] exists and sets
-  /// manageAppVersionAndBuildNumber to false, which prevents Xcode from
-  /// changing the version number out from under us.
-  ///
-  /// Throws an exception if validation fails, exits normally if validation
-  /// succeeds.
-  void _validateExportOptionsPlist(File exportOptionsPlistFile) {
-    if (!exportOptionsPlistFile.existsSync()) {
-      throw FileSystemException(
-        '''Export options plist file ${exportOptionsPlistFile.path} does not exist''',
-      );
-    }
-
-    final plist = Plist(file: exportOptionsPlistFile);
-    if (plist.properties['manageAppVersionAndBuildNumber'] != false) {
-      throw InvalidExportOptionsPlistException(
-        '''Export options plist ${exportOptionsPlistFile.path} does not set manageAppVersionAndBuildNumber to false. This is required for shorebird to work.''',
-      );
-    }
   }
 }

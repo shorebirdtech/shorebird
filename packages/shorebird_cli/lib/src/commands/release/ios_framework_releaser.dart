@@ -11,9 +11,11 @@ import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
+import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -62,11 +64,34 @@ class IosFrameworkReleaser extends Releaser {
     } on PreconditionFailedException catch (e) {
       throw ProcessExit(e.exitCode.code);
     }
+
+    final flutterVersionArg = argResults['flutter-version'] as String?;
+    if (flutterVersionArg != null) {
+      final version =
+          await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
+      if (version != null && version < minimumSupportedIosFlutterVersion) {
+        logger.err(
+          '''
+iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
+        );
+        throw ProcessExit(ExitCode.usage.code);
+      }
+    }
   }
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
+
+    // Delete the Shorebird supplement directory if it exists.
+    // This is to ensure that we don't accidentally upload stale artifacts
+    // when building with older versions of Flutter.
+    final shorebirdSupplementDir =
+        artifactManager.getIosReleaseSupplementDirectory();
+    if (shorebirdSupplementDir?.existsSync() ?? false) {
+      shorebirdSupplementDir!.deleteSync(recursive: true);
+    }
 
     final buildProgress = logger.progress(
       'Building iOS framework with Flutter $flutterVersionString',
@@ -128,6 +153,7 @@ class IosFrameworkReleaser extends Releaser {
       appId: appId,
       releaseId: release.id,
       appFrameworkPath: p.join(releaseDirectory.path, 'App.xcframework'),
+      supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,
     );
   }
 

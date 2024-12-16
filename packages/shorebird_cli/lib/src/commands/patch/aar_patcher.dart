@@ -11,7 +11,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -29,6 +29,7 @@ class AarPatcher extends Patcher {
   /// {@macro aar_patcher}
   AarPatcher({
     required super.argResults,
+    required super.argParser,
     required super.flavor,
     required super.target,
   });
@@ -104,6 +105,7 @@ class AarPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? supplementArtifact,
   }) async {
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       appId: appId,

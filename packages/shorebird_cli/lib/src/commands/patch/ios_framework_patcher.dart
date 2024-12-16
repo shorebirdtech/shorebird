@@ -6,7 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
-import 'package:shorebird_cli/src/archive_analysis/ios_archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -15,7 +15,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -34,9 +34,16 @@ class IosFrameworkPatcher extends Patcher {
   /// {@macro ios_framework_patcher}
   IosFrameworkPatcher({
     required super.argResults,
+    required super.argParser,
     required super.flavor,
     required super.target,
   });
+
+  String get _patchClassTableLinkInfoFile =>
+      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.ct.link');
+
+  String get _patchClassTableLinkDebugInfoPath =>
+      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.class_table.json');
 
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
@@ -44,6 +51,9 @@ class IosFrameworkPatcher extends Patcher {
 
   @override
   String get primaryReleaseArtifactArch => 'xcframework';
+
+  @override
+  String? get supplementaryReleaseArtifactArch => 'ios_framework_supplement';
 
   @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
@@ -86,7 +96,7 @@ class IosFrameworkPatcher extends Patcher {
       patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
         localArchive: patchArchive,
         releaseArchive: releaseArchive,
-        archiveDiffer: const IosArchiveDiffer(),
+        archiveDiffer: const AppleArchiveDiffer(),
         allowAssetChanges: allowAssetDiffs,
         allowNativeChanges: allowNativeDiffs,
       );
@@ -108,6 +118,9 @@ class IosFrameworkPatcher extends Patcher {
       throw ProcessExit(ExitCode.software.code);
     }
     try {
+      if (splitDebugInfoPath != null) {
+        Directory(splitDebugInfoPath!).createSync(recursive: true);
+      }
       await artifactBuilder.buildElfAotSnapshot(
         appDillPath: buildResult.kernelFile.path,
         outFilePath: p.join(
@@ -115,6 +128,8 @@ class IosFrameworkPatcher extends Patcher {
           'build',
           'out.aot',
         ),
+        genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+        additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       buildProgress.fail('$error');
@@ -140,17 +155,45 @@ class IosFrameworkPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? supplementArtifact,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
-    final tempDir = Directory.systemTemp.createTempSync();
-    await artifactManager.extractZip(
-      zipFile: releaseArtifact,
-      outputDirectory: tempDir,
-    );
-    final releaseXcframeworkPath = tempDir.path;
+    late final String releaseXcframeworkPath;
+    {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: releaseArtifact,
+        outputDirectory: tempDir,
+      );
+      releaseXcframeworkPath = tempDir.path;
+    }
 
-    unzipProgress
-        .complete('Extracted release artifact to $releaseXcframeworkPath');
+    File? releaseClassTableLinkInfoFile;
+    File? releaseClassTableLinkDebugInfoFile;
+    if (supplementArtifact != null) {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: supplementArtifact,
+        outputDirectory: tempDir,
+      );
+      releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));
+      if (!releaseClassTableLinkInfoFile.existsSync()) {
+        logger.err('Unable to find class table link info file');
+        throw ProcessExit(ExitCode.software.code);
+      }
+
+      releaseClassTableLinkDebugInfoFile = File(
+        p.join(tempDir.path, 'App.class_table.json'),
+      );
+      if (!releaseClassTableLinkDebugInfoFile.existsSync()) {
+        logger.err('Unable to find class table link debug info file');
+        throw ProcessExit(ExitCode.software.code);
+      }
+    }
+
+    unzipProgress.complete(
+      'Extracted release artifact to $releaseXcframeworkPath',
+    );
     final releaseArtifactFile = File(
       p.join(
         releaseXcframeworkPath,
@@ -169,6 +212,29 @@ class IosFrameworkPatcher extends Patcher {
     );
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
+      // If we're using a newer version of the linker, we need to also copy the
+      // necessary class table link information alongside the snapshots.
+      if (releaseClassTableLinkInfoFile != null &&
+          releaseClassTableLinkDebugInfoFile != null) {
+        // Copy the release's class table link info file next to the release
+        // snapshot so that it can be used to generate a patch.
+        releaseClassTableLinkInfoFile.copySync(
+          p.join(releaseArtifactFile.parent.path, 'App.ct.link'),
+        );
+        releaseClassTableLinkDebugInfoFile.copySync(
+          p.join(releaseArtifactFile.parent.path, 'App.class_table.json'),
+        );
+
+        // Copy the patch's class table link info file to the build directory
+        // so that it can be used to generate a patch.
+        File(_patchClassTableLinkInfoFile).copySync(
+          p.join(buildDirectory.path, 'out.ct.link'),
+        );
+        File(_patchClassTableLinkDebugInfoPath).copySync(
+          p.join(buildDirectory.path, 'out.class_table.json'),
+        );
+      }
+
       await _runLinker(
         aotSnapshot: aotSnapshotFile,
         releaseArtifact: releaseArtifactFile,
@@ -181,7 +247,7 @@ class IosFrameworkPatcher extends Patcher {
     if (await aotTools.isGeneratePatchDiffBaseSupported()) {
       final patchBaseProgress = logger.progress('Generating patch diff base');
       final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
+        artifact: ShorebirdArtifact.analyzeSnapshotIos,
       );
 
       final File patchBaseFile;
@@ -248,7 +314,7 @@ class IosFrameworkPatcher extends Patcher {
 
     final analyzeSnapshot = File(
       shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
+        artifact: ShorebirdArtifact.analyzeSnapshotIos,
       ),
     );
 
@@ -258,7 +324,7 @@ class IosFrameworkPatcher extends Patcher {
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
-      artifact: ShorebirdArtifact.genSnapshot,
+      artifact: ShorebirdArtifact.genSnapshotIos,
     );
 
     final linkProgress = logger.progress('Linking AOT files');
@@ -271,6 +337,7 @@ class IosFrameworkPatcher extends Patcher {
         kernel: _appDillCopyPath,
         outputPath: _vmcodeOutputPath,
         workingDirectory: buildDirectory.path,
+        additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');

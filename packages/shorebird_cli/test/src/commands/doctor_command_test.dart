@@ -9,7 +9,8 @@ import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -30,6 +31,8 @@ void main() {
     late Doctor doctor;
     late Gradlew gradlew;
     late Java java;
+    late NetworkChecker networkChecker;
+    late Progress progress;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
@@ -46,6 +49,7 @@ void main() {
           gradlewRef.overrideWith(() => gradlew),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
+          networkCheckerRef.overrideWith(() => networkChecker),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
@@ -61,6 +65,8 @@ void main() {
       logsDirectory = Directory.systemTemp.createTempSync('shorebird_logs');
       java = MockJava();
       logger = MockShorebirdLogger();
+      networkChecker = MockNetworkChecker();
+      progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       validator = MockValidator();
@@ -72,6 +78,16 @@ void main() {
       when(() => androidSdk.adbPath).thenReturn(null);
       when(() => gradlew.exists(any())).thenReturn(false);
       when(() => java.home).thenReturn(null);
+      when(() => logger.progress(any())).thenReturn(progress);
+      when(
+        () => networkChecker.checkReachability(),
+      ).thenAnswer((_) async => {});
+      when(
+        () => networkChecker.performGCPDownloadSpeedTest(),
+      ).thenAnswer((_) async => 1.0);
+      when(
+        () => networkChecker.performGCPUploadSpeedTest(),
+      ).thenAnswer((_) async => 1.0);
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
@@ -104,8 +120,8 @@ Engine • revision $shorebirdEngineRevision
     });
 
     test(
-        'prints shorebird version, flutter revision, '
-        'flutter version, and engine revision', () async {
+        '''prints shorebird version, flutter revision, flutter version, and engine revision''',
+        () async {
       const flutterVersion = '1.2.3';
       when(
         () => shorebirdFlutter.getVersionString(),
@@ -120,11 +136,23 @@ Flutter $flutterVersion • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 '''),
       ).called(1);
+      verify(() => networkChecker.checkReachability()).called(1);
+      verifyNever(() => networkChecker.performGCPDownloadSpeedTest());
+      verifyNever(() => networkChecker.performGCPUploadSpeedTest());
     });
 
     group('--verbose', () {
-      test('prints additional information (not detected)', () async {
+      setUp(() {
         when(() => argResults['verbose']).thenReturn(true);
+        when(
+          () => networkChecker.performGCPDownloadSpeedTest(),
+        ).thenAnswer((_) async => 1.987654321);
+        when(
+          () => networkChecker.performGCPUploadSpeedTest(),
+        ).thenAnswer((_) async => 1.23456789);
+      });
+
+      test('prints additional information (not detected)', () async {
         await runWithOverrides(command.run);
 
         final notDetectedText = red.wrap('not detected');
@@ -152,7 +180,6 @@ Android Toolchain
       });
 
       test('prints additional information (detected)', () async {
-        when(() => argResults['verbose']).thenReturn(true);
         when(() => androidStudio.path).thenReturn('test-studio-path');
         when(() => androidSdk.path).thenReturn('test-sdk-path');
         when(() => androidSdk.adbPath).thenReturn('test-adb-path');
@@ -197,13 +224,22 @@ Android Toolchain
 ''',
           ),
         );
+
+        verify(() => networkChecker.checkReachability()).called(1);
+        verify(() => networkChecker.performGCPDownloadSpeedTest()).called(1);
+        verify(
+          () => progress.complete('GCP Download Speed: 1.99 MB/s'),
+        ).called(1);
+        verify(() => networkChecker.performGCPUploadSpeedTest()).called(1);
+        verify(
+          () => progress.complete('GCP Upload Speed: 1.23 MB/s'),
+        ).called(1);
       });
 
       group('when a gradlew executable exists', () {
         setUp(() {
           when(() => gradlew.exists(any())).thenReturn(true);
           when(() => gradlew.version(any())).thenAnswer((_) async => '7.6.3');
-          when(() => argResults['verbose']).thenReturn(true);
           when(() => androidStudio.path).thenReturn('test-studio-path');
           when(() => androidSdk.path).thenReturn('test-sdk-path');
           when(() => androidSdk.adbPath).thenReturn('test-adb-path');
@@ -250,6 +286,104 @@ Android Toolchain
 ''',
             ),
           );
+        });
+      });
+
+      group('when gcp upload speed test fails', () {
+        setUp(() {
+          const flutterVersion = '1.2.3';
+          when(
+            () => shorebirdFlutter.getVersionString(),
+          ).thenAnswer((_) async => flutterVersion);
+        });
+
+        group('with NetworkCheckerException', () {
+          setUp(() {
+            when(
+              () => networkChecker.performGCPUploadSpeedTest(),
+            ).thenThrow(const NetworkCheckerException('oops'));
+          });
+
+          test('logs error as detail, continues', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              completes,
+            );
+
+            verify(
+              () => progress.fail('GCP upload speed test failed: oops'),
+            ).called(1);
+          });
+        });
+
+        group('with generic Exception', () {
+          setUp(() {
+            when(
+              () => networkChecker.performGCPUploadSpeedTest(),
+            ).thenThrow(Exception('oops'));
+          });
+
+          test('logs error as detail, continues', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              completes,
+            );
+
+            verify(
+              () => progress.fail(
+                'GCP upload speed test failed: Exception: oops',
+              ),
+            ).called(1);
+          });
+        });
+      });
+
+      group('when gcp download speed test fails', () {
+        setUp(() {
+          const flutterVersion = '1.2.3';
+          when(
+            () => shorebirdFlutter.getVersionString(),
+          ).thenAnswer((_) async => flutterVersion);
+        });
+
+        group('with NetworkCheckerException', () {
+          setUp(() {
+            when(
+              () => networkChecker.performGCPDownloadSpeedTest(),
+            ).thenThrow(const NetworkCheckerException('oops'));
+          });
+
+          test('logs error as detail, continues', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              completes,
+            );
+
+            verify(
+              () => progress.fail('GCP download speed test failed: oops'),
+            ).called(1);
+          });
+        });
+
+        group('with generic Exception', () {
+          setUp(() {
+            when(
+              () => networkChecker.performGCPDownloadSpeedTest(),
+            ).thenThrow(Exception('oops'));
+          });
+
+          test('logs error as detail, continues', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              completes,
+            );
+
+            verify(
+              () => progress.fail(
+                'GCP download speed test failed: Exception: oops',
+              ),
+            ).called(1);
+          });
         });
       });
     });

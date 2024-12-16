@@ -6,7 +6,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patches/patches.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
@@ -25,7 +25,7 @@ void main() {
     final stableChannel = Channel(
       id: 0,
       appId: appId,
-      name: DeploymentTrack.production.channel,
+      name: DeploymentTrack.stable.channel,
     );
     final release = Release(
       id: 0,
@@ -135,7 +135,7 @@ void main() {
         final prodPatch = ReleasePatch(
           id: 0,
           number: 1,
-          channel: DeploymentTrack.production.channel,
+          channel: DeploymentTrack.stable.channel,
           isRolledBack: false,
           artifacts: const [],
         );
@@ -160,7 +160,7 @@ void main() {
         when(
           () => codePushClientWrapper.maybeGetChannel(
             appId: any(named: 'appId'),
-            name: DeploymentTrack.production.channel,
+            name: DeploymentTrack.stable.channel,
           ),
         ).thenAnswer((_) async => null);
       });

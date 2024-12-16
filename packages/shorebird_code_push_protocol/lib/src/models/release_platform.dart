@@ -3,7 +3,11 @@ enum ReleasePlatform {
   // ignore: public_member_api_docs
   android('Android'),
   // ignore: public_member_api_docs
-  ios('iOS');
+  macos('macOS'),
+  // ignore: public_member_api_docs
+  ios('iOS'),
+  // ignore: public_member_api_docs
+  windows('Windows');
 
   const ReleasePlatform(this.displayName);
 

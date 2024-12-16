@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
@@ -16,7 +17,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -37,6 +38,7 @@ import '../../mocks.dart';
 
 void main() {
   group(AndroidPatcher, () {
+    late ArgParser argParser;
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
@@ -116,6 +118,7 @@ void main() {
     });
 
     setUp(() {
+      argParser = MockArgParser();
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
@@ -144,6 +147,7 @@ void main() {
       ).thenReturn(projectRoot);
 
       patcher = AndroidPatcher(
+        argParser: argParser,
         argResults: argResults,
         flavor: null,
         target: null,
@@ -263,6 +267,7 @@ void main() {
     });
 
     group('buildPatchArtifact', () {
+      final flutterVersion = Version(3, 10, 6);
       const flutterVersionAndRevision = '3.10.6 (83305b5088)';
       late File aabFile;
 
@@ -272,14 +277,53 @@ void main() {
           () => shorebirdFlutter.getVersionAndRevision(),
         ).thenAnswer((_) async => flutterVersionAndRevision);
         when(
+          () => shorebirdFlutter.getVersion(),
+        ).thenAnswer((_) async => flutterVersion);
+        when(
           () => artifactBuilder.buildAppBundle(
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
             base64PublicKey: any(named: 'base64PublicKey'),
+            buildProgress: any(named: 'buildProgress'),
           ),
         ).thenAnswer((_) async => aabFile);
+      });
+
+      // See https://github.com/shorebirdtech/updater/issues/211
+      group('when flutter version contains updater issue 211', () {
+        setUp(() {
+          setUpProjectRootArtifacts();
+          when(
+            () => shorebirdFlutter.getVersion(),
+          ).thenAnswer((_) async => Version(3, 24, 1));
+        });
+
+        test('warns user of potential patch issues', () async {
+          await runWithOverrides(patcher.buildPatchArtifact);
+
+          verify(
+            () => logger.warn(AndroidPatcher.updaterPatchErrorWarning),
+          ).called(1);
+        });
+      });
+
+      group('when flutter version does not contain updater issue 211', () {
+        setUp(() {
+          setUpProjectRootArtifacts();
+          when(
+            () => shorebirdFlutter.getVersion(),
+          ).thenAnswer((_) async => Version(3, 24, 2));
+        });
+
+        test('does not warn user of potential patch issues', () async {
+          await runWithOverrides(patcher.buildPatchArtifact);
+
+          verifyNever(
+            () => logger.warn(AndroidPatcher.updaterPatchErrorWarning),
+          );
+        });
       });
 
       group('when build fails', () {
@@ -290,7 +334,10 @@ void main() {
             () => artifactBuilder.buildAppBundle(
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenThrow(exception);
           when(() => logger.progress(any())).thenReturn(progress);
@@ -347,6 +394,7 @@ Looked in:
                 named: 'args',
                 that: containsAll(['--build-name=1.2.3', '--build-number=4']),
               ),
+              buildProgress: any(named: 'buildProgress'),
             ),
           ).called(1);
         });
@@ -366,6 +414,7 @@ Looked in:
             verify(
               () => artifactBuilder.buildAppBundle(
                 args: ['--verbose'],
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           });
@@ -398,6 +447,7 @@ Looked in:
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: 'public_key_encoded',
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           });
@@ -439,14 +489,21 @@ Looked in:
             Arch.x86_64: releaseArtifact,
           },
         );
-        when(() => artifactManager.downloadFile(any()))
-            .thenAnswer((_) async => File(''));
+        when(
+          () => artifactManager.downloadWithProgressUpdates(
+            any(),
+            message: any(named: 'message'),
+          ),
+        ).thenAnswer((_) async => File(''));
       });
 
       group('when release artifact fails to download', () {
         setUp(() {
           when(
-            () => artifactManager.downloadFile(any()),
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+            ),
           ).thenThrow(Exception('error'));
         });
 
@@ -461,8 +518,6 @@ Looked in:
             ),
             exitsWithCode(ExitCode.software),
           );
-
-          verify(() => progress.fail('Exception: error')).called(1);
         });
       });
 
@@ -588,6 +643,41 @@ Looked in:
             final signatures =
                 result.values.map((bundle) => bundle.hashSignature).toList();
             expect(signatures, equals(expectedSignatures));
+          });
+        });
+
+        group('when artifacts download takes longer than provided timeout', () {
+          setUp(() {
+            when(
+              () => artifactManager.downloadWithProgressUpdates(
+                any(),
+                message: any(named: 'message'),
+              ),
+            ).thenAnswer((_) async {
+              await Future<void>.delayed(const Duration(milliseconds: 100));
+              return File('');
+            });
+          });
+
+          test('prints message directing users to github issue', () async {
+            await runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: 'appId',
+                releaseId: 0,
+                releaseArtifact: File('release.aab'),
+                downloadMessageTimeout: const Duration(milliseconds: 50),
+              ),
+            );
+
+            verify(
+              () => logger.info(
+                any(
+                  that: contains(
+                    'https://github.com/shorebirdtech/shorebird/issues/2532',
+                  ),
+                ),
+              ),
+            ).called(1);
           });
         });
       });

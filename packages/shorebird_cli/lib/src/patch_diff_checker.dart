@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
@@ -50,7 +50,6 @@ class PatchDiffChecker {
     required ArchiveDiffer archiveDiffer,
     required bool allowAssetChanges,
     required bool allowNativeChanges,
-    bool checkAssetChanges = true,
     bool confirmNativeChanges = true,
   }) async {
     final progress =
@@ -96,7 +95,7 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
       }
     }
 
-    if (status.hasAssetChanges && checkAssetChanges) {
+    if (status.hasAssetChanges) {
       logger
         ..warn(
           '''Your app contains asset changes, which will not be included in the patch.''',

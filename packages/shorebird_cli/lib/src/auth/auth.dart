@@ -15,7 +15,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/ci_token.dart';
 import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -316,19 +316,7 @@ class Auth {
   void _loadCredentials() {
     final envToken = platform.environment[shorebirdTokenEnvVar];
     if (envToken != null) {
-      try {
-        _token = CiToken.fromBase64(envToken);
-      } catch (_) {
-        // TODO(bryanoltman): Remove this legacy behavior after July 2024 or
-        // next major release.
-        logger.warn('''
-$shorebirdTokenEnvVar needs to be updated before the next major release.
-Run `shorebird login:ci` to obtain a new token.''');
-        _token = CiToken(
-          refreshToken: envToken,
-          authProvider: AuthProvider.google,
-        );
-      }
+      _token = CiToken.fromBase64(envToken);
       return;
     }
 

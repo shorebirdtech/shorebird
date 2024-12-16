@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
-import 'package:io/io.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -12,7 +14,7 @@ import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -29,9 +31,20 @@ class AndroidPatcher extends Patcher {
   /// {@macro android_patcher}
   AndroidPatcher({
     required super.argResults,
+    required super.argParser,
     required super.flavor,
     required super.target,
   });
+
+  /// Android versions prior to 3.24.2 have a bug that can cause patches to
+  /// be erroneously uninstalled.
+  /// https://github.com/shorebirdtech/updater/issues/211 was fixed in 3.24.2
+  static final updaterPatchErrorWarning = '''
+Your version of flutter contains a known issue that can cause patches to be erroneously uninstalled in apps that use package:flutter_foreground_task or other plugins that start their own Flutter engines.
+This issue was fixed in Flutter 3.24.2. Please upgrade to a newer version of Flutter to avoid this issue.
+
+See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebirdtech/updater/issues/211'), message: 'on Github')}
+''';
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
@@ -70,8 +83,16 @@ class AndroidPatcher extends Patcher {
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final File aabFile;
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-    final buildProgress =
-        logger.progress('Building patch with Flutter $flutterVersionString');
+    final flutterVersion = await shorebirdFlutter.getVersion();
+    // Android versions prior to 3.24.2 have a bug that can cause patches to
+    // be erroneously uninstalled.
+    // https://github.com/shorebirdtech/updater/issues/211 was fixed in 3.24.2
+    if (flutterVersion != null && flutterVersion < Version(3, 24, 2)) {
+      logger.warn(updaterPatchErrorWarning);
+    }
+
+    final buildProgress = logger
+        .detailProgress('Building patch with Flutter $flutterVersionString');
 
     try {
       aabFile = await artifactBuilder.buildAppBundle(
@@ -80,6 +101,7 @@ class AndroidPatcher extends Patcher {
         args: argResults.forwardedArgs +
             buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
         base64PublicKey: argResults.encodedPublicKey,
+        buildProgress: buildProgress,
       );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
@@ -116,6 +138,8 @@ Looked in:
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? supplementArtifact,
+    Duration downloadMessageTimeout = const Duration(minutes: 1),
   }) async {
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       appId: appId,
@@ -124,23 +148,40 @@ Looked in:
       platform: releaseType.releasePlatform,
     );
     final releaseArtifactPaths = <Arch, String>{};
-    final downloadReleaseArtifactProgress = logger.progress(
-      'Downloading release artifacts',
+    final numArtifacts = releaseArtifacts.length;
+
+    // Direct users to https://github.com/shorebirdtech/shorebird/issues/2532
+    // until we can provide a better solution.
+    var artifactsDownloadCompleted = false;
+    unawaited(
+      Future<void>.delayed(downloadMessageTimeout).then(
+        (_) {
+          if (artifactsDownloadCompleted) {
+            return;
+          }
+          logger.info(
+            '''
+It seems like your download is taking longer than expected. If you are on Windows, this is a known issue.
+Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/2532'))} for potential workarounds.''',
+          );
+        },
+      ),
     );
 
-    for (final releaseArtifact in releaseArtifacts.entries) {
+    for (final (i, releaseArtifact) in releaseArtifacts.entries.indexed) {
       try {
-        final releaseArtifactFile = await artifactManager.downloadFile(
+        final releaseArtifactFile =
+            await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseArtifact.value.url),
+          message: 'Downloading release artifact ${i + 1}/$numArtifacts',
         );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
       } catch (error) {
-        downloadReleaseArtifactProgress.fail('$error');
         throw ProcessExit(ExitCode.software.code);
       }
     }
 
-    downloadReleaseArtifactProgress.complete();
+    artifactsDownloadCompleted = true;
 
     final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
       projectRoot: projectRoot,

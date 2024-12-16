@@ -19,7 +19,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -34,10 +34,11 @@ void main() {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
     const releaseVersion = '1.2.3';
-    const track = DeploymentTrack.production;
+    const track = DeploymentTrack.stable;
     const releaseId = 42;
     const androidArtifactId = 21;
     const iosArtifactId = 12;
+    const macosArtifactId = 13;
 
     late AppMetadata app;
     late AppleDevice appleDevice;
@@ -106,7 +107,7 @@ void main() {
         ..writeAsStringSync('app_id: $appId', flush: true);
     }
 
-    File createAabFile({required String? channel}) {
+    Future<File> createAabFile({required String? channel}) async {
       final tempDir = Directory.systemTemp.createTempSync();
       final aabDirectory = Directory(p.join(tempDir.path, 'app-release'))
         ..createSync(recursive: true);
@@ -126,7 +127,7 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync(yamlContents);
 
-      ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
+      await ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
 
       return File(aabPath());
     }
@@ -240,6 +241,7 @@ void main() {
       when(() => release.platformStatuses).thenReturn({
         ReleasePlatform.android: ReleaseStatus.active,
         ReleasePlatform.ios: ReleaseStatus.active,
+        ReleasePlatform.macos: ReleaseStatus.active,
       });
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => progress.fail(any())).thenReturn(null);
@@ -322,6 +324,24 @@ void main() {
             'This release can only be previewed on platforms that support iOS',
           ),
         ).called(1);
+      });
+    });
+
+    group('when releasePlatform is not supported', () {
+      setUp(() {
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.windows: ReleaseStatus.active,
+        });
+        when(
+          () => argResults['platform'],
+        ).thenReturn(ReleasePlatform.windows.name);
+      });
+
+      test('throws an UnimplementedError', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          throwsA(isA<UnimplementedError>()),
+        );
       });
     });
 
@@ -443,6 +463,14 @@ void main() {
           });
         });
 
+        test('outputs apks path', () async {
+          await runWithOverrides(command.run);
+          final apksLink = link(uri: Uri.parse(apksPath()));
+          verify(
+            () => progress.complete('Built apks: ${cyan.wrap(apksLink)}'),
+          ).called(1);
+        });
+
         test('does not prompt for platform, uses android', () async {
           await runWithOverrides(command.run);
 
@@ -467,11 +495,11 @@ void main() {
         group('when channel is not set', () {
           group('when target channel is  production', () {
             test('does not change shorebird.yaml', () async {
-              aabFile = createAabFile(channel: null);
+              aabFile = await createAabFile(channel: null);
               await runWithOverrides(
                 () => command.setChannelOnAab(
                   aabFile: aabFile,
-                  channel: DeploymentTrack.production.channel,
+                  channel: DeploymentTrack.stable.channel,
                 ),
               );
 
@@ -486,7 +514,7 @@ void main() {
 
           group('when target channel is not production', () {
             test('sets shorebird.yaml channel to target channel', () async {
-              aabFile = createAabFile(channel: null);
+              aabFile = await createAabFile(channel: null);
               await runWithOverrides(
                 () => command.setChannelOnAab(
                   aabFile: aabFile,
@@ -506,7 +534,7 @@ channel: live
 
         group('when channel is set to target channel', () {
           test('does not attempt to set channel', () async {
-            aabFile = createAabFile(channel: track.channel);
+            aabFile = await createAabFile(channel: track.channel);
             final originalModificationTime = aabFile.statSync().modified;
             await runWithOverrides(
               () => command.setChannelOnAab(
@@ -528,7 +556,7 @@ channel: ${track.channel}
 
         group('when channel is set to a different channel', () {
           test('sets shorebird.yaml channel to target channel', () async {
-            aabFile = createAabFile(channel: 'dev');
+            aabFile = await createAabFile(channel: 'dev');
             await runWithOverrides(
               () => command.setChannelOnAab(
                 aabFile: aabFile,
@@ -1484,8 +1512,140 @@ channel: ${DeploymentTrack.staging.channel}
       });
     });
 
+    group('macos', () {
+      const releaseArtifactUrl = 'https://example.com/sample.app';
+      const releasePlatform = ReleasePlatform.macos;
+
+      late Ditto ditto;
+      late Open open;
+
+      R runWithOverrides<R>(R Function() body) {
+        return HttpOverrides.runZoned(
+          () => runScoped(
+            body,
+            values: {
+              adbRef.overrideWith(() => adb),
+              artifactManagerRef.overrideWith(() => artifactManager),
+              authRef.overrideWith(() => auth),
+              bundletoolRef.overrideWith(() => bundletool),
+              cacheRef.overrideWith(() => cache),
+              codePushClientWrapperRef
+                  .overrideWith(() => codePushClientWrapper),
+              dittoRef.overrideWith(() => ditto),
+              httpClientRef.overrideWith(() => httpClient),
+              loggerRef.overrideWith(() => logger),
+              platformRef.overrideWith(() => platform),
+              openRef.overrideWith(() => open),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+        );
+      }
+
+      setUp(() {
+        ditto = MockDitto();
+        open = MockOpen();
+
+        when(() => releaseArtifact.id).thenReturn(macosArtifactId);
+        when(() => argResults['platform']).thenReturn(releasePlatform.name);
+        when(
+          () => artifactManager.downloadFile(any()),
+        ).thenAnswer((_) async => File(''));
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((_) async {});
+        when(
+          () => ditto.extract(
+            source: any(named: 'source'),
+            destination: any(named: 'destination'),
+          ),
+        ).thenAnswer((_) async {});
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.macos: ReleaseStatus.active,
+        });
+        when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
+        when(() => platform.isMacOS).thenReturn(true);
+        when(
+          () => open.newApplication(path: any(named: 'path')),
+        ).thenAnswer((_) async => Stream.value(utf8.encode('hello world')));
+      });
+
+      group('when querying for release artifact fails', () {
+        setUp(() {
+          final exception = Exception('oops');
+          when(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: appId,
+              releaseId: releaseId,
+              arch: 'app',
+              platform: releasePlatform,
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when downloading release artifact fails', () {
+        final exception = Exception('oops');
+        setUp(() {
+          when(
+            () => artifactManager.downloadFile(any()),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => progress.fail('$exception')).called(1);
+        });
+      });
+
+      group('when extracting release artifact fails', () {
+        final exception = Exception('oops');
+        setUp(() {
+          when(
+            () => ditto.extract(
+              source: any(named: 'source'),
+              destination: any(named: 'destination'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => progress.fail('$exception')).called(1);
+        });
+      });
+
+      group('when process completes with exit code 0', () {
+        test('completes successfully', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(() => logger.info('hello world')).called(1);
+        });
+      });
+    });
+
     group('when no platform is specified', () {
       const iosReleaseArtifactUrl = 'https://example.com/runner.app';
+      const macosReleaseArtifactUrl = 'https://example.com/sample.app';
       late Devicectl devicectl;
       late IOSDeploy iosDeploy;
 
@@ -1494,6 +1654,7 @@ channel: ${DeploymentTrack.staging.channel}
 
       late ReleaseArtifact iosReleaseArtifact;
       late ReleaseArtifact androidReleaseArtifact;
+      late ReleaseArtifact macosReleaseArtifact;
 
       late Adb adb;
       late Bundletool bundletool;
@@ -1531,6 +1692,7 @@ channel: ${DeploymentTrack.staging.channel}
         iosDeploy = MockIOSDeploy();
         iosReleaseArtifact = MockReleaseArtifact();
         androidReleaseArtifact = MockReleaseArtifact();
+        macosReleaseArtifact = MockReleaseArtifact();
 
         when(() => appleDevice.name).thenReturn('iPhone 12');
         when(() => appleDevice.udid).thenReturn('12345678-1234567890ABCDEF');
@@ -1567,6 +1729,11 @@ channel: ${DeploymentTrack.staging.channel}
         when(() => iosReleaseArtifact.id).thenReturn(iosArtifactId);
         when(() => iosReleaseArtifact.url).thenReturn(iosReleaseArtifactUrl);
 
+        when(() => macosReleaseArtifact.id).thenReturn(macosArtifactId);
+        when(
+          () => macosReleaseArtifact.url,
+        ).thenReturn(macosReleaseArtifactUrl);
+
         when(
           () => codePushClientWrapper.getReleaseArtifact(
             appId: any(named: 'appId'),
@@ -1576,9 +1743,19 @@ channel: ${DeploymentTrack.staging.channel}
           ),
         ).thenAnswer((_) async => iosReleaseArtifact);
 
+        when(
+          () => codePushClientWrapper.getReleaseArtifact(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: ReleasePlatform.macos,
+          ),
+        ).thenAnswer((_) async => macosReleaseArtifact);
+
         when(() => androidReleaseArtifact.id).thenReturn(androidArtifactId);
-        when(() => androidReleaseArtifact.url)
-            .thenReturn(androidReleaseArtifactUrl);
+        when(
+          () => androidReleaseArtifact.url,
+        ).thenReturn(androidReleaseArtifactUrl);
 
         when(
           () => codePushClientWrapper.getReleaseArtifact(

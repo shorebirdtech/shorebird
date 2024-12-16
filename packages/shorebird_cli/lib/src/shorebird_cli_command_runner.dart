@@ -9,7 +9,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -78,6 +78,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     addCommand(PatchesCommand());
     addCommand(PreviewCommand());
     addCommand(ReleaseCommand());
+    addCommand(ReleasesCommand());
     addCommand(RunCommand());
     addCommand(UpgradeCommand());
   }
@@ -210,13 +211,16 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         return ExitCode.usage.code;
       } catch (error, stackTrace) {
         logger
-          ..detail('$error')
+          ..err('$error')
           ..detail('$stackTrace');
         exitCode = ExitCode.software.code;
       }
     }
 
-    if (exitCode != ExitCode.success.code && logger.level != Level.verbose) {
+    // `runCommand` returns null in when the --help flag is passed.
+    if (exitCode != null &&
+        exitCode != ExitCode.success.code &&
+        logger.level != Level.verbose) {
       final fileAnIssue = link(
         uri: Uri.parse(
           'https://github.com/shorebirdtech/shorebird/issues/new/choose',

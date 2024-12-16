@@ -17,7 +17,8 @@ import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -80,7 +81,10 @@ class CodePushClientWrapper {
 
   final CodePushClient codePushClient;
 
-  Future<App> createApp({String? appName}) async {
+  Future<App> createApp({
+    required int organizationId,
+    String? appName,
+  }) async {
     late final String displayName;
     if (appName == null) {
       String? defaultAppName;
@@ -96,7 +100,23 @@ class CodePushClientWrapper {
       displayName = appName;
     }
 
-    return codePushClient.createApp(displayName: displayName);
+    return codePushClient.createApp(
+      displayName: displayName,
+      organizationId: organizationId,
+    );
+  }
+
+  Future<List<OrganizationMembership>> getOrganizationMemberships() async {
+    final progress = logger.progress('Fetching organizations');
+    final List<OrganizationMembership> memberships;
+    try {
+      memberships = await codePushClient.getOrganizationMemberships();
+      progress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+
+    return memberships;
   }
 
   Future<List<AppMetadata>> getApps() async {
@@ -412,7 +432,7 @@ Please create a release using "shorebird release" and try again.
     required Iterable<Arch> architectures,
     String? flavor,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
     final archsDir = ArtifactManager.androidArchsDirectory(
       projectRoot: Directory(projectRoot),
       flavor: flavor,
@@ -444,7 +464,7 @@ Looked in:
       );
       final artifact = File(artifactPath);
       final hash = sha256.convert(await artifact.readAsBytes()).toString();
-      logger.detail('Creating artifact for $artifactPath');
+      logger.detail('Uploading artifact for $artifactPath');
 
       try {
         await codePushClient.createReleaseArtifact(
@@ -474,7 +494,7 @@ ${arch.arch} artifact already exists, continuing...''',
     }
 
     try {
-      logger.detail('Creating artifact for $aabPath');
+      logger.detail('Uploading artifact for $aabPath');
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
@@ -511,7 +531,7 @@ aab artifact already exists, continuing...''',
     required String extractedAarDir,
     required Iterable<Arch> architectures,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
 
     for (final arch in architectures) {
       final artifactPath = p.join(
@@ -522,7 +542,7 @@ aab artifact already exists, continuing...''',
       );
       final artifact = File(artifactPath);
       final hash = sha256.convert(await artifact.readAsBytes()).toString();
-      logger.detail('Creating artifact for $artifactPath');
+      logger.detail('Uploading artifact for $artifactPath');
 
       try {
         await codePushClient.createReleaseArtifact(
@@ -552,7 +572,7 @@ ${arch.arch} artifact already exists, continuing...''',
     }
 
     try {
-      logger.detail('Creating artifact for $aarPath');
+      logger.detail('Uploading artifact for $aarPath');
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
@@ -597,7 +617,66 @@ aar artifact already exists, continuing...''',
     return thinnedArchiveDirectory;
   }
 
-  /// Uploads a release .xcarchive and .app to the Shorebird server.
+  /// Registers and uploads macOS release artifacts to the Shorebird server.
+  Future<void> createMacosReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required String appPath,
+    required bool isCodesigned,
+    required String? podfileLockHash,
+    required String supplementPath,
+  }) async {
+    final createArtifactProgress = logger.progress('Uploading artifacts');
+    final tempDir = await Directory.systemTemp.createTemp();
+    final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
+    await ditto.archive(source: appPath, destination: zippedApp.path);
+
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedApp.path,
+        arch: 'app',
+        platform: ReleasePlatform.macos,
+        hash: sha256.convert(await zippedApp.readAsBytes()).toString(),
+        canSideload: true,
+        podfileLockHash: podfileLockHash,
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading app: $error',
+      );
+    }
+
+    final zippedSupplement = await Directory(supplementPath).zipToTempFile(
+      name: 'macos_supplement',
+    );
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedSupplement.path,
+        arch: 'macos_supplement',
+        platform: ReleasePlatform.macos,
+        hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
+        canSideload: false,
+        podfileLockHash: podfileLockHash,
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading release supplements: $error',
+      );
+    }
+
+    createArtifactProgress.complete();
+  }
+
+  /// Uploads a release .xcarchive, .app, and supplementary files to the
+  /// Shorebird server.
   Future<void> createIosReleaseArtifacts({
     required String appId,
     required int releaseId,
@@ -605,10 +684,12 @@ aar artifact already exists, continuing...''',
     required String runnerPath,
     required bool isCodesigned,
     required String? podfileLockHash,
+    required String? supplementPath,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
-    final thinnedArchiveDirectory =
-        await _thinXcarchive(xcarchivePath: xcarchivePath);
+    final createArtifactProgress = logger.progress('Uploading artifacts');
+    final thinnedArchiveDirectory = await _thinXcarchive(
+      xcarchivePath: xcarchivePath,
+    );
     final zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
     try {
       await codePushClient.createReleaseArtifact(
@@ -631,6 +712,7 @@ aar artifact already exists, continuing...''',
 
     final zippedRunner = await Directory(runnerPath).zipToTempFile();
     try {
+      logger.detail('[archive] zipped runner.app to ${zippedRunner.path}');
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
@@ -649,16 +731,42 @@ aar artifact already exists, continuing...''',
       );
     }
 
+    if (supplementPath != null) {
+      final zippedSupplement = await Directory(supplementPath).zipToTempFile(
+        name: 'ios_supplement',
+      );
+      try {
+        await codePushClient.createReleaseArtifact(
+          appId: appId,
+          releaseId: releaseId,
+          artifactPath: zippedSupplement.path,
+          arch: 'ios_supplement',
+          platform: ReleasePlatform.ios,
+          hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
+          canSideload: false,
+          podfileLockHash: podfileLockHash,
+        );
+      } catch (error) {
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading release supplements: $error',
+        );
+      }
+    }
+
     createArtifactProgress.complete();
   }
 
-  /// Zips and uploads a release xcframework to the Shorebird server.
+  /// Zips and uploads a release xcframework and supplementary files to the
+  /// Shorebird server.
   Future<void> createIosFrameworkReleaseArtifacts({
     required String appId,
     required int releaseId,
     required String appFrameworkPath,
+    required String? supplementPath,
   }) async {
-    final createArtifactProgress = logger.progress('Creating artifacts');
+    final createArtifactProgress = logger.progress('Uploading artifacts');
     final appFrameworkDirectory = Directory(appFrameworkPath);
     await Isolate.run(
       () => ZipFileEncoder().zipDirectory(appFrameworkDirectory),
@@ -684,6 +792,30 @@ aar artifact already exists, continuing...''',
         progress: createArtifactProgress,
         message: 'Error uploading xcframework: $error',
       );
+    }
+
+    if (supplementPath != null) {
+      final zippedSupplement = await Directory(supplementPath).zipToTempFile(
+        name: 'ios_framework_supplement',
+      );
+      try {
+        await codePushClient.createReleaseArtifact(
+          appId: appId,
+          releaseId: releaseId,
+          artifactPath: zippedSupplement.path,
+          arch: 'ios_framework_supplement',
+          platform: ReleasePlatform.ios,
+          hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
+          canSideload: false,
+          podfileLockHash: null,
+        );
+      } catch (error) {
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading release supplements: $error',
+        );
+      }
     }
 
     createArtifactProgress.complete();
@@ -788,6 +920,16 @@ aar artifact already exists, continuing...''',
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);
 
     logger.success('\n✅ Published Patch ${patch.number}!');
+  }
+
+  /// Returns a GCP download link for measuring download speed.
+  Future<Uri> getGCPDownloadSpeedTestUrl() {
+    return codePushClient.getGCPDownloadSpeedTestUrl();
+  }
+
+  /// Returns a GCP upload link for measuring upload speed.
+  Future<Uri> getGCPUploadSpeedTestUrl() {
+    return codePushClient.getGCPUploadSpeedTestUrl();
   }
 
   /// Prints an appropriate error message for the given error and exits with

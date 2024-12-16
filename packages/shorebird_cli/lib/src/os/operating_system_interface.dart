@@ -14,6 +14,7 @@ OperatingSystemInterface get osInterface => read(osInterfaceRef);
 /// {@template operating_system_interface}
 /// A wrapper around operating system specific functionality.
 /// {@endtemplate}
+// ignore: one_member_abstracts
 abstract class OperatingSystemInterface {
   /// {@macro operating_system_interface}
   factory OperatingSystemInterface() {

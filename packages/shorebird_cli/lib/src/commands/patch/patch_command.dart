@@ -15,7 +15,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -86,10 +86,18 @@ of the iOS app that is using this module.''',
         help: allowAssetDiffsHelpText,
         negatable: false,
       )
+      ..addOption(
+        'track',
+        allowed: DeploymentTrack.values.map((v) => v.channel),
+        help: 'The track to publish the patch to.',
+        defaultsTo: DeploymentTrack.stable.channel,
+      )
       ..addFlag(
         'staging',
         negatable: false,
-        help: 'Whether to publish the patch to the staging environment.',
+        help: '''
+[DEPRECATED] Whether to publish the patch to the staging environment. Use --track=staging instead.''',
+        hide: true,
       )
       ..addOption(
         CommonArguments.exportOptionsPlistArg.name,
@@ -97,7 +105,6 @@ of the iOS app that is using this module.''',
       )
       ..addOption(
         CommonArguments.exportMethodArg.name,
-        defaultsTo: ExportMethod.appStore.argName,
         allowed: ExportMethod.values.map((e) => e.argName),
         help: CommonArguments.exportMethodArg.description,
         allowedHelp: {
@@ -123,6 +130,10 @@ of the iOS app that is using this module.''',
       ..addOption(
         CommonArguments.publicKeyArg.name,
         help: CommonArguments.publicKeyArg.description,
+      )
+      ..addOption(
+        CommonArguments.splitDebugInfoArg.name,
+        help: CommonArguments.splitDebugInfoArg.description,
       );
   }
 
@@ -158,10 +169,26 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => results['allow-native-diffs'] == true;
 
-  bool get isStaging => results['staging'] == true;
+  bool get isStaging => track == DeploymentTrack.staging;
+
+  DeploymentTrack get track {
+    final channel = results['track'] as String;
+    return DeploymentTrack.values.firstWhere((t) => t.channel == channel);
+  }
 
   @override
   Future<int> run() async {
+    if (results.wasParsed('staging')) {
+      logger.err(
+        '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
+      );
+      return ExitCode.usage.code;
+    }
+
+    if (results.releaseTypes.contains(ReleaseType.macos)) {
+      logger.warn(macosBetaWarning);
+    }
+
     final patcherFutures =
         results.releaseTypes.map(_resolvePatcher).map(createPatch);
 
@@ -178,17 +205,27 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       case ReleaseType.android:
         return AndroidPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );
       case ReleaseType.ios:
         return IosPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );
       case ReleaseType.iosFramework:
         return IosFrameworkPatcher(
+          argResults: results,
+          argParser: argParser,
+          flavor: flavor,
+          target: target,
+        );
+      case ReleaseType.macos:
+        return MacosPatcher(
+          argParser: argParser,
           argResults: results,
           flavor: flavor,
           target: target,
@@ -196,6 +233,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       case ReleaseType.aar:
         return AarPatcher(
           argResults: results,
+          argParser: argParser,
           flavor: flavor,
           target: target,
         );
@@ -256,10 +294,23 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       platform: patcher.releaseType.releasePlatform,
     );
 
-    final releaseArchive = await downloadPrimaryReleaseArtifact(
+    final supplementalArtifact =
+        patcher.supplementaryReleaseArtifactArch != null
+            ? await codePushClientWrapper.maybeGetReleaseArtifact(
+                appId: appId,
+                releaseId: release.id,
+                arch: patcher.supplementaryReleaseArtifactArch!,
+                platform: patcher.releaseType.releasePlatform,
+              )
+            : null;
+
+    final releaseArchive = await downloadReleaseArtifact(
       releaseArtifact: releaseArtifact,
-      patcher: patcher,
     );
+
+    final supplementArchive = supplementalArtifact != null
+        ? await downloadReleaseArtifact(releaseArtifact: supplementalArtifact)
+        : null;
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
@@ -286,6 +337,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           appId: appId,
           releaseId: release.id,
           releaseArtifact: releaseArchive,
+          supplementArtifact: supplementArchive,
         );
 
         final dryRun = results['dry-run'] == true;
@@ -321,14 +373,12 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           baseMetadata,
         );
 
-        await codePushClientWrapper.publishPatch(
+        await patcher.uploadPatchArtifacts(
           appId: appId,
           releaseId: release.id,
           metadata: updateMetadata.toJson(),
-          platform: patcher.releaseType.releasePlatform,
-          track:
-              isStaging ? DeploymentTrack.staging : DeploymentTrack.production,
-          patchArtifactBundles: patchArtifactBundles,
+          track: track,
+          artifacts: patchArtifactBundles,
         );
       },
       values: {
@@ -415,15 +465,20 @@ Please re-run the release command for this version or create a new release.''');
       final size = formatBytes(patchArtifactBundles[arch]!.size);
       return '${arch.name} ($size)';
     });
+    final trackSummary = (() {
+      return switch (track) {
+        DeploymentTrack.staging => '🟠 Track: ${lightCyan.wrap('Staging')}',
+        DeploymentTrack.beta => '🔵 Track: ${lightCyan.wrap('Beta')}',
+        DeploymentTrack.stable => '🟢 Track: ${lightCyan.wrap('Stable')}',
+      };
+    })();
+
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
-      if (isStaging)
-        '🟠 Track: ${lightCyan.wrap('Staging')}'
-      else
-        '🟢 Track: ${lightCyan.wrap('Production')}',
+      trackSummary,
       if (patcher.linkPercentage != null &&
           patcher.linkPercentage! < Patcher.minLinkPercentage)
         '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
@@ -448,22 +503,19 @@ ${summary.join('\n')}
     }
   }
 
-  Future<File> downloadPrimaryReleaseArtifact({
+  Future<File> downloadReleaseArtifact({
     required ReleaseArtifact releaseArtifact,
-    required Patcher patcher,
   }) async {
-    final downloadProgress =
-        logger.progress('Downloading ${patcher.primaryReleaseArtifactArch}');
     final File artifactFile;
     try {
-      artifactFile =
-          await artifactManager.downloadFile(Uri.parse(releaseArtifact.url));
-    } catch (e) {
-      downloadProgress.fail(e.toString());
+      artifactFile = await artifactManager.downloadWithProgressUpdates(
+        Uri.parse(releaseArtifact.url),
+        message: 'Downloading ${releaseArtifact.arch}',
+      );
+    } catch (_) {
       throw ProcessExit(ExitCode.software.code);
     }
 
-    downloadProgress.complete();
     return artifactFile;
   }
 }

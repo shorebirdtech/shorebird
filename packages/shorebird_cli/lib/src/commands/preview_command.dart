@@ -13,10 +13,11 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -43,8 +44,8 @@ class PreviewCommand extends ShorebirdCommand {
         help: 'The ID of the app to preview the release for.',
       )
       ..addOption(
-        'release-version',
-        help: 'The version of the release (e.g. "1.0.0").',
+        CommonArguments.releaseVersionArg.name,
+        help: CommonArguments.releaseVersionArg.description,
       )
       ..addOption(
         'platform',
@@ -227,8 +228,7 @@ class PreviewCommand extends ShorebirdCommand {
 
     final deviceId = results['device-id'] as String?;
     final isStaging = results['staging'] == true;
-    final track =
-        isStaging ? DeploymentTrack.staging : DeploymentTrack.production;
+    final track = isStaging ? DeploymentTrack.staging : DeploymentTrack.stable;
 
     return switch (releasePlatform) {
       ReleasePlatform.android => installAndLaunchAndroid(
@@ -237,12 +237,18 @@ class PreviewCommand extends ShorebirdCommand {
           deviceId: deviceId,
           track: track,
         ),
+      ReleasePlatform.macos => installAndLaunchMacos(
+          appId: appId,
+          release: release,
+          track: track,
+        ),
       ReleasePlatform.ios => installAndLaunchIos(
           appId: appId,
           release: release,
           deviceId: deviceId,
           track: track,
         ),
+      ReleasePlatform.windows => throw UnimplementedError(),
     };
   }
 
@@ -276,6 +282,71 @@ class PreviewCommand extends ShorebirdCommand {
       choices: platformNames,
     );
     return ReleasePlatform.values.firstWhere((p) => p.displayName == platform);
+  }
+
+  Future<int> installAndLaunchMacos({
+    required String appId,
+    required Release release,
+    required DeploymentTrack track,
+  }) async {
+    const platform = ReleasePlatform.macos;
+    late Directory appDirectory;
+    late ReleaseArtifact releaseRunnerArtifact;
+
+    try {
+      releaseRunnerArtifact = await codePushClientWrapper.getReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        arch: 'app',
+        platform: platform,
+      );
+    } catch (e, s) {
+      logger
+        ..err('Error getting release artifact: $e')
+        ..detail('Stack trace: $s');
+      return ExitCode.software.code;
+    }
+
+    appDirectory = Directory(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        artifact: releaseRunnerArtifact,
+        platform: platform,
+        extension: 'app',
+      ),
+    );
+
+    if (!appDirectory.existsSync()) {
+      final downloadArtifactProgress = logger.progress('Downloading release');
+      try {
+        if (!appDirectory.existsSync()) {
+          appDirectory.createSync(recursive: true);
+        }
+
+        final archiveFile = await artifactManager.downloadFile(
+          Uri.parse(releaseRunnerArtifact.url),
+        );
+        await ditto.extract(
+          source: archiveFile.path,
+          destination: appDirectory.path,
+        );
+        downloadArtifactProgress.complete();
+      } catch (error) {
+        downloadArtifactProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
+    final logs = await open.newApplication(path: appDirectory.path);
+    final completer = Completer<void>();
+
+    logs.listen(
+      (log) => logger.info(utf8.decode(log)),
+      onDone: completer.complete,
+    );
+
+    return completer.future.then((_) => ExitCode.success.code);
   }
 
   Future<int> installAndLaunchAndroid({
@@ -361,7 +432,8 @@ class PreviewCommand extends ShorebirdCommand {
     final buildApksProgress = logger.progress('Building apks');
     try {
       await bundletool.buildApks(bundle: aabFile.path, output: apksPath);
-      buildApksProgress.complete();
+      final apksLink = link(uri: Uri.parse(apksPath));
+      buildApksProgress.complete('Built apks: ${cyan.wrap(apksLink)}');
     } catch (error) {
       buildApksProgress.fail('$error');
       return ExitCode.software.code;
@@ -587,8 +659,7 @@ class PreviewCommand extends ShorebirdCommand {
       final yaml = loadYaml(yamlText) as YamlMap;
       final yamlChannel = yaml['channel'];
 
-      if (yamlChannel == null &&
-          channel == DeploymentTrack.production.channel) {
+      if (yamlChannel == null && channel == DeploymentTrack.stable.channel) {
         // We would be updating the channel to the default value.
         return;
       }

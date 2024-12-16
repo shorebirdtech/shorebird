@@ -11,7 +11,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -108,7 +108,7 @@ void main() {
       );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
-          Stream.value(ZipEncoder().encode(Archive())!),
+          Stream.value(ZipEncoder().encode(Archive())),
           HttpStatus.ok,
         ),
       );
@@ -188,6 +188,34 @@ void main() {
 
     group('updateAll', () {
       group('patch', () {
+        group('fileName', () {
+          group('when on Windows', () {
+            setUp(() {
+              setMockPlatform(Platform.windows);
+            });
+
+            test('has exe extension', () {
+              final fileName = runWithOverrides(
+                () => PatchArtifact(cache: cache, platform: platform).fileName,
+              );
+              expect(fileName, equals('patch.exe'));
+            });
+          });
+
+          group('when not on Windows', () {
+            setUp(() {
+              setMockPlatform(Platform.linux);
+            });
+
+            test('does not have exe extension', () {
+              final fileName = runWithOverrides(
+                () => PatchArtifact(cache: cache, platform: platform).fileName,
+              );
+              expect(fileName, equals('patch'));
+            });
+          });
+        });
+
         group('when an exception happens', () {
           test('throws CacheUpdateFailure', () async {
             const exception = SocketException('test');
@@ -254,7 +282,7 @@ void main() {
                 );
               }
               return http.StreamedResponse(
-                Stream.value(ZipEncoder().encode(Archive())!),
+                Stream.value(ZipEncoder().encode(Archive())),
                 HttpStatus.ok,
               );
             },
@@ -303,8 +331,9 @@ void main() {
 
         group('when checksum validation fails', () {
           setUp(() {
-            when(() => checksumChecker.checkFile(any(), any()))
-                .thenReturn(false);
+            when(
+              () => checksumChecker.checkFile(any(), any()),
+            ).thenReturn(false);
           });
 
           test('fails with the correct message', () async {
@@ -325,7 +354,7 @@ void main() {
           });
         });
 
-        test('pull correct artifact for MacOS', () async {
+        test('pulls correct artifact for MacOS', () async {
           setMockPlatform(Platform.macOS);
 
           await expectLater(
@@ -344,14 +373,14 @@ void main() {
 
           final expected = [
             perEngine('patch-darwin-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
             perEngine('aot-tools.dill'),
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
         });
 
-        test('pull correct artifact for Windows', () async {
+        test('pulls correct artifact for Windows', () async {
           setMockPlatform(Platform.windows);
 
           await expectLater(
@@ -370,14 +399,14 @@ void main() {
 
           final expected = [
             perEngine('patch-windows-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
             perEngine('aot-tools.dill'),
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
         });
 
-        test('pull correct artifact for Linux', () async {
+        test('pulls correct artifact for Linux', () async {
           setMockPlatform(Platform.linux);
 
           await expectLater(
@@ -396,7 +425,7 @@ void main() {
 
           final expected = [
             perEngine('patch-linux-x64.zip'),
-            'https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar',
+            'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
             perEngine('aot-tools.dill'),
           ].map(Uri.parse).toList();
 

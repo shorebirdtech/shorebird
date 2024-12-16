@@ -9,7 +9,7 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -78,7 +78,6 @@ class ReleaseCommand extends ShorebirdCommand {
       )
       ..addOption(
         CommonArguments.exportMethodArg.name,
-        defaultsTo: ExportMethod.appStore.argName,
         allowed: ExportMethod.values.map((e) => e.argName),
         help: CommonArguments.exportMethodArg.description,
         allowedHelp: {
@@ -132,6 +131,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       ..addOption(
         CommonArguments.publicKeyArg.name,
         help: CommonArguments.publicKeyArg.description,
+      )
+      ..addOption(
+        CommonArguments.splitDebugInfoArg.name,
+        help: CommonArguments.splitDebugInfoArg.description,
       );
   }
 
@@ -151,6 +154,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         '''No platforms were provided, use the --platforms argument to provide one or more platforms''',
       );
       return ExitCode.usage.code;
+    }
+
+    if (results.releaseTypes.contains(ReleaseType.macos)) {
+      logger.warn(macosBetaWarning);
     }
 
     final releaserFutures =
@@ -175,6 +182,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         );
       case ReleaseType.ios:
         return IosReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
+      case ReleaseType.macos:
+        return MacosReleaser(
           argResults: results,
           flavor: flavor,
           target: target,

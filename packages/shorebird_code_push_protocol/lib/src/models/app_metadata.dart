@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'app_metadata.g.dart';
@@ -6,7 +7,7 @@ part 'app_metadata.g.dart';
 /// A single app which contains zero or more releases.
 /// {@endtemplate}
 @JsonSerializable()
-class AppMetadata {
+class AppMetadata extends Equatable {
   /// {@macro app_metadata}
   const AppMetadata({
     required this.appId,
@@ -41,4 +42,14 @@ class AppMetadata {
 
   /// The date and time the app was last updated.
   final DateTime updatedAt;
+
+  @override
+  List<Object?> get props => [
+        appId,
+        displayName,
+        latestReleaseVersion,
+        latestPatchNumber,
+        createdAt,
+        updatedAt,
+      ];
 }

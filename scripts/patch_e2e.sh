@@ -41,7 +41,7 @@ echo "base_url: https://api-dev.shorebird.dev" >>shorebird.yaml
 APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 
 # Create a new release on Android
-shorebird release android --flutter-version=$FLUTTER_VERSION -v
+shorebird release android --flutter-version=$FLUTTER_VERSION --split-debug-info=./build/symbols -v
 
 # Run the app on Android and ensure that the print statement is printed.
 while IFS= read line; do
@@ -59,7 +59,7 @@ echo "lib/main.dart is now:"
 cat lib/main.dart
 
 # Create a patch
-shorebird patch android -v
+shorebird patch android --split-debug-info=./build/symbols -v
 
 # Run the app on Android and ensure that the original print statement is printed.
 while IFS= read line; do

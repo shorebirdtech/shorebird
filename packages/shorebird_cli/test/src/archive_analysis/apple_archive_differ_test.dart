@@ -40,18 +40,18 @@ void main() {
       p.join(xcframeworkFixturesBasePath, 'changed_dart.xcframework.zip');
 
   group(
-    IosArchiveDiffer,
+    AppleArchiveDiffer,
     () {
-      late IosArchiveDiffer differ;
+      late AppleArchiveDiffer differ;
 
       setUp(() {
-        differ = const IosArchiveDiffer();
+        differ = const AppleArchiveDiffer();
       });
 
       group('appRegex', () {
         test('identifies Runner.app/Runner as an app file', () {
           expect(
-            IosArchiveDiffer.appRegex.hasMatch(
+            AppleArchiveDiffer.xcFrameworkAppRegex.hasMatch(
               'Products/Applications/Runner.app/Runner',
             ),
             isTrue,
@@ -60,7 +60,7 @@ void main() {
 
         test('does not identify Runner.app/Assets.car as an app file', () {
           expect(
-            IosArchiveDiffer.appRegex.hasMatch(
+            AppleArchiveDiffer.xcFrameworkAppRegex.hasMatch(
               'Products/Applications/Runner.app/Assets.car',
             ),
             isFalse,

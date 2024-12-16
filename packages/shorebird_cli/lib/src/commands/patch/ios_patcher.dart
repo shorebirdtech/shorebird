@@ -19,7 +19,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -42,15 +42,42 @@ class IosPatcher extends Patcher {
   /// {@macro ios_patcher}
   IosPatcher({
     required super.argResults,
+    required super.argParser,
     required super.flavor,
     required super.target,
   });
+
+  String get _patchClassTableLinkInfoPath =>
+      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.ct.link');
+
+  String get _patchClassTableLinkDebugInfoPath =>
+      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.class_table.json');
 
   String get _aotOutputPath => p.join(buildDirectory.path, 'out.aot');
 
   String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
+
+  /// The name of the split debug info file when the target is iOS.
+  static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
+
+  /// The additional gen_snapshot arguments to use when building the patch with
+  /// `--split-debug-info`.
+  static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) {
+    return splitDebugInfoPath != null
+        ? [
+            '--dwarf-stack-traces',
+            '--resolve-dwarf-paths',
+            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
+          ]
+        : <String>[];
+  }
+
+  /// The path to save the split debug info file.
+  static String saveDebuggingInfoPath(String directory) {
+    return p.join(p.absolute(directory), splitDebugInfoFileName);
+  }
 
   @visibleForTesting
   double? lastBuildLinkPercentage;
@@ -63,6 +90,9 @@ class IosPatcher extends Patcher {
 
   @override
   String get primaryReleaseArtifactArch => 'xcarchive';
+
+  @override
+  String? get supplementaryReleaseArtifactArch => 'ios_supplement';
 
   @override
   Future<void> assertPreconditions() async {
@@ -92,7 +122,7 @@ class IosPatcher extends Patcher {
         await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
       localArchive: patchArchive,
       releaseArchive: releaseArchive,
-      archiveDiffer: const IosArchiveDiffer(),
+      archiveDiffer: const AppleArchiveDiffer(),
       allowAssetChanges: allowAssetDiffs,
       allowNativeChanges: allowNativeDiffs,
       confirmNativeChanges: false,
@@ -103,9 +133,9 @@ class IosPatcher extends Patcher {
     }
 
     final String? podfileLockHash;
-    if (shorebirdEnv.podfileLockFile.existsSync()) {
+    if (shorebirdEnv.iosPodfileLockFile.existsSync()) {
       podfileLockHash = sha256
-          .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
+          .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
           .toString();
     } else {
       podfileLockHash = null;
@@ -135,14 +165,6 @@ This may indicate that the patch contains native changes, which cannot be applie
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final File exportOptionsPlist;
-    try {
-      exportOptionsPlist = ios.exportOptionsPlistFromArgs(argResults);
-    } catch (error) {
-      logger.err('$error');
-      throw ProcessExit(ExitCode.usage.code);
-    }
-
     try {
       final shouldCodesign = argResults['codesign'] == true;
       final (flutterVersionAndRevision, flutterVersion) = await (
@@ -160,7 +182,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         throw ProcessExit(ExitCode.software.code);
       }
 
-      final buildProgress = logger.progress(
+      final buildProgress = logger.detailProgress(
         'Building patch with Flutter $flutterVersionAndRevision',
       );
       final IpaBuildResult ipaBuildResult;
@@ -169,12 +191,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         // release was, we will erroneously report native diffs.
         ipaBuildResult = await artifactBuilder.buildIpa(
           codesign: shouldCodesign,
-          exportOptionsPlist: exportOptionsPlist,
           flavor: flavor,
           target: target,
           args: argResults.forwardedArgs +
               buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
           base64PublicKey: argResults.encodedPublicKey,
+          buildProgress: buildProgress,
         );
       } on ProcessException catch (error) {
         buildProgress.fail('Failed to build: ${error.message}');
@@ -186,9 +208,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       }
 
       try {
+        if (splitDebugInfoPath != null) {
+          Directory(splitDebugInfoPath!).createSync(recursive: true);
+        }
         await artifactBuilder.buildElfAotSnapshot(
           appDillPath: ipaBuildResult.kernelFile.path,
           outFilePath: _aotOutputPath,
+          genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
         );
       } catch (error) {
         buildProgress.fail('$error');
@@ -212,6 +239,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? supplementArtifact,
   }) async {
     // Verify that we have built a patch .xcarchive
     if (artifactManager.getXcarchiveDirectory()?.path == null) {
@@ -220,12 +248,39 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     final unzipProgress = logger.progress('Extracting release artifact');
-    final tempDir = Directory.systemTemp.createTempSync();
-    await artifactManager.extractZip(
-      zipFile: releaseArtifact,
-      outputDirectory: tempDir,
-    );
-    final releaseXcarchivePath = tempDir.path;
+
+    late final String releaseXcarchivePath;
+    {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: releaseArtifact,
+        outputDirectory: tempDir,
+      );
+      releaseXcarchivePath = tempDir.path;
+    }
+
+    File? releaseClassTableLinkInfoFile;
+    File? releaseClassTableLinkDebugInfoFile;
+    if (supplementArtifact != null) {
+      final tempDir = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: supplementArtifact,
+        outputDirectory: tempDir,
+      );
+      releaseClassTableLinkInfoFile = File(p.join(tempDir.path, 'App.ct.link'));
+      if (!releaseClassTableLinkInfoFile.existsSync()) {
+        logger.err('Unable to find class table link info file');
+        throw ProcessExit(ExitCode.software.code);
+      }
+
+      releaseClassTableLinkDebugInfoFile = File(
+        p.join(tempDir.path, 'App.class_table.json'),
+      );
+      if (!releaseClassTableLinkDebugInfoFile.existsSync()) {
+        logger.err('Unable to find class table link debug info file');
+        throw ProcessExit(ExitCode.software.code);
+      }
+    }
 
     unzipProgress.complete();
     final appDirectory = artifactManager.getIosAppDirectory(
@@ -246,6 +301,29 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
+      // If we're using a newer version of the linker, we need to also copy the
+      // necessary class table link information alongside the snapshots.
+      if (releaseClassTableLinkInfoFile != null &&
+          releaseClassTableLinkDebugInfoFile != null) {
+        // Copy the release's class table link info file next to the release
+        // snapshot so that it can be used to generate a patch.
+        releaseClassTableLinkInfoFile.copySync(
+          p.join(releaseArtifactFile.parent.path, 'App.ct.link'),
+        );
+        releaseClassTableLinkDebugInfoFile.copySync(
+          p.join(releaseArtifactFile.parent.path, 'App.class_table.json'),
+        );
+
+        // Copy the patch's class table link info file to the build directory
+        // so that it can be used to generate a patch.
+        File(_patchClassTableLinkInfoPath).copySync(
+          p.join(buildDirectory.path, 'out.ct.link'),
+        );
+        File(_patchClassTableLinkDebugInfoPath).copySync(
+          p.join(buildDirectory.path, 'out.class_table.json'),
+        );
+      }
+
       final (:exitCode, :linkPercentage) = await _runLinker(
         releaseArtifact: releaseArtifactFile,
         kernelFile: File(_appDillCopyPath),
@@ -264,7 +342,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     if (useLinker && await aotTools.isGeneratePatchDiffBaseSupported()) {
       final patchBaseProgress = logger.progress('Generating patch diff base');
       final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
+        artifact: ShorebirdArtifact.analyzeSnapshotIos,
       );
 
       final File patchBaseFile;
@@ -361,7 +439,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     final analyzeSnapshot = File(
       shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshot,
+        artifact: ShorebirdArtifact.analyzeSnapshotIos,
       ),
     );
 
@@ -371,7 +449,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
-      artifact: ShorebirdArtifact.genSnapshot,
+      artifact: ShorebirdArtifact.genSnapshotIos,
     );
 
     final linkProgress = logger.progress('Linking AOT files');
@@ -398,6 +476,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         workingDirectory: buildDirectory.path,
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
+        additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
       );
     } catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');

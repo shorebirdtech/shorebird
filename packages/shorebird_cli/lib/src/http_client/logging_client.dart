@@ -1,5 +1,5 @@
 import 'package:http/http.dart' as http;
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 
 /// An http client that logs request at the verbose level.
 class LoggingClient extends http.BaseClient {

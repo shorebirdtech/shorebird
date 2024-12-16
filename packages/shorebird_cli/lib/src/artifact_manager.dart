@@ -1,22 +1,43 @@
 // cspell:words archs xcarchive xcframework
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:stream_transform/stream_transform.dart';
 
 /// A reference to a [ArtifactManager] instance.
 final artifactManagerRef = create(ArtifactManager.new);
 
 /// The [ArtifactManager] instance available in the current zone.
 ArtifactManager get artifactManager => read(artifactManagerRef);
+
+/// A callback that reports progress as a double between 0 and 1.
+typedef ProgressCallback = void Function(double progress);
+
+/// {@template file_download}
+/// Used to monitor the progress of a file download and retrieve the file once
+/// it has been downloaded.
+/// {@endtemplate}
+class FileDownload {
+  /// {@macro file_download}
+  FileDownload({required this.file, required this.progress});
+
+  /// The file that is being downloaded. Await this to get the downloaded file.
+  final Future<File> file;
+
+  /// The progress of the download as a stream of doubles between 0 and 1.
+  final Stream<double> progress;
+}
 
 /// Manages artifacts for the Shorebird CLI.
 class ArtifactManager {
@@ -52,9 +73,28 @@ class ArtifactManager {
     return diffPath;
   }
 
-  /// Downloads the file at the given [uri] to a temporary directory and returns
-  /// the downloaded [File].
+  /// Downloads the file at the given [uri] to a [outputPath] if provided or a
+  /// temporary directory if not.
+  ///
+  /// Returns the downloaded [File].
   Future<File> downloadFile(
+    Uri uri, {
+    String? outputPath,
+  }) async {
+    final download = await startFileDownload(
+      uri,
+      outputPath: outputPath,
+    );
+    return download.file;
+  }
+
+  /// Downloads the file at the given [uri] to a [outputPath] if provided or a
+  /// temporary directory if not.
+  ///
+  /// Returns a [FileDownload] object containing the [Future<File>] and a
+  /// [Stream] of download progress updates.
+  @visibleForTesting
+  Future<FileDownload> startFileDownload(
     Uri uri, {
     String? outputPath,
   }) async {
@@ -74,13 +114,73 @@ class ArtifactManager {
       final tempDir = await Directory.systemTemp.createTemp();
       outFile = File(p.join(tempDir.path, 'artifact'));
     }
+    final progressStreamController = StreamController<double>();
 
-    if (!outFile.existsSync()) {
-      outFile.createSync();
+    Future<File> writeStreamedResponseToFile() async {
+      final ioSink = outFile.openWrite();
+      try {
+        var downloadedBytes = 0;
+        final totalBytes = response.contentLength;
+        await for (final chunk in response.stream) {
+          ioSink.add(chunk);
+          downloadedBytes += chunk.length;
+          if (totalBytes == null) {
+            continue;
+          }
+
+          if (progressStreamController.hasListener) {
+            progressStreamController.add(downloadedBytes / totalBytes);
+          }
+        }
+      } finally {
+        // Don't await, as this future will never complete if there are no
+        // listeners.
+        unawaited(progressStreamController.close());
+        await ioSink.close();
+      }
+
+      return outFile;
     }
 
-    await outFile.openWrite().addStream(response.stream);
-    return outFile;
+    return FileDownload(
+      file: writeStreamedResponseToFile(),
+      progress: progressStreamController.stream,
+    );
+  }
+
+  /// Downloads the file at the given [uri] to a temporary location and logs
+  /// progress updates as "[message] (XX%)". Progress updates happen at most
+  /// once every 250 milliseconds. If the download fails, the progress message
+  /// will be updated to "[message] failed: Exception", where "Exception" is the
+  /// error message.
+  ///
+  /// Returns the downloaded [File].
+  Future<File> downloadWithProgressUpdates(
+    Uri uri, {
+    required String message,
+    Duration throttleDuration = const Duration(milliseconds: 250),
+  }) async {
+    final downloadProgress = logger.progress(message);
+    final File artifactFile;
+    try {
+      final download = await startFileDownload(uri);
+      final subscription = download.progress
+          .throttle(throttleDuration, trailing: true)
+          .listen((progress) {
+        downloadProgress.update(
+          '$message (${(progress * 100).toStringAsFixed(0)}%)',
+        );
+      });
+
+      artifactFile = await download.file;
+      await subscription.cancel();
+      downloadProgress.complete('$message (100%)');
+    } catch (e) {
+      downloadProgress.fail('$message failed: $e');
+      rethrow;
+    }
+
+    return artifactFile;
   }
 
   /// Extracts the [zipFile] to the [outputDirectory] directory in a separate
@@ -91,7 +191,7 @@ class ArtifactManager {
   }) async {
     await Isolate.run(() async {
       final inputStream = InputFileStream(zipFile.path);
-      final archive = ZipDecoder().decodeBuffer(inputStream);
+      final archive = ZipDecoder().decodeStream(inputStream);
       await extractArchiveToDisk(archive, outputDirectory.path);
       inputStream.closeSync();
     });
@@ -164,6 +264,38 @@ class ArtifactManager {
     return archsDirectory.existsSync() ? archsDirectory : null;
   }
 
+  /// The directory containing the compiled macOS .app file, if it exists.
+  Directory? getMacOSAppDirectory() {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+
+    final appDirectory = Directory(
+      p.join(
+        projectRoot.path,
+        'build',
+        'macos',
+        'Build',
+        'Products',
+        'Release',
+      ),
+    );
+
+    if (!appDirectory.existsSync()) return null;
+
+    return appDirectory
+        .listSync()
+        .whereType<Directory>()
+        // Get the most recently modified app to handle cases where an app
+        // may produce multiple apps with different names.
+        // This still could grab the wrong app, if multiple `flutter` commands
+        // are running in parallel or the clock is/was broken on the machine.
+        // If either of those occurs in the wild we can check the contents of
+        // the apps, but this should be good enough for now.
+        .sorted(
+          (a, b) => b.statSync().modified.compareTo(a.statSync().modified),
+        )
+        .firstWhereOrNull((directory) => directory.path.endsWith('.app'));
+  }
+
   /// Returns the .xcarchive directory generated by `flutter build ipa`. This
   /// was traditionally named `Runner.xcarchive`, but can now be renamed.
   Directory? getXcarchiveDirectory() {
@@ -182,6 +314,15 @@ class ArtifactManager {
     return archiveDirectory
         .listSync()
         .whereType<Directory>()
+        // Get the most recently modified xcarchive to handle cases where an app
+        // may produce multiple xcarchives with different names.
+        // This still could grab the wrong ipa, if multiple `flutter` commands
+        // are running in parallel or the clock is/was broken on the machine.
+        // If either of those occurs in the wild we can check the contents of
+        // the xcarchives, but this should be good enough for now.
+        .sorted(
+          (a, b) => b.statSync().modified.compareTo(a.statSync().modified),
+        )
         .firstWhereOrNull((directory) => directory.path.endsWith('.xcarchive'));
   }
 
@@ -246,6 +387,46 @@ class ArtifactManager {
     }
 
     return ipaFiles.single;
+  }
+
+  /// Returns the path to the shorebird release supplement directory for iOS.
+  ///
+  /// Returns null if there is no supplement directory
+  /// (e.g. when using older Flutter revisions).
+  Directory? getIosReleaseSupplementDirectory() {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    final releaseSupplementDir = Directory(
+      p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
+    );
+
+    if (!releaseSupplementDir.existsSync()) {
+      logger.detail(
+        'No iOS release supplements found at ${releaseSupplementDir.path}',
+      );
+      return null;
+    }
+
+    return releaseSupplementDir;
+  }
+
+  /// Returns the path to the shorebird release supplement directory for macOS.
+  ///
+  /// Returns null if there is no supplement directory
+  /// (e.g. when using older Flutter revisions).
+  Directory? getMacosReleaseSupplementDirectory() {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    final releaseSupplementDir = Directory(
+      p.join(projectRoot.path, 'build', 'macos', 'shorebird'),
+    );
+
+    if (!releaseSupplementDir.existsSync()) {
+      logger.detail(
+        'No macOS release supplements found at ${releaseSupplementDir.path}',
+      );
+      return null;
+    }
+
+    return releaseSupplementDir;
   }
 
   /// Name of the App.xcframework generated by `shorebird release ios-framework`

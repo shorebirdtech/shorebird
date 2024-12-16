@@ -8,9 +8,13 @@ Future<void> main() async {
   // List all apps.
   final apps = await client.getApps();
 
+  // Get the list of organization memberships for the current user.
+  final memberships = await client.getOrganizationMemberships();
+
   // Create a new Shorebird application.
   final app = await client.createApp(
     displayName: '<DISPLAY NAME>', // e.g. 'Shorebird Example'
+    organizationId: memberships.first.organization.id,
   );
 
   // Create a channel.

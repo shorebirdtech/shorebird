@@ -7,7 +7,7 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -100,8 +100,9 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
 
-    final buildAppBundleProgress = logger
-        .progress('Building app bundle with Flutter $flutterVersionString');
+    final buildAppBundleProgress = logger.detailProgress(
+      'Building app bundle with Flutter $flutterVersionString',
+    );
 
     final File aab;
 
@@ -114,6 +115,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         targetPlatforms: architectures,
         args: argResults.forwardedArgs,
         base64PublicKey: base64PublicKey,
+        buildProgress: buildAppBundleProgress,
       );
     } on ArtifactBuildException catch (e) {
       buildAppBundleProgress.fail(e.message);

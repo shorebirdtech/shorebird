@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -35,6 +35,7 @@ void main() {
     const packageName = 'com.example.my_flutter_module';
     const buildNumber = '1.0';
 
+    late ArgParser argParser;
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
@@ -93,6 +94,7 @@ void main() {
     });
 
     setUp(() {
+      argParser = MockArgParser();
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
@@ -117,7 +119,12 @@ void main() {
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
 
-      patcher = AarPatcher(argResults: argResults, flavor: null, target: null);
+      patcher = AarPatcher(
+        argParser: argParser,
+        argResults: argResults,
+        flavor: null,
+        target: null,
+      );
     });
 
     group('buildNumber', () {

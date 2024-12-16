@@ -7,6 +7,8 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/iterable.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -23,6 +25,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 abstract class Patcher {
   /// {@macro patcher}
   Patcher({
+    required this.argParser,
     required this.argResults,
     required this.flavor,
     required this.target,
@@ -40,6 +43,9 @@ ${iOSLinkPercentageUrl.toLink()}
 ''';
   }
 
+  /// The parser for the arguments passed to the command.
+  final ArgParser argParser;
+
   /// The arguments passed to the command.
   final ArgResults argResults;
 
@@ -55,6 +61,9 @@ ${iOSLinkPercentageUrl.toLink()}
   /// The identifier used for the "primary" release artifact, usually a bundle.
   /// For example, 'aab' for Android, 'xcarchive' for iOS.
   String get primaryReleaseArtifactArch;
+
+  /// The identifier used for any supplementary release artifacts.
+  String? get supplementaryReleaseArtifactArch => null;
 
   /// The root directory of the current project.
   Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;
@@ -73,7 +82,7 @@ ${iOSLinkPercentageUrl.toLink()}
     required File patchArchive,
   });
 
-  /// Builds the release artifacts for the given platform. Returns the "primary"
+  /// Builds the patch artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
   Future<File> buildPatchArtifact({String? releaseVersion});
 
@@ -85,6 +94,7 @@ ${iOSLinkPercentageUrl.toLink()}
     required String appId,
     required int releaseId,
     required File releaseArtifact,
+    File? supplementArtifact,
   });
 
   /// Updates the provided metadata to include patcher-specific fields.
@@ -92,6 +102,24 @@ ${iOSLinkPercentageUrl.toLink()}
     CreatePatchMetadata metadata,
   ) async {
     return metadata;
+  }
+
+  /// Uploads the patch artifacts to the CodePush server.
+  Future<void> uploadPatchArtifacts({
+    required String appId,
+    required int releaseId,
+    required Map<String, dynamic> metadata,
+    required Map<Arch, PatchArtifactBundle> artifacts,
+    required DeploymentTrack track,
+  }) async {
+    await codePushClientWrapper.publishPatch(
+      appId: appId,
+      releaseId: releaseId,
+      metadata: metadata,
+      platform: releaseType.releasePlatform,
+      track: track,
+      patchArtifactBundles: artifacts,
+    );
   }
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
@@ -104,6 +132,14 @@ ${iOSLinkPercentageUrl.toLink()}
   /// Returns `null` if the platform does not use a linker or if the linking
   /// step has not yet been run.
   double? get linkPercentage => null;
+
+  /// The value of `--split-debug-info-path` if specified.
+  String? get splitDebugInfoPath {
+    return argResults.findOption(
+      CommonArguments.splitDebugInfoArg.name,
+      argParser: argParser,
+    );
+  }
 
   /// The build directory of the respective shorebird project.
   Directory get buildDirectory {

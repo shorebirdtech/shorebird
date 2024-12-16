@@ -7,7 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
@@ -137,6 +137,9 @@ extension ForwardedArgs on ArgResults {
         ..._argsNamed(CommonArguments.dartDefineFromFileArg.name),
         ..._argsNamed(CommonArguments.buildNameArg.name),
         ..._argsNamed(CommonArguments.buildNumberArg.name),
+        ..._argsNamed(CommonArguments.splitDebugInfoArg.name),
+        ..._argsNamed(CommonArguments.exportMethodArg.name),
+        ..._argsNamed(CommonArguments.exportOptionsPlistArg.name),
       ],
     );
 

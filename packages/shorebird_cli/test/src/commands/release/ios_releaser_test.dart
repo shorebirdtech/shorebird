@@ -18,7 +18,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
@@ -332,10 +332,10 @@ To change the version of this release, change your app's version in your pubspec
           when(
             () => artifactBuilder.buildIpa(
               codesign: any(named: 'codesign'),
-              exportOptionsPlist: any(named: 'exportOptionsPlist'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
+              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer(
             (_) async => IpaBuildResult(
@@ -348,18 +348,17 @@ To change the version of this release, change your app's version in your pubspec
               xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
             ),
           ).thenReturn(iosAppDirectory);
-          when(() => artifactManager.getXcarchiveDirectory())
-              .thenReturn(xcarchiveDirectory);
-
-          when(() => codeSigner.base64PublicKey(any()))
-              .thenReturn(base64PublicKey);
+          when(
+            () => artifactManager.getXcarchiveDirectory(),
+          ).thenReturn(xcarchiveDirectory);
 
           when(
-            () => ios.exportOptionsPlistFromArgs(argResults),
-          ).thenReturn(File(''));
+            () => codeSigner.base64PublicKey(any()),
+          ).thenReturn(base64PublicKey);
 
-          when(() => shorebirdEnv.getShorebirdProjectRoot())
-              .thenReturn(projectRoot);
+          when(
+            () => shorebirdEnv.getShorebirdProjectRoot(),
+          ).thenReturn(projectRoot);
           when(
             () => shorebirdFlutter.getVersionAndRevision(),
           ).thenAnswer((_) async => flutterVersionAndRevision);
@@ -373,17 +372,18 @@ To change the version of this release, change your app's version in your pubspec
                 'patch-signing-public-key.pem',
               ),
             )..createSync(recursive: true);
-            when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn(patchSigningPublicKeyFile.path);
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(patchSigningPublicKeyFile.path);
 
             when(
               () => artifactBuilder.buildIpa(
                 codesign: any(named: 'codesign'),
-                exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).thenAnswer(
               (_) async => IpaBuildResult(
@@ -402,11 +402,11 @@ To change the version of this release, change your app's version in your pubspec
               verify(
                 () => artifactBuilder.buildIpa(
                   codesign: any(named: 'codesign'),
-                  exportOptionsPlist: any(named: 'exportOptionsPlist'),
                   flavor: any(named: 'flavor'),
                   target: any(named: 'target'),
                   args: any(named: 'args'),
                   base64PublicKey: base64PublicKey,
+                  buildProgress: any(named: 'buildProgress'),
                 ),
               ).called(1);
             },
@@ -434,35 +434,15 @@ To change the version of this release, change your app's version in your pubspec
           });
         });
 
-        group('when export options plist fails to generate', () {
-          const error = 'error';
-          setUp(() {
-            when(
-              () => ios.exportOptionsPlistFromArgs(argResults),
-            ).thenThrow(error);
-          });
-
-          test('logs error and exits with code 64', () async {
-            await expectLater(
-              () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
-              exitsWithCode(ExitCode.usage),
-            );
-
-            verify(
-              () => logger.err(error),
-            ).called(1);
-          });
-        });
-
         group('when build fails', () {
           setUp(() {
             when(
               () => artifactBuilder.buildIpa(
                 codesign: any(named: 'codesign'),
-                exportOptionsPlist: any(named: 'exportOptionsPlist'),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 args: any(named: 'args'),
+                buildProgress: any(named: 'buildProgress'),
               ),
             ).thenThrow(ArtifactBuildException('Failed to build'));
           });
@@ -480,32 +460,49 @@ To change the version of this release, change your app's version in your pubspec
         });
 
         group('when build succeeds', () {
-          group('when build succeeds', () {
-            group('when platform was specified via arg results rest', () {
-              setUp(() {
-                when(() => argResults.rest).thenReturn(['ios', '--verbose']);
-              });
+          group('when stale build/ios/shorebird directory exists', () {
+            late Directory shorebirdSupplementDir;
 
-              test('verifies artifacts exist and returns xcarchive path',
-                  () async {
-                expect(
-                  await runWithOverrides(iosReleaser.buildReleaseArtifacts),
-                  equals(xcarchiveDirectory),
-                );
+            setUp(() {
+              shorebirdSupplementDir = Directory(
+                p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
+              )..createSync(recursive: true);
+              when(
+                () => artifactManager.getIosReleaseSupplementDirectory(),
+              ).thenReturn(shorebirdSupplementDir);
+            });
 
-                verify(() => artifactManager.getXcarchiveDirectory()).called(1);
-                verify(
-                  () => artifactManager.getIosAppDirectory(
-                    xcarchiveDirectory: xcarchiveDirectory,
-                  ),
-                ).called(1);
-                verify(
-                  () => artifactBuilder.buildIpa(
-                    exportOptionsPlist: any(named: 'exportOptionsPlist'),
-                    args: ['--verbose'],
-                  ),
-                ).called(1);
-              });
+            test('deletes the directory', () async {
+              expect(shorebirdSupplementDir.existsSync(), isTrue);
+              await runWithOverrides(iosReleaser.buildReleaseArtifacts);
+              expect(shorebirdSupplementDir.existsSync(), isFalse);
+            });
+          });
+
+          group('when platform was specified via arg results rest', () {
+            setUp(() {
+              when(() => argResults.rest).thenReturn(['ios', '--verbose']);
+            });
+
+            test('verifies artifacts exist and returns xcarchive path',
+                () async {
+              expect(
+                await runWithOverrides(iosReleaser.buildReleaseArtifacts),
+                equals(xcarchiveDirectory),
+              );
+
+              verify(() => artifactManager.getXcarchiveDirectory()).called(1);
+              verify(
+                () => artifactManager.getIosAppDirectory(
+                  xcarchiveDirectory: xcarchiveDirectory,
+                ),
+              ).called(1);
+              verify(
+                () => artifactBuilder.buildIpa(
+                  args: ['--verbose'],
+                  buildProgress: any(named: 'buildProgress'),
+                ),
+              ).called(1);
             });
           });
 
@@ -703,6 +700,7 @@ To change the version of this release, change your app's version in your pubspec
 
         late Directory xcarchiveDirectory;
         late Directory iosAppDirectory;
+        late Directory supplementDirectory;
         late File podfileLockFile;
 
         setUp(() {
@@ -710,6 +708,7 @@ To change the version of this release, change your app's version in your pubspec
 
           xcarchiveDirectory = Directory.systemTemp.createTempSync();
           iosAppDirectory = Directory.systemTemp.createTempSync();
+          supplementDirectory = Directory.systemTemp.createTempSync();
           podfileLockFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
@@ -726,6 +725,9 @@ To change the version of this release, change your app's version in your pubspec
             ),
           ).thenReturn(iosAppDirectory);
           when(
+            () => artifactManager.getIosReleaseSupplementDirectory(),
+          ).thenReturn(supplementDirectory);
+          when(
             () => codePushClientWrapper.createIosReleaseArtifacts(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
@@ -733,9 +735,11 @@ To change the version of this release, change your app's version in your pubspec
               runnerPath: any(named: 'runnerPath'),
               isCodesigned: any(named: 'isCodesigned'),
               podfileLockHash: any(named: 'podfileLockHash'),
+              supplementPath: any(named: 'supplementPath'),
             ),
           ).thenAnswer((_) async => {});
-          when(() => shorebirdEnv.podfileLockFile).thenReturn(podfileLockFile);
+          when(() => shorebirdEnv.iosPodfileLockFile)
+              .thenReturn(podfileLockFile);
         });
 
         test('forwards call to codePushClientWrapper', () async {
@@ -754,7 +758,8 @@ To change the version of this release, change your app's version in your pubspec
               runnerPath: iosAppDirectory.path,
               isCodesigned: codesign,
               podfileLockHash:
-                  sha256.convert(utf8.encode(podfileLockContent)).toString(),
+                  '${sha256.convert(utf8.encode(podfileLockContent))}',
+              supplementPath: supplementDirectory.path,
             ),
           ).called(1);
         });

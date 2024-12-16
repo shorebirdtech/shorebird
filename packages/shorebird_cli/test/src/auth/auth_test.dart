@@ -13,7 +13,7 @@ import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -127,7 +127,7 @@ void main() {
       authProvider: AuthProvider.google,
     );
     const email = 'test@email.com';
-    const user = User(
+    const user = PrivateUser(
       id: 42,
       email: email,
       jwtIssuer: googleJwtIssuer,
@@ -523,14 +523,8 @@ void main() {
           );
         });
 
-        test('prints warning message when token string is not valid base64',
-            () async {
-          auth = buildAuth();
-          verify(
-            () => logger.warn('''
-SHOREBIRD_TOKEN needs to be updated before the next major release.
-Run `shorebird login:ci` to obtain a new token.'''),
-          ).called(1);
+        test('throws error when token string is not valid base64', () async {
+          expect(buildAuth, throwsA(isFormatException));
         });
       });
 

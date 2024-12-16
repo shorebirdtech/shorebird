@@ -99,11 +99,13 @@ words:
   - udid # Unique Device Identifier
   - unawaited
   - unmockable
+  - unsets
   - upvote
   - usbmuxd
   - vmcode
   - writeln
   - xcarchive
+  - xcarchives
   - xcframework
   - xcodebuild
   - xcodeproj

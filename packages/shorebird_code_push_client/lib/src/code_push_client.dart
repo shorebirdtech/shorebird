@@ -111,7 +111,7 @@ class CodePushClient {
   Uri get _v1 => Uri.parse('$hostedUri/api/v1');
 
   /// Fetches the currently logged-in user.
-  Future<User?> getCurrentUser() async {
+  Future<PrivateUser?> getCurrentUser() async {
     final uri = Uri.parse('$_v1/users/me');
     final response = await _httpClient.get(uri);
 
@@ -122,7 +122,7 @@ class CodePushClient {
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
-    return User.fromJson(json);
+    return PrivateUser.fromJson(json);
   }
 
   /// Create a new artifact for a specific [patchId].
@@ -225,10 +225,18 @@ class CodePushClient {
 
   /// Create a new app with the provided [displayName].
   /// Returns the newly created app.
-  Future<App> createApp({required String displayName}) async {
+  Future<App> createApp({
+    required int organizationId,
+    required String displayName,
+  }) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps'),
-      body: json.encode({'display_name': displayName}),
+      body: json.encode(
+        CreateAppRequest(
+          organizationId: organizationId,
+          displayName: displayName,
+        ).toJson(),
+      ),
     );
 
     if (!response.isSuccess) {
@@ -331,7 +339,7 @@ class CodePushClient {
   /// Create a new Shorebird user with the provided [name].
   ///
   /// The email associated with the user's JWT will be used as the user's email.
-  Future<User> createUser({
+  Future<PrivateUser> createUser({
     required String name,
   }) async {
     final response = await _httpClient.post(
@@ -344,7 +352,7 @@ class CodePushClient {
     }
 
     final body = json.decode(response.body) as Json;
-    return User.fromJson(body);
+    return PrivateUser.fromJson(body);
   }
 
   /// Delete the app with the provided [appId].
@@ -475,6 +483,50 @@ class CodePushClient {
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
+  }
+
+  /// Gets the list of organizations the user is a member of, along with the
+  /// user's role in each organization.
+  Future<List<OrganizationMembership>> getOrganizationMemberships() async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/organizations'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return GetOrganizationsResponse.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    ).organizations;
+  }
+
+  /// Returns a GCP upload link for measuring upload speed.
+  Future<Uri> getGCPUploadSpeedTestUrl() async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/diagnostics/gcp_upload'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    final jsonBody = json.decode(response.body) as Map<String, dynamic>;
+    return Uri.parse(jsonBody['upload_url'] as String);
+  }
+
+  /// Returns a GCP download link for measuring download speed.
+  Future<Uri> getGCPDownloadSpeedTestUrl() async {
+    final response = await _httpClient.get(
+      Uri.parse('$_v1/diagnostics/gcp_download'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    final jsonBody = json.decode(response.body) as Map<String, dynamic>;
+    return Uri.parse(jsonBody['download_url'] as String);
   }
 
   /// Closes the client.

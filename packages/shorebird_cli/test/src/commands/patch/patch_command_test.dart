@@ -15,7 +15,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -24,7 +24,6 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../../fakes.dart';
@@ -95,6 +94,17 @@ void main() {
       podfileLockHash: null,
       canSideload: true,
     );
+    const supplementArtifact = ReleaseArtifact(
+      id: 0,
+      releaseId: 0,
+      arch: arch,
+      platform: releasePlatform,
+      hash: '#',
+      size: 422,
+      url: 'https://example.com/supplement.zip',
+      podfileLockHash: null,
+      canSideload: false,
+    );
 
     late AotTools aotTools;
     late ArgResults argResults;
@@ -130,7 +140,7 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(CreatePatchMetadata.forTest());
-      registerFallbackValue(DeploymentTrack.production);
+      registerFallbackValue(DeploymentTrack.stable);
       registerFallbackValue(FakeDiffStatus());
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
@@ -158,37 +168,47 @@ void main() {
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
+      when(
+        () => argResults['track'],
+      ).thenReturn(DeploymentTrack.stable.channel);
       when(() => argResults.wasParsed(any())).thenReturn(true);
-      when(() => argResults.wasParsed(CommonArguments.privateKeyArg.name))
-          .thenReturn(false);
-      when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
-          .thenReturn(false);
+      when(() => argResults.wasParsed('staging')).thenReturn(false);
+      when(
+        () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+      ).thenReturn(false);
+      when(
+        () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+      ).thenReturn(false);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
       when(
-        () => artifactManager.downloadFile(any()),
+        () => artifactManager.downloadWithProgressUpdates(
+          any(),
+          message: any(named: 'message'),
+        ),
       ).thenAnswer((_) async => File(''));
 
       when(() => cache.updateAll()).thenAnswer((_) async => {});
 
-      when(() => codePushClientWrapper.getApp(appId: any(named: 'appId')))
-          .thenAnswer((_) async => appMetadata);
+      when(
+        () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => appMetadata);
       when(
         () => codePushClientWrapper.getRelease(
           appId: any(named: 'appId'),
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
-      when(() => codePushClientWrapper.getReleases(appId: any(named: 'appId')))
-          .thenAnswer((_) async => [release]);
       when(
-        () => codePushClientWrapper.publishPatch(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [release]);
+      when(
+        () => patcher.uploadPatchArtifacts(
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
-          platform: any(named: 'platform'),
           track: any(named: 'track'),
-          patchArtifactBundles: any(named: 'patchArtifactBundles'),
+          artifacts: any(named: 'artifacts'),
           metadata: any(named: 'metadata'),
         ),
       ).thenAnswer((_) async {});
@@ -215,6 +235,14 @@ void main() {
           platform: ReleasePlatform.android,
         ),
       ).thenAnswer((_) async => aabArtifact);
+      when(
+        () => codePushClientWrapper.maybeGetReleaseArtifact(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+          arch: 'supplement',
+          platform: ReleasePlatform.android,
+        ),
+      ).thenAnswer((_) async => supplementArtifact);
 
       when(
         () => logger.chooseOne<Release>(
@@ -243,6 +271,7 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           releaseArtifact: any(named: 'releaseArtifact'),
+          supplementArtifact: any(named: 'supplementArtifact'),
         ),
       ).thenAnswer((_) async => patchArtifactBundles);
       when(
@@ -293,18 +322,45 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    group('run', () {
+      group('when --staging is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('staging')).thenReturn(true);
+        });
+
+        test(
+            '''warns that staging flag will be deprecated and exits with usage code''',
+            () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            completion(equals(ExitCode.usage.code)),
+          );
+          verify(
+            () => logger.err(
+              '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
+            ),
+          ).called(1);
+        });
+      });
+
+      test('prints beta warning when macos platform is selected', () async {
+        when(() => argResults['platforms']).thenReturn(['macos']);
+        await runWithOverrides(command.run);
+        verify(() => logger.warn(macosBetaWarning)).called(1);
+      });
+    });
+
     group('createPatch', () {
       test('publishes the patch', () async {
         await runWithOverrides(() => command.createPatch(patcher));
 
         verify(
-          () => codePushClientWrapper.publishPatch(
+          () => patcher.uploadPatchArtifacts(
             appId: appId,
             releaseId: any(named: 'releaseId'),
             metadata: any(named: 'metadata'),
-            platform: any(named: 'platform'),
             track: any(named: 'track'),
-            patchArtifactBundles: patchArtifactBundles,
+            artifacts: patchArtifactBundles,
           ),
         ).called(1);
       });
@@ -314,8 +370,9 @@ void main() {
           test('validates successfully', () async {
             await runWithOverrides(() => command.createPatch(patcher));
 
-            verify(() => shorebirdValidator.validateFlavors(flavorArg: null))
-                .called(1);
+            verify(
+              () => shorebirdValidator.validateFlavors(flavorArg: null),
+            ).called(1);
           });
         });
 
@@ -328,8 +385,9 @@ void main() {
           test('validates successfully', () async {
             await runWithOverrides(() => command.createPatch(patcher));
 
-            verify(() => shorebirdValidator.validateFlavors(flavorArg: flavor))
-                .called(1);
+            verify(
+              () => shorebirdValidator.validateFlavors(flavorArg: flavor),
+            ).called(1);
           });
         });
       });
@@ -377,8 +435,9 @@ void main() {
               when(
                 () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
               ).thenReturn(false);
-              when(() => argResults[CommonArguments.privateKeyArg.name])
-                  .thenReturn(createTempFile('private.pem').path);
+              when(
+                () => argResults[CommonArguments.privateKeyArg.name],
+              ).thenReturn(createTempFile('private.pem').path);
 
               await expectLater(
                 runWithOverrides(() => command.createPatch(patcher)),
@@ -393,31 +452,84 @@ void main() {
           },
         );
 
-        group(
-          'when given an existing public key and nonexistent private key',
-          () {
-            test('fails and logs the err', () async {
-              when(
-                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
-              ).thenReturn(false);
-              when(
-                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-              ).thenReturn(true);
-              when(() => argResults[CommonArguments.publicKeyArg.name])
-                  .thenReturn(createTempFile('public.pem').path);
+        group('when given an existing public key and nonexistent private key',
+            () {
+          test('fails and logs the err', () async {
+            when(
+              () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+            ).thenReturn(false);
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+            ).thenReturn(true);
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(createTempFile('public.pem').path);
 
-              await expectLater(
-                runWithOverrides(() => command.createPatch(patcher)),
-                exitsWithCode(ExitCode.usage),
-              );
+            await expectLater(
+              runWithOverrides(() => command.createPatch(patcher)),
+              exitsWithCode(ExitCode.usage),
+            );
+            verify(
+              () => logger.err(
+                'Both public and private keys must be provided.',
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when a supplemental release artifact exists', () {
+          setUp(() {
+            when(
+              () => patcher.supplementaryReleaseArtifactArch,
+            ).thenReturn('supplement');
+          });
+
+          test('downloads the supplemental release artifact', () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            verify(
+              () => codePushClientWrapper.maybeGetReleaseArtifact(
+                appId: appId,
+                releaseId: release.id,
+                arch: 'supplement',
+                platform: releasePlatform,
+              ),
+            ).called(1);
+            verify(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: release.id,
+                releaseArtifact: any(named: 'releaseArtifact'),
+                supplementArtifact: any(named: 'supplementArtifact'),
+              ),
+            ).called(1);
+          });
+
+          group('when the artifact is not found', () {
+            setUp(() {
+              when(
+                () => codePushClientWrapper.getReleaseArtifact(
+                  appId: appId,
+                  releaseId: release.id,
+                  arch: 'supplement',
+                  platform: releasePlatform,
+                ),
+              ).thenThrow(CodePushNotFoundException(message: 'Not found'));
+            });
+
+            test('gracefully continues to create patch', () async {
+              await runWithOverrides(() => command.createPatch(patcher));
               verify(
-                () => logger.err(
-                  'Both public and private keys must be provided.',
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: release.id,
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  supplementArtifact: any(named: 'supplementArtifact'),
                 ),
               ).called(1);
             });
-          },
-        );
+          });
+        });
       });
     });
 
@@ -439,6 +551,10 @@ void main() {
           command.getPatcher(ReleaseType.iosFramework),
           isA<IosFrameworkPatcher>(),
         );
+        expect(
+          command.getPatcher(ReleaseType.macos),
+          isA<MacosPatcher>(),
+        );
       });
     });
 
@@ -455,7 +571,7 @@ void main() {
             '🍧 Flavor: ${lightCyan.wrap(flavor)}',
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
             '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
-            '🟢 Track: ${lightCyan.wrap('Production')}',
+            '🟢 Track: ${lightCyan.wrap('Stable')}',
           ];
           await expectLater(
             runWithOverrides(
@@ -478,7 +594,13 @@ void main() {
 
       group('when is staging', () {
         setUp(() {
-          when(() => argResults['staging']).thenReturn(true);
+          when(
+            () => argResults['track'],
+          ).thenReturn(DeploymentTrack.staging.channel);
+        });
+
+        test('isStaging returns true', () {
+          expect(command.isStaging, isTrue);
         });
 
         test('logs correct summary', () async {
@@ -487,6 +609,39 @@ void main() {
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
             '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
             '🟠 Track: ${lightCyan.wrap('Staging')}',
+          ];
+          await expectLater(
+            runWithOverrides(
+              () => command.confirmCreatePatch(
+                app: appMetadata,
+                releaseVersion: releaseVersion,
+                patcher: patcher,
+                patchArtifactBundles: patchArtifactBundles,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => logger.info(
+              any(that: contains(expectedSummary.join('\n'))),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when is beta', () {
+        setUp(() {
+          when(
+            () => argResults['track'],
+          ).thenReturn(DeploymentTrack.beta.channel);
+        });
+
+        test('logs correct summary', () async {
+          final expectedSummary = [
+            '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
+            '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+            '🔵 Track: ${lightCyan.wrap('Beta')}',
           ];
           await expectLater(
             runWithOverrides(
@@ -521,7 +676,7 @@ void main() {
             '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
             '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
-            '🟢 Track: ${lightCyan.wrap('Production')}',
+            '🟢 Track: ${lightCyan.wrap('Stable')}',
             '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
           ];
           await expectLater(
@@ -601,13 +756,12 @@ void main() {
               ),
           () => logger.confirm('Would you like to continue?'),
           () => patcher.updatedCreatePatchMetadata(any()),
-          () => codePushClientWrapper.publishPatch(
+          () => patcher.uploadPatchArtifacts(
                 appId: appId,
                 releaseId: release.id,
                 metadata: patchMetadata.toJson(),
-                platform: releasePlatform,
-                patchArtifactBundles: any(named: 'patchArtifactBundles'),
-                track: DeploymentTrack.production,
+                artifacts: any(named: 'artifacts'),
+                track: DeploymentTrack.stable,
               ),
         ]);
       });
@@ -652,13 +806,12 @@ void main() {
                 releaseArtifact: any(named: 'releaseArtifact'),
               ),
           () => logger.confirm('Would you like to continue?'),
-          () => codePushClientWrapper.publishPatch(
+          () => patcher.uploadPatchArtifacts(
                 appId: appId,
                 releaseId: release.id,
                 metadata: any(named: 'metadata'),
-                platform: releasePlatform,
-                patchArtifactBundles: any(named: 'patchArtifactBundles'),
-                track: DeploymentTrack.production,
+                artifacts: any(named: 'artifacts'),
+                track: DeploymentTrack.stable,
               ),
         ]);
 
@@ -774,13 +927,12 @@ void main() {
 
         verifyNever(() => logger.confirm(any()));
         verifyNever(
-          () => codePushClientWrapper.publishPatch(
+          () => patcher.uploadPatchArtifacts(
             appId: appId,
             releaseId: release.id,
             metadata: any(named: 'metadata'),
-            platform: releasePlatform,
-            patchArtifactBundles: any(named: 'patchArtifactBundles'),
-            track: DeploymentTrack.production,
+            artifacts: any(named: 'artifacts'),
+            track: DeploymentTrack.stable,
           ),
         );
       });
@@ -889,7 +1041,12 @@ Please re-run the release command for this version or create a new release.''',
       final error = Exception('Failed to download primary release artifact.');
 
       setUp(() {
-        when(() => artifactManager.downloadFile(any())).thenThrow(error);
+        when(
+          () => artifactManager.downloadWithProgressUpdates(
+            any(),
+            message: any(named: 'message'),
+          ),
+        ).thenThrow(error);
       });
 
       test('logs error and exits with code 70', () async {
@@ -897,12 +1054,6 @@ Please re-run the release command for this version or create a new release.''',
           () => runWithOverrides(command.run),
           exitsWithCode(ExitCode.software),
         );
-
-        verify(
-          () => progress.fail(
-            'Exception: Failed to download primary release artifact.',
-          ),
-        ).called(1);
       });
     });
 
@@ -950,7 +1101,9 @@ Please re-run the release command for this version or create a new release.''',
 
     group('when patching to the staging track', () {
       setUp(() {
-        when(() => argResults['staging']).thenReturn(true);
+        when(
+          () => argResults['track'],
+        ).thenReturn(DeploymentTrack.staging.channel);
       });
 
       test('publishes to the staging track', () async {
@@ -958,12 +1111,11 @@ Please re-run the release command for this version or create a new release.''',
         expect(exitCode, equals(ExitCode.success.code));
 
         verify(
-          () => codePushClientWrapper.publishPatch(
+          () => patcher.uploadPatchArtifacts(
             appId: appId,
             releaseId: release.id,
             metadata: any(named: 'metadata'),
-            platform: releasePlatform,
-            patchArtifactBundles: any(named: 'patchArtifactBundles'),
+            artifacts: any(named: 'artifacts'),
             track: DeploymentTrack.staging,
           ),
         ).called(1);

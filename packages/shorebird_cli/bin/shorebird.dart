@@ -14,7 +14,8 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -35,6 +36,15 @@ Future<void> main(List<String> args) async {
     values: {shorebirdEnvRef},
   );
 
+  // Write the current command to the top of the log file.
+  currentRunLogFile.writeAsStringSync(
+    '''
+Command: shorebird ${args.join(' ')}
+
+''',
+    mode: FileMode.append,
+  );
+
   await IOOverrides.runZoned(
     () async => _flushThenExit(
       await runScoped(
@@ -53,6 +63,7 @@ Future<void> main(List<String> args) async {
           codePushClientWrapperRef,
           codeSignerRef,
           devicectlRef,
+          dittoRef,
           doctorRef,
           engineConfigRef,
           gitRef,
@@ -63,6 +74,8 @@ Future<void> main(List<String> args) async {
           iosRef,
           javaRef,
           loggerRef,
+          networkCheckerRef,
+          openRef,
           osInterfaceRef,
           patchExecutableRef,
           patchDiffCheckerRef,

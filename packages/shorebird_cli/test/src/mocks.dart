@@ -25,7 +25,8 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -44,8 +45,6 @@ class MockAccessCredentials extends Mock implements AccessCredentials {}
 
 class MockAdb extends Mock implements Adb {}
 
-class MockAndroidArchiveDiffer extends Mock implements AndroidArchiveDiffer {}
-
 class MockAndroidSdk extends Mock implements AndroidSdk {}
 
 class MockAndroidStudio extends Mock implements AndroidStudio {}
@@ -57,6 +56,8 @@ class MockAppMetadata extends Mock implements AppMetadata {}
 class MockAppleDevice extends Mock implements AppleDevice {}
 
 class MockArchiveDiffer extends Mock implements ArchiveDiffer {}
+
+class MockArgParser extends Mock implements ArgParser {}
 
 class MockArgResults extends Mock implements ArgResults {}
 
@@ -78,7 +79,11 @@ class MockCodePushClientWrapper extends Mock implements CodePushClientWrapper {}
 
 class MockCodeSigner extends Mock implements CodeSigner {}
 
+class MockDetailProgress extends Mock implements DetailProgress {}
+
 class MockDevicectl extends Mock implements Devicectl {}
+
+class MockDitto extends Mock implements Ditto {}
 
 class MockDirectory extends Mock implements Directory {}
 
@@ -104,13 +109,15 @@ class MockIOSink extends Mock implements IOSink {}
 
 class MockIos extends Mock implements Ios {}
 
-class MockIosArchiveDiffer extends Mock implements IosArchiveDiffer {}
-
 class MockJava extends Mock implements Java {}
 
 class MockJwtHeader extends Mock implements JwtHeader {}
 
 class MockJwtPayload extends Mock implements JwtPayload {}
+
+class MockNetworkChecker extends Mock implements NetworkChecker {}
+
+class MockOpen extends Mock implements Open {}
 
 class MockOperatingSystemInterface extends Mock
     implements OperatingSystemInterface {}

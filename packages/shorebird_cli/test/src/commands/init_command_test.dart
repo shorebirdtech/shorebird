@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/commands/init_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
@@ -35,6 +35,7 @@ name: $appName
 version: $version
 environment:
   sdk: ">=2.19.0 <3.0.0"''';
+    const organizationId = 123;
 
     late ArgResults argResults;
     late Doctor doctor;
@@ -92,8 +93,19 @@ environment:
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
 
+      when(() => codePushClientWrapper.getOrganizationMemberships()).thenAnswer(
+        (_) async => [
+          OrganizationMembership(
+            role: OrganizationRole.owner,
+            organization: Organization.forTest(id: organizationId),
+          ),
+        ],
+      );
       when(
-        () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
+        () => codePushClientWrapper.createApp(
+          appName: any(named: 'appName'),
+          organizationId: any(named: 'organizationId'),
+        ),
       ).thenAnswer((_) async => app);
       when(
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
@@ -200,7 +212,10 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       );
       verify(
-        () => codePushClientWrapper.createApp(appName: appName),
+        () => codePushClientWrapper.createApp(
+          appName: appName,
+          organizationId: organizationId,
+        ),
       ).called(1);
     });
 
@@ -211,7 +226,10 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
       );
       verify(
-        () => codePushClientWrapper.createApp(appName: appName),
+        () => codePushClientWrapper.createApp(
+          appName: appName,
+          organizationId: organizationId,
+        ),
       ).called(1);
     });
 
@@ -249,7 +267,10 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     test('throws software error when error occurs creating app.', () async {
       final error = Exception('oops');
       when(
-        () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
+        () => codePushClientWrapper.createApp(
+          appName: any(named: 'appName'),
+          organizationId: any(named: 'organizationId'),
+        ),
       ).thenThrow(error);
       final exitCode = await runWithOverrides(command.run);
       verify(
@@ -257,6 +278,112 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       ).called(1);
       verify(() => logger.err('$error')).called(1);
       expect(exitCode, ExitCode.software.code);
+    });
+
+    group('when user has no organizations', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getOrganizationMemberships(),
+        ).thenAnswer((_) async => []);
+      });
+
+      test('exits with software error code', () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.software.code));
+        verify(
+          () => logger.err(
+            '''You do not have any organizations. This should never happen. Please contact us on Discord or send us an email at contact@shorebird.dev.''',
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when user has only one organization', () {
+      setUp(() {
+        when(() => codePushClientWrapper.getOrganizationMemberships())
+            .thenAnswer(
+          (_) async => [
+            OrganizationMembership(
+              role: OrganizationRole.owner,
+              organization: Organization.forTest(id: organizationId),
+            ),
+          ],
+        );
+      });
+
+      test('does not prompt for organization, uses that org id to create app',
+          () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        verifyNever(
+          () => logger.chooseOne(
+            'Which organization should this app belong to?',
+            choices: any(named: 'choices'),
+          ),
+        );
+        verify(
+          () => codePushClientWrapper.createApp(
+            appName: appName,
+            organizationId: organizationId,
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when user has multiple organizations', () {
+      final org1 = Organization.forTest(
+        name: 'org1',
+        id: 1,
+      );
+      final org2 = Organization.forTest(
+        name: 'org2',
+        id: 2,
+        organizationType: OrganizationType.team,
+      );
+
+      setUp(() {
+        when(() => codePushClientWrapper.getOrganizationMemberships())
+            .thenAnswer(
+          (_) async => [
+            OrganizationMembership(
+              role: OrganizationRole.owner,
+              organization: org1,
+            ),
+            OrganizationMembership(
+              role: OrganizationRole.owner,
+              organization: org2,
+            ),
+          ],
+        );
+        when(
+          () => logger.chooseOne<Organization>(
+            'Which organization should this app belong to?',
+            choices: any(named: 'choices'),
+            display: any(named: 'display'),
+          ),
+        ).thenReturn(org2);
+      });
+
+      test('prompts for organization and uses that org id to create app',
+          () async {
+        final exitCode = await runWithOverrides(command.run);
+        expect(exitCode, equals(ExitCode.success.code));
+        final capturedDisplay = verify(
+          () => logger.chooseOne<Organization>(
+            'Which organization should this app belong to?',
+            choices: [org1, org2],
+            display: captureAny(named: 'display'),
+          ),
+        ).captured.single as String Function(Organization);
+        expect(capturedDisplay(org1), equals(org1.name));
+        expect(capturedDisplay(org2), equals(org2.name));
+        verify(
+          () => codePushClientWrapper.createApp(
+            appName: appName,
+            organizationId: org2.id,
+          ),
+        ).called(1);
+      });
     });
 
     group('on non MacOS', () {
@@ -312,7 +439,10 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           ).called(1);
           verifyNever(() => logger.prompt(any()));
           verify(
-            () => codePushClientWrapper.createApp(appName: displayName),
+            () => codePushClientWrapper.createApp(
+              appName: displayName,
+              organizationId: organizationId,
+            ),
           ).called(1);
         });
       });
@@ -346,7 +476,10 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         const appIds = ['test-appId-1', 'test-appId-2'];
         var index = 0;
         when(
-          () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
+          () => codePushClientWrapper.createApp(
+            appName: any(named: 'appName'),
+            organizationId: any(named: 'organizationId'),
+          ),
         ).thenAnswer((invocation) async {
           final appName = invocation.namedArguments[#appName] as String?;
           return App(id: appIds[index++], displayName: appName ?? '-');
@@ -373,8 +506,14 @@ flavors:
           ),
         ).called(1);
         verifyInOrder([
-          () => codePushClientWrapper.createApp(appName: '$appName (internal)'),
-          () => codePushClientWrapper.createApp(appName: '$appName (stable)'),
+          () => codePushClientWrapper.createApp(
+                appName: '$appName (internal)',
+                organizationId: organizationId,
+              ),
+          () => codePushClientWrapper.createApp(
+                appName: '$appName (stable)',
+                organizationId: organizationId,
+              ),
         ]);
       });
     });
@@ -410,7 +549,10 @@ flavors:
           },
         );
         when(
-          () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
+          () => codePushClientWrapper.createApp(
+            appName: any(named: 'appName'),
+            organizationId: any(named: 'organizationId'),
+          ),
         ).thenAnswer((invocation) async {
           final appName = invocation.namedArguments[#appName] as String?;
           return App(id: appIds[index++], displayName: appName ?? '--');
@@ -434,21 +576,27 @@ flavors:
         verifyInOrder([
           () => codePushClientWrapper.createApp(
                 appName: '$appName (development)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (production)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (productionInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (staging)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
               ),
         ]);
       });
@@ -474,7 +622,10 @@ flavors:
           },
         );
         when(
-          () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
+          () => codePushClientWrapper.createApp(
+            appName: any(named: 'appName'),
+            organizationId: any(named: 'organizationId'),
+          ),
         ).thenAnswer((invocation) async {
           final appName = invocation.namedArguments[#appName] as String?;
           return App(id: appIds[index++], displayName: appName ?? '-');
@@ -501,21 +652,27 @@ flavors:
         verifyInOrder([
           () => codePushClientWrapper.createApp(
                 appName: '$appName (development)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (production)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (productionInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (staging)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
               ),
         ]);
       });
@@ -543,7 +700,10 @@ flavors:
         );
         when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
         when(
-          () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
+          () => codePushClientWrapper.createApp(
+            appName: any(named: 'appName'),
+            organizationId: any(named: 'organizationId'),
+          ),
         ).thenAnswer((invocation) async {
           final appName = invocation.namedArguments[#appName] as String?;
           return App(id: appIds[index++], displayName: appName ?? '--');
@@ -567,21 +727,27 @@ flavors:
         verifyInOrder([
           () => codePushClientWrapper.createApp(
                 appName: '$appName (development)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (production)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (productionInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (staging)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
               ),
         ]);
       });
@@ -609,7 +775,10 @@ flavors:
           },
         );
         when(
-          () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
+          () => codePushClientWrapper.createApp(
+            appName: any(named: 'appName'),
+            organizationId: any(named: 'organizationId'),
+          ),
         ).thenAnswer((invocation) async {
           final appName = invocation.namedArguments[#appName] as String?;
           return App(id: appIds[index++], displayName: appName ?? '-');
@@ -633,21 +802,27 @@ flavors:
         verifyInOrder([
           () => codePushClientWrapper.createApp(
                 appName: '$appName (development)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (production)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (productionInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (staging)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
               ),
         ]);
       });
@@ -675,7 +850,10 @@ flavors:
         ).thenAnswer((_) async => variants);
         when(() => ios.flavors()).thenReturn(variants);
         when(
-          () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
+          () => codePushClientWrapper.createApp(
+            appName: any(named: 'appName'),
+            organizationId: any(named: 'organizationId'),
+          ),
         ).thenAnswer((invocation) async {
           final appName = invocation.namedArguments[#appName] as String?;
           return App(id: appIds[index++], displayName: appName ?? '-');
@@ -699,21 +877,27 @@ flavors:
         verifyInOrder([
           () => codePushClientWrapper.createApp(
                 appName: '$appName (development)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (production)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (productionInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (staging)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
               ),
         ]);
       });
@@ -749,7 +933,10 @@ flavors:
         ).thenAnswer((_) async => androidVariants);
         when(() => ios.flavors()).thenReturn(iosVariants);
         when(
-          () => codePushClientWrapper.createApp(appName: any(named: 'appName')),
+          () => codePushClientWrapper.createApp(
+            appName: any(named: 'appName'),
+            organizationId: any(named: 'organizationId'),
+          ),
         ).thenAnswer((invocation) async {
           final appName = invocation.namedArguments[#appName] as String?;
           return App(id: appIds[index++], displayName: appName ?? '-');
@@ -773,27 +960,37 @@ flavors:
           ),
         );
         verifyInOrder([
-          () => codePushClientWrapper.createApp(appName: '$appName (dev)'),
+          () => codePushClientWrapper.createApp(
+                appName: '$appName (dev)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (devInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (production)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (productionInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (development)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (staging)',
+                organizationId: organizationId,
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
               ),
         ]);
       });
@@ -842,8 +1039,10 @@ flavors:
             ),
           );
           when(
-            () =>
-                codePushClientWrapper.createApp(appName: any(named: 'appName')),
+            () => codePushClientWrapper.createApp(
+              appName: any(named: 'appName'),
+              organizationId: any(named: 'organizationId'),
+            ),
           ).thenAnswer((invocation) async {
             final appName = invocation.namedArguments[#appName] as String?;
             return App(id: newAppIds[index++], displayName: appName ?? '-');
@@ -855,21 +1054,25 @@ flavors:
           verifyNever(
             () => codePushClientWrapper.createApp(
               appName: '$appName (a)',
+              organizationId: organizationId,
             ),
           );
           verifyNever(
             () => codePushClientWrapper.createApp(
               appName: '$appName (b)',
+              organizationId: organizationId,
             ),
           );
           verify(
             () => codePushClientWrapper.createApp(
               appName: '$appName (c)',
+              organizationId: organizationId,
             ),
           ).called(1);
           verify(
             () => codePushClientWrapper.createApp(
               appName: '$appName (d)',
+              organizationId: organizationId,
             ),
           ).called(1);
           verify(

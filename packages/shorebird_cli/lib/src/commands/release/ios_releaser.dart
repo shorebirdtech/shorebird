@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logger.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/ios.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -106,26 +106,28 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         );
     }
 
-    final File exportOptionsPlist;
-    try {
-      exportOptionsPlist = ios.exportOptionsPlistFromArgs(argResults);
-    } catch (error) {
-      logger.err('$error');
-      throw ProcessExit(ExitCode.usage.code);
+    // Delete the Shorebird supplement directory if it exists.
+    // This is to ensure that we don't accidentally upload stale artifacts
+    // when building with older versions of Flutter.
+    final shorebirdSupplementDir =
+        artifactManager.getIosReleaseSupplementDirectory();
+    if (shorebirdSupplementDir?.existsSync() ?? false) {
+      shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-    final buildProgress =
-        logger.progress('Building ipa with Flutter $flutterVersionString');
+    final buildProgress = logger.detailProgress(
+      'Building app bundle with Flutter $flutterVersionString',
+    );
 
     try {
       await artifactBuilder.buildIpa(
         codesign: codesign,
-        exportOptionsPlist: exportOptionsPlist,
         flavor: flavor,
         target: target,
         args: argResults.forwardedArgs,
         base64PublicKey: argResults.encodedPublicKey,
+        buildProgress: buildProgress,
       );
       buildProgress.complete();
     } on ArtifactBuildException catch (error) {
@@ -178,9 +180,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   }) async {
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory()!;
     final String? podfileLockHash;
-    if (shorebirdEnv.podfileLockFile.existsSync()) {
+    if (shorebirdEnv.iosPodfileLockFile.existsSync()) {
       podfileLockHash = sha256
-          .convert(shorebirdEnv.podfileLockFile.readAsBytesSync())
+          .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
           .toString();
     } else {
       podfileLockHash = null;
@@ -194,6 +196,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           .path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
+      supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,
     );
   }
 

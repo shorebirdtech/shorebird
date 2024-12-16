@@ -128,6 +128,54 @@ void main() {
           ),
         ).called(1);
       });
+
+      group('when universal is set to false', () {
+        setUp(() {
+          when(
+            () => process.run(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '',
+              stderr: '',
+            ),
+          );
+        });
+
+        test('does not pass --mode=universal as an argument', () async {
+          await expectLater(
+            runWithOverrides(
+              () => bundletool.buildApks(
+                bundle: appBundlePath,
+                output: output,
+                universal: false,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => process.run(
+              'java',
+              [
+                '-jar',
+                p.join(workingDirectory.path, 'bundletool.jar'),
+                'build-apks',
+                '--overwrite',
+                '--bundle=$appBundlePath',
+                '--output=$output',
+              ],
+              environment: {
+                'ANDROID_HOME': androidSdkPath,
+                'JAVA_HOME': javaHome,
+              },
+            ),
+          ).called(1);
+        });
+      });
     });
 
     group('installApks', () {
