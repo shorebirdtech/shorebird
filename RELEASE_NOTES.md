@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.5.0 (December 13, 2024)
+
+- 🐦 Support for Flutter 3.27.0
+
 ## 1.4.16 (December 9, 2024)
 
 - 🍎 iOS linker improvements (additional class table improvements)
