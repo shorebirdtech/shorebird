@@ -288,8 +288,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     final File patchBaseFile;
     try {
-      // If the aot_tools executable supports the dump_blobs command, we
-      // can generate a stable diff base and use that to create a patch.
+      // Generate a stable diff base and use that to create a patch.
       patchBaseFile = await aotTools.generatePatchDiffBase(
         analyzeSnapshotPath: analyzeSnapshotPath,
         releaseSnapshot: releaseArtifactFile,
