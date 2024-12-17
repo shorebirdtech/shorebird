@@ -119,7 +119,7 @@ void main() {
               'artifacts',
               'engine',
               'ios-release',
-              'gen_snapshot',
+              'gen_snapshot_arm64',
             ),
           ),
         );
