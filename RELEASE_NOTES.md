@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.5.3 (December 17, 2024)
+
+- 🐦 Support for Flutter 3.27.1
+- 📂 Fix too many open files issue (downgraded pkg:archive)
+
 ## 1.5.2 (December 17, 2024)
 
 - 🩹 Fix iOS patching bug where gen_snapshot was not found
