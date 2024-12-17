@@ -96,14 +96,14 @@ abstract class ArchiveDiffer {
   /// Returns a map of file paths to their respective checksums.
   Future<PathHashes> fileHashes(File archive) async {
     return Isolate.run(() {
-      final zipDirectory = ZipDirectory()..read(InputFileStream(archive.path));
+      final zipDirectory = ZipDirectory.read(InputFileStream(archive.path));
 
       return {
         for (final file in zipDirectory.fileHeaders)
           // Zip files contain an (optional) crc32 checksum for a file. IPAs and
           // AARs seem to always include this for files, so a quick way for us
           // to tell if file contents differ is if their checksums differ.
-          file.filename: file.crc32.toString(),
+          file.filename: file.crc32!.toString(),
       };
     });
   }
