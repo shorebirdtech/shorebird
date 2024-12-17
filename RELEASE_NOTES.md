@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.5.2 (December 17, 2024)
+
+- 🩹 Fix iOS patching bug where gen_snapshot was not found
+
 ## 1.5.1 (December 16, 2024)
 
 - 🍎 macOS Desktop beta
