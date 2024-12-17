@@ -83,8 +83,9 @@ jobs:
       - name: 🧪 Run Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 35
           arch: x86_64
+          target: google_apis
           script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
