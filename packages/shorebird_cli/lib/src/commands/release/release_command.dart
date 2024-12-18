@@ -209,6 +209,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           flavor: flavor,
           target: target,
         );
+      case ReleaseType.windows:
+        return WindowsReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
     }
   }
 

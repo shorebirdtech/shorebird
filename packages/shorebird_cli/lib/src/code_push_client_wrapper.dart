@@ -523,6 +523,44 @@ aab artifact already exists, continuing...''',
     createArtifactProgress.complete();
   }
 
+  Future<void> createWindowsReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required String projectRoot,
+    required String releaseZipPath,
+  }) async {
+    final createArtifactProgress = logger.progress('Uploading artifacts');
+
+    try {
+      // logger.detail('Uploading artifact for $aabPath');
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: releaseZipPath,
+        arch: 'exe',
+        platform: ReleasePlatform.windows,
+        // hash: sha256.convert(await File(exePath).readAsBytes()).toString(),
+        hash: 'TODO',
+        canSideload: true,
+        podfileLockHash: null,
+      );
+    } on CodePushConflictException catch (_) {
+      // Newlines are due to how logger.info interacts with logger.progress.
+      logger.info(
+        '''
+
+Windows release (exe) artifact already exists, continuing...''',
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading: $error',
+      );
+    }
+    createArtifactProgress.complete();
+  }
+
   Future<void> createAndroidArchiveReleaseArtifacts({
     required String appId,
     required int releaseId,
