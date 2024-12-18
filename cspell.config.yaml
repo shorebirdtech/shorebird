@@ -63,6 +63,7 @@ words:
   - libplist
   - lldb
   - logcat
+  - longpaths
   - lproj
   - metadatas
   - mktemp
