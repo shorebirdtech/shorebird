@@ -99,6 +99,11 @@ of the iOS app that is using this module.''',
 [DEPRECATED] Whether to publish the patch to the staging environment. Use --track=staging instead.''',
         hide: true,
       )
+      ..addFlag(
+        CommonArguments.noConfirmArg.name,
+        help: CommonArguments.noConfirmArg.description,
+        negatable: false,
+      )
       ..addOption(
         CommonArguments.exportOptionsPlistArg.name,
         help: CommonArguments.exportOptionsPlistArg.description,
@@ -168,6 +173,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => results['allow-native-diffs'] == true;
+
+  /// Whether --no-confirm was passed.
+  bool get noConfirm => results['no-confirm'] == true;
 
   bool get isStaging => track == DeploymentTrack.staging;
 
@@ -493,7 +501,7 @@ ${summary.join('\n')}
 ''',
     );
 
-    if (shorebirdEnv.canAcceptUserInput) {
+    if (shorebirdEnv.canAcceptUserInput && !noConfirm) {
       final confirm = logger.confirm('Would you like to continue?');
 
       if (!confirm) {

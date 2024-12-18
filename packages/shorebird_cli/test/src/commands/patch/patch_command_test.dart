@@ -938,6 +938,17 @@ void main() {
       });
     });
 
+    group('when --no-confirm is specified', () {
+      setUp(() {
+        when(() => argResults['no-confirm']).thenReturn(true);
+      });
+
+      test('does not prompt for confirmation', () async {
+        await runWithOverrides(command.run);
+        verifyNever(() => logger.confirm(any()));
+      });
+    });
+
     group('when running on CI', () {
       test('does not prompt for confirmation', () async {
         when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
