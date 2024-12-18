@@ -42,7 +42,6 @@ function Test-GitConfigLongpaths {
     $longpathsEnabled = git config --system core.longpaths
     if ($longpathsEnabled -ne "true") {
         Write-Output "Git is not configured to allow long paths. This can cause issues with Shorebird's Flutter checkout. Please run 'git config --system core.longpaths true' to enable long paths."
-        exit 1
     }
 }
 
