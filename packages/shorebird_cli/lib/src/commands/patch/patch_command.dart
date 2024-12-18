@@ -245,6 +245,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           flavor: flavor,
           target: target,
         );
+      case ReleaseType.windows:
+        return WindowsPatcher(
+          argResults: results,
+          argParser: argParser,
+          flavor: flavor,
+          target: target,
+        );
     }
   }
 

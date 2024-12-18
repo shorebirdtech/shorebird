@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:stream_transform/stream_transform.dart';
 
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
 /// Flutter.
@@ -575,6 +576,69 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     }
 
     return File(outFilePath);
+  }
+
+  /// Builds a windows app and returns the x64 Release directory
+  Future<Directory> buildWindowsApp({
+    String? flavor,
+    String? target,
+    List<String> args = const [],
+    String? base64PublicKey,
+    DetailProgress? buildProgress,
+  }) async {
+    print('entering build windows app');
+    await _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'windows',
+        '--release',
+        if (flavor != null) '--flavor=$flavor',
+        if (target != null) '--target=$target',
+        ...args,
+      ];
+
+      print('starting build process');
+      final buildProcess = await process.start(
+        executable,
+        arguments,
+        runInShell: true,
+        environment: base64PublicKey?.toPublicKeyEnv(),
+      );
+
+      buildProcess.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        logger.detail(line);
+        // TODO: update build progress
+      });
+
+      final stderrLines = await buildProcess.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .toList();
+      final stdErr = stderrLines.join('\n');
+      print('awaiting exit code');
+      final exitCode = await buildProcess.exitCode;
+      print('exit code is $exitCode');
+      if (exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('Failed to build: $stdErr');
+      }
+    });
+
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    // TODO: extract this to function, ensure this is correct
+    return Directory(
+      p.join(
+        projectRoot.path,
+        'build',
+        'windows',
+        'x64',
+        'runner',
+        'Release',
+      ),
+    );
   }
 
   /// Given a log of verbose output from `flutter build ipa`, returns a
