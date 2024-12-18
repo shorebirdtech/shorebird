@@ -27,6 +27,7 @@ function Invoke-SilentlyIfNeeded($command) {
     $psVersion = $PSVersionTable.PSVersion
     $isErrorStreamIssueFixed = $psVersion.Major -ge 7 -and $psVersion.Minor -ge 1
     if ($isErrorStreamIssueFixed) {
+        # Execute the command with no redirection.
         & $command
     }
     else {
