@@ -291,6 +291,17 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
       });
     });
 
+    group('when --no-confirm is specified', () {
+      setUp(() {
+        when(() => argResults['no-confirm']).thenReturn(true);
+      });
+
+      test('does not prompt for confirmation', () async {
+        await runWithOverrides(command.run);
+        verifyNever(() => logger.confirm(any()));
+      });
+    });
+
     group('when release version arg is required', () {
       setUp(() {
         when(() => releaser.requiresReleaseVersionArg).thenReturn(true);
