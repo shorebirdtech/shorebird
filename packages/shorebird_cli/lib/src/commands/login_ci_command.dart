@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -12,6 +10,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart'
 /// Login as a CI user.
 /// {@endtemplate}
 class LoginCiCommand extends ShorebirdCommand {
+  /// {@macro login_ci_command}
   LoginCiCommand() {
     argParser.addOption(
       'provider',
@@ -54,7 +53,7 @@ We could not find a Shorebird account for ${error.email}.''',
           '''If you have not yet created an account, go to "${link(uri: Uri.parse('https://console.shorebird.dev'))}" to create one. If you believe this is an error, please reach out to us via Discord, we're happy to help!''',
         );
       return ExitCode.software.code;
-    } catch (error) {
+    } on Exception catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;
     }
@@ -72,6 +71,7 @@ ${lightCyan.wrap('export $shorebirdTokenEnvVar="\$SHOREBIRD_TOKEN" && shorebird 
     return ExitCode.success.code;
   }
 
+  /// Prompt the user to visit the provided [url] to authorize the CLI.
   void prompt(String url) {
     logger.info('''
 The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.

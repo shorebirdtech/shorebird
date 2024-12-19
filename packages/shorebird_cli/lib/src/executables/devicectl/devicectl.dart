@@ -1,4 +1,3 @@
-// ignore_for_file: public_member_api_docs
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -15,6 +14,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// Typedef for a bundle identifier string.
 typedef BundleId = String;
 
 /// {@template devicectl_exception}
@@ -48,10 +48,11 @@ Devicectl get devicectl => read(devicectlRef);
 
 /// A wrapper around the `devicectl` command.
 class Devicectl {
+  /// The executable name (`xcrun`).
   static const executableName = 'xcrun';
-  static const baseArgs = [
-    'devicectl',
-  ];
+
+  /// The base arguments for the `devicectl` command.
+  static const baseArgs = ['devicectl'];
 
   /// Whether the `devicectl` command is available.
   Future<bool> _isAvailable() async {
@@ -61,7 +62,7 @@ class Devicectl {
         '--version',
       ]);
       return result.exitCode == ExitCode.success.code;
-    } catch (_) {
+    } on Exception {
       return false;
     }
   }
@@ -186,7 +187,7 @@ class Devicectl {
         deviceId: device.udid,
         runnerApp: runnerAppDirectory,
       );
-    } catch (error) {
+    } on Exception catch (error) {
       installProgress.fail('Failed to install app: $error');
       return ExitCode.software.code;
     }
@@ -195,7 +196,7 @@ class Devicectl {
     final launchProgress = logger.progress('Launching app');
     try {
       await launchApp(deviceId: device.udid, bundleId: bundleId);
-    } catch (error) {
+    } on Exception catch (error) {
       launchProgress.fail('Failed to launch app: $error');
       return ExitCode.software.code;
     }

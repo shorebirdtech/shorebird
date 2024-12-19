@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:async';
 
 import 'package:args/args.dart';
@@ -19,14 +17,19 @@ import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
 
+/// The name of the executable.
 const executableName = 'shorebird';
+
+/// The name of the package (e.g. name in the pubspec.yaml).
 const packageName = 'shorebird_cli';
+
+/// The package description.
 const description = 'The shorebird command-line tool';
 
 /// {@template shorebird_cli_command_runner}
 /// A [CommandRunner] for the CLI.
 ///
-/// ```
+/// ```sh
 /// $ shorebird --version
 /// ```
 /// {@endtemplate}
@@ -209,6 +212,10 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         // When on an usage exception we don't need to show the "if you aren't
         // sure" message, so we do an early return here.
         return ExitCode.usage.code;
+
+        // We explicitly want to catch all exceptions here to log them and show
+        // the user a friendly message.
+        // ignore: avoid_catches_without_on_clauses
       } catch (error, stackTrace) {
         logger
           ..err('$error')
@@ -248,7 +255,7 @@ ${currentRunLogFile.absolute.path}
   Future<String?> _tryGetFlutterVersion() async {
     try {
       return await shorebirdFlutter.getVersionString();
-    } catch (error) {
+    } on Exception catch (error) {
       logger.detail('Unable to determine Flutter version.\n$error');
       return null;
     }
@@ -266,7 +273,7 @@ ${currentRunLogFile.absolute.path}
           ..info('A new version of shorebird is available!')
           ..info('Run ${lightCyan.wrap('shorebird upgrade')} to upgrade.');
       }
-    } catch (error) {
+    } on Exception catch (error) {
       logger.detail('Unable to check for updates.\n$error');
     }
   }

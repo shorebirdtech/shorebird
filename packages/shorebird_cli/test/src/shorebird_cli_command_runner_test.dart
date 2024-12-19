@@ -355,13 +355,15 @@ Engine • revision $shorebirdEngineRevision''',
 
         test('gracefully handles case when latest version cannot be determined',
             () async {
-          when(shorebirdVersion.isLatest).thenThrow('error');
+          when(shorebirdVersion.isLatest).thenThrow(Exception('error'));
           final result = await runWithOverrides(
             () => commandRunner.run(['--version']),
           );
           expect(result, equals(ExitCode.success.code));
           verify(
-            () => logger.detail('Unable to check for updates.\nerror'),
+            () => logger.detail(
+              'Unable to check for updates.\nException: error',
+            ),
           ).called(1);
         });
 
@@ -403,13 +405,15 @@ Engine • revision $shorebirdEngineRevision''',
         test(
             'gracefully handles case when flutter version cannot be determined',
             () async {
-          when(shorebirdFlutter.getVersionString).thenThrow('error');
+          when(shorebirdFlutter.getVersionString).thenThrow(Exception('error'));
           final result = await runWithOverrides(
             () => commandRunner.run(['--version']),
           );
           expect(result, equals(ExitCode.success.code));
           verify(
-            () => logger.detail('Unable to determine Flutter version.\nerror'),
+            () => logger.detail(
+              'Unable to determine Flutter version.\nException: error',
+            ),
           ).called(1);
         });
       });

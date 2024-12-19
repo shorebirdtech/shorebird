@@ -60,7 +60,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
 ''');
         return ExitCode.noInput.code;
       }
-    } catch (error) {
+    } on Exception catch (error) {
       logger.err('Error parsing "pubspec.yaml": $error');
       return ExitCode.software.code;
     }
@@ -108,7 +108,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           logger.info('  - $flavor');
         }
       }
-    } catch (error) {
+    } on Exception catch (error) {
       detectFlavorsProgress.fail();
       logger.err('Unable to extract product flavors.\n$error');
       return ExitCode.software.code;
@@ -138,7 +138,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         existingApp = await codePushClientWrapper.getApp(
           appId: shorebirdYaml!.appId,
         );
-      } catch (e) {
+      } on Exception catch (e) {
         updateShorebirdYamlProgress.fail('Failed to get existing app info: $e');
         return ExitCode.software.code;
       }
@@ -227,7 +227,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         flavors = values;
         appId = flavors.values.first;
       }
-    } catch (error) {
+    } on Exception catch (error) {
       logger.err('$error');
       return ExitCode.software.code;
     }

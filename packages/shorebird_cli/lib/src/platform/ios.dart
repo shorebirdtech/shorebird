@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -32,17 +30,24 @@ To add iOS, run "flutter create . --platforms ios"''';
 /// Acceptable values can be found by running `flutter build ipa -h`.
 /// {@endtemplate}
 enum ExportMethod {
+  /// Upload to the App Store.
   appStore('app-store', 'Upload to the App Store'),
+
+  /// Ad-hoc distribution.
   adHoc(
     'ad-hoc',
     '''
 Test on designated devices that do not need to be registered with the Apple developer account.
     Requires a distribution certificate.''',
   ),
+
+  /// Development distribution.
   development(
     'development',
     '''Test only on development devices registered with the Apple developer account.''',
   ),
+
+  /// Enterprise distribution.
   enterprise(
     'enterprise',
     'Distribute an app registered with the Apple Developer Enterprise Program.',
@@ -81,6 +86,7 @@ final iosRef = create(Ios.new);
 /// The [Ios] instance available in the current zone.
 Ios get ios => read(iosRef);
 
+/// A class that provides information about the iOS platform.
 class Ios {
   /// Returns the set of flavors for the iOS project, if the project has an
   /// iOS platform configured.

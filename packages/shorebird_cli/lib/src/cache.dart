@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:io' hide Platform;
 
 import 'package:http/http.dart' as http;
@@ -32,10 +30,10 @@ class CacheUpdateFailure implements Exception {
   String toString() => 'CacheUpdateFailure: $message';
 }
 
-// A reference to a [Cache] instance.
+/// A reference to a [Cache] instance.
 final cacheRef = create(Cache.new);
 
-// The [Cache] instance available in the current zone.
+/// The [Cache] instance available in the current zone.
 Cache get cache => read(cacheRef);
 
 /// {@template cache}
@@ -46,12 +44,14 @@ Cache get cache => read(cacheRef);
 /// [ShorebirdArtifacts] since uses the current Shorebird environment.
 /// {@endtemplate}
 class Cache {
+  /// {@macro cache}
   Cache() {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
     registerArtifact(AotToolsArtifact(cache: this, platform: platform));
   }
 
+  /// Register a new [CachedArtifact] with the cache.
   void registerArtifact(CachedArtifact artifact) => _artifacts.add(artifact);
 
   /// Update all artifacts in the cache.
@@ -119,10 +119,13 @@ class Cache {
 
   final List<CachedArtifact> _artifacts = [];
 
+  /// The storage base url.
   String get storageBaseUrl => 'https://storage.googleapis.com';
 
+  /// The storage bucket host.
   String get storageBucket => 'download.shorebird.dev';
 
+  /// Clear the cache.
   Future<void> clear() async {
     final cacheDir = shorebirdCacheDirectory;
     if (cacheDir.existsSync()) {
@@ -131,10 +134,17 @@ class Cache {
   }
 }
 
+/// {@template cached_artifact}
+/// An artfiact which is cached by Shorebird.
+/// {@endtemplate}
 abstract class CachedArtifact {
+  /// {@macro cached_artifact}
   CachedArtifact({required this.cache, required this.platform});
 
+  /// The cache instance to use.
   final Cache cache;
+
+  /// The platform to use.
   final Platform platform;
 
   /// The on-disk name of the artifact.
@@ -156,6 +166,7 @@ abstract class CachedArtifact {
   /// is assumed to be correct.
   String? get checksum;
 
+  /// Extract the artifact from the provided [stream] to the [outputPath].
   Future<void> extractArtifact(http.ByteStream stream, String outputPath) {
     final file = File(p.join(outputPath, fileName))
       ..createSync(recursive: true);
@@ -169,6 +180,7 @@ abstract class CachedArtifact {
   /// Used to validate that the artifact was fully downloaded and extracted.
   File get stampFile => File('${file.path}.stamp');
 
+  /// Whether the artifact is valid (has a matching checksum).
   Future<bool> isValid() async {
     if (!file.existsSync() || !stampFile.existsSync()) {
       return false;
@@ -184,6 +196,7 @@ abstract class CachedArtifact {
     return checksumChecker.checkFile(file, checksum!);
   }
 
+  /// Re-fetch the artifact from the storage URL.
   Future<void> update() async {
     // Clear any existing artifact files.
     await _delete();
@@ -271,7 +284,12 @@ allowed to access $storageUrl.''',
   }
 }
 
+/// {@template aot_tools_artifact}
+/// The aot_tools.dill artifact.
+/// Used for linking and generating optimized AOT snapshots.
+/// {@endtemplate}
 class AotToolsArtifact extends CachedArtifact {
+  /// {@macro aot_tools_artifact}
   AotToolsArtifact({required super.cache, required super.platform});
 
   @override
@@ -301,7 +319,11 @@ class AotToolsArtifact extends CachedArtifact {
   String? get checksum => null;
 }
 
+/// {@template patch_artifact}
+/// The patch artifact which is used to apply binary patches.
+/// {@endtemplate}
 class PatchArtifact extends CachedArtifact {
+  /// {@macro patch_artifact}
   PatchArtifact({required super.cache, required super.platform});
 
   @override
@@ -342,7 +364,12 @@ class PatchArtifact extends CachedArtifact {
   String? get checksum => null;
 }
 
+/// {@template bundle_tool_artifact}
+/// The bundletool.jar artifact.
+/// Used for interacting with Android app bundles (aab).
+/// {@endtemplate}
 class BundleToolArtifact extends CachedArtifact {
+  /// {@macro bundle_tool_artifact}
   BundleToolArtifact({required super.cache, required super.platform});
 
   @override

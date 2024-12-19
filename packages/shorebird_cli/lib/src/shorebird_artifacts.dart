@@ -1,3 +1,4 @@
+// Allowing one member abstracts for consistency/namespacing/ease of testing.
 // ignore_for_file: one_member_abstracts
 
 import 'dart:io';

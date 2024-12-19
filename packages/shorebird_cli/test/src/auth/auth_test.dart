@@ -209,6 +209,21 @@ void main() {
     });
 
     group('AuthenticatedClient', () {
+      group('isAuthenticated', () {
+        group('when credentials are malformed', () {
+          setUp(() {
+            File(
+              p.join(credentialsDir, 'credentials.json'),
+            ).writeAsStringSync('invalid credentials');
+            auth = buildAuth();
+          });
+
+          test('returns false', () {
+            expect(auth.isAuthenticated, isFalse);
+          });
+        });
+      });
+
       group('token', () {
         test('does not require an onRefreshCredentials callback', () {
           expect(

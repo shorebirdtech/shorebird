@@ -69,7 +69,7 @@ class Doctor {
           for (final issue in fixableIssues) {
             try {
               await issue.fix!();
-            } catch (error) {
+            } on Exception catch (error) {
               failedFixes[issue] = error;
             }
           }

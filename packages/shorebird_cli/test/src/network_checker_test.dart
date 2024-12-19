@@ -73,7 +73,7 @@ void main() {
 
       group('when endpoints are not reachable', () {
         setUp(() {
-          when(() => httpClient.send(any())).thenThrow(Exception('oops'));
+          when(() => httpClient.get(any())).thenThrow(Exception('oops'));
         });
 
         test('logs reachability for each checked url', () async {

@@ -51,11 +51,11 @@ class CreatePatchMetadata extends Equatable {
       );
   // coverage:ignore-end
 
-  /// Converts a Map<String, dynamic> to a [CreatePatchMetadata]
+  /// Converts a `Map<String, dynamic>` to a [CreatePatchMetadata]
   factory CreatePatchMetadata.fromJson(Map<String, dynamic> json) =>
       _$CreatePatchMetadataFromJson(json);
 
-  /// Converts a [CreatePatchMetadata] to a Map<String, dynamic>
+  /// Converts a [CreatePatchMetadata] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$CreatePatchMetadataToJson(this);
 
   /// Returns a copy of this [CreatePatchMetadata] with the given fields

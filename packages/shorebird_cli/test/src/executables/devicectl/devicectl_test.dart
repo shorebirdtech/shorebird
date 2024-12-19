@@ -83,6 +83,15 @@ void main() {
         );
       });
 
+      test('returns null if devicectl availability check throws', () async {
+        exitCode = ExitCode.software;
+        when(() => process.run(any(), any())).thenThrow(Exception('oops'));
+        await expectLater(
+          await runWithOverrides(() => devicectl.deviceForLaunch()),
+          isNull,
+        );
+      });
+
       test('returns null if no CoreDevice with the given deviceID can be found',
           () async {
         exitCode = ExitCode.success;

@@ -41,6 +41,7 @@ void main() {
     test('returns correct number of decimal places', () {
       expect(formatBytes(1524, decimals: 0), equals('1 KB'));
       expect(formatBytes(1524, decimals: 1), equals('1.5 KB'));
+      // Being explicit for test readability.
       // ignore: avoid_redundant_argument_values
       expect(formatBytes(1524, decimals: 2), equals('1.49 KB'));
       expect(formatBytes(1524, decimals: 3), equals('1.488 KB'));

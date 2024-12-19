@@ -1,4 +1,3 @@
-// ignore_for_file: public_member_api_docs
 // cspell:words googleapis bryanoltman endtemplate CLI tgvek orctktiabrek
 // cspell:words GOCSPX googleusercontent Pkkwp Entra
 import 'dart:convert';
@@ -162,7 +161,7 @@ class AuthenticatedClient extends http.BaseClient {
         client,
         authEndpoints: authEndpoints,
       );
-    } catch (e, s) {
+    } on Exception catch (e, s) {
       logger
         ..err('Failed to refresh credentials.')
         ..info(
@@ -328,7 +327,9 @@ class Auth {
           json.decode(contents) as Map<String, dynamic>,
         );
         _email = _credentials?.email;
-      } catch (_) {}
+      } on Exception {
+        // Swallow json decode exceptions.
+      }
     }
   }
 
@@ -365,7 +366,7 @@ extension JwtClaims on oauth2.AccessCredentials {
     final Jwt jwt;
     try {
       jwt = Jwt.parse(token);
-    } catch (_) {
+    } on Exception {
       return null;
     }
 
@@ -409,12 +410,15 @@ extension OauthAuthProvider on Jwt {
   }
 }
 
+/// Extension on [AuthProvider] which exposes OAuth 2.0 values.
 extension OauthValues on AuthProvider {
+  /// The OAuth 2.0 endpoints for the provider.
   oauth2.AuthEndpoints get authEndpoints => switch (this) {
         (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
         (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
       };
 
+  /// The OAuth 2.0 client ID for the provider.
   oauth2.ClientId get clientId {
     switch (this) {
       case AuthProvider.google:
@@ -442,6 +446,7 @@ extension OauthValues on AuthProvider {
     }
   }
 
+  /// The OAuth 2.0 scopes for the provider.
   List<String> get scopes => switch (this) {
         (AuthProvider.google) => [
             'openid',

@@ -1,4 +1,3 @@
-// ignore_for_file: public_member_api_docs
 import 'dart:convert';
 import 'dart:io';
 
@@ -26,7 +25,10 @@ class ShorebirdFlutter {
   /// {@macro shorebird_flutter}
   const ShorebirdFlutter();
 
+  /// The executable name.
   static const executable = 'flutter';
+
+  /// The Shorebird Flutter fork git URL.
   static const String flutterGitUrl =
       'https://github.com/shorebirdtech/flutter.git';
 
@@ -41,6 +43,7 @@ class ShorebirdFlutter {
     return p.join(shorebirdEnv.flutterDirectory.parent.path, revision);
   }
 
+  /// Install the provided Flutter [revision].
   Future<void> installRevision({required String revision}) async {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
     if (targetDirectory.existsSync()) return;
@@ -85,7 +88,7 @@ class ShorebirdFlutter {
         runInShell: true,
       );
       precacheProgress.complete();
-    } catch (_) {
+    } on Exception {
       precacheProgress.fail('Failed to precache Flutter $version');
       logger.info(
         '''This is not a critical error, but your next build make take longer than usual.''',
@@ -149,7 +152,7 @@ class ShorebirdFlutter {
 
     try {
       version = await getVersionString();
-    } catch (_) {
+    } on Exception {
       version = 'unknown';
     }
 
@@ -223,7 +226,7 @@ class ShorebirdFlutter {
       if (version != null) {
         return versionOrHash;
       }
-    } catch (_) {
+    } on Exception {
       return null;
     }
 
@@ -245,7 +248,7 @@ class ShorebirdFlutter {
       final versionString =
           await getVersionForRevision(flutterRevision: versionOrHash);
       return versionString != null ? tryParseVersion(versionString) : null;
-    } catch (_) {
+    } on Exception {
       return null;
     }
   }
@@ -260,6 +263,7 @@ class ShorebirdFlutter {
     return LineSplitter.split(result).toList().firstOrNull;
   }
 
+  /// Get the list of Flutter versions for the given [revision].
   Future<List<String>> getVersions({String? revision}) async {
     final result = await git.forEachRef(
       format: '%(refname:short)',
@@ -271,6 +275,7 @@ class ShorebirdFlutter {
         .toList();
   }
 
+  /// Use the provided [version] of Flutter.
   Future<void> useVersion({required String version}) async {
     final revision = await git.revParse(
       revision: 'origin/flutter_release/$version',
@@ -280,6 +285,7 @@ class ShorebirdFlutter {
     await useRevision(revision: revision);
   }
 
+  /// Use the provided [revision] of Flutter.
   Future<void> useRevision({required String revision}) async {
     await installRevision(revision: revision);
 
