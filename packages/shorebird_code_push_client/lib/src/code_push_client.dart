@@ -548,7 +548,7 @@ class CodePushClient {
     try {
       final body = json.decode(response) as Map<String, dynamic>;
       error = ErrorResponse.fromJson(body);
-    } catch (_) {
+    } on Exception {
       throw exceptionBuilder(message: unknownErrorMessage);
     }
     return exceptionBuilder(message: error.message, details: error.details);
