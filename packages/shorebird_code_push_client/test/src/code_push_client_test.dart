@@ -1,4 +1,3 @@
-// ignore_for_file: prefer_const_constructors
 import 'dart:convert';
 import 'dart:io';
 
@@ -51,7 +50,7 @@ void main() {
         customHeaders: customHeaders,
       );
       when(() => httpClient.send(any())).thenAnswer(
-        (_) async => http.StreamedResponse(Stream.empty(), HttpStatus.ok),
+        (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
     });
 
@@ -75,7 +74,7 @@ void main() {
     test('throws CodePushUpgradeRequiredException on 426 response', () async {
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
-          Stream.empty(),
+          const Stream.empty(),
           HttpStatus.upgradeRequired,
         ),
       );
@@ -89,7 +88,7 @@ void main() {
     test('throws CodePushForbiddenException on 403 response', () async {
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(
-          Stream.empty(),
+          const Stream.empty(),
           HttpStatus.forbidden,
         ),
       );
@@ -184,7 +183,9 @@ void main() {
             platform: platform,
             hash: hash,
           );
-        } catch (_) {}
+        } on Exception {
+          // ignore
+        }
 
         final request = verify(() => httpClient.send(captureAny()))
             .captured
@@ -223,7 +224,9 @@ void main() {
               hash: hash,
               hashSignature: hashSignature,
             );
-          } catch (_) {}
+          } on Exception {
+            // ignore
+          }
 
           final request = verify(() => httpClient.send(captureAny()))
               .captured
@@ -317,7 +320,7 @@ void main() {
             Stream.value(
               utf8.encode(
                 json.encode(
-                  CreatePatchArtifactResponse(
+                  const CreatePatchArtifactResponse(
                     id: artifactId,
                     patchId: patchId,
                     arch: arch,
@@ -331,7 +334,7 @@ void main() {
             ),
             HttpStatus.ok,
           ),
-          http.StreamedResponse(Stream.empty(), HttpStatus.badRequest),
+          http.StreamedResponse(const Stream.empty(), HttpStatus.badRequest),
         ];
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => responses.removeAt(0),
@@ -376,7 +379,7 @@ void main() {
             Stream.value(
               utf8.encode(
                 json.encode(
-                  CreatePatchArtifactResponse(
+                  const CreatePatchArtifactResponse(
                     id: artifactId,
                     patchId: patchId,
                     arch: arch,
@@ -390,7 +393,7 @@ void main() {
             ),
             HttpStatus.ok,
           ),
-          http.StreamedResponse(Stream.empty(), HttpStatus.noContent),
+          http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         ];
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => responses.removeAt(0),
@@ -440,7 +443,7 @@ void main() {
           final fixture = File(path.join(tempDir.path, 'release.txt'))
             ..createSync()
             ..writeAsStringSync('hello');
-          final expectedRequest = CreateReleaseArtifactRequest(
+          const expectedRequest = CreateReleaseArtifactRequest(
             arch: arch,
             platform: platform,
             hash: hash,
@@ -461,7 +464,9 @@ void main() {
               canSideload: canSideload,
               podfileLockHash: null,
             );
-          } catch (_) {}
+          } on Exception {
+            // ignore
+          }
 
           final request = verify(() => httpClient.send(captureAny()))
               .captured
@@ -473,7 +478,7 @@ void main() {
           );
           expect(request.hasHeaders(expectedHeaders), isTrue);
           expect(
-            MapEquality<String, dynamic>().equals(
+            const MapEquality<String, dynamic>().equals(
               request.fields,
               expectedRequest.toJson(),
             ),
@@ -488,7 +493,7 @@ void main() {
           final fixture = File(path.join(tempDir.path, 'release.txt'))
             ..createSync()
             ..writeAsStringSync('hello');
-          final expectedRequest = CreateReleaseArtifactRequest(
+          const expectedRequest = CreateReleaseArtifactRequest(
             arch: arch,
             platform: platform,
             hash: hash,
@@ -509,7 +514,9 @@ void main() {
               canSideload: canSideload,
               podfileLockHash: podfileLockHash,
             );
-          } catch (_) {}
+          } on Exception {
+            // ignore
+          }
 
           final request = verify(() => httpClient.send(captureAny()))
               .captured
@@ -521,7 +528,7 @@ void main() {
           );
           expect(request.hasHeaders(expectedHeaders), isTrue);
           expect(
-            MapEquality<String, dynamic>().equals(
+            const MapEquality<String, dynamic>().equals(
               request.fields,
               expectedRequest.toJson(),
             ),
@@ -533,7 +540,7 @@ void main() {
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
-            Stream.empty(),
+            const Stream.empty(),
             HttpStatus.failedDependency,
           );
         });
@@ -662,7 +669,7 @@ void main() {
             Stream.value(
               utf8.encode(
                 json.encode(
-                  CreateReleaseArtifactResponse(
+                  const CreateReleaseArtifactResponse(
                     id: artifactId,
                     releaseId: releaseId,
                     arch: arch,
@@ -676,7 +683,7 @@ void main() {
             ),
             HttpStatus.ok,
           ),
-          http.StreamedResponse(Stream.empty(), HttpStatus.badRequest),
+          http.StreamedResponse(const Stream.empty(), HttpStatus.badRequest),
         ];
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => responses.removeAt(0),
@@ -723,7 +730,7 @@ void main() {
             Stream.value(
               utf8.encode(
                 json.encode(
-                  CreateReleaseArtifactResponse(
+                  const CreateReleaseArtifactResponse(
                     id: artifactId,
                     releaseId: releaseId,
                     arch: arch,
@@ -737,7 +744,7 @@ void main() {
             ),
             HttpStatus.ok,
           ),
-          http.StreamedResponse(Stream.empty(), HttpStatus.noContent),
+          http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
         ];
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => responses.removeAt(0),
@@ -841,7 +848,7 @@ void main() {
           (_) async => http.StreamedResponse(
             Stream.value(
               utf8.encode(
-                json.encode(App(id: appId, displayName: displayName)),
+                json.encode(const App(id: appId, displayName: displayName)),
               ),
             ),
             HttpStatus.ok,
@@ -933,7 +940,7 @@ void main() {
             Stream.value(
               utf8.encode(
                 json.encode(
-                  Channel(id: channelId, appId: appId, name: channel),
+                  const Channel(id: channelId, appId: appId, name: channel),
                 ),
               ),
             ),
@@ -1038,7 +1045,7 @@ void main() {
           (_) async => http.StreamedResponse(
             Stream.value(
               utf8.encode(
-                json.encode(Patch(id: patchId, number: patchNumber)),
+                json.encode(const Patch(id: patchId, number: patchNumber)),
               ),
             ),
             HttpStatus.ok,
@@ -1286,7 +1293,7 @@ void main() {
 
     group('createUser', () {
       const userName = 'Jane Doe';
-      final user = PrivateUser(
+      const user = PrivateUser(
         id: 1,
         email: 'tester@shorebird.dev',
         displayName: userName,
@@ -1575,8 +1582,8 @@ void main() {
 
       test('completes when request succeeds (populated)', () async {
         final expected = [
-          Channel(id: 0, appId: '1', name: 'stable'),
-          Channel(id: 1, appId: '2', name: 'development'),
+          const Channel(id: 0, appId: '1', name: 'stable'),
+          const Channel(id: 1, appId: '2', name: 'development'),
         ];
 
         when(() => httpClient.send(any())).thenAnswer(
@@ -1665,7 +1672,7 @@ void main() {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             Stream.value(
-              utf8.encode(json.encode(GetReleasesResponse(releases: []))),
+              utf8.encode(json.encode(const GetReleasesResponse(releases: []))),
             ),
             HttpStatus.ok,
           ),
@@ -1745,12 +1752,12 @@ void main() {
         late ReleasePatch patch;
 
         setUp(() {
-          patch = ReleasePatch(
+          patch = const ReleasePatch(
             id: 0,
             number: 1,
             channel: 'stable',
             isRolledBack: false,
-            artifacts: const [],
+            artifacts: [],
           );
           response = GetReleasePatchesResponse(patches: [patch]);
           when(() => httpClient.send(any())).thenAnswer(
@@ -1851,7 +1858,7 @@ void main() {
 
       test('completes when request succeeds', () async {
         final expected = [
-          ReleaseArtifact(
+          const ReleaseArtifact(
             id: 0,
             releaseId: releaseId,
             arch: arch,
