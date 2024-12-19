@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'dart:io';
 
 import 'package:artifact_proxy/artifact_proxy.dart';
@@ -24,7 +22,6 @@ Future<HttpServer> serve(Handler proxy, InternetAddress ip, int port) async {
   const pipeline = Pipeline();
   final handler = pipeline.addMiddleware(logRequests()).addHandler(proxy);
   final server = await shelf_io.serve(handler, ip, port);
-  print('Serving at http://localhost:${server.port}');
   server.autoCompress = true;
   return server;
 }

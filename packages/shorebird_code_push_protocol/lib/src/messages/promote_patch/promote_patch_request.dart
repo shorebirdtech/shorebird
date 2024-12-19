@@ -10,11 +10,11 @@ class PromotePatchRequest {
   /// {@macro promote_patch_request}
   const PromotePatchRequest({required this.patchId, required this.channelId});
 
-  /// Converts a Map<String, dynamic> to a [PromotePatchRequest]
+  /// Converts a `Map<String, dynamic>` to a [PromotePatchRequest]
   factory PromotePatchRequest.fromJson(Map<String, dynamic> json) =>
       _$PromotePatchRequestFromJson(json);
 
-  /// Converts a [PromotePatchRequest] to a Map<String, dynamic>
+  /// Converts a [PromotePatchRequest] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$PromotePatchRequestToJson(this);
 
   /// The ID of the patch.

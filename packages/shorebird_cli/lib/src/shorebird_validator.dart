@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -9,25 +7,31 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
+/// An exception thrown when a precondition for running a command is not met.
 abstract interface class PreconditionFailedException implements Exception {
+  /// The exit code to use when the precondition fails.
   ExitCode get exitCode;
 }
 
+/// An exception thrown when Shorebird has not been initialized.
 class ShorebirdNotInitializedException implements PreconditionFailedException {
   @override
   ExitCode get exitCode => ExitCode.config;
 }
 
+/// An exception thrown when the user is not authorized to run a command.
 class UserNotAuthorizedException implements PreconditionFailedException {
   @override
   ExitCode get exitCode => ExitCode.noUser;
 }
 
+/// An exception thrown when validation fails.
 class ValidationFailedException implements PreconditionFailedException {
   @override
   ExitCode get exitCode => ExitCode.config;
 }
 
+/// An exception thrown when a command is run in an unsupported context.
 class UnsupportedContextException implements PreconditionFailedException {
   // coverage:ignore-start
   @override
@@ -35,6 +39,7 @@ class UnsupportedContextException implements PreconditionFailedException {
   // coverage:ignore-end
 }
 
+/// An exception thrown when the operating system is not supported.
 class UnsupportedOperatingSystemException
     implements PreconditionFailedException {
   @override

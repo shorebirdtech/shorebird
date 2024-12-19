@@ -256,7 +256,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     final targetFlutterRevision = await resolveTargetFlutterRevision();
     try {
       await shorebirdFlutter.installRevision(revision: targetFlutterRevision);
-    } catch (_) {
+    } on Exception {
       throw ProcessExit(ExitCode.software.code);
     }
 
@@ -337,7 +337,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       revision = await shorebirdFlutter.resolveFlutterRevision(
         flutterVersionArg!,
       );
-    } catch (error) {
+    } on Exception catch (error) {
       logger.err(
         '''
 Unable to determine revision for Flutter version: $flutterVersionArg.

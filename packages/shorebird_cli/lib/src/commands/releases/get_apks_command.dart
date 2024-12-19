@@ -115,7 +115,7 @@ class GetApksCommand extends ShorebirdCommand {
         universal: results['universal'] as bool,
       );
       buildApksProgress.complete();
-    } catch (error) {
+    } on Exception catch (error) {
       buildApksProgress.fail('$error');
       return ExitCode.software.code;
     }
@@ -178,7 +178,7 @@ class GetApksCommand extends ShorebirdCommand {
         Uri.parse(releaseArtifact.url),
         message: 'Downloading aab',
       );
-    } catch (_) {
+    } on Exception catch (_) {
       throw ProcessExit(ExitCode.software.code);
     }
 

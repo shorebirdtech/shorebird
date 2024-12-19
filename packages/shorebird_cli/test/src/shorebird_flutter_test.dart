@@ -294,6 +294,26 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
           expect(revision, isNull);
         });
       });
+
+      group('when exception occurs doing revision lookup', () {
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenThrow(Exception('oops'));
+        });
+
+        test('returns null', () async {
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterRevision('not-a-version'),
+          );
+          expect(revision, isNull);
+        });
+      });
     });
 
     group('resolveFlutterVersion', () {
@@ -317,6 +337,26 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
               pattern: any(named: 'pattern'),
             ),
           ).thenAnswer((_) async => '');
+        });
+
+        test('returns null', () async {
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterVersion('not-a-version'),
+          );
+          expect(revision, isNull);
+        });
+      });
+
+      group('when commit lookup fails', () {
+        setUp(() {
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenThrow(Exception('oops'));
         });
 
         test('returns null', () async {

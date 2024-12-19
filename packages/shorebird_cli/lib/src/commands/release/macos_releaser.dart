@@ -148,7 +148,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     try {
       return Plist(file: plistFile).versionNumber;
-    } catch (error) {
+    } on Exception catch (error) {
       logger.err(
         '''Failed to determine release version from ${plistFile.path}: $error''',
       );

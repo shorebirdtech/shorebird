@@ -440,7 +440,9 @@ void main() {
             test('forwards --split-debug-info to builder', () async {
               try {
                 await runWithOverrides(patcher.buildPatchArtifact);
-              } catch (_) {}
+              } on Exception {
+                // ignore
+              }
               verify(
                 () => artifactBuilder.buildElfAotSnapshot(
                   appDillPath: any(named: 'appDillPath'),
@@ -644,6 +646,9 @@ void main() {
               ),
             ).thenAnswer((_) async => linkPercentage);
             when(
+              aotTools.isGeneratePatchDiffBaseSupported,
+            ).thenAnswer((_) async => false);
+            when(
               () => shorebirdEnv.flutterRevision,
             ).thenReturn(postLinkerFlutterRevision);
             when(
@@ -735,7 +740,9 @@ void main() {
                       releaseArtifact: releaseArtifactFile,
                     ),
                   );
-                } catch (_) {}
+                } on Exception {
+                  // ignore
+                }
                 verify(
                   () => aotTools.link(
                     base: any(named: 'base'),

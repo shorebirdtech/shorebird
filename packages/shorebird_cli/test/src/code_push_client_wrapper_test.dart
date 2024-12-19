@@ -158,6 +158,7 @@ void main() {
     late CodePushClient codePushClient;
     late Ditto ditto;
     late ShorebirdLogger logger;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late Progress progress;
     late CodePushClientWrapper codePushClientWrapper;
@@ -171,6 +172,7 @@ void main() {
           dittoRef.overrideWith(() => ditto),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
       );
@@ -193,6 +195,7 @@ void main() {
         () => CodePushClientWrapper(codePushClient: codePushClient),
       );
 
+      shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
 
       when(
@@ -233,9 +236,7 @@ void main() {
               displayName: appName,
               organizationId: any(named: 'organizationId'),
             ),
-          ).thenAnswer(
-            (_) async => app,
-          );
+          ).thenAnswer((_) async => app);
 
           await runWithOverrides(
             () => codePushClientWrapper.createApp(

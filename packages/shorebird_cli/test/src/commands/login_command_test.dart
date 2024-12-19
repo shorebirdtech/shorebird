@@ -54,6 +54,10 @@ void main() {
         p.join(applicationConfigHome.path, 'credentials.json'),
       );
       when(
+        () => auth.login(any(), prompt: any(named: 'prompt')),
+      ).thenAnswer((_) async {});
+
+      when(
         () => logger.chooseOne<AuthProvider>(
           any(),
           choices: any(named: 'choices'),
@@ -61,8 +65,9 @@ void main() {
         ),
       ).thenReturn(AuthProvider.google);
 
-      command =
-          runWithOverrides(() => LoginCommand()..testArgResults = results);
+      command = runWithOverrides(
+        () => LoginCommand()..testArgResults = results,
+      );
     });
 
     group('provider', () {

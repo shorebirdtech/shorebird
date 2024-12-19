@@ -19,11 +19,11 @@ class CreateReleaseArtifactResponse {
     required this.url,
   });
 
-  /// Converts a Map<String, dynamic> to a [CreateReleaseArtifactResponse]
+  /// Converts a `Map<String, dynamic>` to a [CreateReleaseArtifactResponse]
   factory CreateReleaseArtifactResponse.fromJson(Map<String, dynamic> json) =>
       _$CreateReleaseArtifactResponseFromJson(json);
 
-  /// Converts a [CreateReleaseArtifactResponse] to a Map<String, dynamic>.
+  /// Converts a [CreateReleaseArtifactResponse] to a `Map<String, dynamic>`.
   Json toJson() => _$CreateReleaseArtifactResponseToJson(this);
 
   /// The ID of the artifact;

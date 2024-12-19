@@ -331,7 +331,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               flavor: any(named: 'flavor'),
             ),
           ).thenThrow(
-            ArtifactNotFoundException(
+            const ArtifactNotFoundException(
               artifactName: 'app-release.aab',
               buildDir: 'buildDir',
             ),
@@ -573,7 +573,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               flavor: any(named: 'flavor'),
             ),
           ).thenThrow(
-            ArtifactNotFoundException(
+            const ArtifactNotFoundException(
               artifactName: 'app-release.aab',
               buildDir: 'buildDir',
             ),

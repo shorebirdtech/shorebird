@@ -12,10 +12,10 @@ class Patch {
   /// {@macro patch}
   const Patch({required this.id, required this.number});
 
-  /// Converts a Map<String, dynamic> to a [Patch]
+  /// Converts a `Map<String, dynamic>` to a [Patch]
   factory Patch.fromJson(Map<String, dynamic> json) => _$PatchFromJson(json);
 
-  /// Converts a [Patch] to a Map<String, dynamic>
+  /// Converts a [Patch] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$PatchToJson(this);
 
   /// The unique patch identifier.

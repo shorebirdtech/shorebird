@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -31,7 +29,7 @@ abstract class Patcher {
     required this.target,
   });
 
-  // Link percentage that is considered the minimum before a user might notice.
+  /// Link percentage that is considered the minimum before a user might notice.
   static const double minLinkPercentage = 75;
 
   /// The standard link percentage warning.

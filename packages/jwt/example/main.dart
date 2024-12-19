@@ -1,4 +1,3 @@
-// ignore_for_file: avoid_print
 import 'package:jwt/jwt.dart' as jwt;
 
 Future<void> main() async {

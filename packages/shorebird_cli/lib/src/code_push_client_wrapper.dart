@@ -1,3 +1,4 @@
+// TODO(felangel): Add public member API docs and remove the ignore.
 // ignore_for_file: public_member_api_docs
 // cspell:words endtemplate pubspec sideloadable bryanoltman archs sideload
 // cspell:words xcarchive codesigned xcframework
@@ -87,11 +88,7 @@ class CodePushClientWrapper {
   }) async {
     late final String displayName;
     if (appName == null) {
-      String? defaultAppName;
-      try {
-        defaultAppName = shorebirdEnv.getPubspecYaml()?.name;
-      } catch (_) {}
-
+      final defaultAppName = shorebirdEnv.getPubspecYaml()?.name;
       displayName = logger.prompt(
         '${lightGreen.wrap('?')} How should we refer to this app?',
         defaultValue: defaultAppName,

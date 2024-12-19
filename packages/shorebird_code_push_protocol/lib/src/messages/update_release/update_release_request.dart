@@ -15,11 +15,11 @@ class UpdateReleaseRequest {
     required this.metadata,
   });
 
-  /// Converts a Map<String, dynamic> to a [UpdateReleaseRequest].
+  /// Converts a `Map<String, dynamic>` to a [UpdateReleaseRequest].
   factory UpdateReleaseRequest.fromJson(Json json) =>
       _$UpdateReleaseRequestFromJson(json);
 
-  /// Converts a [UpdateReleaseRequest] to a Map<String, dynamic>.
+  /// Converts a [UpdateReleaseRequest] to a `Map<String, dynamic>`.
   Json toJson() => _$UpdateReleaseRequestToJson(this);
 
   /// The desired status of the release.

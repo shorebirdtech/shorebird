@@ -131,7 +131,7 @@ class IosFrameworkPatcher extends Patcher {
         genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
         additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
-    } catch (error) {
+    } on Exception catch (error) {
       buildProgress.fail('$error');
       throw ProcessExit(ExitCode.software.code);
     }
@@ -259,7 +259,7 @@ class IosFrameworkPatcher extends Patcher {
           releaseSnapshot: releaseArtifactFile,
         );
         patchBaseProgress.complete();
-      } catch (error) {
+      } on Exception catch (error) {
         patchBaseProgress.fail('$error');
         throw ProcessExit(ExitCode.software.code);
       }
@@ -339,7 +339,7 @@ class IosFrameworkPatcher extends Patcher {
         workingDirectory: buildDirectory.path,
         additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
-    } catch (error) {
+    } on Exception catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
       throw ProcessExit(ExitCode.software.code);
     }

@@ -175,7 +175,7 @@ void main() {
         try {
           await client.execute(['RESET']);
           await client.execute(['FLUSHALL']);
-        } catch (_) {
+        } on Exception {
           // ignore
         }
       });
@@ -228,7 +228,7 @@ void main() {
           try {
             await client.execute(['RESET']);
             await client.execute(['FLUSHALL']);
-          } catch (_) {
+          } on Exception {
             // ignore
           }
         });

@@ -1,4 +1,3 @@
-// ignore_for_file: prefer_const_constructors
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:test/test.dart';
 

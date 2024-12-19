@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -15,17 +13,22 @@ typedef HashFunction = String Function(List<int> bytes);
 /// Signature for a function which takes a path to a zip file.
 typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
 
+/// Signature for a function which builds a [CodePushClient].
 typedef CodePushClientBuilder = CodePushClient Function({
   required http.Client httpClient,
   Uri? hostedUri,
 });
 
+/// Signature for a function which starts a process (e.g. [Process.start]).
 typedef StartProcess = Future<Process> Function(
   String executable,
   List<String> arguments, {
   bool runInShell,
 });
 
+/// {@template shorebird_command}
+/// A command in the Shorebird CLI.
+/// {@endtemplate}
 abstract class ShorebirdCommand extends Command<int> {
   // We don't currently have a test involving both a CommandRunner
   // and a Command, so we can't test this getter.

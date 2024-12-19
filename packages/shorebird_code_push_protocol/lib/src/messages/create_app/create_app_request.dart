@@ -13,11 +13,11 @@ class CreateAppRequest {
     required this.organizationId,
   });
 
-  /// Converts a Map<String, dynamic> to a [CreateAppRequest]
+  /// Converts a `Map<String, dynamic>` to a [CreateAppRequest]
   factory CreateAppRequest.fromJson(Map<String, dynamic> json) =>
       _$CreateAppRequestFromJson(json);
 
-  /// Converts a [CreateAppRequest] to a Map<String, dynamic>
+  /// Converts a [CreateAppRequest] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$CreateAppRequestToJson(this);
 
   /// The display name of the app.

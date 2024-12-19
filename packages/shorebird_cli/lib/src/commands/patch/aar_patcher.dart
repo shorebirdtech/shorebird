@@ -125,7 +125,7 @@ class AarPatcher extends Patcher {
           Uri.parse(releaseArtifact.value.url),
         );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
-      } catch (error) {
+      } on Exception catch (error) {
         downloadReleaseArtifactProgress.fail('$error');
         throw ProcessExit(ExitCode.software.code);
       }
@@ -163,7 +163,7 @@ class AarPatcher extends Patcher {
           hash: hash,
           size: await File(diffPath).length(),
         );
-      } catch (error) {
+      } on Exception catch (error) {
         createDiffProgress.fail('$error');
         throw ProcessExit(ExitCode.software.code);
       }

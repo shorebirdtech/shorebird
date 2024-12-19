@@ -15,11 +15,15 @@ abstract class PublicKeyStore {
     if (json.containsKey('keys')) {
       try {
         return JwkKeyStore.fromJson(json);
-      } catch (_) {}
+      } on Exception {
+        // Swallow deserialization exceptions and return null.
+      }
     } else {
       try {
         return KeyValueKeyStore.fromJson(json);
-      } catch (_) {}
+      } on Exception {
+        // Swallow deserialization exceptions and return null.
+      }
     }
 
     return null;
