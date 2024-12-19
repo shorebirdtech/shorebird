@@ -24,14 +24,14 @@ class Jwt {
     final JwtHeader header;
     try {
       header = JwtHeader.fromJson(decodeJwtPart(parts[0]));
-    } catch (_) {
+    } on Exception {
       throw const FormatException('JWT header is malformed.');
     }
 
     final JwtPayload payload;
     try {
       payload = JwtPayload.fromJson(decodeJwtPart(parts[1]));
-    } catch (_) {
+    } on Exception {
       throw const FormatException('JWT payload is malformed.');
     }
 

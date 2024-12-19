@@ -10,8 +10,14 @@ class KeyValueKeyStore extends PublicKeyStore {
   const KeyValueKeyStore({required this.keys});
 
   /// Decodes a JSON object into a [KeyValueKeyStore].
-  factory KeyValueKeyStore.fromJson(Map<String, dynamic> json) =>
-      KeyValueKeyStore(keys: json.map((k, v) => MapEntry(k, v as String)));
+  factory KeyValueKeyStore.fromJson(Map<String, dynamic> json) {
+    return KeyValueKeyStore(
+      keys: json.map((k, v) {
+        if (v is! String) throw const FormatException('value is not a string.');
+        return MapEntry(k, v);
+      }),
+    );
+  }
 
   /// Map of all public key id/value pairs.
   final Map<String, String> keys;

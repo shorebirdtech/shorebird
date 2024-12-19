@@ -10,7 +10,7 @@ dependencies:
   clock: ^1.1.0
   collection: ^1.18.0
   http: ^1.0.0
-  json_annotation: ^4.4.0
+  json_annotation: ^4.9.0
   meta: ^1.7.0
   pointycastle: ^3.5.0
   rsa_pkcs: ^2.0.0
@@ -21,4 +21,4 @@ dev_dependencies:
   json_serializable: ^6.1.4
   path: ^1.9.0
   test: ^1.19.2
-  very_good_analysis: ^6.0.0
+  very_good_analysis: ^7.0.0
