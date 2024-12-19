@@ -47,11 +47,11 @@ class BuildEnvironmentMetadata extends Equatable {
       );
   // coverage:ignore-end
 
-  /// Converts a Map<String, dynamic> to a [BuildEnvironmentMetadata]
+  /// Converts a `Map<String, dynamic>` to a [BuildEnvironmentMetadata]
   factory BuildEnvironmentMetadata.fromJson(Map<String, dynamic> json) =>
       _$BuildEnvironmentMetadataFromJson(json);
 
-  /// Converts a [BuildEnvironmentMetadata] to a Map<String, dynamic>
+  /// Converts a [BuildEnvironmentMetadata] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$BuildEnvironmentMetadataToJson(this);
 
   /// Creates a copy of this [BuildEnvironmentMetadata] with the given fields

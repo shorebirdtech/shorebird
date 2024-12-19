@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -33,14 +31,20 @@ class MultipleArtifactsFoundException implements Exception {
   }
 }
 
+/// {@template artifact_not_found_exception}
 /// Thrown when no artifact is found in the build directory.
+/// {@endtemplate}
 class ArtifactNotFoundException implements Exception {
-  ArtifactNotFoundException({
+  /// {@macro artifact_not_found_exception}
+  const ArtifactNotFoundException({
     required this.artifactName,
     required this.buildDir,
   });
 
+  /// The name of the artifact.
   final String artifactName;
+
+  /// The build directory where the artifact was expected to be.
   final String buildDir;
 
   @override
@@ -77,8 +81,10 @@ extension on String {
   String get artifactId => replaceAll(RegExp(r'\W'), '').toLowerCase();
 }
 
+/// The reference to the [ShorebirdAndroidArtifacts] instance.
 final shorebirdAndroidArtifactsRef = create(ShorebirdAndroidArtifacts.new);
 
+/// The [ShorebirdAndroidArtifacts] instance available in the current zone.
 ShorebirdAndroidArtifacts get shorebirdAndroidArtifacts =>
     read(shorebirdAndroidArtifactsRef);
 
@@ -168,6 +174,7 @@ class ShorebirdAndroidArtifacts {
     );
   }
 
+  /// The path to the aar library.
   static String get aarLibraryPath {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     return p.joinAll([
@@ -179,6 +186,7 @@ class ShorebirdAndroidArtifacts {
     ]);
   }
 
+  /// The path to the aar directory.
   static String aarArtifactDirectory({
     required String packageName,
     required String buildNumber,
@@ -190,6 +198,7 @@ class ShorebirdAndroidArtifacts {
         buildNumber,
       ]);
 
+  /// The path to the aar artifact.
   static String aarArtifactPath({
     required String packageName,
     required String buildNumber,

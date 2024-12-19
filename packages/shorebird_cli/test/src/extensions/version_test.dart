@@ -10,7 +10,7 @@ void main() {
       });
 
       test('returns null if string is of the format major.minor', () {
-        expect(tryParseVersion('1.2'), isNull);
+        expect(tryParseVersion('-1.2.-3'), isNull);
       });
 
       test('returns null if string is in an invalid format', () {
@@ -25,6 +25,13 @@ void main() {
 
       test('returns a version if string is of the format major.minor', () {
         expect(tryParseVersion('1.2', strict: false), Version(1, 2, 0));
+      });
+
+      test('returns null if string contains bigint', () {
+        expect(
+          tryParseVersion('999999999999999999999999999.0', strict: false),
+          isNull,
+        );
       });
 
       test('returns null if string is in an invalid format', () {

@@ -47,8 +47,8 @@ void main() {
         () => shorebirdVersion.attemptReset(revision: any(named: 'revision')),
       ).thenAnswer((_) async => {});
 
-      when(() => progress.complete(any())).thenAnswer((_) {
-        final message = _.positionalArguments.elementAt(0) as String?;
+      when(() => progress.complete(any())).thenAnswer((invocation) {
+        final message = invocation.positionalArguments.elementAt(0) as String?;
         if (message != null) progressLogs.add(message);
       });
       when(() => logger.progress(any())).thenReturn(progress);

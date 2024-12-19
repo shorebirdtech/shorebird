@@ -99,7 +99,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     try {
       await artifactBuilder.buildIosFramework(args: argResults.forwardedArgs);
-    } catch (error) {
+    } on Exception catch (error) {
       buildProgress.fail('Failed to build iOS framework: $error');
       throw ProcessExit(ExitCode.software.code);
     }

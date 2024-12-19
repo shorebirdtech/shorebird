@@ -13,11 +13,11 @@ http.Client retryingHttpClient(http.Client client) => RetryClient(
 /// Returns `true` if the [exception] is a retryable exception.
 bool isRetryableException(Object exception, StackTrace _) {
   return switch (exception.runtimeType) {
-    http.ClientException => true,
-    HttpException => true,
-    TlsException => true,
-    SocketException => true,
-    WebSocketException => true,
+    const (http.ClientException) => true,
+    const (HttpException) => true,
+    const (TlsException) => true,
+    const (SocketException) => true,
+    const (WebSocketException) => true,
     _ => false,
   };
 }

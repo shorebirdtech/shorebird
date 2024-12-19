@@ -45,6 +45,15 @@ void main() {
       when(() => results['provider']).thenReturn(null);
       when(() => auth.client).thenReturn(httpClient);
       when(
+        () => auth.loginCI(any(), prompt: any(named: 'prompt')),
+      ).thenAnswer(
+        (_) async => const CiToken(
+          // "shorebird-token" in base64
+          refreshToken: 'c2hvcmViaXJkLXRva2Vu', // cspell:disable-line
+          authProvider: AuthProvider.google,
+        ),
+      );
+      when(
         () => logger.chooseOne<AuthProvider>(
           any(),
           choices: any(named: 'choices'),
@@ -52,8 +61,9 @@ void main() {
         ),
       ).thenReturn(AuthProvider.google);
 
-      command =
-          runWithOverrides(() => LoginCiCommand()..testArgResults = results);
+      command = runWithOverrides(
+        () => LoginCiCommand()..testArgResults = results,
+      );
     });
 
     group('provider', () {

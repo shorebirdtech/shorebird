@@ -718,7 +718,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             test('forwards --split-debug-info to builder', () async {
               try {
                 await runWithOverrides(patcher.buildPatchArtifact);
-              } catch (_) {}
+              } on Exception {
+                // ignore
+              }
               verify(
                 () => artifactBuilder.buildElfAotSnapshot(
                   appDillPath: any(named: 'appDillPath'),
@@ -1582,8 +1584,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       kernel: any(named: 'kernel'),
                       outputPath: any(named: 'outputPath'),
                       workingDirectory: any(named: 'workingDirectory'),
-                      // ignore: avoid_redundant_argument_values
-                      dumpDebugInfoPath: null,
                     ),
                   ).called(1);
                 });
@@ -1621,7 +1621,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                   'Info.plist',
                 ),
               ).deleteSync(recursive: true);
-            } catch (_) {}
+            } on Exception {
+              // ignore
+            }
           });
 
           test('exit with code 70', () async {

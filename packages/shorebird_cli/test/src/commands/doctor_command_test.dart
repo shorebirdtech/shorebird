@@ -99,6 +99,7 @@ void main() {
       when(
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
       ).thenAnswer((_) async => {});
+      when(shorebirdFlutter.getVersionString).thenAnswer((_) async => null);
 
       command = runWithOverrides(DoctorCommand.new)
         ..testArgResults = argResults;
@@ -106,7 +107,11 @@ void main() {
 
     test(
         'prints shorebird version, flutter revision, '
-        'and engine revision', () async {
+        'and engine revision '
+        'when unable to determine Flutter version', () async {
+      when(
+        () => shorebirdFlutter.getVersionString(),
+      ).thenThrow(Exception('oops'));
       await runWithOverrides(command.run);
 
       verify(
@@ -116,6 +121,11 @@ Shorebird v$packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 '''),
+      ).called(1);
+      verify(
+        () => logger.detail(
+          'Unable to determine Flutter version.\nException: oops',
+        ),
       ).called(1);
     });
 

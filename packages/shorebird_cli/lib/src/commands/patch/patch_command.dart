@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -29,9 +27,15 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// Signature for a function that returns a [Patcher] for a given [ReleaseType].
 typedef ResolvePatcher = Patcher Function(ReleaseType releaseType);
 
+/// {@template patch_command}
+/// A command that creates a shorebird patch for the provided target platforms.
+/// `shorebird patch --platforms=android,ios`
+/// {@endtemplate}
 class PatchCommand extends ShorebirdCommand {
+  /// {@macro patch_command}
   PatchCommand({
     ResolvePatcher? resolvePatcher,
   }) {
@@ -142,10 +146,12 @@ of the iOS app that is using this module.''',
       );
   }
 
+  /// Warning message for when native code diffs are detected.
   static final allowNativeDiffsHelpText = '''
 Patch even if native code diffs are detected.
 NOTE: this is ${styleBold.wrap('not')} recommended. Native code changes cannot be included in a patch and attempting to do so can cause your app to crash or behave unexpectedly.''';
 
+  /// Warning message for when asset diffs are detected.
   static final allowAssetDiffsHelpText = '''
 Patch even if asset diffs are detected.
 NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be included in a patch can cause your app to behave unexpectedly.''';
@@ -177,8 +183,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// Whether --no-confirm was passed.
   bool get noConfirm => results['no-confirm'] == true;
 
+  /// Whether the patch is for the staging environment.
   bool get isStaging => track == DeploymentTrack.staging;
 
+  /// The deployment track to publish the patch to.
   DeploymentTrack get track {
     final channel = results['track'] as String;
     return DeploymentTrack.values.firstWhere((t) => t.channel == channel);
@@ -207,6 +215,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     return ExitCode.success.code;
   }
 
+  /// Returns a [Patcher] for the given [ReleaseType].
   @visibleForTesting
   Patcher getPatcher(ReleaseType releaseType) {
     switch (releaseType) {
@@ -248,8 +257,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     }
   }
 
+  /// The last built Flutter revision.
   String? lastBuiltFlutterRevision;
 
+  /// Creates a patch using the provided [patcher].
   @visibleForTesting
   Future<void> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
@@ -291,7 +302,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     try {
       await shorebirdFlutter.installRevision(revision: release.flutterRevision);
-    } catch (_) {
+    } on Exception {
       throw ProcessExit(ExitCode.software.code);
     }
 
@@ -395,6 +406,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     );
   }
 
+  /// Prompts the user for the specific release to patch.
   Future<Release> promptForRelease() async {
     final releases = await codePushClientWrapper.getReleases(
       appId: appId,
@@ -414,6 +426,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     );
   }
 
+  /// Asserts that the release contains a platform for the given [patcher].
   void assertReleaseContainsPlatform({
     required Release release,
     required Patcher patcher,
@@ -429,6 +442,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     }
   }
 
+  /// Asserts that the provided [release] is active.
   void assertReleaseIsActive({
     required Release release,
     required Patcher patcher,
@@ -443,6 +457,7 @@ Please re-run the release command for this version or create a new release.''');
     }
   }
 
+  /// Ensures the diff between the release and patch archives is safe to patch.
   Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
     required File patchArchive,
@@ -463,6 +478,7 @@ Please re-run the release command for this version or create a new release.''');
     }
   }
 
+  /// Confirms the patch creation (including a summary).
   Future<void> confirmCreatePatch({
     required AppMetadata app,
     required String releaseVersion,
@@ -511,6 +527,7 @@ ${summary.join('\n')}
     }
   }
 
+  /// Downloads the given [releaseArtifact].
   Future<File> downloadReleaseArtifact({
     required ReleaseArtifact releaseArtifact,
   }) async {
@@ -520,7 +537,7 @@ ${summary.join('\n')}
         Uri.parse(releaseArtifact.url),
         message: 'Downloading ${releaseArtifact.arch}',
       );
-    } catch (_) {
+    } on Exception {
       throw ProcessExit(ExitCode.software.code);
     }
 

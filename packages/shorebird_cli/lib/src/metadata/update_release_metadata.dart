@@ -42,11 +42,11 @@ class UpdateReleaseMetadata extends Equatable {
       );
   // coverage:ignore-end
 
-  /// Converts a Map<String, dynamic> to a [UpdateReleaseMetadata].
+  /// Converts a `Map<String, dynamic>` to a [UpdateReleaseMetadata].
   factory UpdateReleaseMetadata.fromJson(Map<String, dynamic> json) =>
       _$UpdateReleaseMetadataFromJson(json);
 
-  /// Converts a [UpdateReleaseMetadata] to a Map<String, dynamic>.
+  /// Converts a [UpdateReleaseMetadata] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() => _$UpdateReleaseMetadataToJson(this);
 
   /// Returns a copy of this [UpdateReleaseMetadata] with the given fields
