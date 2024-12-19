@@ -15,7 +15,7 @@ class PublicUser {
     required this.displayName,
   });
 
-  /// Converts a Map<String, dynamic> to a [PublicUser]
+  /// Converts a `Map<String, dynamic>` to a [PublicUser]
   factory PublicUser.fromJson(Map<String, dynamic> json) =>
       _$PublicUserFromJson(json);
 

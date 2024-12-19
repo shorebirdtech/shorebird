@@ -13,10 +13,10 @@ class App {
     required this.displayName,
   });
 
-  /// Converts a Map<String, dynamic> to an [App]
+  /// Converts a `Map<String, dynamic>` to an [App]
   factory App.fromJson(Map<String, dynamic> json) => _$AppFromJson(json);
 
-  /// Converts a [App] to a Map<String, dynamic>
+  /// Converts a [App] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$AppToJson(this);
 
   /// The ID of the app.

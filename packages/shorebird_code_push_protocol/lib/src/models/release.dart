@@ -22,11 +22,11 @@ class Release {
     required this.updatedAt,
   });
 
-  /// Converts a Map<String, dynamic> to a [Release]
+  /// Converts a `Map<String, dynamic>` to a [Release]
   factory Release.fromJson(Map<String, dynamic> json) =>
       _$ReleaseFromJson(json);
 
-  /// Converts a [Release] to a Map<String, dynamic>
+  /// Converts a [Release] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$ReleaseToJson(this);
 
   /// The ID of the release;

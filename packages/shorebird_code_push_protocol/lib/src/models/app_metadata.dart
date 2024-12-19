@@ -18,11 +18,11 @@ class AppMetadata extends Equatable {
     this.latestPatchNumber,
   });
 
-  /// Converts a Map<String, dynamic> to an [AppMetadata]
+  /// Converts a `Map<String, dynamic>` to an [AppMetadata]
   factory AppMetadata.fromJson(Map<String, dynamic> json) =>
       _$AppMetadataFromJson(json);
 
-  /// Converts a [AppMetadata] to a Map<String, dynamic>
+  /// Converts a [AppMetadata] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$AppMetadataToJson(this);
 
   /// The ID of the app.
