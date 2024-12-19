@@ -135,7 +135,7 @@ class Cache {
 }
 
 /// {@template cached_artifact}
-/// An artfiact which is cached by Shorebird.
+/// An artifact which is cached by Shorebird.
 /// {@endtemplate}
 abstract class CachedArtifact {
   /// {@macro cached_artifact}
