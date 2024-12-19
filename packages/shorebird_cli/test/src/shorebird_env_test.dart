@@ -276,21 +276,27 @@ void main() {
         );
       });
 
-      test('returns null when error occurs reading pubspec.yaml', () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final file = File(
-          p.join(tempDir.path, 'pubspec.yaml'),
-        )..writeAsStringSync('name: test');
-        // Make the file unreadable.
-        Process.runSync('chmod', ['000', file.path]);
-        expect(
-          IOOverrides.runZoned(
-            () => runWithOverrides(() => shorebirdEnv.getPubspecYaml()),
-            getCurrentDirectory: () => tempDir,
-          ),
-          isNull,
-        );
-      });
+      test(
+        'returns null when error occurs reading pubspec.yaml',
+        () {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final file = File(
+            p.join(tempDir.path, 'pubspec.yaml'),
+          )..writeAsStringSync('name: test');
+          // Make the file unreadable.
+          Process.runSync('chmod', ['000', file.path]);
+          expect(
+            IOOverrides.runZoned(
+              () => runWithOverrides(() => shorebirdEnv.getPubspecYaml()),
+              getCurrentDirectory: () => tempDir,
+            ),
+            isNull,
+          );
+        },
+        onPlatform: {
+          'windows': const Skip('chmod is not available on Windows'),
+        },
+      );
 
       test('returns value when pubspec.yaml exists', () {
         final tempDir = Directory.systemTemp.createTempSync();
@@ -656,23 +662,29 @@ base_url: https://example.com''');
         expect(runWithOverrides(() => shorebirdEnv.hostedUri), isNull);
       });
 
-      test('returns null when unable to read shorebird.yaml', () {
-        final directory = Directory.systemTemp.createTempSync();
-        final file = File(p.join(directory.path, 'shorebird.yaml'))
-          ..writeAsStringSync('''
+      test(
+        'returns null when unable to read shorebird.yaml',
+        () {
+          final directory = Directory.systemTemp.createTempSync();
+          final file = File(p.join(directory.path, 'shorebird.yaml'))
+            ..writeAsStringSync('''
 app_id: test-id
 base_url: https://example.com''');
-        // Make the file unreadable.
-        Process.runSync('chmod', ['000', file.path]);
+          // Make the file unreadable.
+          Process.runSync('chmod', ['000', file.path]);
 
-        expect(
-          IOOverrides.runZoned(
-            () => runWithOverrides(() => shorebirdEnv.hostedUri),
-            getCurrentDirectory: () => directory,
-          ),
-          isNull,
-        );
-      });
+          expect(
+            IOOverrides.runZoned(
+              () => runWithOverrides(() => shorebirdEnv.hostedUri),
+              getCurrentDirectory: () => directory,
+            ),
+            isNull,
+          );
+        },
+        onPlatform: {
+          'windows': const Skip('chmod is not available on Windows'),
+        },
+      );
     });
 
     group('canAcceptUserInput', () {
