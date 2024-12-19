@@ -10,11 +10,11 @@ class CreatePatchResponse {
   /// {@macro create_patch_response}
   const CreatePatchResponse({required this.id, required this.number});
 
-  /// Converts a Map<String, dynamic> to a [CreatePatchResponse]
+  /// Converts a `Map<String, dynamic>` to a [CreatePatchResponse]
   factory CreatePatchResponse.fromJson(Map<String, dynamic> json) =>
       _$CreatePatchResponseFromJson(json);
 
-  /// Converts a [CreatePatchResponse] to a Map<String, dynamic>
+  /// Converts a [CreatePatchResponse] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$CreatePatchResponseToJson(this);
 
   /// The unique patch identifier.

@@ -14,11 +14,11 @@ class CreatePatchRequest {
     required this.metadata,
   });
 
-  /// Converts a Map<String, dynamic> to a [CreatePatchRequest]
+  /// Converts a `Map<String, dynamic>` to a [CreatePatchRequest]
   factory CreatePatchRequest.fromJson(Map<String, dynamic> json) =>
       _$CreatePatchRequestFromJson(json);
 
-  /// Converts a [CreatePatchRequest] to a Map<String, dynamic>
+  /// Converts a [CreatePatchRequest] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$CreatePatchRequestToJson(this);
 
   /// The ID of the release.

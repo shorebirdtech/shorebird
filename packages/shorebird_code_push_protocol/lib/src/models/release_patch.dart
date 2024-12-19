@@ -19,11 +19,11 @@ class ReleasePatch extends Equatable {
     required this.isRolledBack,
   });
 
-  /// Converts a Map<String, dynamic> to a [ReleasePatch]
+  /// Converts a `Map<String, dynamic>` to a [ReleasePatch]
   factory ReleasePatch.fromJson(Map<String, dynamic> json) =>
       _$ReleasePatchFromJson(json);
 
-  /// Converts a [ReleasePatch] to a Map<String, dynamic>
+  /// Converts a [ReleasePatch] to a `Map<String, dynamic>`
   Json toJson() => _$ReleasePatchToJson(this);
 
   /// The patch id.

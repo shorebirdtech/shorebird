@@ -22,11 +22,11 @@ class ReleaseArtifact {
     required this.canSideload,
   });
 
-  /// Converts a Map<String, dynamic> to a [ReleaseArtifact]
+  /// Converts a `Map<String, dynamic>` to a [ReleaseArtifact]
   factory ReleaseArtifact.fromJson(Map<String, dynamic> json) =>
       _$ReleaseArtifactFromJson(json);
 
-  /// Converts a [ReleaseArtifact] to a Map<String, dynamic>
+  /// Converts a [ReleaseArtifact] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$ReleaseArtifactToJson(this);
 
   /// The ID of the artifact;

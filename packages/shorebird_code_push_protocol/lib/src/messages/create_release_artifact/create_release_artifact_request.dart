@@ -22,11 +22,11 @@ class CreateReleaseArtifactRequest {
     required this.podfileLockHash,
   });
 
-  /// Converts a Map<String, dynamic> to a [CreateReleaseArtifactRequest]
+  /// Converts a `Map<String, dynamic>` to a [CreateReleaseArtifactRequest]
   factory CreateReleaseArtifactRequest.fromJson(Map<String, dynamic> json) =>
       _$CreateReleaseArtifactRequestFromJson(json);
 
-  /// Converts a [CreateReleaseArtifactRequest] to a Map<String, dynamic>.
+  /// Converts a [CreateReleaseArtifactRequest] to a `Map<String, dynamic>`.
   Json toJson() => _$CreateReleaseArtifactRequestToJson(this);
 
   /// The arch of the artifact.

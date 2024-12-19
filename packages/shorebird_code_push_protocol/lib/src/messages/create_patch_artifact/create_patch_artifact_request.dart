@@ -4,7 +4,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 part 'create_patch_artifact_request.g.dart';
 
 /// {@template create_patch_artifact_request}
-/// The request body for POST /api/v1/patches/<id>/artifacts
+/// The request body for POST /api/v1/patches/:id/artifacts
 /// {@endtemplate}
 @JsonSerializable()
 class CreatePatchArtifactRequest {
@@ -18,11 +18,11 @@ class CreatePatchArtifactRequest {
     this.podfileLockHash,
   });
 
-  /// Converts a Map<String, dynamic> to a [CreatePatchArtifactRequest]
+  /// Converts a `Map<String, dynamic>` to a [CreatePatchArtifactRequest]
   factory CreatePatchArtifactRequest.fromJson(Map<String, dynamic> json) =>
       _$CreatePatchArtifactRequestFromJson(json);
 
-  /// Converts a [CreatePatchArtifactRequest] to a Map<String, dynamic>.
+  /// Converts a [CreatePatchArtifactRequest] to a `Map<String, dynamic>`.
   Json toJson() => _$CreatePatchArtifactRequestToJson(this);
 
   /// The arch of the artifact.
