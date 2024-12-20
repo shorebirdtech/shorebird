@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'package:json_annotation/json_annotation.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
@@ -15,6 +13,7 @@ part 'apple_device.g.dart';
 
 /// {@macro apple_device}
 class AppleDevice {
+  /// {@macro apple_device}
   const AppleDevice({
     required this.deviceProperties,
     required this.hardwareProperties,
@@ -62,8 +61,12 @@ class AppleDevice {
   String toString() => '$name ($osVersionString ${hardwareProperties.udid})';
 }
 
+/// {@template hardware_properties}
+/// The hardware properties of a device.
+/// {@endtemplate}
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class HardwareProperties {
+  /// {@macro hardware_properties}
   const HardwareProperties({required this.platform, required this.udid});
 
   /// The device's platform (e.g., "iOS").
@@ -72,12 +75,17 @@ class HardwareProperties {
   /// The unique identifier of this device
   final String udid;
 
+  /// Creates a [HardwareProperties] from [json].
   static HardwareProperties fromJson(Json json) =>
       _$HardwarePropertiesFromJson(json);
 }
 
+/// {@template device_properties}
+/// The device properties for a given apple device.
+/// {@endtemplate}
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class DeviceProperties {
+  /// {@macro device_properties}
   const DeviceProperties({required this.name, this.osVersionNumber});
 
   /// Human-readable name of the device (e.g., "Joe's iPhone").
@@ -86,12 +94,17 @@ class DeviceProperties {
   /// The device's OS version as a string (e.g., "14.4.1").
   final String? osVersionNumber;
 
+  /// Creates a [DeviceProperties] from [json].
   static DeviceProperties fromJson(Json json) =>
       _$DevicePropertiesFromJson(json);
 }
 
+/// {@template connection_properties}
+/// The connection properties of a device.
+/// {@endtemplate}
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.none)
 class ConnectionProperties {
+  /// {@macro connection_properties}
   const ConnectionProperties({required this.tunnelState, this.transportType});
 
   /// How the device is connected. Values seen in development include
@@ -106,6 +119,7 @@ class ConnectionProperties {
   /// - "unavailable" when the device is not connected via USB or wifi.
   final String tunnelState;
 
+  /// Creates a [ConnectionProperties] from [json].
   static ConnectionProperties fromJson(Json json) =>
       _$ConnectionPropertiesFromJson(json);
 }

@@ -11,11 +11,11 @@ class GetAppsResponse {
   /// {@macro get_apps_response}
   const GetAppsResponse({required this.apps});
 
-  /// Converts a Map<String, dynamic> to a [GetAppsResponse].
+  /// Converts a `Map<String, dynamic>` to a [GetAppsResponse].
   factory GetAppsResponse.fromJson(Map<String, dynamic> json) =>
       _$GetAppsResponseFromJson(json);
 
-  /// Converts a [GetAppsResponse] to a Map<String, dynamic>.
+  /// Converts a [GetAppsResponse] to a `Map<String, dynamic>`.
   Json toJson() => _$GetAppsResponseToJson(this);
 
   /// The list of apps.

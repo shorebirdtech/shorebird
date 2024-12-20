@@ -84,7 +84,7 @@ class AarReleaser extends Releaser {
         targetPlatforms: architectures,
         args: argResults.forwardedArgs,
       );
-    } catch (e) {
+    } on Exception catch (e) {
       logger.err('Failed to build aar: $e');
       throw ProcessExit(ExitCode.software.code);
     }

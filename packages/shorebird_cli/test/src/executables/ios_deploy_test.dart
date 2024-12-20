@@ -47,7 +47,7 @@ void main() {
       progress = MockProgress();
       ioSink = MockIOSink();
       shorebirdEnv = MockShorebirdEnv();
-      iosDeploy = IOSDeploy();
+      iosDeploy = const IOSDeploy();
 
       final tempDir = Directory.systemTemp.createTempSync();
 

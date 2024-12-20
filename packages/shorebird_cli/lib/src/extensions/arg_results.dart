@@ -1,4 +1,3 @@
-// ignore_for_file: public_member_api_docs
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -11,6 +10,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
+/// Extension on [ArgResults] to make it easier to work with options.
 extension OptionFinder on ArgResults {
   /// Detects flags even when passed to underlying commands via a `--`
   /// separator.
@@ -50,6 +50,7 @@ extension OptionFinder on ArgResults {
   }
 }
 
+/// Extension on [ArgResults] to provide code signing related extensions.
 extension CodeSign on ArgResults {
   /// Asserts that either there is no public key argument
   /// or that the path received exists.
@@ -101,6 +102,7 @@ extension FileArgs on ArgResults {
   }
 }
 
+/// Extension on [ArgResults] to provide forwarded arguments.
 extension ForwardedArgs on ArgResults {
   bool _isPositionalArgPlatform(String arg) =>
       ReleaseType.values.any((target) => target.cliName == arg);

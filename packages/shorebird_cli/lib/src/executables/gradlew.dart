@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -12,7 +10,9 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
+/// Exception thrown when the Gradle version is incompatible.
 class IncompatibleGradleException implements Exception {
+  /// The error pattern used to identify the exception.
   static const errorPattern = 'Unsupported class file major version';
 
   @override
@@ -50,15 +50,19 @@ To add android, run "flutter create . --platforms android"''';
   }
 }
 
+/// {@template missing_gradle_wrapper_exception}
 /// Thrown when the gradle wrapper cannot be found.
 /// This has been resolved on the master channel but
 /// on the stable channel currently creating an app via
 /// `flutter create` does not generate a gradle wrapper which
 /// means we're not able to accurately detect flavors until
 /// the user has run `flutter build apk` at least once.
+/// {@endtemplate}
 class MissingGradleWrapperException implements Exception {
+  /// {@macro missing_gradle_wrapper_exception}
   const MissingGradleWrapperException(this.executablePath);
 
+  /// The path to the gradle wrapper executable.
   final String executablePath;
 
   @override
@@ -77,6 +81,7 @@ Gradlew get gradlew => read(gradlewRef);
 
 /// A wrapper around the gradle wrapper (gradlew).
 class Gradlew {
+  /// The name of the executable.
   String get executable => platform.isWindows ? 'gradlew.bat' : 'gradlew';
 
   Future<ShorebirdProcessResult> _run(

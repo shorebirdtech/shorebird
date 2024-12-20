@@ -34,7 +34,7 @@ class FlutterVersionsListCommand extends ShorebirdCommand {
     try {
       versions = await shorebirdFlutter.getVersions();
       progress.cancel();
-    } catch (error) {
+    } on Exception catch (error) {
       progress.fail('Failed to fetch Flutter versions.');
       logger.err('$error');
       return ExitCode.software.code;

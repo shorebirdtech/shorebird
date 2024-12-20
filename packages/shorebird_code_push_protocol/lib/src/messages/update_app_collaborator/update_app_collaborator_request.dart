@@ -5,7 +5,7 @@ part 'update_app_collaborator_request.g.dart';
 
 /// {@template update_app_collaborator_request}
 /// The request body for
-/// PATCH /api/v1/apps/<appId>/collaborators/<collaboratorId>
+/// PATCH /api/v1/apps/:appId/collaborators/:collaboratorId
 /// {@endtemplate}
 @JsonSerializable()
 class UpdateAppCollaboratorRequest {
@@ -14,11 +14,11 @@ class UpdateAppCollaboratorRequest {
     required this.role,
   });
 
-  /// Converts a Map<String, dynamic> to a [UpdateAppCollaboratorRequest].
+  /// Converts a `Map<String, dynamic>` to a [UpdateAppCollaboratorRequest].
   factory UpdateAppCollaboratorRequest.fromJson(Map<String, dynamic> json) =>
       _$UpdateAppCollaboratorRequestFromJson(json);
 
-  /// Converts a [UpdateAppCollaboratorRequest] to a Map<String, dynamic>.
+  /// Converts a [UpdateAppCollaboratorRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() => _$UpdateAppCollaboratorRequestToJson(this);
 
   /// The new role for the collaborator.

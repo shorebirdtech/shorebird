@@ -63,6 +63,7 @@ class IDeviceSysLog {
   /// idevicesyslog tails all logs produced by the device (similar to what is
   /// shown in Console.app). This is very noisy and we only want to show logs
   /// that are produced by the app. These log lines are of the form:
+  // ignore: unintended_html_in_doc_comment
   ///   Nov 10 14:46:57 Runner(Flutter)[1044] <Notice>: flutter: hello
   static RegExp appLogLineRegex = RegExp(r'\(Flutter\)\[\d+\] <Notice>: (.*)$');
 

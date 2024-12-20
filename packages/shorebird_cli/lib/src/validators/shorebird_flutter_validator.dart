@@ -54,7 +54,7 @@ class ShorebirdFlutterValidator extends Validator {
     String? shorebirdFlutterVersionString;
     try {
       shorebirdFlutterVersionString = await _getFlutterVersion();
-    } catch (error) {
+    } on Exception catch (error) {
       issues.add(
         ValidationIssue.error(
           message: 'Failed to determine Shorebird Flutter version. $error',
@@ -69,7 +69,7 @@ class ShorebirdFlutterValidator extends Validator {
       );
     } on CommandNotFoundException catch (_) {
       // If there is no system Flutter, we don't throw a validation exception.
-    } catch (error) {
+    } on Exception catch (error) {
       issues.add(
         ValidationIssue.error(
           message: 'Failed to determine path Flutter version. $error',

@@ -93,10 +93,9 @@ Android Toolchain
   • Gradle: ${gradlewVersion ?? notDetected}''');
     }
 
-    logger.info(output.toString());
-
-    // ignore: cascade_invocations
-    logger.info('URL Reachability');
+    logger
+      ..info(output.toString())
+      ..info('URL Reachability');
     await networkChecker.checkReachability();
     logger.info('');
 
@@ -111,7 +110,7 @@ Android Toolchain
         );
       } on NetworkCheckerException catch (error) {
         uploadProgress.fail('GCP upload speed test failed: ${error.message}');
-      } catch (error) {
+      } on Exception catch (error) {
         uploadProgress.fail('GCP upload speed test failed: $error');
       }
 
@@ -127,7 +126,7 @@ Android Toolchain
         downloadProgress.fail(
           'GCP download speed test failed: ${error.message}',
         );
-      } catch (error) {
+      } on Exception catch (error) {
         downloadProgress.fail(
           'GCP download speed test failed: $error',
         );
@@ -143,7 +142,7 @@ Android Toolchain
   Future<String?> _tryGetFlutterVersion() async {
     try {
       return await shorebirdFlutter.getVersionString();
-    } catch (error) {
+    } on Exception catch (error) {
       logger.detail('Unable to determine Flutter version.\n$error');
       return null;
     }

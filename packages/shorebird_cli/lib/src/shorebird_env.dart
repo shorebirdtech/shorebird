@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:io' hide Platform;
 
 import 'package:checked_yaml/checked_yaml.dart';
@@ -26,6 +24,7 @@ class ShorebirdEnv {
   const ShorebirdEnv({String? flutterRevisionOverride})
       : _flutterRevisionOverride = flutterRevisionOverride;
 
+  /// Copy the [ShorebirdEnv] and optionally override the flutter revision.
   ShorebirdEnv copyWith({String? flutterRevisionOverride}) => ShorebirdEnv(
         flutterRevisionOverride:
             flutterRevisionOverride ?? _flutterRevisionOverride,
@@ -50,6 +49,7 @@ class ShorebirdEnv {
     return File(platform.script.toFilePath()).parent.parent.parent;
   }
 
+  /// The Shorebird engine revision.
   String get shorebirdEngineRevision {
     return File(
       p.join(
@@ -61,6 +61,7 @@ class ShorebirdEnv {
     ).readAsStringSync().trim();
   }
 
+  /// Set the Shorebird Flutter revision.
   set flutterRevision(String revision) {
     if (revision == flutterRevision) return;
     File(
@@ -72,6 +73,7 @@ class ShorebirdEnv {
     if (snapshot.existsSync()) snapshot.deleteSync();
   }
 
+  /// Get the Shorebird Flutter revision.
   String get flutterRevision {
     return _flutterRevisionOverride ??
         File(
@@ -176,10 +178,10 @@ class ShorebirdEnv {
   Pubspec? getPubspecYaml() {
     final root = getFlutterProjectRoot();
     if (root == null) return null;
-    final yaml = getPubspecYamlFile(cwd: root).readAsStringSync();
     try {
+      final yaml = getPubspecYamlFile(cwd: root).readAsStringSync();
       return Pubspec.parse(yaml, lenient: true);
-    } catch (_) {
+    } on Exception {
       return null;
     }
   }
@@ -217,7 +219,7 @@ class ShorebirdEnv {
       final baseUrl = platform.environment['SHOREBIRD_HOSTED_URL'] ??
           getShorebirdYaml()?.baseUrl;
       return baseUrl == null ? null : Uri.tryParse(baseUrl);
-    } catch (_) {
+    } on Exception {
       return null;
     }
   }

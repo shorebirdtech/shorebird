@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -25,13 +23,18 @@ enum _DebuggerState {
   attached,
 }
 
+/// {@template ios_deploy}
 /// Wrapper around the `ios-deploy` command cached by the Flutter tool.
 /// https://github.com/ios-control/ios-deploy
+/// {@endtemplate}
 class IOSDeploy {
-  IOSDeploy({ProcessSignal? sigint}) : _sigint = sigint ?? ProcessSignal.sigint;
+  /// {@macro ios_deploy}
+  const IOSDeploy({ProcessSignal? sigint})
+      : _sigint = sigint ?? ProcessSignal.sigint;
 
   final ProcessSignal _sigint;
 
+  /// The location of the ios-deploy executable.
   @visibleForTesting
   static File get iosDeployExecutable => File(
         p.join(
@@ -76,19 +79,25 @@ class IOSDeploy {
   // Print backtrace for all threads while app is stopped.
   static const String _backTraceAll = 'thread backtrace all';
 
-  // No provision profile errors.
+  /// No provision profile errors.
+  /// One of the possible errors when there is no provisioning profile.
   static const noProvisioningProfileErrorOne = 'Error 0xe8008015';
+
+  /// Another possible error when there is no provisioning profile.
   static const noProvisioningProfileErrorTwo = 'Error 0xe8000067';
 
-  // Device locked errors.
+  /// Device locked errors.
+  /// Error when the device is locked.
   static const deviceLockedError = 'e80000e2';
+
+  /// Error message when the device is locked.
   static const deviceLockedErrorMessage =
       'the device was not, or could not be, unlocked';
 
-  // Unknown launch error.
+  /// Unknown launch error.
   static const unknownAppLaunchError = 'Error 0xe8000022';
 
-  // Message when there is an unknown error.
+  /// Message when there is an unknown error.
   static const unknownErrorFixInstructions = '''
 ═══════════════════════════════════════════════════════════════════════════════════
 Error launching app. Try launching from within Xcode via:
@@ -97,13 +106,13 @@ Error launching app. Try launching from within Xcode via:
 Your Xcode version may be too old for your iOS version.
 ═══════════════════════════════════════════════════════════════════════════════════''';
 
-  // Message when the device is locked.
+  /// Message when the device is locked.
   static const deviceLockedFixInstructions = '''
 ═══════════════════════════════════════════════════════════════════════════════════
 Your device is locked. Unlock your device first before running.
 ═══════════════════════════════════════════════════════════════════════════════════''';
 
-  // Message when there is no development team selected.
+  /// Message when there is no development team selected.
   static const developmentTeamFixInstructions = '''
   1- Open the Flutter project's Xcode target with
        open ios/Runner.xcworkspace
@@ -297,7 +306,7 @@ Or run on an iOS simulator without code signing
       unawaited(stdoutSubscription.cancel());
       unawaited(stderrSubscription.cancel());
       return status;
-    } catch (exception, stackTrace) {
+    } on Exception catch (exception, stackTrace) {
       logger.detail('[ios-deploy] failed: $exception\n$stackTrace');
       debuggerState = _DebuggerState.detached;
       logger.err('[ios-deploy] failed: $exception');
@@ -328,8 +337,8 @@ Or run on an iOS simulator without code signing
   }
 }
 
-// Handles interpreting stdout line and logs errors accordingly.
-// Always returns the original line.
+/// Handles interpreting stdout line and logs errors accordingly.
+/// Always returns the original line.
 @visibleForTesting
 String detectFailures(String line, Logger logger) {
   final isMissingProvisioningProfile =

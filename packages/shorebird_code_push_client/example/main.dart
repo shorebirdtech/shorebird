@@ -1,5 +1,3 @@
-// ignore_for_file: unused_local_variable
-
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 Future<void> main() async {

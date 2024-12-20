@@ -1,4 +1,3 @@
-// ignore_for_file: public_member_api_docs
 // cspell:words devicectl endtemplate bryanoltman sideloadable previewable apks
 // cspell:words bundletool
 import 'dart:async';
@@ -252,6 +251,7 @@ class PreviewCommand extends ShorebirdCommand {
     };
   }
 
+  /// Prompts the user to choose an app to preview.
   Future<String?> promptForApp() async {
     final apps = await codePushClientWrapper.getApps();
     if (apps.isEmpty) return null;
@@ -263,6 +263,7 @@ class PreviewCommand extends ShorebirdCommand {
     return app.appId;
   }
 
+  /// Prompts the user to choose a release version to preview.
   Future<String?> promptForReleaseVersion(List<Release> releases) async {
     if (releases.isEmpty) return null;
     final release = logger.chooseOne(
@@ -273,6 +274,7 @@ class PreviewCommand extends ShorebirdCommand {
     return release.version;
   }
 
+  /// Prompts the user to choose a platform to preview.
   Future<ReleasePlatform> promptForPlatform(
     List<ReleasePlatform> platforms,
   ) async {
@@ -284,6 +286,7 @@ class PreviewCommand extends ShorebirdCommand {
     return ReleasePlatform.values.firstWhere((p) => p.displayName == platform);
   }
 
+  /// Installs and launches the release on macOS.
   Future<int> installAndLaunchMacos({
     required String appId,
     required Release release,
@@ -300,7 +303,7 @@ class PreviewCommand extends ShorebirdCommand {
         arch: 'app',
         platform: platform,
       );
-    } catch (e, s) {
+    } on Exception catch (e, s) {
       logger
         ..err('Error getting release artifact: $e')
         ..detail('Stack trace: $s');
@@ -332,7 +335,7 @@ class PreviewCommand extends ShorebirdCommand {
           destination: appDirectory.path,
         );
         downloadArtifactProgress.complete();
-      } catch (error) {
+      } on Exception catch (error) {
         downloadArtifactProgress.fail('$error');
         return ExitCode.software.code;
       }
@@ -349,6 +352,7 @@ class PreviewCommand extends ShorebirdCommand {
     return completer.future.then((_) => ExitCode.success.code);
   }
 
+  /// Installs and launches the release on Android.
   Future<int> installAndLaunchAndroid({
     required String appId,
     required Release release,
@@ -368,7 +372,7 @@ class PreviewCommand extends ShorebirdCommand {
         arch: 'aab',
         platform: platform,
       );
-    } catch (e, s) {
+    } on Exception catch (e, s) {
       logger
         ..err('Error getting release artifact: $e')
         ..detail('Stack trace: $s');
@@ -396,7 +400,7 @@ class PreviewCommand extends ShorebirdCommand {
       }
 
       downloadArtifactProgress.complete();
-    } catch (error) {
+    } on Exception catch (error) {
       downloadArtifactProgress.fail('$error');
       return ExitCode.software.code;
     }
@@ -414,7 +418,7 @@ class PreviewCommand extends ShorebirdCommand {
     try {
       await setChannelOnAab(aabFile: aabFile, channel: track.channel);
       progress.complete();
-    } catch (error) {
+    } on Exception catch (error) {
       progress.fail('$error');
       return ExitCode.software.code;
     }
@@ -424,7 +428,7 @@ class PreviewCommand extends ShorebirdCommand {
     try {
       package = await bundletool.getPackageName(aabFile.path);
       extractMetadataProgress.complete();
-    } catch (error) {
+    } on Exception catch (error) {
       extractMetadataProgress.fail('$error');
       return ExitCode.software.code;
     }
@@ -434,7 +438,7 @@ class PreviewCommand extends ShorebirdCommand {
       await bundletool.buildApks(bundle: aabFile.path, output: apksPath);
       final apksLink = link(uri: Uri.parse(apksPath));
       buildApksProgress.complete('Built apks: ${cyan.wrap(apksLink)}');
-    } catch (error) {
+    } on Exception catch (error) {
       buildApksProgress.fail('$error');
       return ExitCode.software.code;
     }
@@ -443,7 +447,7 @@ class PreviewCommand extends ShorebirdCommand {
     try {
       await bundletool.installApks(apks: apksPath, deviceId: deviceId);
       installApksProgress.complete();
-    } catch (error) {
+    } on Exception catch (error) {
       installApksProgress.fail('$error');
       return ExitCode.software.code;
     }
@@ -453,7 +457,7 @@ class PreviewCommand extends ShorebirdCommand {
       await adb.clearAppData(package: package, deviceId: deviceId);
       await adb.startApp(package: package, deviceId: deviceId);
       startAppProgress.complete();
-    } catch (error) {
+    } on Exception catch (error) {
       startAppProgress.fail('$error');
       return ExitCode.software.code;
     }
@@ -469,6 +473,7 @@ class PreviewCommand extends ShorebirdCommand {
     return process.exitCode;
   }
 
+  /// Installs and launches the release on iOS.
   Future<int> installAndLaunchIos({
     required String appId,
     required Release release,
@@ -488,7 +493,7 @@ class PreviewCommand extends ShorebirdCommand {
         arch: 'runner',
         platform: platform,
       );
-    } catch (e, s) {
+    } on Exception catch (e, s) {
       logger
         ..err('Error getting release artifact: $e')
         ..detail('Stack trace: $s');
@@ -520,7 +525,7 @@ class PreviewCommand extends ShorebirdCommand {
           outputDirectory: runnerDirectory,
         );
         downloadArtifactProgress.complete();
-      } catch (error) {
+      } on Exception catch (error) {
         downloadArtifactProgress.fail('$error');
         return ExitCode.software.code;
       }
@@ -533,7 +538,7 @@ class PreviewCommand extends ShorebirdCommand {
         channel: track.channel,
       );
       progress.complete();
-    } catch (error) {
+    } on Exception catch (error) {
       progress.fail('$error');
       return ExitCode.software.code;
     }
@@ -576,12 +581,13 @@ class PreviewCommand extends ShorebirdCommand {
       }
 
       return installExitCode;
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       logger.detail('Error launching app. $error $stackTrace');
       return ExitCode.software.code;
     }
   }
 
+  /// Resolves the artifact path for the given parameters.
   String getArtifactPath({
     required String appId,
     required Release release,
@@ -695,7 +701,10 @@ class PreviewCommand extends ShorebirdCommand {
   }
 }
 
+/// Extension on [Release] that exposes the active platforms (e.g. platforms
+/// that can be previewed).
 extension Previewable on Release {
+  /// Returns the platforms that can be previewed.
   List<ReleasePlatform> get activePlatforms => platformStatuses.entries
       .where((e) => e.value == ReleaseStatus.active)
       .map((e) => e.key)

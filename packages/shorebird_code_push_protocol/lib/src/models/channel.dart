@@ -12,11 +12,11 @@ class Channel {
   /// {@macro channel}
   const Channel({required this.id, required this.appId, required this.name});
 
-  /// Converts a Map<String, dynamic> to a [Channel]
+  /// Converts a `Map<String, dynamic>` to a [Channel]
   factory Channel.fromJson(Map<String, dynamic> json) =>
       _$ChannelFromJson(json);
 
-  /// Converts a [Channel] to a Map<String, dynamic>
+  /// Converts a [Channel] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$ChannelToJson(this);
 
   /// The ID of the channel;

@@ -83,7 +83,7 @@ final artifactBuilderRef = create(ArtifactBuilder.new);
 ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 
 extension on String {
-  /// Converts this base64-encoded public key into the Map<String, String>:
+  /// Converts this base64-encoded public key into the `Map<String, String>`:
   ///   {'SHOREBIRD_PUBLIC_KEY': this}
   ///
   /// SHOREBIRD_PUBLIC_KEY is the name expected by the Shorebird's Flutter tool

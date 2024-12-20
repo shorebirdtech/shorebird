@@ -176,7 +176,7 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
           message: 'Downloading release artifact ${i + 1}/$numArtifacts',
         );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
-      } catch (error) {
+      } on Exception {
         throw ProcessExit(ExitCode.software.code);
       }
     }
@@ -227,7 +227,7 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
           size: await File(diffPath).length(),
           hashSignature: hashSignature,
         );
-      } catch (error) {
+      } on Exception catch (error) {
         createDiffProgress.fail('$error');
         throw ProcessExit(ExitCode.software.code);
       }

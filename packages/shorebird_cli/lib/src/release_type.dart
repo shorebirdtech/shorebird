@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -61,7 +59,9 @@ enum ReleaseType {
   }
 }
 
+/// Extension on [ArgResults] to get the release types from the CLI arguments.
 extension ReleaseTypeArgs on ArgResults {
+  /// The release types specified in the CLI arguments.
   Iterable<ReleaseType> get releaseTypes {
     List<String>? releaseTypeCliNames;
     if (wasParsed('platforms')) {

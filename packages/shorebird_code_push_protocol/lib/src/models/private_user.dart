@@ -22,7 +22,7 @@ class PrivateUser {
     this.patchOverageLimit,
   });
 
-  /// Converts a Map<String, dynamic> to a [PrivateUser]
+  /// Converts a `Map<String, dynamic>` to a [PrivateUser]
   factory PrivateUser.fromJson(Map<String, dynamic> json) =>
       _$PrivateUserFromJson(json);
 
@@ -49,7 +49,7 @@ class PrivateUser {
       );
   // coverage:ignore-end
 
-  /// Converts a [PrivateUser] to a Map<String, dynamic>
+  /// Converts a [PrivateUser] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$PrivateUserToJson(this);
 
   /// The unique user identifier.

@@ -1,12 +1,15 @@
 /// A platform to which a Shorebird release can be deployed.
 enum ReleasePlatform {
-  // ignore: public_member_api_docs
+  /// Android
   android('Android'),
-  // ignore: public_member_api_docs
+
+  /// macOS
   macos('macOS'),
-  // ignore: public_member_api_docs
+
+  /// iOS
   ios('iOS'),
-  // ignore: public_member_api_docs
+
+  /// Windows
   windows('Windows');
 
   const ReleasePlatform(this.displayName);

@@ -51,7 +51,7 @@ class NetworkChecker {
       try {
         await httpClient.get(url);
         progress.complete('$url ${lightGreen.wrap('OK')}');
-      } catch (e) {
+      } on Exception catch (e) {
         progress.fail('$url unreachable');
         logger.detail('Failed to reach $url: $e');
       }

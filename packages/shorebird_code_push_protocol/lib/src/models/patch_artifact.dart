@@ -20,11 +20,11 @@ class PatchArtifact {
     required this.createdAt,
   });
 
-  /// Converts a Map<String, dynamic> to a [PatchArtifact]
+  /// Converts a `Map<String, dynamic>` to a [PatchArtifact]
   factory PatchArtifact.fromJson(Map<String, dynamic> json) =>
       _$PatchArtifactFromJson(json);
 
-  /// Converts a [PatchArtifact] to a Map<String, dynamic>
+  /// Converts a [PatchArtifact] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$PatchArtifactToJson(this);
 
   /// The ID of the artifact;

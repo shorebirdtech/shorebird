@@ -1,3 +1,4 @@
+// print is used for diagnostic logs.
 // ignore_for_file: avoid_print
 
 import 'package:artifact_proxy/artifact_proxy.dart';
@@ -60,7 +61,7 @@ Handler artifactProxyHandler({required ArtifactManifestClient client}) {
       final ArtifactsManifest manifest;
       try {
         manifest = await client.getManifest(shorebirdEngineRevision);
-      } catch (error) {
+      } on Exception catch (error) {
         return Response.notFound(
           'Failed to fetch manifest for $shorebirdEngineRevision\n$error',
         );
