@@ -417,11 +417,9 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
       }
 
       if (stderr.contains('Encountered error while creating the IPA')) {
-        final errorMessage = _failedToCreateIpaErrorMessage(stderr: stderr);
-
         throw ArtifactBuildException('''
 Failed to build:
-$errorMessage''');
+$stderr''');
       }
 
       appDillPath = findAppDill(stdout: stdout);
@@ -473,34 +471,6 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
     }
 
     return IosFrameworkBuildResult(kernelFile: File(appDillPath!));
-  }
-
-  String _failedToCreateIpaErrorMessage({required String stderr}) {
-    // The full error text consists of many repeated lines of the format:
-    // (newlines added for line length)
-    //
-    // [   +1 ms] Encountered error while creating the IPA:
-    // [        ] error: exportArchive: Team "Team" does not have permission to
-    //      create "iOS In House" provisioning profiles.
-    //    error: exportArchive: No profiles for 'com.example.dev' were found
-    //    error: exportArchive: No signing certificate "iOS Distribution" found
-    //    error: exportArchive: Communication with Apple failed
-    //    error: exportArchive: No signing certificate "iOS Distribution" found
-    //    error: exportArchive: Team "My Team" does not have permission to
-    //      create "iOS App Store" provisioning profiles.
-    //    error: exportArchive: No profiles for 'com.example.demo' were found
-    //    error: exportArchive: Communication with Apple failed
-    //    error: exportArchive: No signing certificate "iOS Distribution" found
-    //    error: exportArchive: Communication with Apple failed
-    final exportArchiveRegex = RegExp(r'error: exportArchive:? (.+)$');
-    return stderr
-        .split('\n')
-        .map((l) => l.trim())
-        .toSet()
-        .map(exportArchiveRegex.firstMatch)
-        .whereType<Match>()
-        .map((m) => '    ${m.group(1)!}')
-        .join('\n');
   }
 
   /// A wrapper around [command] (which runs a `flutter build` command with
