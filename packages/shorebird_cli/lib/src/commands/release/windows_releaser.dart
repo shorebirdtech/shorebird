@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -54,6 +55,7 @@ class WindowsReleaser extends Releaser {
         args: argResults.forwardedArgs,
         buildProgress: buildAppBundleProgress,
       );
+      buildAppBundleProgress.complete();
     } catch (e) {
       buildAppBundleProgress.fail(e.toString());
       throw ProcessExit(ExitCode.software.code);
@@ -66,8 +68,14 @@ class WindowsReleaser extends Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    // TODO: implement getReleaseVersion
-    return '1.0.0+1';
+    final exe = (releaseArtifactRoot as Directory)
+        .listSync()
+        .whereType<File>()
+        .firstWhere(
+          (entity) => p.extension(entity.path) == '.exe',
+          orElse: () => throw Exception('No .exe found in release artifact'),
+        );
+    return getExeVersionString(exe);
   }
 
   @override

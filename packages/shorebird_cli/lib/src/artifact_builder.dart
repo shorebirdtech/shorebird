@@ -586,7 +586,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     String? base64PublicKey,
     DetailProgress? buildProgress,
   }) async {
-    print('entering build windows app');
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final arguments = [
@@ -598,7 +597,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         ...args,
       ];
 
-      print('starting build process');
       final buildProcess = await process.start(
         executable,
         arguments,
@@ -619,9 +617,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           .transform(const LineSplitter())
           .toList();
       final stdErr = stderrLines.join('\n');
-      print('awaiting exit code');
       final exitCode = await buildProcess.exitCode;
-      print('exit code is $exitCode');
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException('Failed to build: $stdErr');
       }

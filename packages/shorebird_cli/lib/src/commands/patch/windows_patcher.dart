@@ -93,13 +93,27 @@ class WindowsPatcher extends Patcher {
       'data',
       'app.so',
     );
+    print('release artifact is ${releaseArtifact.path}');
     final patchArtifact = File(patchArtifactPath);
     final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
+
+    final tempDir = Directory.systemTemp.createTempSync();
+    final zipPath = p.join(tempDir.path, 'patch.zip');
+    final zipFile = releaseArtifact.copySync(zipPath);
+    await artifactManager.extractZip(
+      zipFile: zipFile,
+      outputDirectory: tempDir,
+    );
+    print('unzipped to ${tempDir.path}');
+
+    final appSoPath = p.join(tempDir.path, 'data', 'app.so');
+
+    print('patching $patchArtifactPath against $appSoPath');
 
     final String diffPath;
     try {
       diffPath = await artifactManager.createDiff(
-        releaseArtifactPath: releaseArtifact.path,
+        releaseArtifactPath: appSoPath,
         patchArtifactPath: patchArtifactPath,
       );
     } catch (error) {
@@ -121,7 +135,6 @@ class WindowsPatcher extends Patcher {
 
   @override
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    // TODO: implement extractReleaseVersionFromArtifact
-    return '1.0.0+1';
+    return getExeVersionString(artifact);
   }
 }
