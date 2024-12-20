@@ -64,7 +64,7 @@ class WindowsPatcher extends Patcher {
     try {
       releaseDir = await artifactBuilder.buildWindowsApp();
       buildAppBundleProgress.complete();
-    } catch (e) {
+    } on Exception catch (e) {
       buildAppBundleProgress.fail(e.toString());
       throw ProcessExit(ExitCode.software.code);
     }
@@ -93,7 +93,6 @@ class WindowsPatcher extends Patcher {
       'data',
       'app.so',
     );
-    print('release artifact is ${releaseArtifact.path}');
     final patchArtifact = File(patchArtifactPath);
     final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
 
@@ -104,11 +103,10 @@ class WindowsPatcher extends Patcher {
       zipFile: zipFile,
       outputDirectory: tempDir,
     );
-    print('unzipped to ${tempDir.path}');
 
+    // The release artifact is the zipped directory at
+    // build/windows/x64/runner/Release
     final appSoPath = p.join(tempDir.path, 'data', 'app.so');
-
-    print('patching $patchArtifactPath against $appSoPath');
 
     final String diffPath;
     try {
@@ -116,7 +114,7 @@ class WindowsPatcher extends Patcher {
         releaseArtifactPath: appSoPath,
         patchArtifactPath: patchArtifactPath,
       );
-    } catch (error) {
+    } on Exception catch (error) {
       createDiffProgress.fail('$error');
       throw ProcessExit(ExitCode.software.code);
     }
@@ -129,7 +127,7 @@ class WindowsPatcher extends Patcher {
         path: diffPath,
         hash: hash,
         size: File(diffPath).lengthSync(),
-      )
+      ),
     };
   }
 
