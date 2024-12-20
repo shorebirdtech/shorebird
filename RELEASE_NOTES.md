@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.5.4 (December 20, 2024)
+
+- ✨ Add `--no-confirm` flag to `shorebird release` and `shorebird patch`
+- 🩹 Fix bug which caused incompatibility with package:shorebird_code_push v1.x
+- 🪵 Improve logging for failed `shorebird release ios` commands.
+
 ## 1.5.3 (December 17, 2024)
 
 - 🐦 Support for Flutter 3.27.1
