@@ -1144,10 +1144,19 @@ error: exportArchive: No signing certificate "iOS Distribution" found''',
                     'message',
                     '''
 Failed to build:
-    Communication with Apple failed
-    No signing certificate "iOS Distribution" found
-    Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
-    No profiles for 'com.example.co' were found''',
+Encountered error while creating the IPA:
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+error: exportArchive: No profiles for 'com.example.co' were found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found''',
                   ),
                 ),
               );
@@ -1189,10 +1198,19 @@ error: exportArchive No signing certificate "iOS Distribution" found''',
                     'message',
                     '''
 Failed to build:
-    Communication with Apple failed
-    No signing certificate "iOS Distribution" found
-    Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
-    No profiles for 'com.example.co' were found''',
+Encountered error while creating the IPA:
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+error: exportArchive No profiles for 'com.example.co' were found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found''',
                   ),
                 ),
               );
