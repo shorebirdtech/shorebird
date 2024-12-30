@@ -47,11 +47,11 @@ void main() {
       late CodeSigner codeSigner;
       late Directory projectRoot;
       late Doctor doctor;
+      late FlavorValidator flavorValidator;
       late Progress progress;
       late ShorebirdLogger logger;
       late Ios ios;
       late OperatingSystemInterface operatingSystemInterface;
-      late ShorebirdFlutterValidator flutterValidator;
       late ShorebirdProcess shorebirdProcess;
       late ShorebirdEnv shorebirdEnv;
       late ShorebirdFlutter shorebirdFlutter;
@@ -93,12 +93,12 @@ void main() {
         codePushClientWrapper = MockCodePushClientWrapper();
         codeSigner = MockCodeSigner();
         doctor = MockDoctor();
+        flavorValidator = MockFlavorValidator();
         projectRoot = Directory.systemTemp.createTempSync();
         operatingSystemInterface = MockOperatingSystemInterface();
         progress = MockProgress();
         logger = MockShorebirdLogger();
         ios = MockIos();
-        flutterValidator = MockShorebirdFlutterValidator();
         shorebirdProcess = MockShorebirdProcess();
         shorebirdEnv = MockShorebirdEnv();
         shorebirdFlutter = MockShorebirdFlutter();
@@ -127,11 +127,10 @@ void main() {
         final flutterVersion = Version(3, 0, 0);
 
         setUp(() {
-          when(() => doctor.iosCommandValidators)
-              .thenReturn([flutterValidator]);
+          when(() => doctor.iosCommandValidators).thenReturn([flavorValidator]);
           when(() => shorebirdFlutter.resolveFlutterVersion(any()))
               .thenAnswer((_) async => flutterVersion);
-          when(flutterValidator.validate).thenAnswer((_) async => []);
+          when(flavorValidator.validate).thenAnswer((_) async => []);
         });
 
         group('when validation succeeds', () {
@@ -183,7 +182,7 @@ void main() {
               () => shorebirdValidator.validatePreconditions(
                 checkUserIsAuthenticated: true,
                 checkShorebirdInitialized: true,
-                validators: [flutterValidator],
+                validators: [flavorValidator],
                 supportedOperatingSystems: {Platform.macOS},
               ),
             ).called(1);

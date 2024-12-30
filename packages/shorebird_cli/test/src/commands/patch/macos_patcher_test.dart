@@ -59,12 +59,12 @@ void main() {
       late Directory flutterDirectory;
       late Directory projectRoot;
       late Directory appDirectory;
+      late FlavorValidator flavorValidator;
       late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
       late PatchDiffChecker patchDiffChecker;
       late Progress progress;
       late ShorebirdArtifacts shorebirdArtifacts;
-      late ShorebirdFlutterValidator flutterValidator;
       late ShorebirdProcess shorebirdProcess;
       late ShorebirdEnv shorebirdEnv;
       late ShorebirdFlutter shorebirdFlutter;
@@ -117,6 +117,7 @@ void main() {
         codeSigner = MockCodeSigner();
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
+        flavorValidator = MockFlavorValidator();
         operatingSystemInterface = MockOperatingSystemInterface();
         patchDiffChecker = MockPatchDiffChecker();
         progress = MockProgress();
@@ -125,7 +126,6 @@ void main() {
         shorebirdArtifacts = MockShorebirdArtifacts();
         shorebirdProcess = MockShorebirdProcess();
         shorebirdEnv = MockShorebirdEnv();
-        flutterValidator = MockShorebirdFlutterValidator();
         shorebirdFlutter = MockShorebirdFlutter();
         shorebirdValidator = MockShorebirdValidator();
         xcodeBuild = MockXcodeBuild();
@@ -222,7 +222,7 @@ void main() {
         setUp(() {
           when(
             () => doctor.macosCommandValidators,
-          ).thenReturn([flutterValidator]);
+          ).thenReturn([flavorValidator]);
         });
 
         group('when validation succeeds', () {
@@ -293,7 +293,7 @@ void main() {
               () => shorebirdValidator.validatePreconditions(
                 checkUserIsAuthenticated: true,
                 checkShorebirdInitialized: true,
-                validators: [flutterValidator],
+                validators: [flavorValidator],
                 supportedOperatingSystems: {Platform.macOS},
               ),
             ).called(1);
