@@ -95,6 +95,8 @@ class MockFile extends Mock implements File {}
 
 class MockFileSetDiff extends Mock implements FileSetDiff {}
 
+class MockFlavorValidator extends Mock implements FlavorValidator {}
+
 class MockGit extends Mock implements Git {}
 
 class MockGradlew extends Mock implements Gradlew {}
@@ -156,9 +158,6 @@ class MockShorebirdArtifacts extends Mock implements ShorebirdArtifacts {}
 class MockShorebirdEnv extends Mock implements ShorebirdEnv {}
 
 class MockShorebirdFlutter extends Mock implements ShorebirdFlutter {}
-
-class MockShorebirdFlutterValidator extends Mock
-    implements ShorebirdFlutterValidator {}
 
 class MockShorebirdLogger extends Mock implements ShorebirdLogger {}
 
