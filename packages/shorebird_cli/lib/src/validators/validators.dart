@@ -7,7 +7,6 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 export 'android_internet_permission_validator.dart';
 export 'flavor_validator.dart';
 export 'macos_network_entitlement_validator.dart';
-export 'shorebird_flutter_validator.dart';
 export 'shorebird_version_validator.dart';
 export 'shorebird_yaml_asset_validator.dart';
 

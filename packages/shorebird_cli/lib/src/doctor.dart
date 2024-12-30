@@ -32,7 +32,6 @@ class Doctor {
   /// Validators that should run on all commands.
   List<Validator> generalValidators = [
     ShorebirdVersionValidator(),
-    ShorebirdFlutterValidator(),
     AndroidInternetPermissionValidator(),
     MacosNetworkEntitlementValidator(),
     ShorebirdYamlAssetValidator(),
