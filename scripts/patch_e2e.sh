@@ -85,13 +85,12 @@ while IFS= read line; do
         # Kill the app so we can boot the patch
         adb shell am force-stop com.example.e2e_test
         echo "✅ Patch 1 successfully installed"
-        adb shell "pm list packages"
         break
     fi
 done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android --keystore=$ROOT_DIR/upload-keystore.jks --keystore-password=password --key-alias=upload --key-password=password -v)
 
 # Re-run the app, *not* using shorebird preview, as that installs the base release.
-adb shell monkey -p com.example.e2e_test -c android.intent.category.LAUNCHER 1
+adb shell monkey -p package:com.example.e2e_test.e2e_test -c android.intent.category.LAUNCHER 1
 
 # Re-run the app on Android and ensure that the new print statement is printed,
 # tailing adb logs and printing the last 10 seconds of logs in case the
