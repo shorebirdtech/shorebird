@@ -153,4 +153,40 @@ class Git {
     return (await symbolicRef(directory: directory))
         .replaceAll('refs/heads/', '');
   }
+
+  /// Whether [directory] is part of a git repository.
+  Future<bool> isGitRepo({required Directory directory}) async {
+    try {
+      // [git] throws if the command's exit code is nonzero, which is what we're
+      // checking for here.
+      await git(
+        ['status'],
+        workingDirectory: directory.path,
+      );
+    } on Exception {
+      return false;
+    }
+
+    return true;
+  }
+
+  /// Whether [file] is tracked by its git repository.
+  Future<bool> isFileTracked({required File file}) async {
+    try {
+      // [git] throws if the command's exit code is nonzero, which is what we're
+      // checking for here.
+      await git(
+        [
+          'ls-files',
+          '--error-unmatch',
+          file.absolute.path,
+        ],
+        workingDirectory: file.parent.path,
+      );
+    } on Exception {
+      return false;
+    }
+
+    return true;
+  }
 }

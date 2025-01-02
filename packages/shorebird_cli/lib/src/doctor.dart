@@ -35,6 +35,7 @@ class Doctor {
     AndroidInternetPermissionValidator(),
     MacosNetworkEntitlementValidator(),
     ShorebirdYamlAssetValidator(),
+    TrackedLockFilesValidator(),
   ];
 
   /// Run the provided [validators]. If [applyFixes] is `true`, any validation
