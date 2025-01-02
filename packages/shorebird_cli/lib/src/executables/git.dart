@@ -1,3 +1,4 @@
+// cspell:words unmatch
 import 'dart:io';
 
 import 'package:scoped_deps/scoped_deps.dart';
