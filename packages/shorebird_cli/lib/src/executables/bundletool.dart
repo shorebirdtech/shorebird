@@ -49,10 +49,11 @@ class Bundletool {
     final result = await _exec(
       [
         'build-apks',
+        '--connected-device',
         '--overwrite',
         '--bundle=$bundle',
         '--output=$output',
-        if (universal) '--mode=universal',
+        // if (universal) '--mode=universal',
       ],
     );
     if (result.exitCode != 0) {
