@@ -12,9 +12,7 @@ class TrackedLockFilesValidator extends Validator {
   String get description => 'Lock files are tracked in source control';
 
   @override
-  bool canRunInCurrentContext() {
-    return shorebirdEnv.hasPubspecYaml;
-  }
+  bool canRunInCurrentContext() => shorebirdEnv.hasPubspecYaml;
 
   @override
   Future<List<ValidationIssue>> validate() async {

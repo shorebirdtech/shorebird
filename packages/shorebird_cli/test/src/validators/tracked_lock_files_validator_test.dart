@@ -38,13 +38,35 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       projectRoot = Directory.systemTemp.createTempSync();
 
-      validator = TrackedLockFilesValidator();
-
       when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(projectRoot);
+
+      validator = TrackedLockFilesValidator();
     });
 
     test('has a non-empty description', () {
       expect(validator.description, isNotEmpty);
+    });
+
+    group('canRunInCurrentContext', () {
+      group('when a pubspec.yaml file exists', () {
+        setUp(() {
+          when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
+        });
+
+        test('returns true', () {
+          expect(runWithOverrides(validator.canRunInCurrentContext), isTrue);
+        });
+      });
+
+      group('when a pubspec.yaml file does not exist', () {
+        setUp(() {
+          when(() => shorebirdEnv.hasPubspecYaml).thenReturn(false);
+        });
+
+        test('returns false', () {
+          expect(runWithOverrides(validator.canRunInCurrentContext), isFalse);
+        });
+      });
     });
 
     group('validate', () {
