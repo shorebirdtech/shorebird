@@ -49,8 +49,8 @@ jobs:
       - name: ☕ Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: "adopt"
-          java-version: "21"
+          distribution: "temurin"
+          java-version: "17"
 
       - name: 🎯 Set up Flutter
         uses: subosito/flutter-action@v2
@@ -73,15 +73,15 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-35-${{ runner.os }}-${{ hashFiles('.github/workflows/e2e.yaml') }}
+          key: avd-29-${{ runner.os }}-${{ hashFiles('.github/workflows/e2e.yaml') }}
 
       - name: 🤖 Cache AVD Snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 29
           arch: x86_64
-          target: google_apis
+          target: default
           force-avd-creation: false
           sdcard-path-or-size: 512M
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
@@ -92,9 +92,9 @@ jobs:
       - name: 🧪 Run Patch E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 29
           arch: x86_64
-          target: google_apis
+          target: default
           script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
