@@ -21,7 +21,7 @@ TEMP_DIR=$(mktemp -d -t 'shorebird workspace-XXXXX')
 cd "$TEMP_DIR"
 
 # Create a new empty flutter project
-flutter create e2e_test --empty --platforms android
+flutter create e2e_test -o com.example.e2e_test --empty --platforms android
 cd e2e_test
 
 # Replace the contents of "lib/main.dart" with a single print statement.
