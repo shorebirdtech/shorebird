@@ -104,7 +104,7 @@ void main() {
           expect(
             issues.first.message,
             equals(
-              '''pubspec.lock is not tracked in source control. We recommmend tracking lock files in source control to avoid unexpected dependency version changes.''',
+              '''pubspec.lock is not tracked in source control. We recommend tracking lock files in source control to avoid unexpected dependency version changes.''',
             ),
           );
         });
