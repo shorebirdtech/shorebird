@@ -47,8 +47,6 @@ class Adb {
     required String package,
     String? deviceId,
   }) async {
-    final packages = await _exec('shell pm list packages -3');
-    print(packages.stdout);
     final args = [
       if (deviceId != null) ...['-s', deviceId],
       'shell',

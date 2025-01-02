@@ -72,7 +72,7 @@ while IFS= read line; do
 done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
 
 # Re-run the app, *not* using shorebird preview, as that installs the base release.
-adb shell monkey -p com.example.e2e_test -c android.intent.category.LAUNCHER 1
+adb shell monkey -p com.example.e2e_test -c android.intent.category.LAUNCHER 1 -v 5
 
 # Re-run the app on Android and ensure that the new print statement is printed,
 # tailing adb logs and printing the last 10 seconds of logs in case the
