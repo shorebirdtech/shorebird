@@ -59,7 +59,7 @@ echo "lib/main.dart is now:"
 cat lib/main.dart
 
 # Create a patch
-shorebird patch android --split-debug-info=./build/symbols -v
+shorebird patch android --release-version 0.1.0+1 --split-debug-info=./build/symbols -v
 
 # Run the app on Android and ensure that the original print statement is printed.
 while IFS= read line; do
