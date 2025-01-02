@@ -14,6 +14,7 @@
 #
 # Usage: ./patch_e2e.sh <flutter-version>
 
+SIGN_RELEASE_SCRIPT=$(dirname "$0")/sign_release.dart
 FLUTTER_VERSION=$1
 
 # Intentionally including a space in the path.
@@ -39,6 +40,20 @@ echo "base_url: https://api-dev.shorebird.dev" >>shorebird.yaml
 
 # Extract the app_id from the "shorebird.yaml"
 APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
+
+# Create Keystore
+keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA \
+    -keysize 2048 -validity 10000 -alias upload -storepass password -keypass password \
+    -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=Unknown"
+
+# Create key.properties
+echo "storePassword=password" >android/key.properties
+echo "keyPassword=password" >>android/key.properties
+echo "keyAlias=upload" >>android/key.properties
+echo "storeFile=~/upload-keystore.jks" >>android/key.properties
+
+# Configure Release Signing
+dart $SIGN_RELEASE_SCRIPT
 
 # Create a new release on Android
 shorebird release android --flutter-version=$FLUTTER_VERSION --split-debug-info=./build/symbols -v
