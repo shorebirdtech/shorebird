@@ -83,7 +83,7 @@ shorebird patch android --release-version 0.1.0+1 --split-debug-info=./build/sym
 while IFS= read line; do
     if [[ "$line" == *"Patch 1 successfully"* ]]; then
         # Kill the app so we can boot the patch
-        adb shell am force-stop com.example.e2e_test
+        adb shell am force-stop com.example.e2e_test.e2e_test
         echo "✅ Patch 1 successfully installed"
         break
     fi
