@@ -15,8 +15,10 @@
 # Usage: ./patch_e2e.sh <flutter-version>
 
 SCRIPT=$(realpath "$0")
+SCRIPT_DIR=$(dirname "$SCRIPT")
+ROOT_DIR=$(dirname "$SCRIPT_DIR")
 FLUTTER_VERSION=$1
-SIGN_RELEASE_SCRIPT=$(dirname "$SCRIPT")/sign_release.dart
+SIGN_RELEASE_SCRIPT=$SCRIPT_DIR/sign_release.dart
 
 # Intentionally including a space in the path.
 TEMP_DIR=$(mktemp -d -t 'shorebird workspace-XXXXX')
@@ -43,7 +45,7 @@ echo "base_url: https://api-dev.shorebird.dev" >>shorebird.yaml
 APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 
 # Create Keystore
-keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA \
+keytool -genkey -v -keystore $ROOT_DIR/upload-keystore.jks -keyalg RSA \
     -keysize 2048 -validity 10000 -alias upload -storepass password -keypass password \
     -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=Unknown"
 
@@ -51,7 +53,7 @@ keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA \
 echo "storePassword=password" >android/key.properties
 echo "keyPassword=password" >>android/key.properties
 echo "keyAlias=upload" >>android/key.properties
-echo "storeFile=~/upload-keystore.jks" >>android/key.properties
+echo "storeFile=$ROOT_DIR/upload-keystore.jks" >>android/key.properties
 
 # Configure Release Signing
 dart $SIGN_RELEASE_SCRIPT
