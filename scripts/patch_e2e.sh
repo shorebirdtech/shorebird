@@ -14,8 +14,9 @@
 #
 # Usage: ./patch_e2e.sh <flutter-version>
 
-SIGN_RELEASE_SCRIPT=$(dirname "$0")/sign_release.dart
+SCRIPT=$(realpath "$0")
 FLUTTER_VERSION=$1
+SIGN_RELEASE_SCRIPT=$(dirname "$SCRIPT")/sign_release.dart
 
 # Intentionally including a space in the path.
 TEMP_DIR=$(mktemp -d -t 'shorebird workspace-XXXXX')
