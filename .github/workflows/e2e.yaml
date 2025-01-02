@@ -73,7 +73,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-35-${{ runner.os }}
+          key: avd-35-${{ runner.os }}-${{ hashFiles('.github/workflows/e2e.yaml') }}
 
       - name: 🤖 Cache AVD Snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -84,7 +84,7 @@ jobs:
           target: google_apis
           force-avd-creation: false
           sdcard-path-or-size: 512M
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-cache
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
           disable-animations: false
           channel: canary
           script: echo "Generated AVD Snapshot"

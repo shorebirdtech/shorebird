@@ -69,10 +69,7 @@ while IFS= read line; do
         echo "✅ Patch 1 successfully installed"
         break
     fi
-done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
-
-# Clear the cache
-adb shell 'run-as com.example.e2e_test sh -c "rm -rf cache/*"'
+done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v)
 
 # Re-run the app, *not* using shorebird preview, as that installs the base release.
 adb shell monkey -p com.example.e2e_test -c android.intent.category.LAUNCHER 1 -v 5
