@@ -71,6 +71,9 @@ while IFS= read line; do
     fi
 done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
 
+# Reboot the emulator.
+adb -e reboot
+
 # Re-run the app, *not* using shorebird preview, as that installs the base release.
 adb shell monkey -p com.example.e2e_test -c android.intent.category.LAUNCHER 1 -v 5
 
