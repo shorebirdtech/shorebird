@@ -54,6 +54,22 @@ class PreviewCommand extends ShorebirdCommand {
         },
         help: 'The platform of the release.',
       )
+      ..addOption(
+        'keystore',
+        help: 'The path to the keystore file.',
+      )
+      ..addOption(
+        'keystore-password',
+        help: 'The password for the keystore file.',
+      )
+      ..addOption(
+        'key-password',
+        help: 'The password for the key.',
+      )
+      ..addOption(
+        'key-alias',
+        help: 'The alias of the key.',
+      )
       ..addFlag(
         'staging',
         negatable: false,
@@ -435,7 +451,14 @@ class PreviewCommand extends ShorebirdCommand {
 
     final buildApksProgress = logger.progress('Building apks');
     try {
-      await bundletool.buildApks(bundle: aabFile.path, output: apksPath);
+      await bundletool.buildApks(
+        bundle: aabFile.path,
+        output: apksPath,
+        keystore: results['keystore'] as String?,
+        keystorePassword: results['keystore-password'] as String?,
+        keyPassword: results['key-password'] as String?,
+        keyAlias: results['key-alias'] as String?,
+      );
       final apksLink = link(uri: Uri.parse(apksPath));
       buildApksProgress.complete('Built apks: ${cyan.wrap(apksLink)}');
     } on Exception catch (error) {

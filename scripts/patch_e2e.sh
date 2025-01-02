@@ -68,7 +68,7 @@ while IFS= read line; do
         echo "✅ 'hello world' was printed"
         break
     fi
-done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android)
+done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android --keystore=$ROOT_DIR/upload-keystore.jks --keystore-password=password --key-alias=upload --key-password=password -v)
 
 # Replace lib/main.dart "hello world" to "hello shorebird"
 sed -i 's/hello world/hello shorebird/g' lib/main.dart
@@ -87,10 +87,10 @@ while IFS= read line; do
         echo "✅ Patch 1 successfully installed"
         break
     fi
-done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v)
+done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android --keystore=$ROOT_DIR/upload-keystore.jks --keystore-password=password --key-alias=upload --key-password=password -v)
 
 # Re-run the app, *not* using shorebird preview, as that installs the base release.
-adb shell monkey -p com.example.e2e_test -c android.intent.category.LAUNCHER 1 -v 5
+adb shell monkey -p com.example.e2e_test -c android.intent.category.LAUNCHER 1
 
 # Re-run the app on Android and ensure that the new print statement is printed,
 # tailing adb logs and printing the last 10 seconds of logs in case the
