@@ -47,7 +47,7 @@ APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 # Create Debug Keystore
 keytool -genkey -v -keystore ~/.android/debug.keystore -keyalg RSA \
     -keysize 2048 -validity 10000 -alias AndroidDebugKey -storepass android -keypass android \
-    -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=Unknown"
+    -dname "CN=Android Debug,O=Android,C=US"
 
 # # Create key.properties
 # echo "storePassword=password" >android/key.properties
