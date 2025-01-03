@@ -11,7 +11,7 @@ final openRef = create(Open.new);
 /// The [Open] instance available in the current zone.
 Open get open => read(openRef);
 
-/// A wrapper around the `open` command.
+/// A wrapper around the macOS `open` command.
 /// https://ss64.com/mac/open.html
 class Open {
   /// Opens a new application at the provided [path] and streams the stdout and

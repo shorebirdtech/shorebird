@@ -327,23 +327,23 @@ void main() {
       });
     });
 
-    group('when releasePlatform is not supported', () {
-      setUp(() {
-        when(() => release.platformStatuses).thenReturn({
-          ReleasePlatform.windows: ReleaseStatus.active,
-        });
-        when(
-          () => argResults['platform'],
-        ).thenReturn(ReleasePlatform.windows.name);
-      });
+    // group('when releasePlatform is not supported', () {
+    //   setUp(() {
+    //     when(() => release.platformStatuses).thenReturn({
+    //       ReleasePlatform.windows: ReleaseStatus.active,
+    //     });
+    //     when(
+    //       () => argResults['platform'],
+    //     ).thenReturn(ReleasePlatform.windows.name);
+    //   });
 
-      test('throws an UnimplementedError', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          throwsA(isA<UnimplementedError>()),
-        );
-      });
-    });
+    //   test('throws an UnimplementedError', () async {
+    //     await expectLater(
+    //       () => runWithOverrides(command.run),
+    //       throwsA(isA<UnimplementedError>()),
+    //     );
+    //   });
+    // });
 
     group('android', () {
       const releasePlatform = ReleasePlatform.android;
@@ -1804,6 +1804,10 @@ channel: ${DeploymentTrack.staging.channel}
           verify(() => logger.info('hello world')).called(1);
         });
       });
+    });
+
+    group('windows', () {
+      // TODO(bryanoltman): implement tests
     });
 
     group('when no platform is specified', () {
