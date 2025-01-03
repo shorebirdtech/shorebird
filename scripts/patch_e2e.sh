@@ -41,6 +41,8 @@ echo "base_url: https://api-dev.shorebird.dev" >>shorebird.yaml
 APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 
 # Create Debug Keystore
+# Android Studio creates this keystore by default, but we need to create it manually for CI.
+# See https://github.com/google/bundletool/blob/69c3e0947bab350fbe7cbd9af03a77b0204d6dc8/src/main/java/com/android/tools/build/bundletool/commands/BuildApksCommand.java
 keytool -genkey -v -keystore ~/.android/debug.keystore -keyalg RSA \
     -keysize 2048 -validity 10000 -alias AndroidDebugKey -storepass android -keypass android \
     -dname "CN=Android Debug,O=Android,C=US"
