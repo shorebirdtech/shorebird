@@ -43,11 +43,7 @@ class Bundletool {
   /// https://developer.android.com/tools/bundletool#generate_apks
   Future<void> buildApks({
     required String bundle,
-    required String output,
-    String? keystore,
-    String? keystorePassword,
-    String? keyPassword,
-    String? keyAlias,
+    required String output,    
     bool universal = true,
   }) async {
     final result = await _exec(
@@ -56,11 +52,7 @@ class Bundletool {
         '--overwrite',
         '--bundle=$bundle',
         '--output=$output',
-        if (universal) '--mode=universal',
-        if (keystore != null) '--ks=$keystore',
-        if (keystorePassword != null) '--ks-pass=pass:$keystorePassword',
-        if (keyPassword != null) '--key-pass=pass:$keyPassword',
-        if (keyAlias != null) '--ks-key-alias=$keyAlias',
+        if (universal) '--mode=universal',        
       ],
     );
     if (result.exitCode != 0) {
