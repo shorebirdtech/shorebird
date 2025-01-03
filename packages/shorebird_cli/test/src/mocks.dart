@@ -132,6 +132,8 @@ class MockPatcher extends Mock implements Patcher {}
 
 class MockPlatform extends Mock implements Platform {}
 
+class MockPowershell extends Mock implements Powershell {}
+
 class MockProcessResult extends Mock implements ShorebirdProcessResult {}
 
 class MockProcessSignal extends Mock implements ProcessSignal {}

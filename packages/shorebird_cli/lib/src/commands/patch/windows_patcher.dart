@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -133,6 +134,6 @@ class WindowsPatcher extends Patcher {
 
   @override
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    return getExeVersionString(artifact);
+    return powershell.getExeVersionString(artifact);
   }
 }
