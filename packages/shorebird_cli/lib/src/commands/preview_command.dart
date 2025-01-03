@@ -396,7 +396,7 @@ This is only applicable when previewing Android releases.''',
     final keyPassword = results['ks-key-pass'] as String?;
     final keyAlias = results['ks-key-alias'] as String?;
 
-    // Validate the keystore flags.
+    // Ensure keystore options are valid.
     if (keystore != null) {
       if (keystorePassword == null) {
         logger.err('You must provide a keystore password.');
