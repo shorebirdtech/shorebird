@@ -12,14 +12,14 @@ on:
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
-  FLUTTER_VERSION: 3.24.4
+  FLUTTER_VERSION: 3.27.1
 
 jobs:
   patch:
     strategy:
       fail-fast: false
       matrix:
-        flutter-version: [3.24.1, 3.24.0, 3.22.3, 3.22.2, 3.19.6]
+        flutter-version: [3.27.1, 3.27.0, 3.24.5, 3.24.4, 3.24.3, 3.24.1, 3.24.0, 3.22.3, 3.22.2, 3.19.6]
 
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -58,6 +58,13 @@ jobs:
           flutter-version: ${{ matrix.flutter-version }}
           cache: true
 
+      - name: 🚀 Enable KVM for Linux Runners
+        if: runner.os == 'Linux'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: 🤖 AVD Cache
         uses: actions/cache@v4
         id: avd-cache
@@ -65,7 +72,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-29
+          key: avd-29-${{ runner.os }}-${{ hashFiles('.github/workflows/e2e.yaml') }}
 
       - name: 🤖 Cache AVD Snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -73,9 +80,12 @@ jobs:
         with:
           api-level: 29
           arch: x86_64
+          target: default
           force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          sdcard-path-or-size: 512M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
           disable-animations: false
+          channel: canary
           script: echo "Generated AVD Snapshot"
 
       - name: 🧪 Run Patch E2E Tests
@@ -83,6 +93,7 @@ jobs:
         with:
           api-level: 29
           arch: x86_64
+          target: default
           script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
