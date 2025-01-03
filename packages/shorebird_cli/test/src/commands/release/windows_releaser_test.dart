@@ -102,7 +102,27 @@ void main() {
     });
 
     group('assertArgsAreValid', () {
-      // TODO
+      group('when release-version is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+        });
+
+        test('logs error and exits with usage err', () async {
+          await expectLater(
+            () => runWithOverrides(releaser.assertArgsAreValid),
+            exitsWithCode(ExitCode.usage),
+          );
+
+          verify(
+            () => logger.err(
+              '''
+The "--release-version" flag is only supported for aar and ios-framework releases.
+        
+To change the version of this release, change your app's version in your pubspec.yaml.''',
+            ),
+          ).called(1);
+        });
+      });
     });
 
     group('assertPreconditions', () {
