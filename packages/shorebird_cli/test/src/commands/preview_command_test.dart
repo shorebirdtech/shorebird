@@ -403,6 +403,10 @@ void main() {
           () => bundletool.buildApks(
             bundle: any(named: 'bundle'),
             output: any(named: 'output'),
+            keystore: any(named: 'keystore'),
+            keystorePassword: any(named: 'keystorePassword'),
+            keyPassword: any(named: 'keyPassword'),
+            keyAlias: any(named: 'keyAlias'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -482,6 +486,165 @@ void main() {
               display: any(named: 'display'),
             ),
           );
+        });
+
+        group('when valid keystore is specified', () {
+          const keystore = 'keystore.jks';
+          const keystorePassword = 'pass:keystorePassword';
+          const keyPassword = 'pass:keyPassword';
+          const keyAlias = 'keyAlias';
+
+          setUp(() {
+            when(() => argResults['ks']).thenReturn(keystore);
+            when(() => argResults['ks-pass']).thenReturn(keystorePassword);
+            when(() => argResults['ks-key-pass']).thenReturn(keyPassword);
+            when(() => argResults['ks-key-alias']).thenReturn(keyAlias);
+          });
+
+          test('builds apks with keystore', () async {
+            await runWithOverrides(command.run);
+
+            verify(
+              () => bundletool.buildApks(
+                bundle: aabPath(),
+                output: apksPath(),
+                keystore: keystore,
+                keystorePassword: keystorePassword,
+                keyPassword: keyPassword,
+                keyAlias: keyAlias,
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when keystorePassword is missing', () {
+          const keystore = 'keystore.jks';
+
+          setUp(() {
+            when(() => argResults['ks']).thenReturn(keystore);
+          });
+
+          test('exits with usage error', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.usage.code));
+
+            verify(
+              () => logger.err('You must provide a keystore password.'),
+            ).called(1);
+
+            verifyNever(
+              () => bundletool.buildApks(
+                bundle: aabPath(),
+                output: apksPath(),
+                keystore: any(named: 'keystore'),
+                keystorePassword: any(named: 'keystorePassword'),
+                keyPassword: any(named: 'keyPassword'),
+                keyAlias: any(named: 'keyAlias'),
+              ),
+            );
+          });
+        });
+
+        group('when keyAlias is missing', () {
+          const keystore = 'keystore.jks';
+          const keystorePassword = 'keystorePassword';
+
+          setUp(() {
+            when(() => argResults['ks']).thenReturn(keystore);
+            when(() => argResults['ks-pass']).thenReturn(keystorePassword);
+          });
+
+          test('exits with usage error', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.usage.code));
+
+            verify(
+              () => logger.err('You must provide a key alias.'),
+            ).called(1);
+
+            verifyNever(
+              () => bundletool.buildApks(
+                bundle: aabPath(),
+                output: apksPath(),
+                keystore: any(named: 'keystore'),
+                keystorePassword: any(named: 'keystorePassword'),
+                keyPassword: any(named: 'keyPassword'),
+                keyAlias: any(named: 'keyAlias'),
+              ),
+            );
+          });
+        });
+
+        group('when keystorePassword is invalid', () {
+          const keystore = 'keystore.jks';
+          const keystorePassword = 'keystorePassword';
+          const keyPassword = 'pass:keyPassword';
+          const keyAlias = 'keyAlias';
+
+          setUp(() {
+            when(() => argResults['ks']).thenReturn(keystore);
+            when(() => argResults['ks-pass']).thenReturn(keystorePassword);
+            when(() => argResults['ks-key-pass']).thenReturn(keyPassword);
+            when(() => argResults['ks-key-alias']).thenReturn(keyAlias);
+          });
+
+          test('exits with usage error', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.usage.code));
+
+            verify(
+              () => logger.err(
+                'Keystore password must start with "pass:" or "file:".',
+              ),
+            ).called(1);
+
+            verifyNever(
+              () => bundletool.buildApks(
+                bundle: aabPath(),
+                output: apksPath(),
+                keystore: any(named: 'keystore'),
+                keystorePassword: any(named: 'keystorePassword'),
+                keyPassword: any(named: 'keyPassword'),
+                keyAlias: any(named: 'keyAlias'),
+              ),
+            );
+          });
+        });
+
+        group('when keyPassword is invalid', () {
+          const keystore = 'keystore.jks';
+          const keystorePassword = 'file:keystorePasswordFile';
+          const keyPassword = 'keyPassword';
+          const keyAlias = 'keyAlias';
+
+          setUp(() {
+            when(() => argResults['ks']).thenReturn(keystore);
+            when(() => argResults['ks-pass']).thenReturn(keystorePassword);
+            when(() => argResults['ks-key-pass']).thenReturn(keyPassword);
+            when(() => argResults['ks-key-alias']).thenReturn(keyAlias);
+          });
+
+          test('exits with usage error', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.usage.code));
+
+            verify(
+              () => logger.err(
+                'Key password must start with "pass:" or "file:".',
+              ),
+            ).called(1);
+
+            verifyNever(
+              () => bundletool.buildApks(
+                bundle: aabPath(),
+                output: apksPath(),
+                keystore: any(named: 'keystore'),
+                keystorePassword: any(named: 'keystorePassword'),
+                keyPassword: any(named: 'keyPassword'),
+                keyAlias: any(named: 'keyAlias'),
+              ),
+            );
+          });
         });
       });
 

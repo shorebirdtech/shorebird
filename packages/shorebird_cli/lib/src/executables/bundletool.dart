@@ -45,6 +45,10 @@ class Bundletool {
     required String bundle,
     required String output,
     bool universal = true,
+    String? keystore,
+    String? keystorePassword,
+    String? keyPassword,
+    String? keyAlias,
   }) async {
     final result = await _exec(
       [
@@ -53,6 +57,10 @@ class Bundletool {
         '--bundle=$bundle',
         '--output=$output',
         if (universal) '--mode=universal',
+        if (keystore != null) '--ks=$keystore',
+        if (keystorePassword != null) '--ks-pass=$keystorePassword',
+        if (keyPassword != null) '--key-pass=$keyPassword',
+        if (keyAlias != null) '--ks-key-alias=$keyAlias',
       ],
     );
     if (result.exitCode != 0) {
