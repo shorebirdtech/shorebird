@@ -21,8 +21,8 @@ class TrackedLockFilesValidator extends Validator {
       return [];
     }
 
-    final isProjectTracked = await git.isGitRepo(directory: projectRoot);
-    if (!isProjectTracked) {
+    final isGitRepo = await git.isGitRepo(directory: projectRoot);
+    if (!isGitRepo) {
       return [
         ValidationIssue.warning(
           message:
