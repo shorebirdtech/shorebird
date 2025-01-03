@@ -6,6 +6,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/git.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/tracked_lock_files_validator.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -123,9 +124,12 @@ void main() {
           final issues = await runWithOverrides(() => validator.validate());
           expect(issues, hasLength(1));
           expect(
-            issues.first.message,
+            issues.first,
             equals(
-              '''pubspec.lock is not tracked in source control. We recommend tracking lock files in source control to avoid unexpected dependency version changes.''',
+              ValidationIssue.warning(
+                message:
+                    '''pubspec.lock is not tracked in source control. We recommend tracking lock files in source control to avoid unexpected dependency version changes.''',
+              ),
             ),
           );
         });
