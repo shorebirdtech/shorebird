@@ -88,10 +88,9 @@ void main() {
           ).thenAnswer((_) async => false);
         });
 
-        test('recommends using source control', () async {
+        test('returns no issues', () async {
           final issues = await runWithOverrides(() => validator.validate());
-          expect(issues, hasLength(1));
-          expect(issues.first.message, contains('not tracked in git'));
+          expect(issues, isEmpty);
         });
       });
 

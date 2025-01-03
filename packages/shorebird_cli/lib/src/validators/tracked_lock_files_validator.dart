@@ -23,12 +23,9 @@ class TrackedLockFilesValidator extends Validator {
 
     final isGitRepo = await git.isGitRepo(directory: projectRoot);
     if (!isGitRepo) {
-      return [
-        ValidationIssue.warning(
-          message:
-              '''This project is not tracked in git. We recommend using source control.''',
-        ),
-      ];
+      // Don't return an issue if the project is not tracked in git. The user
+      // may be using a different source control system.
+      return [];
     }
 
     final lockFilePaths = [
