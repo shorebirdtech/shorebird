@@ -44,19 +44,19 @@ echo "base_url: https://api-dev.shorebird.dev" >>shorebird.yaml
 # Extract the app_id from the "shorebird.yaml"
 APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
 
-# Create Keystore
-keytool -genkey -v -keystore $ROOT_DIR/upload-keystore.jks -keyalg RSA \
-    -keysize 2048 -validity 10000 -alias upload -storepass password -keypass password \
+# Create Debug Keystore
+keytool -genkey -v -keystore ~/.android/debug.keystore -keyalg RSA \
+    -keysize 2048 -validity 10000 -alias AndroidDebugKey -storepass android -keypass android \
     -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=Unknown"
 
-# Create key.properties
-echo "storePassword=password" >android/key.properties
-echo "keyPassword=password" >>android/key.properties
-echo "keyAlias=upload" >>android/key.properties
-echo "storeFile=$ROOT_DIR/upload-keystore.jks" >>android/key.properties
+# # Create key.properties
+# echo "storePassword=password" >android/key.properties
+# echo "keyPassword=password" >>android/key.properties
+# echo "keyAlias=upload" >>android/key.properties
+# echo "storeFile=$ROOT_DIR/upload-keystore.jks" >>android/key.properties
 
-# Configure Release Signing
-dart $SIGN_RELEASE_SCRIPT
+# # Configure Release Signing
+# dart $SIGN_RELEASE_SCRIPT
 
 # Create a new release on Android
 shorebird release android --flutter-version=$FLUTTER_VERSION --split-debug-info=./build/symbols -v
@@ -68,7 +68,7 @@ while IFS= read line; do
         echo "✅ 'hello world' was printed"
         break
     fi
-done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android --keystore=$ROOT_DIR/upload-keystore.jks --keystore-password=password --key-alias=upload --key-password=password -v)
+done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v)
 
 # Replace lib/main.dart "hello world" to "hello shorebird"
 sed -i 's/hello world/hello shorebird/g' lib/main.dart
@@ -87,7 +87,7 @@ while IFS= read line; do
         echo "✅ Patch 1 successfully installed"
         break
     fi
-done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android --keystore=$ROOT_DIR/upload-keystore.jks --keystore-password=password --key-alias=upload --key-password=password -v)
+done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v)
 
 # Re-run the app, *not* using shorebird preview, as that installs the base release.
 adb shell monkey -p com.example.e2e_test.e2e_test -c android.intent.category.LAUNCHER 1
