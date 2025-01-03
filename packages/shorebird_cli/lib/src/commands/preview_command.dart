@@ -54,6 +54,36 @@ class PreviewCommand extends ShorebirdCommand {
         },
         help: 'The platform of the release.',
       )
+      ..addOption(
+        'ks',
+        help: '''
+Specifies the path to the deployment keystore used to sign the APKs.
+If you don't include this flag, bundletool attempts to sign your APKs with a debug signing key.
+This is only applicable when previewing Android releases.''',
+      )
+      ..addOption(
+        'ks-pass',
+        help: '''
+Specifies your keystore password.
+If you specify a password in plain text, qualify it with pass:.
+If you pass the path to a file that contains the password, qualify it with file:.
+If you specify a keystore using the --ks flag you must also specify a password.
+This is only applicable when previewing Android releases.''',
+      )
+      ..addOption(
+        'ks-key-pass',
+        help: '''
+Specifies the password for the signing key. If you specify a password in plain text, qualify it with pass:.
+If you pass the path to a file that contains the password, qualify it with file:.
+If this password is identical to the one for the keystore itself, you can omit this flag.
+This is only applicable when previewing Android releases.''',
+      )
+      ..addOption(
+        'ks-key-alias',
+        help: '''
+Specifies the alias of the signing key you want to use.
+This is only applicable when previewing Android releases.''',
+      )
       ..addFlag(
         'staging',
         negatable: false,
@@ -361,6 +391,36 @@ class PreviewCommand extends ShorebirdCommand {
   }) async {
     const platform = ReleasePlatform.android;
 
+    final keystore = results['ks'] as String?;
+    final keystorePassword = results['ks-pass'] as String?;
+    final keyPassword = results['ks-key-pass'] as String?;
+    final keyAlias = results['ks-key-alias'] as String?;
+
+    // Validate the keystore flags.
+    if (keystore != null) {
+      if (keystorePassword == null) {
+        logger.err('You must provide a keystore password.');
+        return ExitCode.usage.code;
+      }
+      if (keyAlias == null) {
+        logger.err('You must provide a key alias.');
+        return ExitCode.usage.code;
+      }
+
+      if (!keystorePassword.startsWith('pass:') &&
+          !keystorePassword.startsWith('file:')) {
+        logger.err('Keystore password must start with "pass:" or "file:".');
+        return ExitCode.usage.code;
+      }
+
+      if (keyPassword != null &&
+          !keyPassword.startsWith('pass:') &&
+          !keyPassword.startsWith('file:')) {
+        logger.err('Key password must start with "pass:" or "file:".');
+        return ExitCode.usage.code;
+      }
+    }
+
     final downloadArtifactProgress = logger.progress('Downloading release');
     late File aabFile;
     late ReleaseArtifact releaseAabArtifact;
@@ -435,7 +495,14 @@ class PreviewCommand extends ShorebirdCommand {
 
     final buildApksProgress = logger.progress('Building apks');
     try {
-      await bundletool.buildApks(bundle: aabFile.path, output: apksPath);
+      await bundletool.buildApks(
+        bundle: aabFile.path,
+        output: apksPath,
+        keystore: keystore,
+        keystorePassword: keystorePassword,
+        keyPassword: keyPassword,
+        keyAlias: keyAlias,
+      );
       final apksLink = link(uri: Uri.parse(apksPath));
       buildApksProgress.complete('Built apks: ${cyan.wrap(apksLink)}');
     } on Exception catch (error) {
