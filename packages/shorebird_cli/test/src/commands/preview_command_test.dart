@@ -107,7 +107,7 @@ void main() {
         ..writeAsStringSync('app_id: $appId', flush: true);
     }
 
-    File createAabFile({required String? channel}) {
+    Future<File> createAabFile({required String? channel}) async {
       final tempDir = Directory.systemTemp.createTempSync();
       final aabDirectory = Directory(p.join(tempDir.path, 'app-release'))
         ..createSync(recursive: true);
@@ -127,7 +127,7 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync(yamlContents);
 
-      ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
+      await ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
 
       return File(aabPath());
     }
@@ -495,7 +495,7 @@ void main() {
         group('when channel is not set', () {
           group('when target channel is  production', () {
             test('does not change shorebird.yaml', () async {
-              aabFile = createAabFile(channel: null);
+              aabFile = await createAabFile(channel: null);
               await runWithOverrides(
                 () => command.setChannelOnAab(
                   aabFile: aabFile,
@@ -514,7 +514,7 @@ void main() {
 
           group('when target channel is not production', () {
             test('sets shorebird.yaml channel to target channel', () async {
-              aabFile = createAabFile(channel: null);
+              aabFile = await createAabFile(channel: null);
               await runWithOverrides(
                 () => command.setChannelOnAab(
                   aabFile: aabFile,
@@ -534,7 +534,7 @@ channel: live
 
         group('when channel is set to target channel', () {
           test('does not attempt to set channel', () async {
-            aabFile = createAabFile(channel: track.channel);
+            aabFile = await createAabFile(channel: track.channel);
             final originalModificationTime = aabFile.statSync().modified;
             await runWithOverrides(
               () => command.setChannelOnAab(
@@ -556,7 +556,7 @@ channel: ${track.channel}
 
         group('when channel is set to a different channel', () {
           test('sets shorebird.yaml channel to target channel', () async {
-            aabFile = createAabFile(channel: 'dev');
+            aabFile = await createAabFile(channel: 'dev');
             await runWithOverrides(
               () => command.setChannelOnAab(
                 aabFile: aabFile,
