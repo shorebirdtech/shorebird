@@ -43,7 +43,7 @@ class Bundletool {
   /// https://developer.android.com/tools/bundletool#generate_apks
   Future<void> buildApks({
     required String bundle,
-    required String output,    
+    required String output,
     bool universal = true,
   }) async {
     final result = await _exec(
@@ -52,7 +52,7 @@ class Bundletool {
         '--overwrite',
         '--bundle=$bundle',
         '--output=$output',
-        if (universal) '--mode=universal',        
+        if (universal) '--mode=universal',
       ],
     );
     if (result.exitCode != 0) {
