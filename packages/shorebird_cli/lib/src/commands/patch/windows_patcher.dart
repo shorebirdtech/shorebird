@@ -29,8 +29,9 @@ class WindowsPatcher extends Patcher {
   });
 
   @override
-  // TODO: exe isn't technically correct - we upload a zip containing the exe
-  // along with dlls and assets. We should find a better name for this.
+  // TODO(bryanoltman): exe isn't technically correct - we upload a zip
+  // containing the exe along with dlls and assets. We should find a better name
+  // for this.
   String get primaryReleaseArtifactArch => 'exe';
 
   @override
@@ -38,7 +39,7 @@ class WindowsPatcher extends Patcher {
 
   @override
   Future<void> assertPreconditions() async {
-    // TODO: implement assertPreconditions
+    // TODO(bryanoltman): implement assertPreconditions
   }
 
   @override
@@ -47,7 +48,7 @@ class WindowsPatcher extends Patcher {
     required File releaseArchive,
     required File patchArchive,
   }) async {
-    // TODO: implement assertUnpatchableDiffs
+    // TODO(bryanoltman): implement assertUnpatchableDiffs
     return const DiffStatus(hasAssetChanges: false, hasNativeChanges: false);
   }
 
@@ -87,7 +88,7 @@ class WindowsPatcher extends Patcher {
       'windows',
       'x64',
       'runner',
-      // TODO: does this change with flavors?
+      // TODO(bryanoltman): does this change with flavors?
       // from android:
       // flavor != null ? '${flavor}Release' : 'release',
       'Release',

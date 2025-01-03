@@ -16,7 +16,6 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
-import 'package:stream_transform/stream_transform.dart';
 
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
 /// Flutter.
@@ -579,7 +578,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           .transform(const LineSplitter())
           .listen((line) {
         logger.detail(line);
-        // TODO: update build progress
+        // TODO(bryanoltman): update build progress
       });
 
       final stderrLines = await buildProcess.stderr
@@ -594,7 +593,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     });
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // TODO: extract this to function, ensure this is correct
+    // TODO(bryanoltman): extract this to function, ensure this is correct
     return Directory(
       p.join(
         projectRoot.path,
