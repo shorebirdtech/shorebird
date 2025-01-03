@@ -9,6 +9,7 @@ export 'flavor_validator.dart';
 export 'macos_network_entitlement_validator.dart';
 export 'shorebird_version_validator.dart';
 export 'shorebird_yaml_asset_validator.dart';
+export 'tracked_lock_files_validator.dart';
 
 /// Severity level of a [ValidationIssue].
 enum ValidationIssueSeverity {

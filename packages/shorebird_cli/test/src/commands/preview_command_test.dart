@@ -107,7 +107,7 @@ void main() {
         ..writeAsStringSync('app_id: $appId', flush: true);
     }
 
-    File createAabFile({required String? channel}) {
+    Future<File> createAabFile({required String? channel}) async {
       final tempDir = Directory.systemTemp.createTempSync();
       final aabDirectory = Directory(p.join(tempDir.path, 'app-release'))
         ..createSync(recursive: true);
@@ -127,7 +127,7 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync(yamlContents);
 
-      ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
+      await ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
 
       return File(aabPath());
     }
@@ -403,6 +403,10 @@ void main() {
           () => bundletool.buildApks(
             bundle: any(named: 'bundle'),
             output: any(named: 'output'),
+            keystore: any(named: 'keystore'),
+            keystorePassword: any(named: 'keystorePassword'),
+            keyPassword: any(named: 'keyPassword'),
+            keyAlias: any(named: 'keyAlias'),
           ),
         ).thenAnswer((_) async {});
         when(
@@ -483,6 +487,165 @@ void main() {
             ),
           );
         });
+
+        group('when valid keystore is specified', () {
+          const keystore = 'keystore.jks';
+          const keystorePassword = 'pass:keystorePassword';
+          const keyPassword = 'pass:keyPassword';
+          const keyAlias = 'keyAlias';
+
+          setUp(() {
+            when(() => argResults['ks']).thenReturn(keystore);
+            when(() => argResults['ks-pass']).thenReturn(keystorePassword);
+            when(() => argResults['ks-key-pass']).thenReturn(keyPassword);
+            when(() => argResults['ks-key-alias']).thenReturn(keyAlias);
+          });
+
+          test('builds apks with keystore', () async {
+            await runWithOverrides(command.run);
+
+            verify(
+              () => bundletool.buildApks(
+                bundle: aabPath(),
+                output: apksPath(),
+                keystore: keystore,
+                keystorePassword: keystorePassword,
+                keyPassword: keyPassword,
+                keyAlias: keyAlias,
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when keystorePassword is missing', () {
+          const keystore = 'keystore.jks';
+
+          setUp(() {
+            when(() => argResults['ks']).thenReturn(keystore);
+          });
+
+          test('exits with usage error', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.usage.code));
+
+            verify(
+              () => logger.err('You must provide a keystore password.'),
+            ).called(1);
+
+            verifyNever(
+              () => bundletool.buildApks(
+                bundle: aabPath(),
+                output: apksPath(),
+                keystore: any(named: 'keystore'),
+                keystorePassword: any(named: 'keystorePassword'),
+                keyPassword: any(named: 'keyPassword'),
+                keyAlias: any(named: 'keyAlias'),
+              ),
+            );
+          });
+        });
+
+        group('when keyAlias is missing', () {
+          const keystore = 'keystore.jks';
+          const keystorePassword = 'keystorePassword';
+
+          setUp(() {
+            when(() => argResults['ks']).thenReturn(keystore);
+            when(() => argResults['ks-pass']).thenReturn(keystorePassword);
+          });
+
+          test('exits with usage error', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.usage.code));
+
+            verify(
+              () => logger.err('You must provide a key alias.'),
+            ).called(1);
+
+            verifyNever(
+              () => bundletool.buildApks(
+                bundle: aabPath(),
+                output: apksPath(),
+                keystore: any(named: 'keystore'),
+                keystorePassword: any(named: 'keystorePassword'),
+                keyPassword: any(named: 'keyPassword'),
+                keyAlias: any(named: 'keyAlias'),
+              ),
+            );
+          });
+        });
+
+        group('when keystorePassword is invalid', () {
+          const keystore = 'keystore.jks';
+          const keystorePassword = 'keystorePassword';
+          const keyPassword = 'pass:keyPassword';
+          const keyAlias = 'keyAlias';
+
+          setUp(() {
+            when(() => argResults['ks']).thenReturn(keystore);
+            when(() => argResults['ks-pass']).thenReturn(keystorePassword);
+            when(() => argResults['ks-key-pass']).thenReturn(keyPassword);
+            when(() => argResults['ks-key-alias']).thenReturn(keyAlias);
+          });
+
+          test('exits with usage error', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.usage.code));
+
+            verify(
+              () => logger.err(
+                'Keystore password must start with "pass:" or "file:".',
+              ),
+            ).called(1);
+
+            verifyNever(
+              () => bundletool.buildApks(
+                bundle: aabPath(),
+                output: apksPath(),
+                keystore: any(named: 'keystore'),
+                keystorePassword: any(named: 'keystorePassword'),
+                keyPassword: any(named: 'keyPassword'),
+                keyAlias: any(named: 'keyAlias'),
+              ),
+            );
+          });
+        });
+
+        group('when keyPassword is invalid', () {
+          const keystore = 'keystore.jks';
+          const keystorePassword = 'file:keystorePasswordFile';
+          const keyPassword = 'keyPassword';
+          const keyAlias = 'keyAlias';
+
+          setUp(() {
+            when(() => argResults['ks']).thenReturn(keystore);
+            when(() => argResults['ks-pass']).thenReturn(keystorePassword);
+            when(() => argResults['ks-key-pass']).thenReturn(keyPassword);
+            when(() => argResults['ks-key-alias']).thenReturn(keyAlias);
+          });
+
+          test('exits with usage error', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.usage.code));
+
+            verify(
+              () => logger.err(
+                'Key password must start with "pass:" or "file:".',
+              ),
+            ).called(1);
+
+            verifyNever(
+              () => bundletool.buildApks(
+                bundle: aabPath(),
+                output: apksPath(),
+                keystore: any(named: 'keystore'),
+                keystorePassword: any(named: 'keystorePassword'),
+                keyPassword: any(named: 'keyPassword'),
+                keyAlias: any(named: 'keyAlias'),
+              ),
+            );
+          });
+        });
       });
 
       group('setChannelOnAab', () {
@@ -495,7 +658,7 @@ void main() {
         group('when channel is not set', () {
           group('when target channel is  production', () {
             test('does not change shorebird.yaml', () async {
-              aabFile = createAabFile(channel: null);
+              aabFile = await createAabFile(channel: null);
               await runWithOverrides(
                 () => command.setChannelOnAab(
                   aabFile: aabFile,
@@ -514,7 +677,7 @@ void main() {
 
           group('when target channel is not production', () {
             test('sets shorebird.yaml channel to target channel', () async {
-              aabFile = createAabFile(channel: null);
+              aabFile = await createAabFile(channel: null);
               await runWithOverrides(
                 () => command.setChannelOnAab(
                   aabFile: aabFile,
@@ -534,7 +697,7 @@ channel: live
 
         group('when channel is set to target channel', () {
           test('does not attempt to set channel', () async {
-            aabFile = createAabFile(channel: track.channel);
+            aabFile = await createAabFile(channel: track.channel);
             final originalModificationTime = aabFile.statSync().modified;
             await runWithOverrides(
               () => command.setChannelOnAab(
@@ -556,7 +719,7 @@ channel: ${track.channel}
 
         group('when channel is set to a different channel', () {
           test('sets shorebird.yaml channel to target channel', () async {
-            aabFile = createAabFile(channel: 'dev');
+            aabFile = await createAabFile(channel: 'dev');
             await runWithOverrides(
               () => command.setChannelOnAab(
                 aabFile: aabFile,

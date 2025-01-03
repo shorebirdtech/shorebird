@@ -129,6 +129,68 @@ void main() {
         ).called(1);
       });
 
+      group('when keystore configuration is passed', () {
+        const keystore = 'keystore.jks';
+        const keystorePassword = 'pass:keystorePassword';
+        const keyPassword = 'pass:keyPassword';
+        const keyAlias = 'keyAlias';
+
+        setUp(() {
+          when(
+            () => process.run(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+            ),
+          ).thenAnswer(
+            (_) async => const ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: '',
+              stderr: '',
+            ),
+          );
+        });
+
+        test('sets correct flags', () async {
+          await expectLater(
+            runWithOverrides(
+              () => bundletool.buildApks(
+                bundle: appBundlePath,
+                output: output,
+                keystore: keystore,
+                keystorePassword: keystorePassword,
+                keyPassword: keyPassword,
+                keyAlias: keyAlias,
+              ),
+            ),
+            completes,
+          );
+
+          verify(
+            () => process.run(
+              'java',
+              [
+                '-jar',
+                p.join(workingDirectory.path, 'bundletool.jar'),
+                'build-apks',
+                '--overwrite',
+                '--bundle=$appBundlePath',
+                '--output=$output',
+                '--mode=universal',
+                '--ks=$keystore',
+                '--ks-pass=$keystorePassword',
+                '--key-pass=$keyPassword',
+                '--ks-key-alias=$keyAlias',
+              ],
+              environment: {
+                'ANDROID_HOME': androidSdkPath,
+                'JAVA_HOME': javaHome,
+              },
+            ),
+          ).called(1);
+        });
+      });
+
       group('when universal is set to false', () {
         setUp(() {
           when(

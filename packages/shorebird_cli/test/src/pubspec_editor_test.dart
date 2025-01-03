@@ -162,9 +162,9 @@ flutter:
               equals('''
 $basePubspecContents
 flutter:
+ uses-material-design: true
  assets:
   - shorebird.yaml
- uses-material-design: true
 '''),
             );
           });

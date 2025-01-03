@@ -516,5 +516,63 @@ refs/heads/main
         );
       });
     });
+
+    group('isGitRepo', () {
+      group('when git exits with code 0', () {
+        setUp(() {
+          when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+        });
+
+        test('returns true', () async {
+          final directory = Directory.current;
+          final result = await runWithOverrides(
+            () => git.isGitRepo(directory: directory),
+          );
+          expect(result, isTrue);
+        });
+      });
+
+      group('when git exits with nonzero code', () {
+        setUp(() {
+          when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+        });
+
+        test('returns true', () async {
+          final directory = Directory.current;
+          final result = await runWithOverrides(
+            () => git.isGitRepo(directory: directory),
+          );
+          expect(result, isFalse);
+        });
+      });
+    });
+
+    group('isFileTracked', () {
+      group('when git exits with code 0', () {
+        setUp(() {
+          when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+        });
+
+        test('returns true', () async {
+          final result = await runWithOverrides(
+            () => git.isFileTracked(file: File('file')),
+          );
+          expect(result, isTrue);
+        });
+      });
+
+      group('when git exits with nonzero code', () {
+        setUp(() {
+          when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+        });
+
+        test('returns true', () async {
+          final result = await runWithOverrides(
+            () => git.isFileTracked(file: File('file')),
+          );
+          expect(result, isFalse);
+        });
+      });
+    });
   });
 }
