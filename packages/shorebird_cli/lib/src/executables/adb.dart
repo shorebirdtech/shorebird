@@ -51,6 +51,7 @@ class Adb {
       if (deviceId != null) ...['-s', deviceId],
       'shell',
       'monkey',
+      '--pct-syskeys 0',
       '-p $package',
       '1',
     ];
