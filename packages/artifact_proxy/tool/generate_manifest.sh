@@ -76,3 +76,7 @@ artifact_overrides:
   - flutter_infra_release/flutter/\$engine/darwin-x64-release/artifacts.zip
   - flutter_infra_release/flutter/\$engine/darwin-x64-release/framework.zip
   - flutter_infra_release/flutter/\$engine/darwin-x64-release/gen_snapshot.zip
+
+  # Windows release artifacts
+  - flutter_infra_release/flutter/\$engine/win-x64/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/win-x64-release/windows-x64-flutter.zip
