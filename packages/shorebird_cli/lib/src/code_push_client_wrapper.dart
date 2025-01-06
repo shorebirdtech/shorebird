@@ -536,8 +536,8 @@ aab artifact already exists, continuing...''',
         artifactPath: releaseZipPath,
         arch: 'exe',
         platform: ReleasePlatform.windows,
-        // hash: sha256.convert(await File(exePath).readAsBytes()).toString(),
-        hash: 'TODO',
+        hash:
+            sha256.convert(await File(releaseZipPath).readAsBytes()).toString(),
         canSideload: true,
         podfileLockHash: null,
       );

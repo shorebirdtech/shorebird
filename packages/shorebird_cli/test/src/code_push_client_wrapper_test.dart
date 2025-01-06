@@ -1450,6 +1450,91 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         });
       });
 
+      group('createWindowsReleaseArtifacts', () {
+        late File releaseZip;
+        setUp(() {
+          releaseZip =
+              File(p.join(projectRoot.path, 'path', 'to', 'release.zip'))
+                ..createSync(recursive: true);
+        });
+
+        group('when createReleaseArtifact fails', () {
+          setUp(() {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                artifactPath: any(named: 'artifactPath'),
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenThrow(Exception('something went wrong'));
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.createWindowsReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  projectRoot: projectRoot.path,
+                  releaseZipPath: releaseZip.path,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(() => progress.fail(any())).called(1);
+          });
+        });
+
+        group('when createReleaseArtifact succeeds', () {
+          setUp(() {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                artifactPath: any(named: 'artifactPath'),
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenAnswer((_) async {});
+          });
+
+          test('completes successfully', () async {
+            await runWithOverrides(
+              () async => codePushClientWrapper.createWindowsReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                projectRoot: projectRoot.path,
+                releaseZipPath: releaseZip.path,
+              ),
+            );
+
+            verify(() => progress.complete()).called(1);
+            verifyNever(() => progress.fail(any()));
+            verify(
+              () => codePushClient.createReleaseArtifact(
+                artifactPath: releaseZip.path,
+                appId: appId,
+                releaseId: releaseId,
+                arch: 'exe',
+                platform: ReleasePlatform.windows,
+                hash: any(named: 'hash'),
+                canSideload: true,
+                podfileLockHash: null,
+              ),
+            ).called(1);
+          });
+        });
+      });
+
       group('createAndroidArchiveReleaseArtifacts', () {
         const buildNumber = '1.0';
 
