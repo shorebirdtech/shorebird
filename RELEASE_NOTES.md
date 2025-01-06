@@ -9,7 +9,7 @@ This section contains past updates we've sent to customers.
 ## 1.5.5 (January 6, 2025)
 
 - 🔐 Add custom keystore support to `shorebird preview`
-- 🧑‍⚕️ `shorebird doctor` verifies lockfiles are tracked in source control
+- 🧑‍⚕️ `shorebird doctor` verifies lock files are tracked in source control
 - 🧹 Remove flutter version check from `shorebird doctor`
 
 ## 1.5.4 (December 20, 2024)
