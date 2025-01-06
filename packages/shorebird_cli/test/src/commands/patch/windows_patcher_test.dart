@@ -38,9 +38,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late Doctor doctor;
     late EngineConfig engineConfig;
-    late Directory flutterDirectory;
     late Directory projectRoot;
-    late Directory appDirectory;
     late FlavorValidator flavorValidator;
     late ShorebirdLogger logger;
     late Powershell powershell;
