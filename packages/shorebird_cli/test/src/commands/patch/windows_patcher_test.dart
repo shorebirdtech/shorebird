@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
@@ -25,6 +26,7 @@ import 'package:shorebird_cli/src/validators/flavor_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
@@ -124,8 +126,85 @@ void main() {
     });
 
     group('assertPreconditions', () {
-      test('does nothing', () async {
-        await patcher.assertPreconditions();
+      setUp(() {
+        when(
+          () => doctor.windowsCommandValidators,
+        ).thenReturn([flavorValidator]);
+      });
+
+      group('when validation succeeds', () {
+        setUp(() {
+          when(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(
+                named: 'checkUserIsAuthenticated',
+              ),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
+              validators: any(named: 'validators'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
+            ),
+          ).thenAnswer((_) async {});
+        });
+
+        test('returns normally', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.assertPreconditions),
+            returnsNormally,
+          );
+        });
+      });
+
+      group('when validation fails', () {
+        setUp(() {
+          final exception = ValidationFailedException();
+          when(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(
+                named: 'checkUserIsAuthenticated',
+              ),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
+              validators: any(
+                named: 'validators',
+              ),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final exception = ValidationFailedException();
+          when(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(
+                named: 'checkUserIsAuthenticated',
+              ),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
+              validators: any(named: 'validators'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
+            ),
+          ).thenThrow(exception);
+          await expectLater(
+            () => runWithOverrides(patcher.assertPreconditions),
+            exitsWithCode(exception.exitCode),
+          );
+          verify(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: true,
+              checkShorebirdInitialized: true,
+              validators: [flavorValidator],
+              supportedOperatingSystems: {Platform.windows},
+            ),
+          ).called(1);
+        });
       });
     });
 
