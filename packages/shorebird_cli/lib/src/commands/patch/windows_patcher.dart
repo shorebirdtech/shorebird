@@ -71,7 +71,10 @@ class WindowsPatcher extends Patcher {
       throw ProcessExit(ExitCode.software.code);
     }
 
-    return File(p.join(releaseDir.path, 'hello_windows.exe'));
+    return releaseDir
+        .listSync()
+        .whereType<File>()
+        .firstWhere((f) => p.extension(f.path) == '.exe');
   }
 
   @override
@@ -88,9 +91,6 @@ class WindowsPatcher extends Patcher {
       'windows',
       'x64',
       'runner',
-      // TODO(bryanoltman): does this change with flavors?
-      // from android:
-      // flavor != null ? '${flavor}Release' : 'release',
       'Release',
       'data',
       'app.so',
