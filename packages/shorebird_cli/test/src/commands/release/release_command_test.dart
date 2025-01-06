@@ -223,6 +223,10 @@ void main() {
           command.getReleaser(ReleaseType.macos),
           isA<MacosReleaser>(),
         );
+        expect(
+          command.getReleaser(ReleaseType.windows),
+          isA<WindowsReleaser>(),
+        );
       });
     });
 
