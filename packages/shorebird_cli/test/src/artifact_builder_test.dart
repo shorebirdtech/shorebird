@@ -1457,6 +1457,69 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
       testOn: 'mac-os',
     );
 
+    group('buildWindowsApp', () {
+      setUp(() {
+        when(
+          () => shorebirdProcess.start(
+            'flutter',
+            [
+              'build',
+              'windows',
+              '--release',
+            ],
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => buildProcess);
+      });
+
+      group('when flutter build fails', () {
+        setUp(() {
+          when(
+            () => buildProcess.exitCode,
+          ).thenAnswer((_) async => ExitCode.software.code);
+          when(() => buildProcess.stderr).thenAnswer(
+            (_) => Stream.fromIterable(
+              [
+                'stderr contents',
+              ].map(utf8.encode),
+            ),
+          );
+        });
+
+        test('throws ArtifactBuildException', () async {
+          expect(
+            () => runWithOverrides(() => builder.buildWindowsApp()),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.message,
+                'message',
+                equals('Failed to build: stderr contents'),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when flutter build succeeds', () {
+        setUp(() {
+          when(
+            () => buildProcess.exitCode,
+          ).thenAnswer((_) async => ExitCode.success.code);
+        });
+
+        test('returns path to Release directory', () async {
+          final result = await runWithOverrides(
+            () => builder.buildWindowsApp(),
+          );
+
+          expect(
+            result.path,
+            endsWith(p.join('build', 'windows', 'x64', 'runner', 'Release')),
+          );
+        });
+      });
+    });
+
     group('findAppDill', () {
       group('when gen_snapshot is invoked with app.dill', () {
         test('returns the path to app.dill', () {
