@@ -9,6 +9,7 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
+import 'package:equatable/equatable.dart';
 import 'package:io/io.dart' as io;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
@@ -31,7 +32,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@template patch_artifact_bundle}
 /// Metadata about a patch artifact that we are about to upload.
 /// {@endtemplate}
-class PatchArtifactBundle {
+class PatchArtifactBundle extends Equatable {
   /// {@macro patch_artifact_bundle}
   const PatchArtifactBundle({
     required this.arch,
@@ -55,6 +56,9 @@ class PatchArtifactBundle {
 
   /// The signature of the artifact hash.
   final String? hashSignature;
+
+  @override
+  List<Object?> get props => [arch, path, hash, size, hashSignature];
 }
 
 // A reference to a [CodePushClientWrapper] instance.
