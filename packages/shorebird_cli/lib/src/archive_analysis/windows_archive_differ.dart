@@ -17,9 +17,16 @@ class WindowsArchiveDiffer extends ArchiveDiffer {
 
   String _hash(List<int> bytes) => sha256.convert(bytes).toString();
 
+  bool _isDirectoryPath(String path) {
+    return path.endsWith('/');
+  }
+
   @override
   bool isAssetFilePath(String filePath) {
-    return p.split(filePath).contains('flutter_assets');
+    // We don't care if an empty directory is added or removed, so ignore paths
+    // that end with a '/'.
+    return !_isDirectoryPath(filePath) &&
+        p.split(filePath).contains('flutter_assets');
   }
 
   @override
