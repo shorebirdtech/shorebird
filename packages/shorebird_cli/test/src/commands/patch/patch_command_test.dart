@@ -555,6 +555,10 @@ void main() {
           command.getPatcher(ReleaseType.macos),
           isA<MacosPatcher>(),
         );
+        expect(
+          command.getPatcher(ReleaseType.windows),
+          isA<WindowsPatcher>(),
+        );
       });
     });
 
