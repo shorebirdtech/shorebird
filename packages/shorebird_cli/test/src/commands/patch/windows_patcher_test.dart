@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -122,6 +123,12 @@ void main() {
         flavor: null,
         target: null,
       );
+    });
+
+    group('releaseType', () {
+      test('is windows', () {
+        expect(patcher.releaseType, ReleaseType.windows);
+      });
     });
 
     group('primaryReleaseArtifactArch', () {
