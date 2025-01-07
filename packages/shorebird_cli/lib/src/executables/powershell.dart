@@ -26,7 +26,7 @@ class Powershell {
       arguments,
       runInShell: true,
     );
-    if (result.exitCode != 0) {
+    if (result.exitCode != ExitCode.success.code) {
       throw ProcessException(
         executable,
         arguments,
@@ -46,10 +46,6 @@ class Powershell {
       ['-Command', pwshCommand],
       runInShell: true,
     );
-
-    if (result.exitCode != ExitCode.success.code) {
-      throw Exception('Failed to get version from exe $exePath');
-    }
 
     return (result.stdout as String).trim();
   }

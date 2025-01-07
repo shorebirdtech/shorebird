@@ -45,9 +45,9 @@ void main() {
           when(() => processResult.exitCode).thenReturn(1);
         });
 
-        test('throws an exception', () {
-          expect(
-            () => runWithOverrides(
+        test('throws an exception', () async {
+          await expectLater(
+            runWithOverrides(
               () => powershell.getExeVersionString(File('')),
             ),
             throwsA(isA<Exception>()),
