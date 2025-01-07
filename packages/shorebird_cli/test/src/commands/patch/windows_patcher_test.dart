@@ -7,6 +7,8 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/archive/archive.dart';
+import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -41,6 +43,7 @@ void main() {
     late Directory projectRoot;
     late FlavorValidator flavorValidator;
     late ShorebirdLogger logger;
+    late PatchDiffChecker patchDiffChecker;
     late Powershell powershell;
     late Progress progress;
     late ShorebirdArtifacts shorebirdArtifacts;
@@ -60,6 +63,7 @@ void main() {
           doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => engineConfig),
           loggerRef.overrideWith(() => logger),
+          patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           powershellRef.overrideWith(() => powershell),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
@@ -76,6 +80,7 @@ void main() {
       registerFallbackValue(ReleasePlatform.windows);
       registerFallbackValue(ShorebirdArtifact.genSnapshotMacOS);
       registerFallbackValue(Uri.parse('https://example.com'));
+      registerFallbackValue(const WindowsArchiveDiffer());
     });
 
     setUp(() {
@@ -87,6 +92,7 @@ void main() {
       doctor = MockDoctor();
       engineConfig = MockEngineConfig();
       flavorValidator = MockFlavorValidator();
+      patchDiffChecker = MockPatchDiffChecker();
       powershell = MockPowershell();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -207,21 +213,54 @@ void main() {
     });
 
     group('assertUnpatchableDiffs', () {
-      test('returns DiffStatus with no changes', () async {
-        final releaseArtifact = MockReleaseArtifact();
-        final releaseArchive = File('releaseArchive');
-        final patchArchive = File('patchArchive');
+      late ReleaseArtifact releaseArtifact;
+      late File releaseArchive;
+      late File patchArchive;
+      late DiffStatus diffStatus;
 
-        final diffStatus = await patcher.assertUnpatchableDiffs(
-          releaseArtifact: releaseArtifact,
-          releaseArchive: releaseArchive,
-          patchArchive: patchArchive,
+      setUp(() {
+        diffStatus = const DiffStatus(
+          hasAssetChanges: false,
+          hasNativeChanges: false,
+        );
+        releaseArtifact = MockReleaseArtifact();
+        final tempDir = Directory.systemTemp.createTempSync();
+        releaseArchive = File(p.join(tempDir.path, 'release.zip'));
+        patchArchive = File(p.join(tempDir.path, 'patch.zip'));
+
+        when(
+          () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+            localArchive: any(named: 'localArchive'),
+            releaseArchive: any(named: 'releaseArchive'),
+            archiveDiffer: any(named: 'archiveDiffer'),
+            allowAssetChanges: any(named: 'allowAssetChanges'),
+            allowNativeChanges: any(named: 'allowNativeChanges'),
+          ),
+        ).thenAnswer((_) async => diffStatus);
+      });
+
+      test('returns result from patchDiffChecker', () async {
+        final diffStatus = await runWithOverrides(
+          () => patcher.assertUnpatchableDiffs(
+            releaseArtifact: releaseArtifact,
+            releaseArchive: releaseArchive,
+            patchArchive: patchArchive,
+          ),
         );
 
         expect(
           diffStatus,
           const DiffStatus(hasAssetChanges: false, hasNativeChanges: false),
         );
+        verify(
+          () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+            localArchive: patchArchive,
+            releaseArchive: releaseArchive,
+            archiveDiffer: const WindowsArchiveDiffer(),
+            allowAssetChanges: false,
+            allowNativeChanges: false,
+          ),
+        ).called(1);
       });
     });
 
@@ -257,8 +296,6 @@ void main() {
       });
 
       group('when build succeeds', () {
-        late File exeFile;
-
         setUp(() {
           final releaseDir = Directory(
             p.join(
@@ -269,21 +306,19 @@ void main() {
               'runner',
               'Release',
             ),
-          );
-          exeFile = File(p.join(releaseDir.path, 'app.exe'))
-            ..createSync(recursive: true);
+          )..createSync(recursive: true);
           when(
             () => artifactBuilder.buildWindowsApp(),
           ).thenAnswer((_) async => releaseDir);
         });
 
-        test('returns exe file', () async {
+        test('returns a zipped exe file', () async {
           await expectLater(
             runWithOverrides(
               () => patcher.buildPatchArtifact(),
             ),
             completion(
-              isA<File>().having((f) => f.path, 'path', exeFile.path),
+              isA<File>().having((f) => f.path, 'path', endsWith('.zip')),
             ),
           );
         });
@@ -293,17 +328,27 @@ void main() {
     group('createPatchArtifacts', () {});
 
     group('extractReleaseVersionFromArtifact', () {
-      setUp(() {
+      setUp(() async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((invocation) async {
+          final outPath =
+              (invocation.namedArguments[#outputDirectory] as Directory).path;
+          File(p.join(outPath, 'hello_windows.exe'))
+              .createSync(recursive: true);
+        });
         when(
           () => powershell.getExeVersionString(any()),
         ).thenAnswer((_) async => '1.2.3');
       });
 
-      test('returns version from exe', () async {
-        final exeFile = File('hello_windows.exe');
+      test('returns version from archived exe', () async {
         final version = await runWithOverrides(
           () => patcher.extractReleaseVersionFromArtifact(
-            exeFile,
+            File(''),
           ),
         );
 
