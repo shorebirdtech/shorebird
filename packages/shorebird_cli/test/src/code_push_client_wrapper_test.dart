@@ -1458,6 +1458,43 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 ..createSync(recursive: true);
         });
 
+        group('when release artifact already exists', () {
+          setUp(() {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                artifactPath: any(named: 'artifactPath'),
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenThrow(
+              const CodePushConflictException(message: 'already exists'),
+            );
+          });
+
+          test('logs message and continues', () async {
+            await runWithOverrides(
+              () => codePushClientWrapper.createWindowsReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                projectRoot: projectRoot.path,
+                releaseZipPath: releaseZip.path,
+              ),
+            );
+
+            verify(
+              () => logger.info(
+                any(that: contains('already exists, continuing...')),
+              ),
+            ).called(1);
+            verifyNever(() => progress.fail(any()));
+          });
+        });
+
         group('when createReleaseArtifact fails', () {
           setUp(() {
             when(
