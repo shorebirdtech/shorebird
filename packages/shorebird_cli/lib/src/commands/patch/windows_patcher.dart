@@ -4,6 +4,8 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:shorebird_cli/src/archive/archive.dart';
+import 'package:shorebird_cli/src/archive_analysis/windows_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -59,9 +61,14 @@ class WindowsPatcher extends Patcher {
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
     required File patchArchive,
-  }) async {
-    // TODO(bryanoltman): implement assertUnpatchableDiffs
-    return const DiffStatus(hasAssetChanges: false, hasNativeChanges: false);
+  }) {
+    return patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArchive: patchArchive,
+      releaseArchive: releaseArchive,
+      archiveDiffer: const WindowsArchiveDiffer(),
+      allowAssetChanges: allowAssetDiffs,
+      allowNativeChanges: allowNativeDiffs,
+    );
   }
 
   @override
@@ -83,10 +90,7 @@ class WindowsPatcher extends Patcher {
       throw ProcessExit(ExitCode.software.code);
     }
 
-    return releaseDir
-        .listSync()
-        .whereType<File>()
-        .firstWhere((f) => p.extension(f.path) == '.exe');
+    return releaseDir.zipToTempFile();
   }
 
   @override
@@ -147,6 +151,15 @@ class WindowsPatcher extends Patcher {
 
   @override
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    return powershell.getExeVersionString(artifact);
+    final outputDirectory = Directory.systemTemp.createTempSync();
+    await artifactManager.extractZip(
+      zipFile: artifact,
+      outputDirectory: outputDirectory,
+    );
+    final exeFile = outputDirectory
+        .listSync()
+        .whereType<File>()
+        .firstWhere((file) => p.extension(file.path) == '.exe');
+    return powershell.getExeVersionString(exeFile);
   }
 }
