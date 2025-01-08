@@ -67,7 +67,7 @@ To change the version of this release, change your app's version in your pubspec
       if (version != null && version < minimumSupportedWindowsFlutterVersion) {
         logger.err(
           '''
-macOS releases are not supported with Flutter versions older than $minimumSupportedWindowsFlutterVersion.
+Windows releases are not supported with Flutter versions older than $minimumSupportedWindowsFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         );
         throw ProcessExit(ExitCode.usage.code);

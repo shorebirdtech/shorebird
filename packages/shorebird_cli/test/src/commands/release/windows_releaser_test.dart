@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -12,7 +13,9 @@ import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -181,6 +184,42 @@ To change the version of this release, change your app's version in your pubspec
               checkShorebirdInitialized: true,
               validators: [flavorValidator],
               supportedOperatingSystems: {Platform.windows},
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when flutter version is too old', () {
+        setUp(() {
+          when(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+              checkShorebirdInitialized:
+                  any(named: 'checkShorebirdInitialized'),
+              validators: any(named: 'validators'),
+              supportedOperatingSystems:
+                  any(named: 'supportedOperatingSystems'),
+            ),
+          ).thenAnswer((_) async {});
+          when(() => argResults['flutter-version'] as String?)
+              .thenReturn('1.2.3');
+          when(() => shorebirdFlutter.resolveFlutterVersion('1.2.3'))
+              .thenAnswer((_) async => Version(1, 2, 3));
+          when(() => shorebirdFlutter.getVersionAndRevision())
+              .thenAnswer((_) async => '3.27.1');
+        });
+
+        test('logs error and exits with usage err', () async {
+          await expectLater(
+            () => runWithOverrides(releaser.assertPreconditions),
+            exitsWithCode(ExitCode.usage),
+          );
+
+          verify(
+            () => logger.err(
+              '''
+Windows releases are not supported with Flutter versions older than $minimumSupportedWindowsFlutterVersion.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             ),
           ).called(1);
         });
