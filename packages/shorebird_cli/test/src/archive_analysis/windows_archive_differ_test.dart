@@ -1,3 +1,4 @@
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:test/test.dart';
 
@@ -61,6 +62,24 @@ void main() {
           final result = differ.isNativeFilePath('foo.so');
           expect(result, isFalse);
         });
+      });
+    });
+
+    group('changedFiles', () {
+      final winArchivesFixturesBasePath =
+          p.join('test', 'fixtures', 'win_archives');
+      final releasePath = p.join(
+        winArchivesFixturesBasePath,
+        'release.zip',
+      );
+      final patchPath = p.join(
+        winArchivesFixturesBasePath,
+        'patch.zip',
+      );
+
+      test('returns an empty FileSetDiff', () async {
+        final result = await differ.changedFiles(releasePath, patchPath);
+        expect(result, equals(FileSetDiff.empty()));
       });
     });
   });
