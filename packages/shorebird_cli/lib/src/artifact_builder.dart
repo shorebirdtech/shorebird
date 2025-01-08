@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -591,18 +592,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       }
     });
 
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // TODO(bryanoltman): extract this to function, ensure this is correct
-    return Directory(
-      p.join(
-        projectRoot.path,
-        'build',
-        'windows',
-        'x64',
-        'runner',
-        'Release',
-      ),
-    );
+    return artifactManager.getWindowsReleaseDirectory();
   }
 
   /// Given a log of verbose output from `flutter build ipa`, returns a

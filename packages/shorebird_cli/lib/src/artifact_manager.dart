@@ -347,7 +347,7 @@ class ArtifactManager {
         .firstWhereOrNull((directory) => directory.path.endsWith('.app'));
   }
 
-  /// Returns the build/ subdirectory contaning the compiled Windows exe.
+  /// Returns the build/ subdirectory containing the compiled Windows exe.
   Directory getWindowsReleaseDirectory() {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     return Directory(
