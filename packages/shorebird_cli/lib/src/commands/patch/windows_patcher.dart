@@ -34,10 +34,7 @@ class WindowsPatcher extends Patcher {
   });
 
   @override
-  // TODO(bryanoltman): exe isn't technically correct - we upload a zip
-  // containing the exe along with dlls and assets. We should find a better name
-  // for this.
-  String get primaryReleaseArtifactArch => 'exe';
+  String get primaryReleaseArtifactArch => primaryWindowsReleaseArtifactArch;
 
   @override
   ReleaseType get releaseType => ReleaseType.windows;

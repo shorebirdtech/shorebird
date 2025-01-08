@@ -132,8 +132,11 @@ void main() {
     });
 
     group('primaryReleaseArtifactArch', () {
-      test('is exe', () {
-        expect(patcher.primaryReleaseArtifactArch, 'exe');
+      test('is win_archive', () {
+        expect(
+          patcher.primaryReleaseArtifactArch,
+          primaryWindowsReleaseArtifactArch,
+        );
       });
     });
 

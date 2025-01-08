@@ -538,7 +538,7 @@ aab artifact already exists, continuing...''',
         appId: appId,
         releaseId: releaseId,
         artifactPath: releaseZipPath,
-        arch: 'exe',
+        arch: primaryWindowsReleaseArtifactArch,
         platform: ReleasePlatform.windows,
         hash:
             sha256.convert(await File(releaseZipPath).readAsBytes()).toString(),

@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -335,7 +336,7 @@ This is only applicable when previewing Android releases.''',
       releaseExeArtifact = await codePushClientWrapper.getReleaseArtifact(
         appId: appId,
         releaseId: release.id,
-        arch: 'exe',
+        arch: primaryWindowsReleaseArtifactArch,
         platform: platform,
       );
     } on Exception catch (e, s) {

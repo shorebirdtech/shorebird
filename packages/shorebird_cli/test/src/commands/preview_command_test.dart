@@ -21,6 +21,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -1875,7 +1876,7 @@ channel: ${DeploymentTrack.staging.channel}
             () => codePushClientWrapper.getReleaseArtifact(
               appId: appId,
               releaseId: releaseId,
-              arch: 'exe',
+              arch: primaryWindowsReleaseArtifactArch,
               platform: ReleasePlatform.windows,
             ),
           ).called(1);

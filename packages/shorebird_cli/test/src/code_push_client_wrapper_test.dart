@@ -1561,7 +1561,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 artifactPath: releaseZip.path,
                 appId: appId,
                 releaseId: releaseId,
-                arch: 'exe',
+                arch: primaryWindowsReleaseArtifactArch,
                 platform: ReleasePlatform.windows,
                 hash: any(named: 'hash'),
                 canSideload: true,
