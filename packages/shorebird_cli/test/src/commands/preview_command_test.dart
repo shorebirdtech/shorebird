@@ -1882,6 +1882,24 @@ channel: ${DeploymentTrack.staging.channel}
         });
       });
 
+      group('when downloading release artifact fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.downloadFile(any()),
+          ).thenThrow(Exception('oops'));
+        });
+
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => artifactManager.downloadFile(
+              Uri.parse(releaseArtifactUrl),
+            ),
+          ).called(1);
+        });
+      });
+
       group('when preview artifact is not cached', () {
         setUp(() {
           when(() => artifactManager.downloadFile(any()))
