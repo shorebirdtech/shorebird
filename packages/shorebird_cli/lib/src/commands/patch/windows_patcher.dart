@@ -102,12 +102,7 @@ class WindowsPatcher extends Patcher {
   }) async {
     final createDiffProgress = logger.progress('Creating patch artifacts');
     final patchArtifactPath = p.join(
-      projectRoot.path,
-      'build',
-      'windows',
-      'x64',
-      'runner',
-      'Release',
+      artifactManager.getWindowsReleaseDirectory().path,
       'data',
       'app.so',
     );

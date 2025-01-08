@@ -8,6 +8,7 @@ import 'package:platform/platform.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -31,7 +32,9 @@ void main() {
   group(WindowsReleaser, () {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
+    late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
+    late Directory releaseDirectory;
     late Doctor doctor;
     late ShorebirdLogger logger;
     late FlavorValidator flavorValidator;
@@ -49,6 +52,7 @@ void main() {
         body,
         values: {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
+          artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
@@ -70,6 +74,7 @@ void main() {
     setUp(() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
+      artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       doctor = MockDoctor();
       flavorValidator = MockFlavorValidator();
@@ -84,6 +89,21 @@ void main() {
 
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults.wasParsed(any())).thenReturn(false);
+
+      releaseDirectory = Directory(
+        p.join(
+          projectRoot.path,
+          'build',
+          'windows',
+          'x63',
+          'runner',
+          'Release',
+        ),
+      )..createSync(recursive: true);
+
+      when(
+        () => artifactManager.getWindowsReleaseDirectory(),
+      ).thenReturn(releaseDirectory);
 
       when(() => logger.progress(any())).thenReturn(progress);
 
@@ -320,12 +340,16 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       });
 
       group('when release directory does not exist', () {
+        setUp(() {
+          releaseDirectory.deleteSync();
+        });
+
         test('fails progress, exits', () async {
           await expectLater(
             () => runWithOverrides(
               () => releaser.uploadReleaseArtifacts(
-                release: MockRelease(),
-                appId: 'appId',
+                release: release,
+                appId: appId,
               ),
             ),
             exitsWithCode(ExitCode.software),
@@ -340,17 +364,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
       group('when release directory exists', () {
         setUp(() {
-          Directory(
-            p.join(
-              projectRoot.path,
-              'build',
-              'windows',
-              'x64',
-              'runner',
-              'Release',
-            ),
-          ).createSync(recursive: true);
-
           when(
             () => codePushClientWrapper.createWindowsReleaseArtifacts(
               appId: any(named: 'appId'),
@@ -382,8 +395,16 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     group('postReleaseInstructions', () {
       test('returns nonempty instructions', () {
-        final instructions = releaser.postReleaseInstructions;
-        expect(instructions, isNotEmpty);
+        final instructions = runWithOverrides(
+          () => releaser.postReleaseInstructions,
+        );
+        expect(
+          instructions,
+          equals('''
+
+Windows executable created at ${artifactManager.getWindowsReleaseDirectory().path}.
+'''),
+        );
       });
     });
   });

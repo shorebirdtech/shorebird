@@ -337,6 +337,7 @@ void main() {
       const appId = 'app-id';
       const releaseId = 42;
 
+      late Directory releaseDirectory;
       late File releaseArtifact;
       late File patchArtifact;
       late File diffFile;
@@ -349,7 +350,7 @@ void main() {
         diffFile = File(p.join(tempDir.path, 'diff.so'))
           ..createSync(recursive: true);
 
-        patchArtifact = File(
+        releaseDirectory = Directory(
           p.join(
             projectRoot.path,
             'build',
@@ -357,11 +358,20 @@ void main() {
             'x64',
             'runner',
             'Release',
+          ),
+        )..createSync(recursive: true);
+
+        patchArtifact = File(
+          p.join(
+            releaseDirectory.path,
             'data',
             'app.so',
           ),
         )..createSync(recursive: true);
 
+        when(
+          () => artifactManager.getWindowsReleaseDirectory(),
+        ).thenReturn(releaseDirectory);
         when(
           () => artifactManager.extractZip(
             zipFile: any(named: 'zipFile'),

@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
@@ -120,16 +121,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     required String appId,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    final releaseDir = Directory(
-      p.join(
-        projectRoot.path,
-        'build',
-        'windows',
-        'x64',
-        'runner',
-        'Release',
-      ),
-    );
+    final releaseDir = artifactManager.getWindowsReleaseDirectory();
 
     if (!releaseDir.existsSync()) {
       logger.err('No release directory found at ${releaseDir.path}');
@@ -149,5 +141,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   @override
   String get postReleaseInstructions => '''
 
-Windows executable created at TODO.''';
+Windows executable created at ${artifactManager.getWindowsReleaseDirectory().path}.
+''';
 }
