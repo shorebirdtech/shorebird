@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.0 (January 6, 2025)
+
+- 🪟 Windows beta support!
+
 ## 1.5.5 (January 6, 2025)
 
 - 🔐 Add custom keystore support to `shorebird preview`
