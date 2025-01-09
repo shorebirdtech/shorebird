@@ -6,7 +6,7 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
-## 1.6.0 (January 6, 2025)
+## 1.6.0 (January 9, 2025)
 
 - 🪟 Windows beta support!
 
