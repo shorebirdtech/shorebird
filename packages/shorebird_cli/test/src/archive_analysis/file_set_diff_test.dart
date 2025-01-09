@@ -27,7 +27,7 @@ void main() {
 
     group('prettyString', () {
       test('returns a string with added, changed, and removed files', () {
-        final fileSetDiff = FileSetDiff(
+        const fileSetDiff = FileSetDiff(
           addedPaths: {'a', 'b'},
           changedPaths: {'c'},
           removedPaths: {'d'},
@@ -46,7 +46,7 @@ void main() {
       });
 
       test('does not include empty path sets', () {
-        final fileSetDiff = FileSetDiff(
+        const fileSetDiff = FileSetDiff(
           addedPaths: {'a', 'b'},
           changedPaths: {},
           removedPaths: {},
@@ -68,7 +68,7 @@ void main() {
     });
 
     test('isEmpty is false if any path sets are not empty', () {
-      final fileSetDiff = FileSetDiff(
+      const fileSetDiff = FileSetDiff(
         addedPaths: {'a'},
         changedPaths: {},
         removedPaths: {},

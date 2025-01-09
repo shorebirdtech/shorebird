@@ -5,3 +5,4 @@ export 'ios_releaser.dart';
 export 'macos_releaser.dart';
 export 'release_command.dart';
 export 'releaser.dart';
+export 'windows_releaser.dart';

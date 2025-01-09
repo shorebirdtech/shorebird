@@ -18,8 +18,10 @@ import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -277,7 +279,11 @@ This is only applicable when previewing Android releases.''',
           deviceId: deviceId,
           track: track,
         ),
-      ReleasePlatform.windows => throw UnimplementedError(),
+      ReleasePlatform.windows => installAndLaunchWindows(
+          appId: appId,
+          release: release,
+          track: track,
+        ),
     };
   }
 
@@ -314,6 +320,72 @@ This is only applicable when previewing Android releases.''',
       choices: platformNames,
     );
     return ReleasePlatform.values.firstWhere((p) => p.displayName == platform);
+  }
+
+  /// Downloads and runs the given [release] of the given [appId] on Windows.
+  Future<int> installAndLaunchWindows({
+    required String appId,
+    required Release release,
+    required DeploymentTrack track,
+  }) async {
+    const platform = ReleasePlatform.windows;
+    late Directory appDirectory;
+    late ReleaseArtifact releaseExeArtifact;
+
+    try {
+      releaseExeArtifact = await codePushClientWrapper.getReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        arch: primaryWindowsReleaseArtifactArch,
+        platform: platform,
+      );
+    } on Exception catch (e, s) {
+      logger
+        ..err('Error getting release artifact: $e')
+        ..detail('Stack trace: $s');
+      return ExitCode.software.code;
+    }
+
+    appDirectory = Directory(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        artifact: releaseExeArtifact,
+        platform: platform,
+        extension: 'exe',
+      ),
+    );
+
+    if (!appDirectory.existsSync()) {
+      final downloadArtifactProgress = logger.progress('Downloading release');
+      try {
+        if (!appDirectory.existsSync()) {
+          appDirectory.createSync(recursive: true);
+        }
+
+        final archiveFile = await artifactManager.downloadFile(
+          Uri.parse(releaseExeArtifact.url),
+        );
+        await artifactManager.extractZip(
+          zipFile: archiveFile,
+          outputDirectory: appDirectory,
+        );
+        downloadArtifactProgress.complete();
+      } on Exception catch (error) {
+        downloadArtifactProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
+    final exeFile = appDirectory
+        .listSync()
+        .whereType<File>()
+        .firstWhere((file) => file.path.endsWith('.exe'));
+
+    final proc = await process.start(exeFile.path, []);
+    proc.stdout.listen((log) => logger.info(utf8.decode(log)));
+    proc.stderr.listen((log) => logger.err(utf8.decode(log)));
+    return proc.exitCode;
   }
 
   /// Installs and launches the release on macOS.

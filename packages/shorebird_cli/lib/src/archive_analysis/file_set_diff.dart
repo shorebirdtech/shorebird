@@ -1,12 +1,13 @@
 import 'package:collection/collection.dart';
+import 'package:equatable/equatable.dart';
 
 /// Maps file paths to SHA-256 hash digests.
 typedef PathHashes = Map<String, String>;
 
 /// Sets of [PathHashes] that represent changes between two sets of files.
-class FileSetDiff {
+class FileSetDiff extends Equatable {
   /// Creates a [FileSetDiff] showing added, changed, and removed file sets.
-  FileSetDiff({
+  const FileSetDiff({
     required this.addedPaths,
     required this.removedPaths,
     required this.changedPaths,
@@ -72,4 +73,7 @@ class FileSetDiff {
 $padding$title:
 ${paths.sorted().map((p) => '${padding * 2}$p').join('\n')}''';
   }
+
+  @override
+  List<Object> get props => [addedPaths, removedPaths, changedPaths];
 }

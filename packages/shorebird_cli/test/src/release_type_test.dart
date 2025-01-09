@@ -10,6 +10,7 @@ void main() {
       expect(ReleaseType.ios.cliName, 'ios');
       expect(ReleaseType.iosFramework.cliName, 'ios-framework');
       expect(ReleaseType.aar.cliName, 'aar');
+      expect(ReleaseType.windows.cliName, 'windows');
     });
 
     test('releasePlatform', () {
@@ -17,6 +18,7 @@ void main() {
       expect(ReleaseType.ios.releasePlatform, ReleasePlatform.ios);
       expect(ReleaseType.iosFramework.releasePlatform, ReleasePlatform.ios);
       expect(ReleaseType.aar.releasePlatform, ReleasePlatform.android);
+      expect(ReleaseType.windows.releasePlatform, ReleasePlatform.windows);
     });
 
     group('releaseTypes', () {

@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -545,6 +546,53 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     }
 
     return File(outFilePath);
+  }
+
+  /// Builds a windows app and returns the x64 Release directory
+  Future<Directory> buildWindowsApp({
+    String? flavor,
+    String? target,
+    List<String> args = const [],
+    String? base64PublicKey,
+    DetailProgress? buildProgress,
+  }) async {
+    await _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'windows',
+        '--release',
+        ...args,
+      ];
+
+      final buildProcess = await process.start(
+        executable,
+        arguments,
+        runInShell: true,
+        // TODO(bryanoltman): support this
+        // environment: base64PublicKey?.toPublicKeyEnv(),
+      );
+
+      buildProcess.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        logger.detail(line);
+        // TODO(bryanoltman): update build progress
+      });
+
+      final stderrLines = await buildProcess.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .toList();
+      final stdErr = stderrLines.join('\n');
+      final exitCode = await buildProcess.exitCode;
+      if (exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('Failed to build: $stdErr');
+      }
+    });
+
+    return artifactManager.getWindowsReleaseDirectory();
   }
 
   /// Given a log of verbose output from `flutter build ipa`, returns a

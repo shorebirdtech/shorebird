@@ -343,10 +343,26 @@ void main() {
         });
       });
 
-      test('prints beta warning when macos platform is selected', () async {
-        when(() => argResults['platforms']).thenReturn(['macos']);
-        await runWithOverrides(command.run);
-        verify(() => logger.warn(macosBetaWarning)).called(1);
+      group('when patching a macos release', () {
+        setUp(() {
+          when(() => argResults['platforms']).thenReturn(['macos']);
+        });
+
+        test('prints beta warning', () async {
+          await runWithOverrides(command.run);
+          verify(() => logger.warn(macosBetaWarning)).called(1);
+        });
+      });
+
+      group('when patching a windows release', () {
+        setUp(() {
+          when(() => argResults['platforms']).thenReturn(['windows']);
+        });
+
+        test('prints beta warning', () async {
+          await runWithOverrides(command.run);
+          verify(() => logger.warn(windowsBetaWarning)).called(1);
+        });
       });
     });
 
@@ -554,6 +570,10 @@ void main() {
         expect(
           command.getPatcher(ReleaseType.macos),
           isA<MacosPatcher>(),
+        );
+        expect(
+          command.getPatcher(ReleaseType.windows),
+          isA<WindowsPatcher>(),
         );
       });
     });

@@ -803,6 +803,24 @@ void main() {
       });
     });
 
+    group('getWindowsReleaseDirectory', () {
+      test('returns correct path', () {
+        expect(
+          runWithOverrides(artifactManager.getWindowsReleaseDirectory).path,
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'windows',
+              'x64',
+              'runner',
+              'Release',
+            ),
+          ),
+        );
+      });
+    });
+
     group('getIpa', () {
       group('when ipa build directory does not exist', () {
         test('returns null', () {

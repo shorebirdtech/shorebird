@@ -17,7 +17,10 @@ enum ReleaseType {
   macos,
 
   /// An iOS framework used in a hybrid app.
-  iosFramework;
+  iosFramework,
+
+  /// A full Flutter Windows app.
+  windows;
 
   /// The CLI argument used to specify the release type(s).
   String get cliName {
@@ -32,6 +35,8 @@ enum ReleaseType {
         return 'macos';
       case ReleaseType.aar:
         return 'aar';
+      case ReleaseType.windows:
+        return 'windows';
     }
   }
 
@@ -48,6 +53,8 @@ enum ReleaseType {
         return ReleasePlatform.macos;
       case ReleaseType.iosFramework:
         return ReleasePlatform.ios;
+      case ReleaseType.windows:
+        return ReleasePlatform.windows;
     }
   }
 }

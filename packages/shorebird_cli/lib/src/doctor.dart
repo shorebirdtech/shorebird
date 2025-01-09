@@ -29,6 +29,11 @@ class Doctor {
     MacosNetworkEntitlementValidator(),
   ];
 
+  /// Validators that verify shorebird will work on Windows.
+  final List<Validator> windowsCommandValidators = [
+    // Check whether powershell is installed?
+  ];
+
   /// Validators that should run on all commands.
   List<Validator> generalValidators = [
     ShorebirdVersionValidator(),

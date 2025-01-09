@@ -21,7 +21,9 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
@@ -242,6 +244,7 @@ void main() {
         ReleasePlatform.android: ReleaseStatus.active,
         ReleasePlatform.ios: ReleaseStatus.active,
         ReleasePlatform.macos: ReleaseStatus.active,
+        ReleasePlatform.windows: ReleaseStatus.active,
       });
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => progress.fail(any())).thenReturn(null);
@@ -324,24 +327,6 @@ void main() {
             'This release can only be previewed on platforms that support iOS',
           ),
         ).called(1);
-      });
-    });
-
-    group('when releasePlatform is not supported', () {
-      setUp(() {
-        when(() => release.platformStatuses).thenReturn({
-          ReleasePlatform.windows: ReleaseStatus.active,
-        });
-        when(
-          () => argResults['platform'],
-        ).thenReturn(ReleasePlatform.windows.name);
-      });
-
-      test('throws an UnimplementedError', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          throwsA(isA<UnimplementedError>()),
-        );
       });
     });
 
@@ -1802,6 +1787,173 @@ channel: ${DeploymentTrack.staging.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
           verify(() => logger.info('hello world')).called(1);
+        });
+      });
+    });
+
+    group('windows', () {
+      const releaseArtifactUrl = 'https://example.com/Release.zip';
+      const releaseArtifactId = 42;
+
+      late File releaseArtifactFile;
+      late ReleaseArtifact windowsReleaseArtifact;
+      late ShorebirdProcess shorebirdProcess;
+      late Process process;
+
+      R runWithOverrides<R>(R Function() body) {
+        return HttpOverrides.runZoned(
+          () => runScoped(
+            body,
+            values: {
+              artifactManagerRef.overrideWith(() => artifactManager),
+              authRef.overrideWith(() => auth),
+              cacheRef.overrideWith(() => cache),
+              codePushClientWrapperRef
+                  .overrideWith(() => codePushClientWrapper),
+              httpClientRef.overrideWith(() => httpClient),
+              loggerRef.overrideWith(() => logger),
+              platformRef.overrideWith(() => platform),
+              processRef.overrideWith(() => shorebirdProcess),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+        );
+      }
+
+      setUp(() {
+        shorebirdProcess = MockShorebirdProcess();
+        process = MockProcess();
+        windowsReleaseArtifact = MockReleaseArtifact();
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        releaseArtifactFile = File(p.join(tempDir.path, 'Release.zip'));
+
+        when(() => process.stdout)
+            .thenAnswer((_) => Stream.value(utf8.encode('hello world')));
+        when(() => process.stderr)
+            .thenAnswer((_) => Stream.value(utf8.encode('hello error')));
+        when(() => process.exitCode)
+            .thenAnswer((_) async => ExitCode.success.code);
+
+        when(
+          () => shorebirdProcess.start(any(), any()),
+        ).thenAnswer((_) async => process);
+
+        when(() => windowsReleaseArtifact.id).thenReturn(releaseArtifactId);
+        when(() => windowsReleaseArtifact.url).thenReturn(releaseArtifactUrl);
+
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.windows: ReleaseStatus.active,
+        });
+
+        when(
+          () => codePushClientWrapper.getReleaseArtifact(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+          ),
+        ).thenAnswer((_) async => windowsReleaseArtifact);
+      });
+
+      group('when getting release artifact fails', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(Exception('oops'));
+        });
+
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: appId,
+              releaseId: releaseId,
+              arch: primaryWindowsReleaseArtifactArch,
+              platform: ReleasePlatform.windows,
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when downloading release artifact fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.downloadFile(any()),
+          ).thenThrow(Exception('oops'));
+        });
+
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => artifactManager.downloadFile(
+              Uri.parse(releaseArtifactUrl),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when preview artifact is not cached', () {
+        setUp(() {
+          when(() => artifactManager.downloadFile(any()))
+              .thenAnswer((_) async => releaseArtifactFile);
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer((invocation) async {
+            final outDirectory =
+                invocation.namedArguments[#outputDirectory] as Directory;
+            File(p.join(outDirectory.path, 'runner.exe'))
+                .createSync(recursive: true);
+          });
+        });
+
+        test('downloads and launches artifact', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+
+          verify(
+            () => artifactManager.downloadFile(Uri.parse(releaseArtifactUrl)),
+          ).called(1);
+          verify(
+            () => shorebirdProcess.start(any(that: endsWith('runner.exe')), []),
+          ).called(1);
+          verify(() => logger.info('hello world')).called(1);
+          verify(() => logger.err('hello error')).called(1);
+        });
+      });
+
+      group('when preview artifact is cached', () {
+        setUp(() {
+          File(
+            p.join(
+              previewDirectory.path,
+              'windows_${releaseVersion}_$releaseArtifactId.exe',
+              'runner.exe',
+            ),
+          ).createSync(recursive: true);
+        });
+
+        test('launches cached artifact', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+
+          verifyNever(() => artifactManager.downloadFile(any()));
+          verify(
+            () => shorebirdProcess.start(any(that: endsWith('runner.exe')), []),
+          ).called(1);
+          verify(() => logger.info('hello world')).called(1);
+          verify(() => logger.err('hello error')).called(1);
         });
       });
     });

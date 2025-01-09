@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -31,6 +32,7 @@ void main() {
 
   group(ArtifactBuilder, () {
     final projectRoot = Directory.systemTemp.createTempSync();
+    late ArtifactManager artifactManager;
     late Ios ios;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
@@ -47,6 +49,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          artifactManagerRef.overrideWith(() => artifactManager),
           iosRef.overrideWith(() => ios),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
@@ -65,6 +68,7 @@ void main() {
     });
 
     setUp(() {
+      artifactManager = MockArtifactManager();
       buildProcessResult = MockProcessResult();
       ios = MockIos();
       logger = MockShorebirdLogger();
@@ -1456,6 +1460,84 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
       },
       testOn: 'mac-os',
     );
+
+    group('buildWindowsApp', () {
+      late Directory windowsReleaseDirectory;
+
+      setUp(() {
+        windowsReleaseDirectory = Directory(
+          p.join(
+            projectRoot.path,
+            'build',
+            'windows',
+            'x64',
+            'runner',
+            'Release',
+          ),
+        );
+        when(
+          () => artifactManager.getWindowsReleaseDirectory(),
+        ).thenReturn(windowsReleaseDirectory);
+        when(
+          () => shorebirdProcess.start(
+            'flutter',
+            [
+              'build',
+              'windows',
+              '--release',
+            ],
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => buildProcess);
+      });
+
+      group('when flutter build fails', () {
+        setUp(() {
+          when(
+            () => buildProcess.exitCode,
+          ).thenAnswer((_) async => ExitCode.software.code);
+          when(() => buildProcess.stderr).thenAnswer(
+            (_) => Stream.fromIterable(
+              [
+                'stderr contents',
+              ].map(utf8.encode),
+            ),
+          );
+        });
+
+        test('throws ArtifactBuildException', () async {
+          expect(
+            () => runWithOverrides(() => builder.buildWindowsApp()),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.message,
+                'message',
+                equals('Failed to build: stderr contents'),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when flutter build succeeds', () {
+        setUp(() {
+          when(
+            () => buildProcess.exitCode,
+          ).thenAnswer((_) async => ExitCode.success.code);
+        });
+
+        test('returns path to Release directory', () async {
+          final result = await runWithOverrides(
+            () => builder.buildWindowsApp(),
+          );
+
+          expect(
+            result.path,
+            endsWith(p.join('build', 'windows', 'x64', 'runner', 'Release')),
+          );
+        });
+      });
+    });
 
     group('findAppDill', () {
       group('when gen_snapshot is invoked with app.dill', () {

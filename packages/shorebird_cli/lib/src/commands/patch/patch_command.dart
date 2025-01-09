@@ -205,6 +205,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       logger.warn(macosBetaWarning);
     }
 
+    if (results.releaseTypes.contains(ReleaseType.windows)) {
+      logger.warn(windowsBetaWarning);
+    }
+
     final patcherFutures =
         results.releaseTypes.map(_resolvePatcher).map(createPatch);
 
@@ -249,6 +253,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         );
       case ReleaseType.aar:
         return AarPatcher(
+          argResults: results,
+          argParser: argParser,
+          flavor: flavor,
+          target: target,
+        );
+      case ReleaseType.windows:
+        return WindowsPatcher(
           argResults: results,
           argParser: argParser,
           flavor: flavor,

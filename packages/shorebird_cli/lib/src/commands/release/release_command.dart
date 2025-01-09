@@ -165,6 +165,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       logger.warn(macosBetaWarning);
     }
 
+    if (results.releaseTypes.contains(ReleaseType.windows)) {
+      logger.warn(windowsBetaWarning);
+    }
+
     final releaserFutures =
         results.releaseTypes.map(_resolveReleaser).map(createRelease);
 
@@ -205,6 +209,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         );
       case ReleaseType.aar:
         return AarReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
+      case ReleaseType.windows:
+        return WindowsReleaser(
           argResults: results,
           flavor: flavor,
           target: target,
