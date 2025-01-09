@@ -67,8 +67,8 @@ To change the version of this release, change your app's version in your pubspec
           await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
       final gitHash =
           await shorebirdFlutter.getRevisionForVersion(flutterVersionArg);
-      if ((version != null &&
-              version < minimumSupportedWindowsFlutterVersion) &&
+      if (version != null &&
+          version < minimumSupportedWindowsFlutterVersion &&
           !windowsFlutterGitHashesBelowMinVersion.contains(gitHash)) {
         logger.err(
           '''
