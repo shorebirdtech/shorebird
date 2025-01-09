@@ -205,6 +205,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       logger.warn(macosBetaWarning);
     }
 
+    if (results.releaseTypes.contains(ReleaseType.windows)) {
+      logger.warn(windowsBetaWarning);
+    }
+
     final patcherFutures =
         results.releaseTypes.map(_resolvePatcher).map(createPatch);
 

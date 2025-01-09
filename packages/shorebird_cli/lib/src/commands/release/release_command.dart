@@ -165,6 +165,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       logger.warn(macosBetaWarning);
     }
 
+    if (results.releaseTypes.contains(ReleaseType.windows)) {
+      logger.warn(windowsBetaWarning);
+    }
+
     final releaserFutures =
         results.releaseTypes.map(_resolveReleaser).map(createRelease);
 
