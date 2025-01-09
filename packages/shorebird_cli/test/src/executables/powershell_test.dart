@@ -56,16 +56,33 @@ void main() {
       });
 
       group('when exit code is success', () {
-        setUp(() {
-          when(() => processResult.exitCode).thenReturn(0);
-          when(() => processResult.stdout).thenReturn('1.0.0');
+        group('when version code includes a build number', () {
+          setUp(() {
+            when(() => processResult.exitCode).thenReturn(0);
+            when(() => processResult.stdout).thenReturn('1.0.0+1');
+          });
+
+          test('returns unaltered version string', () async {
+            final version = await runWithOverrides(
+              () => powershell.getExeVersionString(File('')),
+            );
+            expect(version, '1.0.0+1');
+          });
         });
 
-        test('returns the version string', () async {
-          final version = await runWithOverrides(
-            () => powershell.getExeVersionString(File('')),
-          );
-          expect(version, '1.0.0');
+        group('when version code does not include a build number', () {
+          setUp(() {
+            when(() => processResult.exitCode).thenReturn(0);
+            when(() => processResult.stdout).thenReturn('1.0.0');
+          });
+
+          test('returns the version string with build number 0 added',
+              () async {
+            final version = await runWithOverrides(
+              () => powershell.getExeVersionString(File('')),
+            );
+            expect(version, '1.0.0+0');
+          });
         });
       });
     });

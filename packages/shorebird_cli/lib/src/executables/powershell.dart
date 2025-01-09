@@ -47,6 +47,10 @@ class Powershell {
       runInShell: true,
     );
 
-    return (result.stdout as String).trim();
+    var versionString = (result.stdout as String).trim();
+    if (!versionString.contains('+')) {
+      versionString += '+0';
+    }
+    return versionString;
   }
 }
