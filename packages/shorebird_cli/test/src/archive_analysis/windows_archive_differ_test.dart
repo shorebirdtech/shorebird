@@ -42,28 +42,32 @@ void main() {
       });
     });
 
-    group('isNativeFilePath', () {
-      group('when file extension is .dll', () {
-        test('returns true', () {
-          final result = differ.isNativeFilePath('foo.dll');
-          expect(result, isTrue);
+    group(
+      'isNativeFilePath',
+      () {
+        group('when file extension is .dll', () {
+          test('returns true', () {
+            final result = differ.isNativeFilePath('foo.dll');
+            expect(result, isTrue);
+          });
         });
-      });
 
-      group('when file extension is .exe', () {
-        test('returns true', () {
-          final result = differ.isNativeFilePath('foo.exe');
-          expect(result, isTrue);
+        group('when file extension is .exe', () {
+          test('returns true', () {
+            final result = differ.isNativeFilePath('foo.exe');
+            expect(result, isTrue);
+          });
         });
-      });
 
-      group('when file extension is not .dll or .exe', () {
-        test('returns false', () {
-          final result = differ.isNativeFilePath('foo.so');
-          expect(result, isFalse);
+        group('when file extension is not .dll or .exe', () {
+          test('returns false', () {
+            final result = differ.isNativeFilePath('foo.so');
+            expect(result, isFalse);
+          });
         });
-      });
-    });
+      },
+      skip: 'Disabled until we can reliably report native diffs',
+    );
 
     group('changedFiles', () {
       final winArchivesFixturesBasePath =
