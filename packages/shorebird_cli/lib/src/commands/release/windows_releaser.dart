@@ -65,7 +65,11 @@ To change the version of this release, change your app's version in your pubspec
     if (flutterVersionArg != null) {
       final version =
           await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
-      if (version != null && version < minimumSupportedWindowsFlutterVersion) {
+      final gitHash =
+          await shorebirdFlutter.resolveFlutterRevision(flutterVersionArg);
+      if ((version != null &&
+              version < minimumSupportedWindowsFlutterVersion) ||
+          !flutter_3_27_1_windowsHashes.contains(gitHash)) {
         logger.err(
           '''
 Windows releases are not supported with Flutter versions older than $minimumSupportedWindowsFlutterVersion.
