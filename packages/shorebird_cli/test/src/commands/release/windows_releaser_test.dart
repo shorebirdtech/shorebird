@@ -222,11 +222,12 @@ To change the version of this release, change your app's version in your pubspec
             ),
           ).thenAnswer((_) async {});
           when(() => argResults['flutter-version'] as String?)
-              .thenReturn('1.2.3');
-          when(() => shorebirdFlutter.resolveFlutterVersion('1.2.3'))
-              .thenAnswer((_) async => Version(1, 2, 3));
-          when(() => shorebirdFlutter.getVersionAndRevision())
-              .thenAnswer((_) async => '3.27.1');
+              .thenReturn('3.27.1');
+          when(() => shorebirdFlutter.resolveFlutterVersion('3.27.1'))
+              .thenAnswer((_) async => Version(3, 27, 1));
+          when(
+            () => shorebirdFlutter.getRevisionForVersion(any()),
+          ).thenAnswer((_) async => 'deadbeef');
         });
 
         test('logs error and exits with usage err', () async {
@@ -242,6 +243,22 @@ Windows releases are not supported with Flutter versions older than $minimumSupp
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             ),
           ).called(1);
+        });
+
+        group('when flutter version is 3.27.1 but hash is supported', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.getRevisionForVersion(any()),
+            ).thenAnswer(
+                (_) async => windowsFlutterGitHashesBelowMinVersion.first);
+          });
+
+          test('completes normally', () async {
+            await expectLater(
+              runWithOverrides(releaser.assertPreconditions),
+              completes,
+            );
+          });
         });
       });
     });
