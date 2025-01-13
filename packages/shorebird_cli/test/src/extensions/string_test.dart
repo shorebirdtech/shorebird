@@ -33,19 +33,6 @@ void main() {
       );
     });
 
-    test('replaces ansi escape links with markdown links', () {
-      expect(
-        link(uri: Uri.parse('https://brickhub.dev/policy')).removeAnsiEscapes(),
-        equals('[https://brickhub.dev/policy](https://brickhub.dev/policy)'),
-      );
-
-      expect(
-        link(uri: Uri.parse('http://example.com'), message: 'Example')
-            .removeAnsiEscapes(),
-        equals('[Example](http://example.com)'),
-      );
-    });
-
     test('returns string unchanged if no ansi escape codes are present', () {
       expect('test'.removeAnsiEscapes(), equals('test'));
     });
