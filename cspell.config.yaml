@@ -96,6 +96,7 @@ words:
   - SIGSTOP
   - storepass # From .github/workflows/e2e.yaml
   - storyboardc
+  - syskeys # From adb.dart
   - subosito # From .github dir, doesn't show up in "**" check?
   - swiftshader # From .github dir, doesn't show up in "**" check?
   - sysroot
