@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.2 (January 14, 2025)
+
+- 🔎 Detect native changes in Windows patches
+- 👀 Fix `shorebird preview` on Android systems with no hardware keys
+
 ## 1.6.1 (January 13, 2025)
 
 - 🤖 Fix link rendering in CI environments
