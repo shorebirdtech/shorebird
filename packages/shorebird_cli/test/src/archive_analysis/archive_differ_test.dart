@@ -14,7 +14,7 @@ void main() {
 
     group('containsPotentiallyBreakingAssetDiffs', () {
       test('returns true if any assets were added', () {
-        archiveDiffer.changedFileSetDiff = FileSetDiff(
+        archiveDiffer.changedFileSetDiff = const FileSetDiff(
           addedPaths: {assetFilePath},
           removedPaths: {},
           changedPaths: {},
@@ -28,7 +28,7 @@ void main() {
       });
 
       test('returns false if changed assets are all in the ignore list', () {
-        archiveDiffer.changedFileSetDiff = FileSetDiff(
+        archiveDiffer.changedFileSetDiff = const FileSetDiff(
           addedPaths: {},
           removedPaths: {},
           changedPaths: {'AssetManifest.bin'},
@@ -42,7 +42,7 @@ void main() {
       });
 
       test('returns true if changed assets are not all in the ignore list', () {
-        archiveDiffer.changedFileSetDiff = FileSetDiff(
+        archiveDiffer.changedFileSetDiff = const FileSetDiff(
           addedPaths: {},
           removedPaths: {},
           changedPaths: {assetFilePath},

@@ -29,13 +29,18 @@ class Doctor {
     MacosNetworkEntitlementValidator(),
   ];
 
+  /// Validators that verify shorebird will work on Windows.
+  final List<Validator> windowsCommandValidators = [
+    // Check whether powershell is installed?
+  ];
+
   /// Validators that should run on all commands.
   List<Validator> generalValidators = [
     ShorebirdVersionValidator(),
-    ShorebirdFlutterValidator(),
     AndroidInternetPermissionValidator(),
     MacosNetworkEntitlementValidator(),
     ShorebirdYamlAssetValidator(),
+    TrackedLockFilesValidator(),
   ];
 
   /// Run the provided [validators]. If [applyFixes] is `true`, any validation
@@ -69,7 +74,7 @@ class Doctor {
           for (final issue in fixableIssues) {
             try {
               await issue.fix!();
-            } catch (error) {
+            } on Exception catch (error) {
               failedFixes[issue] = error;
             }
           }

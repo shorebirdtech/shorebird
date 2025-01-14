@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -82,7 +83,7 @@ final artifactBuilderRef = create(ArtifactBuilder.new);
 ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 
 extension on String {
-  /// Converts this base64-encoded public key into the Map<String, String>:
+  /// Converts this base64-encoded public key into the `Map<String, String>`:
   ///   {'SHOREBIRD_PUBLIC_KEY': this}
   ///
   /// SHOREBIRD_PUBLIC_KEY is the name expected by the Shorebird's Flutter tool
@@ -416,11 +417,9 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
       }
 
       if (stderr.contains('Encountered error while creating the IPA')) {
-        final errorMessage = _failedToCreateIpaErrorMessage(stderr: stderr);
-
         throw ArtifactBuildException('''
 Failed to build:
-$errorMessage''');
+$stderr''');
       }
 
       appDillPath = findAppDill(stdout: stdout);
@@ -472,34 +471,6 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
     }
 
     return IosFrameworkBuildResult(kernelFile: File(appDillPath!));
-  }
-
-  String _failedToCreateIpaErrorMessage({required String stderr}) {
-    // The full error text consists of many repeated lines of the format:
-    // (newlines added for line length)
-    //
-    // [   +1 ms] Encountered error while creating the IPA:
-    // [        ] error: exportArchive: Team "Team" does not have permission to
-    //      create "iOS In House" provisioning profiles.
-    //    error: exportArchive: No profiles for 'com.example.dev' were found
-    //    error: exportArchive: No signing certificate "iOS Distribution" found
-    //    error: exportArchive: Communication with Apple failed
-    //    error: exportArchive: No signing certificate "iOS Distribution" found
-    //    error: exportArchive: Team "My Team" does not have permission to
-    //      create "iOS App Store" provisioning profiles.
-    //    error: exportArchive: No profiles for 'com.example.demo' were found
-    //    error: exportArchive: Communication with Apple failed
-    //    error: exportArchive: No signing certificate "iOS Distribution" found
-    //    error: exportArchive: Communication with Apple failed
-    final exportArchiveRegex = RegExp(r'error: exportArchive:? (.+)$');
-    return stderr
-        .split('\n')
-        .map((l) => l.trim())
-        .toSet()
-        .map(exportArchiveRegex.firstMatch)
-        .whereType<Match>()
-        .map((m) => '    ${m.group(1)!}')
-        .join('\n');
   }
 
   /// A wrapper around [command] (which runs a `flutter build` command with
@@ -575,6 +546,53 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     }
 
     return File(outFilePath);
+  }
+
+  /// Builds a windows app and returns the x64 Release directory
+  Future<Directory> buildWindowsApp({
+    String? flavor,
+    String? target,
+    List<String> args = const [],
+    String? base64PublicKey,
+    DetailProgress? buildProgress,
+  }) async {
+    await _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'windows',
+        '--release',
+        ...args,
+      ];
+
+      final buildProcess = await process.start(
+        executable,
+        arguments,
+        runInShell: true,
+        // TODO(bryanoltman): support this
+        // environment: base64PublicKey?.toPublicKeyEnv(),
+      );
+
+      buildProcess.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        logger.detail(line);
+        // TODO(bryanoltman): update build progress
+      });
+
+      final stderrLines = await buildProcess.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .toList();
+      final stdErr = stderrLines.join('\n');
+      final exitCode = await buildProcess.exitCode;
+      if (exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('Failed to build: $stdErr');
+      }
+    });
+
+    return artifactManager.getWindowsReleaseDirectory();
   }
 
   /// Given a log of verbose output from `flutter build ipa`, returns a

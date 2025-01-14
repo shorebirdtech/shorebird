@@ -40,14 +40,11 @@ void main() {
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
       late CodePushClientWrapper codePushClientWrapper;
-      // late CodeSigner codeSigner;
       late Directory projectRoot;
       late Doctor doctor;
+      late FlavorValidator flavorValidator;
       late Progress progress;
       late ShorebirdLogger logger;
-      // late OperatingSystemInterface operatingSystemInterface;
-      late ShorebirdFlutterValidator flutterValidator;
-      // late ShorebirdProcess shorebirdProcess;
       late ShorebirdEnv shorebirdEnv;
       late ShorebirdFlutter shorebirdFlutter;
       late ShorebirdValidator shorebirdValidator;
@@ -62,12 +59,8 @@ void main() {
             artifactBuilderRef.overrideWith(() => artifactBuilder),
             artifactManagerRef.overrideWith(() => artifactManager),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
-            // codeSignerRef.overrideWith(() => codeSigner),
             doctorRef.overrideWith(() => doctor),
-            // iosRef.overrideWith(() => ios),
             loggerRef.overrideWith(() => logger),
-            // osInterfaceRef.overrideWith(() => operatingSystemInterface),
-            // processRef.overrideWith(() => shorebirdProcess),
             shorebirdEnvRef.overrideWith(() => shorebirdEnv),
             shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
             shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -81,15 +74,11 @@ void main() {
         artifactBuilder = MockArtifactBuilder();
         artifactManager = MockArtifactManager();
         codePushClientWrapper = MockCodePushClientWrapper();
-        // codeSigner = MockCodeSigner();
         doctor = MockDoctor();
+        flavorValidator = MockFlavorValidator();
         projectRoot = Directory.systemTemp.createTempSync();
-        // operatingSystemInterface = MockOperatingSystemInterface();
         progress = MockProgress();
         logger = MockShorebirdLogger();
-        // ios = MockIos();
-        flutterValidator = MockShorebirdFlutterValidator();
-        // shorebirdProcess = MockShorebirdProcess();
         shorebirdEnv = MockShorebirdEnv();
         shorebirdFlutter = MockShorebirdFlutter();
         shorebirdValidator = MockShorebirdValidator();
@@ -118,10 +107,10 @@ void main() {
 
         setUp(() {
           when(() => doctor.macosCommandValidators)
-              .thenReturn([flutterValidator]);
+              .thenReturn([flavorValidator]);
           when(() => shorebirdFlutter.resolveFlutterVersion(any()))
               .thenAnswer((_) async => flutterVersion);
-          when(flutterValidator.validate).thenAnswer((_) async => []);
+          when(flavorValidator.validate).thenAnswer((_) async => []);
         });
 
         group('when validation succeeds', () {
@@ -173,7 +162,7 @@ void main() {
               () => shorebirdValidator.validatePreconditions(
                 checkUserIsAuthenticated: true,
                 checkShorebirdInitialized: true,
-                validators: [flutterValidator],
+                validators: [flavorValidator],
                 supportedOperatingSystems: {Platform.macOS},
               ),
             ).called(1);

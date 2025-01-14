@@ -68,10 +68,7 @@ void main() {
       File(p.join(apksDir.path, apkFileName))
         ..createSync(recursive: true)
         ..writeAsStringSync('hello');
-      await ZipFileEncoder().zipDirectory(
-        apksDir,
-        filename: apksFile.path,
-      );
+      await ZipFileEncoder().zipDirectory(apksDir, filename: apksFile.path);
       return apksFile;
     }
 

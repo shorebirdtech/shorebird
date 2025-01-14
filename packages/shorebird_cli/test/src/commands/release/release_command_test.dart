@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
-import 'package:shorebird_cli/src/platform/macos.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -223,13 +223,33 @@ void main() {
           command.getReleaser(ReleaseType.macos),
           isA<MacosReleaser>(),
         );
+        expect(
+          command.getReleaser(ReleaseType.windows),
+          isA<WindowsReleaser>(),
+        );
       });
     });
 
-    test('prints beta warning when macos platform is selected', () async {
-      when(() => argResults['platforms']).thenReturn(['macos']);
-      await runWithOverrides(command.run);
-      verify(() => logger.warn(macosBetaWarning)).called(1);
+    group('when releasing to macos', () {
+      setUp(() {
+        when(() => argResults['platforms']).thenReturn(['macos']);
+      });
+
+      test('prints beta warning', () async {
+        await runWithOverrides(command.run);
+        verify(() => logger.warn(macosBetaWarning)).called(1);
+      });
+    });
+
+    group('when releasing to windows', () {
+      setUp(() {
+        when(() => argResults['platforms']).thenReturn(['windows']);
+      });
+
+      test('prints beta warning', () async {
+        await runWithOverrides(command.run);
+        verify(() => logger.warn(windowsBetaWarning)).called(1);
+      });
     });
 
     test('executes commands in order, completes successfully', () async {
@@ -288,6 +308,17 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
             platform: any(named: 'platform'),
           ),
         );
+      });
+    });
+
+    group('when --no-confirm is specified', () {
+      setUp(() {
+        when(() => argResults['no-confirm']).thenReturn(true);
+      });
+
+      test('does not prompt for confirmation', () async {
+        await runWithOverrides(command.run);
+        verifyNever(() => logger.confirm(any()));
       });
     });
 

@@ -61,7 +61,7 @@ We could not find a Shorebird account for ${error.email}.''',
           """If you have not yet created an account, you can do so at "${link(uri: consoleUri)}". If you believe this is an error, please reach out to us via Discord, we're happy to help!""",
         );
       return ExitCode.software.code;
-    } catch (error) {
+    } on Exception catch (error) {
       logger.err(error.toString());
       return ExitCode.software.code;
     }

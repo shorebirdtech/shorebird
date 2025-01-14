@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -19,7 +17,10 @@ enum ReleaseType {
   macos,
 
   /// An iOS framework used in a hybrid app.
-  iosFramework;
+  iosFramework,
+
+  /// A full Flutter Windows app.
+  windows;
 
   /// The CLI argument used to specify the release type(s).
   String get cliName {
@@ -34,6 +35,8 @@ enum ReleaseType {
         return 'macos';
       case ReleaseType.aar:
         return 'aar';
+      case ReleaseType.windows:
+        return 'windows';
     }
   }
 
@@ -50,11 +53,15 @@ enum ReleaseType {
         return ReleasePlatform.macos;
       case ReleaseType.iosFramework:
         return ReleasePlatform.ios;
+      case ReleaseType.windows:
+        return ReleasePlatform.windows;
     }
   }
 }
 
+/// Extension on [ArgResults] to get the release types from the CLI arguments.
 extension ReleaseTypeArgs on ArgResults {
+  /// The release types specified in the CLI arguments.
   Iterable<ReleaseType> get releaseTypes {
     List<String>? releaseTypeCliNames;
     if (wasParsed('platforms')) {

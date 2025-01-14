@@ -39,10 +39,10 @@ void main() {
     late CodeSigner codeSigner;
     late Doctor doctor;
     late Directory projectRoot;
+    late FlavorValidator flavorValidator;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late Progress progress;
-    late ShorebirdFlutterValidator flutterValidator;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
@@ -83,11 +83,11 @@ void main() {
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
       doctor = MockDoctor();
+      flavorValidator = MockFlavorValidator();
       operatingSystemInterface = MockOperatingSystemInterface();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
       logger = MockShorebirdLogger();
-      flutterValidator = MockShorebirdFlutterValidator();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
@@ -121,8 +121,8 @@ void main() {
     group('assertPreconditions', () {
       setUp(() {
         when(() => doctor.androidCommandValidators)
-            .thenReturn([flutterValidator]);
-        when(flutterValidator.validate).thenAnswer((_) async => []);
+            .thenReturn([flavorValidator]);
+        when(flavorValidator.validate).thenAnswer((_) async => []);
       });
 
       group('when validation succeeds', () {
@@ -178,7 +178,7 @@ void main() {
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: true,
               checkShorebirdInitialized: true,
-              validators: [flutterValidator],
+              validators: [flavorValidator],
             ),
           ).called(1);
         });

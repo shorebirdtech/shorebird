@@ -6,6 +6,31 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.1 (January 13, 2025)
+
+- 🤖 Fix link rendering in CI environments
+
+## 1.6.0 (January 9, 2025)
+
+- 🪟 Windows beta support!
+
+## 1.5.5 (January 6, 2025)
+
+- 🔐 Add custom keystore support to `shorebird preview`
+- 🧑‍⚕️ `shorebird doctor` verifies lock files are tracked in source control
+- 🧹 Remove flutter version check from `shorebird doctor`
+
+## 1.5.4 (December 20, 2024)
+
+- ✨ Add `--no-confirm` flag to `shorebird release` and `shorebird patch`
+- 🩹 Fix bug which caused incompatibility with package:shorebird_code_push v1.x
+- 🪵 Improve logging for failed `shorebird release ios` commands.
+
+## 1.5.3 (December 17, 2024)
+
+- 🐦 Support for Flutter 3.27.1
+- 📂 Fix too many open files issue (downgraded pkg:archive)
+
 ## 1.5.2 (December 17, 2024)
 
 - 🩹 Fix iOS patching bug where gen_snapshot was not found

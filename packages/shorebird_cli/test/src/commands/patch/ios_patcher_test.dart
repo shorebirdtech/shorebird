@@ -55,15 +55,15 @@ void main() {
       late CodePushClientWrapper codePushClientWrapper;
       late CodeSigner codeSigner;
       late Doctor doctor;
-      late EngineConfig engineConfig;
       late Directory flutterDirectory;
       late Directory projectRoot;
+      late EngineConfig engineConfig;
+      late FlavorValidator flavorValidator;
       late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
       late PatchDiffChecker patchDiffChecker;
       late Progress progress;
       late ShorebirdArtifacts shorebirdArtifacts;
-      late ShorebirdFlutterValidator flutterValidator;
       late ShorebirdProcess shorebirdProcess;
       late ShorebirdEnv shorebirdEnv;
       late ShorebirdFlutter shorebirdFlutter;
@@ -117,6 +117,7 @@ void main() {
         codeSigner = MockCodeSigner();
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
+        flavorValidator = MockFlavorValidator();
         ios = MockIos();
         operatingSystemInterface = MockOperatingSystemInterface();
         patchDiffChecker = MockPatchDiffChecker();
@@ -126,7 +127,6 @@ void main() {
         shorebirdArtifacts = MockShorebirdArtifacts();
         shorebirdProcess = MockShorebirdProcess();
         shorebirdEnv = MockShorebirdEnv();
-        flutterValidator = MockShorebirdFlutterValidator();
         shorebirdFlutter = MockShorebirdFlutter();
         shorebirdValidator = MockShorebirdValidator();
         xcodeBuild = MockXcodeBuild();
@@ -195,7 +195,7 @@ void main() {
         setUp(() {
           when(
             () => doctor.iosCommandValidators,
-          ).thenReturn([flutterValidator]);
+          ).thenReturn([flavorValidator]);
         });
 
         group('when validation succeeds', () {
@@ -266,7 +266,7 @@ void main() {
               () => shorebirdValidator.validatePreconditions(
                 checkUserIsAuthenticated: true,
                 checkShorebirdInitialized: true,
-                validators: [flutterValidator],
+                validators: [flavorValidator],
                 supportedOperatingSystems: {Platform.macOS},
               ),
             ).called(1);
@@ -691,7 +691,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             test('forwards --split-debug-info to builder', () async {
               try {
                 await runWithOverrides(patcher.buildPatchArtifact);
-              } catch (_) {}
+              } on Exception {
+                // ignore
+              }
               verify(
                 () => artifactBuilder.buildElfAotSnapshot(
                   appDillPath: any(named: 'appDillPath'),
@@ -1012,6 +1014,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               ),
             ).thenAnswer((_) async => linkPercentage);
             when(
+              aotTools.isGeneratePatchDiffBaseSupported,
+            ).thenAnswer((_) async => false);
+            when(
               () => artifactManager.getIosAppDirectory(
                 xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
               ),
@@ -1167,7 +1172,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       releaseArtifact: releaseArtifactFile,
                     ),
                   );
-                } catch (_) {}
+                } on Exception {
+                  // ignore
+                }
                 verify(
                   () => aotTools.link(
                     base: any(named: 'base'),
@@ -1519,8 +1526,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       kernel: any(named: 'kernel'),
                       outputPath: any(named: 'outputPath'),
                       workingDirectory: any(named: 'workingDirectory'),
-                      // ignore: avoid_redundant_argument_values
-                      dumpDebugInfoPath: null,
                     ),
                   ).called(1);
                 });
@@ -1691,7 +1696,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                   'Info.plist',
                 ),
               ).deleteSync(recursive: true);
-            } catch (_) {}
+            } on Exception {
+              // ignore
+            }
           });
 
           test('exit with code 70', () async {

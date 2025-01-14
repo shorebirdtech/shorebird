@@ -3,33 +3,19 @@ version: "0.2"
 ignorePaths:
   ["coverage", "bin/cache", "third_party", "build", "*.xcscheme", "fixtures"]
 words:
-  - ANDROIDD
-  - Apks
-  - Azul
-  - Entra
-  - FLUSHALL
-  - LOCALAPPDATA
-  - NOAUTH
-  - Oltman
-  - PRNG
-  - RSAPKCS
-  - Retryable
-  - SIGSTOP
-  - USERPROFILE
-  - Unpatchable
-  - VCRUNTIME
-  - Verdana
-  - WRONGPASS
   - aabs
   - aapt
   - aarch
   - aars # Android Archive
   - allprojects # From gradle files
   - altool
+  - ANDROIDD
   - apigee
+  - Apks
   - appbundle
   - archs
   - armeabi
+  - Azul
   - backboardd
   - bintools
   - bitcode
@@ -47,29 +33,40 @@ words:
   - dyld
   - dylib
   - endtemplate
+  - Entra
   - exitcode
   - exportoptions
   - felangel
+  - FLUSHALL
   - genhtml
+  - genkey # From .github/workflows/e2e.yaml
   - gradlew
   - hotreload
   - idevicesyslog
   - iokit
   - iphoneos
+  - keyalg # From .github/workflows/e2e.yaml
+  - keypass # From .github/workflows/e2e.yaml
+  - keysize # From .github/workflows/e2e.yaml
+  - keytool # From .github/workflows/e2e.yaml
   - lerping
   - libapp
   - libflutter
   - libimobiledevice
   - libplist
   - lldb
+  - LOCALAPPDATA
   - logcat
+  - longpaths
   - lproj
   - metadatas
   - mktemp
   - mocktail
   - multioption
   - noaudio # From .github dir, doesn't show up in "**" check?
+  - NOAUTH
   - nserror
+  - Oltman
   - orri # Arm64 instruction, Or Register with Immediate
   - pana
   - pkcs
@@ -78,32 +75,45 @@ words:
   - pointycastle
   - precache
   - previewable
+  - PRNG
   - propertylistserialization
   - propertylistserialization
   - pubspec
   - pwsh
+  - rdata
   - reactivecircus # From .github dir, doesn't show up in "**" check?
   - readlink
   - reinit
   - requirepass # From .github dir, doesn't show up in "**" check?
+  - Retryable
+  - RSAPKCS
+  - sdcard # From .github/workflows/e2e.yaml
   - shorebirdtech
   - sideload
   - sideloadable
   - sideloaded
   - signup
+  - SIGSTOP
+  - storepass # From .github/workflows/e2e.yaml
   - storyboardc
   - subosito # From .github dir, doesn't show up in "**" check?
   - swiftshader # From .github dir, doesn't show up in "**" check?
   - sysroot
   - temurin # From .github dir, doesn't show up in "**" check?
+  - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
   - unawaited
   - unmockable
+  - Unpatchable
   - unsets
   - upvote
   - usbmuxd
+  - USERPROFILE
+  - VCRUNTIME
+  - Verdana
   - vmcode
   - writeln
+  - WRONGPASS
   - xcarchive
   - xcarchives
   - xcframework

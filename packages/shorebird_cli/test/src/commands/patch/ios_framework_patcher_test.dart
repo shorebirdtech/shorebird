@@ -48,15 +48,15 @@ void main() {
       late ArtifactManager artifactManager;
       late CodePushClientWrapper codePushClientWrapper;
       late Doctor doctor;
-      late EngineConfig engineConfig;
       late Directory flutterDirectory;
       late Directory projectRoot;
+      late EngineConfig engineConfig;
+      late FlavorValidator flavorValidator;
       late ShorebirdLogger logger;
       late OperatingSystemInterface operatingSystemInterface;
       late PatchDiffChecker patchDiffChecker;
       late Progress progress;
       late ShorebirdArtifacts shorebirdArtifacts;
-      late ShorebirdFlutterValidator flutterValidator;
       late ShorebirdProcess shorebirdProcess;
       late ShorebirdEnv shorebirdEnv;
       late ShorebirdFlutter shorebirdFlutter;
@@ -105,6 +105,7 @@ void main() {
         codePushClientWrapper = MockCodePushClientWrapper();
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
+        flavorValidator = MockFlavorValidator();
         operatingSystemInterface = MockOperatingSystemInterface();
         patchDiffChecker = MockPatchDiffChecker();
         progress = MockProgress();
@@ -113,7 +114,6 @@ void main() {
         shorebirdArtifacts = MockShorebirdArtifacts();
         shorebirdProcess = MockShorebirdProcess();
         shorebirdEnv = MockShorebirdEnv();
-        flutterValidator = MockShorebirdFlutterValidator();
         shorebirdFlutter = MockShorebirdFlutter();
         shorebirdValidator = MockShorebirdValidator();
         xcodeBuild = MockXcodeBuild();
@@ -183,7 +183,7 @@ void main() {
         setUp(() {
           when(
             () => doctor.iosCommandValidators,
-          ).thenReturn([flutterValidator]);
+          ).thenReturn([flavorValidator]);
         });
 
         group('when validation succeeds', () {
@@ -249,7 +249,7 @@ void main() {
               () => shorebirdValidator.validatePreconditions(
                 checkUserIsAuthenticated: true,
                 checkShorebirdInitialized: true,
-                validators: [flutterValidator],
+                validators: [flavorValidator],
                 supportedOperatingSystems: {Platform.macOS},
               ),
             ).called(1);
@@ -440,7 +440,9 @@ void main() {
             test('forwards --split-debug-info to builder', () async {
               try {
                 await runWithOverrides(patcher.buildPatchArtifact);
-              } catch (_) {}
+              } on Exception {
+                // ignore
+              }
               verify(
                 () => artifactBuilder.buildElfAotSnapshot(
                   appDillPath: any(named: 'appDillPath'),
@@ -644,6 +646,9 @@ void main() {
               ),
             ).thenAnswer((_) async => linkPercentage);
             when(
+              aotTools.isGeneratePatchDiffBaseSupported,
+            ).thenAnswer((_) async => false);
+            when(
               () => shorebirdEnv.flutterRevision,
             ).thenReturn(postLinkerFlutterRevision);
             when(
@@ -735,7 +740,9 @@ void main() {
                       releaseArtifact: releaseArtifactFile,
                     ),
                   );
-                } catch (_) {}
+                } on Exception {
+                  // ignore
+                }
                 verify(
                   () => aotTools.link(
                     base: any(named: 'base'),

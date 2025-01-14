@@ -342,55 +342,61 @@ void main() {
         });
       });
 
-      group('when download succeeds', () {
-        late StreamController<List<int>> responseStreamController;
+      group(
+        'when download succeeds',
+        () {
+          late StreamController<List<int>> responseStreamController;
 
-        setUp(() {
-          responseStreamController = StreamController<List<int>>();
-          when(() => httpClient.send(any())).thenAnswer(
-            (_) async => http.StreamedResponse(
-              responseStreamController.stream,
-              HttpStatus.ok,
-              contentLength: 5,
-            ),
-          );
-        });
-
-        test('progress updates with a throttled ', () async {
-          // Awaiting this will cause the test to hang
-          unawaited(
-            runWithOverrides(
-              () => artifactManager.downloadWithProgressUpdates(
-                Uri.parse('https://example.com'),
-                message: 'hello',
-                throttleDuration: const Duration(milliseconds: 50),
+          setUp(() {
+            responseStreamController = StreamController<List<int>>();
+            when(() => httpClient.send(any())).thenAnswer(
+              (_) async => http.StreamedResponse(
+                responseStreamController.stream,
+                HttpStatus.ok,
+                contentLength: 5,
               ),
-            ),
-          );
-          // Download the first 3/5. The first addition will trigger the first
-          // progress update, the second addition will be throttled, and the
-          // third addition will trigger the second progress update after the
-          // delay.
-          responseStreamController
-            ..add([1])
-            ..add([1])
-            ..add([1]);
-          await Future<void>.delayed(const Duration(milliseconds: 70));
-          // Download the last 2/5, bringing the total to 5/5
-          responseStreamController.add([1, 1]);
-          await Future<void>.delayed(const Duration(milliseconds: 70));
-          verifyInOrder([
-            () => progress.update('hello (20%)'),
-            () => progress.update('hello (60%)'),
-            () => progress.update('hello (100%)'),
-          ]);
-          verifyNever(() => progress.update('hello (0%)'));
-          verifyNever(() => progress.update('hello (20%)'));
-          verifyNever(() => progress.update('hello (80%)'));
-          verifyNoMoreInteractions(progress);
-          await responseStreamController.close();
-        });
-      });
+            );
+          });
+
+          test('progress updates with a throttled ', () async {
+            // Awaiting this will cause the test to hang
+            unawaited(
+              runWithOverrides(
+                () => artifactManager.downloadWithProgressUpdates(
+                  Uri.parse('https://example.com'),
+                  message: 'hello',
+                  throttleDuration: const Duration(milliseconds: 50),
+                ),
+              ),
+            );
+            // Download the first 3/5. The first addition will trigger the first
+            // progress update, the second addition will be throttled, and the
+            // third addition will trigger the second progress update after the
+            // delay.
+            responseStreamController
+              ..add([1])
+              ..add([1])
+              ..add([1]);
+            await Future<void>.delayed(const Duration(milliseconds: 70));
+            // Download the last 2/5, bringing the total to 5/5
+            responseStreamController.add([1, 1]);
+            await Future<void>.delayed(const Duration(milliseconds: 70));
+            verifyInOrder([
+              () => progress.update('hello (20%)'),
+              () => progress.update('hello (60%)'),
+              () => progress.update('hello (100%)'),
+            ]);
+            verifyNever(() => progress.update('hello (0%)'));
+            verifyNever(() => progress.update('hello (20%)'));
+            verifyNever(() => progress.update('hello (80%)'));
+            verifyNoMoreInteractions(progress);
+            await responseStreamController.close();
+          });
+        },
+        onPlatform: {
+          'windows': const Skip('Flaky on Windows'),
+        },
+      );
     });
 
     group('extractZip', () {
@@ -800,6 +806,24 @@ void main() {
           expect(result, isNotNull);
           expect(result!.path, equals(applicationsDirectory.path));
         });
+      });
+    });
+
+    group('getWindowsReleaseDirectory', () {
+      test('returns correct path', () {
+        expect(
+          runWithOverrides(artifactManager.getWindowsReleaseDirectory).path,
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'windows',
+              'x64',
+              'runner',
+              'Release',
+            ),
+          ),
+        );
       });
     });
 

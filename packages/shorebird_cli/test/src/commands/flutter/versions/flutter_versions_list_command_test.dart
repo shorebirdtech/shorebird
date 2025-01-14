@@ -46,7 +46,7 @@ void main() {
       when(
         () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => '1.0.0');
-      when(() => shorebirdFlutter.getVersions()).thenThrow('error');
+      when(() => shorebirdFlutter.getVersions()).thenThrow(Exception('error'));
       await expectLater(
         runWithOverrides(command.run),
         completion(equals(ExitCode.software.code)),
@@ -56,7 +56,7 @@ void main() {
         () => shorebirdFlutter.getVersionString(),
         () => shorebirdFlutter.getVersions(),
         () => progress.fail('Failed to fetch Flutter versions.'),
-        () => logger.err('error'),
+        () => logger.err('Exception: error'),
       ]);
     });
 

@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs
-
 import 'dart:async';
 import 'dart:io';
 
@@ -79,6 +77,7 @@ class IosPatcher extends Patcher {
     return p.join(p.absolute(directory), splitDebugInfoFileName);
   }
 
+  /// The last build's link percentage.
   @visibleForTesting
   double? lastBuildLinkPercentage;
 
@@ -227,7 +226,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       ipaBuildResult.kernelFile.copySync(_appDillCopyPath);
 
       buildProgress.complete();
-    } catch (_) {
+    } on Exception {
       throw ProcessExit(ExitCode.software.code);
     }
 
@@ -354,7 +353,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           releaseSnapshot: releaseArtifactFile,
         );
         patchBaseProgress.complete();
-      } catch (error) {
+      } on Exception catch (error) {
         patchBaseProgress.fail('$error');
         throw ProcessExit(ExitCode.software.code);
       }
@@ -407,7 +406,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     final plist = Plist(file: plistFile);
     try {
       return plist.versionNumber;
-    } catch (error) {
+    } on Exception catch (error) {
       logger.err(
         'Failed to determine release version from ${plistFile.path}: $error',
       );
@@ -478,7 +477,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
         additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
       );
-    } catch (error) {
+    } on Exception catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
       return (exitCode: ExitCode.software.code, linkPercentage: null);
     } finally {

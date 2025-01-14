@@ -9,13 +9,13 @@ void main() {
   group('DirectoryArchive', () {
     group('zipToTempFile', () {
       test('zips directory to location in system temp', () async {
+        const numFiles = 500;
         final directoryToZip = Directory.systemTemp.createTempSync();
-        File('${directoryToZip.path}/a.txt')
-          ..createSync()
-          ..writeAsStringSync('a');
-        File('${directoryToZip.path}/b.txt')
-          ..createSync()
-          ..writeAsStringSync('b');
+        for (var i = 0; i < numFiles; i++) {
+          File('${directoryToZip.path}/$i.txt')
+            ..createSync()
+            ..writeAsStringSync('$i');
+        }
 
         final zipFile = await directoryToZip.zipToTempFile();
         expect(zipFile.existsSync(), isTrue);
@@ -24,18 +24,14 @@ void main() {
         final tempDir = await Directory.systemTemp.createTemp();
         await extractFileToDisk(zipFile.path, tempDir.path);
         final extractedContents = tempDir.listSync(recursive: true);
-        expect(extractedContents, hasLength(2));
-
-        final extractedFileA = extractedContents.whereType<File>().firstWhere(
-              (entity) => p.basename(entity.path) == 'a.txt',
-            );
-        final extractedFileB = extractedContents.whereType<File>().firstWhere(
-              (entity) => p.basename(entity.path) == 'b.txt',
-            );
-        expect(extractedFileA.existsSync(), isTrue);
-        expect(extractedFileB.existsSync(), isTrue);
-        expect(extractedFileA.readAsStringSync(), equals('a'));
-        expect(extractedFileB.readAsStringSync(), equals('b'));
+        expect(extractedContents, hasLength(numFiles));
+        for (var i = 0; i < numFiles; i++) {
+          final extractedFile = extractedContents.whereType<File>().firstWhere(
+                (entity) => p.basename(entity.path) == '$i.txt',
+              );
+          expect(extractedFile.existsSync(), isTrue);
+          expect(extractedFile.readAsStringSync(), equals('$i'));
+        }
       });
     });
   });

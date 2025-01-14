@@ -90,8 +90,13 @@ Future<Jwt> verify(
   // By using this keystore's key IDs to validate the header above, we've
   // guaranteed that there is a public key for this key ID.
   final publicKey = publicKeys.getPublicKey(jwt.header.kid)!;
+  final bool isValid;
+  try {
+    isValid = _verifySignature(encodedJwt, publicKey);
+  } on Exception {
+    throw const JwtVerificationFailure('JWT signature is malformed.');
+  }
 
-  final isValid = _verifySignature(encodedJwt, publicKey);
   if (!isValid) {
     throw const JwtVerificationFailure('Invalid signature.');
   }
@@ -165,22 +170,18 @@ bool _verifySignature(String jwt, String publicKey) {
   if (pair.public is! rsa.RSAPublicKey) return false;
   final public = pair.public;
 
-  try {
-    final signer = Signer('SHA-256/RSA');
-    final key = RSAPublicKey(
-      public!.modulus,
-      BigInt.from(public.publicExponent),
-    );
-    final param = ParametersWithRandom(
-      PublicKeyParameter<RSAPublicKey>(key),
-      SecureRandom('AES/CTR/PRNG'),
-    );
-    signer.init(false, param);
-    final rsaSignature = RSASignature(Uint8List.fromList(sign));
-    return signer.verifySignature(Uint8List.fromList(body), rsaSignature);
-  } catch (_) {
-    return false;
-  }
+  final signer = Signer('SHA-256/RSA');
+  final key = RSAPublicKey(
+    public!.modulus,
+    BigInt.from(public.publicExponent),
+  );
+  final param = ParametersWithRandom(
+    PublicKeyParameter<RSAPublicKey>(key),
+    SecureRandom('AES/CTR/PRNG'),
+  );
+  signer.init(false, param);
+  final rsaSignature = RSASignature(Uint8List.fromList(sign));
+  return signer.verifySignature(Uint8List.fromList(body), rsaSignature);
 }
 
 /// Visible for testing only

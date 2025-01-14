@@ -73,7 +73,7 @@ void main() {
 
       group('when endpoints are not reachable', () {
         setUp(() {
-          when(() => httpClient.send(any())).thenThrow(Exception('oops'));
+          when(() => httpClient.get(any())).thenThrow(Exception('oops'));
         });
 
         test('logs reachability for each checked url', () async {
@@ -123,7 +123,7 @@ void main() {
         const downloadTimeout = Duration(milliseconds: 1);
         // Make this a healthy multiple of the upload timeout to avoid flakiness
         // on slow (read: Windows) CI machines.
-        final responseTime = downloadTimeout * 5;
+        final responseTime = downloadTimeout * 100;
         setUp(() {
           when(
             () => artifactManager.downloadFile(

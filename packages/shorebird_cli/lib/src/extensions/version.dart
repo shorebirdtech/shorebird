@@ -17,10 +17,8 @@ Version? tryParseVersion(String versionString, {bool strict = true}) {
     // and try again.
     try {
       return Version.parse('$versionString.0');
-    } catch (_) {
+    } on FormatException {
       return null;
     }
-  } catch (_) {
-    return null;
   }
 }

@@ -1,10 +1,10 @@
-// ignore_for_file: public_member_api_docs
-
+/// Extension on [String] to provide null or empty getter.
 extension NullOrEmpty on String? {
   /// Returns `true` if this string is null or empty.
   bool get isNullOrEmpty => this == null || this!.isEmpty;
 }
 
+/// Extension on [String] to provide Ansi escape code helpers.
 extension AnsiEscapes on String {
   /// Removes ANSI escape codes (usually the result of a lightCyan.wrap or
   /// similar) from this string. Used to clean up
@@ -29,6 +29,7 @@ extension AnsiEscapes on String {
   }
 }
 
+/// Extension on [String] to provide an `isUpperCase` getter.
 extension IsUpperCase on String {
   /// Returns `true` if this string is in uppercase.
   bool isUpperCase() => this == toUpperCase();

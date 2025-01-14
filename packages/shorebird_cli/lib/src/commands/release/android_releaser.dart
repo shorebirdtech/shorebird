@@ -159,7 +159,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         releaseArtifactRoot.path,
       );
       releaseVersionProgress.complete('Release version: $releaseVersion');
-    } catch (error) {
+    } on Exception catch (error) {
       releaseVersionProgress.fail('$error');
       throw ProcessExit(ExitCode.software.code);
     }

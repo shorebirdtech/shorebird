@@ -1,3 +1,4 @@
+// TODO(felangel): Add public member API docs and remove the ignore.
 // ignore_for_file: public_member_api_docs
 // cspell:words endtemplate pubspec sideloadable bryanoltman archs sideload
 // cspell:words xcarchive codesigned xcframework
@@ -8,6 +9,7 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
+import 'package:equatable/equatable.dart';
 import 'package:io/io.dart' as io;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
@@ -30,7 +32,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// {@template patch_artifact_bundle}
 /// Metadata about a patch artifact that we are about to upload.
 /// {@endtemplate}
-class PatchArtifactBundle {
+class PatchArtifactBundle extends Equatable {
   /// {@macro patch_artifact_bundle}
   const PatchArtifactBundle({
     required this.arch,
@@ -54,6 +56,9 @@ class PatchArtifactBundle {
 
   /// The signature of the artifact hash.
   final String? hashSignature;
+
+  @override
+  List<Object?> get props => [arch, path, hash, size, hashSignature];
 }
 
 // A reference to a [CodePushClientWrapper] instance.
@@ -87,11 +92,7 @@ class CodePushClientWrapper {
   }) async {
     late final String displayName;
     if (appName == null) {
-      String? defaultAppName;
-      try {
-        defaultAppName = shorebirdEnv.getPubspecYaml()?.name;
-      } catch (_) {}
-
+      final defaultAppName = shorebirdEnv.getPubspecYaml()?.name;
       displayName = logger.prompt(
         '${lightGreen.wrap('?')} How should we refer to this app?',
         defaultValue: defaultAppName,
@@ -520,6 +521,44 @@ aab artifact already exists, continuing...''',
       );
     }
 
+    createArtifactProgress.complete();
+  }
+
+  Future<void> createWindowsReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required String projectRoot,
+    required String releaseZipPath,
+  }) async {
+    final createArtifactProgress = logger.progress('Uploading artifacts');
+
+    try {
+      // logger.detail('Uploading artifact for $aabPath');
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: releaseZipPath,
+        arch: primaryWindowsReleaseArtifactArch,
+        platform: ReleasePlatform.windows,
+        hash:
+            sha256.convert(await File(releaseZipPath).readAsBytes()).toString(),
+        canSideload: true,
+        podfileLockHash: null,
+      );
+    } on CodePushConflictException catch (_) {
+      // Newlines are due to how logger.info interacts with logger.progress.
+      logger.info(
+        '''
+
+Windows release (exe) artifact already exists, continuing...''',
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading: $error',
+      );
+    }
     createArtifactProgress.complete();
   }
 

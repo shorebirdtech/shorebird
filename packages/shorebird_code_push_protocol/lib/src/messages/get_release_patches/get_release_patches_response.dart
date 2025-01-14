@@ -11,11 +11,11 @@ class GetReleasePatchesResponse {
   /// {@macro get_release_patches_response}
   const GetReleasePatchesResponse({required this.patches});
 
-  /// Converts a Map<String, dynamic> to a [GetReleasePatchesResponse]
+  /// Converts a `Map<String, dynamic>` to a [GetReleasePatchesResponse]
   factory GetReleasePatchesResponse.fromJson(Map<String, dynamic> json) =>
       _$GetReleasePatchesResponseFromJson(json);
 
-  /// Converts a [GetReleasePatchesResponse] to a Map<String, dynamic>
+  /// Converts a [GetReleasePatchesResponse] to a `Map<String, dynamic>`
   Json toJson() => _$GetReleasePatchesResponseToJson(this);
 
   /// List of patches.

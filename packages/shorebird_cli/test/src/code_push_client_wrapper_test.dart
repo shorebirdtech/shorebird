@@ -158,6 +158,7 @@ void main() {
     late CodePushClient codePushClient;
     late Ditto ditto;
     late ShorebirdLogger logger;
+    late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late Progress progress;
     late CodePushClientWrapper codePushClientWrapper;
@@ -171,6 +172,7 @@ void main() {
           dittoRef.overrideWith(() => ditto),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
       );
@@ -193,6 +195,7 @@ void main() {
         () => CodePushClientWrapper(codePushClient: codePushClient),
       );
 
+      shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
 
       when(
@@ -233,9 +236,7 @@ void main() {
               displayName: appName,
               organizationId: any(named: 'organizationId'),
             ),
-          ).thenAnswer(
-            (_) async => app,
-          );
+          ).thenAnswer((_) async => app);
 
           await runWithOverrides(
             () => codePushClientWrapper.createApp(
@@ -1446,6 +1447,128 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ).called(Arch.values.length);
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
+        });
+      });
+
+      group('createWindowsReleaseArtifacts', () {
+        late File releaseZip;
+        setUp(() {
+          releaseZip =
+              File(p.join(projectRoot.path, 'path', 'to', 'release.zip'))
+                ..createSync(recursive: true);
+        });
+
+        group('when release artifact already exists', () {
+          setUp(() {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                artifactPath: any(named: 'artifactPath'),
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenThrow(
+              const CodePushConflictException(message: 'already exists'),
+            );
+          });
+
+          test('logs message and continues', () async {
+            await runWithOverrides(
+              () => codePushClientWrapper.createWindowsReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                projectRoot: projectRoot.path,
+                releaseZipPath: releaseZip.path,
+              ),
+            );
+
+            verify(
+              () => logger.info(
+                any(that: contains('already exists, continuing...')),
+              ),
+            ).called(1);
+            verifyNever(() => progress.fail(any()));
+          });
+        });
+
+        group('when createReleaseArtifact fails', () {
+          setUp(() {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                artifactPath: any(named: 'artifactPath'),
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenThrow(Exception('something went wrong'));
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.createWindowsReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  projectRoot: projectRoot.path,
+                  releaseZipPath: releaseZip.path,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(() => progress.fail(any())).called(1);
+          });
+        });
+
+        group('when createReleaseArtifact succeeds', () {
+          setUp(() {
+            when(
+              () => codePushClient.createReleaseArtifact(
+                artifactPath: any(named: 'artifactPath'),
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).thenAnswer((_) async {});
+          });
+
+          test('completes successfully', () async {
+            await runWithOverrides(
+              () async => codePushClientWrapper.createWindowsReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                projectRoot: projectRoot.path,
+                releaseZipPath: releaseZip.path,
+              ),
+            );
+
+            verify(() => progress.complete()).called(1);
+            verifyNever(() => progress.fail(any()));
+            verify(
+              () => codePushClient.createReleaseArtifact(
+                artifactPath: releaseZip.path,
+                appId: appId,
+                releaseId: releaseId,
+                arch: primaryWindowsReleaseArtifactArch,
+                platform: ReleasePlatform.windows,
+                hash: any(named: 'hash'),
+                canSideload: true,
+                podfileLockHash: null,
+              ),
+            ).called(1);
+          });
         });
       });
 

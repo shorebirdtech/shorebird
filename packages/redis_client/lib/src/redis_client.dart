@@ -318,7 +318,7 @@ class RedisClient {
             .then((_) => onConnectionClosed())
             .catchError(onConnectionClosed),
       );
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       onConnectionClosed(error, stackTrace);
     }
   }

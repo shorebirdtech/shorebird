@@ -116,6 +116,11 @@ class ReleaseCommand extends ShorebirdCommand {
         hide: true,
         negatable: false,
       )
+      ..addFlag(
+        CommonArguments.noConfirmArg.name,
+        help: CommonArguments.noConfirmArg.description,
+        negatable: false,
+      )
       ..addOption(
         'release-version',
         help: '''
@@ -158,6 +163,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
     if (results.releaseTypes.contains(ReleaseType.macos)) {
       logger.warn(macosBetaWarning);
+    }
+
+    if (results.releaseTypes.contains(ReleaseType.windows)) {
+      logger.warn(windowsBetaWarning);
     }
 
     final releaserFutures =
@@ -204,6 +213,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           flavor: flavor,
           target: target,
         );
+      case ReleaseType.windows:
+        return WindowsReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
     }
   }
 
@@ -215,6 +230,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   /// The target script, if provided.
   late String? target = results.findOption('target', argParser: argParser);
+
+  /// Whether --no-confirm was passed.
+  bool get noConfirm => results['no-confirm'] == true;
 
   /// The flutter version specified by the user, if any.
   late String? flutterVersionArg = results['flutter-version'] as String?;
@@ -242,7 +260,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     final targetFlutterRevision = await resolveTargetFlutterRevision();
     try {
       await shorebirdFlutter.installRevision(revision: targetFlutterRevision);
-    } catch (_) {
+    } on Exception {
       throw ProcessExit(ExitCode.software.code);
     }
 
@@ -323,7 +341,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       revision = await shorebirdFlutter.resolveFlutterRevision(
         flutterVersionArg!,
       );
-    } catch (error) {
+    } on Exception catch (error) {
       logger.err(
         '''
 Unable to determine revision for Flutter version: $flutterVersionArg.
@@ -438,7 +456,7 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 ${summary.join('\n')}
 ''');
 
-    if (shorebirdEnv.canAcceptUserInput) {
+    if (shorebirdEnv.canAcceptUserInput && !noConfirm) {
       final confirm = logger.confirm('Would you like to continue?');
 
       if (!confirm) {
