@@ -157,7 +157,10 @@ void main() {
           completes,
         );
         verify(
-          () => process.run(adbPath, 'shell monkey -p $package 1'.split(' ')),
+          () => process.run(
+            adbPath,
+            'shell monkey --pct-syskeys 0 -p $package 1'.split(' '),
+          ),
         ).called(1);
       });
 
@@ -172,7 +175,8 @@ void main() {
         verify(
           () => process.run(
             adbPath,
-            '-s $deviceId shell monkey -p $package 1'.split(' '),
+            '-s $deviceId shell monkey --pct-syskeys 0 -p $package 1'
+                .split(' '),
           ),
         ).called(1);
       });
