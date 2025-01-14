@@ -51,6 +51,8 @@ class Adb {
       if (deviceId != null) ...['-s', deviceId],
       'shell',
       'monkey',
+      // Adjust percentage of "system" key events to 0.
+      // This is needed to support Android systems with no hardware keys.
       '--pct-syskeys 0',
       '-p $package',
       '1',
