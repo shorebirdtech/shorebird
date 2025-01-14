@@ -9,7 +9,7 @@ This section contains past updates we've sent to customers.
 ## 1.6.3 (January 14, 2025)
 
 - 🐦 Support for Flutter 3.27.1
-- 👀 Fix `shorebird release` entitlement validation when plist contains comments
+- 🩹 Fix `shorebird release` entitlement validation when `plist` contains comments
 
 ## 1.6.2 (January 14, 2025)
 
