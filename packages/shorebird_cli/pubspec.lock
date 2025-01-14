@@ -544,12 +544,11 @@ packages:
   propertylistserialization:
     dependency: "direct main"
     description:
-      path: "."
-      ref: master
-      resolved-ref: "641f51331adcf27081e43521bb4038c7d49be906"
-      url: "https://github.com/bryanoltman/dart-propertylistserialization.git"
-    source: git
-    version: "1.4.0"
+      name: propertylistserialization
+      sha256: "645aaac37e73735286087fc81b27c7eabaa81b6146881bdf84090ba56f4e15ad"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.1"
   pub_semver:
     dependency: "direct main"
     description:

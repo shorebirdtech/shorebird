@@ -33,10 +33,7 @@ dependencies:
   pem: ^2.0.5
   platform: ^3.1.6
   pointycastle: ^3.9.1
-  propertylistserialization:
-    git:
-      url: https://github.com/bryanoltman/dart-propertylistserialization.git
-      ref: master
+  propertylistserialization: ^1.4.1
   pub_semver: ^2.1.5
   pubspec_parse: ^1.5.0
   retry: ^3.1.2
