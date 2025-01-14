@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+/// Reads a 16-bit integer as a little-endian value from the provided bytes.
 int readInt16(Uint8List bytes, int offset) {
   return bytes[offset + 1] << 8 | bytes[offset];
 }
