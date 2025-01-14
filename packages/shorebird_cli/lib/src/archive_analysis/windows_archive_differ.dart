@@ -36,11 +36,8 @@ class WindowsArchiveDiffer extends ArchiveDiffer {
 
   @override
   bool isNativeFilePath(String filePath) {
-    // TODO(bryanoltman): reenable this check once we can reliably report
-    // native diffs
-    // const nativeFileExtensions = ['.dll', '.exe'];
-    // return nativeFileExtensions.contains(p.extension(filePath));
-    return false;
+    const nativeFileExtensions = ['.dll', '.exe'];
+    return nativeFileExtensions.contains(p.extension(filePath));
   }
 
   @override
