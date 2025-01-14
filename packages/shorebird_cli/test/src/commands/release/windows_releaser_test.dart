@@ -250,7 +250,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             when(
               () => shorebirdFlutter.getRevisionForVersion(any()),
             ).thenAnswer(
-                (_) async => windowsFlutterGitHashesBelowMinVersion.first);
+              (_) async => windowsFlutterGitHashesBelowMinVersion.first,
+            );
           });
 
           test('completes normally', () async {
