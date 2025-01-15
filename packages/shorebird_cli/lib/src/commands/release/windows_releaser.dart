@@ -37,6 +37,8 @@ class WindowsReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
+    argResults.assertAbsentOrValidPublicKey();
+
     if (argResults.wasParsed('release-version')) {
       logger.err(
         '''
@@ -88,12 +90,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       'Building Windows app with Flutter $flutterVersionString',
     );
 
+    final base64PublicKey = argResults.encodedPublicKey;
     final Directory releaseDir;
     try {
       releaseDir = await artifactBuilder.buildWindowsApp(
         flavor: flavor,
         target: target,
         args: argResults.forwardedArgs,
+        base64PublicKey: base64PublicKey,
         buildProgress: buildAppBundleProgress,
       );
       buildAppBundleProgress.complete();

@@ -12,7 +12,9 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -40,6 +42,7 @@ void main() {
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Doctor doctor;
     late EngineConfig engineConfig;
     late Directory projectRoot;
@@ -62,6 +65,7 @@ void main() {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => engineConfig),
           loggerRef.overrideWith(() => logger),
@@ -91,6 +95,7 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       doctor = MockDoctor();
       engineConfig = MockEngineConfig();
       flavorValidator = MockFlavorValidator();
@@ -446,6 +451,52 @@ void main() {
               ),
             }),
           );
+        });
+      });
+
+      group('when signing keys are provided', () {
+        setUp(() {
+          when(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
+            ),
+          ).thenAnswer((_) async => diffFile.path);
+          when(() => argResults[CommonArguments.publicKeyArg.name])
+              .thenReturn('public-key.pem');
+          when(() => argResults[CommonArguments.privateKeyArg.name])
+              .thenReturn('private-key.pem');
+          when(
+            () => codeSigner.sign(
+              message: any(named: 'message'),
+              privateKeyPemFile: any(named: 'privateKeyPemFile'),
+            ),
+          ).thenReturn('signature');
+        });
+
+        test('signs patch', () async {
+          final result = await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifact,
+            ),
+          );
+
+          expect(result[Arch.x86_64]!.hashSignature, equals('signature'));
+          verify(
+            () => codeSigner.sign(
+              message: any(named: 'message'),
+              privateKeyPemFile: any(
+                named: 'privateKeyPemFile',
+                that: isA<File>().having(
+                  (f) => f.path,
+                  'path',
+                  equals('private-key.pem'),
+                ),
+              ),
+            ),
+          ).called(1);
         });
       });
     });

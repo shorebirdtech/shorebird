@@ -9,9 +9,12 @@ import 'package:shorebird_cli/src/archive_analysis/windows_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -80,7 +83,9 @@ class WindowsPatcher extends Patcher {
 
     final Directory releaseDir;
     try {
-      releaseDir = await artifactBuilder.buildWindowsApp();
+      releaseDir = await artifactBuilder.buildWindowsApp(
+        base64PublicKey: argResults.encodedPublicKey,
+      );
       buildAppBundleProgress.complete();
     } on Exception catch (e) {
       buildAppBundleProgress.fail(e.toString());
@@ -118,6 +123,16 @@ class WindowsPatcher extends Patcher {
     // build/windows/x64/runner/Release
     final appSoPath = p.join(tempDir.path, 'data', 'app.so');
 
+    final privateKeyFile = argResults.file(
+      CommonArguments.privateKeyArg.name,
+    );
+    final hashSignature = privateKeyFile != null
+        ? codeSigner.sign(
+            message: hash,
+            privateKeyPemFile: privateKeyFile,
+          )
+        : null;
+
     final String diffPath;
     try {
       diffPath = await artifactManager.createDiff(
@@ -137,6 +152,7 @@ class WindowsPatcher extends Patcher {
         path: diffPath,
         hash: hash,
         size: File(diffPath).lengthSync(),
+        hashSignature: hashSignature,
       ),
     };
   }
