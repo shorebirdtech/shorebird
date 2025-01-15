@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
@@ -203,6 +204,21 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       });
 
       group('assertArgsAreValid', () {
+        group('when public key path is provided but does not exist', () {
+          setUp(() {
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn('/path/to/nonexistent/key');
+          });
+
+          test('exits with usage code', () async {
+            await expectLater(
+              () => runWithOverrides(releaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+          });
+        });
+
         group('when release-version is passed', () {
           setUp(() {
             when(() => argResults.wasParsed('release-version'))

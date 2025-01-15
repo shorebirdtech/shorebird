@@ -252,6 +252,24 @@ void main() {
       });
     });
 
+    group('when public key path is provided but no key exists', () {
+      setUp(() {
+        when(() => argResults[CommonArguments.publicKeyArg.name])
+            .thenReturn('/path/to/nonexistant/file');
+      });
+
+      test('exits with usage code', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          exitsWithCode(ExitCode.usage),
+        );
+
+        verifyNever(
+          () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+        );
+      });
+    });
+
     test('executes commands in order, completes successfully', () async {
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, equals(ExitCode.success.code));
