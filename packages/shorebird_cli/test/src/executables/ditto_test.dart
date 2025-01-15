@@ -32,7 +32,7 @@ void main() {
       group('when process exits with code 0', () {
         setUp(() {
           when(
-            () => process.run('ditto', ['-x', '-k', source, destination]),
+            () => process.run('ditto', any()),
           ).thenAnswer(
             (_) async => const ShorebirdProcessResult(
               exitCode: 0,
@@ -50,7 +50,10 @@ void main() {
             completes,
           );
           verify(
-            () => process.run('ditto', ['-x', '-k', source, destination]),
+            () => process.run(
+              'ditto',
+              ['-x', '-k', '"$source"', '"$destination"'],
+            ),
           ).called(1);
         });
       });
@@ -59,7 +62,7 @@ void main() {
         const error = 'oops something went wrong';
         setUp(() {
           when(
-            () => process.run('ditto', ['-x', '-k', source, destination]),
+            () => process.run('ditto', any()),
           ).thenAnswer(
             (_) async => const ShorebirdProcessResult(
               exitCode: 1,
@@ -83,7 +86,10 @@ void main() {
             ),
           );
           verify(
-            () => process.run('ditto', ['-x', '-k', source, destination]),
+            () => process.run(
+              'ditto',
+              ['-x', '-k', '"$source"', '"$destination"'],
+            ),
           ).called(1);
         });
       });
