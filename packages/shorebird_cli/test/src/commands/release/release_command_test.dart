@@ -255,7 +255,7 @@ void main() {
     group('when public key path is provided but no key exists', () {
       setUp(() {
         when(() => argResults[CommonArguments.publicKeyArg.name])
-            .thenReturn('/path/to/nonexistant/file');
+            .thenReturn('/path/to/nonexistent/file');
       });
 
       test('exits with usage code', () async {
