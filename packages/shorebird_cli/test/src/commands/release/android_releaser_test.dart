@@ -235,45 +235,6 @@ To change the version of this release, change your app's version in your pubspec
           );
         });
       });
-
-      group('when a public key is provided and it exists', () {
-        setUp(() {
-          when(() => argResults['artifact']).thenReturn('apk');
-          final publicKeyFile = File(
-            p.join(
-              Directory.systemTemp.createTempSync().path,
-              'public-key.pem',
-            ),
-          )..writeAsStringSync('public key');
-          when(() => argResults[CommonArguments.publicKeyArg.name])
-              .thenReturn(publicKeyFile.path);
-        });
-
-        test('returns normally', () async {
-          expect(
-            () => runWithOverrides(androidReleaser.assertArgsAreValid),
-            returnsNormally,
-          );
-        });
-      });
-
-      group('when a public key is provided but does not exist', () {
-        setUp(() {
-          when(() => argResults['artifact']).thenReturn('apk');
-          when(() => argResults[CommonArguments.publicKeyArg.name])
-              .thenReturn('non-existing-key.pem');
-        });
-
-        test('logs and exits with usage err', () async {
-          await expectLater(
-            () => runWithOverrides(androidReleaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
-          );
-
-          verify(() => logger.err('No file found at non-existing-key.pem'))
-              .called(1);
-        });
-      });
     });
 
     group('buildReleaseArtifacts', () {

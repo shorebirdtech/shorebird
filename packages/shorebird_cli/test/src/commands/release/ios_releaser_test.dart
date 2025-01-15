@@ -278,43 +278,6 @@ To change the version of this release, change your app's version in your pubspec
             );
           });
         });
-
-        group('when a public key is provided and it exists', () {
-          setUp(() {
-            final publicKeyFile = File(
-              p.join(
-                Directory.systemTemp.createTempSync().path,
-                'public-key.pem',
-              ),
-            )..writeAsStringSync('public key');
-            when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn(publicKeyFile.path);
-          });
-
-          test('returns normally', () async {
-            expect(
-              () => runWithOverrides(iosReleaser.assertArgsAreValid),
-              returnsNormally,
-            );
-          });
-        });
-
-        group('when the provided public key is a nonexistent file', () {
-          setUp(() {
-            when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn('non-existing-key.pem');
-          });
-
-          test('logs and exits with usage err', () async {
-            await expectLater(
-              () => runWithOverrides(iosReleaser.assertArgsAreValid),
-              exitsWithCode(ExitCode.usage),
-            );
-
-            verify(() => logger.err('No file found at non-existing-key.pem'))
-                .called(1);
-          });
-        });
       });
 
       group('buildReleaseArtifacts', () {

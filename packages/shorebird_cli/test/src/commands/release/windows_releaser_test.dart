@@ -151,22 +151,6 @@ To change the version of this release, change your app's version in your pubspec
           ).called(1);
         });
       });
-
-      group('when public key is provided but file does not exist', () {
-        setUp(() {
-          when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
-              .thenReturn(true);
-          when(() => argResults[CommonArguments.publicKeyArg.name])
-              .thenReturn('nonexistent');
-        });
-
-        test('fails progress, exits', () async {
-          await expectLater(
-            () => runWithOverrides(releaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
-          );
-        });
-      });
     });
 
     group('assertPreconditions', () {

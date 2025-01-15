@@ -248,6 +248,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   @visibleForTesting
   Future<void> createRelease(Releaser releaser) async {
     await releaser.assertPreconditions();
+    await assertArgsAreValid();
     await releaser.assertArgsAreValid();
 
     await shorebirdValidator.validateFlavors(flavorArg: flavor);
@@ -325,6 +326,11 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
       },
     );
+  }
+
+  /// Validates arguments that are common to all release types.
+  Future<void> assertArgsAreValid() async {
+    results.assertAbsentOrValidPublicKey();
   }
 
   /// Determines which Flutter version to use for the release. This will be
