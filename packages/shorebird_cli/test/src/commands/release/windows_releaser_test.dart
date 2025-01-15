@@ -10,7 +10,9 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -34,6 +36,7 @@ void main() {
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Directory releaseDirectory;
     late Doctor doctor;
     late ShorebirdLogger logger;
@@ -54,6 +57,7 @@ void main() {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           powershellRef.overrideWith(() => powershell),
@@ -76,6 +80,7 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       doctor = MockDoctor();
       flavorValidator = MockFlavorValidator();
       powershell = MockPowershell();
@@ -144,6 +149,22 @@ The "--release-version" flag is only supported for aar and ios-framework release
 To change the version of this release, change your app's version in your pubspec.yaml.''',
             ),
           ).called(1);
+        });
+      });
+
+      group('when public key is provided but file does not exist', () {
+        setUp(() {
+          when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
+              .thenReturn(true);
+          when(() => argResults[CommonArguments.publicKeyArg.name])
+              .thenReturn('nonexistent');
+        });
+
+        test('fails progress, exits', () async {
+          await expectLater(
+            () => runWithOverrides(releaser.assertArgsAreValid),
+            exitsWithCode(ExitCode.usage),
+          );
         });
       });
     });
@@ -308,6 +329,42 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           final releaseDir =
               await runWithOverrides(releaser.buildReleaseArtifacts);
           expect(releaseDir, projectRoot);
+        });
+      });
+
+      group('when public key is passed as an arg', () {
+        setUp(() {
+          when(
+            () => artifactBuilder.buildWindowsApp(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+              buildProgress: any(named: 'buildProgress'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).thenAnswer((_) async => projectRoot);
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
+          when(
+            () => argResults[CommonArguments.publicKeyArg.name],
+          ).thenReturn('public_key');
+          when(
+            () => codeSigner.base64PublicKey(any()),
+          ).thenReturn('encoded_public_key');
+        });
+
+        test('passes public key to buildWindowsApp', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+          verify(
+            () => artifactBuilder.buildWindowsApp(
+              base64PublicKey: 'encoded_public_key',
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+              buildProgress: any(named: 'buildProgress'),
+            ),
+          ).called(1);
         });
       });
     });

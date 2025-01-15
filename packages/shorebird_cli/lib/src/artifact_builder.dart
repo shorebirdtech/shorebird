@@ -569,8 +569,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         executable,
         arguments,
         runInShell: true,
-        // TODO(bryanoltman): support this
-        // environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
       buildProcess.stdout

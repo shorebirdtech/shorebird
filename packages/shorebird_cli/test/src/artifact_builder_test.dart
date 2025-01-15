@@ -1537,6 +1537,37 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
           );
         });
       });
+
+      group('when public key is provided', () {
+        const publicKey = 'publicKey';
+
+        setUp(() {
+          when(
+            () => buildProcess.exitCode,
+          ).thenAnswer((_) async => ExitCode.success.code);
+        });
+
+        test('provides public key as environment variable', () async {
+          await runWithOverrides(
+            () => builder.buildWindowsApp(base64PublicKey: publicKey),
+          );
+
+          verify(
+            () => shorebirdProcess.start(
+              'flutter',
+              [
+                'build',
+                'windows',
+                '--release',
+              ],
+              runInShell: any(named: 'runInShell'),
+              environment: {
+                'SHOREBIRD_PUBLIC_KEY': publicKey,
+              },
+            ),
+          ).called(1);
+        });
+      });
     });
 
     group('findAppDill', () {
