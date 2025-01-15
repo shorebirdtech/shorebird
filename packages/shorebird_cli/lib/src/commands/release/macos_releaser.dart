@@ -43,8 +43,6 @@ class MacosReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    argResults.assertAbsentOrValidPublicKey();
-
     if (argResults.wasParsed('release-version')) {
       logger.err(
         '''

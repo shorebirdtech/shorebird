@@ -204,21 +204,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       });
 
       group('assertArgsAreValid', () {
-        group('when public key path is provided but does not exist', () {
-          setUp(() {
-            when(
-              () => argResults[CommonArguments.publicKeyArg.name],
-            ).thenReturn('/path/to/nonexistent/key');
-          });
-
-          test('exits with usage code', () async {
-            await expectLater(
-              () => runWithOverrides(releaser.assertArgsAreValid),
-              exitsWithCode(ExitCode.usage),
-            );
-          });
-        });
-
         group('when release-version is passed', () {
           setUp(() {
             when(() => argResults.wasParsed('release-version'))
