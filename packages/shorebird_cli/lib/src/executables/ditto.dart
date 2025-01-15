@@ -12,9 +12,8 @@ Ditto get ditto => read(dittoRef);
 /// A wrapper around the `ditto` command.
 /// https://ss64.com/mac/ditto.html
 class Ditto {
-  Future<ShorebirdProcessResult> _exec(String command) async {
-    return process.run('ditto', command.split(' '));
-  }
+  Future<ShorebirdProcessResult> _exec(List<String> args) =>
+      process.run('ditto', args);
 
   /// Extracts the contents of a compressed archive at [source] to
   /// [destination].
@@ -22,7 +21,7 @@ class Ditto {
     required String source,
     required String destination,
   }) async {
-    final result = await _exec('-x -k $source $destination');
+    final result = await _exec(['-x', '-k', '"$source"', '"$destination"']);
     if (result.exitCode != 0) {
       throw Exception('Failed to extract: ${result.stderr}');
     }
@@ -42,7 +41,7 @@ class Ditto {
       source,
       destination,
     ];
-    final result = await _exec(args.join(' '));
+    final result = await _exec(args);
     if (result.exitCode != 0) {
       throw Exception('Failed to archive: ${result.stderr}');
     }
