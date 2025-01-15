@@ -21,7 +21,7 @@ class Ditto {
     required String source,
     required String destination,
   }) async {
-    final result = await _exec(['-x', '-k', '"$source"', '"$destination"']);
+    final result = await _exec(['-x', '-k', source, destination]);
     if (result.exitCode != 0) {
       throw Exception('Failed to extract: ${result.stderr}');
     }

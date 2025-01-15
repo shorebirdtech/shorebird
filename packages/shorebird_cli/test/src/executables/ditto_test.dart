@@ -52,7 +52,7 @@ void main() {
           verify(
             () => process.run(
               'ditto',
-              ['-x', '-k', '"$source"', '"$destination"'],
+              ['-x', '-k', source, destination],
             ),
           ).called(1);
         });
@@ -88,7 +88,7 @@ void main() {
           verify(
             () => process.run(
               'ditto',
-              ['-x', '-k', '"$source"', '"$destination"'],
+              ['-x', '-k', source, destination],
             ),
           ).called(1);
         });
