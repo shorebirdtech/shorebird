@@ -22,7 +22,7 @@ jobs:
       config: cspell.config.yaml
 
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     outputs:
       needs_cross_platform_dart_build: ${{ steps.needs_cross_platform_dart_build.outputs.changes }}
@@ -121,7 +121,7 @@ jobs:
       matrix:
         package: ${{ fromJSON(needs.changes.outputs.needs_dart_build) }}
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     name: 🎯 Build ${{ matrix.package }}
 
@@ -141,7 +141,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-latest, windows-latest, ubuntu-24.04-arm]
         package: ${{ fromJSON(needs.changes.outputs.needs_cross_platform_dart_build) }}
 
     runs-on: ${{ matrix.os }}
@@ -168,7 +168,7 @@ jobs:
       matrix:
         package: ${{ fromJSON(needs.changes.outputs.needs_redis_build) }}
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     name: 🎯 Build ${{ matrix.package }}
 
@@ -195,7 +195,7 @@ jobs:
       matrix:
         package: ${{ fromJSON(needs.changes.outputs.needs_verify) }}
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     name: 🔎 Verify ${{ matrix.package }}
 
@@ -219,7 +219,7 @@ jobs:
       ]
     if: ${{ always() }}
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     steps:
       - name: ⛔️ exit(1) on failure
