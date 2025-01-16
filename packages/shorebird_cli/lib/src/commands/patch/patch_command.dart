@@ -292,7 +292,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         releaseVersion: releaseVersion,
       );
     } else if (shorebirdEnv.canAcceptUserInput) {
-      release = await promptForRelease();
+      release = await promptForRelease(patcher.releaseType.releasePlatform);
     } else {
       logger.info(
         '''Tip: make your patches build faster by specifying --release-version''',
@@ -418,21 +418,25 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   }
 
   /// Prompts the user for the specific release to patch.
-  Future<Release> promptForRelease() async {
+  Future<Release> promptForRelease(ReleasePlatform platform) async {
     final releases = await codePushClientWrapper.getReleases(
       appId: appId,
     );
 
-    if (releases.isEmpty) {
+    final releasesForPlatform = releases.where(
+      (release) => release.platformStatuses.keys.contains(platform),
+    );
+
+    if (releasesForPlatform.isEmpty) {
       logger.warn(
-        '''No releases found for app $appId. You need to make first a release before you can create a patch.''',
+        '''No ${platform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
       );
       throw ProcessExit(ExitCode.usage.code);
     }
 
     return logger.chooseOne<Release>(
       'Which release would you like to patch?',
-      choices: releases.sortedBy((r) => r.createdAt).reversed.toList(),
+      choices: [...releasesForPlatform.sortedBy((r) => r.createdAt).reversed],
       display: (r) => r.version,
     );
   }
