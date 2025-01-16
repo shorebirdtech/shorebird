@@ -61,7 +61,7 @@ void writeToLogFile(Object? message, {required File logFile}) {
   }
 
   final timestampString = DateTime.now().toIso8601String();
-  final messageString = message.toString().removeAnsiEscapes();
+  final messageString = message.toString();
   logFile.writeAsStringSync(
     '$timestampString $messageString\n',
     mode: FileMode.append,
