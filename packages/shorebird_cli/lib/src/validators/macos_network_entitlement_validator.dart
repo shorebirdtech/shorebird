@@ -48,8 +48,13 @@ class MacosNetworkEntitlementValidator extends Validator {
   String get description => 'macOS app has Outgoing Connections entitlement';
 
   @override
-  bool canRunInCurrentContext() =>
-      _macosDirectory != null && _macosDirectory!.existsSync();
+  bool canRunInCurrentContext() => _macosDirectory?.existsSync() ?? false;
+
+  @override
+  String? get incorrectContextMessage => '''
+The ${_macosDirectory?.path ?? 'macos'} directory does not exist.
+
+The command you are running must be run within a Flutter app project that supports the macOS platform.''';
 
   @override
   Future<List<ValidationIssue>> validate() async {
