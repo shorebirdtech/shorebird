@@ -11,6 +11,7 @@ This section contains past updates we've sent to customers.
 - 🔐 Add support for signed patches on Windows
 - ✨ `shorebird patch` releases list should filter by specified platform
 - 👀 Fix various `shorebird preview` errors on macOS (`ditto`)
+- 🧑‍🔧 Improve error message when running `shorebird release macos` on an unsupported Flutter project
 
 ## 1.6.3 (January 14, 2025)
 
