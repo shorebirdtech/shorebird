@@ -860,8 +860,64 @@ void main() {
 
           verify(
             () => logger.warn(
-              '''No releases found for app $appId. You need to make first a release before you can create a patch.''',
+              '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
             ),
+          ).called(1);
+        });
+      });
+
+      group('when prompting for releases for a specified platform', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+          ).thenAnswer(
+            (_) async => [
+              Release(
+                id: 0,
+                appId: appId,
+                version: releaseVersion,
+                flutterRevision: flutterRevision,
+                flutterVersion: flutterVersion,
+                displayName: releaseVersion,
+                platformStatuses: {
+                  releasePlatform: ReleaseStatus.active,
+                },
+                createdAt: DateTime(2023),
+                updatedAt: DateTime(2023),
+              ),
+              Release(
+                id: 1,
+                appId: appId,
+                version: releaseVersion,
+                flutterRevision: flutterRevision,
+                flutterVersion: flutterVersion,
+                displayName: '2.0.0+1',
+                platformStatuses: {
+                  ReleasePlatform.macos: ReleaseStatus.active,
+                  ReleasePlatform.windows: ReleaseStatus.active,
+                },
+                createdAt: DateTime(2023),
+                updatedAt: DateTime(2023),
+              ),
+            ],
+          );
+        });
+
+        test('uses correct release version', () async {
+          await expectLater(runWithOverrides(command.run), completes);
+          final captured = verify(
+            () => logger.chooseOne<Release>(
+              any(),
+              choices: captureAny(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          ).captured.single as List<Release>;
+
+          expect(captured.length, equals(1));
+          expect(captured.first.version, equals(releaseVersion));
+
+          verify(
+            () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
           ).called(1);
         });
       });
