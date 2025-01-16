@@ -1,4 +1,3 @@
-import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:test/test.dart';
 
@@ -20,21 +19,6 @@ void main() {
       test('returns false', () {
         expect('test'.isNullOrEmpty, false);
       });
-    });
-  });
-
-  group('AnsiEscapes', () {
-    test('removes ansi escape codes from string', () {
-      expect(
-        styleUnderlined.wrap(
-          '''This ${red.wrap('is')} ${styleBlink.wrap('a')} ${lightCyan.wrap('test')}''',
-        )!.removeAnsiEscapes(),
-        equals('This is a test'),
-      );
-    });
-
-    test('returns string unchanged if no ansi escape codes are present', () {
-      expect('test'.removeAnsiEscapes(), equals('test'));
     });
   });
 
