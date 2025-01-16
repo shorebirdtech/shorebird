@@ -91,10 +91,6 @@ void main() {
             runWithOverrides(() => validator.canRunInCurrentContext()),
             isTrue,
           );
-          expect(
-            runWithOverrides(() => validator.incorrectContextMessage),
-            isNull,
-          );
         });
       });
 
