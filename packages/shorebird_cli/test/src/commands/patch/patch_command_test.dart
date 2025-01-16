@@ -866,7 +866,7 @@ void main() {
         });
       });
 
-      group('when prompting for releases for a specified platform', () {
+      group('when prompting for releases and multiple exist', () {
         setUp(() {
           when(
             () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
@@ -903,7 +903,9 @@ void main() {
           );
         });
 
-        test('uses correct release version', () async {
+        test(
+            'only lists and uses releases '
+            'for the specified platform', () async {
           await expectLater(runWithOverrides(command.run), completes);
           final captured = verify(
             () => logger.chooseOne<Release>(
