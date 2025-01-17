@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
+import 'package:equatable/equatable.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -30,6 +31,16 @@ import '../../fakes.dart';
 import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
+
+class _FakeRelease extends Fake with EquatableMixin implements Release {
+  _FakeRelease({required this.updatedAt});
+
+  @override
+  final DateTime updatedAt;
+
+  @override
+  List<Object?> get props => [updatedAt];
+}
 
 void main() {
   group(PatchCommand, () {
@@ -590,7 +601,7 @@ void main() {
             '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
             '🍧 Flavor: ${lightCyan.wrap(flavor)}',
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.displayName)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
             '🟢 Track: ${lightCyan.wrap('Stable')}',
           ];
           await expectLater(
@@ -627,7 +638,7 @@ void main() {
           final expectedSummary = [
             '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.displayName)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
             '🟠 Track: ${lightCyan.wrap('Staging')}',
           ];
           await expectLater(
@@ -660,7 +671,7 @@ void main() {
           final expectedSummary = [
             '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.displayName)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
             '🔵 Track: ${lightCyan.wrap('Beta')}',
           ];
           await expectLater(
@@ -695,7 +706,7 @@ void main() {
           final expectedSummary = [
             '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.displayName)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
             '🟢 Track: ${lightCyan.wrap('Stable')}',
             '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
           ];
@@ -784,6 +795,99 @@ void main() {
                 track: DeploymentTrack.stable,
               ),
         ]);
+      });
+    });
+
+    group('when release version is latest', () {
+      setUp(() {
+        when(() => argResults['release-version']).thenReturn('latest');
+      });
+
+      group('when no releases for the target platform exist', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+          ).thenAnswer(
+            (_) async => [
+              Release(
+                id: 0,
+                appId: appId,
+                version: releaseVersion,
+                flutterRevision: flutterRevision,
+                flutterVersion: flutterVersion,
+                displayName: '1.0.0+1',
+                platformStatuses: {
+                  ReleasePlatform.windows: ReleaseStatus.active,
+                },
+                createdAt: DateTime(2023),
+                updatedAt: DateTime(2023),
+              )
+            ],
+          );
+        });
+
+        test('warns and exits', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.usage),
+          );
+
+          verify(
+            () => codePushClientWrapper.getReleases(appId: appId),
+          ).called(1);
+          verify(
+            () => logger.warn(
+              '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when multiple releases for the target platform exist', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+          ).thenAnswer(
+            (_) async => [
+              Release(
+                id: 0,
+                appId: appId,
+                version: releaseVersion,
+                flutterRevision: flutterRevision,
+                flutterVersion: flutterVersion,
+                displayName: releaseVersion,
+                platformStatuses: {
+                  releasePlatform: ReleaseStatus.active,
+                },
+                createdAt: DateTime(2024),
+                updatedAt: DateTime(2024),
+              ),
+              Release(
+                id: 1,
+                appId: appId,
+                version: '99.99.99+99',
+                flutterRevision: flutterRevision,
+                flutterVersion: flutterVersion,
+                displayName: '99.99.99+99',
+                platformStatuses: {
+                  releasePlatform: ReleaseStatus.active,
+                },
+                createdAt: DateTime(2023),
+                updatedAt: DateTime(2023),
+              ),
+            ],
+          );
+        });
+
+        test('uses the latest version', () async {
+          await expectLater(runWithOverrides(command.run), completes);
+          verify(
+            () => codePushClientWrapper.getReleases(appId: appId),
+          ).called(1);
+          verify(
+            () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+          ).called(1);
+        });
       });
     });
 
@@ -1209,6 +1313,25 @@ Please re-run the release command for this version or create a new release.''',
           ),
         ).called(1);
       });
+    });
+  });
+
+  group('sortByUpdatedAt', () {
+    test('sorts versions correctly', () {
+      expect(
+        [
+          _FakeRelease(updatedAt: DateTime(2025, 05, 15)),
+          _FakeRelease(updatedAt: DateTime(2025, 04, 15)),
+          _FakeRelease(updatedAt: DateTime(2021, 09, 25)),
+          _FakeRelease(updatedAt: DateTime(2024)),
+        ]..sortByUpdatedAt(),
+        equals([
+          _FakeRelease(updatedAt: DateTime(2021, 09, 25)),
+          _FakeRelease(updatedAt: DateTime(2024)),
+          _FakeRelease(updatedAt: DateTime(2025, 04, 15)),
+          _FakeRelease(updatedAt: DateTime(2025, 05, 15)),
+        ]),
+      );
     });
   });
 }

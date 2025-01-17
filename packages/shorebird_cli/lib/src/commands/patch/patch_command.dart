@@ -77,8 +77,9 @@ class PatchCommand extends ShorebirdCommand {
       ..addOption(
         'release-version',
         help: '''
-The version of the associated release (e.g. "1.0.0"). This should be the version
-of the iOS app that is using this module.''',
+The version of the associated release (e.g. "1.0.0").
+If you are building an xcframework or aar, this number needs to match the host app's release version.
+To target the latest release (e.g. the release that was most recently updated) use --release-version=latest.''',
       )
       ..addFlag(
         'allow-native-diffs',
@@ -186,6 +187,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// Whether the patch is for the staging environment.
   bool get isStaging => track == DeploymentTrack.staging;
 
+  /// Whether the patch is targeting the latest release version
+  /// (--release-version=latest).
+  bool get useLatestRelease => results['release-version'] == 'latest';
+
   /// The deployment track to publish the patch to.
   DeploymentTrack get track {
     final channel = results['track'] as String;
@@ -285,14 +290,30 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     File? patchArtifactFile;
     final Release release;
-    if (results.wasParsed('release-version')) {
+    final releasePlatform = patcher.releaseType.releasePlatform;
+    if (useLatestRelease) {
+      final releases = await codePushClientWrapper.getReleases(appId: appId);
+      releases
+        ..removeWhere(
+          (release) => !release.platformStatuses.keys.contains(releasePlatform),
+        )
+        ..sortByUpdatedAt();
+      if (releases.isEmpty) {
+        logger.warn(
+          '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
+        );
+        throw ProcessExit(ExitCode.usage.code);
+      }
+      // Use the most recently updated release for the specified platform.
+      release = releases.last;
+    } else if (results.wasParsed('release-version')) {
       final releaseVersion = results['release-version'] as String;
       release = await codePushClientWrapper.getRelease(
         appId: appId,
         releaseVersion: releaseVersion,
       );
     } else if (shorebirdEnv.canAcceptUserInput) {
-      release = await promptForRelease(patcher.releaseType.releasePlatform);
+      release = await promptForRelease(releasePlatform);
     } else {
       logger.info(
         '''Tip: make your patches build faster by specifying --release-version''',
@@ -321,7 +342,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       appId: appId,
       releaseId: release.id,
       arch: patcher.primaryReleaseArtifactArch,
-      platform: patcher.releaseType.releasePlatform,
+      platform: releasePlatform,
     );
 
     final supplementalArtifact =
@@ -330,7 +351,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
                 appId: appId,
                 releaseId: release.id,
                 arch: patcher.supplementaryReleaseArtifactArch!,
-                platform: patcher.releaseType.releasePlatform,
+                platform: releasePlatform,
               )
             : null;
 
@@ -516,7 +537,7 @@ Please re-run the release command for this version or create a new release.''');
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
-      '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.name)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
+      '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.displayName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
       trackSummary,
       if (patcher.linkPercentage != null &&
           patcher.linkPercentage! < Patcher.minLinkPercentage)
@@ -558,4 +579,10 @@ ${summary.join('\n')}
 
     return artifactFile;
   }
+}
+
+/// Extension on list of releases for sorting the releases.
+extension SortReleases on List<Release> {
+  /// Sort the list of releases by when they were last updated ascending.
+  void sortByUpdatedAt() => sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
 }
