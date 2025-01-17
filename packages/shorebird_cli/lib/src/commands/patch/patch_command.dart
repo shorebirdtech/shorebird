@@ -79,7 +79,9 @@ class PatchCommand extends ShorebirdCommand {
         'release-version',
         help: '''
 The version of the associated release (e.g. "1.0.0").
-To target the latest release (highest released version) use --release-version=latest.''',
+To target the latest release (highest released version) use --release-version=latest.
+
+If you are building an xcframework or aar, this number needs to match the host app's release version.''',
       )
       ..addFlag(
         'allow-native-diffs',
@@ -297,11 +299,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         ..removeWhere(
           (release) => !release.platformStatuses.keys.contains(releasePlatform),
         )
-        ..sort(
-          (a, b) => Version.parse(b.version).compareTo(
-            Version.parse(a.version),
-          ),
-        );
+        ..sortByVersion();
       if (releases.isEmpty) {
         logger.warn(
           '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
@@ -581,5 +579,17 @@ ${summary.join('\n')}
     }
 
     return artifactFile;
+  }
+}
+
+/// Extension on list of releases for sorting the releases.
+extension SortReleases on List<Release> {
+  /// Sort the list of releases by version (descending).
+  void sortByVersion() {
+    return sort(
+      (a, b) => Version.parse(b.version).compareTo(
+        Version.parse(a.version),
+      ),
+    );
   }
 }

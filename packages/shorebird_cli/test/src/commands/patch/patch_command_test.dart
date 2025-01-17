@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
+import 'package:equatable/equatable.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -30,6 +31,16 @@ import '../../fakes.dart';
 import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
+
+class _FakeRelease extends Fake with EquatableMixin implements Release {
+  _FakeRelease({required this.version});
+
+  @override
+  final String version;
+
+  @override
+  List<Object?> get props => [version];
+}
 
 void main() {
   group(PatchCommand, () {
@@ -1302,6 +1313,56 @@ Please re-run the release command for this version or create a new release.''',
           ),
         ).called(1);
       });
+    });
+  });
+
+  group('sortByVersion', () {
+    test('sorts versions by semver', () {
+      // Sorts by major version
+      expect(
+        [
+          _FakeRelease(version: '1.0.0+1'),
+          _FakeRelease(version: '3.0.0+1'),
+          _FakeRelease(version: '2.0.0+1'),
+          _FakeRelease(version: '4.0.0+1'),
+        ]..sortByVersion(),
+        equals([
+          _FakeRelease(version: '4.0.0+1'),
+          _FakeRelease(version: '3.0.0+1'),
+          _FakeRelease(version: '2.0.0+1'),
+          _FakeRelease(version: '1.0.0+1'),
+        ]),
+      );
+
+      // Sorts by build number
+      expect(
+        [
+          _FakeRelease(version: '1.0.0+1'),
+          _FakeRelease(version: '1.0.0+4'),
+          _FakeRelease(version: '1.0.0+2'),
+          _FakeRelease(version: '1.0.0+6'),
+        ]..sortByVersion(),
+        equals([
+          _FakeRelease(version: '1.0.0+6'),
+          _FakeRelease(version: '1.0.0+4'),
+          _FakeRelease(version: '1.0.0+2'),
+          _FakeRelease(version: '1.0.0+1'),
+        ]),
+      );
+
+      // Sorts by pre-release, handles missing build numbers, etc.
+      expect(
+        [
+          _FakeRelease(version: '1.0.0'),
+          _FakeRelease(version: '1.0.0+1.0.0'),
+          _FakeRelease(version: '1.0.0-dev'),
+        ]..sortByVersion(),
+        equals([
+          _FakeRelease(version: '1.0.0+1.0.0'),
+          _FakeRelease(version: '1.0.0'),
+          _FakeRelease(version: '1.0.0-dev'),
+        ]),
+      );
     });
   });
 }
