@@ -265,7 +265,7 @@ class ArtifactManager {
   }
 
   /// The directory containing the compiled macOS .app file, if it exists.
-  Directory? getMacOSAppDirectory() {
+  Directory? getMacOSAppDirectory({String? flavor}) {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
 
     final appDirectory = Directory(
@@ -275,7 +275,7 @@ class ArtifactManager {
         'macos',
         'Build',
         'Products',
-        'Release',
+        flavor != null ? 'Release-$flavor' : 'Release',
       ),
     );
 

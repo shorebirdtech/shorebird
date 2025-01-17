@@ -232,7 +232,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       throw ProcessExit(ExitCode.software.code);
     }
 
-    final appPath = artifactManager.getMacOSAppDirectory()!.path;
+    final appPath = artifactManager.getMacOSAppDirectory(flavor: flavor)!.path;
     final tempDir = await Directory.systemTemp.createTemp();
     final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
     await ditto.archive(
@@ -258,7 +258,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     }
 
     // Verify that we have built a patch .app
-    if (artifactManager.getMacOSAppDirectory()?.path == null) {
+    if (artifactManager.getMacOSAppDirectory(flavor: flavor)?.path == null) {
       logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
     }
