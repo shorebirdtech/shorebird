@@ -125,7 +125,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       throw ProcessExit(ExitCode.software.code);
     }
 
-    final appDirectory = artifactManager.getMacOSAppDirectory();
+    final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);
     if (appDirectory == null) {
       logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
@@ -161,7 +161,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     required Release release,
     required String appId,
   }) async {
-    final appDirectory = artifactManager.getMacOSAppDirectory();
+    final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);
     if (appDirectory == null) {
       logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
@@ -204,6 +204,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   @override
   String get postReleaseInstructions => '''
 
-macOS app created at ${artifactManager.getMacOSAppDirectory()!.path}.
+macOS app created at ${artifactManager.getMacOSAppDirectory(flavor: flavor)!.path}.
 ''';
 }

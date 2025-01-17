@@ -295,6 +295,37 @@ To change the version of this release, change your app's version in your pubspec
           ).thenAnswer((_) async => flutterVersionAndRevision);
         });
 
+        group('when flavor is provided', () {
+          const flavor = 'myFlavor';
+
+          setUp(() {
+            releaser = MacosReleaser(
+              argResults: argResults,
+              flavor: flavor,
+              target: null,
+            );
+
+            when(
+              () => artifactManager.getMacOSAppDirectory(flavor: flavor),
+            ).thenReturn(appDirectory);
+          });
+
+          test('forwards flavor to artifact builder', () async {
+            await runWithOverrides(releaser.buildReleaseArtifacts);
+
+            verify(
+              () => artifactBuilder.buildMacos(
+                flavor: flavor,
+                args: any(named: 'args'),
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).called(1);
+            verify(
+              () => artifactManager.getMacOSAppDirectory(flavor: flavor),
+            ).called(1);
+          });
+        });
+
         group('when not codesigning', () {
           setUp(() {
             when(() => argResults['codesign']).thenReturn(false);
