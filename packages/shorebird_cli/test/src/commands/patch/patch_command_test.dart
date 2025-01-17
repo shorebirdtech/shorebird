@@ -822,6 +822,9 @@ void main() {
           );
 
           verify(
+            () => codePushClientWrapper.getReleases(appId: appId),
+          ).called(1);
+          verify(
             () => logger.warn(
               '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
             ),
@@ -867,6 +870,9 @@ void main() {
 
         test('uses the latest version', () async {
           await expectLater(runWithOverrides(command.run), completes);
+          verify(
+            () => codePushClientWrapper.getReleases(appId: appId),
+          ).called(1);
           verify(
             () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
           ).called(1);
