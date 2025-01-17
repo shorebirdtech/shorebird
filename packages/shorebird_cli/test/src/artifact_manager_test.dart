@@ -763,6 +763,33 @@ void main() {
           );
         });
       });
+
+      group('when a flavor is provided', () {
+        const flavor = 'my-flavor';
+        late Directory appDirectory;
+
+        setUp(() {
+          appDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'macos',
+              'Build',
+              'Products',
+              'Release-$flavor',
+              'my.app',
+            ),
+          )..createSync(recursive: true);
+        });
+
+        test('includes flavor in lookup path', () async {
+          final result = runWithOverrides(
+            () => artifactManager.getMacOSAppDirectory(flavor: flavor),
+          );
+
+          expect(result!.path, equals(appDirectory.path));
+        });
+      });
     });
 
     group('getIosAppDirectory', () {

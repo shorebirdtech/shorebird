@@ -698,6 +698,39 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             );
           });
 
+          group('when flavor is provided', () {
+            const flavor = 'my-flavor';
+
+            setUp(() {
+              patcher = MacosPatcher(
+                argParser: argParser,
+                argResults: argResults,
+                flavor: flavor,
+                target: null,
+              );
+
+              when(
+                () => artifactManager.getMacOSAppDirectory(flavor: flavor),
+              ).thenReturn(appDirectory);
+            });
+
+            test('builds with flavor', () async {
+              await runWithOverrides(patcher.buildPatchArtifact);
+              verify(
+                () => artifactBuilder.buildMacos(
+                  codesign: any(named: 'codesign'),
+                  args: any(named: 'args'),
+                  flavor: flavor,
+                  target: any(named: 'target'),
+                  buildProgress: any(named: 'buildProgress'),
+                ),
+              ).called(1);
+              verify(
+                () => artifactManager.getMacOSAppDirectory(flavor: flavor),
+              ).called(1);
+            });
+          });
+
           group('when --split-debug-info is provided', () {
             final tempDir = Directory.systemTemp.createTempSync();
             final splitDebugInfoPath = p.join(tempDir.path, 'symbols');
@@ -1293,6 +1326,38 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                     endsWith(diffPath),
                   ),
                 );
+              });
+
+              group('when flavor is provided', () {
+                const flavor = 'my-flavor';
+
+                setUp(() {
+                  patcher = MacosPatcher(
+                    argParser: argParser,
+                    argResults: argResults,
+                    flavor: flavor,
+                    target: null,
+                  );
+
+                  when(
+                    () => artifactManager.getMacOSAppDirectory(flavor: flavor),
+                  ).thenReturn(appDirectory);
+                });
+
+                test('finds app directory corresponding to flavor', () async {
+                  await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
+                    ),
+                  );
+
+                  verify(
+                    () => artifactManager.getMacOSAppDirectory(flavor: flavor),
+                  ).called(1);
+                });
               });
 
               group('when class table link info is not present', () {
