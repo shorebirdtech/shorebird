@@ -100,6 +100,12 @@ void main() {
             runWithOverrides(() => validator.canRunInCurrentContext()),
             isFalse,
           );
+          expect(
+            runWithOverrides(() => validator.incorrectContextMessage),
+            contains(
+              '''The command you are running must be run within a Flutter app project that supports the macOS platform.''',
+            ),
+          );
         });
       });
     });
