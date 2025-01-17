@@ -198,7 +198,7 @@ This is only applicable when previewing Android releases.''',
     //
     // With these two lists, we can now determine if a platform is previewable
     // or not, by making a difference between the two lists.
-    final (releasesWithAllPlatforms, releasesWithPreviewablePlatforms) = await (
+    final (allReleases, sideloadableReleases) = await (
       codePushClientWrapper.getReleases(appId: appId),
       codePushClientWrapper.getReleases(
         appId: appId,
@@ -206,11 +206,19 @@ This is only applicable when previewing Android releases.''',
       )
     ).wait;
 
-    final releaseVersion = results['release-version'] as String? ??
-        // Prompt only for releases that have previewable platforms.
-        await promptForReleaseVersion(releasesWithPreviewablePlatforms);
+    final maybePlatform = results['platform'] != null
+        ? ReleasePlatform.values.byName(results['platform'] as String)
+        : null;
 
-    final release = releasesWithPreviewablePlatforms.firstWhereOrNull(
+    final releaseVersion = results['release-version'] as String? ??
+        // Prompt only for releases that have previewable platforms
+        // and filter by the specified platform.
+        await promptForReleaseVersion(
+          sideloadableReleases,
+          maybePlatform,
+        );
+
+    final release = sideloadableReleases.firstWhereOrNull(
       (r) => r.version == releaseVersion,
     );
 
@@ -232,7 +240,7 @@ This is only applicable when previewing Android releases.''',
       return ExitCode.software.code;
     }
 
-    final releaseWithAllPlatforms = releasesWithAllPlatforms.firstWhere(
+    final releaseWithAllPlatforms = allReleases.firstWhere(
       (r) => r.id == release.id,
     );
     _assertPreviewableReleases(
@@ -241,13 +249,9 @@ This is only applicable when previewing Android releases.''',
     );
 
     final ReleasePlatform releasePlatform;
-    if (results['platform'] != null) {
-      final platformName = ReleasePlatform.values.byName(
-        results['platform'] as String,
-      );
-
+    if (maybePlatform != null) {
       final matchedPlatform = release.activePlatforms.firstWhere(
-        (p) => p == platformName,
+        (p) => p == maybePlatform,
       );
 
       releasePlatform = matchedPlatform;
@@ -300,8 +304,16 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Prompts the user to choose a release version to preview.
-  Future<String?> promptForReleaseVersion(List<Release> releases) async {
+  Future<String?> promptForReleaseVersion(
+    List<Release> releases,
+    ReleasePlatform? platform,
+  ) async {
     if (releases.isEmpty) return null;
+    if (platform != null) {
+      releases.removeWhere(
+        (release) => !release.platformStatuses.keys.contains(platform),
+      );
+    }
     final release = logger.chooseOne(
       'Which release would you like to preview?',
       choices: releases,

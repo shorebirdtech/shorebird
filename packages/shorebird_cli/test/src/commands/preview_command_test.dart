@@ -1053,6 +1053,51 @@ channel: ${track.channel}
         });
       });
 
+      group('when release-version is not specified', () {
+        late Release otherRelease;
+
+        setUp(() {
+          otherRelease = MockRelease();
+          when(() => otherRelease.appId).thenReturn(appId);
+          when(() => otherRelease.version).thenReturn(releaseVersion);
+          when(() => otherRelease.displayName).thenReturn('2.0.0+1');
+          when(() => otherRelease.platformStatuses).thenReturn({
+            ReleasePlatform.macos: ReleaseStatus.active,
+            ReleasePlatform.windows: ReleaseStatus.active,
+          });
+          when(() => argResults['release-version']).thenReturn(null);
+          when(() => argResults['platform']).thenReturn(releasePlatform.name);
+          when(
+            () => logger.chooseOne<Release>(
+              any(),
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          ).thenReturn(release);
+          when(
+            () => codePushClientWrapper.getReleases(
+              appId: any(named: 'appId'),
+              sideloadableOnly: any(named: 'sideloadableOnly'),
+            ),
+          ).thenAnswer((_) async => [release, otherRelease]);
+        });
+
+        test(
+            'only prompts for release versions that '
+            'support the current platform', () async {
+          await runWithOverrides(command.run);
+          final releases = verify(
+            () => logger.chooseOne<Release>(
+              any(),
+              choices: captureAny(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          ).captured.single as List<Release>;
+          expect(releases.length, equals(1));
+          expect(releases.first.version, equals(releaseVersion));
+        });
+      });
+
       group('when platform is not specified', () {
         setUp(() {
           when(
