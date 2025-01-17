@@ -852,23 +852,23 @@ void main() {
               Release(
                 id: 0,
                 appId: appId,
-                version: '1.0.0+1',
-                flutterRevision: flutterRevision,
-                flutterVersion: flutterVersion,
-                displayName: '1.0.0+1',
-                platformStatuses: {
-                  releasePlatform: ReleaseStatus.active,
-                },
-                createdAt: DateTime(2023),
-                updatedAt: DateTime(2023),
-              ),
-              Release(
-                id: 1,
-                appId: appId,
                 version: releaseVersion,
                 flutterRevision: flutterRevision,
                 flutterVersion: flutterVersion,
                 displayName: releaseVersion,
+                platformStatuses: {
+                  releasePlatform: ReleaseStatus.active,
+                },
+                createdAt: DateTime(2024),
+                updatedAt: DateTime(2024),
+              ),
+              Release(
+                id: 1,
+                appId: appId,
+                version: '99.99.99+99',
+                flutterRevision: flutterRevision,
+                flutterVersion: flutterVersion,
+                displayName: '99.99.99+99',
                 platformStatuses: {
                   releasePlatform: ReleaseStatus.active,
                 },
