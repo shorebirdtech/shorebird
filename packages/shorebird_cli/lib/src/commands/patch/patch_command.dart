@@ -79,7 +79,7 @@ class PatchCommand extends ShorebirdCommand {
         'release-version',
         help: '''
 The version of the associated release (e.g. "1.0.0").
-To target the latest release (e.g. highest build number) use "latest".''',
+To target the latest release (highest released version) use --release-version=latest.''',
       )
       ..addFlag(
         'allow-native-diffs',
