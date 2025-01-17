@@ -33,13 +33,13 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 class _FakeRelease extends Fake with EquatableMixin implements Release {
-  _FakeRelease({required this.version});
+  _FakeRelease({required this.updatedAt});
 
   @override
-  final String version;
+  final DateTime updatedAt;
 
   @override
-  List<Object?> get props => [version];
+  List<Object?> get props => [updatedAt];
 }
 
 void main() {
@@ -1316,51 +1316,20 @@ Please re-run the release command for this version or create a new release.''',
     });
   });
 
-  group('sortByVersion', () {
-    test('sorts versions by semver', () {
-      // Sorts by major version
+  group('sortByUpdatedAt', () {
+    test('sorts versions correctly', () {
       expect(
         [
-          _FakeRelease(version: '1.0.0+1'),
-          _FakeRelease(version: '3.0.0+1'),
-          _FakeRelease(version: '2.0.0+1'),
-          _FakeRelease(version: '4.0.0+1'),
-        ]..sortByVersion(),
+          _FakeRelease(updatedAt: DateTime(2025, 05, 15)),
+          _FakeRelease(updatedAt: DateTime(2025, 04, 15)),
+          _FakeRelease(updatedAt: DateTime(2021, 09, 25)),
+          _FakeRelease(updatedAt: DateTime(2024)),
+        ]..sortByUpdatedAt(),
         equals([
-          _FakeRelease(version: '4.0.0+1'),
-          _FakeRelease(version: '3.0.0+1'),
-          _FakeRelease(version: '2.0.0+1'),
-          _FakeRelease(version: '1.0.0+1'),
-        ]),
-      );
-
-      // Sorts by build number
-      expect(
-        [
-          _FakeRelease(version: '1.0.0+1'),
-          _FakeRelease(version: '1.0.0+4'),
-          _FakeRelease(version: '1.0.0+2'),
-          _FakeRelease(version: '1.0.0+6'),
-        ]..sortByVersion(),
-        equals([
-          _FakeRelease(version: '1.0.0+6'),
-          _FakeRelease(version: '1.0.0+4'),
-          _FakeRelease(version: '1.0.0+2'),
-          _FakeRelease(version: '1.0.0+1'),
-        ]),
-      );
-
-      // Sorts by pre-release, handles missing build numbers, etc.
-      expect(
-        [
-          _FakeRelease(version: '1.0.0'),
-          _FakeRelease(version: '1.0.0+1.0.0'),
-          _FakeRelease(version: '1.0.0-dev'),
-        ]..sortByVersion(),
-        equals([
-          _FakeRelease(version: '1.0.0+1.0.0'),
-          _FakeRelease(version: '1.0.0'),
-          _FakeRelease(version: '1.0.0-dev'),
+          _FakeRelease(updatedAt: DateTime(2021, 09, 25)),
+          _FakeRelease(updatedAt: DateTime(2024)),
+          _FakeRelease(updatedAt: DateTime(2025, 04, 15)),
+          _FakeRelease(updatedAt: DateTime(2025, 05, 15)),
         ]),
       );
     });

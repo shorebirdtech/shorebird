@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
-import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -79,9 +78,8 @@ class PatchCommand extends ShorebirdCommand {
         'release-version',
         help: '''
 The version of the associated release (e.g. "1.0.0").
-To target the latest release (highest released version) use --release-version=latest.
-
-If you are building an xcframework or aar, this number needs to match the host app's release version.''',
+If you are building an xcframework or aar, this number needs to match the host app's release version.
+To target the latest release (e.g. the release that was most recently updated) use --release-version=latest.''',
       )
       ..addFlag(
         'allow-native-diffs',
@@ -299,14 +297,15 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         ..removeWhere(
           (release) => !release.platformStatuses.keys.contains(releasePlatform),
         )
-        ..sortByVersion();
+        ..sortByUpdatedAt();
       if (releases.isEmpty) {
         logger.warn(
           '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
         );
         throw ProcessExit(ExitCode.usage.code);
       }
-      release = releases.first;
+      // Use the most recently updated release for the specified platform.
+      release = releases.last;
     } else if (results.wasParsed('release-version')) {
       final releaseVersion = results['release-version'] as String;
       release = await codePushClientWrapper.getRelease(
@@ -584,12 +583,6 @@ ${summary.join('\n')}
 
 /// Extension on list of releases for sorting the releases.
 extension SortReleases on List<Release> {
-  /// Sort the list of releases by version (descending).
-  void sortByVersion() {
-    return sort(
-      (a, b) => Version.parse(b.version).compareTo(
-        Version.parse(a.version),
-      ),
-    );
-  }
+  /// Sort the list of releases by when they were last updated ascending.
+  void sortByUpdatedAt() => sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
 }
