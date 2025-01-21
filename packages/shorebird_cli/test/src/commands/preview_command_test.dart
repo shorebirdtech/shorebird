@@ -307,7 +307,7 @@ void main() {
       });
     });
 
-    group('when no releases are found', () {
+    group('when no releases exist', () {
       setUp(() {
         when(
           () => codePushClientWrapper.getReleases(
@@ -315,14 +315,37 @@ void main() {
             sideloadableOnly: any(named: 'sideloadableOnly'),
           ),
         ).thenAnswer((_) async => []);
-        when(() => argResults['platform']).thenReturn(null);
       });
 
       test('prints error and exits with usage code', () async {
         final result = await runWithOverrides(command.run);
         expect(result, ExitCode.usage.code);
         verify(
-          () => logger.err('No previewable releases found for this app.'),
+          () => logger.err('No previewable releases found for this app'),
+        ).called(1);
+      });
+    });
+
+    group('when no releases are found for the specified release', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        ).thenAnswer((_) async => [release]);
+        when(
+          () => argResults['release-version'],
+        ).thenReturn('not-a-real-version');
+      });
+
+      test('prints error and exits with usage code', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, ExitCode.usage.code);
+        verify(
+          () => logger.err(
+            'No previewable releases found for version not-a-real-version',
+          ),
         ).called(1);
       });
     });
@@ -1209,7 +1232,7 @@ channel: ${track.channel}
             ),
           ).called(1);
           verify(
-            () => logger.err('No previewable Android releases found.'),
+            () => logger.err('No previewable Android releases found'),
           ).called(1);
         });
       });
@@ -1719,7 +1742,7 @@ channel: ${DeploymentTrack.staging.channel}
           );
 
           verify(
-            () => logger.err('No previewable iOS releases found.'),
+            () => logger.err('No previewable iOS releases found'),
           ).called(1);
         });
       });

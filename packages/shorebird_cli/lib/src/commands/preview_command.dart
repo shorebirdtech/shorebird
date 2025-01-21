@@ -220,10 +220,10 @@ This is only applicable when previewing Android releases.''',
     if (platformReleases.isEmpty) {
       if (maybePlatform != null) {
         logger.err(
-          '''No previewable ${maybePlatform.displayName} releases found.''',
+          '''No previewable ${maybePlatform.displayName} releases found''',
         );
       } else {
-        logger.err('No previewable releases found for this app.');
+        logger.err('No previewable releases found for this app');
       }
       return ExitCode.usage.code;
     }
@@ -235,8 +235,8 @@ This is only applicable when previewing Android releases.''',
       (r) => r.version == releaseVersion,
     );
 
-    if (releaseVersion == null || release == null) {
-      logger.info('No previewable releases found');
+    if (release == null) {
+      logger.err('No previewable releases found for version $releaseVersion');
       return ExitCode.usage.code;
     }
 
@@ -317,8 +317,7 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Prompts the user to choose a release version to preview.
-  Future<String?> promptForReleaseVersion(List<Release> releases) async {
-    if (releases.isEmpty) return null;
+  Future<String> promptForReleaseVersion(List<Release> releases) async {
     final release = logger.chooseOne(
       'Which release would you like to preview?',
       choices: releases,
