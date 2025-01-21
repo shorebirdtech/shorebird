@@ -17,11 +17,11 @@ enum ApplePlatform {
   macos,
 }
 
-/// {@template missing_ios_project_exception}
+/// {@template missing_xcode_project_exception}
 /// Thrown when the Flutter project does not have iOS configured as a platform.
 /// {@endtemplate}
 class MissingXcodeProjectException implements Exception {
-  /// {@macro missing_ios_project_exception}
+  /// {@macro missing_xcode_project_exception}
   const MissingXcodeProjectException(this.projectPath);
 
   /// Expected path of the XCode project.
@@ -109,17 +109,17 @@ Apple get apple => read(appleRef);
 
 /// A class that provides information about the iOS platform.
 class Apple {
-  /// Returns the set of flavors for the iOS project, if the project has an
-  /// iOS platform configured.
+  /// Returns the set of flavors for the Xcode project associated with
+  /// [platform], if this project has that platform configured.
   Set<String>? flavors({required ApplePlatform platform}) {
     final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
     // Ideally, we would use `xcodebuild -list` to detect schemes/flavors.
-    // Unfortunately, many projects contain schemes that are not flavors,
-    // and we don't want to create flavors for these schemes. See
+    // Unfortunately, many projects contain schemes that are not flavors, and we
+    // don't want to create flavors for these schemes. See
     // https://github.com/shorebirdtech/shorebird/issues/1703 for an example.
-    // Instead, we look in `ios/Runner.xcodeproj/xcshareddata/xcschemes` for
-    // xcscheme files (which seem to be 1-to-1 with schemes in Xcode) and filter
-    // out schemes that are marked as "wasCreatedForAppExtension".
+    // Instead, we look in `[platform]/Runner.xcodeproj/xcshareddata/xcschemes`
+    // for xcscheme files (which seem to be 1-to-1 with schemes in Xcode) and
+    // filter out schemes that are marked as "wasCreatedForAppExtension".
     final platformDirName = switch (platform) {
       ApplePlatform.ios => 'ios',
       ApplePlatform.macos => 'macos',
@@ -145,7 +145,7 @@ class Apple {
       ),
     );
     if (!xcschemesDir.existsSync()) {
-      throw Exception('Unable to detect iOS schemes in $xcschemesDir');
+      throw Exception('Unable to detect schemes in $xcschemesDir');
     }
 
     return xcschemesDir
