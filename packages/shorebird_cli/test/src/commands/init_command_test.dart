@@ -396,7 +396,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
 
       group('when ios directory is empty', () {
         setUp(() {
-          when(() => apple.flavors(platform: ApplePlatform.ios)).thenThrow(
+          when(() => apple.flavors(platform: any(named: 'platform'))).thenThrow(
             MissingXcodeProjectException(projectRoot.path),
           );
         });
@@ -408,7 +408,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           expect(exitCode, equals(ExitCode.software.code));
           verify(
             () => logger.err(
-              any(that: contains('Could not find an iOS project in')),
+              any(that: contains('Could not find an Xcode project in')),
             ),
           ).called(1);
         });
@@ -491,8 +491,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           () => gradlew.productFlavors(any()),
         ).thenThrow(MissingAndroidProjectException(projectRoot.path));
         when(
-          () => apple.flavors(platform: ApplePlatform.ios),
-        ).thenReturn(null);
+          () => apple.flavors(platform: any(named: 'platform')),
+        ).thenReturn({'internal', 'stable'});
         final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
         verify(() => progress.complete('2 product flavors detected:'))
