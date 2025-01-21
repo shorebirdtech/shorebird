@@ -28,7 +28,6 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-import '../matchers.dart';
 import '../mocks.dart';
 
 void main() {
@@ -321,7 +320,7 @@ void main() {
 
       test('prints error message and exits with code 70', () async {
         final result = await runWithOverrides(command.run);
-        expect(result, ExitCode.software.code);
+        expect(result, ExitCode.usage.code);
         verify(
           () => logger.err(
             'This release can only be previewed on platforms that support iOS',
@@ -1175,7 +1174,7 @@ channel: ${track.channel}
 
         test('exits early', () async {
           final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.success.code));
+          expect(result, equals(ExitCode.usage.code));
           verifyNever(
             () => logger.chooseOne<AppMetadata>(
               any(),
@@ -1189,7 +1188,9 @@ channel: ${track.channel}
               sideloadableOnly: true,
             ),
           ).called(1);
-          verify(() => logger.info('No previewable releases found')).called(1);
+          verify(
+            () => logger.info('No previewable Android releases found.'),
+          ).called(1);
         });
       });
 
@@ -1690,16 +1691,15 @@ channel: ${DeploymentTrack.staging.channel}
           ).thenAnswer((_) async => [releaseWithAllPlatforms]);
         });
 
-        test('err about the platform and exits', () async {
+        test('prints error that platform is not previewable and exits',
+            () async {
           await expectLater(
-            () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.software),
+            runWithOverrides(command.run),
+            completion(equals(ExitCode.usage.code)),
           );
 
           verify(
-            () => logger.err(
-              '''The ${ReleasePlatform.ios.displayName} artifact for this release is not previewable.''',
-            ),
+            () => logger.info('No previewable iOS releases found.'),
           ).called(1);
         });
       });
