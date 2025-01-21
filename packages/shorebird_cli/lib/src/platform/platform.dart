@@ -1,6 +1,5 @@
 export 'android.dart';
-export 'ios.dart';
-export 'macos.dart';
+export 'apple.dart';
 export 'windows.dart';
 
 /// {@template arch}

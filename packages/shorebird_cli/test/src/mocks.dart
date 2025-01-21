@@ -51,6 +51,8 @@ class MockAndroidStudio extends Mock implements AndroidStudio {}
 
 class MockAotTools extends Mock implements AotTools {}
 
+class MockApple extends Mock implements Apple {}
+
 class MockAppMetadata extends Mock implements AppMetadata {}
 
 class MockAppleDevice extends Mock implements AppleDevice {}
@@ -108,8 +110,6 @@ class MockIDeviceSysLog extends Mock implements IDeviceSysLog {}
 class MockIOSDeploy extends Mock implements IOSDeploy {}
 
 class MockIOSink extends Mock implements IOSink {}
-
-class MockIos extends Mock implements Ios {}
 
 class MockJava extends Mock implements Java {}
 

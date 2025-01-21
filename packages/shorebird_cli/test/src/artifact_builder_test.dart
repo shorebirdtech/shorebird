@@ -32,8 +32,8 @@ void main() {
 
   group(ArtifactBuilder, () {
     final projectRoot = Directory.systemTemp.createTempSync();
+    late Apple apple;
     late ArtifactManager artifactManager;
-    late Ios ios;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
@@ -49,8 +49,8 @@ void main() {
       return runScoped(
         body,
         values: {
+          appleRef.overrideWith(() => apple),
           artifactManagerRef.overrideWith(() => artifactManager),
-          iosRef.overrideWith(() => ios),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
@@ -68,9 +68,9 @@ void main() {
     });
 
     setUp(() {
+      apple = MockApple();
       artifactManager = MockArtifactManager();
       buildProcessResult = MockProcessResult();
-      ios = MockIos();
       logger = MockShorebirdLogger();
       operatingSystemInterface = MockOperatingSystemInterface();
       pubGetProcessResult = MockProcessResult();

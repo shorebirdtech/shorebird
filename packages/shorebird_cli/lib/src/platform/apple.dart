@@ -7,12 +7,22 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:xml/xml.dart';
 
-/// {@template missing_ios_project_exception}
+/// Apple-specific platform options, corresponding to different Flutter target
+/// platforms.
+enum ApplePlatform {
+  /// iOS
+  ios,
+
+  /// macOS
+  macos,
+}
+
+/// {@template missing_xcode_project_exception}
 /// Thrown when the Flutter project does not have iOS configured as a platform.
 /// {@endtemplate}
-class MissingIOSProjectException implements Exception {
-  /// {@macro missing_ios_project_exception}
-  const MissingIOSProjectException(this.projectPath);
+class MissingXcodeProjectException implements Exception {
+  /// {@macro missing_xcode_project_exception}
+  const MissingXcodeProjectException(this.projectPath);
 
   /// Expected path of the XCode project.
   final String projectPath;
@@ -20,8 +30,9 @@ class MissingIOSProjectException implements Exception {
   @override
   String toString() {
     return '''
-Could not find an iOS project in $projectPath.
-To add iOS, run "flutter create . --platforms ios"''';
+Could not find an Xcode project in $projectPath.
+To add iOS, run "flutter create . --platforms ios"
+To add macOS, run "flutter create . --platforms macos"''';
   }
 }
 
@@ -77,39 +88,53 @@ class InvalidExportOptionsPlistException implements Exception {
   String toString() => message;
 }
 
+/// A warning message printed at the start of `shorebird release macos` and
+/// `shorebird patch macos` commands.
+const macosBetaWarning = '''
+macOS support is currently in beta.
+Please report issues at https://github.com/shorebirdtech/shorebird/issues/new
+''';
+
 /// The minimum allowed Flutter version for creating iOS releases.
 final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
 
-/// A reference to a [Ios] instance.
-final iosRef = create(Ios.new);
+/// The minimum allowed Flutter version for creating macOS releases.
+final minimumSupportedMacosFlutterVersion = Version(3, 27, 0);
 
-/// The [Ios] instance available in the current zone.
-Ios get ios => read(iosRef);
+/// A reference to a [Apple] instance.
+final appleRef = create(Apple.new);
+
+/// The [Apple] instance available in the current zone.
+Apple get apple => read(appleRef);
 
 /// A class that provides information about the iOS platform.
-class Ios {
-  /// Returns the set of flavors for the iOS project, if the project has an
-  /// iOS platform configured.
-  Set<String>? flavors() {
+class Apple {
+  /// Returns the set of flavors for the Xcode project associated with
+  /// [platform], if this project has that platform configured.
+  Set<String>? flavors({required ApplePlatform platform}) {
     final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
     // Ideally, we would use `xcodebuild -list` to detect schemes/flavors.
-    // Unfortunately, many projects contain schemes that are not flavors,
-    // and we don't want to create flavors for these schemes. See
+    // Unfortunately, many projects contain schemes that are not flavors, and we
+    // don't want to create flavors for these schemes. See
     // https://github.com/shorebirdtech/shorebird/issues/1703 for an example.
-    // Instead, we look in `ios/Runner.xcodeproj/xcshareddata/xcschemes` for
-    // xcscheme files (which seem to be 1-to-1 with schemes in Xcode) and filter
-    // out schemes that are marked as "wasCreatedForAppExtension".
-    final iosDir = Directory(p.join(projectRoot.path, 'ios'));
-    if (!iosDir.existsSync()) {
+    // Instead, we look in `[platform]/Runner.xcodeproj/xcshareddata/xcschemes`
+    // for xcscheme files (which seem to be 1-to-1 with schemes in Xcode) and
+    // filter out schemes that are marked as "wasCreatedForAppExtension".
+    final platformDirName = switch (platform) {
+      ApplePlatform.ios => 'ios',
+      ApplePlatform.macos => 'macos',
+    };
+    final platformDir = Directory(p.join(projectRoot.path, platformDirName));
+    if (!platformDir.existsSync()) {
       return null;
     }
 
-    final xcodeProjDirectory = iosDir
+    final xcodeProjDirectory = platformDir
         .listSync()
         .whereType<Directory>()
         .firstWhereOrNull((d) => p.extension(d.path) == '.xcodeproj');
     if (xcodeProjDirectory == null) {
-      throw MissingIOSProjectException(projectRoot.path);
+      throw MissingXcodeProjectException(projectRoot.path);
     }
 
     final xcschemesDir = Directory(
@@ -120,7 +145,7 @@ class Ios {
       ),
     );
     if (!xcschemesDir.existsSync()) {
-      throw Exception('Unable to detect iOS schemes in $xcschemesDir');
+      throw Exception('Unable to detect schemes in $xcschemesDir');
     }
 
     return xcschemesDir
