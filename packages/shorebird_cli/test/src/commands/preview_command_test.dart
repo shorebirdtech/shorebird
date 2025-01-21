@@ -28,7 +28,6 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
-import '../matchers.dart';
 import '../mocks.dart';
 
 void main() {
@@ -308,6 +307,49 @@ void main() {
       });
     });
 
+    group('when no releases exist', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        ).thenAnswer((_) async => []);
+      });
+
+      test('prints error and exits with usage code', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, ExitCode.usage.code);
+        verify(
+          () => logger.err('No previewable releases found for this app'),
+        ).called(1);
+      });
+    });
+
+    group('when no releases are found for the specified release', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        ).thenAnswer((_) async => [release]);
+        when(
+          () => argResults['release-version'],
+        ).thenReturn('not-a-real-version');
+      });
+
+      test('prints error and exits with usage code', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, ExitCode.usage.code);
+        verify(
+          () => logger.err(
+            'No previewable releases found for version not-a-real-version',
+          ),
+        ).called(1);
+      });
+    });
+
     group('when release is not supported on the current OS', () {
       setUp(() {
         when(() => platform.isLinux).thenReturn(false);
@@ -321,7 +363,7 @@ void main() {
 
       test('prints error message and exits with code 70', () async {
         final result = await runWithOverrides(command.run);
-        expect(result, ExitCode.software.code);
+        expect(result, ExitCode.usage.code);
         verify(
           () => logger.err(
             'This release can only be previewed on platforms that support iOS',
@@ -1173,9 +1215,9 @@ channel: ${track.channel}
           ).thenAnswer((_) async => []);
         });
 
-        test('exits early', () async {
+        test('logs error message exits early', () async {
           final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.success.code));
+          expect(result, equals(ExitCode.usage.code));
           verifyNever(
             () => logger.chooseOne<AppMetadata>(
               any(),
@@ -1189,7 +1231,9 @@ channel: ${track.channel}
               sideloadableOnly: true,
             ),
           ).called(1);
-          verify(() => logger.info('No previewable releases found')).called(1);
+          verify(
+            () => logger.err('No previewable Android releases found'),
+          ).called(1);
         });
       });
 
@@ -1690,16 +1734,15 @@ channel: ${DeploymentTrack.staging.channel}
           ).thenAnswer((_) async => [releaseWithAllPlatforms]);
         });
 
-        test('err about the platform and exits', () async {
+        test('prints error that platform is not previewable and exits',
+            () async {
           await expectLater(
-            () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.software),
+            runWithOverrides(command.run),
+            completion(equals(ExitCode.usage.code)),
           );
 
           verify(
-            () => logger.err(
-              '''The ${ReleasePlatform.ios.displayName} artifact for this release is not previewable.''',
-            ),
+            () => logger.err('No previewable iOS releases found'),
           ).called(1);
         });
       });
