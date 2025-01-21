@@ -48,6 +48,7 @@ void main() {
     IosPatcher,
     () {
       late AotTools aotTools;
+      late Apple apple;
       late ArgParser argParser;
       late ArgResults argResults;
       late ArtifactBuilder artifactBuilder;
@@ -69,7 +70,6 @@ void main() {
       late ShorebirdFlutter shorebirdFlutter;
       late ShorebirdValidator shorebirdValidator;
       late XcodeBuild xcodeBuild;
-      late Ios ios;
       late IosPatcher patcher;
 
       R runWithOverrides<R>(R Function() body) {
@@ -77,13 +77,13 @@ void main() {
           body,
           values: {
             aotToolsRef.overrideWith(() => aotTools),
+            appleRef.overrideWith(() => apple),
             artifactBuilderRef.overrideWith(() => artifactBuilder),
             artifactManagerRef.overrideWith(() => artifactManager),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
             codeSignerRef.overrideWith(() => codeSigner),
             doctorRef.overrideWith(() => doctor),
             engineConfigRef.overrideWith(() => engineConfig),
-            iosRef.overrideWith(() => ios),
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
             patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
@@ -109,6 +109,7 @@ void main() {
 
       setUp(() {
         aotTools = MockAotTools();
+        apple = MockApple();
         argParser = MockArgParser();
         argResults = MockArgResults();
         artifactBuilder = MockArtifactBuilder();
@@ -118,7 +119,6 @@ void main() {
         doctor = MockDoctor();
         engineConfig = MockEngineConfig();
         flavorValidator = MockFlavorValidator();
-        ios = MockIos();
         operatingSystemInterface = MockOperatingSystemInterface();
         patchDiffChecker = MockPatchDiffChecker();
         progress = MockProgress();

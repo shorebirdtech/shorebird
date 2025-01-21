@@ -14,7 +14,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
-import 'package:shorebird_cli/src/platform/ios.dart';
+import 'package:shorebird_cli/src/platform/apple.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -51,7 +51,7 @@ environment:
     late PubspecEditor pubspecEditor;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
-    late Ios ios;
+    late Apple apple;
     late InitCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -61,7 +61,7 @@ environment:
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           doctorRef.overrideWith(() => doctor),
           gradlewRef.overrideWith(() => gradlew),
-          iosRef.overrideWith(() => ios),
+          appleRef.overrideWith(() => apple),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
@@ -73,6 +73,7 @@ environment:
     }
 
     setUpAll(() {
+      registerFallbackValue(ApplePlatform.ios);
       registerFallbackValue(MockDirectory());
     });
 
@@ -81,7 +82,7 @@ environment:
       doctor = MockDoctor();
       gradlew = MockGradlew();
       codePushClientWrapper = MockCodePushClientWrapper();
-      ios = MockIos();
+      apple = MockApple();
       shorebirdYaml = MockShorebirdYaml();
       shorebirdYamlFile = MockFile();
       pubspecYamlFile = MockFile();
@@ -142,7 +143,9 @@ environment:
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
         ),
       ).thenAnswer((_) async {});
-      when(() => ios.flavors()).thenReturn(null);
+      when(
+        () => apple.flavors(platform: any(named: 'platform')),
+      ).thenReturn(null);
 
       command = runWithOverrides(InitCommand.new)..testArgResults = argResults;
     });
@@ -393,8 +396,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
 
       group('when ios directory is empty', () {
         setUp(() {
-          when(() => ios.flavors()).thenThrow(
-            MissingIOSProjectException(projectRoot.path),
+          when(() => apple.flavors(platform: ApplePlatform.ios)).thenThrow(
+            MissingXcodeProjectException(projectRoot.path),
           );
         });
 
@@ -487,7 +490,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         when(
           () => gradlew.productFlavors(any()),
         ).thenThrow(MissingAndroidProjectException(projectRoot.path));
-        when(() => ios.flavors()).thenReturn({'internal', 'stable'});
+        when(
+          () => apple.flavors(platform: ApplePlatform.ios),
+        ).thenReturn(null);
         final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
         verify(() => progress.complete('2 product flavors detected:'))
@@ -611,7 +616,7 @@ flavors:
           'test-appId-6',
         ];
         var index = 0;
-        when(() => ios.flavors()).thenReturn(
+        when(() => apple.flavors(platform: ApplePlatform.ios)).thenReturn(
           {
             'development',
             'developmentInternal',
@@ -688,7 +693,7 @@ flavors:
           'test-appId-7',
         ];
         var index = 0;
-        when(() => ios.flavors()).thenReturn(
+        when(() => apple.flavors(platform: ApplePlatform.ios)).thenReturn(
           {
             'development',
             'developmentInternal',
@@ -763,7 +768,7 @@ flavors:
           'test-appId-7',
         ];
         var index = 0;
-        when(() => ios.flavors()).thenReturn({});
+        when(() => apple.flavors(platform: ApplePlatform.ios)).thenReturn({});
         when(() => gradlew.productFlavors(any())).thenAnswer(
           (_) async => {
             'development',
@@ -848,7 +853,9 @@ flavors:
         when(
           () => gradlew.productFlavors(any()),
         ).thenAnswer((_) async => variants);
-        when(() => ios.flavors()).thenReturn(variants);
+        when(
+          () => apple.flavors(platform: ApplePlatform.ios),
+        ).thenReturn(variants);
         when(
           () => codePushClientWrapper.createApp(
             appName: any(named: 'appName'),
@@ -902,7 +909,7 @@ flavors:
         ]);
       });
 
-      test('ios + android w/different variants', () async {
+      test('multiple platforms w/different variants', () async {
         final appIds = [
           'test-appId-1',
           'test-appId-2',
@@ -912,6 +919,7 @@ flavors:
           'test-appId-6',
           'test-appId-7',
           'test-appId-8',
+          'test-appId-9',
         ];
         const androidVariants = {
           'dev',
@@ -927,11 +935,21 @@ flavors:
           'staging',
           'stagingInternal',
         };
+        const macosVariants = {
+          'development',
+          'developmentInternal',
+          'production-macos',
+        };
         var index = 0;
         when(
           () => gradlew.productFlavors(any()),
         ).thenAnswer((_) async => androidVariants);
-        when(() => ios.flavors()).thenReturn(iosVariants);
+        when(
+          () => apple.flavors(platform: ApplePlatform.ios),
+        ).thenReturn(iosVariants);
+        when(
+          () => apple.flavors(platform: ApplePlatform.macos),
+        ).thenReturn(macosVariants);
         when(
           () => codePushClientWrapper.createApp(
             appName: any(named: 'appName'),
@@ -955,7 +973,8 @@ flavors:
   development: test-appId-5
   developmentInternal: test-appId-6
   staging: test-appId-7
-  stagingInternal: test-appId-8'''),
+  stagingInternal: test-appId-8
+  production-macos: test-appId-9'''),
             ),
           ),
         );
@@ -990,6 +1009,10 @@ flavors:
               ),
           () => codePushClientWrapper.createApp(
                 appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
+              ),
+          () => codePushClientWrapper.createApp(
+                appName: '$appName (production-macos)',
                 organizationId: organizationId,
               ),
         ]);

@@ -1,4 +1,4 @@
-import 'package:shorebird_cli/src/platform/ios.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 
 /// {@template argument_describer}
 /// A class that describes an argument from a command/sub command.

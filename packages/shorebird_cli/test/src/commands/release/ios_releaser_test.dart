@@ -21,7 +21,7 @@ import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
-import 'package:shorebird_cli/src/platform/ios.dart';
+import 'package:shorebird_cli/src/platform/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -40,6 +40,7 @@ void main() {
   group(
     IosReleaser,
     () {
+      late Apple apple;
       late ArgResults argResults;
       late ArtifactBuilder artifactBuilder;
       late ArtifactManager artifactManager;
@@ -50,7 +51,6 @@ void main() {
       late FlavorValidator flavorValidator;
       late Progress progress;
       late ShorebirdLogger logger;
-      late Ios ios;
       late OperatingSystemInterface operatingSystemInterface;
       late ShorebirdProcess shorebirdProcess;
       late ShorebirdEnv shorebirdEnv;
@@ -63,12 +63,12 @@ void main() {
         return runScoped(
           body,
           values: {
+            appleRef.overrideWith(() => apple),
             artifactBuilderRef.overrideWith(() => artifactBuilder),
             artifactManagerRef.overrideWith(() => artifactManager),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
             codeSignerRef.overrideWith(() => codeSigner),
             doctorRef.overrideWith(() => doctor),
-            iosRef.overrideWith(() => ios),
             loggerRef.overrideWith(() => logger),
             osInterfaceRef.overrideWith(() => operatingSystemInterface),
             processRef.overrideWith(() => shorebirdProcess),
@@ -87,6 +87,7 @@ void main() {
       });
 
       setUp(() {
+        apple = MockApple();
         argResults = MockArgResults();
         artifactBuilder = MockArtifactBuilder();
         artifactManager = MockArtifactManager();
@@ -98,7 +99,6 @@ void main() {
         operatingSystemInterface = MockOperatingSystemInterface();
         progress = MockProgress();
         logger = MockShorebirdLogger();
-        ios = MockIos();
         shorebirdProcess = MockShorebirdProcess();
         shorebirdEnv = MockShorebirdEnv();
         shorebirdFlutter = MockShorebirdFlutter();

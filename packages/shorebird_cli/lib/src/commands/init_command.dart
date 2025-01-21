@@ -6,7 +6,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/platform/ios.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
@@ -88,15 +88,18 @@ Please make sure you are running "shorebird init" from within your Flutter proje
 
     Set<String>? androidFlavors;
     Set<String>? iosFlavors;
+    Set<String>? macosFlavors;
     var productFlavors = <String>{};
     final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
     final detectFlavorsProgress = logger.progress('Detecting product flavors');
     try {
       androidFlavors = await _maybeGetAndroidFlavors(projectRoot.path);
-      iosFlavors = ios.flavors();
+      iosFlavors = apple.flavors(platform: ApplePlatform.ios);
+      macosFlavors = apple.flavors(platform: ApplePlatform.macos);
       productFlavors = <String>{
         if (androidFlavors != null) ...androidFlavors,
         if (iosFlavors != null) ...iosFlavors,
+        if (macosFlavors != null) ...macosFlavors,
       };
       if (productFlavors.isEmpty) {
         detectFlavorsProgress.complete('No product flavors detected.');

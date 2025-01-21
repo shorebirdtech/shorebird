@@ -17,9 +17,9 @@ void main() {
     });
   });
 
-  group(Ios, () {
+  group(Apple, () {
     late ShorebirdEnv shorebirdEnv;
-    late Ios ios;
+    late Apple apple;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -32,17 +32,18 @@ void main() {
 
     setUp(() {
       shorebirdEnv = MockShorebirdEnv();
-      ios = Ios();
+      apple = Apple();
     });
 
-    group(MissingIOSProjectException, () {
+    group(MissingXcodeProjectException, () {
       test('toString', () {
-        const exception = MissingIOSProjectException('test_project_path');
+        const exception = MissingXcodeProjectException('test_project_path');
         expect(
           exception.toString(),
           '''
-Could not find an iOS project in test_project_path.
-To add iOS, run "flutter create . --platforms ios"''',
+Could not find an Xcode project in test_project_path.
+To add iOS, run "flutter create . --platforms ios"
+To add macOS, run "flutter create . --platforms macos"''',
         );
       });
     });
@@ -74,7 +75,10 @@ To add iOS, run "flutter create . --platforms ios"''',
 
       group('when ios directory does not exist', () {
         test('returns null', () {
-          expect(runWithOverrides(() => ios.flavors()), isNull);
+          expect(
+            runWithOverrides(() => apple.flavors(platform: ApplePlatform.ios)),
+            isNull,
+          );
         });
       });
 
@@ -88,8 +92,10 @@ To add iOS, run "flutter create . --platforms ios"''',
 
         test('throws exception', () {
           expect(
-            () => runWithOverrides(ios.flavors),
-            throwsA(isA<MissingIOSProjectException>()),
+            () => runWithOverrides(
+              () => apple.flavors(platform: ApplePlatform.ios),
+            ),
+            throwsA(isA<MissingXcodeProjectException>()),
           );
         });
       });
@@ -103,7 +109,12 @@ To add iOS, run "flutter create . --platforms ios"''',
         });
 
         test('throws exception', () {
-          expect(() => runWithOverrides(ios.flavors), throwsException);
+          expect(
+            () => runWithOverrides(
+              () => apple.flavors(platform: ApplePlatform.ios),
+            ),
+            throwsException,
+          );
         });
       });
 
@@ -119,7 +130,10 @@ To add iOS, run "flutter create . --platforms ios"''',
         });
 
         test('returns no flavors', () {
-          expect(runWithOverrides(ios.flavors), isEmpty);
+          expect(
+            runWithOverrides(() => apple.flavors(platform: ApplePlatform.ios)),
+            isEmpty,
+          );
         });
       });
 
@@ -127,7 +141,10 @@ To add iOS, run "flutter create . --platforms ios"''',
         setUp(copyFixturesToProjectRoot);
 
         test('returns only non-extension schemes', () {
-          expect(runWithOverrides(ios.flavors), {'internal', 'beta', 'stable'});
+          expect(
+            runWithOverrides(() => apple.flavors(platform: ApplePlatform.ios)),
+            {'internal', 'beta', 'stable'},
+          );
         });
       });
 
@@ -142,7 +159,10 @@ To add iOS, run "flutter create . --platforms ios"''',
         });
 
         test('returns only non-extension schemes', () {
-          expect(runWithOverrides(ios.flavors), {'internal', 'beta', 'stable'});
+          expect(
+            runWithOverrides(() => apple.flavors(platform: ApplePlatform.ios)),
+            {'internal', 'beta', 'stable'},
+          );
         });
       });
     });
