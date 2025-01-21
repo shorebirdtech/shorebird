@@ -307,6 +307,26 @@ void main() {
       });
     });
 
+    group('when no releases are found', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        ).thenAnswer((_) async => []);
+        when(() => argResults['platform']).thenReturn(null);
+      });
+
+      test('prints error and exits with usage code', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, ExitCode.usage.code);
+        verify(
+          () => logger.err('No previewable releases found for this app.'),
+        ).called(1);
+      });
+    });
+
     group('when release is not supported on the current OS', () {
       setUp(() {
         when(() => platform.isLinux).thenReturn(false);
@@ -1172,7 +1192,7 @@ channel: ${track.channel}
           ).thenAnswer((_) async => []);
         });
 
-        test('exits early', () async {
+        test('logs error message exits early', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.usage.code));
           verifyNever(
@@ -1189,7 +1209,7 @@ channel: ${track.channel}
             ),
           ).called(1);
           verify(
-            () => logger.info('No previewable Android releases found.'),
+            () => logger.err('No previewable Android releases found.'),
           ).called(1);
         });
       });
@@ -1699,7 +1719,7 @@ channel: ${DeploymentTrack.staging.channel}
           );
 
           verify(
-            () => logger.info('No previewable iOS releases found.'),
+            () => logger.err('No previewable iOS releases found.'),
           ).called(1);
         });
       });

@@ -219,11 +219,11 @@ This is only applicable when previewing Android releases.''',
 
     if (platformReleases.isEmpty) {
       if (maybePlatform != null) {
-        logger.info(
+        logger.err(
           '''No previewable ${maybePlatform.displayName} releases found.''',
         );
       } else {
-        logger.info('No previewable releases found for this app.');
+        logger.err('No previewable releases found for this app.');
       }
       return ExitCode.usage.code;
     }
@@ -237,7 +237,7 @@ This is only applicable when previewing Android releases.''',
 
     if (releaseVersion == null || release == null) {
       logger.info('No previewable releases found');
-      return ExitCode.success.code;
+      return ExitCode.usage.code;
     }
 
     final availablePlatforms = release.activePlatforms
