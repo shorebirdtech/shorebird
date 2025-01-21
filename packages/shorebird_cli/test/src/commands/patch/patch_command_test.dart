@@ -821,7 +821,7 @@ void main() {
                 },
                 createdAt: DateTime(2023),
                 updatedAt: DateTime(2023),
-              )
+              ),
             ],
           );
         });

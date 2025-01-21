@@ -49,19 +49,27 @@ To add macOS, run "flutter create . --platforms macos"''',
     });
 
     group('flavors', () {
-      final schemesPath = p.join(
-        'ios',
-        'Runner.xcodeproj',
-        'xcshareddata',
-        'xcschemes',
-      );
       late Directory projectRoot;
 
-      void copyFixturesToProjectRoot() {
-        final fixturesDir = Directory(p.join('test', 'fixtures', 'xcschemes'));
+      void copyFixturesToProjectRoot({required String schemesPath}) {
+        if (!projectRoot.existsSync()) {
+          return;
+        }
+
+        final fixturesDir = Directory(
+          p.join(
+            'test',
+            'fixtures',
+            'xcschemes',
+          ),
+        );
         for (final file in fixturesDir.listSync().whereType<File>()) {
           final destination = File(
-            p.join(projectRoot.path, schemesPath, p.basename(file.path)),
+            p.join(
+              projectRoot.path,
+              schemesPath,
+              p.basename(file.path),
+            ),
           )..createSync(recursive: true);
           file.copySync(destination.path);
         }
@@ -73,96 +81,202 @@ To add macOS, run "flutter create . --platforms macos"''',
             .thenReturn(projectRoot);
       });
 
-      group('when ios directory does not exist', () {
-        test('returns null', () {
-          expect(
-            runWithOverrides(() => apple.flavors(platform: ApplePlatform.ios)),
-            isNull,
-          );
-        });
-      });
+      group('ios', () {
+        final schemesPath = p.join(
+          'ios',
+          'Runner.xcodeproj',
+          'xcshareddata',
+          'xcschemes',
+        );
 
-      group('when xcodeproj does not exist', () {
         setUp(() {
-          copyFixturesToProjectRoot();
-          Directory(
-            p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
-          ).deleteSync(recursive: true);
+          copyFixturesToProjectRoot(schemesPath: schemesPath);
         });
 
-        test('throws exception', () {
-          expect(
-            () => runWithOverrides(
-              () => apple.flavors(platform: ApplePlatform.ios),
-            ),
-            throwsA(isA<MissingXcodeProjectException>()),
-          );
-        });
-      });
+        group('when ios directory does not exist', () {
+          setUp(() {
+            Directory(
+              p.join(projectRoot.path, 'ios'),
+            ).deleteSync(recursive: true);
+          });
 
-      group('when xcschemes directory does not exist', () {
-        setUp(() {
-          copyFixturesToProjectRoot();
-          Directory(
-            p.join(projectRoot.path, 'ios', 'Runner.xcodeproj', 'xcshareddata'),
-          ).deleteSync(recursive: true);
+          test('returns null', () {
+            expect(
+              runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.ios),
+              ),
+              isNull,
+            );
+          });
         });
 
-        test('throws exception', () {
-          expect(
-            () => runWithOverrides(
-              () => apple.flavors(platform: ApplePlatform.ios),
-            ),
-            throwsException,
-          );
-        });
-      });
+        group('when xcodeproj does not exist', () {
+          setUp(() {
+            Directory(
+              p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
+            ).deleteSync(recursive: true);
+          });
 
-      group('when only Runner scheme exists', () {
-        setUp(() {
-          copyFixturesToProjectRoot();
-          final schemesDir = Directory(p.join(projectRoot.path, schemesPath));
-          for (final schemeFile in schemesDir.listSync().whereType<File>()) {
-            if (p.basenameWithoutExtension(schemeFile.path) != 'Runner') {
-              schemeFile.deleteSync();
+          test('throws exception', () {
+            expect(
+              () => runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.ios),
+              ),
+              throwsA(isA<MissingXcodeProjectException>()),
+            );
+          });
+        });
+
+        group('when xcschemes directory does not exist', () {
+          setUp(() {
+            Directory(
+              p.join(
+                projectRoot.path,
+                'ios',
+                'Runner.xcodeproj',
+                'xcshareddata',
+              ),
+            ).deleteSync(recursive: true);
+          });
+
+          test('throws exception', () {
+            expect(
+              () => runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.ios),
+              ),
+              throwsException,
+            );
+          });
+        });
+
+        group('when only Runner scheme exists', () {
+          setUp(() {
+            final schemesDir = Directory(p.join(projectRoot.path, schemesPath));
+            for (final schemeFile in schemesDir.listSync().whereType<File>()) {
+              if (p.basenameWithoutExtension(schemeFile.path) != 'Runner') {
+                schemeFile.deleteSync();
+              }
             }
-          }
+          });
+
+          test('returns no flavors', () {
+            expect(
+              runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.ios),
+              ),
+              isEmpty,
+            );
+          });
         });
 
-        test('returns no flavors', () {
-          expect(
-            runWithOverrides(() => apple.flavors(platform: ApplePlatform.ios)),
-            isEmpty,
-          );
+        group('when extension and non-extension schemes exist', () {
+          test('returns only non-extension schemes', () {
+            expect(
+              runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.ios),
+              ),
+              {'internal', 'beta', 'stable'},
+            );
+          });
+        });
+
+        group('when Runner has been renamed', () {
+          setUp(() {
+            Directory(
+              p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
+            ).renameSync(
+              p.join(projectRoot.path, 'ios', 'RenamedRunner.xcodeproj'),
+            );
+          });
+
+          test('returns only non-extension schemes', () {
+            expect(
+              runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.ios),
+              ),
+              {'internal', 'beta', 'stable'},
+            );
+          });
         });
       });
 
-      group('when extension and non-extension schemes exist', () {
-        setUp(copyFixturesToProjectRoot);
+      group('macos', () {
+        final schemesPath = p.join(
+          'macos',
+          'Runner.xcodeproj',
+          'xcshareddata',
+          'xcschemes',
+        );
 
-        test('returns only non-extension schemes', () {
-          expect(
-            runWithOverrides(() => apple.flavors(platform: ApplePlatform.ios)),
-            {'internal', 'beta', 'stable'},
-          );
-        });
-      });
-
-      group('when Runner has been renamed', () {
         setUp(() {
-          copyFixturesToProjectRoot();
-          Directory(
-            p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
-          ).renameSync(
-            p.join(projectRoot.path, 'ios', 'RenamedRunner.xcodeproj'),
-          );
+          copyFixturesToProjectRoot(schemesPath: schemesPath);
         });
 
-        test('returns only non-extension schemes', () {
-          expect(
-            runWithOverrides(() => apple.flavors(platform: ApplePlatform.ios)),
-            {'internal', 'beta', 'stable'},
-          );
+        group('when macOS directory does not exist', () {
+          setUp(() {
+            Directory(
+              p.join(projectRoot.path, 'macos'),
+            ).deleteSync(recursive: true);
+          });
+
+          test('returns null', () {
+            expect(
+              runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.macos),
+              ),
+              isNull,
+            );
+          });
+        });
+
+        group('when Xcode project does not exist', () {
+          setUp(() {
+            Directory(
+              p.join(projectRoot.path, 'macos', 'Runner.xcodeproj'),
+            ).deleteSync(recursive: true);
+          });
+
+          test('throws MissingXcodeProjectException', () {
+            expect(
+              () => runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.macos),
+              ),
+              throwsA(isA<MissingXcodeProjectException>()),
+            );
+          });
+        });
+
+        group('when schemes directory does not exist', () {
+          setUp(() {
+            Directory(
+              p.join(
+                projectRoot.path,
+                'macos',
+                'Runner.xcodeproj',
+                'xcshareddata',
+              ),
+            ).deleteSync(recursive: true);
+          });
+
+          test('throws Exception', () {
+            expect(
+              () => runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.macos),
+              ),
+              throwsException,
+            );
+          });
+        });
+
+        group('when schemes are found', () {
+          test('returns all schemes except Runner', () {
+            expect(
+              runWithOverrides(
+                () => apple.flavors(platform: ApplePlatform.macos),
+              ),
+              {'internal', 'beta', 'stable'},
+            );
+          });
         });
       });
     });
