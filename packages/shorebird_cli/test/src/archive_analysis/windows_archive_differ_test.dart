@@ -43,25 +43,8 @@ void main() {
     });
 
     group('isNativeFilePath', () {
-      group('when file extension is .dll', () {
-        test('returns true', () {
-          final result = differ.isNativeFilePath('foo.dll');
-          expect(result, isTrue);
-        });
-      });
-
-      group('when file extension is .exe', () {
-        test('returns true', () {
-          final result = differ.isNativeFilePath('foo.exe');
-          expect(result, isTrue);
-        });
-      });
-
-      group('when file extension is not .dll or .exe', () {
-        test('returns false', () {
-          final result = differ.isNativeFilePath('foo.so');
-          expect(result, isFalse);
-        });
+      test('returns false', () {
+        expect(differ.isNativeFilePath(r'C:\path\to\file.exe'), isFalse);
       });
     });
 
@@ -77,9 +60,18 @@ void main() {
         'patch.zip',
       );
 
-      test('returns an empty FileSetDiff', () async {
+      test('returns a FileSetDiff containing only the .exe', () async {
         final result = await differ.changedFiles(releasePath, patchPath);
-        expect(result, equals(FileSetDiff.empty()));
+        expect(
+          result,
+          equals(
+            const FileSetDiff(
+              addedPaths: {},
+              removedPaths: {},
+              changedPaths: {'hello_windows.exe'},
+            ),
+          ),
+        );
       });
     });
   });
