@@ -6,6 +6,14 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.5 (January 22, 2025)
+
+- 🐦 Support for Flutter 3.27.3
+- 🍡 Add flavor support to macOS
+- 🕵 Improvements to `shorebird preview`
+- 🗓️ Add support for `shorebird patch [platform] --release-version=latest` to
+  patch the most recently updated release.
+
 ## 1.6.4 (January 16, 2025)
 
 - 🔐 Add support for signed patches on Windows
