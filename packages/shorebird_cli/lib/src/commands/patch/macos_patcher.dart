@@ -218,6 +218,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacOS,
           additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
         );
+
+        if (!File(_aotOutputPath).existsSync()) {
+          throw Exception('Failed to build AOT snapshot');
+        }
       } catch (error) {
         buildProgress.fail('$error');
         rethrow;
@@ -245,6 +249,53 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     return zippedApp;
   }
 
+  Future<Map<Arch, PatchArtifactBundle>> _createUnlinkedPatch({
+    required String appId,
+    required int releaseId,
+    required File releaseArtifact,
+  }) async {
+    // final unzipProgress = logger.progress('Extracting release artifact');
+    // final releaseAppDirectory = Directory.systemTemp.createTempSync();
+    // await ditto.extract(
+    //   source: releaseArtifact.path,
+    //   destination: releaseAppDirectory.path,
+    // );
+    // unzipProgress.complete();
+
+    // final releaseArtifactFile = File(
+    //   p.join(
+    //     releaseAppDirectory.path,
+    //     'Contents',
+    //     'Frameworks',
+    //     'App.framework',
+    //     'App',
+    //   ),
+    // );
+
+    // final patchBaseFile = File(_appDillCopyPath);
+    final patchFile = File(_aotOutputPath);
+
+    final patchFileSize = patchFile.statSync().size;
+    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
+    final hash = sha256.convert(patchFile.readAsBytesSync()).toString();
+    final hashSignature = privateKeyFile != null
+        ? codeSigner.sign(
+            message: hash,
+            privateKeyPemFile: privateKeyFile,
+          )
+        : null;
+
+    return {
+      Arch.x86_64: PatchArtifactBundle(
+        arch: 'x86_64',
+        path: patchFile.path,
+        hash: hash,
+        size: patchFileSize,
+        hashSignature: hashSignature,
+      ),
+    };
+  }
+
   @override
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
     required String appId,
@@ -253,8 +304,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     File? supplementArtifact,
   }) async {
     if (supplementArtifact == null) {
-      logger.err('Unable to find supplement directory');
-      throw ProcessExit(ExitCode.software.code);
+      return _createUnlinkedPatch(
+        appId: appId,
+        releaseId: releaseId,
+        releaseArtifact: releaseArtifact,
+      );
+      // logger.err('Unable to find supplement directory');
+      // throw ProcessExit(ExitCode.software.code);
     }
 
     // Verify that we have built a patch .app

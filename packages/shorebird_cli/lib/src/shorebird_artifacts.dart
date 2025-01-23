@@ -229,8 +229,10 @@ class ShorebirdLocalEngineArtifacts implements ShorebirdArtifacts {
         engineConfig.localEngineSrcPath!,
         'out',
         engineConfig.localEngine,
-        'clang_x64',
-        'gen_snapshot',
+        // 'clang_x64',
+        'artifacts_x64',
+        // 'gen_snapshot',
+        'gen_snapshot_x64',
       ),
     );
   }
