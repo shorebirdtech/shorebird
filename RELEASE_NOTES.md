@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.6 (January 23, 2025)
+
+- 🪟 Remove native change detection from Windows because builds are not stable
+  between machines.
+
 ## 1.6.5 (January 22, 2025)
 
 - 🐦 Support for Flutter 3.27.3
