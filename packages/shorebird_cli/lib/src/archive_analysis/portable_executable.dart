@@ -4,6 +4,11 @@ import 'dart:typed_data';
 import 'package:shorebird_cli/src/archive_analysis/byte_utils.dart';
 
 /// Utilities for interacting with Windows Portable Executable files.
+///
+/// .exe and .dll files are examples of PE files. .dll files specifically "are
+/// considered executable files for almost all purposes, although they cannot be
+/// directly run."
+/// (https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#coff-file-header-object-and-image)
 class PortableExecutable {
   /// Zeroes out the timestamps in the provided PE file to enable comparison of
   /// binaries with different build times.
