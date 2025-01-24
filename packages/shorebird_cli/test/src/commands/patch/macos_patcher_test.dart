@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -864,29 +863,16 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
       group('createPatchArtifacts', () {
         const appId = 'appId';
-        const arch = 'aarch64';
         const releaseId = 1;
         const elfAotSnapshotFileName = 'out.aot';
-        const releaseArtifact = ReleaseArtifact(
-          id: 0,
-          releaseId: releaseId,
-          arch: arch,
-          platform: ReleasePlatform.macos,
-          hash: '#',
-          size: 42,
-          url: 'https://example.com',
-          podfileLockHash: 'podfile-lock-hash',
-          canSideload: true,
-        );
         late File releaseArtifactFile;
 
-        void setUpProjectRootArtifacts() {
+        setUp(() {
+          // This method assumes that the patch artifact has already been built.
           File(
             p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
           ).createSync(recursive: true);
-        }
 
-        setUp(() {
           releaseArtifactFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
@@ -931,7 +917,56 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           when(() => engineConfig.localEngine).thenReturn(null);
         });
 
-        group('when generating a signed patch', () {});
+        test('returns artifact bundles for x86_64 and aarch64 archs', () async {
+          final artifacts = await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          expect(artifacts, hasLength(2));
+          expect(artifacts.keys, containsAll([Arch.x86_64, Arch.arm64]));
+          expect(artifacts[Arch.x86_64]!.hashSignature, isNull);
+
+          verifyNever(
+            () => codeSigner.sign(
+              message: any(named: 'message'),
+              privateKeyPemFile: any(named: 'privateKeyPemFile'),
+            ),
+          );
+        });
+
+        group('when generating a signed patch', () {
+          setUp(() {
+            when(
+              () => argResults[CommonArguments.privateKeyArg.name],
+            ).thenReturn(createTempFile('private.pem').path);
+
+            when(
+              () => codeSigner.sign(
+                message: any(named: 'message'),
+                privateKeyPemFile: any(named: 'privateKeyPemFile'),
+              ),
+            ).thenReturn('my-signature');
+          });
+
+          test('returns artifact bundles with non-null hash signature',
+              () async {
+            final artifacts = await runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
+              ),
+            );
+
+            expect(artifacts, hasLength(2));
+            expect(artifacts.keys, containsAll([Arch.x86_64, Arch.arm64]));
+            expect(artifacts[Arch.x86_64]!.hashSignature, 'my-signature');
+          });
+        });
       });
 
       group('extractReleaseVersionFromArtifact', () {
