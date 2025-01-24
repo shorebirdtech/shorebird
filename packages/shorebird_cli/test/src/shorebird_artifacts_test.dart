@@ -125,11 +125,11 @@ void main() {
         );
       });
 
-      test('returns correct path for macOS gen_snapshot', () {
+      test('returns correct path for macOS arm64 gen_snapshot', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.genSnapshotMacOS,
+              artifact: ShorebirdArtifact.genSnapshotMacosArm64,
             ),
           ),
           equals(
@@ -140,7 +140,28 @@ void main() {
               'artifacts',
               'engine',
               'darwin-x64-release',
-              'gen_snapshot',
+              'gen_snapshot_arm64',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path for macOS x64 gen_snapshot', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.genSnapshotMacosX64,
+            ),
+          ),
+          equals(
+            p.join(
+              flutterDirectory.path,
+              'bin',
+              'cache',
+              'artifacts',
+              'engine',
+              'darwin-x64-release',
+              'gen_snapshot_x64',
             ),
           ),
         );
@@ -261,11 +282,11 @@ void main() {
         );
       });
 
-      test('returns correct path for gen_snapshot on macOS', () {
+      test('returns correct path for arm64 gen_snapshot on macOS', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.genSnapshotMacOS,
+              artifact: ShorebirdArtifact.genSnapshotMacosArm64,
             ),
           ),
           equals(
@@ -273,7 +294,26 @@ void main() {
               localEngineSrcPath,
               'out',
               localEngine,
-              'clang_x64',
+              'artifacts_arm64',
+              'gen_snapshot',
+            ),
+          ),
+        );
+      });
+
+      test('returns correct path for x64 gen_snapshot on macOS', () {
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.genSnapshotMacosX64,
+            ),
+          ),
+          equals(
+            p.join(
+              localEngineSrcPath,
+              'out',
+              localEngine,
+              'artifacts_x64',
               'gen_snapshot',
             ),
           ),

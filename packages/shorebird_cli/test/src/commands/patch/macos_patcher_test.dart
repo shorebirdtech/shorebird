@@ -101,7 +101,7 @@ void main() {
         registerFallbackValue(Directory(''));
         registerFallbackValue(File(''));
         registerFallbackValue(ReleasePlatform.macos);
-        registerFallbackValue(ShorebirdArtifact.genSnapshotMacOS);
+        registerFallbackValue(ShorebirdArtifact.genSnapshotMacosArm64);
         registerFallbackValue(Uri.parse('https://example.com'));
       });
 
@@ -791,7 +791,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                     '--save-debugging-info=${splitDebugInfoFile.path}',
                   ],
                 ),
-              ).called(1);
+              ).called(2);
             });
           });
 
@@ -897,13 +897,17 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       group('createPatchArtifacts', () {
         const appId = 'appId';
         const releaseId = 1;
-        const elfAotSnapshotFileName = 'out.aot';
+        const arm64ElfAotSnapshotFileName = 'out.arm64.aot';
+        const x64ElfAotSnapshotFileName = 'out.x64.aot';
         late File releaseArtifactFile;
 
         setUp(() {
           // This method assumes that the patch artifact has already been built.
           File(
-            p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
+            p.join(projectRoot.path, 'build', arm64ElfAotSnapshotFileName),
+          ).createSync(recursive: true);
+          File(
+            p.join(projectRoot.path, 'build', x64ElfAotSnapshotFileName),
           ).createSync(recursive: true);
 
           releaseArtifactFile = File(

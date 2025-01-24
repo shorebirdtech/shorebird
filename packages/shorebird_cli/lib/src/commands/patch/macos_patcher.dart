@@ -42,7 +42,17 @@ class MacosPatcher extends Patcher {
     required super.target,
   });
 
-  String get _aotOutputPath => p.join(buildDirectory.path, 'out.aot');
+  // The elf snapshot built for Apple Silicon macs.
+  String get _arm64AotOutputPath => p.join(
+        buildDirectory.path,
+        'out.arm64.aot',
+      );
+
+  // The elf snapshot built for Intel macs.
+  String get _x64AotOutputPath => p.join(
+        buildDirectory.path,
+        'out.x64.aot',
+      );
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
 
@@ -199,13 +209,24 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         }
         await artifactBuilder.buildElfAotSnapshot(
           appDillPath: macosBuildResult.kernelFile.path,
-          outFilePath: _aotOutputPath,
-          genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacOS,
+          outFilePath: _arm64AotOutputPath,
+          genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
           additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
         );
 
-        if (!File(_aotOutputPath).existsSync()) {
-          throw Exception('Failed to build AOT snapshot');
+        if (!File(_arm64AotOutputPath).existsSync()) {
+          throw Exception('Failed to build arm64 AOT snapshot');
+        }
+
+        await artifactBuilder.buildElfAotSnapshot(
+          appDillPath: macosBuildResult.kernelFile.path,
+          outFilePath: _x64AotOutputPath,
+          genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
+          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
+        );
+
+        if (!File(_x64AotOutputPath).existsSync()) {
+          throw Exception('Failed to build x64 AOT snapshot');
         }
       } catch (error) {
         buildProgress.fail('$error');
@@ -234,6 +255,40 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     return zippedApp;
   }
 
+  Future<PatchArtifactBundle> _createPatchArtifactBundle({
+    required File releaseArtifact,
+    required File patchArtifact,
+    required Arch arch,
+  }) async {
+    final patchFilePath = await artifactManager.createDiff(
+      releaseArtifactPath: releaseArtifact.path,
+      patchArtifactPath: patchArtifact.path,
+    );
+
+    final patchFile = File(patchFilePath);
+    final patchFileSize = patchFile.statSync().size;
+    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
+    final hash = sha256
+        .convert(
+          patchArtifact.readAsBytesSync(),
+        )
+        .toString();
+    final hashSignature = privateKeyFile != null
+        ? codeSigner.sign(
+            message: hash,
+            privateKeyPemFile: privateKeyFile,
+          )
+        : null;
+
+    return PatchArtifactBundle(
+      arch: arch.arch,
+      path: patchFilePath,
+      hash: hash,
+      size: patchFileSize,
+      hashSignature: hashSignature,
+    );
+  }
+
   @override
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
     required String appId,
@@ -258,45 +313,23 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         'App',
       ),
     );
-    final patchArtifact = File(_aotOutputPath);
 
     final createDiffProgress = logger.progress('Creating patch artifacts');
-    final patchFilePath = await artifactManager.createDiff(
-      releaseArtifactPath: releaseArtifactFile.path,
-      patchArtifactPath: patchArtifact.path,
+    final arm64Bundle = await _createPatchArtifactBundle(
+      releaseArtifact: releaseArtifactFile,
+      patchArtifact: File(_arm64AotOutputPath),
+      arch: Arch.arm64,
+    );
+    final x64Bundle = await _createPatchArtifactBundle(
+      releaseArtifact: releaseArtifactFile,
+      patchArtifact: File(_x64AotOutputPath),
+      arch: Arch.x86_64,
     );
     createDiffProgress.complete();
 
-    final patchFile = File(patchFilePath);
-    final patchFileSize = patchFile.statSync().size;
-    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
-    final hash = sha256
-        .convert(
-          File(_aotOutputPath).readAsBytesSync(),
-        )
-        .toString();
-    final hashSignature = privateKeyFile != null
-        ? codeSigner.sign(
-            message: hash,
-            privateKeyPemFile: privateKeyFile,
-          )
-        : null;
-
     return {
-      Arch.x86_64: PatchArtifactBundle(
-        arch: 'x86_64',
-        path: patchFile.path,
-        hash: hash,
-        size: patchFileSize,
-        hashSignature: hashSignature,
-      ),
-      Arch.arm64: PatchArtifactBundle(
-        arch: 'aarch64',
-        path: patchFile.path,
-        hash: hash,
-        size: patchFileSize,
-        hashSignature: hashSignature,
-      ),
+      Arch.x86_64: x64Bundle,
+      Arch.arm64: arm64Bundle,
     };
   }
 
