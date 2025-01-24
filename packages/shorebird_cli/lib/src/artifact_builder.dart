@@ -338,7 +338,10 @@ class ArtifactBuilder {
       final stdout = stdoutLines.join('\n');
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('Failed to build: $stderr');
+        throw ArtifactBuildException('''
+Failed to build
+stdout: $stdout
+stderr: $stderr''');
       }
 
       appDillPath = findAppDill(stdout: stdout);

@@ -584,14 +584,12 @@ To change the version of this release, change your app's version in your pubspec
         );
 
         late Directory appDirectory;
-        late Directory supplementDirectory;
         late File podfileLockFile;
 
         setUp(() {
           when(() => argResults['codesign']).thenReturn(codesign);
 
           appDirectory = Directory.systemTemp.createTempSync();
-          supplementDirectory = Directory.systemTemp.createTempSync();
 
           podfileLockFile = File(
             p.join(
@@ -606,16 +604,12 @@ To change the version of this release, change your app's version in your pubspec
             () => artifactManager.getMacOSAppDirectory(),
           ).thenReturn(appDirectory);
           when(
-            () => artifactManager.getMacosReleaseSupplementDirectory(),
-          ).thenReturn(supplementDirectory);
-          when(
             () => codePushClientWrapper.createMacosReleaseArtifacts(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               appPath: any(named: 'appPath'),
               isCodesigned: any(named: 'isCodesigned'),
               podfileLockHash: any(named: 'podfileLockHash'),
-              supplementPath: any(named: 'supplementPath'),
             ),
           ).thenAnswer((_) async => {});
 
@@ -646,29 +640,6 @@ To change the version of this release, change your app's version in your pubspec
           });
         });
 
-        group('when supplement directory does not exist', () {
-          setUp(() {
-            when(
-              () => artifactManager.getMacosReleaseSupplementDirectory(),
-            ).thenReturn(null);
-          });
-
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(
-                () => releaser.uploadReleaseArtifacts(
-                  release: release,
-                  appId: appId,
-                ),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-            verify(
-              () => logger.err('Unable to find supplement directory'),
-            ).called(1);
-          });
-        });
-
         test('forwards call to codePushClientWrapper', () async {
           await runWithOverrides(
             () => releaser.uploadReleaseArtifacts(
@@ -685,7 +656,6 @@ To change the version of this release, change your app's version in your pubspec
               isCodesigned: codesign,
               podfileLockHash:
                   '${sha256.convert(utf8.encode(podfileLockContent))}',
-              supplementPath: supplementDirectory.path,
             ),
           ).called(1);
         });
