@@ -659,7 +659,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           });
         });
 
-        group('when build fails to produce aot snapshot', () {
+        group('when build fails to produce arm64 aot snapshot', () {
           setUp(() {
             when(
               () => artifactBuilder.buildMacos(
@@ -681,7 +681,54 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
                 additionalArgs: any(named: 'additionalArgs'),
               ),
-            ).thenAnswer((_) async => File(''));
+            ).thenAnswer((invocation) async {
+              final file =
+                  File(invocation.namedArguments[#outFilePath] as String);
+              if (!file.path.contains('arm64')) {
+                file.createSync(recursive: true);
+              }
+              return file;
+            });
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              runWithOverrides(patcher.buildPatchArtifact),
+              exitsWithCode(ExitCode.software),
+            );
+          });
+        });
+
+        group('when build fails to produce x64 aot snapshot', () {
+          setUp(() {
+            when(
+              () => artifactBuilder.buildMacos(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).thenAnswer(
+              (_) async => MacosBuildResult(
+                kernelFile: File('/path/to/app.dill'),
+              ),
+            );
+            when(
+              () => artifactBuilder.buildElfAotSnapshot(
+                appDillPath: any(named: 'appDillPath'),
+                outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                additionalArgs: any(named: 'additionalArgs'),
+              ),
+            ).thenAnswer((invocation) async {
+              final file =
+                  File(invocation.namedArguments[#outFilePath] as String);
+              if (!file.path.contains('x64')) {
+                file.createSync(recursive: true);
+              }
+              return file;
+            });
           });
 
           test('exits with code 70', () async {
