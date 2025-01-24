@@ -659,6 +659,39 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           });
         });
 
+        group('when build fails to produce aot snapshot', () {
+          setUp(() {
+            when(
+              () => artifactBuilder.buildMacos(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).thenAnswer(
+              (_) async => MacosBuildResult(
+                kernelFile: File('/path/to/app.dill'),
+              ),
+            );
+            when(
+              () => artifactBuilder.buildElfAotSnapshot(
+                appDillPath: any(named: 'appDillPath'),
+                outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                additionalArgs: any(named: 'additionalArgs'),
+              ),
+            ).thenAnswer((_) async => File(''));
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              runWithOverrides(patcher.buildPatchArtifact),
+              exitsWithCode(ExitCode.software),
+            );
+          });
+        });
+
         group('when build succeeds', () {
           late File kernelFile;
           setUp(() {
