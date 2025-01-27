@@ -183,6 +183,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   @visibleForTesting
   Releaser getReleaser(ReleaseType releaseType) {
     switch (releaseType) {
+      case ReleaseType.aar:
+        return AarReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.android:
         return AndroidReleaser(
           argResults: results,
@@ -195,20 +201,16 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           flavor: flavor,
           target: target,
         );
-      case ReleaseType.macos:
-        return MacosReleaser(
-          argResults: results,
-          flavor: flavor,
-          target: target,
-        );
       case ReleaseType.iosFramework:
         return IosFrameworkReleaser(
           argResults: results,
           flavor: flavor,
           target: target,
         );
-      case ReleaseType.aar:
-        return AarReleaser(
+      case ReleaseType.linux:
+        throw UnimplementedError();
+      case ReleaseType.macos:
+        return MacosReleaser(
           argResults: results,
           flavor: flavor,
           target: target,

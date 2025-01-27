@@ -228,6 +228,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   @visibleForTesting
   Patcher getPatcher(ReleaseType releaseType) {
     switch (releaseType) {
+      case ReleaseType.aar:
+        return AarPatcher(
+          argResults: results,
+          argParser: argParser,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.android:
         return AndroidPatcher(
           argResults: results,
@@ -249,17 +256,12 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           flavor: flavor,
           target: target,
         );
+      case ReleaseType.linux:
+        throw UnimplementedError();
       case ReleaseType.macos:
         return MacosPatcher(
           argParser: argParser,
           argResults: results,
-          flavor: flavor,
-          target: target,
-        );
-      case ReleaseType.aar:
-        return AarPatcher(
-          argResults: results,
-          argParser: argParser,
           flavor: flavor,
           target: target,
         );

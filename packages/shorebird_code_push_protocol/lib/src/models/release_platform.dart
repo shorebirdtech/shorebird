@@ -3,11 +3,14 @@ enum ReleasePlatform {
   /// Android
   android('Android'),
 
-  /// macOS
-  macos('macOS'),
-
   /// iOS
   ios('iOS'),
+
+  /// Linux
+  linux('Linux'),
+
+  /// macOS
+  macos('macOS'),
 
   /// Windows
   windows('Windows');

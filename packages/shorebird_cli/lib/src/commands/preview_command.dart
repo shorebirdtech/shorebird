@@ -285,15 +285,16 @@ This is only applicable when previewing Android releases.''',
           deviceId: deviceId,
           track: track,
         ),
-      ReleasePlatform.macos => installAndLaunchMacos(
-          appId: appId,
-          release: release,
-          track: track,
-        ),
       ReleasePlatform.ios => installAndLaunchIos(
           appId: appId,
           release: release,
           deviceId: deviceId,
+          track: track,
+        ),
+      ReleasePlatform.linux => throw UnimplementedError(),
+      ReleasePlatform.macos => installAndLaunchMacos(
+          appId: appId,
+          release: release,
           track: track,
         ),
       ReleasePlatform.windows => installAndLaunchWindows(
