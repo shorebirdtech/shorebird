@@ -46,7 +46,6 @@ void main() {
   group(
     MacosPatcher,
     () {
-      late AotTools aotTools;
       late ArgParser argParser;
       late ArgResults argResults;
       late ArtifactBuilder artifactBuilder;
@@ -75,7 +74,6 @@ void main() {
         return runScoped(
           body,
           values: {
-            aotToolsRef.overrideWith(() => aotTools),
             artifactBuilderRef.overrideWith(() => artifactBuilder),
             artifactManagerRef.overrideWith(() => artifactManager),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -106,7 +104,6 @@ void main() {
       });
 
       setUp(() {
-        aotTools = MockAotTools();
         argParser = MockArgParser();
         argResults = MockArgResults();
         artifactBuilder = MockArtifactBuilder();
