@@ -9,11 +9,17 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 /// Checks that the macOS app has the network client entitlement. Without this
 /// entitlement, the app will not be able to make network requests, and
 /// Shorebird will not be able to check for patches.
-class MacosNetworkEntitlementValidator extends Validator {
-  /// The plist key for the Outgoing Connections (Client) entitlement, which
-  /// allows macOS apps to make network requests.
+class MacosEntitlementsValidator extends Validator {
+  /// The entitlements plist key for the Outgoing Connections (Client)
+  /// entitlement, which allows macOS apps to make network requests.
   static const networkClientEntitlementKey =
       'com.apple.security.network.client';
+
+  /// The entitlements plist key for the Allow Unsigned Executable Memory
+  /// entitlement, which allows the app to run code not included in the original
+  /// binary (e.g. patches).
+  static const allowUnsignedExecutableMemoryKey =
+      'com.apple.security.cs.allow-unsigned-executable-memory';
 
   Directory? get _macosDirectory {
     final projectRoot = shorebirdEnv.getFlutterProjectRoot();
@@ -45,7 +51,7 @@ class MacosNetworkEntitlementValidator extends Validator {
   }
 
   @override
-  String get description => 'macOS app has Outgoing Connections entitlement';
+  String get description => 'macOS app has correct entitlements';
 
   @override
   bool canRunInCurrentContext() => _macosDirectory?.existsSync() ?? false;
@@ -67,18 +73,34 @@ The command you are running must be run within a Flutter app project that suppor
       ];
     }
 
+    final issues = <ValidationIssue>[];
     if (!hasNetworkClientEntitlement(plistFile: _releaseEntitlementsPlist!)) {
-      return [
+      issues.add(
         ValidationIssue(
           severity: ValidationIssueSeverity.error,
           message:
               '''${_releaseEntitlementsPlist!.path} is missing the Outgoing Connections ($networkClientEntitlementKey) entitlement.''',
           fix: () => addNetworkEntitlementToPlist(_releaseEntitlementsPlist!),
         ),
-      ];
+      );
     }
 
-    return [];
+    if (!hasAllowUnsignedExecutableMemoryEntitlement(
+      plistFile: _releaseEntitlementsPlist!,
+    )) {
+      issues.add(
+        ValidationIssue(
+          severity: ValidationIssueSeverity.error,
+          message:
+              '''${_releaseEntitlementsPlist!.path} is missing the Allow Unsigned Executable Memory ($allowUnsignedExecutableMemoryKey) entitlement.''',
+          fix: () => addAllowUnsignedExecutableMemoryEntitlementToPlist(
+            _releaseEntitlementsPlist!,
+          ),
+        ),
+      );
+    }
+
+    return issues;
   }
 
   /// Whether the given entitlements plist file has the network client
@@ -92,6 +114,28 @@ The command you are running must be run within a Flutter app project that suppor
   static void addNetworkEntitlementToPlist(File entitlementsPlist) {
     final plist = Plist(file: entitlementsPlist);
     plist.properties[networkClientEntitlementKey] = true;
+    entitlementsPlist.writeAsStringSync(plist.toString());
+  }
+
+  /// Whether the given entitlements plist file has the allow unsigned
+  /// executable memory entitlement.
+  @visibleForTesting
+  static bool hasAllowUnsignedExecutableMemoryEntitlement({
+    required File plistFile,
+  }) {
+    return Plist(file: plistFile)
+            .properties[allowUnsignedExecutableMemoryKey] ==
+        true;
+  }
+
+  /// Adds the allow unsigned executable memory entitlement to the given
+  /// entitlements plist file.
+  @visibleForTesting
+  static void addAllowUnsignedExecutableMemoryEntitlementToPlist(
+    File entitlementsPlist,
+  ) {
+    final plist = Plist(file: entitlementsPlist);
+    plist.properties[allowUnsignedExecutableMemoryKey] = true;
     entitlementsPlist.writeAsStringSync(plist.toString());
   }
 }

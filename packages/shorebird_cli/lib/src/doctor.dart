@@ -26,7 +26,7 @@ class Doctor {
 
   /// Validators that verify shorebird will work on macOS.
   final List<Validator> macosCommandValidators = [
-    MacosNetworkEntitlementValidator(),
+    MacosEntitlementsValidator(),
   ];
 
   /// Validators that verify shorebird will work on Windows.
@@ -38,7 +38,7 @@ class Doctor {
   List<Validator> generalValidators = [
     ShorebirdVersionValidator(),
     AndroidInternetPermissionValidator(),
-    MacosNetworkEntitlementValidator(),
+    MacosEntitlementsValidator(),
     ShorebirdYamlAssetValidator(),
     TrackedLockFilesValidator(),
   ];

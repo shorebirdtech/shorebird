@@ -10,8 +10,8 @@ import 'package:test/test.dart';
 import '../mocks.dart';
 
 void main() {
-  group(MacosNetworkEntitlementValidator, () {
-    const entitlementsPlistWithoutEntitlement = '''
+  group(MacosEntitlementsValidator, () {
+    const entitlementsPlistWithoutEntitlements = '''
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -22,12 +22,14 @@ void main() {
 </plist>
 ''';
 
-    const entitlementsPlistWithEntitlement = '''
+    const entitlementsPlistWithAllEntitlements = '''
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
@@ -37,7 +39,7 @@ void main() {
 
     late Directory projectRoot;
     late ShorebirdEnv shorebirdEnv;
-    late MacosNetworkEntitlementValidator validator;
+    late MacosEntitlementsValidator validator;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -70,14 +72,14 @@ void main() {
 
       when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(projectRoot);
 
-      validator = MacosNetworkEntitlementValidator();
+      validator = MacosEntitlementsValidator();
     });
 
     group('description', () {
       test('returns the correct description', () {
         expect(
           runWithOverrides(() => validator.description),
-          'macOS app has Outgoing Connections entitlement',
+          'macOS app has correct entitlements',
         );
       });
     });
@@ -130,34 +132,61 @@ void main() {
       });
 
       group('when release entitlements plist exists', () {
-        group('when network client entitlement is missing', () {
+        group('when entitlements are missing', () {
           setUp(() {
-            setUpProjectRoot(entitlements: entitlementsPlistWithoutEntitlement);
+            setUpProjectRoot(
+              entitlements: entitlementsPlistWithoutEntitlements,
+            );
           });
 
-          test('returns a validation issue with a fix', () async {
+          test('returns validation issues with fixes', () async {
             final validationResults = await runWithOverrides(
               () => validator.validate(),
             );
-            expect(validationResults, hasLength(1));
-            final issue = validationResults[0];
-            expect(issue.severity, ValidationIssueSeverity.error);
+            expect(validationResults, hasLength(2));
+            final networkIssue = validationResults[0];
+            expect(networkIssue.severity, ValidationIssueSeverity.error);
             expect(
-              issue.message,
+              networkIssue.message,
               contains(
                 '''is missing the Outgoing Connections (com.apple.security.network.client) entitlement.''',
               ),
             );
-            expect(issue.fix, isNotNull);
+            expect(networkIssue.fix, isNotNull);
             expect(
-              MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
+              MacosEntitlementsValidator.hasNetworkClientEntitlement(
                 plistFile: releaseEntitlementsFile(),
               ),
               isFalse,
             );
-            runWithOverrides(() => issue.fix!());
+            runWithOverrides(() => networkIssue.fix!());
             expect(
-              MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
+              MacosEntitlementsValidator.hasNetworkClientEntitlement(
+                plistFile: releaseEntitlementsFile(),
+              ),
+              isTrue,
+            );
+
+            final unsignedMemoryIssue = validationResults[1];
+            expect(unsignedMemoryIssue.severity, ValidationIssueSeverity.error);
+            expect(
+              unsignedMemoryIssue.message,
+              contains(
+                '''is missing the Allow Unsigned Executable Memory (com.apple.security.cs.allow-unsigned-executable-memory) entitlement.''',
+              ),
+            );
+            expect(unsignedMemoryIssue.fix, isNotNull);
+            expect(
+              MacosEntitlementsValidator
+                  .hasAllowUnsignedExecutableMemoryEntitlement(
+                plistFile: releaseEntitlementsFile(),
+              ),
+              isFalse,
+            );
+            runWithOverrides(() => unsignedMemoryIssue.fix!());
+            expect(
+              MacosEntitlementsValidator
+                  .hasAllowUnsignedExecutableMemoryEntitlement(
                 plistFile: releaseEntitlementsFile(),
               ),
               isTrue,
@@ -165,106 +194,16 @@ void main() {
           });
         });
 
-        group('when network client entitlement is present', () {
+        group('when entitlements are present', () {
           setUp(() {
-            setUpProjectRoot(entitlements: entitlementsPlistWithEntitlement);
+            setUpProjectRoot(
+              entitlements: entitlementsPlistWithAllEntitlements,
+            );
           });
 
           test('returns an empty list', () async {
             expect(await runWithOverrides(() => validator.validate()), isEmpty);
           });
-        });
-      });
-    });
-
-    group('fix', () {
-      group('when the network client entitlement is missing', () {
-        setUp(() {
-          setUpProjectRoot(entitlements: entitlementsPlistWithoutEntitlement);
-        });
-
-        test('adds the network client entitlement to the entitlements plist',
-            () {
-          expect(
-            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
-              plistFile: releaseEntitlementsFile(),
-            ),
-            isFalse,
-          );
-
-          MacosNetworkEntitlementValidator.addNetworkEntitlementToPlist(
-            releaseEntitlementsFile(),
-          );
-
-          expect(
-            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
-              plistFile: releaseEntitlementsFile(),
-            ),
-            isTrue,
-          );
-        });
-      });
-
-      group('when the network client entitlement is present', () {
-        setUp(() {
-          setUpProjectRoot(entitlements: entitlementsPlistWithEntitlement);
-        });
-
-        test('does not modify the entitlements plist', () {
-          final plistContents = releaseEntitlementsFile().readAsStringSync();
-          expect(
-            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
-              plistFile: releaseEntitlementsFile(),
-            ),
-            isTrue,
-          );
-
-          MacosNetworkEntitlementValidator.addNetworkEntitlementToPlist(
-            releaseEntitlementsFile(),
-          );
-
-          expect(
-            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
-              plistFile: releaseEntitlementsFile(),
-            ),
-            isTrue,
-          );
-
-          final updatedPlistContents =
-              releaseEntitlementsFile().readAsStringSync();
-          expect(updatedPlistContents, plistContents);
-        });
-      });
-    });
-
-    group('plistHasNetworkClientEntitlement', () {
-      group('when entitlement is present', () {
-        setUp(() {
-          setUpProjectRoot(entitlements: entitlementsPlistWithEntitlement);
-        });
-
-        test('returns true', () {
-          expect(
-            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
-              plistFile: releaseEntitlementsFile(),
-            ),
-            isTrue,
-          );
-        });
-      });
-
-      group('when entitlement is not present', () {
-        setUp(() {
-          setUpProjectRoot(entitlements: entitlementsPlistWithoutEntitlement);
-        });
-
-        test('returns false', () {
-          expect(
-            MacosNetworkEntitlementValidator.hasNetworkClientEntitlement(
-              plistFile: releaseEntitlementsFile(),
-            ),
-            isFalse,
-          );
         });
       });
     });
