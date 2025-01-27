@@ -13,6 +13,8 @@ enum ReleaseType {
   /// A full Flutter iOS app.
   ios,
 
+  linux,
+
   /// A full Flutter macOS app.
   macos,
 
@@ -25,16 +27,18 @@ enum ReleaseType {
   /// The CLI argument used to specify the release type(s).
   String get cliName {
     switch (this) {
+      case ReleaseType.aar:
+        return 'aar';
       case ReleaseType.android:
         return 'android';
       case ReleaseType.ios:
         return 'ios';
       case ReleaseType.iosFramework:
         return 'ios-framework';
+      case ReleaseType.linux:
+        return 'linux';
       case ReleaseType.macos:
         return 'macos';
-      case ReleaseType.aar:
-        return 'aar';
       case ReleaseType.windows:
         return 'windows';
     }
@@ -49,10 +53,12 @@ enum ReleaseType {
         return ReleasePlatform.android;
       case ReleaseType.ios:
         return ReleasePlatform.ios;
-      case ReleaseType.macos:
-        return ReleasePlatform.macos;
       case ReleaseType.iosFramework:
         return ReleasePlatform.ios;
+      case ReleaseType.linux:
+        return ReleasePlatform.linux;
+      case ReleaseType.macos:
+        return ReleasePlatform.macos;
       case ReleaseType.windows:
         return ReleasePlatform.windows;
     }
