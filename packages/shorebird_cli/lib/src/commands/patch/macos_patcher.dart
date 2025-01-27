@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
@@ -55,42 +54,6 @@ class MacosPatcher extends Patcher {
       );
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
-
-  /// The name of the split debug info file when the target is macOS and the
-  /// target platform is arm64.
-  static const splitDebugInfoArm64FileName = 'app.darwin-arm64.symbols';
-
-  /// The name of the split debug info file when the target is macOS and the
-  /// target platform is x64.
-  static const splitDebugInfoX64FileName = 'app.darwin-x86_64.symbols';
-
-  /// The additional gen_snapshot arguments to use when building the patch with
-  /// `--split-debug-info`.
-  static List<String> splitDebugInfoArgs(
-    String? splitDebugInfoPath,
-    Arch arch,
-  ) {
-    final fileName = switch (arch) {
-      Arch.arm64 => splitDebugInfoArm64FileName,
-      Arch.x86_64 => splitDebugInfoX64FileName,
-      _ => throw Exception('no split debug info file for $arch'),
-    };
-
-    return splitDebugInfoPath != null
-        ? [
-            '--dwarf-stack-traces',
-            '--resolve-dwarf-paths',
-            '''--save-debugging-info=${p.join(p.absolute(splitDebugInfoPath), fileName)}''',
-          ]
-        : <String>[];
-  }
-
-  /// The link percentage from the most recent patch build.
-  @visibleForTesting
-  double? lastBuildLinkPercentage;
-
-  @override
-  double? get linkPercentage => lastBuildLinkPercentage;
 
   @override
   ReleaseType get releaseType => ReleaseType.macos;
@@ -223,7 +186,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           appDillPath: macosBuildResult.kernelFile.path,
           outFilePath: _arm64AotOutputPath,
           genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
-          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath, Arch.arm64),
         );
 
         if (!File(_arm64AotOutputPath).existsSync()) {
@@ -234,7 +196,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           appDillPath: macosBuildResult.kernelFile.path,
           outFilePath: _x64AotOutputPath,
           genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
-          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath, Arch.x86_64),
         );
 
         if (!File(_x64AotOutputPath).existsSync()) {
@@ -375,7 +336,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     CreatePatchMetadata metadata,
   ) async =>
       metadata.copyWith(
-        linkPercentage: lastBuildLinkPercentage,
         environment: metadata.environment.copyWith(
           xcodeVersion: await xcodeBuild.version(),
         ),
