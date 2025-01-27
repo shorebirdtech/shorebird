@@ -56,7 +56,6 @@ void main() {
       late Ditto ditto;
       late Doctor doctor;
       late EngineConfig engineConfig;
-      late Directory flutterDirectory;
       late Directory projectRoot;
       late Directory appDirectory;
       late FlavorValidator flavorValidator;
@@ -102,7 +101,7 @@ void main() {
         registerFallbackValue(Directory(''));
         registerFallbackValue(File(''));
         registerFallbackValue(ReleasePlatform.macos);
-        registerFallbackValue(ShorebirdArtifact.genSnapshotMacOS);
+        registerFallbackValue(ShorebirdArtifact.genSnapshotMacosArm64);
         registerFallbackValue(Uri.parse('https://example.com'));
       });
 
@@ -183,12 +182,6 @@ void main() {
       group('primaryReleaseArtifactArch', () {
         test('is "app"', () {
           expect(patcher.primaryReleaseArtifactArch, 'app');
-        });
-      });
-
-      group('supplementaryReleaseArtifactArch', () {
-        test('is "macos_supplement"', () {
-          expect(patcher.supplementaryReleaseArtifactArch, 'macos_supplement');
         });
       });
 
@@ -666,6 +659,86 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           });
         });
 
+        group('when build fails to produce arm64 aot snapshot', () {
+          setUp(() {
+            when(
+              () => artifactBuilder.buildMacos(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).thenAnswer(
+              (_) async => MacosBuildResult(
+                kernelFile: File('/path/to/app.dill'),
+              ),
+            );
+            when(
+              () => artifactBuilder.buildElfAotSnapshot(
+                appDillPath: any(named: 'appDillPath'),
+                outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                additionalArgs: any(named: 'additionalArgs'),
+              ),
+            ).thenAnswer((invocation) async {
+              final file =
+                  File(invocation.namedArguments[#outFilePath] as String);
+              if (!file.path.contains('arm64')) {
+                file.createSync(recursive: true);
+              }
+              return file;
+            });
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              runWithOverrides(patcher.buildPatchArtifact),
+              exitsWithCode(ExitCode.software),
+            );
+          });
+        });
+
+        group('when build fails to produce x64 aot snapshot', () {
+          setUp(() {
+            when(
+              () => artifactBuilder.buildMacos(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).thenAnswer(
+              (_) async => MacosBuildResult(
+                kernelFile: File('/path/to/app.dill'),
+              ),
+            );
+            when(
+              () => artifactBuilder.buildElfAotSnapshot(
+                appDillPath: any(named: 'appDillPath'),
+                outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                additionalArgs: any(named: 'additionalArgs'),
+              ),
+            ).thenAnswer((invocation) async {
+              final file =
+                  File(invocation.namedArguments[#outFilePath] as String);
+              if (!file.path.contains('x64')) {
+                file.createSync(recursive: true);
+              }
+              return file;
+            });
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              runWithOverrides(patcher.buildPatchArtifact),
+              exitsWithCode(ExitCode.software),
+            );
+          });
+        });
+
         group('when build succeeds', () {
           late File kernelFile;
           setUp(() {
@@ -765,7 +838,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                     '--save-debugging-info=${splitDebugInfoFile.path}',
                   ],
                 ),
-              ).called(1);
+              ).called(2);
             });
           });
 
@@ -869,125 +942,28 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       });
 
       group('createPatchArtifacts', () {
-        const postLinkerFlutterRevision = // cspell: disable-next-line
-            'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
         const appId = 'appId';
-        const arch = 'aarch64';
         const releaseId = 1;
-        const linkFileName = 'out.vmcode';
-        const elfAotSnapshotFileName = 'out.aot';
-        const releaseArtifact = ReleaseArtifact(
-          id: 0,
-          releaseId: releaseId,
-          arch: arch,
-          platform: ReleasePlatform.macos,
-          hash: '#',
-          size: 42,
-          url: 'https://example.com',
-          podfileLockHash: 'podfile-lock-hash',
-          canSideload: true,
-        );
+        const arm64ElfAotSnapshotFileName = 'out.arm64.aot';
+        const x64ElfAotSnapshotFileName = 'out.x64.aot';
         late File releaseArtifactFile;
-        late File supplementArtifactFile;
-
-        void setUpProjectRootArtifacts() {
-          File(
-            p.join(
-              projectRoot.path,
-              'build',
-              elfAotSnapshotFileName,
-            ),
-          ).createSync(recursive: true);
-          File(
-            p.join(
-              projectRoot.path,
-              'build',
-              'macos',
-              'Build',
-              'Products',
-              'Release',
-              'Runner.app',
-            ),
-          ).createSync(recursive: true);
-          File(
-            p.join(
-              projectRoot.path,
-              'build',
-              'macos',
-              'shorebird',
-              'App.ct.link',
-            ),
-          ).createSync(recursive: true);
-          File(
-            p.join(
-              projectRoot.path,
-              'build',
-              'macos',
-              'shorebird',
-              'App.class_table.json',
-            ),
-          ).createSync(recursive: true);
-          File(
-            p.join(projectRoot.path, 'build', linkFileName),
-          ).createSync(recursive: true);
-        }
 
         setUp(() {
+          // This method assumes that the patch artifact has already been built.
+          File(
+            p.join(projectRoot.path, 'build', arm64ElfAotSnapshotFileName),
+          ).createSync(recursive: true);
+          File(
+            p.join(projectRoot.path, 'build', x64ElfAotSnapshotFileName),
+          ).createSync(recursive: true);
+
           releaseArtifactFile = File(
             p.join(
               Directory.systemTemp.createTempSync().path,
               'release.app',
             ),
           )..createSync(recursive: true);
-          supplementArtifactFile = File(
-            p.join(
-              Directory.systemTemp.createTempSync().path,
-              'macos_supplement.zip',
-            ),
-          )..createSync(recursive: true);
 
-          when(
-            () => codePushClientWrapper.getReleaseArtifact(
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-            ),
-          ).thenAnswer((_) async => releaseArtifact);
-          when(() => artifactManager.downloadFile(any())).thenAnswer((_) async {
-            final tempDirectory = Directory.systemTemp.createTempSync();
-            final file = File(p.join(tempDirectory.path, 'libapp.so'))
-              ..createSync();
-            return file;
-          });
-          when(
-            () => artifactManager.extractZip(
-              zipFile: any(named: 'zipFile'),
-              outputDirectory: any(named: 'outputDirectory'),
-            ),
-          ).thenAnswer((invocation) async {
-            final zipFile = invocation.namedArguments[#zipFile] as File;
-            final outDir =
-                invocation.namedArguments[#outputDirectory] as Directory;
-            File(
-              p.join(outDir.path, '${p.basename(zipFile.path)}.zip'),
-            ).createSync();
-          });
-          when(
-            () => artifactManager.extractZip(
-              zipFile: supplementArtifactFile,
-              outputDirectory: any(named: 'outputDirectory'),
-            ),
-          ).thenAnswer((invocation) async {
-            final outDir =
-                invocation.namedArguments[#outputDirectory] as Directory;
-            File(
-              p.join(outDir.path, 'App.ct.link'),
-            ).createSync(recursive: true);
-            File(
-              p.join(outDir.path, 'App.class_table.json'),
-            ).createSync(recursive: true);
-          });
           when(
             () => ditto.extract(
               source: any(named: 'source'),
@@ -1008,652 +984,71 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             ).createSync(recursive: true);
           });
 
+          when(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
+            ),
+          ).thenAnswer((_) async {
+            final tempDir = Directory.systemTemp.createTempSync();
+            final diffPath = p.join(tempDir.path, 'diff');
+            File(diffPath)
+              ..createSync()
+              ..writeAsStringSync('test');
+            return diffPath;
+          });
+
           when(() => engineConfig.localEngine).thenReturn(null);
         });
 
-        group('when patch .app does not exist', () {
-          setUp(() {
-            when(
-              () => artifactManager.getMacOSAppDirectory(),
-            ).thenReturn(null);
-          });
+        test('returns artifact bundles for x86_64 and aarch64 archs', () async {
+          final artifacts = await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
 
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(
-                () => patcher.createPatchArtifacts(
-                  appId: appId,
-                  releaseId: releaseId,
-                  releaseArtifact: releaseArtifactFile,
-                ),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-          });
+          expect(artifacts, hasLength(2));
+          expect(artifacts.keys, containsAll([Arch.x86_64, Arch.arm64]));
+          expect(artifacts[Arch.x86_64]!.hashSignature, isNull);
+
+          verifyNever(
+            () => codeSigner.sign(
+              message: any(named: 'message'),
+              privateKeyPemFile: any(named: 'privateKeyPemFile'),
+            ),
+          );
         });
 
-        group('when uses linker', () {
-          const linkPercentage = 50.0;
-          late File analyzeSnapshotFile;
-          late File genSnapshotFile;
-
+        group('when generating a signed patch', () {
           setUp(() {
-            final shorebirdRoot = Directory.systemTemp.createTempSync();
-            flutterDirectory = Directory(
-              p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
-            );
-            genSnapshotFile = File(
-              p.join(
-                flutterDirectory.path,
-                'bin',
-                'cache',
-                'artifacts',
-                'engine',
-                'darwin-x64-release',
-                'gen_snapshot',
-              ),
-            );
-            analyzeSnapshotFile = File(
-              p.join(
-                flutterDirectory.path,
-                'bin',
-                'cache',
-                'artifacts',
-                'engine',
-                'darwin-x64-release',
-                'analyze_snapshot',
-              ),
-            )..createSync(recursive: true);
+            when(
+              () => argResults[CommonArguments.privateKeyArg.name],
+            ).thenReturn(createTempFile('private.pem').path);
 
             when(
-              () => aotTools.link(
-                base: any(named: 'base'),
-                patch: any(named: 'patch'),
-                analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                genSnapshot: any(named: 'genSnapshot'),
-                kernel: any(named: 'kernel'),
-                outputPath: any(named: 'outputPath'),
-                workingDirectory: any(named: 'workingDirectory'),
-                dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
-                additionalArgs: any(named: 'additionalArgs'),
+              () => codeSigner.sign(
+                message: any(named: 'message'),
+                privateKeyPemFile: any(named: 'privateKeyPemFile'),
               ),
-            ).thenAnswer((_) async => linkPercentage);
-            when(
-              () => shorebirdEnv.flutterRevision,
-            ).thenReturn(postLinkerFlutterRevision);
-            when(
-              () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.analyzeSnapshotMacOS,
-              ),
-            ).thenReturn(analyzeSnapshotFile.path);
-            when(
-              () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.genSnapshotMacOS,
-              ),
-            ).thenReturn(genSnapshotFile.path);
+            ).thenReturn('my-signature');
           });
 
-          group('when linking fails', () {
-            group('when supplement directory does not exist', () {
-              test('logs error and exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
+          test('returns artifact bundles with non-null hash signature',
+              () async {
+            final artifacts = await runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
+              ),
+            );
 
-                verify(
-                  () => logger.err(
-                    any(
-                      that: startsWith('Unable to find supplement directory'),
-                    ),
-                  ),
-                ).called(1);
-              });
-            });
-
-            group('when .app does not exist', () {
-              setUp(() {
-                when(
-                  () => artifactManager.getMacOSAppDirectory(),
-                ).thenReturn(null);
-              });
-
-              test('logs error and exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(
-                  () => logger.err(
-                    any(
-                      that: startsWith(
-                        'Unable to find .app directory',
-                      ),
-                    ),
-                  ),
-                ).called(1);
-              });
-            });
-
-            group('when aot snapshot does not exist', () {
-              setUp(() {
-                setUpProjectRootArtifacts();
-                File(
-                  p.join(
-                    projectRoot.path,
-                    'build',
-                    elfAotSnapshotFileName,
-                  ),
-                ).deleteSync();
-              });
-
-              test('logs error and exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(
-                  () => logger.err(
-                    any(that: startsWith('Unable to find patch AOT file at')),
-                  ),
-                ).called(1);
-              });
-            });
-
-            group('when analyzeSnapshot binary does not exist', () {
-              setUp(() {
-                when(
-                  () => shorebirdArtifacts.getArtifactPath(
-                    artifact: ShorebirdArtifact.analyzeSnapshotMacOS,
-                  ),
-                ).thenReturn('');
-                setUpProjectRootArtifacts();
-              });
-
-              test('logs error and exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(
-                  () => logger.err('Unable to find analyze_snapshot at '),
-                ).called(1);
-              });
-            });
-
-            group('when call to aotTools.link fails', () {
-              setUp(() {
-                when(
-                  () => aotTools.link(
-                    base: any(named: 'base'),
-                    patch: any(named: 'patch'),
-                    analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                    genSnapshot: any(named: 'genSnapshot'),
-                    kernel: any(named: 'kernel'),
-                    outputPath: any(named: 'outputPath'),
-                    workingDirectory: any(named: 'workingDirectory'),
-                    dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
-                    additionalArgs: any(named: 'additionalArgs'),
-                  ),
-                ).thenThrow(Exception('oops'));
-
-                setUpProjectRootArtifacts();
-              });
-
-              test('logs error and exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(
-                  () => progress.fail(
-                    'Failed to link AOT files: Exception: oops',
-                  ),
-                ).called(1);
-              });
-            });
-          });
-
-          group('when generate patch diff base is supported', () {
-            setUp(() {
-              when(
-                () => aotTools.isGeneratePatchDiffBaseSupported(),
-              ).thenAnswer((_) async => true);
-              when(
-                () => aotTools.generatePatchDiffBase(
-                  analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
-                  releaseSnapshot: any(named: 'releaseSnapshot'),
-                ),
-              ).thenAnswer((_) async => File(''));
-            });
-
-            group('when we fail to generate patch diff base', () {
-              setUp(() {
-                when(
-                  () => aotTools.generatePatchDiffBase(
-                    analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
-                    releaseSnapshot: any(named: 'releaseSnapshot'),
-                  ),
-                ).thenThrow(Exception('oops'));
-
-                setUpProjectRootArtifacts();
-              });
-
-              test('logs error and exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(() => progress.fail('Exception: oops')).called(1);
-              });
-            });
-
-            group('when linking and patch diff generation succeeds', () {
-              const diffPath = 'path/to/diff';
-
-              setUp(() {
-                when(
-                  () => artifactManager.createDiff(
-                    releaseArtifactPath: any(named: 'releaseArtifactPath'),
-                    patchArtifactPath: any(named: 'patchArtifactPath'),
-                  ),
-                ).thenAnswer((_) async => diffPath);
-                setUpProjectRootArtifacts();
-              });
-
-              test('returns linked patch artifact in patch bundle', () async {
-                final patchBundle = await runWithOverrides(
-                  () => patcher.createPatchArtifacts(
-                    appId: appId,
-                    releaseId: releaseId,
-                    releaseArtifact: releaseArtifactFile,
-                    supplementArtifact: supplementArtifactFile,
-                  ),
-                );
-
-                expect(patchBundle, hasLength(1));
-                expect(
-                  patchBundle[Arch.arm64],
-                  isA<PatchArtifactBundle>().having(
-                    (b) => b.path,
-                    'path',
-                    endsWith(diffPath),
-                  ),
-                );
-              });
-
-              group('when flavor is provided', () {
-                const flavor = 'my-flavor';
-
-                setUp(() {
-                  patcher = MacosPatcher(
-                    argParser: argParser,
-                    argResults: argResults,
-                    flavor: flavor,
-                    target: null,
-                  );
-
-                  when(
-                    () => artifactManager.getMacOSAppDirectory(flavor: flavor),
-                  ).thenReturn(appDirectory);
-                });
-
-                test('finds app directory corresponding to flavor', () async {
-                  await runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  );
-
-                  verify(
-                    () => artifactManager.getMacOSAppDirectory(flavor: flavor),
-                  ).called(1);
-                });
-              });
-
-              group('when class table link info is not present', () {
-                setUp(() {
-                  when(
-                    () => artifactManager.extractZip(
-                      zipFile: supplementArtifactFile,
-                      outputDirectory: any(named: 'outputDirectory'),
-                    ),
-                  ).thenAnswer((invocation) async {});
-                });
-
-                test('exits with code 70', () async {
-                  await expectLater(
-                    () => runWithOverrides(
-                      () => patcher.createPatchArtifacts(
-                        appId: appId,
-                        releaseId: releaseId,
-                        releaseArtifact: releaseArtifactFile,
-                        supplementArtifact: supplementArtifactFile,
-                      ),
-                    ),
-                    exitsWithCode(ExitCode.software),
-                  );
-
-                  verify(
-                    () => logger.err(
-                      'Unable to find class table link info file',
-                    ),
-                  ).called(1);
-                });
-              });
-
-              group('when code signing the patch', () {
-                setUp(() {
-                  final privateKey = File(
-                    p.join(
-                      Directory.systemTemp.createTempSync().path,
-                      'test-private.pem',
-                    ),
-                  )..createSync();
-
-                  when(() => argResults[CommonArguments.privateKeyArg.name])
-                      .thenReturn(privateKey.path);
-
-                  when(
-                    () => codeSigner.sign(
-                      message: any(named: 'message'),
-                      privateKeyPemFile: any(named: 'privateKeyPemFile'),
-                    ),
-                  ).thenAnswer((invocation) {
-                    final message =
-                        invocation.namedArguments[#message] as String;
-                    return '$message-signature';
-                  });
-                });
-
-                test(
-                    '''returns patch artifact bundles with proper hash signatures''',
-                    () async {
-                  final result = await runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  );
-
-                  // Hash the patch artifacts and append '-signature' to get the
-                  // expected signatures, per the mock of [codeSigner.sign]
-                  // above.
-                  const expectedSignature =
-                      '''e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-signature''';
-
-                  expect(
-                    result.values.first.hashSignature,
-                    equals(
-                      expectedSignature,
-                    ),
-                  );
-                });
-              });
-
-              group('when debug info is missing', () {
-                setUp(() {
-                  when(
-                    () => artifactManager.extractZip(
-                      zipFile: supplementArtifactFile,
-                      outputDirectory: any(named: 'outputDirectory'),
-                    ),
-                  ).thenAnswer((invocation) async {
-                    final outDir = invocation.namedArguments[#outputDirectory]
-                        as Directory;
-                    File(
-                      p.join(outDir.path, 'App.ct.link'),
-                    ).createSync(recursive: true);
-                  });
-                });
-
-                test('exits with code 70', () async {
-                  await expectLater(
-                    () => runWithOverrides(
-                      () => patcher.createPatchArtifacts(
-                        appId: appId,
-                        releaseId: releaseId,
-                        releaseArtifact: releaseArtifactFile,
-                        supplementArtifact: supplementArtifactFile,
-                      ),
-                    ),
-                    exitsWithCode(ExitCode.software),
-                  );
-
-                  verify(
-                    () => logger.err(
-                      'Unable to find class table link debug info file',
-                    ),
-                  ).called(1);
-                });
-              });
-
-              group('when class table link info & debug info are present', () {
-                setUp(() {
-                  when(
-                    () => artifactManager.extractZip(
-                      zipFile: supplementArtifactFile,
-                      outputDirectory: any(named: 'outputDirectory'),
-                    ),
-                  ).thenAnswer((invocation) async {
-                    final outDir = invocation.namedArguments[#outputDirectory]
-                        as Directory;
-                    File(
-                      p.join(outDir.path, 'App.ct.link'),
-                    ).createSync(recursive: true);
-                    File(
-                      p.join(outDir.path, 'App.class_table.json'),
-                    ).createSync(recursive: true);
-                  });
-                  when(
-                    () => ditto.extract(
-                      source: any(named: 'source'),
-                      destination: any(named: 'destination'),
-                    ),
-                  ).thenAnswer((invocation) async {
-                    final destination =
-                        invocation.namedArguments[#destination] as String;
-                    File(
-                      p.join(
-                        destination,
-                        'Contents',
-                        'Frameworks',
-                        'App.framework',
-                        'App',
-                      ),
-                    ).createSync(recursive: true);
-                  });
-                });
-
-                test('returns linked patch artifact in patch bundle', () async {
-                  final patchBundle = await runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  );
-
-                  expect(patchBundle, hasLength(1));
-                  expect(
-                    patchBundle[Arch.arm64],
-                    isA<PatchArtifactBundle>().having(
-                      (b) => b.path,
-                      'path',
-                      endsWith(diffPath),
-                    ),
-                  );
-                });
-              });
-
-              group('when isLinkDebugInfoSupported is true', () {
-                setUp(() {
-                  when(
-                    aotTools.isLinkDebugInfoSupported,
-                  ).thenAnswer((_) async => true);
-                });
-
-                test('dumps debug info', () async {
-                  await runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  );
-                  verify(
-                    () => aotTools.link(
-                      base: any(named: 'base'),
-                      patch: any(named: 'patch'),
-                      analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                      genSnapshot: any(named: 'genSnapshot'),
-                      kernel: any(named: 'kernel'),
-                      outputPath: any(named: 'outputPath'),
-                      workingDirectory: any(named: 'workingDirectory'),
-                      dumpDebugInfoPath: any(
-                        named: 'dumpDebugInfoPath',
-                        that: isNotNull,
-                      ),
-                    ),
-                  ).called(1);
-                  verify(
-                    () => logger.detail(
-                      any(
-                        that: contains(
-                          'Link debug info saved to',
-                        ),
-                      ),
-                    ),
-                  ).called(1);
-                });
-
-                group('when aot_tools link fails', () {
-                  setUp(() {
-                    when(
-                      () => aotTools.link(
-                        base: any(named: 'base'),
-                        patch: any(named: 'patch'),
-                        analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                        genSnapshot: any(named: 'genSnapshot'),
-                        kernel: any(named: 'kernel'),
-                        outputPath: any(named: 'outputPath'),
-                        workingDirectory: any(named: 'workingDirectory'),
-                        dumpDebugInfoPath: any(
-                          named: 'dumpDebugInfoPath',
-                          that: isNotNull,
-                        ),
-                      ),
-                    ).thenThrow(Exception('oops'));
-                  });
-
-                  test('dumps debug info and logs', () async {
-                    await expectLater(
-                      () => runWithOverrides(
-                        () => patcher.createPatchArtifacts(
-                          appId: appId,
-                          releaseId: releaseId,
-                          releaseArtifact: releaseArtifactFile,
-                          supplementArtifact: supplementArtifactFile,
-                        ),
-                      ),
-                      exitsWithCode(ExitCode.software),
-                    );
-                    verify(
-                      () => logger.detail(
-                        any(
-                          that: contains(
-                            'Link debug info saved to',
-                          ),
-                        ),
-                      ),
-                    ).called(1);
-                  });
-                });
-              });
-
-              group('when isLinkDebugInfoSupported is false', () {
-                setUp(() {
-                  when(aotTools.isLinkDebugInfoSupported)
-                      .thenAnswer((_) async => false);
-                });
-
-                test('does not pass dumpDebugInfoPath to aotTools.link',
-                    () async {
-                  await runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  );
-                  verify(
-                    () => aotTools.link(
-                      base: any(named: 'base'),
-                      patch: any(named: 'patch'),
-                      analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                      genSnapshot: any(named: 'genSnapshot'),
-                      kernel: any(named: 'kernel'),
-                      outputPath: any(named: 'outputPath'),
-                      workingDirectory: any(named: 'workingDirectory'),
-                    ),
-                  ).called(1);
-                });
-              });
-            });
+            expect(artifacts, hasLength(2));
+            expect(artifacts.keys, containsAll([Arch.x86_64, Arch.arm64]));
+            expect(artifacts[Arch.x86_64]!.hashSignature, 'my-signature');
           });
         });
       });

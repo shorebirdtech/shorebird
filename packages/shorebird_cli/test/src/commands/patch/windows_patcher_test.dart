@@ -84,7 +84,7 @@ void main() {
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.windows);
-      registerFallbackValue(ShorebirdArtifact.genSnapshotMacOS);
+      registerFallbackValue(ShorebirdArtifact.genSnapshotMacosArm64);
       registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(const WindowsArchiveDiffer());
     });

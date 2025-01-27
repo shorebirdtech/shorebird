@@ -663,7 +663,6 @@ aar artifact already exists, continuing...''',
     required String appPath,
     required bool isCodesigned,
     required String? podfileLockHash,
-    required String supplementPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final tempDir = await Directory.systemTemp.createTemp();
@@ -686,28 +685,6 @@ aar artifact already exists, continuing...''',
         error,
         progress: createArtifactProgress,
         message: 'Error uploading app: $error',
-      );
-    }
-
-    final zippedSupplement = await Directory(supplementPath).zipToTempFile(
-      name: 'macos_supplement',
-    );
-    try {
-      await codePushClient.createReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        artifactPath: zippedSupplement.path,
-        arch: 'macos_supplement',
-        platform: ReleasePlatform.macos,
-        hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
-        canSideload: false,
-        podfileLockHash: podfileLockHash,
-      );
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
-        progress: createArtifactProgress,
-        message: 'Error uploading release supplements: $error',
       );
     }
 

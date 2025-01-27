@@ -166,12 +166,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       logger.err('Unable to find .app directory');
       throw ProcessExit(ExitCode.software.code);
     }
-    final supplementDirectory =
-        artifactManager.getMacosReleaseSupplementDirectory();
-    if (supplementDirectory == null) {
-      logger.err('Unable to find supplement directory');
-      throw ProcessExit(ExitCode.software.code);
-    }
 
     final String? podfileLockHash;
     if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
@@ -181,13 +175,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     } else {
       podfileLockHash = null;
     }
+
     await codePushClientWrapper.createMacosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
       appPath: appDirectory.path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
-      supplementPath: supplementDirectory.path,
     );
   }
 
