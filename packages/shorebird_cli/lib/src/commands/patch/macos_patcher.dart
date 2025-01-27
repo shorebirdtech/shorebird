@@ -56,19 +56,31 @@ class MacosPatcher extends Patcher {
 
   String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
 
-  /// The name of the split debug info file when the target is macOS.
-  // FIXME: this is only the arm symbols, x64 symbols are at
-  // app.darwin-x86_64.symbols
-  static const splitDebugInfoFileName = 'app.darwin-arm64.symbols';
+  /// The name of the split debug info file when the target is macOS and the
+  /// target platform is arm64.
+  static const splitDebugInfoArm64FileName = 'app.darwin-arm64.symbols';
+
+  /// The name of the split debug info file when the target is macOS and the
+  /// target platform is x64.
+  static const splitDebugInfoX64FileName = 'app.darwin-x86_64.symbols';
 
   /// The additional gen_snapshot arguments to use when building the patch with
   /// `--split-debug-info`.
-  static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) {
+  static List<String> splitDebugInfoArgs(
+    String? splitDebugInfoPath,
+    Arch arch,
+  ) {
+    final fileName = switch (arch) {
+      Arch.arm64 => splitDebugInfoArm64FileName,
+      Arch.x86_64 => splitDebugInfoX64FileName,
+      _ => throw Exception('no split debug info file for $arch'),
+    };
+
     return splitDebugInfoPath != null
         ? [
             '--dwarf-stack-traces',
             '--resolve-dwarf-paths',
-            '''--save-debugging-info=${p.join(p.absolute(splitDebugInfoPath), splitDebugInfoFileName)}''',
+            '''--save-debugging-info=${p.join(p.absolute(splitDebugInfoPath), fileName)}''',
           ]
         : <String>[];
   }
@@ -211,7 +223,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           appDillPath: macosBuildResult.kernelFile.path,
           outFilePath: _arm64AotOutputPath,
           genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
-          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
+          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath, Arch.arm64),
         );
 
         if (!File(_arm64AotOutputPath).existsSync()) {
@@ -222,7 +234,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           appDillPath: macosBuildResult.kernelFile.path,
           outFilePath: _x64AotOutputPath,
           genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
-          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
+          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath, Arch.x86_64),
         );
 
         if (!File(_x64AotOutputPath).existsSync()) {

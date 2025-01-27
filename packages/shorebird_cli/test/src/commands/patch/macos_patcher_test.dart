@@ -530,7 +530,7 @@ This may indicate that the patch contains native changes, which cannot be applie
           ).thenAnswer((_) async => flutterVersionAndRevision);
           when(
             () => shorebirdFlutter.getVersion(),
-          ).thenAnswer((_) async => Version(3, 27, 0));
+          ).thenAnswer((_) async => Version(3, 27, 3));
         });
 
         group('when specified flutter version is less than minimum', () {
@@ -807,8 +807,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           group('when --split-debug-info is provided', () {
             final tempDir = Directory.systemTemp.createTempSync();
             final splitDebugInfoPath = p.join(tempDir.path, 'symbols');
-            final splitDebugInfoFile = File(
+            final splitDebugInfoArm64File = File(
               p.join(splitDebugInfoPath, 'app.darwin-arm64.symbols'),
+            );
+            final splitDebugInfoX64File = File(
+              p.join(splitDebugInfoPath, 'app.darwin-x86_64.symbols'),
             );
             setUp(() {
               when(
@@ -835,10 +838,22 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                   additionalArgs: [
                     '--dwarf-stack-traces',
                     '--resolve-dwarf-paths',
-                    '--save-debugging-info=${splitDebugInfoFile.path}',
+                    '--save-debugging-info=${splitDebugInfoArm64File.path}',
                   ],
                 ),
-              ).called(2);
+              ).called(1);
+              verify(
+                () => artifactBuilder.buildElfAotSnapshot(
+                  appDillPath: any(named: 'appDillPath'),
+                  outFilePath: any(named: 'outFilePath'),
+                  genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                  additionalArgs: [
+                    '--dwarf-stack-traces',
+                    '--resolve-dwarf-paths',
+                    '--save-debugging-info=${splitDebugInfoX64File.path}',
+                  ],
+                ),
+              ).called(1);
             });
           });
 
