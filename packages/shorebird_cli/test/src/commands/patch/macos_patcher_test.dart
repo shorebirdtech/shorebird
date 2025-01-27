@@ -150,6 +150,9 @@ void main() {
         when(
           () => shorebirdEnv.getShorebirdProjectRoot(),
         ).thenReturn(projectRoot);
+        when(
+          () => shorebirdEnv.flutterRevision,
+        ).thenReturn('5c1dcc19ebcee3565c65262dd95970186e4d81cc');
 
         appDirectory = Directory(
           p.join(
@@ -508,42 +511,92 @@ This may indicate that the patch contains native changes, which cannot be applie
           ).thenAnswer((_) async => Version(3, 27, 3));
         });
 
-        group('when specified flutter version is less than minimum', () {
-          setUp(() {
-            when(
-              () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated: any(
-                  named: 'checkUserIsAuthenticated',
+        group(
+          'when specified flutter version is less than minimum',
+          () {
+            setUp(() {
+              when(
+                () => shorebirdValidator.validatePreconditions(
+                  checkUserIsAuthenticated: any(
+                    named: 'checkUserIsAuthenticated',
+                  ),
+                  checkShorebirdInitialized: any(
+                    named: 'checkShorebirdInitialized',
+                  ),
+                  validators: any(named: 'validators'),
+                  supportedOperatingSystems: any(
+                    named: 'supportedOperatingSystems',
+                  ),
                 ),
-                checkShorebirdInitialized: any(
-                  named: 'checkShorebirdInitialized',
-                ),
-                validators: any(named: 'validators'),
-                supportedOperatingSystems: any(
-                  named: 'supportedOperatingSystems',
-                ),
-              ),
-            ).thenAnswer((_) async {});
-            when(
-              () => shorebirdFlutter.getVersion(),
-            ).thenAnswer((_) async => Version(3, 0, 0));
-          });
+              ).thenAnswer((_) async {});
+              when(
+                () => shorebirdFlutter.getVersion(),
+              ).thenAnswer((_) async => Version(3, 0, 0));
+            });
 
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(patcher.buildPatchArtifact),
-              exitsWithCode(ExitCode.software),
-            );
+            test('logs error and exits with code 70', () async {
+              await expectLater(
+                () => runWithOverrides(patcher.buildPatchArtifact),
+                exitsWithCode(ExitCode.software),
+              );
 
-            verify(
-              () => logger.err(
-                '''
+              verify(
+                () => logger.err(
+                  '''
 macOS patches are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-              ),
-            ).called(1);
-          });
-        });
+                ),
+              ).called(1);
+            });
+          },
+          skip:
+              '''Skipping while we use the flutter revision when checking for patchability''',
+        );
+
+        // TODO(bryanoltman): this test can be removed (and the above test
+        // can be unskipped) when we can increase the
+        // minimumSupportedMacosVersion to 3.27.4 or higher.
+        group(
+          'when release flutter version is not in the allowlist',
+          () {
+            setUp(() {
+              when(
+                () => shorebirdValidator.validatePreconditions(
+                  checkUserIsAuthenticated: any(
+                    named: 'checkUserIsAuthenticated',
+                  ),
+                  checkShorebirdInitialized: any(
+                    named: 'checkShorebirdInitialized',
+                  ),
+                  validators: any(named: 'validators'),
+                  supportedOperatingSystems: any(
+                    named: 'supportedOperatingSystems',
+                  ),
+                ),
+              ).thenAnswer((_) async {});
+              when(
+                () => shorebirdEnv.flutterRevision,
+              ).thenReturn('not-a-supported-revision');
+            });
+
+            test('logs error and exits with code 70', () async {
+              await expectLater(
+                () => runWithOverrides(patcher.buildPatchArtifact),
+                exitsWithCode(ExitCode.software),
+              );
+
+              verify(
+                () => logger.err(
+                  '''
+macOS patches are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
+                ),
+              ).called(1);
+            });
+          },
+          skip:
+              '''Skipping while we use the flutter revision when checking for patchability''',
+        );
 
         group('when build fails with ProcessException', () {
           setUp(() {
