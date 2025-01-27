@@ -46,7 +46,6 @@ void main() {
   group(
     MacosPatcher,
     () {
-      late AotTools aotTools;
       late ArgParser argParser;
       late ArgResults argResults;
       late ArtifactBuilder artifactBuilder;
@@ -75,7 +74,6 @@ void main() {
         return runScoped(
           body,
           values: {
-            aotToolsRef.overrideWith(() => aotTools),
             artifactBuilderRef.overrideWith(() => artifactBuilder),
             artifactManagerRef.overrideWith(() => artifactManager),
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -106,7 +104,6 @@ void main() {
       });
 
       setUp(() {
-        aotTools = MockAotTools();
         argParser = MockArgParser();
         argResults = MockArgResults();
         artifactBuilder = MockArtifactBuilder();
@@ -154,8 +151,6 @@ void main() {
           () => shorebirdEnv.getShorebirdProjectRoot(),
         ).thenReturn(projectRoot);
 
-        when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
-
         appDirectory = Directory(
           p.join(
             projectRoot.path,
@@ -188,26 +183,6 @@ void main() {
       group('releaseType', () {
         test('is ReleaseType.macos', () {
           expect(patcher.releaseType, ReleaseType.macos);
-        });
-      });
-
-      group('linkPercentage', () {
-        group('when linking has not occurred', () {
-          test('returns null', () {
-            expect(patcher.linkPercentage, isNull);
-          });
-        });
-
-        group('when linking has occurred', () {
-          const linkPercentage = 42.1337;
-
-          setUp(() {
-            patcher.lastBuildLinkPercentage = linkPercentage;
-          });
-
-          test('returns correct link percentage', () {
-            expect(patcher.linkPercentage, equals(linkPercentage));
-          });
         });
       });
 
@@ -530,7 +505,7 @@ This may indicate that the patch contains native changes, which cannot be applie
           ).thenAnswer((_) async => flutterVersionAndRevision);
           when(
             () => shorebirdFlutter.getVersion(),
-          ).thenAnswer((_) async => Version(3, 27, 0));
+          ).thenAnswer((_) async => Version(3, 27, 3));
         });
 
         group('when specified flutter version is less than minimum', () {
@@ -801,44 +776,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               verify(
                 () => artifactManager.getMacOSAppDirectory(flavor: flavor),
               ).called(1);
-            });
-          });
-
-          group('when --split-debug-info is provided', () {
-            final tempDir = Directory.systemTemp.createTempSync();
-            final splitDebugInfoPath = p.join(tempDir.path, 'symbols');
-            final splitDebugInfoFile = File(
-              p.join(splitDebugInfoPath, 'app.darwin-arm64.symbols'),
-            );
-            setUp(() {
-              when(
-                () => argResults.wasParsed(
-                  CommonArguments.splitDebugInfoArg.name,
-                ),
-              ).thenReturn(true);
-              when(
-                () => argResults[CommonArguments.splitDebugInfoArg.name],
-              ).thenReturn(splitDebugInfoPath);
-            });
-
-            test('forwards --split-debug-info to builder', () async {
-              try {
-                await runWithOverrides(patcher.buildPatchArtifact);
-              } on Exception {
-                // ignore
-              }
-              verify(
-                () => artifactBuilder.buildElfAotSnapshot(
-                  appDillPath: any(named: 'appDillPath'),
-                  outFilePath: any(named: 'outFilePath'),
-                  genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
-                  additionalArgs: [
-                    '--dwarf-stack-traces',
-                    '--resolve-dwarf-paths',
-                    '--save-debugging-info=${splitDebugInfoFile.path}',
-                  ],
-                ),
-              ).called(2);
             });
           });
 
@@ -1198,12 +1135,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           ).thenAnswer((_) async => xcodeVersion);
         });
 
-        const linkPercentage = 100.0;
-
-        setUp(() {
-          patcher.lastBuildLinkPercentage = linkPercentage;
-        });
-
         test('returns correct metadata', () async {
           const metadata = CreatePatchMetadata(
             releasePlatform: ReleasePlatform.macos,
@@ -1231,7 +1162,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 hasAssetChanges: true,
                 usedIgnoreNativeChangesFlag: allowNativeDiffs,
                 hasNativeChanges: false,
-                linkPercentage: linkPercentage,
                 environment: BuildEnvironmentMetadata(
                   flutterRevision: flutterRevision,
                   operatingSystem: operatingSystem,
