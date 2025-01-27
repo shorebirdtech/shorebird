@@ -68,6 +68,7 @@ words:
   - nserror
   - Oltman
   - orri # Arm64 instruction, Or Register with Immediate
+  - patchability
   - pana
   - pkcs
   - podfile
@@ -107,6 +108,7 @@ words:
   - unmockable
   - Unpatchable
   - unsets
+  - unskipped
   - upvote
   - usbmuxd
   - USERPROFILE
