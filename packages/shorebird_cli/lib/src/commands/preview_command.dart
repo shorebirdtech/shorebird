@@ -291,7 +291,11 @@ This is only applicable when previewing Android releases.''',
           deviceId: deviceId,
           track: track,
         ),
-      ReleasePlatform.linux => throw UnimplementedError(),
+      ReleasePlatform.linux => installAndLaunchLinux(
+          appId: appId,
+          release: release,
+          track: track,
+        ),
       ReleasePlatform.macos => installAndLaunchMacos(
           appId: appId,
           release: release,
@@ -339,6 +343,69 @@ This is only applicable when previewing Android releases.''',
     return ReleasePlatform.values.firstWhere((p) => p.displayName == platform);
   }
 
+  Future<int> installAndLaunchLinux({
+    required String appId,
+    required Release release,
+    required DeploymentTrack track,
+  }) async {
+    const platform = ReleasePlatform.linux;
+    late Directory appDirectory;
+    late ReleaseArtifact releaseArtifact;
+
+    try {
+      releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        arch: 'bundle',
+        platform: platform,
+      );
+    } on Exception catch (e, s) {
+      logger
+        ..err('Error getting release artifact: $e')
+        ..detail('Stack trace: $s');
+      return ExitCode.software.code;
+    }
+
+    appDirectory = Directory(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        artifact: releaseArtifact,
+        platform: platform,
+      ),
+    );
+
+    if (!appDirectory.existsSync()) {
+      final downloadArtifactProgress = logger.progress('Downloading release');
+      try {
+        if (!appDirectory.existsSync()) {
+          appDirectory.createSync(recursive: true);
+        }
+
+        final archiveFile = await artifactManager.downloadFile(
+          Uri.parse(releaseArtifact.url),
+        );
+        await artifactManager.extractZip(
+          zipFile: archiveFile,
+          outputDirectory: appDirectory,
+        );
+        downloadArtifactProgress.complete();
+      } on Exception catch (error) {
+        downloadArtifactProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
+    final executableFile = appDirectory.listSync().whereType<File>().first;
+
+    await process.run('chmod', ['+x', executableFile.path]);
+
+    final proc = await process.start(executableFile.path, []);
+    proc.stdout.listen((log) => logger.info(utf8.decode(log)));
+    proc.stderr.listen((log) => logger.err(utf8.decode(log)));
+    return proc.exitCode;
+  }
+
   /// Downloads and runs the given [release] of the given [appId] on Windows.
   Future<int> installAndLaunchWindows({
     required String appId,
@@ -369,7 +436,7 @@ This is only applicable when previewing Android releases.''',
         release: release,
         artifact: releaseExeArtifact,
         platform: platform,
-        extension: 'exe',
+        fileExtension: 'exe',
       ),
     );
 
@@ -435,7 +502,7 @@ This is only applicable when previewing Android releases.''',
         release: release,
         artifact: releaseRunnerArtifact,
         platform: platform,
-        extension: 'app',
+        fileExtension: 'app',
       ),
     );
 
@@ -535,7 +602,7 @@ This is only applicable when previewing Android releases.''',
           release: release,
           artifact: releaseAabArtifact,
           platform: platform,
-          extension: 'aab',
+          fileExtension: 'aab',
         ),
       );
 
@@ -559,7 +626,7 @@ This is only applicable when previewing Android releases.''',
       release: release,
       artifact: releaseAabArtifact,
       platform: platform,
-      extension: 'apks',
+      fileExtension: 'apks',
     );
 
     if (File(apksPath).existsSync()) File(apksPath).deleteSync();
@@ -662,7 +729,7 @@ This is only applicable when previewing Android releases.''',
         release: release,
         artifact: releaseRunnerArtifact,
         platform: platform,
-        extension: 'app',
+        fileExtension: 'app',
       ),
     );
 
@@ -749,12 +816,13 @@ This is only applicable when previewing Android releases.''',
     required Release release,
     required ReleaseArtifact artifact,
     required ReleasePlatform platform,
-    required String extension,
+    String? fileExtension,
   }) {
     final previewDirectory = cache.getPreviewDirectory(appId);
+    final ext = fileExtension != null ? '.$fileExtension' : '';
     return p.join(
       previewDirectory.path,
-      '${platform.name}_${release.version}_${artifact.id}.$extension',
+      '${platform.name}_${release.version}_${artifact.id}$ext',
     );
   }
 

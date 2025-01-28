@@ -257,7 +257,12 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           target: target,
         );
       case ReleaseType.linux:
-        throw UnimplementedError();
+        return LinuxPatcher(
+          argParser: argParser,
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.macos:
         return MacosPatcher(
           argParser: argParser,
