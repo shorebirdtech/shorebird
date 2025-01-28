@@ -347,6 +347,21 @@ class ArtifactManager {
         .firstWhereOrNull((directory) => directory.path.endsWith('.app'));
   }
 
+  /// Returns the build/ subdirectory containing the compiled Linux executable.
+  Directory getLinuxReleaseDirectory() {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    return Directory(
+      p.join(
+        projectRoot.path,
+        'build',
+        'linux',
+        'x64',
+        'release',
+        'bundle',
+      ),
+    );
+  }
+
   /// Returns the build/ subdirectory containing the compiled Windows exe.
   Directory getWindowsReleaseDirectory() {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;

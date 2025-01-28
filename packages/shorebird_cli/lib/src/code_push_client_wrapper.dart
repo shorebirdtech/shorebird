@@ -656,6 +656,35 @@ aar artifact already exists, continuing...''',
     return thinnedArchiveDirectory;
   }
 
+  Future<void> createLinuxReleaseArtifacts({
+    required String appId,
+    required int releaseId,
+    required String bundlePath,
+  }) async {
+    final createArtifactProgress = logger.progress('Uploading artifacts');
+    final zippedBundle = await Directory(bundlePath).zipToTempFile();
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedBundle.path,
+        arch: 'bundle',
+        platform: ReleasePlatform.linux,
+        hash: sha256.convert(await zippedBundle.readAsBytes()).toString(),
+        canSideload: true,
+        podfileLockHash: null,
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createArtifactProgress,
+        message: 'Error uploading bundle: $error',
+      );
+    }
+
+    createArtifactProgress.complete();
+  }
+
   /// Registers and uploads macOS release artifacts to the Shorebird server.
   Future<void> createMacosReleaseArtifacts({
     required String appId,

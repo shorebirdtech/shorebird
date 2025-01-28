@@ -208,7 +208,11 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           target: target,
         );
       case ReleaseType.linux:
-        throw UnimplementedError();
+        return LinuxReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.macos:
         return MacosReleaser(
           argResults: results,
