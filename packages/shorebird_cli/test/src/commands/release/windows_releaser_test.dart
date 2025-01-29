@@ -100,7 +100,7 @@ void main() {
           projectRoot.path,
           'build',
           'windows',
-          'x63',
+          'x64',
           'runner',
           'Release',
         ),
