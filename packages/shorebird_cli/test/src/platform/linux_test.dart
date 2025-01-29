@@ -1,10 +1,20 @@
 import 'dart:io';
 
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/platform/linux.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('linux', () {
+    group('minimumSupportedLinuxFlutterVersion', () {
+      test('is 3.27.3', () {
+        expect(
+          minimumSupportedLinuxFlutterVersion,
+          equals(Version(3, 27, 3)),
+        );
+      });
+    });
+
     group('versionFromLinuxBundle', () {
       late Directory bundleRoot;
       late Linux linux;
