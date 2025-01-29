@@ -144,7 +144,7 @@ void main() {
             () => logger.err(
               '''
 The "--release-version" flag is only supported for aar and ios-framework releases.
-        
+
 To change the version of this release, change your app's version in your pubspec.yaml.''',
             ),
           ).called(1);
