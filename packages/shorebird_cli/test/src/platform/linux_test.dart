@@ -7,21 +7,23 @@ void main() {
   group('linux', () {
     group('versionFromLinuxBundle', () {
       late Directory bundleRoot;
+      late Linux linux;
 
       setUp(() {
         bundleRoot = Directory.systemTemp.createTempSync();
+        linux = Linux();
       });
 
       group('when json file does not exist', () {
         test('throws exception', () {
           expect(
-            () => versionFromLinuxBundle(bundleRoot: bundleRoot),
+            () => linux.versionFromLinuxBundle(bundleRoot: bundleRoot),
             throwsA(
               isA<Exception>().having(
                 (e) => '$e',
                 'message',
                 equals(
-                  '''Exception: Version file not found in Linux bundle (expected at ${linuxBundleVersionFile(bundleRoot).path})''',
+                  '''Exception: Version file not found in Linux bundle (expected at ${linux.linuxBundleVersionFile(bundleRoot).path})''',
                 ),
               ),
             ),
@@ -40,14 +42,14 @@ void main() {
 ''';
 
         setUp(() {
-          linuxBundleVersionFile(bundleRoot)
+          linux.linuxBundleVersionFile(bundleRoot)
             ..createSync(recursive: true)
             ..writeAsStringSync(jsonContent);
         });
 
         test('returns expected version', () {
           expect(
-            versionFromLinuxBundle(bundleRoot: bundleRoot),
+            linux.versionFromLinuxBundle(bundleRoot: bundleRoot),
             equals('1.0.0+9'),
           );
         });

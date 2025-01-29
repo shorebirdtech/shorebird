@@ -117,6 +117,8 @@ class MockJwtHeader extends Mock implements JwtHeader {}
 
 class MockJwtPayload extends Mock implements JwtPayload {}
 
+class MockLinux extends Mock implements Linux {}
+
 class MockNetworkChecker extends Mock implements NetworkChecker {}
 
 class MockOpen extends Mock implements Open {}

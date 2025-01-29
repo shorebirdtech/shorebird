@@ -140,7 +140,7 @@ class LinuxPatcher extends Patcher {
       zipFile: artifact,
       outputDirectory: outputDirectory,
     );
-    return versionFromLinuxBundle(bundleRoot: outputDirectory);
+    return linux.versionFromLinuxBundle(bundleRoot: outputDirectory);
   }
 
   @override

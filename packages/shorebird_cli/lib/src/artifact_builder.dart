@@ -274,6 +274,8 @@ class ArtifactBuilder {
     });
   }
 
+  /// Builds a Linux desktop application by running `flutter build linux
+  /// --release` with Shorebird's fork of Flutter.
   Future<void> buildLinuxApp({
     String? flavor,
     String? target,

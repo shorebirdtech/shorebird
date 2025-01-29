@@ -64,7 +64,7 @@ class LinuxReleaser extends Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async =>
-      versionFromLinuxBundle(
+      linux.versionFromLinuxBundle(
         bundleRoot: releaseArtifactRoot as Directory,
       );
 
