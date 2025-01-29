@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive/archive.dart';
+import 'package:shorebird_cli/src/archive_analysis/linux_bundle_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -41,18 +42,13 @@ class LinuxPatcher extends Patcher {
     required File releaseArchive,
     required File patchArchive,
   }) async {
-    // TODO
-    return const DiffStatus(
-      hasAssetChanges: false,
-      hasNativeChanges: false,
+    return patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+      localArchive: patchArchive,
+      releaseArchive: releaseArchive,
+      archiveDiffer: const LinuxBundleDiffer(),
+      allowAssetChanges: allowAssetDiffs,
+      allowNativeChanges: allowNativeDiffs,
     );
-    // return patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-    //   localArchive: patchArchive,
-    //   releaseArchive: releaseArchive,
-    //   archiveDiffer: const WindowsArchiveDiffer(),
-    //   allowAssetChanges: allowAssetDiffs,
-    //   allowNativeChanges: allowNativeDiffs,
-    // );
   }
 
   @override
