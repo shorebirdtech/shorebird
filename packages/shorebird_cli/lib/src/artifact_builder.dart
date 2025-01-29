@@ -307,9 +307,14 @@ class ArtifactBuilder {
         logger.detail(line);
       });
 
-      await buildProcess.exitCode;
+      final stderrLines = await buildProcess.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .toList();
+      final stdErr = stderrLines.join('\n');
+      final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('Failed to build: $stderr');
+        throw ArtifactBuildException('Failed to build: $stdErr');
       }
     });
   }
