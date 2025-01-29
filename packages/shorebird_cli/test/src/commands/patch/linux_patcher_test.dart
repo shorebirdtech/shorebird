@@ -444,7 +444,7 @@ void main() {
       test('returns version from archived exe', () async {
         final version = await runWithOverrides(
           () => patcher.extractReleaseVersionFromArtifact(
-            File('bunle.zip'),
+            File('bundle.zip'),
           ),
         );
 
