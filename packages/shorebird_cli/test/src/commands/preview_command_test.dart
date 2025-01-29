@@ -1591,10 +1591,7 @@ channel: ${track.channel}
           ).called(1);
           expect(
             shorebirdYaml.readAsStringSync(),
-            equals('''
-app_id: $appId
-channel: ${track.channel}
-'''),
+            equals('app_id: $appId'),
           );
         });
       });

@@ -859,7 +859,7 @@ This is only applicable when previewing Android releases.''',
         throw Exception('Unable to find shorebird.yaml');
       }
 
-      await _setChannelInShorebirdYaml(
+      await _maybeSetChannelInShorebirdYaml(
         channel: channel,
         shorebirdYamlFile: shorebirdYaml,
       );
@@ -894,10 +894,14 @@ This is only applicable when previewing Android releases.''',
         ),
       );
 
-      await _setChannelInShorebirdYaml(
+      final didUpdateShorebirdYaml = await _maybeSetChannelInShorebirdYaml(
         channel: channel,
         shorebirdYamlFile: shorebirdYamlFile,
       );
+
+      if (!didUpdateShorebirdYaml) {
+        return;
+      }
 
       // This is equivalent to `zip --no-dir-entries`
       // Which does NOT create entries in the zip archive for directories.
@@ -935,13 +939,15 @@ This is only applicable when previewing Android releases.''',
       ),
     );
 
-    await _setChannelInShorebirdYaml(
+    await _maybeSetChannelInShorebirdYaml(
       channel: channel,
       shorebirdYamlFile: shorebirdYamlFile,
     );
   }
 
-  Future<void> _setChannelInShorebirdYaml({
+  /// Sets the channel property in the shorebird.yaml file if none is set or
+  /// different from the provided channel.
+  Future<bool> _maybeSetChannelInShorebirdYaml({
     required String channel,
     required File shorebirdYamlFile,
   }) async {
@@ -955,16 +961,17 @@ This is only applicable when previewing Android releases.''',
 
     if (yamlChannel == null && channel == DeploymentTrack.stable.channel) {
       // We would be updating the channel to the default value.
-      return;
+      return false;
     }
 
     if (yamlChannel == channel) {
       // Updating this channel would be a no-op.
-      return;
+      return false;
     }
 
     final yamlEditor = YamlEditor(yamlText)..update(['channel'], channel);
     shorebirdYamlFile.writeAsStringSync(yamlEditor.toString(), flush: true);
+    return true;
   }
 }
 
