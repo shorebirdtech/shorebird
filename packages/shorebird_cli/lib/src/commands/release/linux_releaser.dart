@@ -63,12 +63,10 @@ class LinuxReleaser extends Releaser {
   @override
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
-  }) async {
-    final version = await versionFromLinuxBundle(
-      bundleRoot: releaseArtifactRoot as Directory,
-    );
-    return version!;
-  }
+  }) async =>
+      versionFromLinuxBundle(
+        bundleRoot: releaseArtifactRoot as Directory,
+      );
 
   @override
   String get postReleaseInstructions => 'TODO: post release instructions here';

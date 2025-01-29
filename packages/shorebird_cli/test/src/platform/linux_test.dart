@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/platform/linux.dart';
 import 'package:test/test.dart';
 
@@ -14,8 +13,19 @@ void main() {
       });
 
       group('when json file does not exist', () {
-        test('returns null', () {
-          expect(versionFromLinuxBundle(bundleRoot: bundleRoot), isNull);
+        test('throws exception', () {
+          expect(
+            () => versionFromLinuxBundle(bundleRoot: bundleRoot),
+            throwsA(
+              isA<Exception>().having(
+                (e) => '$e',
+                'message',
+                equals(
+                  '''Exception: Version file not found in Linux bundle (expected at ${linuxBundleVersionFile(bundleRoot).path})''',
+                ),
+              ),
+            ),
+          );
         });
       });
 
@@ -30,14 +40,7 @@ void main() {
 ''';
 
         setUp(() {
-          File(
-            p.join(
-              bundleRoot.path,
-              'data',
-              'flutter_assets',
-              'version.json',
-            ),
-          )
+          linuxBundleVersionFile(bundleRoot)
             ..createSync(recursive: true)
             ..writeAsStringSync(jsonContent);
         });

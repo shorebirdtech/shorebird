@@ -348,7 +348,7 @@ class ArtifactManager {
   }
 
   /// Returns the build/ subdirectory containing the compiled Linux executable.
-  Directory getLinuxReleaseDirectory() {
+  Directory get linuxReleaseDirectory {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     return Directory(
       p.join(

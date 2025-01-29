@@ -16,7 +16,6 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
@@ -59,16 +58,6 @@ class LinuxPatcher extends Patcher {
       'Building Linux app with Flutter $flutterVersionString',
     );
 
-    final releaseDir = Directory(
-      p.join(
-        shorebirdEnv.getFlutterProjectRoot()!.path,
-        'build',
-        'linux',
-        'x64',
-        'release',
-        'bundle',
-      ),
-    );
     try {
       await artifactBuilder.buildLinuxApp(
         base64PublicKey: argResults.encodedPublicKey,
@@ -79,7 +68,7 @@ class LinuxPatcher extends Patcher {
       throw ProcessExit(ExitCode.software.code);
     }
 
-    return releaseDir.zipToTempFile();
+    return artifactManager.linuxReleaseDirectory.zipToTempFile();
   }
 
   @override
@@ -91,7 +80,7 @@ class LinuxPatcher extends Patcher {
   }) async {
     final createDiffProgress = logger.progress('Creating patch artifacts');
     final patchArtifactPath = p.join(
-      artifactManager.getLinuxReleaseDirectory().path,
+      artifactManager.linuxReleaseDirectory.path,
       'lib',
       'libapp.so',
     );
@@ -151,7 +140,7 @@ class LinuxPatcher extends Patcher {
       zipFile: artifact,
       outputDirectory: outputDirectory,
     );
-    return versionFromLinuxBundle(bundleRoot: outputDirectory)!;
+    return versionFromLinuxBundle(bundleRoot: outputDirectory);
   }
 
   @override
