@@ -90,7 +90,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       'Built Linux application with Flutter $flutterVersionString',
     );
 
-    return artifactManager.linuxReleaseDirectory;
+    return artifactManager.linuxBundleDirectory;
   }
 
   @override
@@ -104,7 +104,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   @override
   String get postReleaseInstructions => '''
 
-Linux release created at ${artifactManager.linuxReleaseDirectory.path}.
+Linux release created at ${artifactManager.linuxBundleDirectory.path}.
 ''';
 
   @override
@@ -118,6 +118,6 @@ Linux release created at ${artifactManager.linuxReleaseDirectory.path}.
       codePushClientWrapper.createLinuxReleaseArtifacts(
         appId: appId,
         releaseId: release.id,
-        bundlePath: artifactManager.linuxReleaseDirectory.path,
+        bundle: artifactManager.linuxBundleDirectory,
       );
 }

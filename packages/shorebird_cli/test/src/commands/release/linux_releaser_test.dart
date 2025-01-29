@@ -106,7 +106,7 @@ void main() {
       )..createSync(recursive: true);
 
       when(
-        () => artifactManager.linuxReleaseDirectory,
+        () => artifactManager.linuxBundleDirectory,
       ).thenReturn(releaseDirectory);
 
       when(() => logger.progress(any())).thenReturn(progress);
@@ -365,7 +365,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           () => codePushClientWrapper.createLinuxReleaseArtifacts(
             appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
-            bundlePath: any(named: 'bundlePath'),
+            bundle: any(named: 'bundle'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -381,7 +381,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           () => codePushClientWrapper.createLinuxReleaseArtifacts(
             appId: appId,
             releaseId: releaseId,
-            bundlePath: any(named: 'bundlePath'),
+            bundle: any(named: 'bundle'),
           ),
         ).called(1);
       });
@@ -396,7 +396,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           instructions,
           equals('''
 
-Linux release created at ${artifactManager.linuxReleaseDirectory.path}.
+Linux release created at ${artifactManager.linuxBundleDirectory.path}.
 '''),
         );
       });

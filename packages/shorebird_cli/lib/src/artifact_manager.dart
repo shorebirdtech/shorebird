@@ -347,8 +347,8 @@ class ArtifactManager {
         .firstWhereOrNull((directory) => directory.path.endsWith('.app'));
   }
 
-  /// Returns the build/ subdirectory containing the compiled Linux executable.
-  Directory get linuxReleaseDirectory {
+  /// Returns the build/ subdirectory containing the compiled Linux bundle.
+  Directory get linuxBundleDirectory {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     return Directory(
       p.join(

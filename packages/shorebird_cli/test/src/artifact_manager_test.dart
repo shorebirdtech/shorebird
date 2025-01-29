@@ -837,7 +837,7 @@ void main() {
     group('getLinuxReleaseDirectory', () {
       test('returns correct path', () {
         expect(
-          runWithOverrides(() => artifactManager.linuxReleaseDirectory).path,
+          runWithOverrides(() => artifactManager.linuxBundleDirectory).path,
           equals(
             p.join(
               projectRoot.path,

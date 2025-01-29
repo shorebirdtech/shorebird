@@ -68,7 +68,7 @@ class LinuxPatcher extends Patcher {
       throw ProcessExit(ExitCode.software.code);
     }
 
-    return artifactManager.linuxReleaseDirectory.zipToTempFile();
+    return artifactManager.linuxBundleDirectory.zipToTempFile();
   }
 
   @override
@@ -80,7 +80,7 @@ class LinuxPatcher extends Patcher {
   }) async {
     final createDiffProgress = logger.progress('Creating patch artifacts');
     final patchArtifactPath = p.join(
-      artifactManager.linuxReleaseDirectory.path,
+      artifactManager.linuxBundleDirectory.path,
       'lib',
       'libapp.so',
     );

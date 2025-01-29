@@ -726,7 +726,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             ),
           );
           when(
-            () => artifactManager.linuxReleaseDirectory,
+            () => artifactManager.linuxBundleDirectory,
           ).thenReturn(linuxBundleDirectory);
           when(
             () => shorebirdProcess.start(

@@ -659,10 +659,10 @@ aar artifact already exists, continuing...''',
   Future<void> createLinuxReleaseArtifacts({
     required String appId,
     required int releaseId,
-    required String bundlePath,
+    required Directory bundle,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-    final zippedBundle = await Directory(bundlePath).zipToTempFile();
+    final zippedBundle = await Directory(bundle.path).zipToTempFile();
     try {
       await codePushClient.createReleaseArtifact(
         appId: appId,

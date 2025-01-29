@@ -242,7 +242,7 @@ void main() {
             ),
           )..createSync(recursive: true);
           when(
-            () => artifactManager.linuxReleaseDirectory,
+            () => artifactManager.linuxBundleDirectory,
           ).thenReturn(releaseDir);
           when(
             () => artifactBuilder.buildLinuxApp(),
@@ -299,7 +299,7 @@ void main() {
         )..createSync(recursive: true);
 
         when(
-          () => artifactManager.linuxReleaseDirectory,
+          () => artifactManager.linuxBundleDirectory,
         ).thenReturn(releaseDirectory);
         when(
           () => artifactManager.extractZip(
