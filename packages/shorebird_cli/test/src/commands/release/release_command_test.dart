@@ -204,12 +204,12 @@ void main() {
     group('getReleaser', () {
       test('maps the correct platform to the releaser', () async {
         expect(
-          command.getReleaser(ReleaseType.android),
-          isA<AndroidReleaser>(),
-        );
-        expect(
           command.getReleaser(ReleaseType.aar),
           isA<AarReleaser>(),
+        );
+        expect(
+          command.getReleaser(ReleaseType.android),
+          isA<AndroidReleaser>(),
         );
         expect(
           command.getReleaser(ReleaseType.ios),
@@ -218,6 +218,10 @@ void main() {
         expect(
           command.getReleaser(ReleaseType.iosFramework),
           isA<IosFrameworkReleaser>(),
+        );
+        expect(
+          command.getReleaser(ReleaseType.linux),
+          isA<LinuxReleaser>(),
         );
         expect(
           command.getReleaser(ReleaseType.macos),

@@ -563,12 +563,12 @@ void main() {
     group('getPatcher', () {
       test('maps the correct platform to the patcher', () async {
         expect(
-          command.getPatcher(ReleaseType.android),
-          isA<AndroidPatcher>(),
-        );
-        expect(
           command.getPatcher(ReleaseType.aar),
           isA<AarPatcher>(),
+        );
+        expect(
+          command.getPatcher(ReleaseType.android),
+          isA<AndroidPatcher>(),
         );
         expect(
           command.getPatcher(ReleaseType.ios),
@@ -577,6 +577,10 @@ void main() {
         expect(
           command.getPatcher(ReleaseType.iosFramework),
           isA<IosFrameworkPatcher>(),
+        );
+        expect(
+          command.getPatcher(ReleaseType.linux),
+          isA<LinuxPatcher>(),
         );
         expect(
           command.getPatcher(ReleaseType.macos),
