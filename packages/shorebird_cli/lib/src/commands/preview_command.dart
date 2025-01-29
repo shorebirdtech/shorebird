@@ -406,7 +406,7 @@ This is only applicable when previewing Android releases.''',
     return proc.exitCode;
   }
 
-  /// Downloads and runs the given [release] ofuuuuj the given [appId] on Windows.
+  /// Downloads and runs the given [release] the given [appId] on Windows.
   Future<int> installAndLaunchWindows({
     required String appId,
     required Release release,
