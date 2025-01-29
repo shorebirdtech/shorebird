@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
