@@ -151,8 +151,7 @@ class LinuxPatcher extends Patcher {
       zipFile: artifact,
       outputDirectory: outputDirectory,
     );
-    final version = await versionFromLinuxBundle(bundleRoot: outputDirectory);
-    return version!;
+    return versionFromLinuxBundle(bundleRoot: outputDirectory)!;
   }
 
   @override

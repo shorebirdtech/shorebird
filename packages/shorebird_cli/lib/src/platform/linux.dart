@@ -7,7 +7,7 @@ import 'package:path/path.dart' as p;
 ///
 /// Linux executables do not have an intrinsic version number. Because of this,
 /// version info is stored in a json file at data/flutter_assets/version.json.
-Future<String?> versionFromLinuxBundle({required Directory bundleRoot}) async {
+String? versionFromLinuxBundle({required Directory bundleRoot}) {
   final jsonFile = File(
     p.join(
       bundleRoot.absolute.path,
