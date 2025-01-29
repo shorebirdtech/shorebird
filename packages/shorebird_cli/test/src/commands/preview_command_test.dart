@@ -1748,6 +1748,49 @@ channel: ${DeploymentTrack.staging.channel}
       });
     });
 
+    group('linux', () {
+      const releasePlatform = ReleasePlatform.macos;
+
+      setUp(() {
+        when(() => argResults['platform']).thenReturn(releasePlatform.name);
+      });
+
+      group('when querying for release artifact fails', () {
+        setUp(() {
+          final exception = Exception('oops');
+          when(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: appId,
+              releaseId: releaseId,
+              arch: 'app',
+              platform: releasePlatform,
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when artifact does not exist', () {
+        // TODO
+      });
+
+      group('runs successfully', () {
+        // TODO
+      });
+    });
+
     group('macos', () {
       const releaseArtifactUrl = 'https://example.com/sample.app';
       const releasePlatform = ReleasePlatform.macos;

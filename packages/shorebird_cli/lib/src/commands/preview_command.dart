@@ -343,6 +343,7 @@ This is only applicable when previewing Android releases.''',
     return ReleasePlatform.values.firstWhere((p) => p.displayName == platform);
   }
 
+  /// Downloads and runs the given [release] the given [appId] on Linux.
   Future<int> installAndLaunchLinux({
     required String appId,
     required Release release,

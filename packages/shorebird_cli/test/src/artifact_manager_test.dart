@@ -836,6 +836,24 @@ void main() {
       });
     });
 
+    group('getLinuxReleaseDirectory', () {
+      test('returns correct path', () {
+        expect(
+          runWithOverrides(artifactManager.getLinuxReleaseDirectory).path,
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'linux',
+              'x64',
+              'release',
+              'bundle',
+            ),
+          ),
+        );
+      });
+    });
+
     group('getWindowsReleaseDirectory', () {
       test('returns correct path', () {
         expect(
