@@ -649,9 +649,7 @@ void main() {
             expect(secondResult!.path, equals(oldArchiveDirectory.path));
           });
         },
-        onPlatform: {
-          'windows': const Skip('Flaky on Windows'),
-        },
+        testOn: 'mac-os',
       );
 
       group('when archive directory does not exist', () {
@@ -839,7 +837,7 @@ void main() {
     group('getLinuxReleaseDirectory', () {
       test('returns correct path', () {
         expect(
-          runWithOverrides(artifactManager.getLinuxReleaseDirectory).path,
+          runWithOverrides(() => artifactManager.linuxReleaseDirectory).path,
           equals(
             p.join(
               projectRoot.path,
