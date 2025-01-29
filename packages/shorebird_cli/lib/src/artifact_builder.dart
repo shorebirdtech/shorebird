@@ -297,7 +297,6 @@ class ArtifactBuilder {
       final buildProcess = await process.start(
         executable,
         arguments,
-        runInShell: true,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 

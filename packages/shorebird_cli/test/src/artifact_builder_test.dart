@@ -710,6 +710,117 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     });
 
     group(
+      'buildLinuxApp',
+      () {
+        late Directory linuxBundleDirectory;
+
+        setUp(() {
+          linuxBundleDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'linux',
+              'x64',
+              'release',
+              'bundle',
+            ),
+          );
+          when(
+            () => artifactManager.linuxReleaseDirectory,
+          ).thenReturn(linuxBundleDirectory);
+          when(
+            () => shorebirdProcess.start(
+              'flutter',
+              [
+                'build',
+                'linux',
+                '--release',
+              ],
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).thenAnswer((_) async => buildProcess);
+        });
+
+        group('when flutter build fails', () {
+          setUp(() {
+            when(
+              () => buildProcess.exitCode,
+            ).thenAnswer((_) async => ExitCode.software.code);
+            when(() => buildProcess.stderr).thenAnswer(
+              (_) => Stream.fromIterable(
+                [
+                  'stderr contents',
+                ].map(utf8.encode),
+              ),
+            );
+          });
+
+          test('throws ArtifactBuildException', () async {
+            expect(
+              () => runWithOverrides(() => builder.buildLinuxApp()),
+              throwsA(
+                isA<ArtifactBuildException>().having(
+                  (e) => e.message,
+                  'message',
+                  equals('Failed to build: stderr contents'),
+                ),
+              ),
+            );
+          });
+        });
+
+        group('when flutter build succeeds', () {
+          setUp(() {
+            when(
+              () => buildProcess.exitCode,
+            ).thenAnswer((_) async => ExitCode.success.code);
+          });
+
+          test('completes', () async {
+            await expectLater(
+              runWithOverrides(
+                () => builder.buildLinuxApp(),
+              ),
+              completes,
+            );
+          });
+        });
+
+        group('when public key is provided', () {
+          const publicKey = 'publicKey';
+
+          setUp(() {
+            when(
+              () => buildProcess.exitCode,
+            ).thenAnswer((_) async => ExitCode.success.code);
+          });
+
+          test('provides public key as environment variable', () async {
+            await runWithOverrides(
+              () => builder.buildLinuxApp(base64PublicKey: publicKey),
+            );
+
+            verify(
+              () => shorebirdProcess.start(
+                'flutter',
+                [
+                  'build',
+                  'linux',
+                  '--release',
+                ],
+                runInShell: any(named: 'runInShell'),
+                environment: {
+                  'SHOREBIRD_PUBLIC_KEY': publicKey,
+                },
+              ),
+            ).called(1);
+          });
+        });
+      },
+      testOn: 'linux',
+    );
+
+    group(
       'buildMacos',
       () {
         setUp(() {
