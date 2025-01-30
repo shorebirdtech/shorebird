@@ -206,6 +206,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return ExitCode.usage.code;
     }
 
+    if (results.releaseTypes.contains(ReleaseType.linux)) {
+      logger.warn(linuxBetaWarning);
+    }
+
     if (results.releaseTypes.contains(ReleaseType.macos)) {
       logger.warn(macosBetaWarning);
     }
@@ -257,7 +261,12 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           target: target,
         );
       case ReleaseType.linux:
-        throw UnimplementedError();
+        return LinuxPatcher(
+          argParser: argParser,
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.macos:
         return MacosPatcher(
           argParser: argParser,

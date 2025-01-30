@@ -649,9 +649,7 @@ void main() {
             expect(secondResult!.path, equals(oldArchiveDirectory.path));
           });
         },
-        onPlatform: {
-          'windows': const Skip('Flaky on Windows'),
-        },
+        testOn: 'mac-os',
       );
 
       group('when archive directory does not exist', () {
@@ -833,6 +831,24 @@ void main() {
           expect(result, isNotNull);
           expect(result!.path, equals(applicationsDirectory.path));
         });
+      });
+    });
+
+    group('getLinuxReleaseDirectory', () {
+      test('returns correct path', () {
+        expect(
+          runWithOverrides(() => artifactManager.linuxBundleDirectory).path,
+          equals(
+            p.join(
+              projectRoot.path,
+              'build',
+              'linux',
+              'x64',
+              'release',
+              'bundle',
+            ),
+          ),
+        );
       });
     });
 

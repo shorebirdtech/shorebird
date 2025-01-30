@@ -354,6 +354,17 @@ void main() {
         });
       });
 
+      group('when patching a Linux release', () {
+        setUp(() {
+          when(() => argResults['platforms']).thenReturn(['linux']);
+        });
+
+        test('prints beta warning', () async {
+          await runWithOverrides(command.run);
+          verify(() => logger.warn(linuxBetaWarning)).called(1);
+        });
+      });
+
       group('when patching a macos release', () {
         setUp(() {
           when(() => argResults['platforms']).thenReturn(['macos']);
@@ -563,12 +574,12 @@ void main() {
     group('getPatcher', () {
       test('maps the correct platform to the patcher', () async {
         expect(
-          command.getPatcher(ReleaseType.android),
-          isA<AndroidPatcher>(),
-        );
-        expect(
           command.getPatcher(ReleaseType.aar),
           isA<AarPatcher>(),
+        );
+        expect(
+          command.getPatcher(ReleaseType.android),
+          isA<AndroidPatcher>(),
         );
         expect(
           command.getPatcher(ReleaseType.ios),
@@ -577,6 +588,10 @@ void main() {
         expect(
           command.getPatcher(ReleaseType.iosFramework),
           isA<IosFrameworkPatcher>(),
+        );
+        expect(
+          command.getPatcher(ReleaseType.linux),
+          isA<LinuxPatcher>(),
         );
         expect(
           command.getPatcher(ReleaseType.macos),

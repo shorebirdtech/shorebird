@@ -274,6 +274,49 @@ class ArtifactBuilder {
     });
   }
 
+  /// Builds a Linux desktop application by running `flutter build linux
+  /// --release` with Shorebird's fork of Flutter.
+  Future<void> buildLinuxApp({
+    String? target,
+    List<String> args = const [],
+    String? base64PublicKey,
+    DetailProgress? buildProgress,
+  }) async {
+    await _runShorebirdBuildCommand(() async {
+      const executable = 'flutter';
+      final arguments = [
+        'build',
+        'linux',
+        '--release',
+        if (target != null) '--target=$target',
+        ...args,
+      ];
+
+      final buildProcess = await process.start(
+        executable,
+        arguments,
+        environment: base64PublicKey?.toPublicKeyEnv(),
+      );
+
+      buildProcess.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        logger.detail(line);
+      });
+
+      final stderrLines = await buildProcess.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .toList();
+      final stdErr = stderrLines.join('\n');
+      final exitCode = await buildProcess.exitCode;
+      if (exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('Failed to build: $stdErr');
+      }
+    });
+  }
+
   /// Builds a macOS app using `flutter build macos`. Runs `flutter pub get`
   /// with the system installation of Flutter to reset
   /// `.dart_tool/package_config.json` after the build completes or fails.

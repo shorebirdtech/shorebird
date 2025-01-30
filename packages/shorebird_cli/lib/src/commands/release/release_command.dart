@@ -161,6 +161,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       return ExitCode.usage.code;
     }
 
+    if (results.releaseTypes.contains(ReleaseType.linux)) {
+      logger.warn(linuxBetaWarning);
+    }
+
     if (results.releaseTypes.contains(ReleaseType.macos)) {
       logger.warn(macosBetaWarning);
     }
@@ -208,7 +212,11 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           target: target,
         );
       case ReleaseType.linux:
-        throw UnimplementedError();
+        return LinuxReleaser(
+          argResults: results,
+          flavor: flavor,
+          target: target,
+        );
       case ReleaseType.macos:
         return MacosReleaser(
           argResults: results,

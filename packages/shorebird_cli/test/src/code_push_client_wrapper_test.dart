@@ -2066,6 +2066,90 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
       });
     });
 
+    group('createLinuxReleaseArtifacts', () {
+      late Directory releaseBundle;
+
+      setUp(() {
+        releaseBundle = Directory(
+          p.join(projectRoot.path, 'path', 'to', 'bundle'),
+        )..createSync(recursive: true);
+      });
+
+      group('when createReleaseArtifact fails', () {
+        setUp(() {
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
+            ),
+          ).thenThrow(Exception('something went wrong'));
+        });
+
+        test('exits with code 70', () async {
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.createLinuxReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                bundle: releaseBundle,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(() => progress.fail(any())).called(1);
+        });
+      });
+
+      group('when createReleaseArtifact succeeds', () {
+        setUp(() {
+          when(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath'),
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+              hash: any(named: 'hash'),
+              canSideload: any(named: 'canSideload'),
+              podfileLockHash: any(named: 'podfileLockHash'),
+            ),
+          ).thenAnswer((_) async {});
+        });
+
+        test('completes successfully', () async {
+          await runWithOverrides(
+            () async => codePushClientWrapper.createLinuxReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              bundle: releaseBundle,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => progress.fail(any()));
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              artifactPath: any(named: 'artifactPath', that: endsWith('.zip')),
+              appId: appId,
+              releaseId: releaseId,
+              arch: primaryLinuxReleaseArtifactArch,
+              platform: ReleasePlatform.linux,
+              hash: any(named: 'hash'),
+              canSideload: true,
+              podfileLockHash: null,
+            ),
+          ).called(1);
+        });
+      });
+    });
+
     group('createMacosReleaseArtifacts', () {
       final appPath = p.join('path', 'to', 'Runner.app');
       final releaseSupplementPath = p.join('path', 'to', 'supplement');

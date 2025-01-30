@@ -2,11 +2,11 @@ import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group(WindowsArchiveDiffer, () {
-    late WindowsArchiveDiffer differ;
+  group(LinuxBundleDiffer, () {
+    late LinuxBundleDiffer differ;
 
     setUp(() {
-      differ = const WindowsArchiveDiffer();
+      differ = const LinuxBundleDiffer();
     });
 
     group('isAssetFilePath', () {
@@ -26,9 +26,9 @@ void main() {
     });
 
     group('isDartFilePath', () {
-      group('when file is app.so', () {
+      group('when file is libapp.so', () {
         test('returns true', () {
-          final result = differ.isDartFilePath('app.so');
+          final result = differ.isDartFilePath('libapp.so');
           expect(result, isTrue);
         });
       });
@@ -42,8 +42,10 @@ void main() {
     });
 
     group('isNativeFilePath', () {
-      test('returns false', () {
+      test('always returns false', () {
         expect(differ.isNativeFilePath(r'C:\path\to\file.exe'), isFalse);
+        expect(differ.isNativeFilePath('not a real path'), isFalse);
+        expect(differ.isNativeFilePath(r'C:\'), isFalse);
       });
     });
   });

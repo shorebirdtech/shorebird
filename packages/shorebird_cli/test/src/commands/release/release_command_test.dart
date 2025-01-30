@@ -204,12 +204,12 @@ void main() {
     group('getReleaser', () {
       test('maps the correct platform to the releaser', () async {
         expect(
-          command.getReleaser(ReleaseType.android),
-          isA<AndroidReleaser>(),
-        );
-        expect(
           command.getReleaser(ReleaseType.aar),
           isA<AarReleaser>(),
+        );
+        expect(
+          command.getReleaser(ReleaseType.android),
+          isA<AndroidReleaser>(),
         );
         expect(
           command.getReleaser(ReleaseType.ios),
@@ -220,6 +220,10 @@ void main() {
           isA<IosFrameworkReleaser>(),
         );
         expect(
+          command.getReleaser(ReleaseType.linux),
+          isA<LinuxReleaser>(),
+        );
+        expect(
           command.getReleaser(ReleaseType.macos),
           isA<MacosReleaser>(),
         );
@@ -227,6 +231,17 @@ void main() {
           command.getReleaser(ReleaseType.windows),
           isA<WindowsReleaser>(),
         );
+      });
+    });
+
+    group('when releasing to linux', () {
+      setUp(() {
+        when(() => argResults['platforms']).thenReturn(['linux']);
+      });
+
+      test('prints beta warning', () async {
+        await runWithOverrides(command.run);
+        verify(() => logger.warn(linuxBetaWarning)).called(1);
       });
     });
 

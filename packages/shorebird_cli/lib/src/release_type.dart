@@ -13,6 +13,7 @@ enum ReleaseType {
   /// A full Flutter iOS app.
   ios,
 
+  /// A full Flutter Linux app.
   linux,
 
   /// A full Flutter macOS app.

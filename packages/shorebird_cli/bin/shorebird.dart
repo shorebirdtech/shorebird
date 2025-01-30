@@ -73,6 +73,7 @@ Command: shorebird ${args.join(' ')}
           idevicesyslogRef,
           iosDeployRef,
           javaRef,
+          linuxRef,
           loggerRef,
           networkCheckerRef,
           openRef,

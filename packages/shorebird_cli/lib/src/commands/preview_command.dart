@@ -291,7 +291,11 @@ This is only applicable when previewing Android releases.''',
           deviceId: deviceId,
           track: track,
         ),
-      ReleasePlatform.linux => throw UnimplementedError(),
+      ReleasePlatform.linux => installAndLaunchLinux(
+          appId: appId,
+          release: release,
+          track: track,
+        ),
       ReleasePlatform.macos => installAndLaunchMacos(
           appId: appId,
           release: release,
@@ -339,7 +343,83 @@ This is only applicable when previewing Android releases.''',
     return ReleasePlatform.values.firstWhere((p) => p.displayName == platform);
   }
 
-  /// Downloads and runs the given [release] of the given [appId] on Windows.
+  /// Downloads and runs the given [release] the given [appId] on Linux.
+  Future<int> installAndLaunchLinux({
+    required String appId,
+    required Release release,
+    required DeploymentTrack track,
+  }) async {
+    const platform = ReleasePlatform.linux;
+    late Directory appDirectory;
+    late ReleaseArtifact releaseArtifact;
+
+    try {
+      releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        arch: 'bundle',
+        platform: platform,
+      );
+    } on Exception catch (e, s) {
+      logger
+        ..err('Error getting release artifact: $e')
+        ..detail('Stack trace: $s');
+      return ExitCode.software.code;
+    }
+
+    appDirectory = Directory(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        artifact: releaseArtifact,
+        platform: platform,
+      ),
+    );
+
+    if (!appDirectory.existsSync()) {
+      final downloadArtifactProgress = logger.progress('Downloading release');
+      try {
+        if (!appDirectory.existsSync()) {
+          appDirectory.createSync(recursive: true);
+        }
+
+        final archiveFile = await artifactManager.downloadFile(
+          Uri.parse(releaseArtifact.url),
+        );
+        await artifactManager.extractZip(
+          zipFile: archiveFile,
+          outputDirectory: appDirectory,
+        );
+        downloadArtifactProgress.complete();
+      } on Exception catch (error) {
+        downloadArtifactProgress.fail('$error');
+        return ExitCode.software.code;
+      }
+    }
+
+    final progress = logger.progress('Using ${track.name} track');
+    try {
+      await setChannelOnLinuxApp(
+        channel: track.name,
+        bundleDirectory: appDirectory,
+      );
+      progress.complete();
+    } on Exception catch (error) {
+      progress.fail('$error');
+      return ExitCode.software.code;
+    }
+
+    final executableFile = appDirectory.listSync().whereType<File>().first;
+
+    await process.run('chmod', ['+x', executableFile.path]);
+
+    final proc = await process.start(executableFile.path, []);
+    proc.stdout.listen((log) => logger.info(utf8.decode(log)));
+    proc.stderr.listen((log) => logger.err(utf8.decode(log)));
+    return proc.exitCode;
+  }
+
+  /// Downloads and runs the given [release] the given [appId] on Windows.
   Future<int> installAndLaunchWindows({
     required String appId,
     required Release release,
@@ -369,7 +449,7 @@ This is only applicable when previewing Android releases.''',
         release: release,
         artifact: releaseExeArtifact,
         platform: platform,
-        extension: 'exe',
+        fileExtension: 'exe',
       ),
     );
 
@@ -435,7 +515,7 @@ This is only applicable when previewing Android releases.''',
         release: release,
         artifact: releaseRunnerArtifact,
         platform: platform,
-        extension: 'app',
+        fileExtension: 'app',
       ),
     );
 
@@ -535,7 +615,7 @@ This is only applicable when previewing Android releases.''',
           release: release,
           artifact: releaseAabArtifact,
           platform: platform,
-          extension: 'aab',
+          fileExtension: 'aab',
         ),
       );
 
@@ -559,7 +639,7 @@ This is only applicable when previewing Android releases.''',
       release: release,
       artifact: releaseAabArtifact,
       platform: platform,
-      extension: 'apks',
+      fileExtension: 'apks',
     );
 
     if (File(apksPath).existsSync()) File(apksPath).deleteSync();
@@ -662,7 +742,7 @@ This is only applicable when previewing Android releases.''',
         release: release,
         artifact: releaseRunnerArtifact,
         platform: platform,
-        extension: 'app',
+        fileExtension: 'app',
       ),
     );
 
@@ -749,12 +829,13 @@ This is only applicable when previewing Android releases.''',
     required Release release,
     required ReleaseArtifact artifact,
     required ReleasePlatform platform,
-    required String extension,
+    String? fileExtension,
   }) {
     final previewDirectory = cache.getPreviewDirectory(appId);
+    final ext = fileExtension != null ? '.$fileExtension' : '';
     return p.join(
       previewDirectory.path,
-      '${platform.name}_${release.version}_${artifact.id}.$extension',
+      '${platform.name}_${release.version}_${artifact.id}$ext',
     );
   }
 
@@ -778,10 +859,10 @@ This is only applicable when previewing Android releases.''',
         throw Exception('Unable to find shorebird.yaml');
       }
 
-      final yaml = YamlEditor(shorebirdYaml.readAsStringSync())
-        ..update(['channel'], channel);
-
-      shorebirdYaml.writeAsStringSync(yaml.toString(), flush: true);
+      await _maybeSetChannelInShorebirdYaml(
+        channel: channel,
+        shorebirdYamlFile: shorebirdYaml,
+      );
     });
   }
 
@@ -813,26 +894,14 @@ This is only applicable when previewing Android releases.''',
         ),
       );
 
-      if (!shorebirdYamlFile.existsSync()) {
-        throw Exception('Unable to find shorebird.yaml');
-      }
+      final didUpdateShorebirdYaml = await _maybeSetChannelInShorebirdYaml(
+        channel: channel,
+        shorebirdYamlFile: shorebirdYamlFile,
+      );
 
-      final yamlText = shorebirdYamlFile.readAsStringSync();
-      final yaml = loadYaml(yamlText) as YamlMap;
-      final yamlChannel = yaml['channel'];
-
-      if (yamlChannel == null && channel == DeploymentTrack.stable.channel) {
-        // We would be updating the channel to the default value.
+      if (!didUpdateShorebirdYaml) {
         return;
       }
-
-      if (yamlChannel == channel) {
-        // Updating this channel would be a no-op.
-        return;
-      }
-
-      final yamlEditor = YamlEditor(yamlText)..update(['channel'], channel);
-      shorebirdYamlFile.writeAsStringSync(yamlEditor.toString(), flush: true);
 
       // This is equivalent to `zip --no-dir-entries`
       // Which does NOT create entries in the zip archive for directories.
@@ -854,6 +923,55 @@ This is only applicable when previewing Android releases.''',
       tmpAabFile.copySync(aabFile.path);
       tempDir.deleteSync(recursive: true);
     });
+  }
+
+  /// Sets the channel property in the shorebird.yaml file if none is set.
+  Future<void> setChannelOnLinuxApp({
+    required String channel,
+    required Directory bundleDirectory,
+  }) async {
+    final shorebirdYamlFile = File(
+      p.join(
+        bundleDirectory.path,
+        'data',
+        'flutter_assets',
+        'shorebird.yaml',
+      ),
+    );
+
+    await _maybeSetChannelInShorebirdYaml(
+      channel: channel,
+      shorebirdYamlFile: shorebirdYamlFile,
+    );
+  }
+
+  /// Sets the channel property in the shorebird.yaml file if none is set or
+  /// different from the provided channel.
+  Future<bool> _maybeSetChannelInShorebirdYaml({
+    required String channel,
+    required File shorebirdYamlFile,
+  }) async {
+    if (!shorebirdYamlFile.existsSync()) {
+      throw Exception('Unable to find shorebird.yaml');
+    }
+
+    final yamlText = shorebirdYamlFile.readAsStringSync();
+    final yaml = loadYaml(yamlText) as YamlMap;
+    final yamlChannel = yaml['channel'];
+
+    if (yamlChannel == null && channel == DeploymentTrack.stable.channel) {
+      // We would be updating the channel to the default value.
+      return false;
+    }
+
+    if (yamlChannel == channel) {
+      // Updating this channel would be a no-op.
+      return false;
+    }
+
+    final yamlEditor = YamlEditor(yamlText)..update(['channel'], channel);
+    shorebirdYamlFile.writeAsStringSync(yamlEditor.toString(), flush: true);
+    return true;
   }
 }
 

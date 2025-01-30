@@ -242,6 +242,7 @@ void main() {
       when(() => release.platformStatuses).thenReturn({
         ReleasePlatform.android: ReleaseStatus.active,
         ReleasePlatform.ios: ReleaseStatus.active,
+        ReleasePlatform.linux: ReleaseStatus.active,
         ReleasePlatform.macos: ReleaseStatus.active,
         ReleasePlatform.windows: ReleaseStatus.active,
       });
@@ -1591,10 +1592,7 @@ channel: ${track.channel}
           ).called(1);
           expect(
             shorebirdYaml.readAsStringSync(),
-            equals('''
-app_id: $appId
-channel: ${track.channel}
-'''),
+            equals('app_id: $appId'),
           );
         });
       });
@@ -1744,6 +1742,232 @@ channel: ${DeploymentTrack.staging.channel}
           verify(
             () => logger.err('No previewable iOS releases found'),
           ).called(1);
+        });
+      });
+    });
+
+    group('linux', () {
+      const executableName = 'my_app';
+      const releaseArtifactUrl = 'https://example.com/Release.zip';
+      const releaseArtifactId = 42;
+
+      late File releaseArtifactFile;
+      late ReleaseArtifact linuxReleaseArtifact;
+      late ShorebirdProcess shorebirdProcess;
+      late Process process;
+
+      void setupPreviewArtifact({required Directory baseDirectory}) {
+        File(
+          p.join(
+            baseDirectory.path,
+            'data',
+            'flutter_assets',
+            'shorebird.yaml',
+          ),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: $appId', flush: true);
+        File(
+          p.join(
+            baseDirectory.path,
+            executableName,
+          ),
+        ).createSync(recursive: true);
+      }
+
+      R runWithOverrides<R>(R Function() body) {
+        return HttpOverrides.runZoned(
+          () => runScoped(
+            body,
+            values: {
+              artifactManagerRef.overrideWith(() => artifactManager),
+              authRef.overrideWith(() => auth),
+              cacheRef.overrideWith(() => cache),
+              codePushClientWrapperRef
+                  .overrideWith(() => codePushClientWrapper),
+              httpClientRef.overrideWith(() => httpClient),
+              loggerRef.overrideWith(() => logger),
+              platformRef.overrideWith(() => platform),
+              processRef.overrideWith(() => shorebirdProcess),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+        );
+      }
+
+      setUp(() {
+        shorebirdProcess = MockShorebirdProcess();
+        process = MockProcess();
+        linuxReleaseArtifact = MockReleaseArtifact();
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        releaseArtifactFile = File(p.join(tempDir.path, 'Release.zip'));
+
+        when(() => process.stdout)
+            .thenAnswer((_) => Stream.value(utf8.encode('hello world')));
+        when(() => process.stderr)
+            .thenAnswer((_) => Stream.value(utf8.encode('hello error')));
+        when(() => process.exitCode)
+            .thenAnswer((_) async => ExitCode.success.code);
+
+        when(
+          () => shorebirdProcess.start(any(), any()),
+        ).thenAnswer((_) async => process);
+        when(() => shorebirdProcess.run(any(), any())).thenAnswer(
+          (_) async => const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout: null,
+            stderr: null,
+          ),
+        );
+
+        when(() => linuxReleaseArtifact.id).thenReturn(releaseArtifactId);
+        when(() => linuxReleaseArtifact.url).thenReturn(releaseArtifactUrl);
+
+        when(() => release.platformStatuses).thenReturn({
+          ReleasePlatform.linux: ReleaseStatus.active,
+        });
+
+        when(
+          () => codePushClientWrapper.getReleaseArtifact(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+          ),
+        ).thenAnswer((_) async => linuxReleaseArtifact);
+      });
+
+      group('when getting release artifact fails', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              arch: any(named: 'arch'),
+              platform: any(named: 'platform'),
+            ),
+          ).thenThrow(Exception('oops'));
+        });
+
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: appId,
+              releaseId: releaseId,
+              arch: primaryLinuxReleaseArtifactArch,
+              platform: ReleasePlatform.linux,
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when downloading release artifact fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.downloadFile(any()),
+          ).thenThrow(Exception('oops'));
+        });
+
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => artifactManager.downloadFile(
+              Uri.parse(releaseArtifactUrl),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when setting channel on app fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.downloadFile(any()),
+          ).thenAnswer((_) async => releaseArtifactFile);
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer((_) async {});
+        });
+
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => progress.fail(
+              'Exception: Unable to find shorebird.yaml',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when preview artifact is not cached', () {
+        setUp(() {
+          when(
+            () => artifactManager.downloadFile(any()),
+          ).thenAnswer((_) async => releaseArtifactFile);
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer((invocation) async {
+            final outDirectory =
+                invocation.namedArguments[#outputDirectory] as Directory;
+            setupPreviewArtifact(baseDirectory: outDirectory);
+          });
+        });
+
+        test('downloads and launches artifact', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+
+          verify(
+            () => artifactManager.downloadFile(Uri.parse(releaseArtifactUrl)),
+          ).called(1);
+          verify(
+            () => shorebirdProcess.start(
+              any(that: endsWith(executableName)),
+              [],
+            ),
+          ).called(1);
+          verify(() => logger.info('hello world')).called(1);
+          verify(() => logger.err('hello error')).called(1);
+        });
+      });
+
+      group('when preview artifact is cached', () {
+        setUp(() {
+          setupPreviewArtifact(
+            baseDirectory: Directory(
+              p.join(
+                previewDirectory.path,
+                'linux_${releaseVersion}_$releaseArtifactId',
+              ),
+            ),
+          );
+        });
+
+        test('launches cached artifact', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+
+          verifyNever(() => artifactManager.downloadFile(any()));
+          verify(() => shorebirdProcess.run('chmod', any())).called(1);
+          verify(
+            () => shorebirdProcess.start(
+              any(that: endsWith(executableName)),
+              [],
+            ),
+          ).called(1);
+          verify(() => logger.info('hello world')).called(1);
+          verify(() => logger.err('hello error')).called(1);
         });
       });
     });

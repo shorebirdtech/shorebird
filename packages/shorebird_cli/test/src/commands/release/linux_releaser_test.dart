@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -31,7 +30,7 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
-  group(WindowsReleaser, () {
+  group(LinuxReleaser, () {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
@@ -42,13 +41,13 @@ void main() {
     late ShorebirdLogger logger;
     late FlavorValidator flavorValidator;
     late Directory projectRoot;
-    late Powershell powershell;
+    late Linux linux;
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
-    late WindowsReleaser releaser;
+    late LinuxReleaser releaser;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -59,8 +58,8 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
+          linuxRef.overrideWith(() => linux),
           loggerRef.overrideWith(() => logger),
-          powershellRef.overrideWith(() => powershell),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -72,7 +71,7 @@ void main() {
     setUpAll(() {
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
-      registerFallbackValue(ReleasePlatform.windows);
+      registerFallbackValue(ReleasePlatform.linux);
     });
 
     setUp(() {
@@ -83,7 +82,7 @@ void main() {
       codeSigner = MockCodeSigner();
       doctor = MockDoctor();
       flavorValidator = MockFlavorValidator();
-      powershell = MockPowershell();
+      linux = MockLinux();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
       logger = MockShorebirdLogger();
@@ -99,15 +98,15 @@ void main() {
         p.join(
           projectRoot.path,
           'build',
-          'windows',
+          'linux',
           'x64',
-          'runner',
-          'Release',
+          'release',
+          'bundle',
         ),
       )..createSync(recursive: true);
 
       when(
-        () => artifactManager.getWindowsReleaseDirectory(),
+        () => artifactManager.linuxBundleDirectory,
       ).thenReturn(releaseDirectory);
 
       when(() => logger.progress(any())).thenReturn(progress);
@@ -116,7 +115,7 @@ void main() {
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
 
-      releaser = WindowsReleaser(
+      releaser = LinuxReleaser(
         argResults: argResults,
         flavor: null,
         target: null,
@@ -124,8 +123,8 @@ void main() {
     });
 
     group('releaseType', () {
-      test('is windows', () {
-        expect(releaser.releaseType, ReleaseType.windows);
+      test('is linux', () {
+        expect(releaser.releaseType, ReleaseType.linux);
       });
     });
 
@@ -145,7 +144,7 @@ void main() {
             () => logger.err(
               '''
 The "--release-version" flag is only supported for aar and ios-framework releases.
-        
+
 To change the version of this release, change your app's version in your pubspec.yaml.''',
             ),
           ).called(1);
@@ -155,8 +154,7 @@ To change the version of this release, change your app's version in your pubspec
 
     group('assertPreconditions', () {
       setUp(() {
-        when(() => doctor.windowsCommandValidators)
-            .thenReturn([flavorValidator]);
+        when(() => doctor.linuxCommandValidators).thenReturn([flavorValidator]);
         when(flavorValidator.validate).thenAnswer((_) async => []);
       });
 
@@ -208,7 +206,7 @@ To change the version of this release, change your app's version in your pubspec
               checkUserIsAuthenticated: true,
               checkShorebirdInitialized: true,
               validators: [flavorValidator],
-              supportedOperatingSystems: {Platform.windows},
+              supportedOperatingSystems: {Platform.linux},
             ),
           ).called(1);
         });
@@ -244,27 +242,10 @@ To change the version of this release, change your app's version in your pubspec
           verify(
             () => logger.err(
               '''
-Windows releases are not supported with Flutter versions older than $minimumSupportedWindowsFlutterVersion.
+Linux releases are not supported with Flutter versions older than $minimumSupportedLinuxFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             ),
           ).called(1);
-        });
-
-        group('when flutter version is 3.27.1 but hash is supported', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.getRevisionForVersion(any()),
-            ).thenAnswer(
-              (_) async => windowsFlutterGitHashesBelowMinVersion.first,
-            );
-          });
-
-          test('completes normally', () async {
-            await expectLater(
-              runWithOverrides(releaser.assertPreconditions),
-              completes,
-            );
-          });
         });
       });
     });
@@ -273,14 +254,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       setUp(() {
         when(
           () => shorebirdFlutter.getVersionAndRevision(),
-        ).thenAnswer((_) async => '3.27.1');
+        ).thenAnswer((_) async => '3.27.3');
       });
 
       group('when builder throws exception', () {
         setUp(() {
           when(
-            () => artifactBuilder.buildWindowsApp(
-              flavor: any(named: 'flavor'),
+            () => artifactBuilder.buildLinuxApp(
               target: any(named: 'target'),
               args: any(named: 'args'),
               buildProgress: any(named: 'buildProgress'),
@@ -300,8 +280,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       group('when build succeeds', () {
         setUp(() {
           when(
-            () => artifactBuilder.buildWindowsApp(
-              flavor: any(named: 'flavor'),
+            () => artifactBuilder.buildLinuxApp(
               target: any(named: 'target'),
               args: any(named: 'args'),
               buildProgress: any(named: 'buildProgress'),
@@ -312,15 +291,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         test('returns path to release directory', () async {
           final releaseDir =
               await runWithOverrides(releaser.buildReleaseArtifacts);
-          expect(releaseDir, projectRoot);
+          expect(releaseDir, releaseDirectory);
         });
       });
 
       group('when public key is passed as an arg', () {
         setUp(() {
           when(
-            () => artifactBuilder.buildWindowsApp(
-              flavor: any(named: 'flavor'),
+            () => artifactBuilder.buildLinuxApp(
               target: any(named: 'target'),
               args: any(named: 'args'),
               buildProgress: any(named: 'buildProgress'),
@@ -341,9 +319,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         test('passes public key to buildWindowsApp', () async {
           await runWithOverrides(releaser.buildReleaseArtifacts);
           verify(
-            () => artifactBuilder.buildWindowsApp(
+            () => artifactBuilder.buildLinuxApp(
               base64PublicKey: 'encoded_public_key',
-              flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
               buildProgress: any(named: 'buildProgress'),
@@ -354,37 +331,21 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     });
 
     group('getReleaseVersion', () {
-      group('when exe does not exist', () {
-        test('throws exception', () {
-          expect(
-            () => runWithOverrides(
-              () => releaser.getReleaseVersion(
-                releaseArtifactRoot: projectRoot,
-              ),
-            ),
-            throwsA(isA<Exception>()),
-          );
-        });
+      setUp(() {
+        when(
+          () => linux.versionFromLinuxBundle(
+            bundleRoot: any(named: 'bundleRoot'),
+          ),
+        ).thenReturn('3.27.3');
       });
 
-      group('when exe exists', () {
-        setUp(() {
-          File(p.join(projectRoot.path, 'app.exe')).createSync();
-          when(() => powershell.getExeVersionString(any())).thenAnswer(
-            (_) async => '1.2.3',
-          );
-        });
-
-        test('returns result of getExeVersionString', () async {
-          await expectLater(
-            runWithOverrides(
-              () => releaser.getReleaseVersion(
-                releaseArtifactRoot: projectRoot,
-              ),
-            ),
-            completion(equals('1.2.3')),
-          );
-        });
+      test('returns version from linux bundle', () async {
+        final version = await runWithOverrides(
+          () => releaser.getReleaseVersion(
+            releaseArtifactRoot: releaseDirectory,
+          ),
+        );
+        expect(version, '3.27.3');
       });
     });
 
@@ -396,59 +357,29 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       setUp(() {
         release = MockRelease();
         when(() => release.id).thenReturn(releaseId);
+        when(
+          () => codePushClientWrapper.createLinuxReleaseArtifacts(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            bundle: any(named: 'bundle'),
+          ),
+        ).thenAnswer((_) async {});
       });
 
-      group('when release directory does not exist', () {
-        setUp(() {
-          releaseDirectory.deleteSync();
-        });
-
-        test('fails progress, exits', () async {
-          await expectLater(
-            () => runWithOverrides(
-              () => releaser.uploadReleaseArtifacts(
-                release: release,
-                appId: appId,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(
-            () => logger.err(
-              any(that: startsWith('No release directory found at')),
-            ),
-          ).called(1);
-        });
-      });
-
-      group('when release directory exists', () {
-        setUp(() {
-          when(
-            () => codePushClientWrapper.createWindowsReleaseArtifacts(
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              projectRoot: any(named: 'projectRoot'),
-              releaseZipPath: any(named: 'releaseZipPath'),
-            ),
-          ).thenAnswer((_) async {});
-        });
-
-        test('zips and uploads release directory', () async {
-          await runWithOverrides(
-            () => releaser.uploadReleaseArtifacts(
-              release: release,
-              appId: appId,
-            ),
-          );
-          verify(
-            () => codePushClientWrapper.createWindowsReleaseArtifacts(
-              appId: appId,
-              releaseId: releaseId,
-              projectRoot: projectRoot.path,
-              releaseZipPath: any(named: 'releaseZipPath'),
-            ),
-          ).called(1);
-        });
+      test('zips and uploads release directory', () async {
+        await runWithOverrides(
+          () => releaser.uploadReleaseArtifacts(
+            release: release,
+            appId: appId,
+          ),
+        );
+        verify(
+          () => codePushClientWrapper.createLinuxReleaseArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            bundle: any(named: 'bundle'),
+          ),
+        ).called(1);
       });
     });
 
@@ -461,7 +392,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           instructions,
           equals('''
 
-Windows executable created at ${artifactManager.getWindowsReleaseDirectory().path}.
+Linux release created at ${artifactManager.linuxBundleDirectory.path}.
 '''),
         );
       });
