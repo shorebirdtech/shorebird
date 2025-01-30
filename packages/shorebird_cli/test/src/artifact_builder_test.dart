@@ -769,6 +769,29 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           });
         });
 
+        group('when target is provided', () {
+          test('forwards target to flutter command', () async {
+            await runWithOverrides(
+              () => builder.buildLinuxApp(
+                target: 'target.dart',
+              ),
+            );
+
+            verify(
+              () => shorebirdProcess.start(
+                'flutter',
+                [
+                  'build',
+                  'linux',
+                  '--release',
+                  '--target=target.dart',
+                ],
+                runInShell: any(named: 'runInShell'),
+              ),
+            ).called(1);
+          });
+        });
+
         group('when flutter build succeeds', () {
           setUp(() {
             when(

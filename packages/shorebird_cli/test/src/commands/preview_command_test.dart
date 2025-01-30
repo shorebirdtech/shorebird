@@ -1883,6 +1883,30 @@ channel: ${DeploymentTrack.staging.channel}
         });
       });
 
+      group('when setting channel on app fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.downloadFile(any()),
+          ).thenAnswer((_) async => releaseArtifactFile);
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer((_) async {});
+        });
+
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(
+            () => progress.fail(
+              'Exception: Unable to find shorebird.yaml',
+            ),
+          ).called(1);
+        });
+      });
+
       group('when preview artifact is not cached', () {
         setUp(() {
           when(

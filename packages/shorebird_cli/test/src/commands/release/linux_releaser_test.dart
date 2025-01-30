@@ -261,7 +261,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         setUp(() {
           when(
             () => artifactBuilder.buildLinuxApp(
-              flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
               buildProgress: any(named: 'buildProgress'),
@@ -282,7 +281,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         setUp(() {
           when(
             () => artifactBuilder.buildLinuxApp(
-              flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
               buildProgress: any(named: 'buildProgress'),
@@ -301,7 +299,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         setUp(() {
           when(
             () => artifactBuilder.buildLinuxApp(
-              flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
               buildProgress: any(named: 'buildProgress'),
@@ -324,7 +321,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           verify(
             () => artifactBuilder.buildLinuxApp(
               base64PublicKey: 'encoded_public_key',
-              flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
               buildProgress: any(named: 'buildProgress'),
