@@ -44,7 +44,7 @@ void main() {
     group('isNativeFilePath', () {
       test('always returns false', () {
         expect(differ.isNativeFilePath(r'C:\path\to\file.exe'), isFalse);
-        expect(differ.isNativeFilePath('asdfasfdsaf'), isFalse);
+        expect(differ.isNativeFilePath('not a real path'), isFalse);
         expect(differ.isNativeFilePath(r'C:\'), isFalse);
       });
     });
