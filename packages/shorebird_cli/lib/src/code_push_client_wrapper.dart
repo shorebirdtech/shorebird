@@ -656,6 +656,7 @@ aar artifact already exists, continuing...''',
     return thinnedArchiveDirectory;
   }
 
+  /// Zips and uploads a Linux release bundle.
   Future<void> createLinuxReleaseArtifacts({
     required String appId,
     required int releaseId,
