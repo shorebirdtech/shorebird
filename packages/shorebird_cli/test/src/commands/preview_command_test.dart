@@ -2111,6 +2111,7 @@ channel: ${DeploymentTrack.staging.channel}
       late ReleaseArtifact windowsReleaseArtifact;
       late ShorebirdProcess shorebirdProcess;
       late Process process;
+      late Directory windowsReleaseDirectory;
 
       R runWithOverrides<R>(R Function() body) {
         return HttpOverrides.runZoned(
@@ -2133,6 +2134,26 @@ channel: ${DeploymentTrack.staging.channel}
         );
       }
 
+      void createShorebirdYaml({String? channel}) {
+        final shorebirdYaml = File(
+          p.join(
+            windowsReleaseDirectory.path,
+            'data',
+            'flutter_assets',
+            'shorebird.yaml',
+          ),
+        )
+          ..createSync(recursive: true)
+          ..writeAsStringSync('app_id: $appId', flush: true);
+        if (channel != null) {
+          shorebirdYaml.writeAsStringSync(
+            'channel: $channel',
+            flush: true,
+            mode: FileMode.append,
+          );
+        }
+      }
+
       setUp(() {
         shorebirdProcess = MockShorebirdProcess();
         process = MockProcess();
@@ -2140,6 +2161,13 @@ channel: ${DeploymentTrack.staging.channel}
 
         final tempDir = Directory.systemTemp.createTempSync();
         releaseArtifactFile = File(p.join(tempDir.path, 'Release.zip'));
+
+        windowsReleaseDirectory = Directory(
+          p.join(
+            previewDirectory.path,
+            'windows_${releaseVersion}_$releaseArtifactId.exe',
+          ),
+        );
 
         when(() => process.stdout)
             .thenAnswer((_) => Stream.value(utf8.encode('hello world')));
@@ -2227,6 +2255,7 @@ channel: ${DeploymentTrack.staging.channel}
                 invocation.namedArguments[#outputDirectory] as Directory;
             File(p.join(outDirectory.path, 'runner.exe'))
                 .createSync(recursive: true);
+            createShorebirdYaml();
           });
         });
 
@@ -2248,12 +2277,9 @@ channel: ${DeploymentTrack.staging.channel}
       group('when preview artifact is cached', () {
         setUp(() {
           File(
-            p.join(
-              previewDirectory.path,
-              'windows_${releaseVersion}_$releaseArtifactId.exe',
-              'runner.exe',
-            ),
+            p.join(windowsReleaseDirectory.path, 'runner.exe'),
           ).createSync(recursive: true);
+          createShorebirdYaml();
         });
 
         test('launches cached artifact', () async {
