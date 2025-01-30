@@ -11,12 +11,6 @@ const flutterVersionUrl = '$docsUrl/flutter-version';
 const supportedFlutterVersionsUrl =
     '$flutterVersionUrl#supported-flutter-versions';
 
-/// Link to the status page on the Shorebird documentation.
-const statusUrl = '$docsUrl/status';
-
-/// Link to the iOS link percentage section on the Shorebird documentation.
-const iOSLinkPercentageUrl = '$statusUrl#link-percentage-ios';
-
 /// Link to the troubleshooting page on the Shorebird documentation.
 const troubleshootingUrl = '$docsUrl/troubleshooting';
 
