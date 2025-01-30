@@ -234,6 +234,17 @@ void main() {
       });
     });
 
+    group('when releasing to linux', () {
+      setUp(() {
+        when(() => argResults['platforms']).thenReturn(['linux']);
+      });
+
+      test('prints beta warning', () async {
+        await runWithOverrides(command.run);
+        verify(() => logger.warn(linuxBetaWarning)).called(1);
+      });
+    });
+
     group('when releasing to macos', () {
       setUp(() {
         when(() => argResults['platforms']).thenReturn(['macos']);

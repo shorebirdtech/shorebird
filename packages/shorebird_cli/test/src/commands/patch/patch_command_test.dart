@@ -354,6 +354,17 @@ void main() {
         });
       });
 
+      group('when patching a Linux release', () {
+        setUp(() {
+          when(() => argResults['platforms']).thenReturn(['linux']);
+        });
+
+        test('prints beta warning', () async {
+          await runWithOverrides(command.run);
+          verify(() => logger.warn(linuxBetaWarning)).called(1);
+        });
+      });
+
       group('when patching a macos release', () {
         setUp(() {
           when(() => argResults['platforms']).thenReturn(['macos']);
