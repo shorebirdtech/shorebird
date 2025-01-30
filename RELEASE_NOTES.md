@@ -6,7 +6,7 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
-## 1.6.7 (January 37, 2025)
+## 1.6.7 (January 27, 2025)
 
 - 🍎 Shorebird macOS apps can now run on Intel Macs!
 - 🏃 macOS patches now run at full speed (there is no longer a performance
