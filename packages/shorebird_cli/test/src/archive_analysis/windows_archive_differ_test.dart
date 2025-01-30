@@ -1,4 +1,3 @@
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:test/test.dart';
 
@@ -45,33 +44,6 @@ void main() {
     group('isNativeFilePath', () {
       test('returns false', () {
         expect(differ.isNativeFilePath(r'C:\path\to\file.exe'), isFalse);
-      });
-    });
-
-    group('changedFiles', () {
-      final winArchivesFixturesBasePath =
-          p.join('test', 'fixtures', 'win_archives');
-      final releasePath = p.join(
-        winArchivesFixturesBasePath,
-        'release.zip',
-      );
-      final patchPath = p.join(
-        winArchivesFixturesBasePath,
-        'patch.zip',
-      );
-
-      test('returns a FileSetDiff containing only the .exe', () async {
-        final result = await differ.changedFiles(releasePath, patchPath);
-        expect(
-          result,
-          equals(
-            const FileSetDiff(
-              addedPaths: {},
-              removedPaths: {},
-              changedPaths: {'hello_windows.exe'},
-            ),
-          ),
-        );
       });
     });
   });

@@ -8,8 +8,13 @@ class LinuxBundleDiffer extends ArchiveDiffer {
   /// {@macro linux_bundle_differ}
   const LinuxBundleDiffer();
 
+  bool _isDirectoryPath(String path) {
+    return path.endsWith('/');
+  }
+
   @override
   bool isAssetFilePath(String filePath) =>
+      !_isDirectoryPath(filePath) &&
       p.split(filePath).any((s) => s == 'flutter_assets');
 
   @override

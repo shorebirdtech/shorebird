@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 
 /// {@template windows_archive_differ}
@@ -42,18 +39,5 @@ class WindowsArchiveDiffer extends ArchiveDiffer {
     //
     // See https://github.com/shorebirdtech/shorebird/issues/2794
     return false;
-  }
-
-  @override
-  Future<FileSetDiff> changedFiles(
-    String oldArchivePath,
-    String newArchivePath,
-  ) async {
-    final oldPathHashes = await fileHashes(File(oldArchivePath));
-    final newPathHashes = await fileHashes(File(newArchivePath));
-    return FileSetDiff.fromPathHashes(
-      oldPathHashes: oldPathHashes,
-      newPathHashes: newPathHashes,
-    );
   }
 }
