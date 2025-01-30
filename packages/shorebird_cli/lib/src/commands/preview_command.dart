@@ -474,6 +474,11 @@ This is only applicable when previewing Android releases.''',
       }
     }
 
+    await setChannelOnWindowsApp(
+      appDirectory: appDirectory,
+      channel: track.name,
+    );
+
     final exeFile = appDirectory
         .listSync()
         .whereType<File>()
@@ -836,6 +841,27 @@ This is only applicable when previewing Android releases.''',
     return p.join(
       previewDirectory.path,
       '${platform.name}_${release.version}_${artifact.id}$ext',
+    );
+  }
+
+  /// Sets the channel property in the shorebird.yaml file inside the Windows
+  /// app whose root directory is [appDirectory].
+  Future<void> setChannelOnWindowsApp({
+    required Directory appDirectory,
+    required String channel,
+  }) async {
+    final shorebirdYamlFile = File(
+      p.join(
+        appDirectory.path,
+        'data',
+        'flutter_assets',
+        'shorebird.yaml',
+      ),
+    );
+
+    await _maybeSetChannelInShorebirdYaml(
+      channel: channel,
+      shorebirdYamlFile: shorebirdYamlFile,
     );
   }
 
