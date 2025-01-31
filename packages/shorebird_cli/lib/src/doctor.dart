@@ -24,10 +24,8 @@ class Doctor {
   /// Validators that verify shorebird will work on iOS.
   final List<Validator> iosCommandValidators = [];
 
-  /// Validators that verify shorebird will work on Windows.
-  final List<Validator> linuxCommandValidators = [
-    // Check whether powershell is installed?
-  ];
+  /// Validators that verify shorebird will work on Linux.
+  final List<Validator> linuxCommandValidators = [];
 
   /// Validators that verify shorebird will work on macOS.
   final List<Validator> macosCommandValidators = [
