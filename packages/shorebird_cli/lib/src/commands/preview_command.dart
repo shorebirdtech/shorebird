@@ -561,14 +561,13 @@ This is only applicable when previewing Android releases.''',
       RegExp('^Filtering the log data'),
     ];
 
-    final prefixRegex = RegExp(
-      r'^[\d-]+\W+[\d:\.]+\W+\w+\W+\w+\[[\da-f]+:[\da-f]+\]',
-    );
-
     // Removes the log prefix from the log line.
     // Example log line:
     // ignore: lines_longer_than_80_chars
     // 2025-01-31 09:53:22.889 Df macos_sandbox[22535:1d268] [dev.shorebird:updater::cache::patch_manager] [shorebird] No public key provided, skipping signature verification
+    final prefixRegex = RegExp(
+      r'^[\d-]+\W+[\d:\.]+\W+\w+\W+\w+\[[\da-f]+:[\da-f]+\]',
+    );
     String removeLogPrefix(String line) {
       return line.trim().replaceFirst(prefixRegex, '').trim();
     }
