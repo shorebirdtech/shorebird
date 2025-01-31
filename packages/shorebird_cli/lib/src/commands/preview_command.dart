@@ -545,6 +545,8 @@ This is only applicable when previewing Android releases.''',
       }
     }
 
+    await setChannelOnMacosApp(appDirectory: appDirectory, channel: track.name);
+
     final logs = await open.newApplication(path: appDirectory.path);
     final completer = Completer<void>();
 
@@ -890,6 +892,29 @@ This is only applicable when previewing Android releases.''',
         shorebirdYamlFile: shorebirdYaml,
       );
     });
+  }
+
+  /// Sets the channel property in the shorebird.yaml file inside a macOS app.
+  Future<void> setChannelOnMacosApp({
+    required Directory appDirectory,
+    required String channel,
+  }) async {
+    final shorebirdYamlFile = File(
+      p.join(
+        appDirectory.path,
+        'Contents',
+        'Frameworks',
+        'App.framework',
+        'Resources',
+        'flutter_assets',
+        'shorebird.yaml',
+      ),
+    );
+
+    await _maybeSetChannelInShorebirdYaml(
+      channel: channel,
+      shorebirdYamlFile: shorebirdYamlFile,
+    );
   }
 
   /// Unzips the `.aab` and sets the channel property in the shorebird.yaml
