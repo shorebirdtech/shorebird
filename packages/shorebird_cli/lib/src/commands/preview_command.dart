@@ -1027,7 +1027,7 @@ This is only applicable when previewing Android releases.''',
 
   /// Sets the channel property in the shorebird.yaml file if none is set or
   /// different from the provided channel.
-  Future<bool> _maybeSetChannelInShorebirdYaml({
+  static Future<bool> _maybeSetChannelInShorebirdYaml({
     required String channel,
     required File shorebirdYamlFile,
   }) async {
