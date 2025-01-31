@@ -36,8 +36,9 @@ abstract class Patcher {
   static String lowLinkPercentageWarning(double linkPercentage) {
     return '''
 ${lightCyan.wrap('shorebird patch')} was only able to share ${linkPercentage.toStringAsFixed(1)}% of Dart code with the released app.
-This means the patched code may execute slower than expected.
-${iOSLinkPercentageUrl.toLink()}
+This is unexpected, and means the application may execute slower than expected after patching.
+Please reach out to us over Discord or Email for help.
+More info: ${troubleshootingUrl.toLink()}.
 ''';
   }
 
