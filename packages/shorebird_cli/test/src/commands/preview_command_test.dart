@@ -1,3 +1,4 @@
+// cspell:words libinfo networkd
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' hide Platform;
@@ -2144,6 +2145,46 @@ channel: ${DeploymentTrack.staging.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
           verify(() => logger.info('hello world')).called(1);
+        });
+      });
+
+      group('log output', () {
+        final rawLogOutput = '''
+2025-01-31 10:15:29.807 Df macos_sandbox[33557:2cc3d] [com.apple.network:] networkd_settings_read_from_file initialized networkd settings by reading plist directly
+
+2025-01-31 10:15:29.807 Df macos_sandbox[33557:2cc3d] [com.apple.network:path] nw_path_libinfo_path_check [5E11C960-BB0A-456A-8024-620DAB6CCF17 Hostname#941210b4:0 tcp, legacy-socket, attribution: developer]
+        libinfo check path: satisfied (Path is satisfied), interface: en0, ipv4, dns
+
+2025-01-31 10:15:29.808 Df macos_sandbox[33557:2cc12] [dev.shorebird:updater::updater] [shorebird] Reporting successful launch.
+'''
+            .split('\n');
+
+        setUp(() {
+          setupMacosShorebirdYaml();
+          when(() => open.newApplication(path: any(named: 'path'))).thenAnswer(
+            (_) async => Stream.fromIterable(rawLogOutput.map(utf8.encode)),
+          );
+        });
+
+        test('removes noisy lines from log output', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+
+          verify(
+            () => logger.info(
+              '''[dev.shorebird:updater::updater] [shorebird] Reporting successful launch.''',
+            ),
+          ).called(1);
+          verifyNever(
+            () => logger.info(
+              any(that: contains('networkd_settings_read_from_file')),
+            ),
+          );
+          verifyNever(
+            () => logger.info(
+              any(that: contains('nw_path_libinfo_path_check')),
+            ),
+          );
         });
       });
     });
