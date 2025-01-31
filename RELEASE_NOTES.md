@@ -6,12 +6,6 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
-## 1.6.8 (January 31, 2025)
-
-- 🐧 Linux support is now in beta!
-- 🍎 macOS preview supports staged patches
-- 🪟 Windows preview supports staged patches
-
 ## 1.6.7 (January 27, 2025)
 
 - 🍎 Shorebird macOS apps can now run on Intel Macs!
