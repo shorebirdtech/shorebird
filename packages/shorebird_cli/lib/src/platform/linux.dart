@@ -15,8 +15,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 const primaryLinuxReleaseArtifactArch = 'bundle';
 
 /// The minimum allowed Flutter version for creating Linux releases.
-// TODO: ideally this can be incremented to 3.27.4 so we don't need to special
-// case different revisions as we did with the mac version.
+// TODO(bryanoltman): bump this when 3.27.4 is released.
 final minimumSupportedLinuxFlutterVersion = Version(3, 27, 3);
 
 /// A warning message printed at the start of `shorebird release linux` and

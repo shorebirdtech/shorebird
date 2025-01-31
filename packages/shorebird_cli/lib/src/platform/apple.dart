@@ -99,6 +99,7 @@ Please report issues at https://github.com/shorebirdtech/shorebird/issues/new
 final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
 
 /// The minimum allowed Flutter version for creating macOS releases.
+// TODO(bryanoltman): bump this when 3.27.4 is released.
 final minimumSupportedMacosFlutterVersion = Version(3, 27, 3);
 
 /// Flutter revisions that support macOS patching.
