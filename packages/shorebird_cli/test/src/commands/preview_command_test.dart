@@ -1,3 +1,4 @@
+// cspell:words libinfo networkd
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' hide Platform;
