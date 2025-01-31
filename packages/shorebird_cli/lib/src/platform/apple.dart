@@ -109,6 +109,7 @@ final minimumSupportedMacosFlutterVersion = Version(3, 27, 3);
 // 3.27.4 or higher.
 const patchableMacosFlutterRevisions = {
   '5c1dcc19ebcee3565c65262dd95970186e4d81cc',
+  '3d75b30b181d1d4ce66c426c64aca2498529f2e0',
 };
 
 /// A reference to a [Apple] instance.

@@ -58,11 +58,19 @@ void main() {
     late ShorebirdValidator shorebirdValidator;
     late PreviewCommand command;
 
-    String runnerPath() {
+    String iosRunnerPath() {
       final platformName = ReleasePlatform.ios.name;
       return p.join(
         previewDirectory.path,
         '${platformName}_${releaseVersion}_$iosArtifactId.app',
+      );
+    }
+
+    String macosAppPath() {
+      final platformName = ReleasePlatform.macos.name;
+      return p.join(
+        previewDirectory.path,
+        '${platformName}_${releaseVersion}_$macosArtifactId.app',
       );
     }
 
@@ -84,7 +92,7 @@ void main() {
 
     File setupIOSShorebirdYaml() => File(
           p.join(
-            runnerPath(),
+            iosRunnerPath(),
             'Frameworks',
             'App.framework',
             'flutter_assets',
@@ -1474,7 +1482,7 @@ channel: ${track.channel}
             () => progress.fail('Exception: Unable to find shorebird.yaml'),
           ).called(1);
           verifyNever(
-            () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+            () => iosDeploy.installAndLaunchApp(bundlePath: iosRunnerPath()),
           );
         });
       });
@@ -1495,7 +1503,7 @@ channel: ${track.channel}
           await runWithOverrides(command.run);
 
           verifyNever(
-            () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+            () => iosDeploy.installAndLaunchApp(bundlePath: iosRunnerPath()),
           );
         });
 
@@ -1516,7 +1524,7 @@ channel: ${track.channel}
             ).called(1);
             verify(
               () => iosDeploy.installAndLaunchApp(
-                bundlePath: runnerPath(),
+                bundlePath: iosRunnerPath(),
                 deviceId: 'not-a-device-id',
               ),
             ).called(1);
@@ -1567,7 +1575,7 @@ channel: ${track.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
           verify(
-            () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+            () => iosDeploy.installAndLaunchApp(bundlePath: iosRunnerPath()),
           ).called(1);
         });
       });
@@ -1588,7 +1596,7 @@ channel: ${track.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
           verify(
-            () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+            () => iosDeploy.installAndLaunchApp(bundlePath: iosRunnerPath()),
           ).called(1);
           expect(
             shorebirdYaml.readAsStringSync(),
@@ -1603,7 +1611,7 @@ channel: ${track.channel}
           when(() => argResults['staging']).thenReturn(true);
           shorebirdYaml = File(
             p.join(
-              runnerPath(),
+              iosRunnerPath(),
               'Frameworks',
               'App.framework',
               'flutter_assets',
@@ -1624,7 +1632,7 @@ channel: ${track.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
           verify(
-            () => iosDeploy.installAndLaunchApp(bundlePath: runnerPath()),
+            () => iosDeploy.installAndLaunchApp(bundlePath: iosRunnerPath()),
           ).called(1);
           expect(
             shorebirdYaml.readAsStringSync(),
@@ -2003,6 +2011,20 @@ channel: ${DeploymentTrack.staging.channel}
         );
       }
 
+      File setupMacosShorebirdYaml() => File(
+            p.join(
+              macosAppPath(),
+              'Contents',
+              'Frameworks',
+              'App.framework',
+              'Resources',
+              'flutter_assets',
+              'shorebird.yaml',
+            ),
+          )
+            ..createSync(recursive: true)
+            ..writeAsStringSync('app_id: $appId', flush: true);
+
       setUp(() {
         ditto = MockDitto();
         open = MockOpen();
@@ -2094,7 +2116,30 @@ channel: ${DeploymentTrack.staging.channel}
         });
       });
 
+      group('staging', () {
+        late File shorebirdYaml;
+        setUp(() {
+          when(() => argResults['staging']).thenReturn(true);
+          shorebirdYaml = setupMacosShorebirdYaml();
+        });
+
+        test('sets channel in shorebird.yaml', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+
+          expect(
+            shorebirdYaml.readAsStringSync(),
+            equals('''
+app_id: $appId
+channel: ${DeploymentTrack.staging.channel}
+'''),
+          );
+        });
+      });
+
       group('when process completes with exit code 0', () {
+        setUp(setupMacosShorebirdYaml);
+
         test('completes successfully', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
