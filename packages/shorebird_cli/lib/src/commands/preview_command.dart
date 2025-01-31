@@ -550,8 +550,38 @@ This is only applicable when previewing Android releases.''',
     final logs = await open.newApplication(path: appDirectory.path);
     final completer = Completer<void>();
 
+    // Filter out extra noise from the logs.
+    final logFilters = [
+      RegExp(r'\[com\.apple.*\]'),
+      RegExp(r'\(RunningBoardServices\)'),
+      RegExp(r'\(CoreFoundation\)'),
+      RegExp(r'\(TCC\)'),
+      RegExp(r'\(Metal\)'),
+      RegExp('^Timestamp'),
+      RegExp('^Filtering the log data'),
+    ];
+
+    final prefixRegex = RegExp(
+      r'^[\d-]+\W+[\d:\.]+\W+\w+\W+\w+\[[\da-f]+:[\da-f]+\]',
+    );
+
+    // Removes the log prefix from the log line.
+    // Example log line:
+    // ignore: lines_longer_than_80_chars
+    // 2025-01-31 09:53:22.889 Df macos_sandbox[22535:1d268] [dev.shorebird:updater::cache::patch_manager] [shorebird] No public key provided, skipping signature verification
+    String removeLogPrefix(String line) {
+      return line.trim().replaceFirst(prefixRegex, '').trim();
+    }
+
     logs.listen(
-      (log) => logger.info(utf8.decode(log)),
+      (log) {
+        final logLine = utf8.decode(log);
+        if (logFilters.any((filter) => filter.hasMatch(logLine))) {
+          return;
+        }
+
+        logger.info(removeLogPrefix(logLine));
+      },
       onDone: completer.complete,
     );
 
