@@ -4,9 +4,7 @@
 // cspell:words xcarchive codesigned xcframework
 
 import 'dart:io';
-import 'dart:isolate';
 
-import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:equatable/equatable.dart';
@@ -814,11 +812,7 @@ aar artifact already exists, continuing...''',
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final appFrameworkDirectory = Directory(appFrameworkPath);
-    await Isolate.run(
-      () => ZipFileEncoder().zipDirectory(appFrameworkDirectory),
-    );
-    final zippedAppFrameworkFile = File('$appFrameworkPath.zip');
-
+    final zippedAppFrameworkFile = await appFrameworkDirectory.zipToTempFile();
     try {
       await codePushClient.createReleaseArtifact(
         appId: appId,
