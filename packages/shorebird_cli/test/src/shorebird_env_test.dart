@@ -216,6 +216,24 @@ void main() {
       });
     });
 
+    group('buildDirectory', () {
+      test('returns correct path', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
+        Directory(p.join(tempDir.path, 'build')).createSync(recursive: true);
+        final buildDirectory = IOOverrides.runZoned(
+          () => runWithOverrides(
+            () => shorebirdEnv.buildDirectory,
+          ),
+          getCurrentDirectory: () => tempDir,
+        );
+        expect(
+          buildDirectory.path,
+          equals(p.join(tempDir.path, 'build')),
+        );
+      });
+    });
+
     group('macosPodfileLockFile', () {
       test('returns correct path', () {
         final tempDir = Directory.systemTemp.createTempSync();
