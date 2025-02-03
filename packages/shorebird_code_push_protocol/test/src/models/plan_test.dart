@@ -16,6 +16,7 @@ void main() {
         isTiered: true,
         maxTeamSize: 42,
         pricePerOverageInstall: Decimal.fromInt(10),
+        isTrial: true,
       );
 
       expect(
