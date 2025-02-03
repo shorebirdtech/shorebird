@@ -2721,7 +2721,7 @@ channel: ${DeploymentTrack.staging.channel}
     });
   });
 
-  group('assertPrevieableReleases', () {
+  group('assertPreviewableReleases', () {
     late ShorebirdLogger logger;
 
     R runWithOverrides<R>(R Function() body) {
