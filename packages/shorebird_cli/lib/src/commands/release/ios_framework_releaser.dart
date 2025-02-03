@@ -35,7 +35,10 @@ class IosFrameworkReleaser extends Releaser {
 
   /// The directory where the release artifacts are stored.
   Directory get releaseDirectory => Directory(
-        p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
+        p.join(
+          shorebirdEnv.getShorebirdProjectRoot()!.path,
+          'release',
+        ),
       );
 
   @override
