@@ -1,9 +1,15 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:io/io.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/archive/directory_archive.dart';
+import 'package:shorebird_cli/src/commands/patch/patcher.dart';
+import 'package:shorebird_cli/src/executables/aot_tools.dart';
+import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:xml/xml.dart';
 
@@ -16,6 +22,10 @@ enum ApplePlatform {
   /// macOS
   macos,
 }
+
+/// A record containing the exit code and optionally link percentage
+/// returned by `runLinker`.
+typedef LinkResult = ({int exitCode, double? linkPercentage});
 
 /// {@template missing_xcode_project_exception}
 /// Thrown when the Flutter project does not have iOS configured as a platform.
@@ -168,6 +178,74 @@ class Apple {
         .whereNot((e) => _isExtensionScheme(schemeFile: e))
         .map((file) => p.basenameWithoutExtension(file.path))
         .toSet();
+  }
+
+  /// Runs the linking step to minimize differences between patch and release
+  /// and maximize code that can be executed on the CPU.
+  Future<LinkResult> runLinker({
+    required File kernelFile,
+    required File releaseArtifact,
+    required List<String> splitDebugInfoArgs,
+    required File aotOutputFile,
+    required File vmCodeFile,
+  }) async {
+    final patch = aotOutputFile;
+    final buildDirectory = shorebirdEnv.buildDirectory;
+
+    if (!patch.existsSync()) {
+      logger.err('Unable to find patch AOT file at ${patch.path}');
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
+    }
+
+    final analyzeSnapshot = File(
+      shorebirdArtifacts.getArtifactPath(
+        artifact: ShorebirdArtifact.analyzeSnapshotIos,
+      ),
+    );
+
+    if (!analyzeSnapshot.existsSync()) {
+      logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
+    }
+
+    final genSnapshot = shorebirdArtifacts.getArtifactPath(
+      artifact: ShorebirdArtifact.genSnapshotIos,
+    );
+
+    final linkProgress = logger.progress('Linking AOT files');
+    double? linkPercentage;
+    final dumpDebugInfoDir = await aotTools.isLinkDebugInfoSupported()
+        ? Directory.systemTemp.createTempSync()
+        : null;
+
+    Future<void> dumpDebugInfo() async {
+      if (dumpDebugInfoDir == null) return;
+
+      final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
+      debugInfoZip.copySync(p.join('build', Patcher.debugInfoFile.path));
+      logger.detail('Link debug info saved to ${Patcher.debugInfoFile.path}');
+    }
+
+    try {
+      linkPercentage = await aotTools.link(
+        base: releaseArtifact.path,
+        patch: patch.path,
+        analyzeSnapshot: analyzeSnapshot.path,
+        genSnapshot: genSnapshot,
+        outputPath: vmCodeFile.path,
+        workingDirectory: buildDirectory.path,
+        kernel: kernelFile.path,
+        dumpDebugInfoPath: dumpDebugInfoDir?.path,
+        additionalArgs: splitDebugInfoArgs,
+      );
+    } on Exception catch (error) {
+      linkProgress.fail('Failed to link AOT files: $error');
+      return (exitCode: ExitCode.software.code, linkPercentage: null);
+    } finally {
+      await dumpDebugInfo();
+    }
+    linkProgress.complete();
+    return (exitCode: ExitCode.success.code, linkPercentage: linkPercentage);
   }
 
   /// Parses the .xcscheme file to determine if it was created for an app

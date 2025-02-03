@@ -76,5 +76,32 @@ void main() {
       expect(fileSetDiff.isEmpty, isFalse);
       expect(fileSetDiff.isNotEmpty, isTrue);
     });
+
+    test('supports value based equality comparisons', () {
+      // For the sake of testing equality comparisons avoid using const.
+      // ignore: prefer_const_constructors
+      final fileSetDiffA = FileSetDiff(
+        addedPaths: const {'a'},
+        changedPaths: const {'b'},
+        removedPaths: const {'c'},
+      );
+      // For the sake of testing equality comparisons avoid using const.
+      // ignore: prefer_const_constructors
+      final fileSetDiffB = FileSetDiff(
+        addedPaths: const {'a'},
+        changedPaths: const {'b'},
+        removedPaths: const {'c'},
+      );
+      // For the sake of testing equality comparisons avoid using const.
+      // ignore: prefer_const_constructors
+      final fileSetDiffC = FileSetDiff(
+        addedPaths: const {'c'},
+        changedPaths: const {'b'},
+        removedPaths: const {'a'},
+      );
+      expect(fileSetDiffA, equals(fileSetDiffB));
+      expect(fileSetDiffA, isNot(equals(fileSetDiffC)));
+      expect(fileSetDiffB, isNot(equals(fileSetDiffC)));
+    });
   });
 }

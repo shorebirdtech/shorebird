@@ -1,9 +1,14 @@
 import 'dart:io';
 
+import 'package:io/io.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
@@ -18,21 +23,34 @@ void main() {
   });
 
   group(Apple, () {
-    late ShorebirdEnv shorebirdEnv;
+    late AotTools aotTools;
     late Apple apple;
+    late Progress progress;
+    late ShorebirdArtifacts shorebirdArtifacts;
+    late ShorebirdLogger logger;
+    late ShorebirdEnv shorebirdEnv;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
         values: {
+          aotToolsRef.overrideWith(() => aotTools),
+          loggerRef.overrideWith(() => logger),
+          shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
     }
 
     setUp(() {
-      shorebirdEnv = MockShorebirdEnv();
+      aotTools = MockAotTools();
       apple = Apple();
+      progress = MockProgress();
+      logger = MockShorebirdLogger();
+      shorebirdArtifacts = MockShorebirdArtifacts();
+      shorebirdEnv = MockShorebirdEnv();
+
+      when(() => logger.progress(any())).thenReturn(progress);
     });
 
     group(MissingXcodeProjectException, () {
@@ -277,6 +295,239 @@ To add macOS, run "flutter create . --platforms macos"''',
               {'internal', 'beta', 'stable'},
             );
           });
+        });
+      });
+    });
+
+    group('runLinker', () {
+      const linkPercentage = 42.0;
+
+      late Directory buildDirectory;
+      late File aotOutputFile;
+      late File analyzeSnapshotFile;
+      late File genSnapshotFile;
+
+      setUp(() {
+        buildDirectory = Directory.systemTemp.createTempSync();
+        aotOutputFile = File(p.join(buildDirectory.path, 'out.aot'))
+          ..createSync();
+        analyzeSnapshotFile = File(
+          p.join(buildDirectory.path, 'analyze_snapshot'),
+        )..createSync();
+        genSnapshotFile = File(
+          p.join(buildDirectory.path, 'gen_snapshot'),
+        )..createSync();
+
+        when(
+          () => shorebirdArtifacts.getArtifactPath(
+            artifact: ShorebirdArtifact.analyzeSnapshotIos,
+          ),
+        ).thenReturn(analyzeSnapshotFile.path);
+        when(
+          () => shorebirdArtifacts.getArtifactPath(
+            artifact: ShorebirdArtifact.genSnapshotIos,
+          ),
+        ).thenReturn(genSnapshotFile.path);
+
+        when(() => shorebirdEnv.buildDirectory).thenReturn(buildDirectory);
+
+        when(
+          () => aotTools.link(
+            base: any(named: 'base'),
+            patch: any(named: 'patch'),
+            analyzeSnapshot: any(named: 'analyzeSnapshot'),
+            genSnapshot: any(named: 'genSnapshot'),
+            kernel: any(named: 'kernel'),
+            outputPath: any(named: 'outputPath'),
+            workingDirectory: any(named: 'workingDirectory'),
+            additionalArgs: any(named: 'additionalArgs'),
+            dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+          ),
+        ).thenAnswer((_) async => linkPercentage);
+        when(
+          () => aotTools.isLinkDebugInfoSupported(),
+        ).thenAnswer((_) async => false);
+      });
+
+      group('when aot snapshot does not exist', () {
+        test('logs error and exits with code 70', () async {
+          final result = await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: File('missing'),
+              kernelFile: File('missing'),
+              releaseArtifact: File('missing'),
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+            ),
+          );
+          expect(result.exitCode, equals(ExitCode.software.code));
+          expect(result.linkPercentage, isNull);
+
+          verify(
+            () => logger.err(
+              any(that: startsWith('Unable to find patch AOT file at')),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when analyzeSnapshot binary does not exist', () {
+        setUp(() {
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshotIos,
+            ),
+          ).thenReturn('');
+        });
+
+        test('logs error and exits with code 70', () async {
+          final result = await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: File('missing'),
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+            ),
+          );
+          expect(result.exitCode, equals(ExitCode.software.code));
+          expect(result.linkPercentage, isNull);
+
+          verify(
+            () => logger.err('Unable to find analyze_snapshot at '),
+          ).called(1);
+        });
+      });
+
+      group('when --split-debug-info is provided', () {
+        final tempDirectory = Directory.systemTemp.createTempSync();
+        final splitDebugInfoPath = p.join(tempDirectory.path, 'symbols');
+        final splitDebugInfoFile = File(
+          p.join(splitDebugInfoPath, 'app.ios-arm64.symbols'),
+        );
+        final splitDebugInfoArgs = [
+          '--dwarf-stack-traces',
+          '--resolve-dwarf-paths',
+          '--save-debugging-info=${splitDebugInfoFile.path}',
+        ];
+
+        test('forwards correct args to linker', () async {
+          try {
+            await runWithOverrides(
+              () => apple.runLinker(
+                aotOutputFile: aotOutputFile,
+                kernelFile: File('missing'),
+                releaseArtifact: File('missing'),
+                vmCodeFile: File('missing'),
+                splitDebugInfoArgs: splitDebugInfoArgs,
+              ),
+            );
+          } on Exception {
+            // ignore
+          }
+          verify(
+            () => aotTools.link(
+              base: any(named: 'base'),
+              patch: any(named: 'patch'),
+              analyzeSnapshot: analyzeSnapshotFile.path,
+              genSnapshot: genSnapshotFile.path,
+              kernel: any(named: 'kernel'),
+              outputPath: any(named: 'outputPath'),
+              workingDirectory: any(named: 'workingDirectory'),
+              dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+              additionalArgs: splitDebugInfoArgs,
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when isLinkDebugInfoSupported is true', () {
+        setUp(() {
+          when(
+            aotTools.isLinkDebugInfoSupported,
+          ).thenAnswer((_) async => true);
+        });
+
+        test('dumps debug info', () async {
+          await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: File('missing'),
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+            ),
+          );
+          verify(
+            () => aotTools.link(
+              base: any(named: 'base'),
+              patch: any(named: 'patch'),
+              analyzeSnapshot: any(named: 'analyzeSnapshot'),
+              genSnapshot: any(named: 'genSnapshot'),
+              kernel: any(named: 'kernel'),
+              outputPath: any(named: 'outputPath'),
+              workingDirectory: any(named: 'workingDirectory'),
+              dumpDebugInfoPath: any(
+                named: 'dumpDebugInfoPath',
+                that: isNotNull,
+              ),
+            ),
+          ).called(1);
+          verify(
+            () => logger.detail(
+              any(that: contains('Link debug info saved to')),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when call to aotTools.link fails', () {
+        setUp(() {
+          when(
+            () => aotTools.link(
+              base: any(named: 'base'),
+              patch: any(named: 'patch'),
+              analyzeSnapshot: any(named: 'analyzeSnapshot'),
+              genSnapshot: any(named: 'genSnapshot'),
+              kernel: any(named: 'kernel'),
+              outputPath: any(named: 'outputPath'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenThrow(Exception('oops'));
+        });
+
+        test('logs error and exits with code 70', () async {
+          await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: File('missing'),
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+            ),
+          );
+
+          verify(
+            () => progress.fail(
+              'Failed to link AOT files: Exception: oops',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when call to aotTools.link succeeds', () {
+        test('completes and exits with code 0', () async {
+          final result = await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: File('missing'),
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+            ),
+          );
+          expect(result.exitCode, equals(ExitCode.success.code));
+          expect(result.linkPercentage, equals(linkPercentage));
         });
       });
     });

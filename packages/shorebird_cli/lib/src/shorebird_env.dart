@@ -114,6 +114,11 @@ class ShorebirdEnv {
     return File(p.join(getFlutterProjectRoot()!.path, 'macos', 'Podfile.lock'));
   }
 
+  /// The build directory of the current shorebird project.
+  Directory get buildDirectory {
+    return Directory(p.join(getFlutterProjectRoot()!.path, 'build'));
+  }
+
   /// The `shorebird.yaml` file for this project.
   File getShorebirdYamlFile({required Directory cwd}) {
     return File(p.join(cwd.path, 'shorebird.yaml'));

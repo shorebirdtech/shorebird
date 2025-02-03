@@ -142,6 +142,9 @@ void main() {
         when(
           () => shorebirdEnv.getShorebirdProjectRoot(),
         ).thenReturn(projectRoot);
+        when(() => shorebirdEnv.buildDirectory).thenReturn(
+          Directory(p.join(projectRoot.path, 'build')),
+        );
 
         when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
 
@@ -1001,18 +1004,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
             )..createSync(recursive: true);
 
             when(
-              () => aotTools.link(
-                base: any(named: 'base'),
-                patch: any(named: 'patch'),
-                analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                genSnapshot: any(named: 'genSnapshot'),
-                kernel: any(named: 'kernel'),
-                outputPath: any(named: 'outputPath'),
-                workingDirectory: any(named: 'workingDirectory'),
-                dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
-                additionalArgs: any(named: 'additionalArgs'),
+              () => apple.runLinker(
+                kernelFile: any(named: 'kernelFile'),
+                aotOutputFile: any(named: 'aotOutputFile'),
+                releaseArtifact: any(named: 'releaseArtifact'),
+                splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+                vmCodeFile: any(named: 'vmCodeFile'),
               ),
-            ).thenAnswer((_) async => linkPercentage);
+            ).thenAnswer(
+              (_) async => (
+                exitCode: ExitCode.success.code,
+                linkPercentage: linkPercentage
+              ),
+            );
             when(
               aotTools.isGeneratePatchDiffBaseSupported,
             ).thenAnswer((_) async => false);
@@ -1091,144 +1095,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                         'Unable to find release artifact .app directory',
                       ),
                     ),
-                  ),
-                ).called(1);
-              });
-            });
-
-            group('when aot snapshot does not exist', () {
-              test('logs error and exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(
-                  () => logger.err(
-                    any(that: startsWith('Unable to find patch AOT file at')),
-                  ),
-                ).called(1);
-              });
-            });
-
-            group('when analyzeSnapshot binary does not exist', () {
-              setUp(() {
-                when(
-                  () => shorebirdArtifacts.getArtifactPath(
-                    artifact: ShorebirdArtifact.analyzeSnapshotIos,
-                  ),
-                ).thenReturn('');
-                setUpProjectRootArtifacts();
-              });
-
-              test('logs error and exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(
-                  () => logger.err('Unable to find analyze_snapshot at '),
-                ).called(1);
-              });
-            });
-
-            group('when --split-debug-info is provided', () {
-              final tempDirectory = Directory.systemTemp.createTempSync();
-              final splitDebugInfoPath = p.join(tempDirectory.path, 'symbols');
-              final splitDebugInfoFile = File(
-                p.join(splitDebugInfoPath, 'app.ios-arm64.symbols'),
-              );
-              setUp(() {
-                when(
-                  () => argResults.wasParsed(
-                    CommonArguments.splitDebugInfoArg.name,
-                  ),
-                ).thenReturn(true);
-                when(
-                  () => argResults[CommonArguments.splitDebugInfoArg.name],
-                ).thenReturn(splitDebugInfoPath);
-                setUpProjectRootArtifacts();
-              });
-
-              test('forwards correct args to linker', () async {
-                try {
-                  await runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                    ),
-                  );
-                } on Exception {
-                  // ignore
-                }
-                verify(
-                  () => aotTools.link(
-                    base: any(named: 'base'),
-                    patch: any(named: 'patch'),
-                    analyzeSnapshot: analyzeSnapshotFile.path,
-                    genSnapshot: genSnapshotFile.path,
-                    kernel: any(named: 'kernel'),
-                    outputPath: any(named: 'outputPath'),
-                    workingDirectory: any(named: 'workingDirectory'),
-                    dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
-                    additionalArgs: [
-                      '--dwarf-stack-traces',
-                      '--resolve-dwarf-paths',
-                      '--save-debugging-info=${splitDebugInfoFile.path}',
-                    ],
-                  ),
-                ).called(1);
-              });
-            });
-
-            group('when call to aotTools.link fails', () {
-              setUp(() {
-                when(
-                  () => aotTools.link(
-                    base: any(named: 'base'),
-                    patch: any(named: 'patch'),
-                    analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                    genSnapshot: any(named: 'genSnapshot'),
-                    kernel: any(named: 'kernel'),
-                    outputPath: any(named: 'outputPath'),
-                    workingDirectory: any(named: 'workingDirectory'),
-                    dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
-                    additionalArgs: any(named: 'additionalArgs'),
-                  ),
-                ).thenThrow(Exception('oops'));
-
-                setUpProjectRootArtifacts();
-              });
-
-              test('logs error and exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(
-                  () => progress.fail(
-                    'Failed to link AOT files: Exception: oops',
                   ),
                 ).called(1);
               });
@@ -1415,119 +1281,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                       endsWith(diffPath),
                     ),
                   );
-                });
-              });
-
-              group('when isLinkDebugInfoSupported is true', () {
-                setUp(() {
-                  when(
-                    aotTools.isLinkDebugInfoSupported,
-                  ).thenAnswer((_) async => true);
-                });
-
-                test('dumps debug info', () async {
-                  await runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                    ),
-                  );
-                  verify(
-                    () => aotTools.link(
-                      base: any(named: 'base'),
-                      patch: any(named: 'patch'),
-                      analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                      genSnapshot: any(named: 'genSnapshot'),
-                      kernel: any(named: 'kernel'),
-                      outputPath: any(named: 'outputPath'),
-                      workingDirectory: any(named: 'workingDirectory'),
-                      dumpDebugInfoPath: any(
-                        named: 'dumpDebugInfoPath',
-                        that: isNotNull,
-                      ),
-                    ),
-                  ).called(1);
-                  verify(
-                    () => logger.detail(
-                      any(
-                        that: contains(
-                          'Link debug info saved to',
-                        ),
-                      ),
-                    ),
-                  ).called(1);
-                });
-
-                group('when aot_tools link fails', () {
-                  setUp(() {
-                    when(
-                      () => aotTools.link(
-                        base: any(named: 'base'),
-                        patch: any(named: 'patch'),
-                        analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                        genSnapshot: any(named: 'genSnapshot'),
-                        kernel: any(named: 'kernel'),
-                        outputPath: any(named: 'outputPath'),
-                        workingDirectory: any(named: 'workingDirectory'),
-                        dumpDebugInfoPath: any(
-                          named: 'dumpDebugInfoPath',
-                          that: isNotNull,
-                        ),
-                      ),
-                    ).thenThrow(Exception('oops'));
-                  });
-
-                  test('dumps debug info and logs', () async {
-                    await expectLater(
-                      () => runWithOverrides(
-                        () => patcher.createPatchArtifacts(
-                          appId: appId,
-                          releaseId: releaseId,
-                          releaseArtifact: releaseArtifactFile,
-                        ),
-                      ),
-                      exitsWithCode(ExitCode.software),
-                    );
-                    verify(
-                      () => logger.detail(
-                        any(
-                          that: contains(
-                            'Link debug info saved to',
-                          ),
-                        ),
-                      ),
-                    ).called(1);
-                  });
-                });
-              });
-
-              group('when isLinkDebugInfoSupported is false', () {
-                setUp(() {
-                  when(aotTools.isLinkDebugInfoSupported)
-                      .thenAnswer((_) async => false);
-                });
-
-                test('does not pass dumpDebugInfoPath to aotTools.link',
-                    () async {
-                  await runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                    ),
-                  );
-                  verify(
-                    () => aotTools.link(
-                      base: any(named: 'base'),
-                      patch: any(named: 'patch'),
-                      analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                      genSnapshot: any(named: 'genSnapshot'),
-                      kernel: any(named: 'kernel'),
-                      outputPath: any(named: 'outputPath'),
-                      workingDirectory: any(named: 'workingDirectory'),
-                    ),
-                  ).called(1);
                 });
               });
 

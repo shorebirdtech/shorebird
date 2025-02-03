@@ -552,7 +552,7 @@ Please re-run the release command for this version or create a new release.''');
       trackSummary,
       if (patcher.linkPercentage != null &&
           patcher.linkPercentage! < Patcher.minLinkPercentage)
-        '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
+        '''🔍 Debug Info: ${lightCyan.wrap(Patcher.debugInfoFile.path)}''',
     ];
 
     logger.info(
