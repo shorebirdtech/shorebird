@@ -725,6 +725,56 @@ void main() {
                 setUpProjectRootArtifacts();
               });
 
+              test('calls runLinker with correct arguments', () async {
+                await runWithOverrides(
+                  () => patcher.createPatchArtifacts(
+                    appId: appId,
+                    releaseId: releaseId,
+                    releaseArtifact: releaseArtifactFile,
+                  ),
+                );
+
+                verify(
+                  () => apple.runLinker(
+                    kernelFile: any(
+                      named: 'kernelFile',
+                      that: isA<File>().having(
+                        (f) => f.path,
+                        'path',
+                        p.join(projectRoot.path, 'build', 'app.dill'),
+                      ),
+                    ),
+                    aotOutputFile: any(
+                      named: 'aotOutputFile',
+                      that: isA<File>().having(
+                        (f) => f.path,
+                        'path',
+                        p.join(projectRoot.path, 'build', 'out.aot'),
+                      ),
+                    ),
+                    releaseArtifact: any(
+                      named: 'releaseArtifact',
+                      that: isA<File>().having(
+                        (f) => f.path,
+                        'path',
+                        endsWith(
+                          p.join('ios-arm64', 'App.framework', 'App'),
+                        ),
+                      ),
+                    ),
+                    vmCodeFile: any(
+                      named: 'vmCodeFile',
+                      that: isA<File>().having(
+                        (f) => f.path,
+                        'path',
+                        p.join(projectRoot.path, 'build', 'out.vmcode'),
+                      ),
+                    ),
+                    splitDebugInfoArgs: [],
+                  ),
+                ).called(1);
+              });
+
               test('returns linked patch artifact in patch bundle', () async {
                 final patchBundle = await runWithOverrides(
                   () => patcher.createPatchArtifacts(

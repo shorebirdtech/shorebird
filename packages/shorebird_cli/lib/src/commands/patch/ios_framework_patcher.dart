@@ -249,7 +249,7 @@ class IosFrameworkPatcher extends Patcher {
       }
 
       await apple.runLinker(
-        kernelFile: aotSnapshotFile,
+        kernelFile: File(_appDillCopyPath),
         releaseArtifact: releaseArtifactFile,
         splitDebugInfoArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
         aotOutputFile: File(_aotOutputPath),
