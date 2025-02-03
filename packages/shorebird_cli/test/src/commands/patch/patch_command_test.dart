@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder.dart';
@@ -710,14 +711,18 @@ void main() {
 
       group('when has link percentage', () {
         const linkPercentage = 42.1337;
-        final debugInfoFile = File('debug-info.txt');
+        late Directory buildDirectory;
 
         setUp(() {
+          buildDirectory = Directory.systemTemp.createTempSync();
+          when(() => shorebirdEnv.buildDirectory).thenReturn(buildDirectory);
           when(() => patcher.linkPercentage).thenReturn(linkPercentage);
-          // when(() => patcher.debugInfoFile).thenReturn(debugInfoFile);
         });
 
         test('logs correct summary', () async {
+          final debugInfoFile = File(
+            p.join(buildDirectory.path, 'patch-debug.zip'),
+          );
           final expectedSummary = [
             '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
