@@ -25,6 +25,7 @@ Plan _$PlanFromJson(Map<String, dynamic> json) => $checkedCreate(
           cancelAtPeriodEnd:
               $checkedConvert('cancel_at_period_end', (v) => v as bool),
           isTiered: $checkedConvert('is_tiered', (v) => v as bool),
+          isTrial: $checkedConvert('is_trial', (v) => v as bool),
           pricePerOverageInstall: $checkedConvert('price_per_overage_install',
               (v) => v == null ? null : Decimal.fromJson(v as String)),
           maxTeamSize:
@@ -39,6 +40,7 @@ Plan _$PlanFromJson(Map<String, dynamic> json) => $checkedCreate(
         'currentPeriodEnd': 'current_period_end',
         'cancelAtPeriodEnd': 'cancel_at_period_end',
         'isTiered': 'is_tiered',
+        'isTrial': 'is_trial',
         'pricePerOverageInstall': 'price_per_overage_install',
         'maxTeamSize': 'max_team_size'
       },
@@ -54,5 +56,6 @@ Map<String, dynamic> _$PlanToJson(Plan instance) => <String, dynamic>{
       'current_period_end': instance.currentPeriodEnd.toIso8601String(),
       'cancel_at_period_end': instance.cancelAtPeriodEnd,
       'is_tiered': instance.isTiered,
+      'is_trial': instance.isTrial,
       'max_team_size': instance.maxTeamSize,
     };

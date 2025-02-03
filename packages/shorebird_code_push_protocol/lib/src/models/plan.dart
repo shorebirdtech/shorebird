@@ -21,6 +21,7 @@ class Plan {
     required this.currentPeriodEnd,
     required this.cancelAtPeriodEnd,
     required this.isTiered,
+    required this.isTrial,
     this.pricePerOverageInstall,
     this.maxTeamSize,
   });
@@ -65,6 +66,10 @@ class Plan {
 
   /// Whether the plan is tier (i.e., whether the user can change their plan).
   final bool isTiered;
+
+  /// Whether the user is on a trial plan. Trial plans are not billed and cancel
+  /// automatically at the end of the trial period.
+  final bool isTrial;
 
   /// The maximum number of collaborators allowed per account. This will be null
   /// for accounts with unlimited collaborators.
