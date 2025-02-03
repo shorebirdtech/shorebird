@@ -709,26 +709,119 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       });
     });
 
-    group(
-      'buildLinuxApp',
-      () {
-        late Directory linuxBundleDirectory;
+    group('buildLinuxApp', () {
+      late Directory linuxBundleDirectory;
 
-        setUp(() {
-          linuxBundleDirectory = Directory(
-            p.join(
-              projectRoot.path,
+      setUp(() {
+        linuxBundleDirectory = Directory(
+          p.join(
+            projectRoot.path,
+            'build',
+            'linux',
+            'x64',
+            'release',
+            'bundle',
+          ),
+        );
+        when(
+          () => artifactManager.linuxBundleDirectory,
+        ).thenReturn(linuxBundleDirectory);
+        when(
+          () => shorebirdProcess.start(
+            'flutter',
+            [
               'build',
               'linux',
-              'x64',
-              'release',
-              'bundle',
+              '--release',
+            ],
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).thenAnswer((_) async => buildProcess);
+      });
+
+      group('when flutter build fails', () {
+        setUp(() {
+          when(
+            () => buildProcess.exitCode,
+          ).thenAnswer((_) async => ExitCode.software.code);
+          when(() => buildProcess.stderr).thenAnswer(
+            (_) => Stream.fromIterable(
+              [
+                'stderr contents',
+              ].map(utf8.encode),
             ),
           );
+        });
+
+        test('throws ArtifactBuildException', () async {
+          expect(
+            () => runWithOverrides(() => builder.buildLinuxApp()),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.message,
+                'message',
+                equals('Failed to build: stderr contents'),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when target is provided', () {
+        test('forwards target to flutter command', () async {
+          await runWithOverrides(
+            () => builder.buildLinuxApp(
+              target: 'target.dart',
+            ),
+          );
+
+          verify(
+            () => shorebirdProcess.start(
+              'flutter',
+              [
+                'build',
+                'linux',
+                '--release',
+                '--target=target.dart',
+              ],
+              runInShell: any(named: 'runInShell'),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when flutter build succeeds', () {
+        setUp(() {
           when(
-            () => artifactManager.linuxBundleDirectory,
-          ).thenReturn(linuxBundleDirectory);
+            () => buildProcess.exitCode,
+          ).thenAnswer((_) async => ExitCode.success.code);
+        });
+
+        test('completes', () async {
+          await expectLater(
+            runWithOverrides(
+              () => builder.buildLinuxApp(),
+            ),
+            completes,
+          );
+        });
+      });
+
+      group('when public key is provided', () {
+        const publicKey = 'publicKey';
+
+        setUp(() {
           when(
+            () => buildProcess.exitCode,
+          ).thenAnswer((_) async => ExitCode.success.code);
+        });
+
+        test('provides public key as environment variable', () async {
+          await runWithOverrides(
+            () => builder.buildLinuxApp(base64PublicKey: publicKey),
+          );
+
+          verify(
             () => shorebirdProcess.start(
               'flutter',
               [
@@ -737,120 +830,21 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--release',
               ],
               runInShell: any(named: 'runInShell'),
+              environment: {
+                'SHOREBIRD_PUBLIC_KEY': publicKey,
+              },
             ),
-          ).thenAnswer((_) async => buildProcess);
+          ).called(1);
         });
+      });
+    });
 
-        group('when flutter build fails', () {
-          setUp(() {
-            when(
-              () => buildProcess.exitCode,
-            ).thenAnswer((_) async => ExitCode.software.code);
-            when(() => buildProcess.stderr).thenAnswer(
-              (_) => Stream.fromIterable(
-                [
-                  'stderr contents',
-                ].map(utf8.encode),
-              ),
-            );
-          });
-
-          test('throws ArtifactBuildException', () async {
-            expect(
-              () => runWithOverrides(() => builder.buildLinuxApp()),
-              throwsA(
-                isA<ArtifactBuildException>().having(
-                  (e) => e.message,
-                  'message',
-                  equals('Failed to build: stderr contents'),
-                ),
-              ),
-            );
-          });
-        });
-
-        group('when target is provided', () {
-          test('forwards target to flutter command', () async {
-            await runWithOverrides(
-              () => builder.buildLinuxApp(
-                target: 'target.dart',
-              ),
-            );
-
-            verify(
-              () => shorebirdProcess.start(
-                'flutter',
-                [
-                  'build',
-                  'linux',
-                  '--release',
-                  '--target=target.dart',
-                ],
-                runInShell: any(named: 'runInShell'),
-              ),
-            ).called(1);
-          });
-        });
-
-        group('when flutter build succeeds', () {
-          setUp(() {
-            when(
-              () => buildProcess.exitCode,
-            ).thenAnswer((_) async => ExitCode.success.code);
-          });
-
-          test('completes', () async {
-            await expectLater(
-              runWithOverrides(
-                () => builder.buildLinuxApp(),
-              ),
-              completes,
-            );
-          });
-        });
-
-        group('when public key is provided', () {
-          const publicKey = 'publicKey';
-
-          setUp(() {
-            when(
-              () => buildProcess.exitCode,
-            ).thenAnswer((_) async => ExitCode.success.code);
-          });
-
-          test('provides public key as environment variable', () async {
-            await runWithOverrides(
-              () => builder.buildLinuxApp(base64PublicKey: publicKey),
-            );
-
-            verify(
-              () => shorebirdProcess.start(
-                'flutter',
-                [
-                  'build',
-                  'linux',
-                  '--release',
-                ],
-                runInShell: any(named: 'runInShell'),
-                environment: {
-                  'SHOREBIRD_PUBLIC_KEY': publicKey,
-                },
-              ),
-            ).called(1);
-          });
-        });
-      },
-      testOn: 'linux',
-    );
-
-    group(
-      'buildMacos',
-      () {
-        setUp(() {
-          when(() => buildProcess.stdout).thenAnswer(
-            (_) => Stream.fromIterable(
-              [
-                '''
+    group('buildMacos', () {
+      setUp(() {
+        when(() => buildProcess.stdout).thenAnswer(
+          (_) => Stream.fromIterable(
+            [
+              '''
 [        ] [   +1 ms] targetingApplePlatform = true
 [        ] [        ] extractAppleDebugSymbols = true
 [        ] [        ] Will strip AOT snapshot manually after build and dSYM generation.
@@ -862,98 +856,71 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 [        ] [+3527 ms] Building App.framework for x86_64...
 [        ] [   +6 ms] executing: sysctl hw.optional.arm64
 ''',
-              ].map(utf8.encode),
+            ].map(utf8.encode),
+          ),
+        );
+      });
+
+      group('when .dart_tool directory exists', () {
+        late Directory dartToolDir;
+
+        setUp(() {
+          dartToolDir = Directory(
+            p.join(projectRoot.path, '.dart_tool'),
+          )..createSync(recursive: true);
+        });
+
+        test('deletes .dart_tool directory before building', () async {
+          expect(dartToolDir.existsSync(), isTrue);
+          await runWithOverrides(builder.buildMacos);
+          expect(dartToolDir.existsSync(), isFalse);
+        });
+      });
+
+      group('with default arguments', () {
+        test('invokes flutter build with an export options plist', () async {
+          final result = await runWithOverrides(builder.buildMacos);
+
+          verify(
+            () => shorebirdProcess.start(
+              'flutter',
+              [
+                'build',
+                'macos',
+                '--release',
+              ],
+              runInShell: true,
+              environment: any(named: 'environment'),
             ),
-          );
+          ).called(1);
+          expect(result.kernelFile.path, equals('/path/to/app.dill'));
+        });
+      });
+
+      group('when base64PublicKey is not null', () {
+        const base64PublicKey = 'base64PublicKey';
+
+        setUp(() {
+          when(
+            () => shorebirdProcess.start(
+              'flutter',
+              [
+                'build',
+                'macos',
+                '--release',
+              ],
+              runInShell: any(named: 'runInShell'),
+              environment: {
+                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+              },
+            ),
+          ).thenAnswer((_) async => buildProcess);
         });
 
-        group('when .dart_tool directory exists', () {
-          late Directory dartToolDir;
-
-          setUp(() {
-            dartToolDir = Directory(
-              p.join(projectRoot.path, '.dart_tool'),
-            )..createSync(recursive: true);
-          });
-
-          test('deletes .dart_tool directory before building', () async {
-            expect(dartToolDir.existsSync(), isTrue);
-            await runWithOverrides(builder.buildMacos);
-            expect(dartToolDir.existsSync(), isFalse);
-          });
-        });
-
-        group('with default arguments', () {
-          test('invokes flutter build with an export options plist', () async {
-            final result = await runWithOverrides(builder.buildMacos);
-
-            verify(
-              () => shorebirdProcess.start(
-                'flutter',
-                [
-                  'build',
-                  'macos',
-                  '--release',
-                ],
-                runInShell: true,
-                environment: any(named: 'environment'),
-              ),
-            ).called(1);
-            expect(result.kernelFile.path, equals('/path/to/app.dill'));
-          });
-        });
-
-        group('when base64PublicKey is not null', () {
-          const base64PublicKey = 'base64PublicKey';
-
-          setUp(() {
-            when(
-              () => shorebirdProcess.start(
-                'flutter',
-                [
-                  'build',
-                  'macos',
-                  '--release',
-                ],
-                runInShell: any(named: 'runInShell'),
-                environment: {
-                  'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-                },
-              ),
-            ).thenAnswer((_) async => buildProcess);
-          });
-
-          test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
-            await runWithOverrides(
-              () => builder.buildMacos(
-                base64PublicKey: base64PublicKey,
-              ),
-            );
-
-            verify(
-              () => shorebirdProcess.start(
-                'flutter',
-                [
-                  'build',
-                  'macos',
-                  '--release',
-                ],
-                runInShell: any(named: 'runInShell'),
-                environment: {
-                  'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-                },
-              ),
-            ).called(1);
-          });
-        });
-
-        test('forwards extra arguments to flutter build', () async {
+        test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
           await runWithOverrides(
             () => builder.buildMacos(
-              codesign: false,
-              flavor: 'flavor',
-              target: 'target.dart',
-              args: ['--foo', 'bar'],
+              base64PublicKey: base64PublicKey,
             ),
           );
 
@@ -964,187 +931,183 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 'build',
                 'macos',
                 '--release',
-                '--flavor=flavor',
-                '--target=target.dart',
-                '--no-codesign',
-                '--foo',
-                'bar',
               ],
               runInShell: any(named: 'runInShell'),
+              environment: {
+                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+              },
             ),
           ).called(1);
         });
+      });
 
-        group('when the build fails', () {
-          group('with non-zero exit code', () {
-            setUp(() {
-              when(() => buildProcess.exitCode)
-                  .thenAnswer((_) async => ExitCode.software.code);
-            });
+      test('forwards extra arguments to flutter build', () async {
+        await runWithOverrides(
+          () => builder.buildMacos(
+            codesign: false,
+            flavor: 'flavor',
+            target: 'target.dart',
+            args: ['--foo', 'bar'],
+          ),
+        );
 
-            test('throws ArtifactBuildException', () {
-              expect(
-                () => runWithOverrides(
-                  () => builder.buildMacos(codesign: false),
-                ),
-                throwsA(isA<ArtifactBuildException>()),
-              );
-            });
-          });
-        });
+        verify(
+          () => shorebirdProcess.start(
+            'flutter',
+            [
+              'build',
+              'macos',
+              '--release',
+              '--flavor=flavor',
+              '--target=target.dart',
+              '--no-codesign',
+              '--foo',
+              'bar',
+            ],
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).called(1);
+      });
 
-        group('when an app.dill file is not found in build stdout', () {
+      group('when the build fails', () {
+        group('with non-zero exit code', () {
           setUp(() {
-            when(() => buildProcess.stdout).thenAnswer(
-              (_) => Stream.fromIterable(
-                [
-                  'no app.dill',
-                ].map(utf8.encode),
-              ),
-            );
+            when(() => buildProcess.exitCode)
+                .thenAnswer((_) async => ExitCode.software.code);
           });
 
           test('throws ArtifactBuildException', () {
             expect(
-              () => runWithOverrides(() => builder.buildMacos(codesign: false)),
-              throwsA(
-                isA<ArtifactBuildException>().having(
-                  (e) => e.message,
-                  'message',
-                  '''
-Unable to find app.dill file.
-Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
-''',
-                ),
-              ),
-            );
-          });
-        });
-
-        group('after a build', () {
-          group('when the build is successful', () {
-            setUp(() {
-              when(
-                () => buildProcess.exitCode,
-              ).thenAnswer((_) async => ExitCode.success.code);
-            });
-
-            verifyCorrectFlutterPubGet(
-              () async => runWithOverrides(
+              () => runWithOverrides(
                 () => builder.buildMacos(codesign: false),
               ),
+              throwsA(isA<ArtifactBuildException>()),
             );
-
-            group('when the build fails', () {
-              setUp(() {
-                when(
-                  () => buildProcess.exitCode,
-                ).thenAnswer((_) async => ExitCode.software.code);
-              });
-
-              verifyCorrectFlutterPubGet(
-                () async => expectLater(
-                  () async => runWithOverrides(
-                    () => builder.buildMacos(codesign: false),
-                  ),
-                  throwsA(isA<ArtifactBuildException>()),
-                ),
-              );
-            });
           });
         });
-      },
-      testOn: 'mac-os',
-    );
+      });
 
-    group(
-      'buildIpa',
-      () {
+      group('when an app.dill file is not found in build stdout', () {
         setUp(() {
           when(() => buildProcess.stdout).thenAnswer(
             (_) => Stream.fromIterable(
               [
-                '''
-           [        ] Will strip AOT snapshot manually after build and dSYM generation.
-           [        ] executing: /bin/cache/artifacts/engine/ios-release/gen_snapshot_arm64 --deterministic --snapshot_kind=app-aot-assembly --assembly=snapshot_assembly.S /path/to/app.dill
-           [+3688 ms] executing: sysctl hw.optional.arm64
-''',
+                'no app.dill',
               ].map(utf8.encode),
             ),
           );
         });
 
-        group('with default arguments', () {
-          test('invokes flutter build with an export options plist', () async {
-            final result = await runWithOverrides(builder.buildIpa);
-
-            verify(
-              () => shorebirdProcess.start(
-                'flutter',
-                [
-                  'build',
-                  'ipa',
-                  '--release',
-                ],
-                runInShell: true,
-                environment: any(named: 'environment'),
+        test('throws ArtifactBuildException', () {
+          expect(
+            () => runWithOverrides(() => builder.buildMacos(codesign: false)),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''',
               ),
-            ).called(1);
-            expect(result.kernelFile.path, equals('/path/to/app.dill'));
-          });
+            ),
+          );
         });
+      });
 
-        group('when base64PublicKey is not null', () {
-          const base64PublicKey = 'base64PublicKey';
-
+      group('after a build', () {
+        group('when the build is successful', () {
           setUp(() {
             when(
-              () => shorebirdProcess.start(
-                'flutter',
-                [
-                  'build',
-                  'ipa',
-                  '--release',
-                ],
-                runInShell: any(named: 'runInShell'),
-                environment: {
-                  'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-                },
-              ),
-            ).thenAnswer((_) async => buildProcess);
+              () => buildProcess.exitCode,
+            ).thenAnswer((_) async => ExitCode.success.code);
           });
 
-          test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
-            await runWithOverrides(
-              () => builder.buildIpa(
-                base64PublicKey: base64PublicKey,
+          verifyCorrectFlutterPubGet(
+            () async => runWithOverrides(
+              () => builder.buildMacos(codesign: false),
+            ),
+          );
+
+          group('when the build fails', () {
+            setUp(() {
+              when(
+                () => buildProcess.exitCode,
+              ).thenAnswer((_) async => ExitCode.software.code);
+            });
+
+            verifyCorrectFlutterPubGet(
+              () async => expectLater(
+                () async => runWithOverrides(
+                  () => builder.buildMacos(codesign: false),
+                ),
+                throwsA(isA<ArtifactBuildException>()),
               ),
             );
-
-            verify(
-              () => shorebirdProcess.start(
-                'flutter',
-                [
-                  'build',
-                  'ipa',
-                  '--release',
-                ],
-                runInShell: any(named: 'runInShell'),
-                environment: {
-                  'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-                },
-              ),
-            ).called(1);
           });
         });
+      });
+    });
 
-        test('forwards extra arguments to flutter build', () async {
+    group('buildIpa', () {
+      setUp(() {
+        when(() => buildProcess.stdout).thenAnswer(
+          (_) => Stream.fromIterable(
+            [
+              '''
+           [        ] Will strip AOT snapshot manually after build and dSYM generation.
+           [        ] executing: /bin/cache/artifacts/engine/ios-release/gen_snapshot_arm64 --deterministic --snapshot_kind=app-aot-assembly --assembly=snapshot_assembly.S /path/to/app.dill
+           [+3688 ms] executing: sysctl hw.optional.arm64
+''',
+            ].map(utf8.encode),
+          ),
+        );
+      });
+
+      group('with default arguments', () {
+        test('invokes flutter build with an export options plist', () async {
+          final result = await runWithOverrides(builder.buildIpa);
+
+          verify(
+            () => shorebirdProcess.start(
+              'flutter',
+              [
+                'build',
+                'ipa',
+                '--release',
+              ],
+              runInShell: true,
+              environment: any(named: 'environment'),
+            ),
+          ).called(1);
+          expect(result.kernelFile.path, equals('/path/to/app.dill'));
+        });
+      });
+
+      group('when base64PublicKey is not null', () {
+        const base64PublicKey = 'base64PublicKey';
+
+        setUp(() {
+          when(
+            () => shorebirdProcess.start(
+              'flutter',
+              [
+                'build',
+                'ipa',
+                '--release',
+              ],
+              runInShell: any(named: 'runInShell'),
+              environment: {
+                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+              },
+            ),
+          ).thenAnswer((_) async => buildProcess);
+        });
+
+        test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
           await runWithOverrides(
             () => builder.buildIpa(
-              codesign: false,
-              flavor: 'flavor',
-              target: 'target.dart',
-              args: ['--foo', 'bar'],
+              base64PublicKey: base64PublicKey,
             ),
           );
 
@@ -1155,219 +1118,152 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
                 'build',
                 'ipa',
                 '--release',
-                '--flavor=flavor',
-                '--target=target.dart',
-                '--no-codesign',
-                '--foo',
-                'bar',
               ],
               runInShell: any(named: 'runInShell'),
+              environment: {
+                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
+              },
             ),
           ).called(1);
         });
+      });
 
-        group('when progress contains known build steps', () {
-          late DetailProgress progress;
+      test('forwards extra arguments to flutter build', () async {
+        await runWithOverrides(
+          () => builder.buildIpa(
+            codesign: false,
+            flavor: 'flavor',
+            target: 'target.dart',
+            args: ['--foo', 'bar'],
+          ),
+        );
 
-          setUp(() {
-            progress = MockDetailProgress();
+        verify(
+          () => shorebirdProcess.start(
+            'flutter',
+            [
+              'build',
+              'ipa',
+              '--release',
+              '--flavor=flavor',
+              '--target=target.dart',
+              '--no-codesign',
+              '--foo',
+              'bar',
+            ],
+            runInShell: any(named: 'runInShell'),
+          ),
+        ).called(1);
+      });
 
-            when(() => buildProcess.stdout).thenAnswer(
-              (_) => Stream.fromIterable(
-                [
-                  // cSpell:disable
-                  '''
+      group('when progress contains known build steps', () {
+        late DetailProgress progress;
+
+        setUp(() {
+          progress = MockDetailProgress();
+
+          when(() => buildProcess.stdout).thenAnswer(
+            (_) => Stream.fromIterable(
+              [
+                // cSpell:disable
+                '''
                   [        ] Will strip AOT snapshot manually after build and dSYM generation.
                   [        ] executing: /bin/cache/artifacts/engine/ios-release/gen_snapshot_arm64 --deterministic --snapshot_kind=app-aot-assembly --assembly=snapshot_assembly.S /path/to/app.dill
                   [+3688 ms] executing: sysctl hw.optional.arm64''',
-                  '[  +10 ms] Generating /Users/bryanoltman/Documents/sandbox/notification_extension/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java',
-                  '[  +50 ms] executing: [/Users/bryanoltman/Documents/sandbox/notification_extension/ios/] /usr/bin/arch -arm64e xcrun xcodebuild -list',
-                  '[+32333 ms] Command line invocation:',
-                  '[   +6 ms] Exit code 0 from: mkfifo /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout',
-                  '[   +1 ms] Running Xcode build...',
-                  '[        ] executing: [/Users/bryanoltman/Documents/sandbox/notification_extension/ios/] /usr/bin/arch -arm64e xcrun xcodebuild -configuration Release VERBOSE_SCRIPT_LOGGING=YES -workspace Runner.xcworkspace -scheme Runner -sdk iphoneos -destination generic/platform=iOS SCRIPT_OUTPUT_STREAM_FILE=/var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout -resultBundlePath /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/temporary_xcresult_bundle -resultBundleVersion 3 FLUTTER_SUPPRESS_ANALYTICS=true COMPILER_INDEX_STORE_ENABLE=NO -archivePath /Users/bryanoltman/Documents/sandbox/notification_extension/build/ios/archive/Runner archive',
-                  '[+62601 ms] Running Xcode build... (completed in 62.6s)',
-                  '[        ]  └─Compiling, linking and signing...',
-                  '[+5925 ms] Command line invocation:',
-                  '/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -configuration Release VERBOSE_SCRIPT_LOGGING=YES -workspace Runner.xcworkspace -scheme Runner -sdk iphoneos -destination generic/platform=iOS SCRIPT_OUTPUT_STREAM_FILE=/var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout -resultBundlePath /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/temporary_xcresult_bundle -resultBundleVersion 3 FLUTTER_SUPPRESS_ANALYTICS=true COMPILER_INDEX_STORE_ENABLE=NO -archivePath /Users/bryanoltman/Documents/sandbox/notification_extension/build/ios/archive/Runner archive',
-                  // cSpell:enable
-                ]
-                    .map((line) => '$line${Platform.lineTerminator}')
-                    .map(utf8.encode),
+                '[  +10 ms] Generating /Users/bryanoltman/Documents/sandbox/notification_extension/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java',
+                '[  +50 ms] executing: [/Users/bryanoltman/Documents/sandbox/notification_extension/ios/] /usr/bin/arch -arm64e xcrun xcodebuild -list',
+                '[+32333 ms] Command line invocation:',
+                '[   +6 ms] Exit code 0 from: mkfifo /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout',
+                '[   +1 ms] Running Xcode build...',
+                '[        ] executing: [/Users/bryanoltman/Documents/sandbox/notification_extension/ios/] /usr/bin/arch -arm64e xcrun xcodebuild -configuration Release VERBOSE_SCRIPT_LOGGING=YES -workspace Runner.xcworkspace -scheme Runner -sdk iphoneos -destination generic/platform=iOS SCRIPT_OUTPUT_STREAM_FILE=/var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout -resultBundlePath /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/temporary_xcresult_bundle -resultBundleVersion 3 FLUTTER_SUPPRESS_ANALYTICS=true COMPILER_INDEX_STORE_ENABLE=NO -archivePath /Users/bryanoltman/Documents/sandbox/notification_extension/build/ios/archive/Runner archive',
+                '[+62601 ms] Running Xcode build... (completed in 62.6s)',
+                '[        ]  └─Compiling, linking and signing...',
+                '[+5925 ms] Command line invocation:',
+                '/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -configuration Release VERBOSE_SCRIPT_LOGGING=YES -workspace Runner.xcworkspace -scheme Runner -sdk iphoneos -destination generic/platform=iOS SCRIPT_OUTPUT_STREAM_FILE=/var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout -resultBundlePath /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/temporary_xcresult_bundle -resultBundleVersion 3 FLUTTER_SUPPRESS_ANALYTICS=true COMPILER_INDEX_STORE_ENABLE=NO -archivePath /Users/bryanoltman/Documents/sandbox/notification_extension/build/ios/archive/Runner archive',
+                // cSpell:enable
+              ]
+                  .map((line) => '$line${Platform.lineTerminator}')
+                  .map(utf8.encode),
+            ),
+          );
+          when(() => buildProcess.stderr).thenAnswer(
+            (_) => Stream.fromIterable(
+              ['Some build output'].map(utf8.encode),
+            ),
+          );
+        });
+
+        test('updates progress with known build steps', () async {
+          await expectLater(
+            runWithOverrides(
+              () => builder.buildIpa(
+                buildProgress: progress,
               ),
+            ),
+            completes,
+          );
+
+          // Required to trigger stdout stream events
+          await pumpEventQueue();
+
+          // Ensure we update the progress in the correct order and with the
+          // correct messages, and reset to the base message after the build
+          // completes.
+          verifyInOrder(
+            [
+              () => progress.updateDetailMessage('Collecting schemes'),
+              () => progress.updateDetailMessage('Running Xcode build'),
+              () => progress.updateDetailMessage('Running Xcode build'),
+              () => progress.updateDetailMessage(
+                    'Compiling, linking and signing',
+                  ),
+            ],
+          );
+        });
+      });
+
+      group('when the build fails', () {
+        group('with non-zero exit code', () {
+          setUp(() {
+            when(() => buildProcess.exitCode)
+                .thenAnswer((_) async => ExitCode.software.code);
+          });
+
+          test('throws ArtifactBuildException', () {
+            expect(
+              () => runWithOverrides(() => builder.buildIpa(codesign: false)),
+              throwsA(isA<ArtifactBuildException>()),
             );
+          });
+        });
+
+        group('with error message in stderr (Xcode <= 15.x)', () {
+          setUp(() {
+            when(() => buildProcess.exitCode)
+                .thenAnswer((_) async => ExitCode.success.code);
             when(() => buildProcess.stderr).thenAnswer(
               (_) => Stream.fromIterable(
-                ['Some build output'].map(utf8.encode),
-              ),
-            );
-          });
-
-          test('updates progress with known build steps', () async {
-            await expectLater(
-              runWithOverrides(
-                () => builder.buildIpa(
-                  buildProgress: progress,
-                ),
-              ),
-              completes,
-            );
-
-            // Required to trigger stdout stream events
-            await pumpEventQueue();
-
-            // Ensure we update the progress in the correct order and with the
-            // correct messages, and reset to the base message after the build
-            // completes.
-            verifyInOrder(
-              [
-                () => progress.updateDetailMessage('Collecting schemes'),
-                () => progress.updateDetailMessage('Running Xcode build'),
-                () => progress.updateDetailMessage('Running Xcode build'),
-                () => progress.updateDetailMessage(
-                      'Compiling, linking and signing',
-                    ),
-              ],
-            );
-          });
-        });
-
-        group('when the build fails', () {
-          group('with non-zero exit code', () {
-            setUp(() {
-              when(() => buildProcess.exitCode)
-                  .thenAnswer((_) async => ExitCode.software.code);
-            });
-
-            test('throws ArtifactBuildException', () {
-              expect(
-                () => runWithOverrides(() => builder.buildIpa(codesign: false)),
-                throwsA(isA<ArtifactBuildException>()),
-              );
-            });
-          });
-
-          group('with error message in stderr (Xcode <= 15.x)', () {
-            setUp(() {
-              when(() => buildProcess.exitCode)
-                  .thenAnswer((_) async => ExitCode.success.code);
-              when(() => buildProcess.stderr).thenAnswer(
-                (_) => Stream.fromIterable(
-                  [
-                    '''
-Encountered error while creating the IPA:
-error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found
-error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found
-error: exportArchive: Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
-error: exportArchive: No profiles for 'com.example.co' were found
-error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found
-error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found
-error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found''',
-                  ].map(utf8.encode),
-                ),
-              );
-            });
-
-            test('throws ArtifactBuildException with error message', () {
-              expect(
-                () => runWithOverrides(() => builder.buildIpa(codesign: false)),
-                throwsA(
-                  isA<ArtifactBuildException>().having(
-                    (e) => e.message,
-                    'message',
-                    '''
-Failed to build:
-Encountered error while creating the IPA:
-error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found
-error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found
-error: exportArchive: Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
-error: exportArchive: No profiles for 'com.example.co' were found
-error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found
-error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found
-error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found''',
-                  ),
-                ),
-              );
-            });
-          });
-
-          group('with error message in stderr (Xcode >= 16.x)', () {
-            setUp(() {
-              when(() => buildProcess.exitCode)
-                  .thenAnswer((_) async => ExitCode.success.code);
-              when(() => buildProcess.stderr).thenAnswer(
-                (_) => Stream.fromIterable(
-                  [
-                    '''
-Encountered error while creating the IPA:
-error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found
-error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found
-error: exportArchive Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
-error: exportArchive No profiles for 'com.example.co' were found
-error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found
-error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found
-error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found''',
-                  ].map(utf8.encode),
-                ),
-              );
-            });
-
-            test('throws ArtifactBuildException with error message', () {
-              expect(
-                () => runWithOverrides(() => builder.buildIpa(codesign: false)),
-                throwsA(
-                  isA<ArtifactBuildException>().having(
-                    (e) => e.message,
-                    'message',
-                    '''
-Failed to build:
-Encountered error while creating the IPA:
-error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found
-error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found
-error: exportArchive Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
-error: exportArchive No profiles for 'com.example.co' were found
-error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found
-error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found
-error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found''',
-                  ),
-                ),
-              );
-            });
-          });
-        });
-
-        group('when an app.dill file is not found in build stdout', () {
-          setUp(() {
-            when(() => buildProcess.stdout).thenAnswer(
-              (_) => Stream.fromIterable(
                 [
-                  'no app.dill',
+                  '''
+Encountered error while creating the IPA:
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+error: exportArchive: No profiles for 'com.example.co' were found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found''',
                 ].map(utf8.encode),
               ),
             );
           });
 
-          test('throws ArtifactBuildException', () {
+          test('throws ArtifactBuildException with error message', () {
             expect(
               () => runWithOverrides(() => builder.buildIpa(codesign: false)),
               throwsA(
@@ -1375,225 +1271,313 @@ error: exportArchive No signing certificate "iOS Distribution" found''',
                   (e) => e.message,
                   'message',
                   '''
+Failed to build:
+Encountered error while creating the IPA:
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+error: exportArchive: No profiles for 'com.example.co' were found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found
+error: exportArchive: Communication with Apple failed
+error: exportArchive: No signing certificate "iOS Distribution" found''',
+                ),
+              ),
+            );
+          });
+        });
+
+        group('with error message in stderr (Xcode >= 16.x)', () {
+          setUp(() {
+            when(() => buildProcess.exitCode)
+                .thenAnswer((_) async => ExitCode.success.code);
+            when(() => buildProcess.stderr).thenAnswer(
+              (_) => Stream.fromIterable(
+                [
+                  '''
+Encountered error while creating the IPA:
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+error: exportArchive No profiles for 'com.example.co' were found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found''',
+                ].map(utf8.encode),
+              ),
+            );
+          });
+
+          test('throws ArtifactBuildException with error message', () {
+            expect(
+              () => runWithOverrides(() => builder.buildIpa(codesign: false)),
+              throwsA(
+                isA<ArtifactBuildException>().having(
+                  (e) => e.message,
+                  'message',
+                  '''
+Failed to build:
+Encountered error while creating the IPA:
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Team "My Team" does not have permission to create "iOS App Store" provisioning profiles.
+error: exportArchive No profiles for 'com.example.co' were found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found
+error: exportArchive Communication with Apple failed
+error: exportArchive No signing certificate "iOS Distribution" found''',
+                ),
+              ),
+            );
+          });
+        });
+      });
+
+      group('when an app.dill file is not found in build stdout', () {
+        setUp(() {
+          when(() => buildProcess.stdout).thenAnswer(
+            (_) => Stream.fromIterable(
+              [
+                'no app.dill',
+              ].map(utf8.encode),
+            ),
+          );
+        });
+
+        test('throws ArtifactBuildException', () {
+          expect(
+            () => runWithOverrides(() => builder.buildIpa(codesign: false)),
+            throwsA(
+              isA<ArtifactBuildException>().having(
+                (e) => e.message,
+                'message',
+                '''
 Unable to find app.dill file.
 Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
 ''',
-                ),
               ),
-            );
-          });
+            ),
+          );
         });
+      });
 
-        group('after a build', () {
-          group('when the build is successful', () {
+      group('after a build', () {
+        group('when the build is successful', () {
+          setUp(() {
+            when(
+              () => buildProcess.exitCode,
+            ).thenAnswer((_) async => ExitCode.success.code);
+          });
+
+          verifyCorrectFlutterPubGet(
+            () async => runWithOverrides(
+              () => builder.buildIpa(codesign: false),
+            ),
+          );
+
+          group('when the build fails', () {
             setUp(() {
               when(
                 () => buildProcess.exitCode,
-              ).thenAnswer((_) async => ExitCode.success.code);
+              ).thenAnswer((_) async => ExitCode.software.code);
             });
 
             verifyCorrectFlutterPubGet(
-              () async => runWithOverrides(
-                () => builder.buildIpa(codesign: false),
+              () async => expectLater(
+                () async => runWithOverrides(
+                  () => builder.buildIpa(codesign: false),
+                ),
+                throwsA(isA<ArtifactBuildException>()),
               ),
             );
-
-            group('when the build fails', () {
-              setUp(() {
-                when(
-                  () => buildProcess.exitCode,
-                ).thenAnswer((_) async => ExitCode.software.code);
-              });
-
-              verifyCorrectFlutterPubGet(
-                () async => expectLater(
-                  () async => runWithOverrides(
-                    () => builder.buildIpa(codesign: false),
-                  ),
-                  throwsA(isA<ArtifactBuildException>()),
-                ),
-              );
-            });
           });
         });
-      },
-      testOn: 'mac-os',
-    );
+      });
+    });
 
-    group(
-      'buildIosFramework',
-      () {
-        setUp(() {
-          when(() => buildProcessResult.stdout).thenReturn(
-            '''
+    group('buildIosFramework', () {
+      setUp(() {
+        when(() => buildProcessResult.stdout).thenReturn(
+          '''
            [        ] Will strip AOT snapshot manually after build and dSYM generation.
            [        ] executing: /bin/cache/artifacts/engine/ios-release/gen_snapshot_arm64 --deterministic --snapshot_kind=app-aot-assembly --assembly=snapshot_assembly.S /path/to/app.dill
            [+3688 ms] executing: sysctl hw.optional.arm64
 ''',
-          );
-        });
+        );
+      });
 
-        test('invokes the correct flutter build command', () async {
-          final result = await runWithOverrides(builder.buildIosFramework);
+      test('invokes the correct flutter build command', () async {
+        final result = await runWithOverrides(builder.buildIosFramework);
 
-          verify(
-            () => shorebirdProcess.run(
-              'flutter',
-              [
-                'build',
-                'ios-framework',
-                '--no-debug',
-                '--no-profile',
-              ],
-              runInShell: true,
-              environment: any(named: 'environment'),
-            ),
-          ).called(1);
-          expect(result.kernelFile.path, equals('/path/to/app.dill'));
-        });
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            [
+              'build',
+              'ios-framework',
+              '--no-debug',
+              '--no-profile',
+            ],
+            runInShell: true,
+            environment: any(named: 'environment'),
+          ),
+        ).called(1);
+        expect(result.kernelFile.path, equals('/path/to/app.dill'));
+      });
 
-        test('forward arguments to flutter build', () async {
-          await runWithOverrides(
-            () => builder.buildIosFramework(args: ['--foo', 'bar']),
-          );
+      test('forward arguments to flutter build', () async {
+        await runWithOverrides(
+          () => builder.buildIosFramework(args: ['--foo', 'bar']),
+        );
 
-          verify(
-            () => shorebirdProcess.run(
-              'flutter',
-              [
-                'build',
-                'ios-framework',
-                '--no-debug',
-                '--no-profile',
-                '--foo',
-                'bar',
-              ],
-              runInShell: true,
-            ),
-          ).called(1);
-        });
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            [
+              'build',
+              'ios-framework',
+              '--no-debug',
+              '--no-profile',
+              '--foo',
+              'bar',
+            ],
+            runInShell: true,
+          ),
+        ).called(1);
+      });
 
-        group('after a build', () {
-          group('when the build is successful', () {
-            setUp(() {
-              when(() => buildProcessResult.exitCode)
-                  .thenReturn(ExitCode.success.code);
-            });
-
-            verifyCorrectFlutterPubGet(
-              () => runWithOverrides(builder.buildIosFramework),
-            );
-
-            group('when no app.dill file is found in build stdout', () {
-              setUp(() {
-                when(() => buildProcessResult.stdout).thenReturn('no app.dill');
-              });
-
-              test('throws ArtifactBuildException', () {
-                expect(
-                  () => runWithOverrides(builder.buildIosFramework),
-                  throwsA(
-                    isA<ArtifactBuildException>().having(
-                      (e) => e.message,
-                      'message',
-                      '''
-Unable to find app.dill file.
-Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
-''',
-                    ),
-                  ),
-                );
-              });
-            });
-
-            group('when the build fails', () {
-              setUp(() {
-                when(() => buildProcessResult.exitCode)
-                    .thenReturn(ExitCode.software.code);
-              });
-
-              verifyCorrectFlutterPubGet(
-                () => expectLater(
-                  () => runWithOverrides(builder.buildIosFramework),
-                  throwsA(isA<ArtifactBuildException>()),
-                ),
-              );
-            });
-          });
-        });
-
-        group('buildElfAotSnapshot', () {
+      group('after a build', () {
+        group('when the build is successful', () {
           setUp(() {
-            when(
-              () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.genSnapshotIos,
-              ),
-            ).thenReturn('gen_snapshot');
+            when(() => buildProcessResult.exitCode)
+                .thenReturn(ExitCode.success.code);
           });
 
-          test('passes additional args to gen_snapshot', () async {
-            await runWithOverrides(
-              () => builder.buildElfAotSnapshot(
-                appDillPath: '/app/dill/path',
-                outFilePath: '/path/to/out',
-                genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
-                additionalArgs: ['--foo', 'bar'],
-              ),
-            );
+          verifyCorrectFlutterPubGet(
+            () => runWithOverrides(builder.buildIosFramework),
+          );
 
-            verify(
-              () => shorebirdProcess.run(
-                'gen_snapshot',
-                [
-                  '--deterministic',
-                  '--snapshot-kind=app-aot-elf',
-                  '--elf=/path/to/out',
-                  '--foo',
-                  'bar',
-                  '/app/dill/path',
-                ],
-              ),
-            ).called(1);
-          });
-
-          group('when build fails', () {
+          group('when no app.dill file is found in build stdout', () {
             setUp(() {
-              when(
-                () => buildProcessResult.exitCode,
-              ).thenReturn(ExitCode.software.code);
+              when(() => buildProcessResult.stdout).thenReturn('no app.dill');
             });
 
             test('throws ArtifactBuildException', () {
               expect(
-                () => runWithOverrides(
-                  () => builder.buildElfAotSnapshot(
-                    appDillPath: 'asdf',
-                    outFilePath: 'asdf',
-                    genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+                () => runWithOverrides(builder.buildIosFramework),
+                throwsA(
+                  isA<ArtifactBuildException>().having(
+                    (e) => e.message,
+                    'message',
+                    '''
+Unable to find app.dill file.
+Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
+''',
                   ),
                 ),
-                throwsA(isA<ArtifactBuildException>()),
               );
             });
           });
 
-          group('when build succeeds', () {
-            test('returns outFile', () async {
-              final outFile = await runWithOverrides(
-                () => builder.buildElfAotSnapshot(
-                  appDillPath: '/app/dill/path',
-                  outFilePath: '/path/to/out',
-                  genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
-                ),
-              );
-
-              expect(outFile.path, '/path/to/out');
+          group('when the build fails', () {
+            setUp(() {
+              when(() => buildProcessResult.exitCode)
+                  .thenReturn(ExitCode.software.code);
             });
+
+            verifyCorrectFlutterPubGet(
+              () => expectLater(
+                () => runWithOverrides(builder.buildIosFramework),
+                throwsA(isA<ArtifactBuildException>()),
+              ),
+            );
           });
         });
-      },
-      testOn: 'mac-os',
-    );
+      });
+
+      group('buildElfAotSnapshot', () {
+        setUp(() {
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.genSnapshotIos,
+            ),
+          ).thenReturn('gen_snapshot');
+        });
+
+        test('passes additional args to gen_snapshot', () async {
+          await runWithOverrides(
+            () => builder.buildElfAotSnapshot(
+              appDillPath: '/app/dill/path',
+              outFilePath: '/path/to/out',
+              genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+              additionalArgs: ['--foo', 'bar'],
+            ),
+          );
+
+          verify(
+            () => shorebirdProcess.run(
+              'gen_snapshot',
+              [
+                '--deterministic',
+                '--snapshot-kind=app-aot-elf',
+                '--elf=/path/to/out',
+                '--foo',
+                'bar',
+                '/app/dill/path',
+              ],
+            ),
+          ).called(1);
+        });
+
+        group('when build fails', () {
+          setUp(() {
+            when(
+              () => buildProcessResult.exitCode,
+            ).thenReturn(ExitCode.software.code);
+          });
+
+          test('throws ArtifactBuildException', () {
+            expect(
+              () => runWithOverrides(
+                () => builder.buildElfAotSnapshot(
+                  appDillPath: 'asdf',
+                  outFilePath: 'asdf',
+                  genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+                ),
+              ),
+              throwsA(isA<ArtifactBuildException>()),
+            );
+          });
+        });
+
+        group('when build succeeds', () {
+          test('returns outFile', () async {
+            final outFile = await runWithOverrides(
+              () => builder.buildElfAotSnapshot(
+                appDillPath: '/app/dill/path',
+                outFilePath: '/path/to/out',
+                genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+              ),
+            );
+
+            expect(outFile.path, '/path/to/out');
+          });
+        });
+      });
+    });
 
     group('buildWindowsApp', () {
       late Directory windowsReleaseDirectory;
