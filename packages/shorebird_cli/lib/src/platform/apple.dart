@@ -23,6 +23,8 @@ enum ApplePlatform {
   macos,
 }
 
+/// A record containing the exit code and optionally link percentage
+/// returned by `runLinker`.
 typedef LinkResult = ({int exitCode, double? linkPercentage});
 
 /// {@template missing_xcode_project_exception}
