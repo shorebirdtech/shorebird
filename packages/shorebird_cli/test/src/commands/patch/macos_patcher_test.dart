@@ -597,8 +597,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               ).called(1);
             });
           },
-          skip:
-              '''Skipping while we use the flutter revision when checking for patchability''',
         );
 
         group('when build fails with ProcessException', () {
@@ -767,6 +765,64 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               runWithOverrides(patcher.buildPatchArtifact),
               exitsWithCode(ExitCode.software),
             );
+          });
+        });
+
+        group('when --split-debug-info is specified', () {
+          late Directory splitDebugInfo;
+
+          setUp(() {
+            final tempDir = Directory.systemTemp.createTempSync();
+            splitDebugInfo = Directory(p.join(tempDir.path, 'debug'));
+            when(
+              () => argResults.wasParsed(
+                CommonArguments.splitDebugInfoArg.name,
+              ),
+            ).thenReturn(true);
+            when(
+              () => argResults[CommonArguments.splitDebugInfoArg.name],
+            ).thenReturn(splitDebugInfo.path);
+
+            when(
+              () => artifactBuilder.buildMacos(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).thenAnswer(
+              (_) async => MacosBuildResult(
+                kernelFile: File('/path/to/app.dill'),
+              ),
+            );
+            when(
+              () => artifactBuilder.buildElfAotSnapshot(
+                appDillPath: any(named: 'appDillPath'),
+                outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                additionalArgs: any(named: 'additionalArgs'),
+              ),
+            ).thenAnswer((invocation) async {
+              final file =
+                  File(invocation.namedArguments[#outFilePath] as String);
+              if (!file.path.contains('x64')) {
+                file.createSync(recursive: true);
+              }
+              return file;
+            });
+          });
+
+          test('creates the directory', () async {
+            expect(splitDebugInfo.existsSync(), isFalse);
+
+            try {
+              await runWithOverrides(patcher.buildPatchArtifact);
+            } on Exception catch (_) {
+              // swallow exception
+            }
+
+            expect(splitDebugInfo.existsSync(), isTrue);
           });
         });
 
