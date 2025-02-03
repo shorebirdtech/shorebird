@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.9 (February 3, 2025)
+
+- 🩹 Write patch debug info when running `shorebird patch ios-framework`
+
 ## 1.6.8 (January 31, 2025)
 
 - 🐧 Linux support is now in beta!
