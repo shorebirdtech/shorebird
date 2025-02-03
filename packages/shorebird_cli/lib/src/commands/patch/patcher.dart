@@ -140,16 +140,9 @@ More info: ${troubleshootingUrl.toLink()}.
     );
   }
 
-  /// The build directory of the respective shorebird project.
-  Directory get buildDirectory {
-    return Directory(
-      p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'build'),
-    );
-  }
-
   /// The path to the output file for the debug info.
-  File get debugInfoFile {
-    return File(p.join(buildDirectory.path, 'patch-debug.zip'));
+  static File get debugInfoFile {
+    return File(p.join(shorebirdEnv.buildDirectory.path, 'patch-debug.zip'));
   }
 
   /// Extracts the --build-name and --build-number from the --release-version

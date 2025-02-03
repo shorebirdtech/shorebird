@@ -151,6 +151,9 @@ void main() {
           () => shorebirdEnv.getShorebirdProjectRoot(),
         ).thenReturn(projectRoot);
         when(
+          () => shorebirdEnv.buildDirectory,
+        ).thenReturn(Directory(p.join(projectRoot.path, 'build')));
+        when(
           () => shorebirdEnv.flutterRevision,
         ).thenReturn('5c1dcc19ebcee3565c65262dd95970186e4d81cc');
 

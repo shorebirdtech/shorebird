@@ -39,15 +39,32 @@ class IosFrameworkPatcher extends Patcher {
     required super.target,
   });
 
-  String get _patchClassTableLinkInfoFile =>
-      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.ct.link');
+  String get _aotOutputPath =>
+      p.join(shorebirdEnv.buildDirectory.path, 'out.aot');
 
-  String get _patchClassTableLinkDebugInfoPath =>
-      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.class_table.json');
+  String get _patchClassTableLinkInfoFile => p.join(
+        shorebirdEnv.buildDirectory.path,
+        'ios',
+        'shorebird',
+        'App.ct.link',
+      );
 
-  String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
+  String get _patchClassTableLinkDebugInfoPath => p.join(
+        shorebirdEnv.buildDirectory.path,
+        'ios',
+        'shorebird',
+        'App.class_table.json',
+      );
 
-  String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
+  String get _vmcodeOutputPath => p.join(
+        shorebirdEnv.buildDirectory.path,
+        'out.vmcode',
+      );
+
+  String get _appDillCopyPath => p.join(
+        shorebirdEnv.buildDirectory.path,
+        'app.dill',
+      );
 
   @override
   String get primaryReleaseArtifactArch => 'xcframework';
@@ -123,11 +140,7 @@ class IosFrameworkPatcher extends Patcher {
       }
       await artifactBuilder.buildElfAotSnapshot(
         appDillPath: buildResult.kernelFile.path,
-        outFilePath: p.join(
-          shorebirdEnv.getShorebirdProjectRoot()!.path,
-          'build',
-          'out.aot',
-        ),
+        outFilePath: _aotOutputPath,
         genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
         additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
       );
@@ -228,16 +241,19 @@ class IosFrameworkPatcher extends Patcher {
         // Copy the patch's class table link info file to the build directory
         // so that it can be used to generate a patch.
         File(_patchClassTableLinkInfoFile).copySync(
-          p.join(buildDirectory.path, 'out.ct.link'),
+          p.join(shorebirdEnv.buildDirectory.path, 'out.ct.link'),
         );
         File(_patchClassTableLinkDebugInfoPath).copySync(
-          p.join(buildDirectory.path, 'out.class_table.json'),
+          p.join(shorebirdEnv.buildDirectory.path, 'out.class_table.json'),
         );
       }
 
-      await _runLinker(
-        aotSnapshot: aotSnapshotFile,
+      await apple.runLinker(
+        kernelFile: aotSnapshotFile,
         releaseArtifact: releaseArtifactFile,
+        splitDebugInfoArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        aotOutputFile: File(_aotOutputPath),
+        vmCodeFile: File(_vmcodeOutputPath),
       );
     }
 
@@ -302,48 +318,4 @@ class IosFrameworkPatcher extends Patcher {
           xcodeVersion: await xcodeBuild.version(),
         ),
       );
-
-  Future<void> _runLinker({
-    required File aotSnapshot,
-    required File releaseArtifact,
-  }) async {
-    if (!aotSnapshot.existsSync()) {
-      logger.err('Unable to find patch AOT file at ${aotSnapshot.path}');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    final analyzeSnapshot = File(
-      shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshotIos,
-      ),
-    );
-
-    if (!analyzeSnapshot.existsSync()) {
-      logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    final genSnapshot = shorebirdArtifacts.getArtifactPath(
-      artifact: ShorebirdArtifact.genSnapshotIos,
-    );
-
-    final linkProgress = logger.progress('Linking AOT files');
-    try {
-      lastBuildLinkPercentage = await aotTools.link(
-        base: releaseArtifact.path,
-        patch: aotSnapshot.path,
-        analyzeSnapshot: analyzeSnapshot.path,
-        genSnapshot: genSnapshot,
-        kernel: _appDillCopyPath,
-        outputPath: _vmcodeOutputPath,
-        workingDirectory: buildDirectory.path,
-        additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
-      );
-    } on Exception catch (error) {
-      linkProgress.fail('Failed to link AOT files: $error');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    linkProgress.complete();
-  }
 }

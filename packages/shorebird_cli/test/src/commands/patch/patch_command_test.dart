@@ -714,7 +714,7 @@ void main() {
 
         setUp(() {
           when(() => patcher.linkPercentage).thenReturn(linkPercentage);
-          when(() => patcher.debugInfoFile).thenReturn(debugInfoFile);
+          // when(() => patcher.debugInfoFile).thenReturn(debugInfoFile);
         });
 
         test('logs correct summary', () async {
@@ -723,7 +723,7 @@ void main() {
             '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
             '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.displayName)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
             '🟢 Track: ${lightCyan.wrap('Stable')}',
-            '''🔍 Debug Info: ${lightCyan.wrap(patcher.debugInfoFile.path)}''',
+            '''🔍 Debug Info: ${lightCyan.wrap(debugInfoFile.path)}''',
           ];
           await expectLater(
             runWithOverrides(

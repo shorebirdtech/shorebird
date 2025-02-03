@@ -43,17 +43,20 @@ class MacosPatcher extends Patcher {
 
   // The elf snapshot built for Apple Silicon macs.
   String get _arm64AotOutputPath => p.join(
-        buildDirectory.path,
+        shorebirdEnv.buildDirectory.path,
         'out.arm64.aot',
       );
 
   // The elf snapshot built for Intel macs.
   String get _x64AotOutputPath => p.join(
-        buildDirectory.path,
+        shorebirdEnv.buildDirectory.path,
         'out.x64.aot',
       );
 
-  String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
+  String get _appDillCopyPath => p.join(
+        shorebirdEnv.buildDirectory.path,
+        'app.dill',
+      );
 
   @override
   ReleaseType get releaseType => ReleaseType.macos;

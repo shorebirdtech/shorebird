@@ -31,8 +31,6 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-typedef _LinkResult = ({int exitCode, double? linkPercentage});
-
 /// {@template ios_patcher}
 /// Functions to create an iOS patch.
 /// {@endtemplate}
@@ -45,17 +43,28 @@ class IosPatcher extends Patcher {
     required super.target,
   });
 
-  String get _patchClassTableLinkInfoPath =>
-      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.ct.link');
+  String get _patchClassTableLinkInfoPath => p.join(
+        shorebirdEnv.buildDirectory.path,
+        'ios',
+        'shorebird',
+        'App.ct.link',
+      );
 
-  String get _patchClassTableLinkDebugInfoPath =>
-      p.join(buildDirectory.path, 'ios', 'shorebird', 'App.class_table.json');
+  String get _patchClassTableLinkDebugInfoPath => p.join(
+        shorebirdEnv.buildDirectory.path,
+        'ios',
+        'shorebird',
+        'App.class_table.json',
+      );
 
-  String get _aotOutputPath => p.join(buildDirectory.path, 'out.aot');
+  String get _aotOutputPath =>
+      p.join(shorebirdEnv.buildDirectory.path, 'out.aot');
 
-  String get _vmcodeOutputPath => p.join(buildDirectory.path, 'out.vmcode');
+  String get _vmcodeOutputPath =>
+      p.join(shorebirdEnv.buildDirectory.path, 'out.vmcode');
 
-  String get _appDillCopyPath => p.join(buildDirectory.path, 'app.dill');
+  String get _appDillCopyPath =>
+      p.join(shorebirdEnv.buildDirectory.path, 'app.dill');
 
   /// The name of the split debug info file when the target is iOS.
   static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
@@ -316,16 +325,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         // Copy the patch's class table link info file to the build directory
         // so that it can be used to generate a patch.
         File(_patchClassTableLinkInfoPath).copySync(
-          p.join(buildDirectory.path, 'out.ct.link'),
+          p.join(shorebirdEnv.buildDirectory.path, 'out.ct.link'),
         );
         File(_patchClassTableLinkDebugInfoPath).copySync(
-          p.join(buildDirectory.path, 'out.class_table.json'),
+          p.join(shorebirdEnv.buildDirectory.path, 'out.class_table.json'),
         );
       }
 
-      final (:exitCode, :linkPercentage) = await _runLinker(
-        releaseArtifact: releaseArtifactFile,
+      final (:exitCode, :linkPercentage) = await apple.runLinker(
         kernelFile: File(_appDillCopyPath),
+        releaseArtifact: releaseArtifactFile,
+        splitDebugInfoArgs: splitDebugInfoArgs(splitDebugInfoPath),
+        aotOutputFile: File(_aotOutputPath),
+        vmCodeFile: File(_vmcodeOutputPath),
       );
       if (exitCode != ExitCode.success.code) throw ProcessExit(exitCode);
       if (linkPercentage != null &&
@@ -424,66 +436,4 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           xcodeVersion: await xcodeBuild.version(),
         ),
       );
-
-  Future<_LinkResult> _runLinker({
-    required File releaseArtifact,
-    required File kernelFile,
-  }) async {
-    final patch = File(_aotOutputPath);
-
-    if (!patch.existsSync()) {
-      logger.err('Unable to find patch AOT file at ${patch.path}');
-      return (exitCode: ExitCode.software.code, linkPercentage: null);
-    }
-
-    final analyzeSnapshot = File(
-      shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshotIos,
-      ),
-    );
-
-    if (!analyzeSnapshot.existsSync()) {
-      logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      return (exitCode: ExitCode.software.code, linkPercentage: null);
-    }
-
-    final genSnapshot = shorebirdArtifacts.getArtifactPath(
-      artifact: ShorebirdArtifact.genSnapshotIos,
-    );
-
-    final linkProgress = logger.progress('Linking AOT files');
-    double? linkPercentage;
-    final dumpDebugInfoDir = await aotTools.isLinkDebugInfoSupported()
-        ? Directory.systemTemp.createTempSync()
-        : null;
-
-    Future<void> dumpDebugInfo() async {
-      if (dumpDebugInfoDir == null) return;
-
-      final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
-      debugInfoZip.copySync(p.join('build', debugInfoFile.path));
-      logger.detail('Link debug info saved to ${debugInfoFile.path}');
-    }
-
-    try {
-      linkPercentage = await aotTools.link(
-        base: releaseArtifact.path,
-        patch: patch.path,
-        analyzeSnapshot: analyzeSnapshot.path,
-        genSnapshot: genSnapshot,
-        outputPath: _vmcodeOutputPath,
-        workingDirectory: buildDirectory.path,
-        kernel: kernelFile.path,
-        dumpDebugInfoPath: dumpDebugInfoDir?.path,
-        additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
-      );
-    } on Exception catch (error) {
-      linkProgress.fail('Failed to link AOT files: $error');
-      return (exitCode: ExitCode.software.code, linkPercentage: null);
-    } finally {
-      await dumpDebugInfo();
-    }
-    linkProgress.complete();
-    return (exitCode: ExitCode.success.code, linkPercentage: linkPercentage);
-  }
 }
