@@ -110,39 +110,6 @@ This is only applicable when previewing Android releases.''',
   @override
   String get description => 'Preview a specific release on a device.';
 
-  /// Given two [Release]s, one with all the platforms, previewable or not,
-  /// and one with only the previewable platforms, this method will check for
-  /// platforms that are not previewable.
-  ///
-  /// If any non-previewable platforms are found, we will:
-  /// - Warn the user about the platform if that platform is not the one
-  ///    the user specified with `--platform`.
-  /// - Error out if the user specified a platform that is not previewable.
-  void _assertPreviewableReleases({
-    required Release releaseWithAllPlatforms,
-    required Release release,
-  }) {
-    final nonPreviewablePlatforms =
-        releaseWithAllPlatforms.activePlatforms.where(
-      (p) => !release.activePlatforms.contains(p),
-    );
-
-    for (final platform in nonPreviewablePlatforms) {
-      final message =
-          '''The ${platform.displayName} artifact for this release is not previewable.''';
-
-      // If the user explicitly specified a platform and it matches a non
-      // previewable platform, we early exit to avoid duplicated warnings/errors.
-      if (results['platform'] == platform.name) {
-        logger.err(message);
-        throw ProcessExit(ExitCode.software.code);
-        // We only WARN if the user didn't specify a platform.
-      } else if (results['platform'] == null) {
-        logger.warn(message);
-      }
-    }
-  }
-
   @override
   Future<int> run() async {
     // TODO(bryanoltman): check preview target and run either
@@ -256,9 +223,10 @@ This is only applicable when previewing Android releases.''',
     final releaseWithAllPlatforms = allReleases.firstWhere(
       (r) => r.id == release.id,
     );
-    _assertPreviewableReleases(
+    assertPreviewableReleases(
       releaseWithAllPlatforms: releaseWithAllPlatforms,
       release: release,
+      targetPlatform: maybePlatform,
     );
 
     final ReleasePlatform releasePlatform;
@@ -1063,4 +1031,37 @@ extension Previewable on Release {
       .where((e) => e.value == ReleaseStatus.active)
       .map((e) => e.key)
       .toList();
+}
+
+/// Given two [Release]s, one with all the platforms, previewable or not,
+/// and one with only the previewable platforms, this method will check for
+/// platforms that are not previewable.
+///
+/// If any non-previewable platforms are found, we will:
+/// - Warn the user about the platform if that platform is not the one
+///    the user specified with `--platform`.
+/// - Error out if the user specified a platform that is not previewable.
+void assertPreviewableReleases({
+  required Release releaseWithAllPlatforms,
+  required Release release,
+  required ReleasePlatform? targetPlatform,
+}) {
+  final nonPreviewablePlatforms = releaseWithAllPlatforms.activePlatforms.where(
+    (p) => !release.activePlatforms.contains(p),
+  );
+
+  for (final platform in nonPreviewablePlatforms) {
+    final message =
+        '''The ${platform.displayName} artifact for this release is not previewable.''';
+
+    // If the user explicitly specified a platform and it matches a non
+    // previewable platform, we early exit to avoid duplicated warnings/errors.
+    if (targetPlatform?.name == platform.name) {
+      logger.err(message);
+      throw ProcessExit(ExitCode.software.code);
+      // We only WARN if the user didn't specify a platform.
+    } else if (targetPlatform == null) {
+      logger.warn(message);
+    }
+  }
 }

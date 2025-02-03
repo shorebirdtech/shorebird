@@ -26,6 +26,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -2117,6 +2118,30 @@ channel: ${DeploymentTrack.staging.channel}
         });
       });
 
+      group('when extracting release artifact succeeds', () {
+        setUp(() {
+          when(
+            () => ditto.extract(
+              source: any(named: 'source'),
+              destination: any(named: 'destination'),
+            ),
+          ).thenAnswer((invocation) async {
+            final appDirectoryPath =
+                invocation.namedArguments[#destination] as String;
+            Directory(appDirectoryPath).createSync(recursive: true);
+          });
+        });
+
+        test('completes progress successfully', () async {
+          try {
+            await runWithOverrides(command.run);
+          } on Exception catch (_) {
+            // swallow exception
+          }
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('staging', () {
         late File shorebirdYaml;
         setUp(() {
@@ -2693,6 +2718,138 @@ channel: ${DeploymentTrack.staging.channel}
           });
         });
       });
+    });
+  });
+
+  group('assertPreviewableReleases', () {
+    late ShorebirdLogger logger;
+
+    R runWithOverrides<R>(R Function() body) {
+      return HttpOverrides.runZoned(
+        () => runScoped(
+          body,
+          values: {
+            loggerRef.overrideWith(() => logger),
+          },
+        ),
+      );
+    }
+
+    setUp(() {
+      logger = MockShorebirdLogger();
+    });
+
+    test('warns about non-previewable platforms', () {
+      final releaseWithAllPlatforms = MockRelease();
+      final release = MockRelease();
+
+      when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
+        ReleasePlatform.android: ReleaseStatus.active,
+        ReleasePlatform.ios: ReleaseStatus.active,
+        ReleasePlatform.linux: ReleaseStatus.active,
+        ReleasePlatform.macos: ReleaseStatus.active,
+        ReleasePlatform.windows: ReleaseStatus.active,
+      });
+
+      when(() => release.platformStatuses).thenReturn({
+        ReleasePlatform.android: ReleaseStatus.active,
+        ReleasePlatform.linux: ReleaseStatus.active,
+        ReleasePlatform.windows: ReleaseStatus.active,
+      });
+
+      runWithOverrides(
+        () => assertPreviewableReleases(
+          releaseWithAllPlatforms: releaseWithAllPlatforms,
+          release: release,
+          targetPlatform: null,
+        ),
+      );
+      verify(
+        () => logger.warn(
+          '''The ${ReleasePlatform.ios.displayName} artifact for this release is not previewable.''',
+        ),
+      ).called(1);
+      verify(
+        () => logger.warn(
+          '''The ${ReleasePlatform.macos.displayName} artifact for this release is not previewable.''',
+        ),
+      ).called(1);
+
+      verifyNever(
+        () => logger.warn(
+          '''The ${ReleasePlatform.android.displayName} artifact for this release is not previewable.''',
+        ),
+      );
+      verifyNever(
+        () => logger.warn(
+          '''The ${ReleasePlatform.linux.displayName} artifact for this release is not previewable.''',
+        ),
+      );
+      verifyNever(
+        () => logger.warn(
+          '''The ${ReleasePlatform.windows.displayName} artifact for this release is not previewable.''',
+        ),
+      );
+    });
+
+    test(
+        'exits early when user explicitly specifies a non-previewable platform',
+        () async {
+      final releaseWithAllPlatforms = MockRelease();
+      final release = MockRelease();
+
+      when(() => releaseWithAllPlatforms.platformStatuses).thenReturn({
+        ReleasePlatform.android: ReleaseStatus.active,
+        ReleasePlatform.ios: ReleaseStatus.active,
+        ReleasePlatform.linux: ReleaseStatus.active,
+        ReleasePlatform.macos: ReleaseStatus.active,
+        ReleasePlatform.windows: ReleaseStatus.active,
+      });
+
+      when(() => release.platformStatuses).thenReturn({
+        ReleasePlatform.android: ReleaseStatus.active,
+        ReleasePlatform.linux: ReleaseStatus.active,
+        ReleasePlatform.windows: ReleaseStatus.active,
+      });
+      expect(
+        () => runWithOverrides(
+          () => assertPreviewableReleases(
+            releaseWithAllPlatforms: releaseWithAllPlatforms,
+            release: release,
+            targetPlatform: ReleasePlatform.ios,
+          ),
+        ),
+        throwsA(
+          isA<ProcessExit>()
+              .having((e) => e.exitCode, 'exitCode', ExitCode.software.code),
+        ),
+      );
+      verify(
+        () => logger.err(
+          '''The ${ReleasePlatform.ios.displayName} artifact for this release is not previewable.''',
+        ),
+      ).called(1);
+
+      verifyNever(
+        () => logger.warn(
+          '''The ${ReleasePlatform.macos.displayName} artifact for this release is not previewable.''',
+        ),
+      );
+      verifyNever(
+        () => logger.warn(
+          '''The ${ReleasePlatform.android.displayName} artifact for this release is not previewable.''',
+        ),
+      );
+      verifyNever(
+        () => logger.warn(
+          '''The ${ReleasePlatform.linux.displayName} artifact for this release is not previewable.''',
+        ),
+      );
+      verifyNever(
+        () => logger.warn(
+          '''The ${ReleasePlatform.windows.displayName} artifact for this release is not previewable.''',
+        ),
+      );
     });
   });
 }
