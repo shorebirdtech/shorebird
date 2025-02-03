@@ -178,6 +178,8 @@ class Apple {
         .toSet();
   }
 
+  /// Runs the linking step to minimize differences between patch and release
+  /// and maximize code that can be executed on the CPU.
   Future<LinkResult> runLinker({
     required File kernelFile,
     required File releaseArtifact,
