@@ -8,9 +8,10 @@ This section contains past updates we've sent to customers.
 
 ## 1.6.10 (February 4, 2025)
 
-- 🪟 Fixes a bug where package:shorebird_code_push was not working with Windows
+- 🪟 Fix a bug where `pkg:shorebird_code_push` was not working for Windows
   apps
-- 🤖 Improves handling of malformed CI tokens
+- 🧩 Improve the handling of missing platforms in `shorebird patch`
+- 🤖 Improve handling of malformed CI tokens
 
 ## 1.6.9 (February 3, 2025)
 
