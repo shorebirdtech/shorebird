@@ -1334,6 +1334,24 @@ Please re-run the release command for this version or create a new release.''',
         ).called(1);
       });
     });
+
+    group('when no platform argument is provided', () {
+      setUp(() {
+        when(() => argResults['platforms']).thenReturn(const <String>[]);
+      });
+
+      test('fails and log the correct message', () async {
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, equals(ExitCode.usage.code));
+
+        verify(
+          () => logger.err(
+            '''No platforms were provided, use the --platforms argument to provide one or more platforms''',
+          ),
+        ).called(1);
+      });
+    });
   });
 
   group('sortByUpdatedAt', () {
