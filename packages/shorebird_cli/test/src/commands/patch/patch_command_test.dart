@@ -1347,7 +1347,7 @@ Please re-run the release command for this version or create a new release.''',
 
         verify(
           () => logger.err(
-            '''No platforms were provided, use the --platforms argument to provide one or more platforms''',
+            '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
           ),
         ).called(1);
       });

@@ -201,7 +201,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   Future<int> run() async {
     if (results.releaseTypes.isEmpty) {
       logger.err(
-        '''No platforms were provided, use the --platforms argument to provide one or more platforms''',
+        '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
       );
       return ExitCode.usage.code;
     }
