@@ -199,6 +199,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   @override
   Future<int> run() async {
+    if (results.releaseTypes.isEmpty) {
+      logger.err(
+        '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
+      );
+      return ExitCode.usage.code;
+    }
+
     if (results.wasParsed('staging')) {
       logger.err(
         '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
