@@ -315,7 +315,19 @@ class Auth {
   void _loadCredentials() {
     final envToken = platform.environment[shorebirdTokenEnvVar];
     if (envToken != null) {
-      _token = CiToken.fromBase64(envToken);
+      try {
+        _token = CiToken.fromBase64(envToken.trim());
+      } on FormatException catch (e) {
+        logger
+          ..err(
+            '''
+Failed to parse CI token from environment. This likely means that your CI token is incorrectly formatted.
+
+Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar environment variable, and try again.''',
+          )
+          ..detail(e.toString());
+        rethrow;
+      }
       return;
     }
 

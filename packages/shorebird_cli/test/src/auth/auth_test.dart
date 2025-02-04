@@ -538,8 +538,37 @@ void main() {
           );
         });
 
-        test('throws error when token string is not valid base64', () async {
+        test('logs and throws error when token string is not valid base64',
+            () async {
           expect(buildAuth, throwsA(isFormatException));
+          verify(
+            () => logger.err(
+              '''
+Failed to parse CI token from environment. This likely means that your CI token is incorrectly formatted.
+
+Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar environment variable, and try again.''',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when token has leading or trailing spaces and newlines', () {
+        setUp(() {
+          when(() => platform.environment).thenReturn(
+            <String, String>{
+              shorebirdTokenEnvVar: '''
+    ${ciToken.toBase64()}  
+              
+''',
+            },
+          );
+        });
+
+        test('trims string', () {
+          auth = buildAuth();
+          final client = auth.client;
+          expect(client, isA<http.Client>());
+          expect(client, isA<AuthenticatedClient>());
         });
       });
 
