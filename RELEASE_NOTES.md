@@ -6,6 +6,13 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.10 (February 4, 2025)
+
+- 🪟 Fix a bug where `pkg:shorebird_code_push` was not working for Windows
+  apps
+- 🧩 Improve handling of missing platforms in `shorebird patch`
+- 🤖 Improve handling of malformed CI tokens
+
 ## 1.6.9 (February 3, 2025)
 
 - 🩹 Write patch debug info when running `shorebird patch ios-framework`
