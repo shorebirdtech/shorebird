@@ -138,7 +138,7 @@ Bypass all confirmation messages. It's generally not advised to use this unless 
 ''',
   );
 
-  /// An argument that allows the user to bypass interactive confirmations.
+  /// An argument that allows the user to specify a minimum link percentage threshold.
   static const minLinkPercentage = ArgumentDescriber(
     name: 'min-link-percentage',
     defaultValue: '0',
