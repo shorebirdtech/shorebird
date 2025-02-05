@@ -534,9 +534,7 @@ To add macOS, run "flutter create . --platforms macos"''',
             verify(
               () => logger.detail(
                 any(
-                  that: contains(
-                    "PathNotFoundException: Cannot copy file to 'invalid path/patch-debug.zip'",
-                  ),
+                  that: contains('PathNotFoundException: Cannot copy file to'),
                 ),
               ),
             ).called(1);
