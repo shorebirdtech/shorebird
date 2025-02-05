@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.11 (February 5, 2025)
+
+- 🛡️ Add `--min-link-percentage` to patch command
+- 📦 Export patch debug information when running in Codemagic CI/CD
+
 ## 1.6.10 (February 4, 2025)
 
 - 🪟 Fix a bug where `pkg:shorebird_code_push` was not working for Windows
