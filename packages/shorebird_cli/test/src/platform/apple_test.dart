@@ -516,6 +516,25 @@ To add macOS, run "flutter create . --platforms macos"''',
               ),
             ).called(1);
           });
+
+          test('gracefully handles errors', () async {
+            when(() => platform.environment).thenReturn(
+              {'CM_EXPORT_DIR': 'invalid path'},
+            );
+            await runWithOverrides(
+              () => apple.runLinker(
+                aotOutputFile: aotOutputFile,
+                kernelFile: File('missing'),
+                releaseArtifact: File('missing'),
+                vmCodeFile: File('missing'),
+                splitDebugInfoArgs: [],
+              ),
+            );
+
+            verify(
+              () => logger.detail(any(that: startsWith('Failed to export'))),
+            ).called(1);
+          });
         });
       });
 
