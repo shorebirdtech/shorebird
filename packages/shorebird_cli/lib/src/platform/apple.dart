@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:xml/xml.dart';
@@ -226,6 +227,15 @@ class Apple {
       final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
       debugInfoZip.copySync(p.join('build', Patcher.debugInfoFile.path));
       logger.detail('Link debug info saved to ${Patcher.debugInfoFile.path}');
+
+      // If we're running on codemagic, export the patch-debug.zip artifact.
+      final codemagicExportDir = platform.environment['CM_EXPORT_DIR'];
+      if (codemagicExportDir != null) {
+        copyPathSync(
+          debugInfoZip.path,
+          p.join(codemagicExportDir, 'patch-debug.zip'),
+        );
+      }
     }
 
     try {
