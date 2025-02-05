@@ -181,6 +181,9 @@ void main() {
       when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(
+        () => argResults[CommonArguments.minLinkPercentage.name],
+      ).thenReturn(CommonArguments.minLinkPercentage.defaultValue);
+      when(
         () => argResults['track'],
       ).thenReturn(DeploymentTrack.stable.channel);
       when(() => argResults.wasParsed(any())).thenReturn(true);
@@ -746,6 +749,68 @@ void main() {
               any(that: contains(expectedSummary.join('\n'))),
             ),
           ).called(1);
+        });
+
+        group('when min-link-percentage is specified', () {
+          group('when link percentage is higher than min', () {
+            const minLinkPercentageArg = '40';
+
+            setUp(() {
+              when(
+                () => argResults[CommonArguments.minLinkPercentage.name],
+              ).thenReturn(minLinkPercentageArg);
+            });
+
+            test('completes, does not print error message', () async {
+              await expectLater(
+                runWithOverrides(
+                  () => command.confirmCreatePatch(
+                    app: appMetadata,
+                    releaseVersion: releaseVersion,
+                    patcher: patcher,
+                    patchArtifactBundles: patchArtifactBundles,
+                  ),
+                ),
+                completes,
+              );
+
+              verifyNever(() {
+                logger.err(
+                  any(that: contains('is below the minimum threshold')),
+                );
+              });
+            });
+          });
+
+          group('when link percentage is lower than min', () {
+            const minLinkPercentageArg = '50';
+
+            setUp(() {
+              when(
+                () => argResults[CommonArguments.minLinkPercentage.name],
+              ).thenReturn(minLinkPercentageArg);
+            });
+
+            test('prints error message and exits', () async {
+              await expectLater(
+                runWithOverrides(
+                  () => command.confirmCreatePatch(
+                    app: appMetadata,
+                    releaseVersion: releaseVersion,
+                    patcher: patcher,
+                    patchArtifactBundles: patchArtifactBundles,
+                  ),
+                ),
+                exitsWithCode(ExitCode.software),
+              );
+
+              verify(
+                () => logger.err(
+                  '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold (50%). Exiting.''',
+                ),
+              ).called(1);
+            });
+          });
         });
       });
     });

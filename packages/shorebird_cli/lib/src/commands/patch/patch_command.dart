@@ -144,6 +144,12 @@ To target the latest release (e.g. the release that was most recently updated) u
       ..addOption(
         CommonArguments.splitDebugInfoArg.name,
         help: CommonArguments.splitDebugInfoArg.description,
+      )
+      ..addOption(
+        CommonArguments.minLinkPercentage.name,
+        help: CommonArguments.minLinkPercentage.description,
+        defaultsTo: CommonArguments.minLinkPercentage.defaultValue,
+        allowed: [for (var i = 0; i <= 100; i++) '$i'],
       );
   }
 
@@ -551,14 +557,25 @@ Please re-run the release command for this version or create a new release.''');
       };
     })();
 
+    final linkPercentage = patcher.linkPercentage;
+    final minLinkPercentage = int.parse(
+      results[CommonArguments.minLinkPercentage.name] as String,
+    );
+    if (linkPercentage != null && linkPercentage < minLinkPercentage) {
+      logger.err(
+        '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold ($minLinkPercentage%). Exiting.''',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+
     final summary = [
       '''📱 App: ${lightCyan.wrap(app.displayName)} ${lightCyan.wrap('(${app.appId})')}''',
       if (flavor != null) '🍧 Flavor: ${lightCyan.wrap(flavor)}',
       '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
       '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.displayName)} ${lightCyan.wrap('[${archMetadata.join(', ')}]')}''',
       trackSummary,
-      if (patcher.linkPercentage != null &&
-          patcher.linkPercentage! < Patcher.minLinkPercentage)
+      if (linkPercentage != null &&
+          linkPercentage < Patcher.linkPercentageWarningThreshold)
         '''🔍 Debug Info: ${lightCyan.wrap(Patcher.debugInfoFile.path)}''',
     ];
 

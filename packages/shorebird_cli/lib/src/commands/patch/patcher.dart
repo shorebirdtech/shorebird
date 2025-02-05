@@ -29,8 +29,8 @@ abstract class Patcher {
     required this.target,
   });
 
-  /// Link percentage that is considered the minimum before a user might notice.
-  static const double minLinkPercentage = 75;
+  /// Link percentage below which a warning is issued.
+  static const double linkPercentageWarningThreshold = 75;
 
   /// The standard link percentage warning.
   static String lowLinkPercentageWarning(double linkPercentage) {
