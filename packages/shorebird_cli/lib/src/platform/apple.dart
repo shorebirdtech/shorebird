@@ -234,9 +234,8 @@ class Apple {
         logger.detail(
           '''Codemagic environment detected. Exporting ${Patcher.debugInfoFile.path} to $codemagicExportDir''',
         );
-        copyPathSync(
-          debugInfoZip.path,
-          p.join(codemagicExportDir, 'patch-debug.zip'),
+        debugInfoZip.copySync(
+          p.join(codemagicExportDir, p.basename(Patcher.debugInfoFile.path)),
         );
       }
     }
