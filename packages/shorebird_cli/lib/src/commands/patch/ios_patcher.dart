@@ -341,7 +341,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       );
       if (exitCode != ExitCode.success.code) throw ProcessExit(exitCode);
       if (linkPercentage != null &&
-          linkPercentage < Patcher.minLinkPercentage) {
+          linkPercentage < Patcher.linkPercentageWarningThreshold) {
         logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
       }
       lastBuildLinkPercentage = linkPercentage;
