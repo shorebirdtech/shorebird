@@ -229,6 +229,7 @@ class Apple {
       logger.detail('Link debug info saved to ${Patcher.debugInfoFile.path}');
 
       // If we're running on codemagic, export the patch-debug.zip artifact.
+      // https://docs.codemagic.io/knowledge-others/upload-custom-artifacts
       final codemagicExportDir = platform.environment['CM_EXPORT_DIR'];
       if (codemagicExportDir != null) {
         logger.detail(
