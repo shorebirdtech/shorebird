@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:xml/xml.dart';
@@ -226,6 +227,26 @@ class Apple {
       final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
       debugInfoZip.copySync(p.join('build', Patcher.debugInfoFile.path));
       logger.detail('Link debug info saved to ${Patcher.debugInfoFile.path}');
+
+      // If we're running on codemagic, export the patch-debug.zip artifact.
+      // https://docs.codemagic.io/knowledge-others/upload-custom-artifacts
+      final codemagicExportDir = platform.environment['CM_EXPORT_DIR'];
+      if (codemagicExportDir != null) {
+        logger.detail(
+          '''Codemagic environment detected. Exporting ${Patcher.debugInfoFile.path} to $codemagicExportDir''',
+        );
+        try {
+          debugInfoZip.copySync(
+            p.join(codemagicExportDir, p.basename(Patcher.debugInfoFile.path)),
+          );
+        } on Exception catch (error) {
+          logger.detail(
+            '''
+Failed to export ${Patcher.debugInfoFile.path} to $codemagicExportDir.
+$error''',
+          );
+        }
+      }
     }
 
     try {

@@ -1,12 +1,13 @@
-import 'dart:io';
+import 'dart:io' hide Platform;
 
-import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -26,6 +27,7 @@ void main() {
     late AotTools aotTools;
     late Apple apple;
     late Progress progress;
+    late Platform platform;
     late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
@@ -36,6 +38,7 @@ void main() {
         values: {
           aotToolsRef.overrideWith(() => aotTools),
           loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
@@ -45,12 +48,14 @@ void main() {
     setUp(() {
       aotTools = MockAotTools();
       apple = Apple();
+      platform = MockPlatform();
       progress = MockProgress();
       logger = MockShorebirdLogger();
       shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdEnv = MockShorebirdEnv();
 
       when(() => logger.progress(any())).thenReturn(progress);
+      when(() => platform.environment).thenReturn({});
     });
 
     group(MissingXcodeProjectException, () {
@@ -478,6 +483,62 @@ To add macOS, run "flutter create . --platforms macos"''',
               any(that: contains('Link debug info saved to')),
             ),
           ).called(1);
+        });
+
+        group('when running in codemagic', () {
+          late Directory codemagicExportDir;
+
+          setUp(() {
+            codemagicExportDir = Directory.systemTemp.createTempSync();
+            when(() => platform.environment).thenReturn(
+              {'CM_EXPORT_DIR': codemagicExportDir.path},
+            );
+          });
+
+          test('copies debug info to codemagic exports', () async {
+            final copiedPatchDebugInfo = File(
+              p.join(codemagicExportDir.path, 'patch-debug.zip'),
+            );
+            expect(copiedPatchDebugInfo.existsSync(), isFalse);
+            await runWithOverrides(
+              () => apple.runLinker(
+                aotOutputFile: aotOutputFile,
+                kernelFile: File('missing'),
+                releaseArtifact: File('missing'),
+                vmCodeFile: File('missing'),
+                splitDebugInfoArgs: [],
+              ),
+            );
+            expect(copiedPatchDebugInfo.existsSync(), isTrue);
+            verify(
+              () => logger.detail(
+                any(that: startsWith('Codemagic environment detected.')),
+              ),
+            ).called(1);
+          });
+
+          test('gracefully handles errors', () async {
+            when(() => platform.environment).thenReturn(
+              {'CM_EXPORT_DIR': 'invalid path'},
+            );
+            await runWithOverrides(
+              () => apple.runLinker(
+                aotOutputFile: aotOutputFile,
+                kernelFile: File('missing'),
+                releaseArtifact: File('missing'),
+                vmCodeFile: File('missing'),
+                splitDebugInfoArgs: [],
+              ),
+            );
+
+            verify(
+              () => logger.detail(
+                any(
+                  that: contains('PathNotFoundException: Cannot copy file to'),
+                ),
+              ),
+            ).called(1);
+          });
         });
       });
 
