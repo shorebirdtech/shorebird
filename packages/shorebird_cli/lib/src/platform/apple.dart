@@ -231,6 +231,9 @@ class Apple {
       // If we're running on codemagic, export the patch-debug.zip artifact.
       final codemagicExportDir = platform.environment['CM_EXPORT_DIR'];
       if (codemagicExportDir != null) {
+        logger.detail(
+          '''Codemagic environment detected. Exporting ${Patcher.debugInfoFile.path} to $codemagicExportDir''',
+        );
         copyPathSync(
           debugInfoZip.path,
           p.join(codemagicExportDir, 'patch-debug.zip'),
