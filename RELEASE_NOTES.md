@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.12 (February 6, 2025)
+
+- 🐦 Support for Flutter 3.27.4
+
 ## 1.6.11 (February 5, 2025)
 
 - 🛡️ Add `--min-link-percentage` to patch command
