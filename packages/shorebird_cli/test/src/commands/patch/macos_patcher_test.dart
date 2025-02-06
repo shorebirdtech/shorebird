@@ -511,7 +511,7 @@ This may indicate that the patch contains native changes, which cannot be applie
           ).thenAnswer((_) async => flutterVersionAndRevision);
           when(
             () => shorebirdFlutter.getVersion(),
-          ).thenAnswer((_) async => Version(3, 27, 3));
+          ).thenAnswer((_) async => Version(3, 27, 4));
         });
 
         group(
@@ -554,49 +554,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           },
           skip:
               '''Skipping while we use the flutter revision when checking for patchability''',
-        );
-
-        // TODO(bryanoltman): this test can be removed (and the above test
-        // can be unskipped) when we can increase the
-        // minimumSupportedMacosVersion to 3.27.4 or higher.
-        group(
-          'when release flutter version is not in the allowlist',
-          () {
-            setUp(() {
-              when(
-                () => shorebirdValidator.validatePreconditions(
-                  checkUserIsAuthenticated: any(
-                    named: 'checkUserIsAuthenticated',
-                  ),
-                  checkShorebirdInitialized: any(
-                    named: 'checkShorebirdInitialized',
-                  ),
-                  validators: any(named: 'validators'),
-                  supportedOperatingSystems: any(
-                    named: 'supportedOperatingSystems',
-                  ),
-                ),
-              ).thenAnswer((_) async {});
-              when(
-                () => shorebirdEnv.flutterRevision,
-              ).thenReturn('not-a-supported-revision');
-            });
-
-            test('logs error and exits with code 70', () async {
-              await expectLater(
-                () => runWithOverrides(patcher.buildPatchArtifact),
-                exitsWithCode(ExitCode.software),
-              );
-
-              verify(
-                () => logger.err(
-                  '''
-macOS patches are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-                ),
-              ).called(1);
-            });
-          },
         );
 
         group('when build fails with ProcessException', () {

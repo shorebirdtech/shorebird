@@ -146,11 +146,8 @@ This may indicate that the patch contains native changes, which cannot be applie
         shorebirdFlutter.getVersion(),
       ).wait;
 
-      // TODO(bryanoltman): revert this to checking the flutter version once
-      // the minimum supported version is updated.
-      if (!patchableMacosFlutterRevisions.contains(
-        shorebirdEnv.flutterRevision,
-      )) {
+      if ((flutterVersion ?? minimumSupportedMacosFlutterVersion) <
+          minimumSupportedMacosFlutterVersion) {
         logger.err(
           '''
 macOS patches are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
