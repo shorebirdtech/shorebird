@@ -110,21 +110,7 @@ Please report issues at https://github.com/shorebirdtech/shorebird/issues/new
 final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
 
 /// The minimum allowed Flutter version for creating macOS releases.
-// TODO(bryanoltman): bump this when 3.27.4 is released.
-final minimumSupportedMacosFlutterVersion = Version(3, 27, 3);
-
-/// Flutter revisions that support macOS patching.
-/// This is a temporary workaround. Some revisions of 3.27.3 (those included
-/// here) support our current (unlinked) method of patching macOS releases,
-/// while the rest do not.
-// TODO(bryanoltman): remove this when we can bump the minimum macOS version to
-// 3.27.4 or higher.
-const patchableMacosFlutterRevisions = {
-  '5c1dcc19ebcee3565c65262dd95970186e4d81cc',
-  '3d75b30b181d1d4ce66c426c64aca2498529f2e0',
-  // Contains engine updates to fix package:shorebird_code_push on windows.
-  '009d947deb3a58d8801dbc995667e87523c7f08c',
-};
+final minimumSupportedMacosFlutterVersion = Version(3, 27, 4);
 
 /// A reference to a [Apple] instance.
 final appleRef = create(Apple.new);
