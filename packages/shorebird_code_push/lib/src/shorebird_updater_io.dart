@@ -31,6 +31,9 @@ class ShorebirdUpdaterImpl implements ShorebirdUpdater {
       // time the underlying Rust code could block getting the config lock.
       _updater.currentPatchNumber();
       _isAvailable = true;
+      // We explicitly catch all errors and exceptions to ensure we notify users
+      // when the Shorebird Updater is unavailable.
+      // ignore: avoid_catches_without_on_clauses
     } catch (_) {
       logShorebirdEngineUnavailableMessage();
       _isAvailable = false;
@@ -91,6 +94,8 @@ class ShorebirdUpdaterImpl implements ShorebirdUpdater {
 
     try {
       result = await _run(() => _updater.update(track: track));
+      // Explicitly catch all errors/exceptions to ensure we gracefully fallback.
+      // ignore: avoid_catches_without_on_clauses
     } catch (_) {
       return _legacyFallback();
     }

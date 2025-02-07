@@ -54,6 +54,8 @@ class UpdateException implements Exception {
 /// Log message when the Shorebird updater is unavailable in the current
 /// environment.
 void logShorebirdEngineUnavailableMessage() {
+  // Printing to the console is intentional here since we want it to be obvious
+  // that the app is running in an environment where the updater is unavailable.
   // ignore: avoid_print
   print('''
 -------------------------------------------------------------------------------
