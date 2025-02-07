@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.14 (February 7, 2025)
+
+- 🪵 Improved logging for patch downloads and applications.
+
 ## 1.6.13 (February 7, 2025)
 
 - 🩹 Fixes an issue with iOS patching on Flutter 3.27.4 (missing
