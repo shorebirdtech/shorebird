@@ -1,3 +1,7 @@
+# 2.0.3
+
+- feat: override `toString` in `ReadPatchException` and `UpdateException`
+
 # 2.0.2
 
 - fix: un-break web platform
