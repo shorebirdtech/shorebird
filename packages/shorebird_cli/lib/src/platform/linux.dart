@@ -17,13 +17,6 @@ const primaryLinuxReleaseArtifactArch = 'bundle';
 /// The minimum allowed Flutter version for creating Linux releases.
 final minimumSupportedLinuxFlutterVersion = Version(3, 27, 4);
 
-/// A warning message printed at the start of `shorebird release linux` and
-/// `shorebird patch linux` commands.
-const linuxBetaWarning = '''
-Linux support is currently in beta.
-Please report issues at https://github.com/shorebirdtech/shorebird/issues/new
-''';
-
 /// A reference to a [Linux] instance.
 final linuxRef = create(Linux.new);
 

@@ -12,7 +12,6 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
-import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -231,39 +230,6 @@ void main() {
           command.getReleaser(ReleaseType.windows),
           isA<WindowsReleaser>(),
         );
-      });
-    });
-
-    group('when releasing to linux', () {
-      setUp(() {
-        when(() => argResults['platforms']).thenReturn(['linux']);
-      });
-
-      test('prints beta warning', () async {
-        await runWithOverrides(command.run);
-        verify(() => logger.warn(linuxBetaWarning)).called(1);
-      });
-    });
-
-    group('when releasing to macos', () {
-      setUp(() {
-        when(() => argResults['platforms']).thenReturn(['macos']);
-      });
-
-      test('prints beta warning', () async {
-        await runWithOverrides(command.run);
-        verify(() => logger.warn(macosBetaWarning)).called(1);
-      });
-    });
-
-    group('when releasing to windows', () {
-      setUp(() {
-        when(() => argResults['platforms']).thenReturn(['windows']);
-      });
-
-      test('prints beta warning', () async {
-        await runWithOverrides(command.run);
-        verify(() => logger.warn(windowsBetaWarning)).called(1);
       });
     });
 

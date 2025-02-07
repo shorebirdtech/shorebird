@@ -99,13 +99,6 @@ class InvalidExportOptionsPlistException implements Exception {
   String toString() => message;
 }
 
-/// A warning message printed at the start of `shorebird release macos` and
-/// `shorebird patch macos` commands.
-const macosBetaWarning = '''
-macOS support is currently in beta.
-Please report issues at https://github.com/shorebirdtech/shorebird/issues/new
-''';
-
 /// The minimum allowed Flutter version for creating iOS releases.
 final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
 
