@@ -16,10 +16,3 @@ final minimumSupportedWindowsFlutterVersion = Version(3, 27, 2);
 const windowsFlutterGitHashesBelowMinVersion = {
   '56228c343d6c7fd3e1e548dbb290f9713bb22aa9',
 };
-
-/// A warning message printed at the start of `shorebird release windows` and
-/// `shorebird patch windows` commands.
-const windowsBetaWarning = '''
-Windows support is currently in beta.
-Please report issues at https://github.com/shorebirdtech/shorebird/issues/new
-''';
