@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.13 (February 7, 2025)
+
+- 🩹 Fixes an issue with iOS patching on Flutter 3.27.4 (missing
+  analyze_snapshot_arm64)
+- 🖥️ Desktop platforms are now out of beta!
+
 ## 1.6.12 (February 6, 2025)
 
 - 🐦 Support for Flutter 3.27.4
