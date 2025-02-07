@@ -11,5 +11,30 @@ void main() {
         expect(ShorebirdUpdater.new, returnsNormally);
       }),
     );
+
+    group(UpdateException, () {
+      test('overrides toString', () {
+        const message = 'message';
+        const reason = UpdateFailureReason.downloadFailed;
+        const exception = UpdateException(message: message, reason: reason);
+        expect(
+          exception.toString(),
+          equals(
+            '[ShorebirdUpdater] UpdateException: $message (${reason.name})',
+          ),
+        );
+      });
+    });
+
+    group(ReadPatchException, () {
+      test('overrides toString', () {
+        const message = 'message';
+        const exception = ReadPatchException(message: message);
+        expect(
+          exception.toString(),
+          equals('[ShorebirdUpdater] ReadPatchException: $message'),
+        );
+      });
+    });
   });
 }
