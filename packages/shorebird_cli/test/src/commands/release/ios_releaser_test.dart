@@ -123,6 +123,12 @@ void main() {
         });
       });
 
+      group('artifactDisplayName', () {
+        test('has expected value', () {
+          expect(iosReleaser.artifactDisplayName, 'iOS app');
+        });
+      });
+
       group('assertPreconditions', () {
         final flutterVersion = Version(3, 0, 0);
 

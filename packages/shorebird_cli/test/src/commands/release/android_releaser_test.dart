@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:http/http.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -111,6 +112,12 @@ void main() {
     group('releaseType', () {
       test('is android', () {
         expect(androidReleaser.releaseType, ReleaseType.android);
+      });
+    });
+
+    group('artifactDisplayName', () {
+      test('has expected value', () {
+        expect(androidReleaser.artifactDisplayName, 'Android app bundle');
       });
     });
 
@@ -235,9 +242,12 @@ To change the version of this release, change your app's version in your pubspec
 
     group('buildReleaseArtifacts', () {
       late File aabFile;
+      late DetailProgress progress;
 
       setUp(() {
         aabFile = File('');
+        progress = MockDetailProgress();
+        when(() => logger.detailProgress(any())).thenReturn(progress);
         when(() => argResults['artifact']).thenReturn('aab');
         when(
           () => artifactBuilder.buildAppBundle(
@@ -312,6 +322,25 @@ To change the version of this release, change your app's version in your pubspec
             args: any(named: 'args'),
           ),
         );
+      });
+
+      group('when apk is requested', () {
+        setUp(() {
+          when(() => argResults['artifact']).thenReturn('apk');
+        });
+
+        test('builds apk', () async {
+          await runWithOverrides(
+            () => androidReleaser.buildReleaseArtifacts(progress: progress),
+          );
+          verify(() => progress.update('Building APK')).called(1);
+          verify(
+            () => artifactBuilder.buildApk(
+              targetPlatforms: Arch.values,
+              args: [],
+            ),
+          ).called(1);
+        });
       });
 
       group('with flavor and target', () {

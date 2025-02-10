@@ -129,6 +129,12 @@ void main() {
       });
     });
 
+    group('artifactDisplayName', () {
+      test('has expected value', () {
+        expect(releaser.artifactDisplayName, 'Windows app');
+      });
+    });
+
     group('assertArgsAreValid', () {
       group('when release-version is passed', () {
         setUp(() {

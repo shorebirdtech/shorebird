@@ -122,6 +122,12 @@ void main() {
         });
       });
 
+      group('artifactDisplayName', () {
+        test('has expected value', () {
+          expect(iosFrameworkReleaser.artifactDisplayName, 'iOS framework');
+        });
+      });
+
       group('assertArgsAreValid', () {
         group('when split-per-abi is true', () {
           setUp(() {

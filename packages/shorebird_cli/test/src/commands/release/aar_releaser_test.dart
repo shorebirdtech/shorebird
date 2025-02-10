@@ -104,6 +104,12 @@ void main() {
       });
     });
 
+    group('artifactDisplayName', () {
+      test('has expected value', () {
+        expect(aarReleaser.artifactDisplayName, 'Android archive');
+      });
+    });
+
     group('requiresReleaseVersionArg', () {
       test('is true', () {
         expect(aarReleaser.requiresReleaseVersionArg, isTrue);
