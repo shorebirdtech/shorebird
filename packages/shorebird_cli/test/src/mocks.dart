@@ -63,6 +63,9 @@ class MockArgParser extends Mock implements ArgParser {}
 
 class MockArgResults extends Mock implements ArgResults {}
 
+class MockArtifactBuildException extends Mock
+    implements ArtifactBuildException {}
+
 class MockArtifactBuilder extends Mock implements ArtifactBuilder {}
 
 class MockArtifactManager extends Mock implements ArtifactManager {}
