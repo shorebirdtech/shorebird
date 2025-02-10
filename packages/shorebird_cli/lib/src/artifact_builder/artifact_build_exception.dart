@@ -57,11 +57,11 @@ class ArtifactBuildException implements Exception {
     final failureHeader =
         RegExp(r'.*FAILURE: Build failed with an exception\..*');
     // This precedes a stack trace
-    final failureFooter1 = RegExp(r'.*\* Exception is:.*');
+    final stackTraceHeader = RegExp(r'.*\* Exception is:.*');
 
     // This precedes recommendations that are not applicable to us (e.g., "Get
     // more help at https://help.gradle.org.")
-    final failureFooter2 = RegExp(r'.*\* Try:.*');
+    final suggestionsHeader = RegExp(r'.*\* Try:.*');
 
     String trimLine(String line) {
       return line.trim().replaceAll(RegExp(r'^\[.*\]'), '');
@@ -72,8 +72,8 @@ class ArtifactBuildException implements Exception {
     for (final line in output) {
       if (failureHeader.hasMatch(line)) {
         inErrorOutput = true;
-      } else if (failureFooter1.hasMatch(line) ||
-          failureFooter2.hasMatch(line)) {
+      } else if (stackTraceHeader.hasMatch(line) ||
+          suggestionsHeader.hasMatch(line)) {
         inErrorOutput = false;
       }
 
@@ -85,6 +85,9 @@ class ArtifactBuildException implements Exception {
     return ret;
   }
 
+  /// Maps lists of regular expressions to a recommendation. We use a list of
+  /// regular expressions instead of a single regular expression to allow for
+  /// multiple possible error messages that have the same root cause.
   final _regexpToRecommendations = {
     (
       [RegExp("Execution failed for task ':app:signReleaseBundle'")],
