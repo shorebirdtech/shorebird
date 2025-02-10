@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_build_exception.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -17,6 +18,8 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+
+export 'artifact_build_exception.dart';
 
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
 /// Flutter.
@@ -60,20 +63,6 @@ class MacosBuildResult {
 
   /// The app.dill file produced by this invocation of `flutter build ipa`.
   final File kernelFile;
-}
-
-/// {@template artifact_build_exception}
-/// Thrown when a build fails.
-/// {@endtemplate}
-class ArtifactBuildException implements Exception {
-  /// {@macro artifact_build_exception}
-  ArtifactBuildException(this.message);
-
-  /// Information about the build failure.
-  final String message;
-
-  @override
-  String toString() => message;
 }
 
 /// A reference to a [ArtifactBuilder] instance.
@@ -132,10 +121,12 @@ class ArtifactBuilder {
       // this format. We can use the 'Task :' line to get the current task
       // being run.
       final gradleTaskRegex = RegExp(r'^\[.*\] \> (Task :.*)$');
+      final stdoutLines = <String>[];
       buildProcess.stdout
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
+        stdoutLines.add(line);
         if (buildProgress == null) {
           return;
         }
@@ -149,10 +140,13 @@ class ArtifactBuilder {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .toList();
-      final stdErr = stderrLines.join('\n');
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('Failed to build: $stdErr');
+        throw ArtifactBuildException(
+          'Failed to build',
+          stderr: stderrLines,
+          stdout: stdoutLines,
+        );
       }
     });
 
@@ -217,8 +211,9 @@ class ArtifactBuilder {
       );
 
       if (result.exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          'Failed to build: ${result.stderr}',
+        throw ArtifactBuildException.fromProcessResult(
+          'Failed to build',
+          buildProcessResult: result,
         );
       }
     });
@@ -269,7 +264,10 @@ class ArtifactBuilder {
       );
 
       if (result.exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('Failed to build: ${result.stderr}');
+        throw ArtifactBuildException.fromProcessResult(
+          'Failed to build',
+          buildProcessResult: result,
+        );
       }
     });
   }
@@ -298,21 +296,26 @@ class ArtifactBuilder {
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
+      final stdoutLines = <String>[];
       buildProcess.stdout
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
         logger.detail(line);
+        stdoutLines.add(line);
       });
 
       final stderrLines = await buildProcess.stderr
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .toList();
-      final stdErr = stderrLines.join('\n');
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('Failed to build: $stdErr');
+        throw ArtifactBuildException(
+          'Failed to build',
+          stdout: stdoutLines,
+          stderr: stderrLines,
+        );
       }
     });
   }
@@ -377,24 +380,25 @@ class ArtifactBuilder {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .toList();
-      final stderr = stderrLines.join('\n');
       final stdout = stdoutLines.join('\n');
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('''
-Failed to build
-stdout: $stdout
-stderr: $stderr''');
+        throw ArtifactBuildException(
+          'Failed to build',
+          stdout: stdoutLines,
+          stderr: stderrLines,
+        );
       }
 
       appDillPath = findAppDill(stdout: stdout);
     });
 
     if (appDillPath == null) {
-      throw ArtifactBuildException('''
-Unable to find app.dill file.
-Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
-''');
+      throw ArtifactBuildException(
+        'Unable to find app.dill file.',
+        fixRecommendation:
+            '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
+      );
     }
 
     return MacosBuildResult(kernelFile: File(appDillPath!));
@@ -459,23 +463,32 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
       buildProgress?.updateDetailMessage(null);
 
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('Failed to build: $stderr');
+        throw ArtifactBuildException(
+          'Failed to build',
+          stdout: stdoutLines,
+          stderr: stderrLines,
+        );
       }
 
+      // TODO(https://github.com/shorebirdtech/shorebird/issues/2855): this is
+      // not treated as an error by Flutter, we should not throw here.
       if (stderr.contains('Encountered error while creating the IPA')) {
-        throw ArtifactBuildException('''
-Failed to build:
-$stderr''');
+        throw ArtifactBuildException(
+          'Failed to build',
+          stdout: stdoutLines,
+          stderr: stderrLines,
+        );
       }
 
       appDillPath = findAppDill(stdout: stdout);
     });
 
     if (appDillPath == null) {
-      throw ArtifactBuildException('''
-Unable to find app.dill file.
-Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
-''');
+      throw ArtifactBuildException(
+        'Unable to find app.dill file.',
+        fixRecommendation:
+            '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
+      );
     }
 
     return IpaBuildResult(kernelFile: File(appDillPath!));
@@ -510,10 +523,11 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
     });
 
     if (appDillPath == null) {
-      throw ArtifactBuildException('''
-Unable to find app.dill file.
-Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
-''');
+      throw ArtifactBuildException(
+        'Unable to find app.dill file.',
+        fixRecommendation:
+            '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
+      );
     }
 
     return IosFrameworkBuildResult(kernelFile: File(appDillPath!));
@@ -586,8 +600,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     );
 
     if (result.exitCode != ExitCode.success.code) {
-      throw ArtifactBuildException(
-        'Failed to create snapshot: ${result.stderr}',
+      throw ArtifactBuildException.fromProcessResult(
+        'Failed to create snapshot',
+        buildProcessResult: result,
       );
     }
 
@@ -618,11 +633,13 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
+      final stdoutLines = <String>[];
       buildProcess.stdout
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
         logger.detail(line);
+        stdoutLines.add(line);
         // TODO(bryanoltman): update build progress
       });
 
@@ -630,10 +647,13 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .toList();
-      final stdErr = stderrLines.join('\n');
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('Failed to build: $stdErr');
+        throw ArtifactBuildException(
+          'Failed to build',
+          stderr: stderrLines,
+          stdout: stdoutLines,
+        );
       }
     });
 

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
@@ -278,8 +279,19 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         );
         final FileSystemEntity releaseArtifact;
         try {
-          releaseArtifact = await releaser.buildReleaseArtifacts();
+          releaseArtifact = await releaser.buildReleaseArtifacts(
+            progress: buildProgress,
+          );
           buildProgress.complete();
+        } on ArtifactBuildException catch (e) {
+          buildProgress.fail(e.message);
+          if (e.flutterError != null) {
+            logger.err(e.flutterError);
+          }
+          if (e.fixRecommendation != null) {
+            logger.info(e.fixRecommendation);
+          }
+          throw ProcessExit(ExitCode.software.code);
         } on Exception catch (e) {
           buildProgress.fail('Failed to build release artifacts: $e');
           throw ProcessExit(ExitCode.software.code);
