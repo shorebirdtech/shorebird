@@ -321,6 +321,8 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
         setUp(() {
           exception = MockArtifactBuildException();
           when(() => exception.message).thenReturn('oops');
+          when(() => exception.stderr).thenReturn(['stderr']);
+          when(() => exception.stdout).thenReturn(['stdout']);
           when(
             () => releaser.buildReleaseArtifacts(
               progress: any(named: 'progress'),

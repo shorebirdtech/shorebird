@@ -285,6 +285,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           buildProgress.complete();
         } on ArtifactBuildException catch (e) {
           buildProgress.fail(e.message);
+          logger
+            ..detail('stdout: ${e.stdout.join(Platform.lineTerminator)}')
+            ..detail('stderr: ${e.stderr.join(Platform.lineTerminator)}');
           if (e.flutterError != null) {
             logger.err(e.flutterError);
           }
