@@ -21,15 +21,6 @@ import '../fakes.dart';
 import '../mocks.dart';
 
 void main() {
-  group(ArtifactBuildException, () {
-    test('toString is message', () {
-      expect(
-        ArtifactBuildException('my message').toString(),
-        equals('my message'),
-      );
-    });
-  });
-
   group(ArtifactBuilder, () {
     final projectRoot = Directory.systemTemp.createTempSync();
     late Apple apple;
@@ -760,7 +751,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
-                equals('Failed to build: stderr contents'),
+                equals('Failed to build'),
               ),
             ),
           );
@@ -1002,13 +993,16 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           expect(
             () => runWithOverrides(() => builder.buildMacos(codesign: false)),
             throwsA(
-              isA<ArtifactBuildException>().having(
+              isA<ArtifactBuildException>()
+                  .having(
                 (e) => e.message,
                 'message',
-                '''
-Unable to find app.dill file.
-Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
-''',
+                'Unable to find app.dill file.',
+              )
+                  .having(
+                (e) => e.fixRecommendation,
+                'fixRecommendation',
+                '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
               ),
             ),
           );
@@ -1267,11 +1261,13 @@ error: exportArchive: No signing certificate "iOS Distribution" found''',
             expect(
               () => runWithOverrides(() => builder.buildIpa(codesign: false)),
               throwsA(
-                isA<ArtifactBuildException>().having(
-                  (e) => e.message,
-                  'message',
-                  '''
-Failed to build:
+                isA<ArtifactBuildException>()
+                    .having((e) => e.message, 'message', 'Failed to build')
+                    .having(
+                      (e) => e.stderr,
+                      'stderr',
+                      const LineSplitter().convert(
+                        '''
 Encountered error while creating the IPA:
 error: exportArchive: Communication with Apple failed
 error: exportArchive: No signing certificate "iOS Distribution" found
@@ -1285,7 +1281,8 @@ error: exportArchive: Communication with Apple failed
 error: exportArchive: No signing certificate "iOS Distribution" found
 error: exportArchive: Communication with Apple failed
 error: exportArchive: No signing certificate "iOS Distribution" found''',
-                ),
+                      ),
+                    ),
               ),
             );
           });
@@ -1321,11 +1318,16 @@ error: exportArchive No signing certificate "iOS Distribution" found''',
             expect(
               () => runWithOverrides(() => builder.buildIpa(codesign: false)),
               throwsA(
-                isA<ArtifactBuildException>().having(
-                  (e) => e.message,
-                  'message',
-                  '''
-Failed to build:
+                isA<ArtifactBuildException>()
+                    .having(
+                      (e) => e.message,
+                      'message',
+                      'Failed to build',
+                    )
+                    .having(
+                      (e) => e.stderr,
+                      'stderr',
+                      const LineSplitter().convert('''
 Encountered error while creating the IPA:
 error: exportArchive Communication with Apple failed
 error: exportArchive No signing certificate "iOS Distribution" found
@@ -1338,8 +1340,8 @@ error: exportArchive No signing certificate "iOS Distribution" found
 error: exportArchive Communication with Apple failed
 error: exportArchive No signing certificate "iOS Distribution" found
 error: exportArchive Communication with Apple failed
-error: exportArchive No signing certificate "iOS Distribution" found''',
-                ),
+error: exportArchive No signing certificate "iOS Distribution" found'''),
+                    ),
               ),
             );
           });
@@ -1361,13 +1363,16 @@ error: exportArchive No signing certificate "iOS Distribution" found''',
           expect(
             () => runWithOverrides(() => builder.buildIpa(codesign: false)),
             throwsA(
-              isA<ArtifactBuildException>().having(
+              isA<ArtifactBuildException>()
+                  .having(
                 (e) => e.message,
                 'message',
-                '''
-Unable to find app.dill file.
-Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
-''',
+                'Unable to find app.dill file.',
+              )
+                  .having(
+                (e) => e.fixRecommendation,
+                'fixRecommendation',
+                '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
               ),
             ),
           );
@@ -1479,13 +1484,16 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
               expect(
                 () => runWithOverrides(builder.buildIosFramework),
                 throwsA(
-                  isA<ArtifactBuildException>().having(
+                  isA<ArtifactBuildException>()
+                      .having(
                     (e) => e.message,
                     'message',
-                    '''
-Unable to find app.dill file.
-Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.
-''',
+                    'Unable to find app.dill file.',
+                  )
+                      .having(
+                    (e) => e.fixRecommendation,
+                    'fixRecommendation',
+                    '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
                   ),
                 ),
               );
@@ -1630,7 +1638,7 @@ Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with 
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
-                equals('Failed to build: stderr contents'),
+                equals('Failed to build'),
               ),
             ),
           );

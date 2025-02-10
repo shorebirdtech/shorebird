@@ -53,9 +53,6 @@ class ArtifactBuildException implements Exception {
   /// An optional tip to help the user fix the build failure.
   late final String? fixRecommendation;
 
-  @override
-  String toString() => '$message $fixRecommendation';
-
   List<String> _errorMessageFromOutput(List<String> output) {
     final failureHeader =
         RegExp(r'.*FAILURE: Build failed with an exception\..*');
