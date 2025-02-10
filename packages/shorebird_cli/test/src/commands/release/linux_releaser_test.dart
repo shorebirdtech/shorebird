@@ -128,6 +128,12 @@ void main() {
       });
     });
 
+    group('artifactDisplayName', () {
+      test('has expected value', () {
+        expect(releaser.artifactDisplayName, 'Linux app');
+      });
+    });
+
     group('assertArgsAreValid', () {
       group('when release-version is passed', () {
         setUp(() {
@@ -228,9 +234,6 @@ To change the version of this release, change your app's version in your pubspec
               .thenReturn('3.27.1');
           when(() => shorebirdFlutter.resolveFlutterVersion('3.27.1'))
               .thenAnswer((_) async => Version(3, 27, 1));
-          when(
-            () => shorebirdFlutter.getRevisionForVersion(any()),
-          ).thenAnswer((_) async => 'deadbeef');
         });
 
         test('logs error and exits with usage err', () async {
@@ -253,80 +256,52 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     group('buildReleaseArtifacts', () {
       setUp(() {
         when(
-          () => shorebirdFlutter.getVersionAndRevision(),
-        ).thenAnswer((_) async => '3.27.3');
+          () => artifactBuilder.buildLinuxApp(
+            target: any(named: 'target'),
+            args: any(named: 'args'),
+            buildProgress: any(named: 'buildProgress'),
+          ),
+        ).thenAnswer((_) async => projectRoot);
       });
 
-      group('when builder throws exception', () {
-        setUp(() {
-          when(
-            () => artifactBuilder.buildLinuxApp(
-              target: any(named: 'target'),
-              args: any(named: 'args'),
-              buildProgress: any(named: 'buildProgress'),
-            ),
-          ).thenThrow(Exception('oh no'));
-        });
+      test('returns path to release directory', () async {
+        final releaseDir =
+            await runWithOverrides(releaser.buildReleaseArtifacts);
+        expect(releaseDir, releaseDirectory);
+      });
+    });
 
-        test('fails progress, exits', () async {
-          await expectLater(
-            () => runWithOverrides(releaser.buildReleaseArtifacts),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(() => progress.fail('Exception: oh no')).called(1);
-        });
+    group('when public key is passed as an arg', () {
+      setUp(() {
+        when(
+          () => artifactBuilder.buildLinuxApp(
+            target: any(named: 'target'),
+            args: any(named: 'args'),
+            buildProgress: any(named: 'buildProgress'),
+            base64PublicKey: any(named: 'base64PublicKey'),
+          ),
+        ).thenAnswer((_) async => projectRoot);
+        when(
+          () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+        ).thenReturn(true);
+        when(
+          () => argResults[CommonArguments.publicKeyArg.name],
+        ).thenReturn('public_key');
+        when(
+          () => codeSigner.base64PublicKey(any()),
+        ).thenReturn('encoded_public_key');
       });
 
-      group('when build succeeds', () {
-        setUp(() {
-          when(
-            () => artifactBuilder.buildLinuxApp(
-              target: any(named: 'target'),
-              args: any(named: 'args'),
-              buildProgress: any(named: 'buildProgress'),
-            ),
-          ).thenAnswer((_) async => projectRoot);
-        });
-
-        test('returns path to release directory', () async {
-          final releaseDir =
-              await runWithOverrides(releaser.buildReleaseArtifacts);
-          expect(releaseDir, releaseDirectory);
-        });
-      });
-
-      group('when public key is passed as an arg', () {
-        setUp(() {
-          when(
-            () => artifactBuilder.buildLinuxApp(
-              target: any(named: 'target'),
-              args: any(named: 'args'),
-              buildProgress: any(named: 'buildProgress'),
-              base64PublicKey: any(named: 'base64PublicKey'),
-            ),
-          ).thenAnswer((_) async => projectRoot);
-          when(
-            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-          ).thenReturn(true);
-          when(
-            () => argResults[CommonArguments.publicKeyArg.name],
-          ).thenReturn('public_key');
-          when(
-            () => codeSigner.base64PublicKey(any()),
-          ).thenReturn('encoded_public_key');
-        });
-
-        test('passes public key to buildWindowsApp', () async {
-          await runWithOverrides(releaser.buildReleaseArtifacts);
-          verify(
-            () => artifactBuilder.buildLinuxApp(
-              base64PublicKey: 'encoded_public_key',
-              target: any(named: 'target'),
-              args: any(named: 'args'),
-              buildProgress: any(named: 'buildProgress'),
-            ),
-          ).called(1);
-        });
+      test('passes public key to buildLinuxApp', () async {
+        await runWithOverrides(releaser.buildReleaseArtifacts);
+        verify(
+          () => artifactBuilder.buildLinuxApp(
+            base64PublicKey: 'encoded_public_key',
+            target: any(named: 'target'),
+            args: any(named: 'args'),
+            buildProgress: any(named: 'buildProgress'),
+          ),
+        ).called(1);
       });
     });
 

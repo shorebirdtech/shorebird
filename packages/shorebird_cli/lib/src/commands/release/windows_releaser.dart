@@ -36,6 +36,9 @@ class WindowsReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.windows;
 
   @override
+  String get artifactDisplayName => 'Windows app';
+
+  @override
   Future<void> assertArgsAreValid() async {
     if (argResults.wasParsed('release-version')) {
       logger.err(
@@ -81,30 +84,16 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-
-    final buildAppBundleProgress = logger.detailProgress(
-      'Building Windows app with Flutter $flutterVersionString',
+  Future<FileSystemEntity> buildReleaseArtifacts({
+    DetailProgress? progress,
+  }) {
+    return artifactBuilder.buildWindowsApp(
+      flavor: flavor,
+      target: target,
+      args: argResults.forwardedArgs,
+      base64PublicKey: argResults.encodedPublicKey,
+      buildProgress: progress,
     );
-
-    final base64PublicKey = argResults.encodedPublicKey;
-    final Directory releaseDir;
-    try {
-      releaseDir = await artifactBuilder.buildWindowsApp(
-        flavor: flavor,
-        target: target,
-        args: argResults.forwardedArgs,
-        base64PublicKey: base64PublicKey,
-        buildProgress: buildAppBundleProgress,
-      );
-      buildAppBundleProgress.complete();
-    } on Exception catch (e) {
-      buildAppBundleProgress.fail(e.toString());
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    return releaseDir;
   }
 
   @override

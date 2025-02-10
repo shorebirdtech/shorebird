@@ -41,6 +41,9 @@ class IosReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.ios;
 
   @override
+  String get artifactDisplayName => 'iOS app';
+
+  @override
   Future<void> assertArgsAreValid() async {
     if (argResults.wasParsed('release-version')) {
       logger.err(
@@ -93,7 +96,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts() async {
+  Future<FileSystemEntity> buildReleaseArtifacts({
+    DetailProgress? progress,
+  }) async {
     if (!codesign) {
       logger
         ..info(
@@ -113,25 +118,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-    final buildProgress = logger.detailProgress(
-      'Building app bundle with Flutter $flutterVersionString',
+    await artifactBuilder.buildIpa(
+      codesign: codesign,
+      flavor: flavor,
+      target: target,
+      args: argResults.forwardedArgs,
+      base64PublicKey: argResults.encodedPublicKey,
+      buildProgress: progress,
     );
-
-    try {
-      await artifactBuilder.buildIpa(
-        codesign: codesign,
-        flavor: flavor,
-        target: target,
-        args: argResults.forwardedArgs,
-        base64PublicKey: argResults.encodedPublicKey,
-        buildProgress: buildProgress,
-      );
-      buildProgress.complete();
-    } on ArtifactBuildException catch (error) {
-      buildProgress.fail(error.message);
-      throw ProcessExit(ExitCode.software.code);
-    }
 
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory();
     if (xcarchiveDirectory == null) {

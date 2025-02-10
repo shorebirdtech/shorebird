@@ -20,7 +20,6 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -45,7 +44,6 @@ void main() {
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
-    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late AndroidReleaser androidReleaser;
@@ -63,7 +61,6 @@ void main() {
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
           shorebirdAndroidArtifactsRef
               .overrideWith(() => shorebirdAndroidArtifacts),
@@ -90,7 +87,6 @@ void main() {
       logger = MockShorebirdLogger();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
-      shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
@@ -115,6 +111,12 @@ void main() {
     group('releaseType', () {
       test('is android', () {
         expect(androidReleaser.releaseType, ReleaseType.android);
+      });
+    });
+
+    group('artifactDisplayName', () {
+      test('has expected value', () {
+        expect(androidReleaser.artifactDisplayName, 'Android app bundle');
       });
     });
 
@@ -238,11 +240,13 @@ To change the version of this release, change your app's version in your pubspec
     });
 
     group('buildReleaseArtifacts', () {
-      const flutterVersionAndRevision = '3.10.6 (83305b5088)';
       late File aabFile;
+      late DetailProgress progress;
 
       setUp(() {
         aabFile = File('');
+        progress = MockDetailProgress();
+        when(() => logger.detailProgress(any())).thenReturn(progress);
         when(() => argResults['artifact']).thenReturn('aab');
         when(
           () => artifactBuilder.buildAppBundle(
@@ -264,9 +268,6 @@ To change the version of this release, change your app's version in your pubspec
           (_) async => File(''),
         );
         when(
-          () => shorebirdFlutter.getVersionAndRevision(),
-        ).thenAnswer((_) async => flutterVersionAndRevision);
-        when(
           () => shorebirdAndroidArtifacts.findAab(
             project: any(named: 'project'),
             flavor: any(named: 'flavor'),
@@ -274,74 +275,9 @@ To change the version of this release, change your app's version in your pubspec
         ).thenReturn(aabFile);
       });
 
-      group('when aab build fails', () {
+      group('when platform was specified via arg results rest', () {
         setUp(() {
-          when(
-            () => artifactBuilder.buildAppBundle(
-              flavor: any(named: 'flavor'),
-              target: any(named: 'target'),
-              targetPlatforms: any(named: 'targetPlatforms'),
-              args: any(named: 'args'),
-              buildProgress: any(named: 'buildProgress'),
-            ),
-          ).thenThrow(ArtifactBuildException('Uh oh'));
-        });
-
-        test('logs error and exits with code 70', () async {
-          await expectLater(
-            () => runWithOverrides(androidReleaser.buildReleaseArtifacts),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(() => progress.fail('Uh oh')).called(1);
-        });
-      });
-
-      group('when building apk', () {
-        setUp(() {
-          when(() => argResults['artifact']).thenReturn('apk');
-        });
-
-        group('when apk build fails', () {
-          setUp(() {
-            when(
-              () => artifactBuilder.buildApk(
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                targetPlatforms: any(named: 'targetPlatforms'),
-                args: any(named: 'args'),
-              ),
-            ).thenThrow(ArtifactBuildException('Uh oh'));
-          });
-
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(androidReleaser.buildReleaseArtifacts),
-              exitsWithCode(ExitCode.software),
-            );
-            verify(() => progress.fail('Uh oh')).called(1);
-          });
-        });
-      });
-
-      group('when the build succeeds', () {
-        group('when platform was specified via arg results rest', () {
-          setUp(() {
-            when(() => argResults.rest).thenReturn(['android', '--verbose']);
-          });
-
-          test('returns the path to the aab', () async {
-            final result = await runWithOverrides(
-              () => androidReleaser.buildReleaseArtifacts(),
-            );
-            expect(result, aabFile);
-            verify(
-              () => artifactBuilder.buildAppBundle(
-                targetPlatforms: Arch.values,
-                args: ['--verbose'],
-                buildProgress: any(named: 'buildProgress'),
-              ),
-            ).called(1);
-          });
+          when(() => argResults.rest).thenReturn(['android', '--verbose']);
         });
 
         test('returns the path to the aab', () async {
@@ -352,24 +288,57 @@ To change the version of this release, change your app's version in your pubspec
           verify(
             () => artifactBuilder.buildAppBundle(
               targetPlatforms: Arch.values,
-              args: [],
+              args: ['--verbose'],
               buildProgress: any(named: 'buildProgress'),
             ),
           ).called(1);
         });
+      });
 
-        test('does not built apk by default', () async {
+      test('returns the path to the aab', () async {
+        final result = await runWithOverrides(
+          () => androidReleaser.buildReleaseArtifacts(),
+        );
+        expect(result, aabFile);
+        verify(
+          () => artifactBuilder.buildAppBundle(
+            targetPlatforms: Arch.values,
+            args: [],
+            buildProgress: any(named: 'buildProgress'),
+          ),
+        ).called(1);
+      });
+
+      test('does not built apk by default', () async {
+        await runWithOverrides(
+          () => androidReleaser.buildReleaseArtifacts(),
+        );
+        verifyNever(
+          () => artifactBuilder.buildApk(
+            flavor: any(named: 'flavor'),
+            target: any(named: 'target'),
+            targetPlatforms: any(named: 'targetPlatforms'),
+            args: any(named: 'args'),
+          ),
+        );
+      });
+
+      group('when apk is requested', () {
+        setUp(() {
+          when(() => argResults['artifact']).thenReturn('apk');
+        });
+
+        test('builds apk', () async {
           await runWithOverrides(
-            () => androidReleaser.buildReleaseArtifacts(),
+            () => androidReleaser.buildReleaseArtifacts(progress: progress),
           );
-          verifyNever(
+          verify(() => progress.update('Building APK')).called(1);
+          verify(
             () => artifactBuilder.buildApk(
-              flavor: any(named: 'flavor'),
-              target: any(named: 'target'),
-              targetPlatforms: any(named: 'targetPlatforms'),
-              args: any(named: 'args'),
+              targetPlatforms: Arch.values,
+              args: [],
             ),
-          );
+          ).called(1);
         });
       });
 

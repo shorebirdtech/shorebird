@@ -122,6 +122,12 @@ void main() {
         });
       });
 
+      group('artifactDisplayName', () {
+        test('has expected value', () {
+          expect(iosFrameworkReleaser.artifactDisplayName, 'iOS framework');
+        });
+      });
+
       group('assertArgsAreValid', () {
         group('when split-per-abi is true', () {
           setUp(() {
@@ -261,8 +267,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       });
 
       group('buildReleaseArtifacts', () {
-        const flutterVersionAndRevision = '3.10.6 (83305b5088)';
-
         void setUpProjectRootArtifacts() {
           // Create an xcframework in the release directory to simulate running
           // this command a subsequent time.
@@ -299,50 +303,34 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               ),
             ),
           );
-          when(
-            () => shorebirdFlutter.getVersionAndRevision(),
-          ).thenAnswer((_) async => flutterVersionAndRevision);
 
           setUpProjectRootArtifacts();
         });
 
-        group('when build succeeds', () {
-          group('when stale build/ios/shorebird directory exists', () {
-            late Directory shorebirdSupplementDir;
+        group('when stale build/ios/shorebird directory exists', () {
+          late Directory shorebirdSupplementDir;
 
-            setUp(() {
-              shorebirdSupplementDir = Directory(
-                p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
-              )..createSync(recursive: true);
-              when(
-                () => artifactManager.getIosReleaseSupplementDirectory(),
-              ).thenReturn(shorebirdSupplementDir);
-            });
-
-            test('deletes the directory', () async {
-              expect(shorebirdSupplementDir.existsSync(), isTrue);
-              await runWithOverrides(
-                iosFrameworkReleaser.buildReleaseArtifacts,
-              );
-              expect(shorebirdSupplementDir.existsSync(), isFalse);
-            });
+          setUp(() {
+            shorebirdSupplementDir = Directory(
+              p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
+            )..createSync(recursive: true);
+            when(
+              () => artifactManager.getIosReleaseSupplementDirectory(),
+            ).thenReturn(shorebirdSupplementDir);
           });
 
-          group('when platform was specified via arg results rest', () {
-            setUp(() {
-              when(() => argResults.rest).thenReturn(['ios', '--verbose']);
-            });
+          test('deletes the directory', () async {
+            expect(shorebirdSupplementDir.existsSync(), isTrue);
+            await runWithOverrides(
+              iosFrameworkReleaser.buildReleaseArtifacts,
+            );
+            expect(shorebirdSupplementDir.existsSync(), isFalse);
+          });
+        });
 
-            test('produces xcframework in release directory', () async {
-              final xcframework = await runWithOverrides(
-                iosFrameworkReleaser.buildReleaseArtifacts,
-              );
-
-              expect(xcframework.path, p.join(projectRoot.path, 'release'));
-              verify(
-                () => artifactBuilder.buildIosFramework(args: ['--verbose']),
-              ).called(1);
-            });
+        group('when platform was specified via arg results rest', () {
+          setUp(() {
+            when(() => argResults.rest).thenReturn(['ios', '--verbose']);
           });
 
           test('produces xcframework in release directory', () async {
@@ -352,31 +340,20 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
             expect(xcframework.path, p.join(projectRoot.path, 'release'));
             verify(
-              () => artifactBuilder.buildIosFramework(args: []),
+              () => artifactBuilder.buildIosFramework(args: ['--verbose']),
             ).called(1);
           });
         });
 
-        group('when build fails', () {
-          setUp(() {
-            when(
-              () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
-            ).thenThrow(Exception('build failed'));
-          });
+        test('produces xcframework in release directory', () async {
+          final xcframework = await runWithOverrides(
+            iosFrameworkReleaser.buildReleaseArtifacts,
+          );
 
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(
-                iosFrameworkReleaser.buildReleaseArtifacts,
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-            verify(
-              () => progress.fail(
-                'Failed to build iOS framework: Exception: build failed',
-              ),
-            ).called(1);
-          });
+          expect(xcframework.path, p.join(projectRoot.path, 'release'));
+          verify(
+            () => artifactBuilder.buildIosFramework(args: []),
+          ).called(1);
         });
       });
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:shorebird_cli/src/logging/detail_progress.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -39,6 +40,10 @@ abstract class Releaser {
   /// The root directory of the current project.
   Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;
 
+  /// The human-readable description of the release artifact being built (e.g.,
+  /// "Android app", "iOS app").
+  String get artifactDisplayName;
+
   /// Asserts that the command can be run.
   Future<void> assertPreconditions();
 
@@ -47,7 +52,11 @@ abstract class Releaser {
 
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
-  Future<FileSystemEntity> buildReleaseArtifacts();
+  ///
+  /// [progress], if provided, will be updated with the progress of the build.
+  /// It will not be completed or failed—that is the responsibility of the
+  /// caller.
+  Future<FileSystemEntity> buildReleaseArtifacts({DetailProgress? progress});
 
   /// Uploads the release artifacts to the CodePush server.
   Future<void> uploadReleaseArtifacts({

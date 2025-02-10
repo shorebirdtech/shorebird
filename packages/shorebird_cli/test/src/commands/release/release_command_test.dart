@@ -30,6 +30,7 @@ void main() {
     const flutterVersion = '3.22.0';
     const releaseVersion = '1.2.3+1';
     const postReleaseInstructions = 'Make a patch!';
+    const artifactDisplayName = 'Amiga app';
     const shorebirdYaml = ShorebirdYaml(appId: appId);
     final appMetadata = AppMetadata(
       appId: appId,
@@ -134,6 +135,7 @@ void main() {
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => logger.confirm(any())).thenReturn(true);
 
+      when(() => releaser.artifactDisplayName).thenReturn(artifactDisplayName);
       when(() => releaser.assertPreconditions()).thenAnswer((_) async => {});
       when(() => releaser.assertArgsAreValid()).thenAnswer((_) async => {});
       when(
@@ -261,7 +263,13 @@ void main() {
         () => shorebirdValidator.validateFlavors(flavorArg: null),
         cache.updateAll,
         () => codePushClientWrapper.getApp(appId: appId),
+        () => logger.progress(
+              'Building $artifactDisplayName with Flutter $flutterRevision',
+            ),
         releaser.buildReleaseArtifacts,
+        () => progress.complete(
+              'Building $artifactDisplayName with Flutter $flutterRevision',
+            ),
         () => releaser.getReleaseVersion(
               releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
             ),
@@ -283,6 +291,26 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
 ''',
             ),
       ]);
+    });
+
+    group('when build fails', () {
+      setUp(() {
+        when(
+          () => releaser.buildReleaseArtifacts(),
+        ).thenThrow(Exception('oops'));
+      });
+
+      test('exits with code 70', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+        verify(
+          () => progress.fail(
+            'Failed to build release artifacts: Exception: oops',
+          ),
+        ).called(1);
+      });
     });
 
     group('when dry-run is specified', () {
@@ -361,7 +389,13 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
           () => shorebirdValidator.validateFlavors(flavorArg: flavor),
           cache.updateAll,
           () => codePushClientWrapper.getApp(appId: appId),
+          () => logger.progress(
+                'Building $artifactDisplayName with Flutter $flutterRevision',
+              ),
           releaser.buildReleaseArtifacts,
+          () => progress.complete(
+                'Building $artifactDisplayName with Flutter $flutterRevision',
+              ),
           () => releaser.getReleaseVersion(
                 releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
               ),

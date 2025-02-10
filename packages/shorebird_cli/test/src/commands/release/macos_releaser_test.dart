@@ -102,6 +102,12 @@ void main() {
         });
       });
 
+      group('artifactDisplayName', () {
+        test('has expected value', () {
+          expect(releaser.artifactDisplayName, 'macOS app');
+        });
+      });
+
       group('assertPreconditions', () {
         final flutterVersion = Version(3, 0, 0);
 
@@ -347,62 +353,34 @@ To change the version of this release, change your app's version in your pubspec
           });
         });
 
-        group('when build fails', () {
+        group('when platform was specified via arg results rest', () {
           setUp(() {
-            when(
-              () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: any(named: 'args'),
-                buildProgress: any(named: 'buildProgress'),
-              ),
-            ).thenThrow(ArtifactBuildException('Failed to build'));
+            when(() => argResults.rest).thenReturn(['macos', '--verbose']);
           });
 
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(releaser.buildReleaseArtifacts),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(
-              () => progress.fail('Failed to build'),
-            ).called(1);
-          });
-        });
-
-        group('when build succeeds', () {
-          group('when platform was specified via arg results rest', () {
-            setUp(() {
-              when(() => argResults.rest).thenReturn(['macos', '--verbose']);
-            });
-
-            test('verifies artifacts exist and returns xcarchive path',
-                () async {
-              expect(
-                await runWithOverrides(releaser.buildReleaseArtifacts),
-                equals(appDirectory),
-              );
-
-              verify(() => artifactManager.getMacOSAppDirectory()).called(1);
-              verify(
-                () => artifactBuilder.buildMacos(
-                  args: ['--verbose'],
-                  buildProgress: any(named: 'buildProgress'),
-                ),
-              ).called(1);
-            });
-          });
-
-          test('verifies artifacts exist and returns app path', () async {
+          test('verifies artifacts exist and returns xcarchive path', () async {
             expect(
               await runWithOverrides(releaser.buildReleaseArtifacts),
               equals(appDirectory),
             );
 
             verify(() => artifactManager.getMacOSAppDirectory()).called(1);
+            verify(
+              () => artifactBuilder.buildMacos(
+                args: ['--verbose'],
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).called(1);
           });
+        });
+
+        test('verifies artifacts exist and returns app path', () async {
+          expect(
+            await runWithOverrides(releaser.buildReleaseArtifacts),
+            equals(appDirectory),
+          );
+
+          verify(() => artifactManager.getMacOSAppDirectory()).called(1);
         });
 
         group('when app not found after build', () {

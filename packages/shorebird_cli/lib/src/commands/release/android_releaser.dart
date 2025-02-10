@@ -12,7 +12,6 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -30,6 +29,9 @@ class AndroidReleaser extends Releaser {
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
+
+  @override
+  String get artifactDisplayName => 'Android app bundle';
 
   /// The architectures to build for.
   Set<Arch> get architectures => (argResults['target-platform'] as List<String>)
@@ -88,7 +90,9 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts() async {
+  Future<FileSystemEntity> buildReleaseArtifacts({
+    DetailProgress? progress,
+  }) async {
     final architectures = (argResults['target-platform'] as List<String>)
         .map(
           (platform) => AndroidArch.availableAndroidArchs
@@ -96,48 +100,25 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         )
         .toSet();
 
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-
-    final buildAppBundleProgress = logger.detailProgress(
-      'Building app bundle with Flutter $flutterVersionString',
+    final base64PublicKey = argResults.encodedPublicKey;
+    final aab = await artifactBuilder.buildAppBundle(
+      flavor: flavor,
+      target: target,
+      targetPlatforms: architectures,
+      args: argResults.forwardedArgs,
+      base64PublicKey: base64PublicKey,
+      buildProgress: progress,
     );
 
-    final File aab;
-
-    final base64PublicKey = argResults.encodedPublicKey;
-
-    try {
-      aab = await artifactBuilder.buildAppBundle(
+    if (generateApk) {
+      progress?.update('Building APK');
+      await artifactBuilder.buildApk(
         flavor: flavor,
         target: target,
         targetPlatforms: architectures,
         args: argResults.forwardedArgs,
         base64PublicKey: base64PublicKey,
-        buildProgress: buildAppBundleProgress,
       );
-    } on ArtifactBuildException catch (e) {
-      buildAppBundleProgress.fail(e.message);
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    buildAppBundleProgress.complete();
-
-    if (generateApk) {
-      final buildApkProgress =
-          logger.progress('Building APK with Flutter $flutterVersionString');
-      try {
-        await artifactBuilder.buildApk(
-          flavor: flavor,
-          target: target,
-          targetPlatforms: architectures,
-          args: argResults.forwardedArgs,
-          base64PublicKey: base64PublicKey,
-        );
-      } on ArtifactBuildException catch (e) {
-        buildApkProgress.fail(e.message);
-        throw ProcessExit(ExitCode.software.code);
-      }
-      buildApkProgress.complete();
     }
 
     return aab;
