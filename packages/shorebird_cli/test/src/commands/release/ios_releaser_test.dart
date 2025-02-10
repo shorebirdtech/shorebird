@@ -396,76 +396,28 @@ To change the version of this release, change your app's version in your pubspec
           });
         });
 
-        group('when build fails', () {
+        group('when stale build/ios/shorebird directory exists', () {
+          late Directory shorebirdSupplementDir;
+
           setUp(() {
+            shorebirdSupplementDir = Directory(
+              p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
+            )..createSync(recursive: true);
             when(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: any(named: 'args'),
-                buildProgress: any(named: 'buildProgress'),
-              ),
-            ).thenThrow(ArtifactBuildException('Failed to build'));
+              () => artifactManager.getIosReleaseSupplementDirectory(),
+            ).thenReturn(shorebirdSupplementDir);
           });
 
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(
-              () => progress.fail('Failed to build'),
-            ).called(1);
+          test('deletes the directory', () async {
+            expect(shorebirdSupplementDir.existsSync(), isTrue);
+            await runWithOverrides(iosReleaser.buildReleaseArtifacts);
+            expect(shorebirdSupplementDir.existsSync(), isFalse);
           });
         });
 
-        group('when build succeeds', () {
-          group('when stale build/ios/shorebird directory exists', () {
-            late Directory shorebirdSupplementDir;
-
-            setUp(() {
-              shorebirdSupplementDir = Directory(
-                p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
-              )..createSync(recursive: true);
-              when(
-                () => artifactManager.getIosReleaseSupplementDirectory(),
-              ).thenReturn(shorebirdSupplementDir);
-            });
-
-            test('deletes the directory', () async {
-              expect(shorebirdSupplementDir.existsSync(), isTrue);
-              await runWithOverrides(iosReleaser.buildReleaseArtifacts);
-              expect(shorebirdSupplementDir.existsSync(), isFalse);
-            });
-          });
-
-          group('when platform was specified via arg results rest', () {
-            setUp(() {
-              when(() => argResults.rest).thenReturn(['ios', '--verbose']);
-            });
-
-            test('verifies artifacts exist and returns xcarchive path',
-                () async {
-              expect(
-                await runWithOverrides(iosReleaser.buildReleaseArtifacts),
-                equals(xcarchiveDirectory),
-              );
-
-              verify(() => artifactManager.getXcarchiveDirectory()).called(1);
-              verify(
-                () => artifactManager.getIosAppDirectory(
-                  xcarchiveDirectory: xcarchiveDirectory,
-                ),
-              ).called(1);
-              verify(
-                () => artifactBuilder.buildIpa(
-                  args: ['--verbose'],
-                  buildProgress: any(named: 'buildProgress'),
-                ),
-              ).called(1);
-            });
+        group('when platform was specified via arg results rest', () {
+          setUp(() {
+            when(() => argResults.rest).thenReturn(['ios', '--verbose']);
           });
 
           test('verifies artifacts exist and returns xcarchive path', () async {
@@ -480,7 +432,27 @@ To change the version of this release, change your app's version in your pubspec
                 xcarchiveDirectory: xcarchiveDirectory,
               ),
             ).called(1);
+            verify(
+              () => artifactBuilder.buildIpa(
+                args: ['--verbose'],
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).called(1);
           });
+        });
+
+        test('verifies artifacts exist and returns xcarchive path', () async {
+          expect(
+            await runWithOverrides(iosReleaser.buildReleaseArtifacts),
+            equals(xcarchiveDirectory),
+          );
+
+          verify(() => artifactManager.getXcarchiveDirectory()).called(1);
+          verify(
+            () => artifactManager.getIosAppDirectory(
+              xcarchiveDirectory: xcarchiveDirectory,
+            ),
+          ).called(1);
         });
 
         group('when xcarchive not found after build', () {

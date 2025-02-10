@@ -45,6 +45,9 @@ class IosFrameworkReleaser extends Releaser {
   bool get requiresReleaseVersionArg => true;
 
   @override
+  String get artifactDisplayName => 'iOS framework';
+
+  @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
 
   @override
@@ -84,9 +87,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-
+  Future<FileSystemEntity> buildReleaseArtifacts({
+    Progress? progress,
+  }) async {
     // Delete the Shorebird supplement directory if it exists.
     // This is to ensure that we don't accidentally upload stale artifacts
     // when building with older versions of Flutter.
@@ -96,18 +99,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
-    final buildProgress = logger.progress(
-      'Building iOS framework with Flutter $flutterVersionString',
-    );
-
-    try {
-      await artifactBuilder.buildIosFramework(args: argResults.forwardedArgs);
-    } on Exception catch (error) {
-      buildProgress.fail('Failed to build iOS framework: $error');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    buildProgress.complete();
+    await artifactBuilder.buildIosFramework(args: argResults.forwardedArgs);
 
     // Copy release xcframework to a new directory to avoid overwriting with
     // subsequent patch builds.

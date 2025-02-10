@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
@@ -270,7 +271,20 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       () async {
         await cache.updateAll();
 
-        final releaseArtifact = await releaser.buildReleaseArtifacts();
+        final flutterVersionString =
+            await shorebirdFlutter.getVersionAndRevision();
+        final buildProgress = logger.detailProgress(
+          '''Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString''',
+        );
+        final FileSystemEntity releaseArtifact;
+        try {
+          releaseArtifact = await releaser.buildReleaseArtifacts();
+          buildProgress.complete();
+        } on Exception catch (e) {
+          buildProgress.fail('Failed to build release artifacts: $e');
+          throw ProcessExit(ExitCode.software.code);
+        }
+
         final releaseVersion = await releaser.getReleaseVersion(
           releaseArtifactRoot: releaseArtifact,
         );

@@ -272,48 +272,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     group('buildReleaseArtifacts', () {
       setUp(() {
         when(
-          () => shorebirdFlutter.getVersionAndRevision(),
-        ).thenAnswer((_) async => '3.27.1');
+          () => artifactBuilder.buildWindowsApp(
+            flavor: any(named: 'flavor'),
+            target: any(named: 'target'),
+            args: any(named: 'args'),
+            buildProgress: any(named: 'buildProgress'),
+          ),
+        ).thenAnswer((_) async => projectRoot);
       });
 
-      group('when builder throws exception', () {
-        setUp(() {
-          when(
-            () => artifactBuilder.buildWindowsApp(
-              flavor: any(named: 'flavor'),
-              target: any(named: 'target'),
-              args: any(named: 'args'),
-              buildProgress: any(named: 'buildProgress'),
-            ),
-          ).thenThrow(Exception('oh no'));
-        });
-
-        test('fails progress, exits', () async {
-          await expectLater(
-            () => runWithOverrides(releaser.buildReleaseArtifacts),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(() => progress.fail('Exception: oh no')).called(1);
-        });
-      });
-
-      group('when build succeeds', () {
-        setUp(() {
-          when(
-            () => artifactBuilder.buildWindowsApp(
-              flavor: any(named: 'flavor'),
-              target: any(named: 'target'),
-              args: any(named: 'args'),
-              buildProgress: any(named: 'buildProgress'),
-            ),
-          ).thenAnswer((_) async => projectRoot);
-        });
-
-        test('returns path to release directory', () async {
-          final releaseDir =
-              await runWithOverrides(releaser.buildReleaseArtifacts);
-          expect(releaseDir, projectRoot);
-        });
+      test('returns path to release directory', () async {
+        final releaseDir =
+            await runWithOverrides(releaser.buildReleaseArtifacts);
+        expect(releaseDir, projectRoot);
       });
 
       group('when public key is passed as an arg', () {

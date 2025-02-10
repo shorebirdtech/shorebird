@@ -42,6 +42,9 @@ class MacosReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.macos;
 
   @override
+  String get artifactDisplayName => 'macOS app';
+
+  @override
   Future<void> assertArgsAreValid() async {
     if (argResults.wasParsed('release-version')) {
       logger.err(
@@ -94,7 +97,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts() async {
+  Future<FileSystemEntity> buildReleaseArtifacts({
+    DetailProgress? progress,
+  }) async {
     if (!codesign) {
       logger
         ..info(
@@ -105,25 +110,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         );
     }
 
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-    final buildProgress = logger.detailProgress(
-      'Building app bundle with Flutter $flutterVersionString',
+    await artifactBuilder.buildMacos(
+      codesign: codesign,
+      flavor: flavor,
+      target: target,
+      args: argResults.forwardedArgs,
+      base64PublicKey: argResults.encodedPublicKey,
+      buildProgress: progress,
     );
-
-    try {
-      await artifactBuilder.buildMacos(
-        codesign: codesign,
-        flavor: flavor,
-        target: target,
-        args: argResults.forwardedArgs,
-        base64PublicKey: argResults.encodedPublicKey,
-        buildProgress: buildProgress,
-      );
-      buildProgress.complete();
-    } on ArtifactBuildException catch (error) {
-      buildProgress.fail(error.message);
-      throw ProcessExit(ExitCode.software.code);
-    }
 
     final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);
     if (appDirectory == null) {

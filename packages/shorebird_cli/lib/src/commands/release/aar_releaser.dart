@@ -13,7 +13,6 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -45,6 +44,9 @@ class AarReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
+  String get artifactDisplayName => 'Android archive';
+
+  @override
   bool get requiresReleaseVersionArg => true;
 
   @override
@@ -73,24 +75,13 @@ class AarReleaser extends Releaser {
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-    final buildAppBundleProgress =
-        logger.progress('Building aar with Flutter $flutterVersionString');
-
-    try {
-      await artifactBuilder.buildAar(
-        buildNumber: buildNumber,
-        targetPlatforms: architectures,
-        args: argResults.forwardedArgs,
-      );
-    } on Exception catch (e) {
-      logger.err('Failed to build aar: $e');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    buildAppBundleProgress.complete(
-      'Built aar with Flutter $flutterVersionString',
+  Future<FileSystemEntity> buildReleaseArtifacts({
+    DetailProgress? progress,
+  }) async {
+    await artifactBuilder.buildAar(
+      buildNumber: buildNumber,
+      targetPlatforms: architectures,
+      args: argResults.forwardedArgs,
     );
 
     // Copy release AAR to a new directory to avoid overwriting with

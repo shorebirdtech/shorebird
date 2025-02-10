@@ -16,7 +16,6 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -39,7 +38,6 @@ void main() {
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
-    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late AarReleaser aarReleaser;
@@ -55,7 +53,6 @@ void main() {
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
           shorebirdAndroidArtifactsRef
               .overrideWith(() => shorebirdAndroidArtifacts),
@@ -78,7 +75,6 @@ void main() {
       logger = MockShorebirdLogger();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
-      shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
@@ -220,8 +216,6 @@ void main() {
     });
 
     group('buildReleaseArtifacts', () {
-      const flutterVersionAndRevision = '3.10.6 (83305b5088)';
-
       void setUpProjectRootArtifacts() {
         final aarDir = p.join(
           projectRoot.path,
@@ -260,9 +254,6 @@ void main() {
         ).thenAnswer(
           (_) async => File(''),
         );
-        when(
-          () => shorebirdFlutter.getVersionAndRevision(),
-        ).thenAnswer((_) async => flutterVersionAndRevision);
 
         setUpProjectRootArtifacts();
       });
@@ -301,28 +292,6 @@ void main() {
               targetPlatforms: Arch.values.toSet(),
               args: [],
             ),
-          ).called(1);
-        });
-      });
-
-      group('when build fails', () {
-        setUp(() {
-          when(
-            () => artifactBuilder.buildAar(
-              buildNumber: any(named: 'buildNumber'),
-              targetPlatforms: any(named: 'targetPlatforms'),
-              args: any(named: 'args'),
-            ),
-          ).thenThrow(Exception('build failed'));
-        });
-
-        test('logs error and exits with code 70', () async {
-          await expectLater(
-            () => runWithOverrides(() => aarReleaser.buildReleaseArtifacts()),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(
-            () => logger.err('Failed to build aar: Exception: build failed'),
           ).called(1);
         });
       });

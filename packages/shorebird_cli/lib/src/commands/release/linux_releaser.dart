@@ -29,6 +29,12 @@ class LinuxReleaser extends Releaser {
   });
 
   @override
+  ReleaseType get releaseType => ReleaseType.linux;
+
+  @override
+  String get artifactDisplayName => 'Linux app';
+
+  @override
   Future<void> assertArgsAreValid() async {
     if (argResults.wasParsed('release-version')) {
       logger.err(
@@ -69,25 +75,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-    final buildAppBundleProgress = logger.progress(
-      'Building Linux application with Flutter $flutterVersionString',
-    );
-
-    final base64PublicKey = argResults.encodedPublicKey;
-    try {
-      await artifactBuilder.buildLinuxApp(
-        base64PublicKey: base64PublicKey,
-      );
-    } on Exception catch (e) {
-      logger.err('Failed to build Linux application: $e');
-      buildAppBundleProgress.fail('$e');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    buildAppBundleProgress.complete(
-      'Built Linux application with Flutter $flutterVersionString',
+  Future<FileSystemEntity> buildReleaseArtifacts({
+    DetailProgress? progress,
+  }) async {
+    await artifactBuilder.buildLinuxApp(
+      base64PublicKey: argResults.encodedPublicKey,
     );
 
     return artifactManager.linuxBundleDirectory;
@@ -106,9 +98,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
 Linux release created at ${artifactManager.linuxBundleDirectory.path}.
 ''';
-
-  @override
-  ReleaseType get releaseType => ReleaseType.linux;
 
   @override
   Future<void> uploadReleaseArtifacts({
