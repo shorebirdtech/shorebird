@@ -94,8 +94,8 @@ class ArtifactBuildException implements Exception {
 
   String? _recommendationFromOutput(List<String> output) {
     for (final entry in _regexpToRecommendations) {
-      final regexpes = entry.$1;
-      for (final regexp in regexpes) {
+      final regexes = entry.$1;
+      for (final regexp in regexes) {
         if (output.any(regexp.hasMatch)) {
           return entry.$2;
         }
