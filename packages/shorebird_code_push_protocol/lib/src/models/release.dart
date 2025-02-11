@@ -60,6 +60,8 @@ class Release {
   /// The date and time the release was last updated.
   final DateTime updatedAt;
 
-  /// The notes associated with the release.
+  /// The notes associated with the release, if any.
+  ///
+  /// This value is freeform text with no assumptions about content or format.
   final String? notes;
 }

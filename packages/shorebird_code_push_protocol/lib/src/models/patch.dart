@@ -29,6 +29,8 @@ class Patch {
   /// A larger number equates to a newer patch.
   final int number;
 
-  /// The notes associated with the patch.
+  /// The notes associated with the patch, if any.
+  ///
+  /// This value is freeform text with no assumptions about content or format.
   final String? notes;
 }
