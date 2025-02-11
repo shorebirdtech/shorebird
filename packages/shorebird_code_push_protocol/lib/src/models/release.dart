@@ -20,6 +20,7 @@ class Release {
     required this.platformStatuses,
     required this.createdAt,
     required this.updatedAt,
+    this.notes,
   });
 
   /// Converts a `Map<String, dynamic>` to a [Release]
@@ -58,4 +59,9 @@ class Release {
 
   /// The date and time the release was last updated.
   final DateTime updatedAt;
+
+  /// The notes associated with the release, if any.
+  ///
+  /// This value is freeform text with no assumptions about content or format.
+  final String? notes;
 }

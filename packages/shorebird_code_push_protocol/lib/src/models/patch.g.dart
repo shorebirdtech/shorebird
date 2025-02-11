@@ -15,6 +15,7 @@ Patch _$PatchFromJson(Map<String, dynamic> json) => $checkedCreate(
         final val = Patch(
           id: $checkedConvert('id', (v) => (v as num).toInt()),
           number: $checkedConvert('number', (v) => (v as num).toInt()),
+          notes: $checkedConvert('notes', (v) => v as String?),
         );
         return val;
       },
@@ -23,4 +24,5 @@ Patch _$PatchFromJson(Map<String, dynamic> json) => $checkedCreate(
 Map<String, dynamic> _$PatchToJson(Patch instance) => <String, dynamic>{
       'id': instance.id,
       'number': instance.number,
+      'notes': instance.notes,
     };

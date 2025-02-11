@@ -10,7 +10,11 @@ part 'patch.g.dart';
 @JsonSerializable()
 class Patch {
   /// {@macro patch}
-  const Patch({required this.id, required this.number});
+  const Patch({
+    required this.id,
+    required this.number,
+    this.notes,
+  });
 
   /// Converts a `Map<String, dynamic>` to a [Patch]
   factory Patch.fromJson(Map<String, dynamic> json) => _$PatchFromJson(json);
@@ -24,4 +28,9 @@ class Patch {
   /// The patch number.
   /// A larger number equates to a newer patch.
   final int number;
+
+  /// The notes associated with the patch, if any.
+  ///
+  /// This value is freeform text with no assumptions about content or format.
+  final String? notes;
 }
