@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 void main() {
   group(UpdatePatchRequest, () {
     test('can be (de)serialized', () {
-      var request = UpdatePatchRequest(
+      const request = UpdatePatchRequest(
         notes: 'notes',
       );
       expect(
