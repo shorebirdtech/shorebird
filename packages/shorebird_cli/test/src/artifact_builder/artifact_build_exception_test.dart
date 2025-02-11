@@ -4,8 +4,6 @@ import 'package:test/test.dart';
 
 void main() {
   group(ArtifactBuildException, () {
-    setUp(() {});
-
     group('fromProcessResult', () {
       test('translates stdout and stderr to lists of strings', () {
         const buildProcessResult = ShorebirdProcessResult(
