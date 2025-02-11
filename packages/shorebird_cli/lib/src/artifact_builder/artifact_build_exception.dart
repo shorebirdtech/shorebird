@@ -54,14 +54,22 @@ class ArtifactBuildException implements Exception {
   late final String? fixRecommendation;
 
   List<String> _errorMessageFromOutput(List<String> output) {
-    final failureHeader =
-        RegExp(r'.*FAILURE: Build failed with an exception\..*');
-    // This precedes a stack trace
-    final stackTraceHeader = RegExp(r'.*\* Exception is:.*');
+    final failureHeaders = [
+      RegExp(r'.*FAILURE: Build failed with an exception\..*'),
+      RegExp(r'.*Error \(Xcode\).*'),
+    ];
 
-    // This precedes recommendations that are not applicable to us (e.g., "Get
-    // more help at https://help.gradle.org.")
-    final suggestionsHeader = RegExp(r'.*\* Try:.*');
+    final failureFooters = [
+      // This precedes a stack trace
+      RegExp(r'.*\* Exception is:.*'),
+
+      // This precedes recommendations that are not applicable to us (e.g., "Get
+      // more help at https://help.gradle.org.")
+      RegExp(r'.*\* Try:.*'),
+
+      // This precedes a stacktrace in the case of an Xcode error
+      RegExp('Encountered error while archiving for device'),
+    ];
 
     String trimLine(String line) {
       return line.trim().replaceAll(RegExp(r'^\[.*\]'), '');
@@ -70,10 +78,9 @@ class ArtifactBuildException implements Exception {
     var inErrorOutput = false;
     final ret = <String>[];
     for (final line in output) {
-      if (failureHeader.hasMatch(line)) {
+      if (failureHeaders.any((r) => r.hasMatch(line))) {
         inErrorOutput = true;
-      } else if (stackTraceHeader.hasMatch(line) ||
-          suggestionsHeader.hasMatch(line)) {
+      } else if (failureFooters.any((r) => r.hasMatch(line))) {
         inErrorOutput = false;
       }
 
@@ -93,6 +100,8 @@ class ArtifactBuildException implements Exception {
       [RegExp("Execution failed for task ':app:signReleaseBundle'")],
       _missingKeystoreFixSuggestion,
     ),
+    // Note: Xcode archive failures include suggestions from the flutter tool,
+    // so we don't need to duplicate them here.
   };
 
   String? _recommendationFromOutput(List<String> output) {
