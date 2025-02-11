@@ -12,6 +12,7 @@ void main() {
         flutterVersion: '3.22.0',
         displayName: 'v1.0.0',
         platformStatuses: {ReleasePlatform.android: ReleaseStatus.active},
+        notes: 'some notes',
         createdAt: DateTime(2023),
         updatedAt: DateTime(2023),
       );

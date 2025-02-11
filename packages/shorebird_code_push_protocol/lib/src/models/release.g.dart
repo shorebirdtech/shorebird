@@ -31,6 +31,7 @@ Release _$ReleaseFromJson(Map<String, dynamic> json) => $checkedCreate(
               $checkedConvert('created_at', (v) => DateTime.parse(v as String)),
           updatedAt:
               $checkedConvert('updated_at', (v) => DateTime.parse(v as String)),
+          notes: $checkedConvert('notes', (v) => v as String?),
         );
         return val;
       },
@@ -56,6 +57,7 @@ Map<String, dynamic> _$ReleaseToJson(Release instance) => <String, dynamic>{
           MapEntry(_$ReleasePlatformEnumMap[k]!, _$ReleaseStatusEnumMap[e]!)),
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
+      'notes': instance.notes,
     };
 
 const _$ReleaseStatusEnumMap = {
