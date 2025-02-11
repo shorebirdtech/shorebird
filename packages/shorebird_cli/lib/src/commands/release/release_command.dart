@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -288,13 +289,14 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           logger
             ..detail('stdout: ${e.stdout.join(Platform.lineTerminator)}')
             ..detail('stderr: ${e.stderr.join(Platform.lineTerminator)}');
-          if (e.flutterError != null) {
+          if (!e.flutterError.isNullOrEmpty) {
             logger.err(e.flutterError);
           }
-          if (e.fixRecommendation != null) {
+          if (!e.fixRecommendation.isNullOrEmpty) {
             logger.info(e.fixRecommendation);
           }
-          if (e.fixRecommendation == null && e.flutterError == null) {
+          if (e.fixRecommendation.isNullOrEmpty &&
+              e.flutterError.isNullOrEmpty) {
             // If we have no fix recommendation or were unable to parse a
             // flutter error, fall back to printing the raw stderr.
             logger.info(e.stderr.join(Platform.lineTerminator));
