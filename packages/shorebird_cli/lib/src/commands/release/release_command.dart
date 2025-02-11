@@ -4,12 +4,14 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -278,8 +280,29 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         );
         final FileSystemEntity releaseArtifact;
         try {
-          releaseArtifact = await releaser.buildReleaseArtifacts();
+          releaseArtifact = await releaser.buildReleaseArtifacts(
+            progress: buildProgress,
+          );
           buildProgress.complete();
+        } on ArtifactBuildException catch (e) {
+          buildProgress.fail(e.message);
+          logger
+            ..detail('stdout: ${e.stdout.join(Platform.lineTerminator)}')
+            ..detail('stderr: ${e.stderr.join(Platform.lineTerminator)}');
+          if (!e.flutterError.isNullOrEmpty) {
+            logger.err(e.flutterError);
+          }
+          if (!e.fixRecommendation.isNullOrEmpty) {
+            logger.info(e.fixRecommendation);
+          }
+          if (e.fixRecommendation.isNullOrEmpty &&
+              e.flutterError.isNullOrEmpty) {
+            // If we have no fix recommendation or were unable to parse a
+            // flutter error, fall back to printing the raw stderr.
+            logger.info(e.stderr.join(Platform.lineTerminator));
+          }
+
+          throw ProcessExit(ExitCode.software.code);
         } on Exception catch (e) {
           buildProgress.fail('Failed to build release artifacts: $e');
           throw ProcessExit(ExitCode.software.code);
