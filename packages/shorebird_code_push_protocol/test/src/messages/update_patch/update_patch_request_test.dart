@@ -8,7 +8,7 @@ void main() {
         notes: 'notes',
       );
       expect(
-        UpdateReleaseRequest.fromJson(request.toJson()).toJson(),
+        UpdatePatchRequest.fromJson(request.toJson()).toJson(),
         equals(request.toJson()),
       );
     });
