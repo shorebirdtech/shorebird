@@ -357,6 +357,21 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
             verify(() => logger.info('fix it')).called(1);
           });
         });
+
+        group('when neither flutter error nor fix suggestion are provided', () {
+          setUp(() {
+            when(() => exception.flutterError).thenReturn(null);
+            when(() => exception.fixRecommendation).thenReturn(null);
+          });
+
+          test('logs stderr', () async {
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => logger.info('stderr')).called(1);
+          });
+        });
       });
     });
 

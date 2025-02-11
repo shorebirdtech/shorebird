@@ -294,6 +294,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           if (e.fixRecommendation != null) {
             logger.info(e.fixRecommendation);
           }
+          if (e.fixRecommendation == null && e.flutterError == null) {
+            // If we have no fix recommendation or were unable to parse a
+            // flutter error, fall back to printing the raw stderr.
+            logger.info(e.stderr.join(Platform.lineTerminator));
+          }
+
           throw ProcessExit(ExitCode.software.code);
         } on Exception catch (e) {
           buildProgress.fail('Failed to build release artifacts: $e');
