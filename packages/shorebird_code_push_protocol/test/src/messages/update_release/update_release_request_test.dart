@@ -19,6 +19,8 @@ void main() {
       const request = UpdateReleaseRequest(
         platform: ReleasePlatform.ios,
         status: ReleaseStatus.active,
+        // Explicitly passing null to ensure it is not included in the JSON
+        // ignore: avoid_redundant_argument_values
         metadata: null,
       );
       expect(

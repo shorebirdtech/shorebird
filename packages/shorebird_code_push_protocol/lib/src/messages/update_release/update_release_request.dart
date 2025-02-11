@@ -10,9 +10,10 @@ part 'update_release_request.g.dart';
 class UpdateReleaseRequest {
   /// {@macro update_release_request}
   const UpdateReleaseRequest({
-    required this.status,
-    required this.platform,
-    required this.metadata,
+    this.status,
+    this.platform,
+    this.metadata,
+    this.notes,
   });
 
   /// Converts a `Map<String, dynamic>` to a [UpdateReleaseRequest].
@@ -22,13 +23,19 @@ class UpdateReleaseRequest {
   /// Converts a [UpdateReleaseRequest] to a `Map<String, dynamic>`.
   Json toJson() => _$UpdateReleaseRequestToJson(this);
 
-  /// The desired status of the release.
-  final ReleaseStatus status;
+  /// The desired status of the release. If provided, [platform] must also be
+  /// provided If null, the status will not be updated.
+  final ReleaseStatus? status;
 
-  /// The platform of the release.
-  final ReleasePlatform platform;
+  /// The platform of the release. If provided, [status] must also be provided.
+  final ReleasePlatform? platform;
 
   /// Additional information about the command that was run to update the
   /// Release and then environment in which it was run.
   final Json? metadata;
+
+  /// Notes about the release. This is a free-form field that can be used to
+  /// store additional information about the release. If null, the notes will
+  /// not be updated.
+  final String? notes;
 }

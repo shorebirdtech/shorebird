@@ -16,11 +16,12 @@ UpdateReleaseRequest _$UpdateReleaseRequestFromJson(
       ($checkedConvert) {
         final val = UpdateReleaseRequest(
           status: $checkedConvert(
-              'status', (v) => $enumDecode(_$ReleaseStatusEnumMap, v)),
-          platform: $checkedConvert(
-              'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
+              'status', (v) => $enumDecodeNullable(_$ReleaseStatusEnumMap, v)),
+          platform: $checkedConvert('platform',
+              (v) => $enumDecodeNullable(_$ReleasePlatformEnumMap, v)),
           metadata:
               $checkedConvert('metadata', (v) => v as Map<String, dynamic>?),
+          notes: $checkedConvert('notes', (v) => v as String?),
         );
         return val;
       },
@@ -29,9 +30,10 @@ UpdateReleaseRequest _$UpdateReleaseRequestFromJson(
 Map<String, dynamic> _$UpdateReleaseRequestToJson(
         UpdateReleaseRequest instance) =>
     <String, dynamic>{
-      'status': _$ReleaseStatusEnumMap[instance.status]!,
-      'platform': _$ReleasePlatformEnumMap[instance.platform]!,
+      'status': _$ReleaseStatusEnumMap[instance.status],
+      'platform': _$ReleasePlatformEnumMap[instance.platform],
       'metadata': instance.metadata,
+      'notes': instance.notes,
     };
 
 const _$ReleaseStatusEnumMap = {

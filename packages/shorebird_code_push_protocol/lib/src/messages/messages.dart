@@ -15,4 +15,5 @@ export 'get_release_patches/get_release_patches.dart';
 export 'get_releases/get_releases.dart';
 export 'promote_patch/promote_patch.dart';
 export 'update_app_collaborator/update_app_collaborator.dart';
+export 'update_patch/update_patch.dart';
 export 'update_release/update_release.dart';
