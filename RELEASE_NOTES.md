@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.15 (February 12, 2025)
+
+- 🎯 Fix iOS compilation crash due to incorrect object pool detection
+- ℹ Improve error messages for certain recognized issues
+- 📦 Improve handling of archiving failures
+
 ## 1.6.14 (February 7, 2025)
 
 - 🪵 Improved logging for patch downloads and applications.
