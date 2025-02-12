@@ -315,6 +315,8 @@ class Auth {
   void _loadCredentials() {
     final envToken = platform.environment[shorebirdTokenEnvVar];
     if (envToken != null) {
+      logger.info('$shorebirdTokenEnvVar detected');
+
       try {
         _token = CiToken.fromBase64(envToken.trim());
       } on FormatException catch (e) {
@@ -328,6 +330,8 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
           ..detail(e.toString());
         rethrow;
       }
+
+      logger.info('$shorebirdTokenEnvVar successfully parsed');
       return;
     }
 
