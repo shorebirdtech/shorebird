@@ -542,6 +542,9 @@ void main() {
             () async {
           expect(buildAuth, throwsA(isFormatException));
           verify(
+            () => logger.info('$shorebirdTokenEnvVar detected'),
+          ).called(1);
+          verify(
             () => logger.err(
               '''
 Failed to parse CI token from environment. This likely means that your CI token is incorrectly formatted.
@@ -549,6 +552,9 @@ Failed to parse CI token from environment. This likely means that your CI token 
 Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar environment variable, and try again.''',
             ),
           ).called(1);
+          verifyNever(
+            () => logger.info('$shorebirdTokenEnvVar successfully parsed'),
+          );
         });
       });
 
@@ -588,6 +594,10 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
         final client = auth.client;
         expect(client, isA<http.Client>());
         expect(client, isA<AuthenticatedClient>());
+        verify(() => logger.info('$shorebirdTokenEnvVar detected')).called(1);
+        verify(
+          () => logger.info('$shorebirdTokenEnvVar successfully parsed'),
+        ).called(1);
       });
 
       test('returns a plain http client when credentials are not present.',
