@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.16 (February 12, 2025)
+
+- 🩹 Updates package:shorebird_code_push integration to apply rollbacks when
+  checking for patches.
+
 ## 1.6.15 (February 12, 2025)
 
 - 🎯 Fix iOS compilation crash due to incorrect object pool detection
