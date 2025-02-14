@@ -470,8 +470,9 @@ class ArtifactBuilder {
         );
       }
 
-      // TODO(https://github.com/shorebirdtech/shorebird/issues/2855): this is
-      // not treated as an error by Flutter, we should not throw here.
+      // TODO(bryanoltman): this is not treated as an error by Flutter.
+      // We should not throw here, see:
+      // https://github.com/shorebirdtech/shorebird/issues/2855
       if (stderr.contains('Encountered error while creating the IPA')) {
         throw ArtifactBuildException(
           'Failed to build',

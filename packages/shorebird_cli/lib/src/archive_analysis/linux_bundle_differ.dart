@@ -22,7 +22,7 @@ class LinuxBundleDiffer extends ArchiveDiffer {
 
   @override
   bool isNativeFilePath(String filePath) {
-    // TODO: implement isNativeFilePath
+    // TODO(bryanoltman): implement isNativeFilePath
     return false;
   }
 }
