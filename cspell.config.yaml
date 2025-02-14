@@ -69,6 +69,7 @@ words:
   - nserror
   - Oltman
   - orri # Arm64 instruction, Or Register with Immediate
+  - parseable
   - patchability
   - pana
   - pkcs

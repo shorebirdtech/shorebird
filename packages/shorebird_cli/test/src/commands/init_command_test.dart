@@ -299,6 +299,55 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       });
     });
 
+    group('when organization id argument is provided', () {
+      group('when arg is not a parseable int', () {
+        setUp(() {
+          when(() => argResults['organization-id']).thenReturn('not-an-int');
+        });
+
+        test('exits with usage error code', () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err('Invalid organization ID: "not-an-int"'),
+          ).called(1);
+        });
+
+        group('when no organization with matching id exists', () {
+          setUp(() {
+            when(() => argResults['organization-id']).thenReturn('999999');
+          });
+
+          test('exits with usage error code', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err('Organization with ID "999999" not found.'),
+            ).called(1);
+          });
+        });
+
+        group('when organization with matching id exists', () {
+          setUp(() {
+            when(
+              () => argResults['organization-id'],
+            ).thenReturn('$organizationId');
+          });
+
+          test('creates app with provided organization id', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+            verify(
+              () => codePushClientWrapper.createApp(
+                appName: appName,
+                organizationId: organizationId,
+              ),
+            ).called(1);
+          });
+        });
+      });
+    });
+
     group('when user has only one organization', () {
       setUp(() {
         when(
