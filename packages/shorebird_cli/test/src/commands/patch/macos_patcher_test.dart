@@ -323,15 +323,14 @@ void main() {
           const podfileLockContents = 'lock file';
           podfileLockHash =
               sha256.convert(utf8.encode(podfileLockContents)).toString();
-          final podfileLockFile =
-              File(
-                  p.join(
-                    Directory.systemTemp.createTempSync().path,
-                    'Podfile.lock',
-                  ),
-                )
-                ..createSync(recursive: true)
-                ..writeAsStringSync(podfileLockContents);
+          final podfileLockFile = File(
+            p.join(
+              Directory.systemTemp.createTempSync().path,
+              'Podfile.lock',
+            ),
+          )
+            ..createSync(recursive: true)
+            ..writeAsStringSync(podfileLockContents);
 
           when(
             () => shorebirdEnv.macosPodfileLockFile,
@@ -507,45 +506,40 @@ This may indicate that the patch contains native changes, which cannot be applie
         ).thenAnswer((_) async => Version(3, 27, 4));
       });
 
-      group(
-        'when specified flutter version is less than minimum',
-        () {
-          setUp(() {
-            when(
-              () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated: any(
-                  named: 'checkUserIsAuthenticated',
-                ),
-                checkShorebirdInitialized: any(
-                  named: 'checkShorebirdInitialized',
-                ),
-                validators: any(named: 'validators'),
-                supportedOperatingSystems: any(
-                  named: 'supportedOperatingSystems',
-                ),
+      group('when specified flutter version is less than minimum', () {
+        setUp(() {
+          when(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(
+                named: 'checkUserIsAuthenticated',
               ),
-            ).thenAnswer((_) async {});
-            when(
-              () => shorebirdFlutter.getVersion(),
-            ).thenAnswer((_) async => Version(3, 0, 0));
-          });
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
+              validators: any(named: 'validators'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
+            ),
+          ).thenAnswer((_) async {});
+          when(
+            () => shorebirdFlutter.getVersion(),
+          ).thenAnswer((_) async => Version(3, 0, 0));
+        });
 
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(patcher.buildPatchArtifact),
-              exitsWithCode(ExitCode.software),
-            );
+        test('logs error and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            exitsWithCode(ExitCode.software),
+          );
 
-            verify(
-              () => logger.err('''
+          verify(
+            () => logger.err('''
 macOS patches are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
-            ).called(1);
-          });
-        },
-        skip:
-            '''Skipping while we use the flutter revision when checking for patchability''',
-      );
+          ).called(1);
+        });
+      });
 
       group('when build fails with ProcessException', () {
         setUp(() {
@@ -558,10 +552,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               buildProgress: any(named: 'buildProgress'),
             ),
           ).thenThrow(
-            const ProcessException('flutter', [
-              'build',
-              'macos',
-            ], 'Build failed'),
+            const ProcessException(
+                'flutter',
+                [
+                  'build',
+                  'macos',
+                ],
+                'Build failed'),
           );
         });
 
