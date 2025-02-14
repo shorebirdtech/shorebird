@@ -31,14 +31,8 @@ class InitCommand extends ShorebirdCommand {
         help: 'Initialize the app even if a "shorebird.yaml" already exists.',
         negatable: false,
       )
-      ..addOption(
-        'display-name',
-        help: 'The display name of the app.',
-      )
-      ..addOption(
-        'organization-id',
-        help: 'The organization ID to use.',
-      );
+      ..addOption('display-name', help: 'The display name of the app.')
+      ..addOption('organization-id', help: 'The organization ID to use.');
   }
 
   @override
@@ -203,14 +197,16 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final needsConfirmation = !force && shorebirdEnv.canAcceptUserInput;
       final pubspecName = shorebirdEnv.getPubspecYaml()!.name;
       var displayName = results['display-name'] as String?;
-      displayName ??= needsConfirmation
-          ? logger.prompt(
-              '${lightGreen.wrap('?')} How should we refer to this app?',
-              defaultValue: pubspecName,
-            )
-          : pubspecName;
+      displayName ??=
+          needsConfirmation
+              ? logger.prompt(
+                '${lightGreen.wrap('?')} How should we refer to this app?',
+                defaultValue: pubspecName,
+              )
+              : pubspecName;
       final hasNoFlavors = productFlavors.isEmpty;
-      final hasSomeFlavors = productFlavors.isNotEmpty &&
+      final hasSomeFlavors =
+          productFlavors.isNotEmpty &&
           ((androidFlavors?.isEmpty ?? false) ||
               (iosFlavors?.isEmpty ?? false));
 
