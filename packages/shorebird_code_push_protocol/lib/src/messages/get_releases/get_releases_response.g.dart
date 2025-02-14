@@ -9,23 +9,21 @@ part of 'get_releases_response.dart';
 // **************************************************************************
 
 GetReleasesResponse _$GetReleasesResponseFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'GetReleasesResponse',
-      json,
-      ($checkedConvert) {
-        final val = GetReleasesResponse(
-          releases: $checkedConvert(
-              'releases',
-              (v) => (v as List<dynamic>)
+    $checkedCreate('GetReleasesResponse', json, ($checkedConvert) {
+      final val = GetReleasesResponse(
+        releases: $checkedConvert(
+          'releases',
+          (v) =>
+              (v as List<dynamic>)
                   .map((e) => Release.fromJson(e as Map<String, dynamic>))
-                  .toList()),
-        );
-        return val;
-      },
-    );
+                  .toList(),
+        ),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$GetReleasesResponseToJson(
-        GetReleasesResponse instance) =>
-    <String, dynamic>{
-      'releases': instance.releases.map((e) => e.toJson()).toList(),
-    };
+  GetReleasesResponse instance,
+) => <String, dynamic>{
+  'releases': instance.releases.map((e) => e.toJson()).toList(),
+};

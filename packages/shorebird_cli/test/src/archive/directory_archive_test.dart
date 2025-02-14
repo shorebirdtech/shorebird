@@ -27,8 +27,8 @@ void main() {
         expect(extractedContents, hasLength(numFiles));
         for (var i = 0; i < numFiles; i++) {
           final extractedFile = extractedContents.whereType<File>().firstWhere(
-                (entity) => p.basename(entity.path) == '$i.txt',
-              );
+            (entity) => p.basename(entity.path) == '$i.txt',
+          );
           expect(extractedFile.existsSync(), isTrue);
           expect(extractedFile.readAsStringSync(), equals('$i'));
         }

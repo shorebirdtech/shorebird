@@ -116,9 +116,9 @@ class RedisClient {
     RedisSocketOptions socket = const RedisSocketOptions(),
     RedisCommandOptions command = const RedisCommandOptions(),
     RedisLogger logger = const _NoopRedisLogger(),
-  })  : _socketOptions = socket,
-        _commandOptions = command,
-        _logger = logger;
+  }) : _socketOptions = socket,
+       _commandOptions = command,
+       _logger = logger;
 
   /// The socket options for the Redis server.
   final RedisSocketOptions _socketOptions;
@@ -160,10 +160,7 @@ class RedisClient {
   /// Authenticate to the Redis server.
   /// Equivalent to the `AUTH` command.
   /// https://redis.io/commands/auth
-  Future<void> auth({
-    required String password,
-    String username = 'default',
-  }) {
+  Future<void> auth({required String password, String username = 'default'}) {
     return execute(['AUTH', username, password]);
   }
 
@@ -205,14 +202,11 @@ class RedisClient {
 
   /// Send a command to the Redis server.
   Future<dynamic> execute(List<Object?> command) async {
-    return _runWithRetry(
-      () async {
-        final result = await RespCommandsTier0(_client!).execute(command);
-        if (result.isError) throw RedisException(result.toString());
-        return result.payload;
-      },
-      command: command.join(' '),
-    );
+    return _runWithRetry(() async {
+      final result = await RespCommandsTier0(_client!).execute(command);
+      if (result.isError) throw RedisException(result.toString());
+      return result.payload;
+    }, command: command.join(' '));
   }
 
   /// Establish a connection to the Redis server.
@@ -401,10 +395,7 @@ class RedisJson {
   /// Returns null if the key does not exist.
   /// Equivalent to the `JSON.GET` command.
   /// https://redis.io/commands/json.get
-  Future<dynamic> get({
-    required String key,
-    String path = r'$',
-  }) async {
+  Future<dynamic> get({required String key, String path = r'$'}) async {
     final result = await _client.execute(['JSON.GET', key, path]);
     if (result is String) {
       final parts = LineSplitter.split(result);

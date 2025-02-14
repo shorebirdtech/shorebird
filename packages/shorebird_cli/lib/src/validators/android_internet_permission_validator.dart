@@ -68,20 +68,14 @@ The command you are running must be run within a Flutter app project that suppor
   Directory? get _androidSrcDirectory {
     final root = shorebirdEnv.getFlutterProjectRoot();
     if (root == null) return null;
-    return Directory(
-      p.join(
-        root.path,
-        'android',
-        'app',
-        'src',
-      ),
-    );
+    return Directory(p.join(root.path, 'android', 'app', 'src'));
   }
 
   bool _androidManifestHasInternetPermission(String path) {
     final xmlDocument = XmlDocument.parse(File(path).readAsStringSync());
-    return xmlDocument.rootElement.childElements
-        .any(_isInternetPermissionElement);
+    return xmlDocument.rootElement.childElements.any(
+      _isInternetPermissionElement,
+    );
   }
 
   bool _isInternetPermissionElement(XmlElement element) {
@@ -97,15 +91,9 @@ The command you are running must be run within a Flutter app project that suppor
   void _addInternetPermissionToFile(String path) {
     final xmlDocument = XmlDocument.parse(File(path).readAsStringSync());
     xmlDocument.rootElement.children.add(
-      XmlElement(
-        XmlName('uses-permission'),
-        [
-          XmlAttribute(
-            XmlName('android:name'),
-            'android.permission.INTERNET',
-          ),
-        ],
-      ),
+      XmlElement(XmlName('uses-permission'), [
+        XmlAttribute(XmlName('android:name'), 'android.permission.INTERNET'),
+      ]),
     );
     File(path).writeAsStringSync(xmlDocument.toXmlString(pretty: true));
   }

@@ -41,11 +41,7 @@ class ShorebirdTools {
   /// The directory containing the `shorebird_tools` package.
   Directory get shorebirdToolsDirectory {
     final dir = Directory(
-      p.join(
-        shorebirdEnv.flutterDirectory.path,
-        'packages',
-        'shorebird_tools',
-      ),
+      p.join(shorebirdEnv.flutterDirectory.path, 'packages', 'shorebird_tools'),
     );
     return dir;
   }
@@ -53,12 +49,7 @@ class ShorebirdTools {
   Future<ShorebirdProcessResult> _run(List<String> args) {
     return process.run(
       shorebirdEnv.dartBinaryFile.path,
-      [
-        'run',
-        'shorebird_tools',
-        'package',
-        ...args,
-      ],
+      ['run', 'shorebird_tools', 'package', ...args],
       workingDirectory: shorebirdToolsDirectory.path,
     );
   }
@@ -70,22 +61,15 @@ class ShorebirdTools {
     required String patchPath,
     required String outputPath,
   }) async {
-    final packageArguments = [
-      '-p',
-      patchPath,
-      '-o',
-      outputPath,
-    ];
+    final packageArguments = ['-p', patchPath, '-o', outputPath];
 
     final result = await _run(packageArguments);
 
     if (result.exitCode != ExitCode.success.code) {
-      throw PackageFailedException(
-        '''
+      throw PackageFailedException('''
 Failed to create package (exit code ${result.exitCode}).
   stdout: ${result.stdout}
-  stderr: ${result.stderr}''',
-      );
+  stderr: ${result.stderr}''');
     }
   }
 }

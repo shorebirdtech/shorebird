@@ -52,12 +52,10 @@ class DoctorCommand extends ShorebirdCommand {
     if (flutterVersion != null) {
       shorebirdFlutterPrefix.write(' $flutterVersion');
     }
-    output.writeln(
-      '''
+    output.writeln('''
 Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 $shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
-Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''',
-    );
+Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
 
     if (verbose) {
       final notDetected = red.wrap('not detected');
@@ -127,9 +125,7 @@ Android Toolchain
           'GCP download speed test failed: ${error.message}',
         );
       } on Exception catch (error) {
-        downloadProgress.fail(
-          'GCP download speed test failed: $error',
-        );
+        downloadProgress.fail('GCP download speed test failed: $error');
       }
       logger.info('');
     }

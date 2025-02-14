@@ -9,24 +9,20 @@ part of 'get_organization_apps_response.dart';
 // **************************************************************************
 
 GetOrganizationAppsResponse _$GetOrganizationAppsResponseFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'GetOrganizationAppsResponse',
-      json,
-      ($checkedConvert) {
-        final val = GetOrganizationAppsResponse(
-          apps: $checkedConvert(
-              'apps',
-              (v) => (v as List<dynamic>)
-                  .map((e) => AppMetadata.fromJson(e as Map<String, dynamic>))
-                  .toList()),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('GetOrganizationAppsResponse', json, ($checkedConvert) {
+  final val = GetOrganizationAppsResponse(
+    apps: $checkedConvert(
+      'apps',
+      (v) =>
+          (v as List<dynamic>)
+              .map((e) => AppMetadata.fromJson(e as Map<String, dynamic>))
+              .toList(),
+    ),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$GetOrganizationAppsResponseToJson(
-        GetOrganizationAppsResponse instance) =>
-    <String, dynamic>{
-      'apps': instance.apps.map((e) => e.toJson()).toList(),
-    };
+  GetOrganizationAppsResponse instance,
+) => <String, dynamic>{'apps': instance.apps.map((e) => e.toJson()).toList()};

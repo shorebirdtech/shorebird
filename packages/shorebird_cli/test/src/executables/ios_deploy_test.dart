@@ -107,9 +107,7 @@ void main() {
         ).thenAnswer((_) async => process);
         const bundlePath = 'test-bundle-path';
         await runWithOverrides(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: bundlePath,
-          ),
+          () => iosDeploy.installAndLaunchApp(bundlePath: bundlePath),
         );
         verify(
           () => shorebirdProcess.start(any(that: endsWith('ios-deploy')), [
@@ -126,9 +124,7 @@ void main() {
         when(() => shorebirdProcess.start(any(), any())).thenThrow(exception);
         const bundlePath = 'test-bundle-path';
         final exitCode = await runWithOverrides(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: bundlePath,
-          ),
+          () => iosDeploy.installAndLaunchApp(bundlePath: bundlePath),
         );
         expect(exitCode, equals(ExitCode.software.code));
         verify(
@@ -144,15 +140,13 @@ void main() {
 
       test('dumps backtrace on process stopped', () async {
         final completer = Completer<int>();
-        when(() => process.stdout).thenAnswer(
-          (_) => Stream.value(utf8.encode('PROCESS_STOPPED')),
-        );
+        when(
+          () => process.stdout,
+        ).thenAnswer((_) => Stream.value(utf8.encode('PROCESS_STOPPED')));
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
         final exitCode = runWithOverrides(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: bundlePath,
-          ),
+          () => iosDeploy.installAndLaunchApp(bundlePath: bundlePath),
         );
         await untilCalled(() => ioSink.writeln('thread backtrace all'));
         completer.complete(ExitCode.software.code);
@@ -176,9 +170,7 @@ void main() {
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
         final exitCode = runWithOverrides(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: bundlePath,
-          ),
+          () => iosDeploy.installAndLaunchApp(bundlePath: bundlePath),
         );
         await untilCalled(() => ioSink.writeln('thread backtrace all'));
         await untilCalled(() => ioSink.writeln('process detach'));
@@ -202,9 +194,7 @@ void main() {
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
         final exitCode = runWithOverrides(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: bundlePath,
-          ),
+          () => iosDeploy.installAndLaunchApp(bundlePath: bundlePath),
         );
         await untilCalled(() => process.kill());
         completer.complete(ExitCode.software.code);
@@ -228,9 +218,7 @@ void main() {
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
         final exitCode = runWithOverrides(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: bundlePath,
-          ),
+          () => iosDeploy.installAndLaunchApp(bundlePath: bundlePath),
         );
         await untilCalled(() => process.kill());
         completer.complete(ExitCode.software.code);
@@ -254,9 +242,7 @@ void main() {
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
         final exitCode = runWithOverrides(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: bundlePath,
-          ),
+          () => iosDeploy.installAndLaunchApp(bundlePath: bundlePath),
         );
         await untilCalled(() => progress.complete('Started app'));
         completer.complete(ExitCode.success.code);
@@ -297,9 +283,7 @@ void main() {
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
         final exitCode = runWithOverrides(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: bundlePath,
-          ),
+          () => iosDeploy.installAndLaunchApp(bundlePath: bundlePath),
         );
         await untilCalled(() => progress.complete('Started app'));
         controller.add(ProcessSignal.sigint);
@@ -319,15 +303,13 @@ void main() {
       test('handles process stderr', () async {
         const message = 'test-stderr';
         final completer = Completer<int>();
-        when(() => process.stderr).thenAnswer(
-          (_) => Stream.value(utf8.encode(message)),
-        );
+        when(
+          () => process.stderr,
+        ).thenAnswer((_) => Stream.value(utf8.encode(message)));
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
         final exitCode = runWithOverrides(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: bundlePath,
-          ),
+          () => iosDeploy.installAndLaunchApp(bundlePath: bundlePath),
         );
         await untilCalled(() => logger.detail(message));
         completer.complete(ExitCode.software.code);
@@ -350,9 +332,7 @@ void main() {
         when(() => process.exitCode).thenAnswer((_) => completer.future);
         const bundlePath = 'test-bundle-path';
         final exitCode = runWithOverrides(
-          () => iosDeploy.installAndLaunchApp(
-            bundlePath: bundlePath,
-          ),
+          () => iosDeploy.installAndLaunchApp(bundlePath: bundlePath),
         );
         await untilCalled(() => progress.complete('Started app'));
         completer.complete(ExitCode.success.code);
@@ -437,9 +417,7 @@ void main() {
 
         await expectLater(
           runWithOverrides(iosDeploy.installIfNeeded),
-          throwsA(
-            isA<ProcessException>(),
-          ),
+          throwsA(isA<ProcessException>()),
         );
       });
 
@@ -455,18 +433,15 @@ void main() {
           );
           await expectLater(
             runWithOverrides(iosDeploy.installIfNeeded),
-            throwsA(
-              isA<Exception>(),
-            ),
+            throwsA(isA<Exception>()),
           );
         },
       );
 
       test(
-          '''completes successfully if ios-deploy is installed after running flutter precache''',
-          () async {
-        when(() => shorebirdProcess.run(any(), any())).thenAnswer(
-          (_) async {
+        '''completes successfully if ios-deploy is installed after running flutter precache''',
+        () async {
+          when(() => shorebirdProcess.run(any(), any())).thenAnswer((_) async {
             runWithOverrides(
               () => IOSDeploy.iosDeployExecutable.createSync(recursive: true),
             );
@@ -475,18 +450,18 @@ void main() {
               stdout: null,
               stderr: null,
             );
-          },
-        );
-        await expectLater(
-          runWithOverrides(() async => iosDeploy.installIfNeeded()),
-          completes,
-        );
+          });
+          await expectLater(
+            runWithOverrides(() async => iosDeploy.installIfNeeded()),
+            completes,
+          );
 
-        verify(
-          () => shorebirdProcess.run('flutter', ['precache', '--ios']),
-        ).called(1);
-        verify(progress.complete).called(1);
-      });
+          verify(
+            () => shorebirdProcess.run('flutter', ['precache', '--ios']),
+          ).called(1);
+          verify(progress.complete).called(1);
+        },
+      );
     });
   });
 }

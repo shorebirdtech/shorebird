@@ -59,47 +59,33 @@ void main() {
       expect(command, isNotNull);
     });
 
-    test(
-      'handles errors when determining the current version',
-      () async {
-        const errorMessage = 'oops';
-        when(shorebirdVersion.fetchCurrentGitHash).thenThrow(
-          const ProcessException(
-            'git',
-            ['rev-parse'],
-            errorMessage,
-          ),
-        );
+    test('handles errors when determining the current version', () async {
+      const errorMessage = 'oops';
+      when(
+        shorebirdVersion.fetchCurrentGitHash,
+      ).thenThrow(const ProcessException('git', ['rev-parse'], errorMessage));
 
-        final result = await runWithOverrides(command.run);
+      final result = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.software.code));
-        verify(() => logger.progress('Checking for updates')).called(1);
-        verify(
-          () => logger.err('Fetching current version failed: $errorMessage'),
-        ).called(1);
-      },
-    );
+      expect(result, equals(ExitCode.software.code));
+      verify(() => logger.progress('Checking for updates')).called(1);
+      verify(
+        () => logger.err('Fetching current version failed: $errorMessage'),
+      ).called(1);
+    });
 
-    test(
-      'handles errors when determining the latest version',
-      () async {
-        const errorMessage = 'oops';
-        when(shorebirdVersion.fetchLatestGitHash).thenThrow(
-          const ProcessException(
-            'git',
-            ['rev-parse'],
-            errorMessage,
-          ),
-        );
+    test('handles errors when determining the latest version', () async {
+      const errorMessage = 'oops';
+      when(
+        shorebirdVersion.fetchLatestGitHash,
+      ).thenThrow(const ProcessException('git', ['rev-parse'], errorMessage));
 
-        final result = await runWithOverrides(command.run);
+      final result = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.software.code));
-        verify(() => logger.progress('Checking for updates')).called(1);
-        verify(() => logger.err('Checking for updates failed: oops')).called(1);
-      },
-    );
+      expect(result, equals(ExitCode.software.code));
+      verify(() => logger.progress('Checking for updates')).called(1);
+      verify(() => logger.err('Checking for updates failed: oops')).called(1);
+    });
 
     test('handles errors when updating', () async {
       const errorMessage = 'oops';
@@ -114,33 +100,28 @@ void main() {
       verify(() => logger.err('Updating failed: oops')).called(1);
     });
 
-    test(
-      'updates when newer version exists',
-      () async {
-        when(() => logger.progress(any())).thenReturn(MockProgress());
+    test('updates when newer version exists', () async {
+      when(() => logger.progress(any())).thenReturn(MockProgress());
 
-        final result = await runWithOverrides(command.run);
+      final result = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.success.code));
-        verify(() => logger.progress('Checking for updates')).called(1);
-        verify(() => logger.progress('Updating')).called(1);
-      },
-    );
+      expect(result, equals(ExitCode.success.code));
+      verify(() => logger.progress('Checking for updates')).called(1);
+      verify(() => logger.progress('Updating')).called(1);
+    });
 
-    test(
-      'does not update when already on latest version',
-      () async {
-        when(shorebirdVersion.fetchLatestGitHash)
-            .thenAnswer((_) async => currentShorebirdRevision);
-        when(() => logger.progress(any())).thenReturn(MockProgress());
+    test('does not update when already on latest version', () async {
+      when(
+        shorebirdVersion.fetchLatestGitHash,
+      ).thenAnswer((_) async => currentShorebirdRevision);
+      when(() => logger.progress(any())).thenReturn(MockProgress());
 
-        final result = await runWithOverrides(command.run);
+      final result = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.success.code));
-        verify(
-          () => logger.info('Shorebird is already at the latest version.'),
-        ).called(1);
-      },
-    );
+      expect(result, equals(ExitCode.success.code));
+      verify(
+        () => logger.info('Shorebird is already at the latest version.'),
+      ).called(1);
+    });
   });
 }

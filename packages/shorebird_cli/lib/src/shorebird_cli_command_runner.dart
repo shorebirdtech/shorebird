@@ -37,11 +37,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
   /// {@macro shorebird_cli_command_runner}
   ShorebirdCliCommandRunner() : super(executableName, description) {
     argParser
-      ..addFlag(
-        'version',
-        negatable: false,
-        help: 'Print the current version.',
-      )
+      ..addFlag('version', negatable: false, help: 'Print the current version.')
       ..addFlag(
         'verbose',
         abbr: 'v',
@@ -55,13 +51,15 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       ..addOption(
         'local-engine-src-path',
         hide: true,
-        help: 'Path to your engine src directory, if you are building Flutter '
+        help:
+            'Path to your engine src directory, if you are building Flutter '
             'locally.',
       )
       ..addOption(
         'local-engine',
         hide: true,
-        help: 'Name of a build output within the engine out directory, if you '
+        help:
+            'Name of a build output within the engine out directory, if you '
             'are building Flutter locally.',
       )
       ..addOption(
@@ -104,10 +102,12 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         localEngine,
         localEngineHost,
       ];
-      final localEngineArgsAreNull =
-          localEngineArgs.every((arg) => arg == null);
-      final localEngineArgsAreNotNull =
-          localEngineArgs.every((arg) => arg != null);
+      final localEngineArgsAreNull = localEngineArgs.every(
+        (arg) => arg == null,
+      );
+      final localEngineArgsAreNotNull = localEngineArgs.every(
+        (arg) => arg != null,
+      );
       final EngineConfig engineConfig;
       if (localEngineArgsAreNotNull) {
         engineConfig = EngineConfig(
@@ -125,9 +125,10 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
 
       final process = ShorebirdProcess();
-      final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
-          ? const ShorebirdLocalEngineArtifacts()
-          : const ShorebirdCachedArtifacts();
+      final shorebirdArtifacts =
+          engineConfig.localEngineSrcPath != null
+              ? const ShorebirdLocalEngineArtifacts()
+              : const ShorebirdCachedArtifacts();
       return await runScoped<Future<int?>>(
             () => runCommand(topLevelResults),
             values: {
@@ -234,15 +235,13 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         ),
         message: 'file an issue',
       );
-      logger.info(
-        '''
+      logger.info('''
 
 If you aren't sure why this command failed, re-run with the ${lightCyan.wrap('--verbose')} flag to see more information.
 
 You can also $fileAnIssue if you think this is a bug. Please include the following log file in your report:
 ${currentRunLogFile.absolute.path}
-''',
-      );
+''');
     }
 
     if (topLevelResults.command?.name != UpgradeCommand.commandName) {

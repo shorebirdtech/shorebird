@@ -8,59 +8,52 @@ part of 'apple_device.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-AppleDevice _$AppleDeviceFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'AppleDevice',
-      json,
-      ($checkedConvert) {
-        final val = AppleDevice(
-          deviceProperties: $checkedConvert('deviceProperties',
-              (v) => DeviceProperties.fromJson(v as Map<String, dynamic>)),
-          hardwareProperties: $checkedConvert('hardwareProperties',
-              (v) => HardwareProperties.fromJson(v as Map<String, dynamic>)),
-          connectionProperties: $checkedConvert('connectionProperties',
-              (v) => ConnectionProperties.fromJson(v as Map<String, dynamic>)),
-        );
-        return val;
-      },
-    );
+AppleDevice _$AppleDeviceFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('AppleDevice', json, ($checkedConvert) {
+      final val = AppleDevice(
+        deviceProperties: $checkedConvert(
+          'deviceProperties',
+          (v) => DeviceProperties.fromJson(v as Map<String, dynamic>),
+        ),
+        hardwareProperties: $checkedConvert(
+          'hardwareProperties',
+          (v) => HardwareProperties.fromJson(v as Map<String, dynamic>),
+        ),
+        connectionProperties: $checkedConvert(
+          'connectionProperties',
+          (v) => ConnectionProperties.fromJson(v as Map<String, dynamic>),
+        ),
+      );
+      return val;
+    });
 
 HardwareProperties _$HardwarePropertiesFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'HardwareProperties',
-      json,
-      ($checkedConvert) {
-        final val = HardwareProperties(
-          platform: $checkedConvert('platform', (v) => v as String),
-          udid: $checkedConvert('udid', (v) => v as String),
-        );
-        return val;
-      },
-    );
+    $checkedCreate('HardwareProperties', json, ($checkedConvert) {
+      final val = HardwareProperties(
+        platform: $checkedConvert('platform', (v) => v as String),
+        udid: $checkedConvert('udid', (v) => v as String),
+      );
+      return val;
+    });
 
 DeviceProperties _$DevicePropertiesFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'DeviceProperties',
-      json,
-      ($checkedConvert) {
-        final val = DeviceProperties(
-          name: $checkedConvert('name', (v) => v as String),
-          osVersionNumber:
-              $checkedConvert('osVersionNumber', (v) => v as String?),
-        );
-        return val;
-      },
-    );
+    $checkedCreate('DeviceProperties', json, ($checkedConvert) {
+      final val = DeviceProperties(
+        name: $checkedConvert('name', (v) => v as String),
+        osVersionNumber: $checkedConvert(
+          'osVersionNumber',
+          (v) => v as String?,
+        ),
+      );
+      return val;
+    });
 
 ConnectionProperties _$ConnectionPropertiesFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'ConnectionProperties',
-      json,
-      ($checkedConvert) {
-        final val = ConnectionProperties(
-          tunnelState: $checkedConvert('tunnelState', (v) => v as String),
-          transportType: $checkedConvert('transportType', (v) => v as String?),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('ConnectionProperties', json, ($checkedConvert) {
+  final val = ConnectionProperties(
+    tunnelState: $checkedConvert('tunnelState', (v) => v as String),
+    transportType: $checkedConvert('transportType', (v) => v as String?),
+  );
+  return val;
+});

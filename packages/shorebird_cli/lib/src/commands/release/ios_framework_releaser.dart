@@ -35,11 +35,8 @@ class IosFrameworkReleaser extends Releaser {
 
   /// The directory where the release artifacts are stored.
   Directory get releaseDirectory => Directory(
-        p.join(
-          shorebirdEnv.getShorebirdProjectRoot()!.path,
-          'release',
-        ),
-      );
+    p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
+  );
 
   @override
   bool get requiresReleaseVersionArg => true;
@@ -73,23 +70,20 @@ class IosFrameworkReleaser extends Releaser {
 
     final flutterVersionArg = argResults['flutter-version'] as String?;
     if (flutterVersionArg != null) {
-      final version =
-          await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
+      final version = await shorebirdFlutter.resolveFlutterVersion(
+        flutterVersionArg,
+      );
       if (version != null && version < minimumSupportedIosFlutterVersion) {
-        logger.err(
-          '''
+        logger.err('''
 iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-        );
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         throw ProcessExit(ExitCode.usage.code);
       }
     }
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts({
-    Progress? progress,
-  }) async {
+  Future<FileSystemEntity> buildReleaseArtifacts({Progress? progress}) async {
     // Delete the Shorebird supplement directory if it exists.
     // This is to ensure that we don't accidentally upload stale artifacts
     // when building with older versions of Flutter.
@@ -110,23 +104,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     if (targetLibraryDirectory.existsSync()) {
       targetLibraryDirectory.deleteSync(recursive: true);
     }
-    await copyPath(
-      sourceLibraryDirectory.path,
-      targetLibraryDirectory.path,
-    );
+    await copyPath(sourceLibraryDirectory.path, targetLibraryDirectory.path);
 
     // Rename Flutter.xcframework to ShorebirdFlutter.xcframework to avoid
     // Xcode warning users about the .xcframework signature changing.
     Directory(
-      p.join(
-        targetLibraryDirectory.path,
-        'Flutter.xcframework',
-      ),
+      p.join(targetLibraryDirectory.path, 'Flutter.xcframework'),
     ).renameSync(
-      p.join(
-        targetLibraryDirectory.path,
-        'ShorebirdFlutter.xcframework',
-      ),
+      p.join(targetLibraryDirectory.path, 'ShorebirdFlutter.xcframework'),
     );
 
     return targetLibraryDirectory;
@@ -155,12 +140,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   @override
   Future<UpdateReleaseMetadata> updatedReleaseMetadata(
     UpdateReleaseMetadata metadata,
-  ) async =>
-      metadata.copyWith(
-        environment: metadata.environment.copyWith(
-          xcodeVersion: await xcodeBuild.version(),
-        ),
-      );
+  ) async => metadata.copyWith(
+    environment: metadata.environment.copyWith(
+      xcodeVersion: await xcodeBuild.version(),
+    ),
+  );
 
   @override
   String get postReleaseInstructions {

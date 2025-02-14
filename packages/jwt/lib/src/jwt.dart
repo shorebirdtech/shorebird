@@ -40,11 +40,7 @@ Future<PublicKeyStore?> _getPublicKeys(String url) async {
     return null;
   }
 
-  publicKeyStores.set(
-    url,
-    publicKeyStore,
-    ttl: Duration(seconds: maxAge),
-  );
+  publicKeyStores.set(url, publicKeyStore, ttl: Duration(seconds: maxAge));
 
   return publicKeyStore;
 }
@@ -105,10 +101,7 @@ Future<Jwt> verify(
   return jwt;
 }
 
-Future<void> _verifyHeader(
-  JwtHeader header,
-  Iterable<String> keyIds,
-) async {
+Future<void> _verifyHeader(JwtHeader header, Iterable<String> keyIds) async {
   if (header.typ != 'JWT') {
     throw const JwtVerificationFailure('Invalid token type.');
   }
@@ -171,10 +164,7 @@ bool _verifySignature(String jwt, String publicKey) {
   final public = pair.public;
 
   final signer = Signer('SHA-256/RSA');
-  final key = RSAPublicKey(
-    public!.modulus,
-    BigInt.from(public.publicExponent),
-  );
+  final key = RSAPublicKey(public!.modulus, BigInt.from(public.publicExponent));
   final param = ParametersWithRandom(
     PublicKeyParameter<RSAPublicKey>(key),
     SecureRandom('AES/CTR/PRNG'),

@@ -15,12 +15,7 @@ void main() {
     late XcodeBuild xcodeBuild;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(
-        body,
-        values: {
-          processRef.overrideWith(() => process),
-        },
-      );
+      return runScoped(body, values: {processRef.overrideWith(() => process)});
     }
 
     setUp(() {

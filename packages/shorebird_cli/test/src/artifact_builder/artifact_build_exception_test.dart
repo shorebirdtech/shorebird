@@ -35,64 +35,67 @@ void main() {
     });
 
     group('gradle', () {
-      group('when an error is recognized but no fix recommendation is found',
-          () {
-        test('has a Flutter error and no fix recommendation', () {
-          final exception = ArtifactBuildException(
-            'message',
-            stderr: [
-              'some stderr output',
-              'FAILURE: Build failed with an exception.',
-              '* Exception is:',
-              'some stack trace',
-              '* Try:',
-              'some recommendation',
-            ],
-            stdout: ['some stdout output'],
-          );
-          expect(
-            exception.flutterError,
-            equals('FAILURE: Build failed with an exception.'),
-          );
-          expect(exception.fixRecommendation, isNull);
-        });
-      });
+      group(
+        'when an error is recognized but no fix recommendation is found',
+        () {
+          test('has a Flutter error and no fix recommendation', () {
+            final exception = ArtifactBuildException(
+              'message',
+              stderr: [
+                'some stderr output',
+                'FAILURE: Build failed with an exception.',
+                '* Exception is:',
+                'some stack trace',
+                '* Try:',
+                'some recommendation',
+              ],
+              stdout: ['some stdout output'],
+            );
+            expect(
+              exception.flutterError,
+              equals('FAILURE: Build failed with an exception.'),
+            );
+            expect(exception.fixRecommendation, isNull);
+          });
+        },
+      );
 
       group(
-          'when a known error is recognized and a fix recommendation is found',
-          () {
-        test('has a Flutter error and a fix recommendation', () {
-          final exception = ArtifactBuildException(
-            'message',
-            stderr: [
-              'some stderr output',
-              'FAILURE: Build failed with an exception.',
-              '* What went wrong:',
-              "Execution failed for task ':app:signReleaseBundle'.",
-              r'''> A failure occurred while executing com.android.build.gradle.internal.tasks.FinalizeBundleTask$BundleToolRunnable''',
-              '> java.lang.NullPointerException (no error message)',
-              '* Exception is:',
-              'some stack trace',
-              '* Try:',
-              'some recommendation',
-            ],
-            stdout: ['some stdout output'],
-          );
-          expect(
-            exception.flutterError,
-            equals(r'''
+        'when a known error is recognized and a fix recommendation is found',
+        () {
+          test('has a Flutter error and a fix recommendation', () {
+            final exception = ArtifactBuildException(
+              'message',
+              stderr: [
+                'some stderr output',
+                'FAILURE: Build failed with an exception.',
+                '* What went wrong:',
+                "Execution failed for task ':app:signReleaseBundle'.",
+                r'''> A failure occurred while executing com.android.build.gradle.internal.tasks.FinalizeBundleTask$BundleToolRunnable''',
+                '> java.lang.NullPointerException (no error message)',
+                '* Exception is:',
+                'some stack trace',
+                '* Try:',
+                'some recommendation',
+              ],
+              stdout: ['some stdout output'],
+            );
+            expect(
+              exception.flutterError,
+              equals(r'''
 FAILURE: Build failed with an exception.
 * What went wrong:
 Execution failed for task ':app:signReleaseBundle'.
 > A failure occurred while executing com.android.build.gradle.internal.tasks.FinalizeBundleTask$BundleToolRunnable
 > java.lang.NullPointerException (no error message)'''),
-          );
-          expect(
-            exception.fixRecommendation,
-            contains('This error is likely due to a missing keystore file'),
-          );
-        });
-      });
+            );
+            expect(
+              exception.fixRecommendation,
+              contains('This error is likely due to a missing keystore file'),
+            );
+          });
+        },
+      );
 
       group('when a fix recommendation is provided', () {
         test('does not read output to find fix recommendation', () {
@@ -120,34 +123,33 @@ Execution failed for task ':app:signReleaseBundle'.
 
     group('xcode archiving', () {
       group(
-          'when a known error is recognized and a fix recommendation is found',
-          () {
-        test('has a Flutter error and a fix recommendation', () {
-          final exception = ArtifactBuildException(
-            'message',
-            stderr: [
-              'some stderr output',
-              'Error (Xcode):',
-              'some error message',
-              'some stack trace',
-              'some recommendation',
-              'Encountered error while archiving for device',
-              'not part of the reported error',
-            ],
-            stdout: ['some stdout output'],
-          );
-          expect(
-            exception.flutterError,
-            equals(
-              '''
+        'when a known error is recognized and a fix recommendation is found',
+        () {
+          test('has a Flutter error and a fix recommendation', () {
+            final exception = ArtifactBuildException(
+              'message',
+              stderr: [
+                'some stderr output',
+                'Error (Xcode):',
+                'some error message',
+                'some stack trace',
+                'some recommendation',
+                'Encountered error while archiving for device',
+                'not part of the reported error',
+              ],
+              stdout: ['some stdout output'],
+            );
+            expect(
+              exception.flutterError,
+              equals('''
 Error (Xcode):
 some error message
 some stack trace
-some recommendation''',
-            ),
-          );
-        });
-      });
+some recommendation'''),
+            );
+          });
+        },
+      );
     });
   });
 }

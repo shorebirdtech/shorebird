@@ -8,9 +8,11 @@ import 'package:propertylistserialization/propertylistserialization.dart';
 class Plist {
   /// Creates a new [Plist] from the contents of the provided [file].
   Plist({required File file}) {
-    properties = PropertyListSerialization.propertyListWithString(
-      file.readAsStringSync(),
-    ) as Map<String, Object>;
+    properties =
+        PropertyListSerialization.propertyListWithString(
+              file.readAsStringSync(),
+            )
+            as Map<String, Object>;
   }
 
   /// This key is a user-visible string for the version of the bundle. The

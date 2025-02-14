@@ -56,8 +56,7 @@ void main() {
     });
 
     group('validatePreconditions', () {
-      test(
-          'throws UnsupportedOperatingSystemException '
+      test('throws UnsupportedOperatingSystemException '
           'when the operating system is not supported', () async {
         when(() => platform.operatingSystem).thenReturn(Platform.linux);
         const supportedOperatingSystems = {Platform.macOS, Platform.windows};
@@ -76,8 +75,7 @@ void main() {
         ).called(1);
       });
 
-      test(
-          'throws UserNotAuthorizedException '
+      test('throws UserNotAuthorizedException '
           'when user is not authenticated', () async {
         when(() => auth.isAuthenticated).thenReturn(false);
         await expectLater(
@@ -91,79 +89,81 @@ void main() {
         verifyInOrder([
           () => logger.err('You must be logged in to run this command.'),
           () => logger.info(
-                '''If you already have an account, run ${lightCyan.wrap('shorebird login')} to sign in.''',
-              ),
+            '''If you already have an account, run ${lightCyan.wrap('shorebird login')} to sign in.''',
+          ),
           () => logger.info(
-                '''If you don't have a Shorebird account, go to ${link(uri: Uri.parse('https://console.shorebird.dev'))} to create one.''',
-              ),
+            '''If you don't have a Shorebird account, go to ${link(uri: Uri.parse('https://console.shorebird.dev'))} to create one.''',
+          ),
         ]);
       });
 
       group(
-          '''when shorebird has not been properly initialized for the current app''',
-          () {
-        group("when shorebird.yaml doesn't exist", () {
-          setUp(() {
-            when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(false);
-          });
+        '''when shorebird has not been properly initialized for the current app''',
+        () {
+          group("when shorebird.yaml doesn't exist", () {
+            setUp(() {
+              when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(false);
+            });
 
-          test(
+            test(
               '''prints error message and throws ShorebirdNotInitializedException''',
               () async {
-            await expectLater(
-              runWithOverrides(
-                () => shorebirdValidator.validatePreconditions(
-                  checkShorebirdInitialized: true,
-                ),
-              ),
-              throwsA(isA<ShorebirdNotInitializedException>()),
-            );
-            verifyInOrder([
-              () => logger.err(
+                await expectLater(
+                  runWithOverrides(
+                    () => shorebirdValidator.validatePreconditions(
+                      checkShorebirdInitialized: true,
+                    ),
+                  ),
+                  throwsA(isA<ShorebirdNotInitializedException>()),
+                );
+                verifyInOrder([
+                  () => logger.err(
                     '''Unable to find shorebird.yaml. Are you in a shorebird app directory?''',
                   ),
-              () => logger.info(
+                  () => logger.info(
                     '''If you have not yet initialized your app, run ${lightCyan.wrap('shorebird init')} to get started.''',
                   ),
-            ]);
-          });
-        });
-
-        group("when pubspec.yaml doesn't contain shorebird.yaml as an asset",
-            () {
-          setUp(() {
-            when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
-            when(() => shorebirdEnv.pubspecContainsShorebirdYaml).thenReturn(
-              false,
+                ]);
+              },
             );
           });
 
-          test(
+          group("when pubspec.yaml doesn't contain shorebird.yaml as an asset", () {
+            setUp(() {
+              when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+              when(
+                () => shorebirdEnv.pubspecContainsShorebirdYaml,
+              ).thenReturn(false);
+            });
+
+            test(
               '''prints error message and throws ShorebirdNotInitializedException''',
               () async {
-            await expectLater(
-              runWithOverrides(
-                () => shorebirdValidator.validatePreconditions(
-                  checkShorebirdInitialized: true,
-                ),
-              ),
-              throwsA(isA<ShorebirdNotInitializedException>()),
-            );
-            verifyInOrder([
-              () => logger.err(
+                await expectLater(
+                  runWithOverrides(
+                    () => shorebirdValidator.validatePreconditions(
+                      checkShorebirdInitialized: true,
+                    ),
+                  ),
+                  throwsA(isA<ShorebirdNotInitializedException>()),
+                );
+                verifyInOrder([
+                  () => logger.err(
                     '''Your pubspec.yaml does not have shorebird.yaml as a flutter asset.''',
                   ),
-              () => logger.info('''
+                  () => logger.info('''
 To fix, update your pubspec.yaml to include the following:
 
   flutter:
     assets:
       - shorebird.yaml # Add this line
 '''),
-            ]);
+                ]);
+              },
+            );
           });
-        });
-      });
+        },
+      );
 
       test('throws ValidationFailedException if validator fails', () async {
         final issue = ValidationIssue(
@@ -185,8 +185,9 @@ To fix, update your pubspec.yaml to include the following:
         verify(
           () => logger.err('Aborting due to validation errors.'),
         ).called(1);
-        verify(() => logger.info('${red.wrap('[✗]')} ${issue.message}'))
-            .called(1);
+        verify(
+          () => logger.info('${red.wrap('[✗]')} ${issue.message}'),
+        ).called(1);
         verify(
           () => logger.info(
             '''1 issue can be fixed automatically with ${lightCyan.wrap('shorebird doctor --fix')}.''',
@@ -195,21 +196,24 @@ To fix, update your pubspec.yaml to include the following:
       });
 
       test(
-          '''throws UnsupportedContextException if validator cannot be run in current context''',
-          () async {
-        const errorMessage = 'Cannot run in this context';
-        when(() => validator.canRunInCurrentContext()).thenReturn(false);
-        when(() => validator.incorrectContextMessage).thenReturn(errorMessage);
-        await expectLater(
-          runWithOverrides(
-            () => shorebirdValidator.validatePreconditions(
-              validators: [validator],
+        '''throws UnsupportedContextException if validator cannot be run in current context''',
+        () async {
+          const errorMessage = 'Cannot run in this context';
+          when(() => validator.canRunInCurrentContext()).thenReturn(false);
+          when(
+            () => validator.incorrectContextMessage,
+          ).thenReturn(errorMessage);
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdValidator.validatePreconditions(
+                validators: [validator],
+              ),
             ),
-          ),
-          throwsA(isA<UnsupportedContextException>()),
-        );
-        verify(() => logger.err(errorMessage)).called(1);
-      });
+            throwsA(isA<UnsupportedContextException>()),
+          );
+          verify(() => logger.err(errorMessage)).called(1);
+        },
+      );
     });
 
     group('validateFlavors', () {

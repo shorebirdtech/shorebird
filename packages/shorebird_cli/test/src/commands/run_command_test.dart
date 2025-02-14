@@ -119,13 +119,11 @@ Please use "shorebird preview" instead.'''),
 
       const error = 'oops something went wrong';
       const expectedExitCode = 1;
-      when(
-        () => process.stdout,
-      ).thenAnswer((_) => const Stream.empty());
+      when(() => process.stdout).thenAnswer((_) => const Stream.empty());
       when(() => process.stdin).thenAnswer((_) => ioSink);
-      when(() => process.stderr).thenAnswer(
-        (_) => Stream.value(utf8.encode(error)),
-      );
+      when(
+        () => process.stderr,
+      ).thenAnswer((_) => Stream.value(utf8.encode(error)));
       when(() => process.exitCode).thenAnswer((_) async => expectedExitCode);
 
       final exitCode = await runWithOverrides(command.run);
@@ -177,13 +175,15 @@ Please use "shorebird preview" instead.'''),
 
       final exitCode = await runWithOverrides(command.run);
 
-      final args = verify(
-        () => shorebirdProcess.start(
-          any(),
-          captureAny(),
-          runInShell: any(named: 'runInShell'),
-        ),
-      ).captured.first as List<String>;
+      final args =
+          verify(
+                () => shorebirdProcess.start(
+                  any(),
+                  captureAny(),
+                  runInShell: any(named: 'runInShell'),
+                ),
+              ).captured.first
+              as List<String>;
       expect(
         args,
         equals([

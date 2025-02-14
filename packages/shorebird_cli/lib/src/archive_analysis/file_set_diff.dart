@@ -23,18 +23,16 @@ class FileSetDiff extends Equatable {
     return FileSetDiff(
       addedPaths: newPaths.difference(oldPaths),
       removedPaths: oldPaths.difference(newPaths),
-      changedPaths: oldPaths
-          .intersection(newPaths)
-          .where((name) => oldPathHashes[name] != newPathHashes[name])
-          .toSet(),
+      changedPaths:
+          oldPaths
+              .intersection(newPaths)
+              .where((name) => oldPathHashes[name] != newPathHashes[name])
+              .toSet(),
     );
   }
 
   /// Creates an empty FileSetDiff.
-  FileSetDiff.empty()
-      : addedPaths = {},
-        removedPaths = {},
-        changedPaths = {};
+  FileSetDiff.empty() : addedPaths = {}, removedPaths = {}, changedPaths = {};
 
   /// File paths that were added.
   final Set<String> addedPaths;
@@ -56,13 +54,13 @@ class FileSetDiff extends Equatable {
 
   /// A printable string representation of this [FileSetDiff].
   String get prettyString => [
-        if (addedPaths.isNotEmpty)
-          _prettyFileSetString(title: 'Added files', paths: addedPaths),
-        if (changedPaths.isNotEmpty)
-          _prettyFileSetString(title: 'Changed files', paths: changedPaths),
-        if (removedPaths.isNotEmpty)
-          _prettyFileSetString(title: 'Removed files', paths: removedPaths),
-      ].join('\n');
+    if (addedPaths.isNotEmpty)
+      _prettyFileSetString(title: 'Added files', paths: addedPaths),
+    if (changedPaths.isNotEmpty)
+      _prettyFileSetString(title: 'Changed files', paths: changedPaths),
+    if (removedPaths.isNotEmpty)
+      _prettyFileSetString(title: 'Removed files', paths: removedPaths),
+  ].join('\n');
 
   static String _prettyFileSetString({
     required String title,

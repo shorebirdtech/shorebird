@@ -49,11 +49,11 @@ class ReleasePatch extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        number,
-        channel,
-        artifacts,
-        isRolledBack,
-        notes,
-      ];
+    id,
+    number,
+    channel,
+    artifacts,
+    isRolledBack,
+    notes,
+  ];
 }

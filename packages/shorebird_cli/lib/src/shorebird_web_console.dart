@@ -6,12 +6,7 @@ class ShorebirdWebConsole {
   }
 
   /// Returns a [Uri] for the Shorebird Web Console login page.
-  static Uri appReleaseUri(
-    String appId,
-    int releaseId,
-  ) {
-    return ShorebirdWebConsole.uri(
-      'apps/$appId/releases/$releaseId',
-    );
+  static Uri appReleaseUri(String appId, int releaseId) {
+    return ShorebirdWebConsole.uri('apps/$appId/releases/$releaseId');
   }
 }

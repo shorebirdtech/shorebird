@@ -52,8 +52,9 @@ class AndroidStudio {
           final directoryName = p.basename(directory.path);
           // Because we've already performed this match above, we can safely
           // assume that this will match.
-          final versionMatch =
-              androidStudioRegex.firstMatch(directoryName)!.group(1);
+          final versionMatch = androidStudioRegex
+              .firstMatch(directoryName)!
+              .group(1);
           final version = tryParseVersion(versionMatch!, strict: false)!;
 
           final homeFile = File(p.join(directory.path, '.home'));

@@ -17,12 +17,7 @@ void main() {
     });
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(
-        () => body(),
-        values: {
-          checksumCheckerRef,
-        },
-      );
+      return runScoped(() => body(), values: {checksumCheckerRef});
     }
 
     group('checkFile', () {

@@ -30,10 +30,7 @@ class InitCommand extends ShorebirdCommand {
         help: 'Initialize the app even if a "shorebird.yaml" already exists.',
         negatable: false,
       )
-      ..addOption(
-        'display-name',
-        help: 'The display name of the app.',
-      );
+      ..addOption('display-name', help: 'The display name of the app.');
   }
 
   @override
@@ -133,8 +130,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     // don't care about which flavors are new.
     if (!force && newFlavors.isNotEmpty) {
       logger.info('New flavors detected: ${newFlavors.join(', ')}');
-      final updateShorebirdYamlProgress =
-          logger.progress('Adding flavors to shorebird.yaml');
+      final updateShorebirdYamlProgress = logger.progress(
+        'Adding flavors to shorebird.yaml',
+      );
 
       final AppMetadata existingApp;
       try {
@@ -180,14 +178,16 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final needsConfirmation = !force && shorebirdEnv.canAcceptUserInput;
       final pubspecName = shorebirdEnv.getPubspecYaml()!.name;
       var displayName = results['display-name'] as String?;
-      displayName ??= needsConfirmation
-          ? logger.prompt(
-              '${lightGreen.wrap('?')} How should we refer to this app?',
-              defaultValue: pubspecName,
-            )
-          : pubspecName;
+      displayName ??=
+          needsConfirmation
+              ? logger.prompt(
+                '${lightGreen.wrap('?')} How should we refer to this app?',
+                defaultValue: pubspecName,
+              )
+              : pubspecName;
       final hasNoFlavors = productFlavors.isEmpty;
-      final hasSomeFlavors = productFlavors.isNotEmpty &&
+      final hasSomeFlavors =
+          productFlavors.isNotEmpty &&
           ((androidFlavors?.isEmpty ?? false) ||
               (iosFlavors?.isEmpty ?? false));
 

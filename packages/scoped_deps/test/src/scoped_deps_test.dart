@@ -25,10 +25,7 @@ void main() {
 
     test('read accesses the value when ref is available', () {
       final value = create(() => 42);
-      runScoped(
-        () => expect(read(value), equals(42)),
-        values: {value},
-      );
+      runScoped(() => expect(read(value), equals(42)), values: {value});
     });
 
     test('value is computed lazily and cached', () {
@@ -40,14 +37,11 @@ void main() {
 
       expect(createCallCount, equals(0));
 
-      runScoped(
-        () {
-          expect(read(value), equals(42));
-          expect(read(value), equals(42));
-          expect(read(value), equals(42));
-        },
-        values: {value},
-      );
+      runScoped(() {
+        expect(read(value), equals(42));
+        expect(read(value), equals(42));
+        expect(read(value), equals(42));
+      }, values: {value});
 
       expect(createCallCount, equals(1));
     });
@@ -55,17 +49,14 @@ void main() {
     test('value can be overridden', () {
       final value = create(() => 42);
 
-      runScoped(
-        () {
-          expect(read(value), equals(42));
+      runScoped(() {
+        expect(read(value), equals(42));
 
-          runScoped(
-            () => expect(read(value), equals(0)),
-            values: {value.overrideWith(() => 0)},
-          );
-        },
-        values: {value},
-      );
+        runScoped(
+          () => expect(read(value), equals(0)),
+          values: {value.overrideWith(() => 0)},
+        );
+      }, values: {value});
     });
 
     test('overrides are considered equal', () {

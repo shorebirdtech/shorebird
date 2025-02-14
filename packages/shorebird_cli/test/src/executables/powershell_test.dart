@@ -17,9 +17,7 @@ void main() {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         () => body(),
-        values: {
-          processRef.overrideWith(() => process),
-        },
+        values: {processRef.overrideWith(() => process)},
       );
     }
 
@@ -47,9 +45,7 @@ void main() {
 
         test('throws an exception', () async {
           await expectLater(
-            runWithOverrides(
-              () => powershell.getExeVersionString(File('')),
-            ),
+            runWithOverrides(() => powershell.getExeVersionString(File(''))),
             throwsA(isA<Exception>()),
           );
         });
@@ -76,13 +72,15 @@ void main() {
             when(() => processResult.stdout).thenReturn('1.0.0');
           });
 
-          test('returns the version string with build number 0 added',
-              () async {
-            final version = await runWithOverrides(
-              () => powershell.getExeVersionString(File('')),
-            );
-            expect(version, '1.0.0+0');
-          });
+          test(
+            'returns the version string with build number 0 added',
+            () async {
+              final version = await runWithOverrides(
+                () => powershell.getExeVersionString(File('')),
+              );
+              expect(version, '1.0.0+0');
+            },
+          );
         });
       });
     });

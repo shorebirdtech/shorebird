@@ -22,10 +22,7 @@ typedef BundleId = String;
 /// {@endtemplate}
 class DevicectlException implements Exception {
   /// {@macro devicectl_exception}
-  DevicectlException({
-    required this.message,
-    this.underlyingException,
-  });
+  DevicectlException({required this.message, this.underlyingException});
 
   /// A message describing this exception.
   final String message;
@@ -116,10 +113,10 @@ class Devicectl {
     final String bundleId;
     try {
       final maybeBundleId =
-          JsonPath(r'$.result.installedApplications[0].bundleID')
-              .read(jsonResult)
-              .firstOrNull
-              ?.value as String?;
+          JsonPath(
+                r'$.result.installedApplications[0].bundleID',
+              ).read(jsonResult).firstOrNull?.value
+              as String?;
       if (maybeBundleId == null) {
         throw Exception(
           'Unable to find installed app bundleID in devicectl output',

@@ -19,9 +19,9 @@ class EngineConfig {
 
   /// An empty [EngineConfig] instance.
   const EngineConfig.empty()
-      : localEngineSrcPath = null,
-        localEngine = null,
-        localEngineHost = null;
+    : localEngineSrcPath = null,
+      localEngine = null,
+      localEngineHost = null;
 
   /// The path to the local engine source.
   final String? localEngineSrcPath;

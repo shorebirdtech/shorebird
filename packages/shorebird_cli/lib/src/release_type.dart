@@ -76,8 +76,9 @@ extension ReleaseTypeArgs on ArgResults {
     } else {
       if (arguments.isNotEmpty) {
         final platformCliName = arguments.first;
-        if (ReleaseType.values
-            .none((target) => target.cliName == platformCliName)) {
+        if (ReleaseType.values.none(
+          (target) => target.cliName == platformCliName,
+        )) {
           throw ArgumentError('Invalid platform: $platformCliName');
         }
         releaseTypeCliNames = [platformCliName];

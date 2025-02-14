@@ -16,9 +16,7 @@ void main() {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
-        values: {
-          shorebirdVersionRef.overrideWith(() => shorebirdVersion),
-        },
+        values: {shorebirdVersionRef.overrideWith(() => shorebirdVersion)},
       );
     }
 
@@ -26,9 +24,7 @@ void main() {
       shorebirdVersion = MockShorebirdVersion();
       validator = ShorebirdVersionValidator();
 
-      when(
-        shorebirdVersion.isLatest,
-      ).thenAnswer((_) async => false);
+      when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
     });
 
     test('has a non-empty description', () {
@@ -47,21 +43,23 @@ void main() {
       expect(results, isEmpty);
     });
 
-    test('returns an error when shorebird version cannot be determined',
-        () async {
-      when(shorebirdVersion.isLatest).thenThrow(
-        const ProcessException('git', ['rev-parse', 'HEAD']),
-      );
+    test(
+      'returns an error when shorebird version cannot be determined',
+      () async {
+        when(
+          shorebirdVersion.isLatest,
+        ).thenThrow(const ProcessException('git', ['rev-parse', 'HEAD']));
 
-      final results = await runWithOverrides(validator.validate);
+        final results = await runWithOverrides(validator.validate);
 
-      expect(results, hasLength(1));
-      expect(results.first.severity, ValidationIssueSeverity.error);
-      expect(
-        results.first.message,
-        contains('Failed to get shorebird version'),
-      );
-    });
+        expect(results, hasLength(1));
+        expect(results.first.severity, ValidationIssueSeverity.error);
+        expect(
+          results.first.message,
+          contains('Failed to get shorebird version'),
+        );
+      },
+    );
 
     test('returns a warning when a newer shorebird is available', () async {
       when(shorebirdVersion.isLatest).thenAnswer((_) async => false);

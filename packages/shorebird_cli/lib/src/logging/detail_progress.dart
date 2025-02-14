@@ -7,11 +7,9 @@ import 'package:mason_logger/mason_logger.dart';
 /// {@endtemplate}
 class DetailProgress implements Progress {
   /// {@macro detail_progress}
-  DetailProgress._({
-    required Progress progress,
-    required String primaryMessage,
-  })  : _progress = progress,
-        _primaryMessage = primaryMessage;
+  DetailProgress._({required Progress progress, required String primaryMessage})
+    : _progress = progress,
+      _primaryMessage = primaryMessage;
 
   String _primaryMessage;
   String? _detailMessage;

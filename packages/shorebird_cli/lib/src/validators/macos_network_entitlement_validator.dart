@@ -93,9 +93,10 @@ The command you are running must be run within a Flutter app project that suppor
           severity: ValidationIssueSeverity.error,
           message:
               '''${_releaseEntitlementsPlist!.path} is missing the Allow Unsigned Executable Memory ($allowUnsignedExecutableMemoryKey) entitlement.''',
-          fix: () => addAllowUnsignedExecutableMemoryEntitlementToPlist(
-            _releaseEntitlementsPlist!,
-          ),
+          fix:
+              () => addAllowUnsignedExecutableMemoryEntitlementToPlist(
+                _releaseEntitlementsPlist!,
+              ),
         ),
       );
     }
@@ -123,8 +124,9 @@ The command you are running must be run within a Flutter app project that suppor
   static bool hasAllowUnsignedExecutableMemoryEntitlement({
     required File plistFile,
   }) {
-    return Plist(file: plistFile)
-            .properties[allowUnsignedExecutableMemoryKey] ==
+    return Plist(
+          file: plistFile,
+        ).properties[allowUnsignedExecutableMemoryKey] ==
         true;
   }
 

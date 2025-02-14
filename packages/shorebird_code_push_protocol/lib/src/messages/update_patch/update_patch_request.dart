@@ -10,9 +10,7 @@ part 'update_patch_request.g.dart';
 @JsonSerializable()
 class UpdatePatchRequest {
   /// {@macro update_patch_request}
-  const UpdatePatchRequest({
-    this.notes,
-  });
+  const UpdatePatchRequest({this.notes});
 
   /// Converts a `Map<String, dynamic>` to a [UpdatePatchRequest].
   factory UpdatePatchRequest.fromJson(Json json) =>

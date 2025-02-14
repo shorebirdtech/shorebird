@@ -9,18 +9,12 @@ part of 'update_patch_request.dart';
 // **************************************************************************
 
 UpdatePatchRequest _$UpdatePatchRequestFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'UpdatePatchRequest',
-      json,
-      ($checkedConvert) {
-        final val = UpdatePatchRequest(
-          notes: $checkedConvert('notes', (v) => v as String?),
-        );
-        return val;
-      },
-    );
+    $checkedCreate('UpdatePatchRequest', json, ($checkedConvert) {
+      final val = UpdatePatchRequest(
+        notes: $checkedConvert('notes', (v) => v as String?),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$UpdatePatchRequestToJson(UpdatePatchRequest instance) =>
-    <String, dynamic>{
-      'notes': instance.notes,
-    };
+    <String, dynamic>{'notes': instance.notes};

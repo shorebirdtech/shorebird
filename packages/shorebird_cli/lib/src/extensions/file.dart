@@ -9,9 +9,7 @@ extension FileValidations on File {
   /// Logs an error and exits with [ExitCode.usage] if this file does not exist.
   void assertExists() {
     if (!existsSync()) {
-      logger.err(
-        'No file found at $path',
-      );
+      logger.err('No file found at $path');
       throw ProcessExit(ExitCode.usage.code);
     }
   }

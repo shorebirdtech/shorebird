@@ -11,9 +11,7 @@ part 'create_user_request.g.dart';
 @JsonSerializable()
 class CreateUserRequest {
   /// {@macro create_user_request}
-  const CreateUserRequest({
-    required this.name,
-  });
+  const CreateUserRequest({required this.name});
 
   /// Converts a JSON object to a [CreateUserRequest].
   factory CreateUserRequest.fromJson(Json json) =>

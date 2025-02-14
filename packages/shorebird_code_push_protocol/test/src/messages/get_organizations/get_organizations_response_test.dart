@@ -13,8 +13,9 @@ void main() {
         ],
       );
       expect(
-        GetOrganizationsResponse.fromJson(getOrganizationsResponse.toJson())
-            .toJson(),
+        GetOrganizationsResponse.fromJson(
+          getOrganizationsResponse.toJson(),
+        ).toJson(),
         equals(getOrganizationsResponse.toJson()),
       );
     });

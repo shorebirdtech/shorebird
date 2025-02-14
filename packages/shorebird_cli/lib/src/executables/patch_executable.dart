@@ -41,11 +41,7 @@ class PatchExecutable {
       cache.getArtifactDirectory('patch').path,
       'patch',
     );
-    final diffArguments = [
-      releaseArtifactPath,
-      patchArtifactPath,
-      diffPath,
-    ];
+    final diffArguments = [releaseArtifactPath, patchArtifactPath, diffPath];
 
     final result = await process.run(diffExecutable, diffArguments);
 
@@ -67,12 +63,10 @@ Please try again once you have installed this software.
     }
 
     if (result.exitCode != ExitCode.success.code) {
-      throw PatchFailedException(
-        '''
+      throw PatchFailedException('''
 Failed to create diff (exit code ${result.exitCode}). $messageDetails
   stdout: ${result.stdout}
-  stderr: ${result.stderr}''',
-      );
+  stderr: ${result.stderr}''');
     }
   }
 }

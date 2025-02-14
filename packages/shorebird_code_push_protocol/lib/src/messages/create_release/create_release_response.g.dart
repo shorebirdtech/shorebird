@@ -9,21 +9,17 @@ part of 'create_release_response.dart';
 // **************************************************************************
 
 CreateReleaseResponse _$CreateReleaseResponseFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'CreateReleaseResponse',
-      json,
-      ($checkedConvert) {
-        final val = CreateReleaseResponse(
-          release: $checkedConvert(
-              'release', (v) => Release.fromJson(v as Map<String, dynamic>)),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('CreateReleaseResponse', json, ($checkedConvert) {
+  final val = CreateReleaseResponse(
+    release: $checkedConvert(
+      'release',
+      (v) => Release.fromJson(v as Map<String, dynamic>),
+    ),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$CreateReleaseResponseToJson(
-        CreateReleaseResponse instance) =>
-    <String, dynamic>{
-      'release': instance.release.toJson(),
-    };
+  CreateReleaseResponse instance,
+) => <String, dynamic>{'release': instance.release.toJson()};

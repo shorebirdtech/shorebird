@@ -51,26 +51,24 @@ void main() {
       when(() => device.udid).thenReturn(deviceUdid);
       when(() => device.isWired).thenReturn(true);
       when(
-        () => process.start(
-          any(),
-          any(),
-          environment: any(named: 'environment'),
-        ),
+        () =>
+            process.start(any(), any(), environment: any(named: 'environment')),
       ).thenAnswer((_) async {
         return loggerProcess;
       });
-      when(() => loggerProcess.stdout).thenAnswer(
-        (_) => Stream.value(utf8.encode(stdoutOutput)),
-      );
-      when(() => loggerProcess.stderr).thenAnswer(
-        (_) => Stream.value(utf8.encode(stderrOutput)),
-      );
+      when(
+        () => loggerProcess.stdout,
+      ).thenAnswer((_) => Stream.value(utf8.encode(stdoutOutput)));
+      when(
+        () => loggerProcess.stderr,
+      ).thenAnswer((_) => Stream.value(utf8.encode(stderrOutput)));
       when(() => loggerProcess.exitCode).thenAnswer((_) async => 0);
 
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
 
-      idevicesyslogPath =
-          runWithOverrides(() => IDeviceSysLog.idevicesyslogExecutable.path);
+      idevicesyslogPath = runWithOverrides(
+        () => IDeviceSysLog.idevicesyslogExecutable.path,
+      );
     });
 
     group('startLogger', () {
@@ -130,25 +128,27 @@ void main() {
         });
       });
 
-      test('logs stdout lines matching appLogLineRegex at info level',
-          () async {
-        stdoutOutput = '''
+      test(
+        'logs stdout lines matching appLogLineRegex at info level',
+        () async {
+          stdoutOutput = '''
 Nov  9 17:58:47 backboardd(QuartzCore)[51460] <Error>: IQCollectable client message err=0x10000004 : (ipc/send) timed out
 Nov 10 14:46:57 Runner(Flutter)[1044] <Notice>: flutter: hello from stdout
 Nov 10 17:58:47 kernel(Sandbox)[0] <Error>: Sandbox: Runner(52662) deny(1) iokit-get-properties iokit-class:AGXAcceleratorG14P property:CFBundleIdentifier
 ''';
-        stderrOutput = '''
+          stderrOutput = '''
 Nov  9 17:58:47 backboardd(QuartzCore)[51460] <Error>: IQCollectable client message err=0x10000004 : (ipc/send) timed out
 Nov 10 14:46:57 Runner(Flutter)[1044] <Notice>: flutter: hello from stderr
 Nov 10 17:58:47 kernel(Sandbox)[0] <Error>: Sandbox: Runner(52662) deny(1) iokit-get-properties iokit-class:AGXAcceleratorG14P property:CFBundleIdentifier
 ''';
-        await runWithOverrides(
-          () => idevicesyslog.startLogger(device: device),
-        );
+          await runWithOverrides(
+            () => idevicesyslog.startLogger(device: device),
+          );
 
-        verify(() => logger.info('flutter: hello from stdout')).called(1);
-        verify(() => logger.info('flutter: hello from stderr')).called(1);
-      });
+          verify(() => logger.info('flutter: hello from stdout')).called(1);
+          verify(() => logger.info('flutter: hello from stderr')).called(1);
+        },
+      );
     });
   });
 }

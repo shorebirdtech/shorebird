@@ -155,11 +155,13 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
-              supportedOperatingSystems:
-                  any(named: 'supportedOperatingSystems'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
             ),
           ).thenAnswer((_) async {});
         });
@@ -195,8 +197,9 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
             ),
           ).thenThrow(exception);
@@ -207,8 +210,9 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
             ),
           ).thenThrow(exception);
@@ -395,9 +399,9 @@ void main() {
 
       setUp(() {
         releaseArtifactFile = File('');
-        when(() => artifactManager.downloadFile(any())).thenAnswer(
-          (_) async => releaseArtifactFile,
-        );
+        when(
+          () => artifactManager.downloadFile(any()),
+        ).thenAnswer((_) async => releaseArtifactFile);
 
         when(
           () => codePushClientWrapper.getReleaseArtifacts(
@@ -430,9 +434,9 @@ void main() {
             releaseArtifactPath: any(named: 'releaseArtifactPath'),
           ),
         ).thenAnswer((_) async {
-          final diffPath =
-              File(p.join(Directory.systemTemp.createTempSync().path, 'diff'))
-                ..createSync();
+          final diffPath = File(
+            p.join(Directory.systemTemp.createTempSync().path, 'diff'),
+          )..createSync();
           return diffPath.path;
         });
       });

@@ -69,9 +69,7 @@ auto_update: true
 
     group('AppIdExtension', () {
       test('getAppId returns base app id when no flavor is provided', () {
-        const shorebirdYaml = ShorebirdYaml(
-          appId: 'test_app_id',
-        );
+        const shorebirdYaml = ShorebirdYaml(appId: 'test_app_id');
         expect(shorebirdYaml.getAppId(), 'test_app_id');
       });
 

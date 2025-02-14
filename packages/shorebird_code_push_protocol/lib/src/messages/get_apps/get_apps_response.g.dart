@@ -9,22 +9,18 @@ part of 'get_apps_response.dart';
 // **************************************************************************
 
 GetAppsResponse _$GetAppsResponseFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'GetAppsResponse',
-      json,
-      ($checkedConvert) {
-        final val = GetAppsResponse(
-          apps: $checkedConvert(
-              'apps',
-              (v) => (v as List<dynamic>)
+    $checkedCreate('GetAppsResponse', json, ($checkedConvert) {
+      final val = GetAppsResponse(
+        apps: $checkedConvert(
+          'apps',
+          (v) =>
+              (v as List<dynamic>)
                   .map((e) => AppMetadata.fromJson(e as Map<String, dynamic>))
-                  .toList()),
-        );
-        return val;
-      },
-    );
+                  .toList(),
+        ),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$GetAppsResponseToJson(GetAppsResponse instance) =>
-    <String, dynamic>{
-      'apps': instance.apps.map((e) => e.toJson()).toList(),
-    };
+    <String, dynamic>{'apps': instance.apps.map((e) => e.toJson()).toList()};

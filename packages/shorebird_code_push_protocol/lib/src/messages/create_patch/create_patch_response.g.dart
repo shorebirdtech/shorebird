@@ -9,21 +9,14 @@ part of 'create_patch_response.dart';
 // **************************************************************************
 
 CreatePatchResponse _$CreatePatchResponseFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'CreatePatchResponse',
-      json,
-      ($checkedConvert) {
-        final val = CreatePatchResponse(
-          id: $checkedConvert('id', (v) => (v as num).toInt()),
-          number: $checkedConvert('number', (v) => (v as num).toInt()),
-        );
-        return val;
-      },
-    );
+    $checkedCreate('CreatePatchResponse', json, ($checkedConvert) {
+      final val = CreatePatchResponse(
+        id: $checkedConvert('id', (v) => (v as num).toInt()),
+        number: $checkedConvert('number', (v) => (v as num).toInt()),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$CreatePatchResponseToJson(
-        CreatePatchResponse instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'number': instance.number,
-    };
+  CreatePatchResponse instance,
+) => <String, dynamic>{'id': instance.id, 'number': instance.number};

@@ -37,13 +37,10 @@ Future<void> main(List<String> args) async {
   );
 
   // Write the current command to the top of the log file.
-  currentRunLogFile.writeAsStringSync(
-    '''
+  currentRunLogFile.writeAsStringSync('''
 Command: shorebird ${args.join(' ')}
 
-''',
-    mode: FileMode.append,
-  );
+''', mode: FileMode.append);
 
   await IOOverrides.runZoned(
     () async => _flushThenExit(
@@ -107,6 +104,8 @@ Command: shorebird ${args.join(' ')}
 /// exited already. This is useful to prevent Future chains from proceeding
 /// after you've decided to exit.
 Future<void> _flushThenExit(int status) {
-  return Future.wait<void>([stdout.close(), stderr.close()])
-      .then<void>((_) => exit(status));
+  return Future.wait<void>([
+    stdout.close(),
+    stderr.close(),
+  ]).then<void>((_) => exit(status));
 }

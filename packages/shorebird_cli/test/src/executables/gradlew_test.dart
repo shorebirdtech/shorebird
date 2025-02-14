@@ -52,23 +52,17 @@ void main() {
 
     group(MissingAndroidProjectException, () {
       test('toString is correct', () {
-        expect(
-          const MissingAndroidProjectException('test').toString(),
-          '''
+        expect(const MissingAndroidProjectException('test').toString(), '''
 Could not find an android project in test.
-To add android, run "flutter create . --platforms android"''',
-        );
+To add android, run "flutter create . --platforms android"''');
       });
     });
 
     group(MissingGradleWrapperException, () {
       test('toString is correct', () {
-        expect(
-          const MissingGradleWrapperException('test').toString(),
-          '''
+        expect(const MissingGradleWrapperException('test').toString(), '''
 Could not find test.
-Make sure you have run "flutter build apk" at least once.''',
-        );
+Make sure you have run "flutter build apk" at least once.''');
       });
     });
 
@@ -79,106 +73,90 @@ Make sure you have run "flutter build apk" at least once.''',
     }
 
     group('productFlavors', () {
-      test(
-        'throws MissingAndroidProjectException '
-        'when android root does not exist',
-        () async {
-          final tempDir = Directory.systemTemp.createTempSync();
-          await expectLater(
-            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-            throwsA(isA<MissingAndroidProjectException>()),
-          );
-          verifyNever(
-            () => process.run(
-              p.join(tempDir.path, 'android', 'gradlew'),
-              ['app:tasks', '--all', '--console=auto'],
-              runInShell: true,
-              workingDirectory: p.join(tempDir.path, 'android'),
-              environment: {'JAVA_HOME': javaHome},
-            ),
-          );
-        },
-        testOn: 'linux || mac-os',
-      );
-
-      test(
-        'throws MissingGradleWrapperException '
-        'when gradlew does not exist',
-        () async {
-          final tempDir = setUpAppTempDir();
-          await expectLater(
-            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-            throwsA(isA<MissingGradleWrapperException>()),
-          );
-          verifyNever(
-            () => process.run(
-              p.join(tempDir.path, 'android', 'gradlew'),
-              ['app:tasks', '--all', '--console=auto'],
-              runInShell: true,
-              workingDirectory: p.join(tempDir.path, 'android'),
-              environment: {'JAVA_HOME': javaHome},
-            ),
-          );
-        },
-        testOn: 'linux || mac-os',
-      );
-
-      test(
-        'uses existing JAVA_HOME when set',
-        () async {
-          final tempDir = setUpAppTempDir();
-          File(
+      test('throws MissingAndroidProjectException '
+          'when android root does not exist', () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        await expectLater(
+          runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+          throwsA(isA<MissingAndroidProjectException>()),
+        );
+        verifyNever(
+          () => process.run(
             p.join(tempDir.path, 'android', 'gradlew'),
-          ).createSync(recursive: true);
-          await expectLater(
-            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-            completes,
-          );
-          verify(
-            () => process.run(
-              p.join(tempDir.path, 'android', 'gradlew'),
-              ['app:tasks', '--all', '--console=auto'],
-              runInShell: true,
-              workingDirectory: p.join(tempDir.path, 'android'),
-              environment: {'JAVA_HOME': javaHome},
-            ),
-          ).called(1);
-        },
-        testOn: 'linux || mac-os',
-      );
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+            environment: {'JAVA_HOME': javaHome},
+          ),
+        );
+      }, testOn: 'linux || mac-os');
 
-      test(
-        'throws Exception '
-        'when process exits with non-zero code',
-        () async {
-          final tempDir = setUpAppTempDir();
-          File(
+      test('throws MissingGradleWrapperException '
+          'when gradlew does not exist', () async {
+        final tempDir = setUpAppTempDir();
+        await expectLater(
+          runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+          throwsA(isA<MissingGradleWrapperException>()),
+        );
+        verifyNever(
+          () => process.run(
             p.join(tempDir.path, 'android', 'gradlew'),
-          ).createSync(recursive: true);
-          when(() => result.exitCode).thenReturn(1);
-          when(() => result.stderr).thenReturn('test error');
-          await expectLater(
-            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-            throwsA(
-              isA<Exception>().having(
-                (e) => '$e',
-                'message',
-                contains('test error'),
-              ),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+            environment: {'JAVA_HOME': javaHome},
+          ),
+        );
+      }, testOn: 'linux || mac-os');
+
+      test('uses existing JAVA_HOME when set', () async {
+        final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'android', 'gradlew'),
+        ).createSync(recursive: true);
+        await expectLater(
+          runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+          completes,
+        );
+        verify(
+          () => process.run(
+            p.join(tempDir.path, 'android', 'gradlew'),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+            environment: {'JAVA_HOME': javaHome},
+          ),
+        ).called(1);
+      }, testOn: 'linux || mac-os');
+
+      test('throws Exception '
+          'when process exits with non-zero code', () async {
+        final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'android', 'gradlew'),
+        ).createSync(recursive: true);
+        when(() => result.exitCode).thenReturn(1);
+        when(() => result.stderr).thenReturn('test error');
+        await expectLater(
+          runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+          throwsA(
+            isA<Exception>().having(
+              (e) => '$e',
+              'message',
+              contains('test error'),
             ),
-          );
-          verify(
-            () => process.run(
-              p.join(tempDir.path, 'android', 'gradlew'),
-              ['app:tasks', '--all', '--console=auto'],
-              runInShell: true,
-              workingDirectory: p.join(tempDir.path, 'android'),
-              environment: {'JAVA_HOME': javaHome},
-            ),
-          ).called(1);
-        },
-        testOn: 'linux || mac-os',
-      );
+          ),
+        );
+        verify(
+          () => process.run(
+            p.join(tempDir.path, 'android', 'gradlew'),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+            environment: {'JAVA_HOME': javaHome},
+          ),
+        ).called(1);
+      }, testOn: 'linux || mac-os');
 
       group(
         '''when the process fails with the Unsupported class file major version error XX''',
@@ -233,49 +211,68 @@ BUILD FAILED in 3s
         },
       );
 
-      test(
-        'extracts flavors',
-        () async {
+      test('extracts flavors', () async {
+        final tempDir = setUpAppTempDir();
+        File(
+          p.join(tempDir.path, 'android', 'gradlew'),
+        ).createSync(recursive: true);
+        const javaHome = 'test_java_home';
+        when(() => result.stdout).thenReturn(
+          File(
+            p.join('test', 'fixtures', 'gradle', 'gradle_app_tasks.txt'),
+          ).readAsStringSync(),
+        );
+        await expectLater(
+          runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+          completion(
+            equals({
+              'development',
+              'developmentInternal',
+              'staging',
+              'stagingInternal',
+              'production',
+              'productionInternal',
+            }),
+          ),
+        );
+        verify(
+          () => process.run(
+            p.join(tempDir.path, 'android', 'gradlew'),
+            ['app:tasks', '--all', '--console=auto'],
+            runInShell: true,
+            workingDirectory: p.join(tempDir.path, 'android'),
+            environment: {'JAVA_HOME': javaHome},
+          ),
+        ).called(1);
+      }, testOn: 'linux || mac-os');
+
+      group('when flavors are all upper case', () {
+        test('extracts flavors', () async {
           final tempDir = setUpAppTempDir();
           File(
             p.join(tempDir.path, 'android', 'gradlew'),
           ).createSync(recursive: true);
-          const javaHome = 'test_java_home';
           when(() => result.stdout).thenReturn(
             File(
-              p.join('test', 'fixtures', 'gradle', 'gradle_app_tasks.txt'),
+              p.join(
+                'test',
+                'fixtures',
+                'gradle',
+                'gradle_app_tasks_upper_case_flavors.txt',
+              ),
             ).readAsStringSync(),
           );
           await expectLater(
             runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-            completion(
-              equals({
-                'development',
-                'developmentInternal',
-                'staging',
-                'stagingInternal',
-                'production',
-                'productionInternal',
-              }),
-            ),
+            completion(equals({'SP', 'RJ'})),
           );
-          verify(
-            () => process.run(
-              p.join(tempDir.path, 'android', 'gradlew'),
-              ['app:tasks', '--all', '--console=auto'],
-              runInShell: true,
-              workingDirectory: p.join(tempDir.path, 'android'),
-              environment: {'JAVA_HOME': javaHome},
-            ),
-          ).called(1);
-        },
-        testOn: 'linux || mac-os',
-      );
+        }, testOn: 'linux || mac-os');
+      });
 
-      group('when flavors are all upper case', () {
-        test(
-          'extracts flavors',
-          () async {
+      group(
+        '''when flavors are mixed, starting with upper case, finishing with camel''',
+        () {
+          test('extracts flavors', () async {
             final tempDir = setUpAppTempDir();
             File(
               p.join(tempDir.path, 'android', 'gradlew'),
@@ -286,93 +283,40 @@ BUILD FAILED in 3s
                   'test',
                   'fixtures',
                   'gradle',
-                  'gradle_app_tasks_upper_case_flavors.txt',
+                  'gradle_app_tasks_mixed_case_flavors.txt',
                 ),
               ).readAsStringSync(),
             );
             await expectLater(
               runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-              completion(
-                equals({
-                  'SP',
-                  'RJ',
-                }),
-              ),
+              completion(equals({'SPaulo', 'RJaneiro'})),
             );
-          },
-          testOn: 'linux || mac-os',
-        );
+          }, testOn: 'linux || mac-os');
+        },
+      );
+
+      group('when flavors starts with upper case, finishing with numbers', () {
+        test('extracts flavors', () async {
+          final tempDir = setUpAppTempDir();
+          File(
+            p.join(tempDir.path, 'android', 'gradlew'),
+          ).createSync(recursive: true);
+          when(() => result.stdout).thenReturn(
+            File(
+              p.join(
+                'test',
+                'fixtures',
+                'gradle',
+                'gradle_app_tasks_numbers_upper_case_flavors.txt',
+              ),
+            ).readAsStringSync(),
+          );
+          await expectLater(
+            runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
+            completion(equals({'CB500', 'NX700'})),
+          );
+        }, testOn: 'linux || mac-os');
       });
-
-      group(
-        '''when flavors are mixed, starting with upper case, finishing with camel''',
-        () {
-          test(
-            'extracts flavors',
-            () async {
-              final tempDir = setUpAppTempDir();
-              File(
-                p.join(tempDir.path, 'android', 'gradlew'),
-              ).createSync(recursive: true);
-              when(() => result.stdout).thenReturn(
-                File(
-                  p.join(
-                    'test',
-                    'fixtures',
-                    'gradle',
-                    'gradle_app_tasks_mixed_case_flavors.txt',
-                  ),
-                ).readAsStringSync(),
-              );
-              await expectLater(
-                runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-                completion(
-                  equals({
-                    'SPaulo',
-                    'RJaneiro',
-                  }),
-                ),
-              );
-            },
-            testOn: 'linux || mac-os',
-          );
-        },
-      );
-
-      group(
-        'when flavors starts with upper case, finishing with numbers',
-        () {
-          test(
-            'extracts flavors',
-            () async {
-              final tempDir = setUpAppTempDir();
-              File(
-                p.join(tempDir.path, 'android', 'gradlew'),
-              ).createSync(recursive: true);
-              when(() => result.stdout).thenReturn(
-                File(
-                  p.join(
-                    'test',
-                    'fixtures',
-                    'gradle',
-                    'gradle_app_tasks_numbers_upper_case_flavors.txt',
-                  ),
-                ).readAsStringSync(),
-              );
-              await expectLater(
-                runWithOverrides(() => gradlew.productFlavors(tempDir.path)),
-                completion(
-                  equals({
-                    'CB500',
-                    'NX700',
-                  }),
-                ),
-              );
-            },
-            testOn: 'linux || mac-os',
-          );
-        },
-      );
     });
 
     group('exists', () {
@@ -388,43 +332,29 @@ BUILD FAILED in 3s
       });
 
       group('when gradlew exists', () {
-        group(
-          'when on unix based OSs',
-          () {
-            setUp(() {
-              File(
-                p.join(tempDir.path, 'android', 'gradlew'),
-              ).createSync(recursive: true);
-            });
+        group('when on unix based OSs', () {
+          setUp(() {
+            File(
+              p.join(tempDir.path, 'android', 'gradlew'),
+            ).createSync(recursive: true);
+          });
 
-            test(
-              'returns true',
-              () {
-                expect(gradlew.exists(tempDir.path), isTrue);
-              },
-              testOn: 'linux || mac-os',
-            );
-          },
-        );
+          test('returns true', () {
+            expect(gradlew.exists(tempDir.path), isTrue);
+          }, testOn: 'linux || mac-os');
+        });
 
-        group(
-          'when on windows',
-          () {
-            setUp(() {
-              File(
-                p.join(tempDir.path, 'android', 'gradlew.bat'),
-              ).createSync(recursive: true);
-            });
+        group('when on windows', () {
+          setUp(() {
+            File(
+              p.join(tempDir.path, 'android', 'gradlew.bat'),
+            ).createSync(recursive: true);
+          });
 
-            test(
-              'returns true',
-              () {
-                expect(gradlew.exists(tempDir.path), isTrue);
-              },
-              testOn: 'windows',
-            );
-          },
-        );
+          test('returns true', () {
+            expect(gradlew.exists(tempDir.path), isTrue);
+          }, testOn: 'windows');
+        });
       });
     });
 
@@ -457,16 +387,12 @@ OS:           Mac OS X 14.4.1 aarch64
 ''');
         });
 
-        test(
-          'returns the correct version',
-          () async {
-            final version = await runWithOverrides(
-              () => gradlew.version(tempDir.path),
-            );
-            expect(version, equals('12.34.56'));
-          },
-          testOn: 'linux || mac-os',
-        );
+        test('returns the correct version', () async {
+          final version = await runWithOverrides(
+            () => gradlew.version(tempDir.path),
+          );
+          expect(version, equals('12.34.56'));
+        }, testOn: 'linux || mac-os');
       });
 
       group('when version string has only major and minor versions', () {
@@ -488,16 +414,12 @@ OS:           Mac OS X 14.4.1 aarch64
 ''');
         });
 
-        test(
-          'returns the correct version',
-          () async {
-            final version = await runWithOverrides(
-              () => gradlew.version(tempDir.path),
-            );
-            expect(version, equals('12.34'));
-          },
-          testOn: 'linux || mac-os',
-        );
+        test('returns the correct version', () async {
+          final version = await runWithOverrides(
+            () => gradlew.version(tempDir.path),
+          );
+          expect(version, equals('12.34'));
+        }, testOn: 'linux || mac-os');
       });
 
       group('when the output cannot be parsed', () {
@@ -505,16 +427,12 @@ OS:           Mac OS X 14.4.1 aarch64
           when(() => result.stdout).thenReturn('not a real version');
         });
 
-        test(
-          'returns unknown',
-          () async {
-            final version = await runWithOverrides(
-              () => gradlew.version(tempDir.path),
-            );
-            expect(version, 'unknown');
-          },
-          testOn: 'linux || mac-os',
-        );
+        test('returns unknown', () async {
+          final version = await runWithOverrides(
+            () => gradlew.version(tempDir.path),
+          );
+          expect(version, 'unknown');
+        }, testOn: 'linux || mac-os');
       });
     });
   });

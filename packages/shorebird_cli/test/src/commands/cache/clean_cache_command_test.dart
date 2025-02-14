@@ -43,9 +43,9 @@ void main() {
       command = runWithOverrides(CleanCacheCommand.new);
 
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => shorebirdEnv.shorebirdRoot).thenReturn(
-        Directory.systemTemp.createTempSync(),
-      );
+      when(
+        () => shorebirdEnv.shorebirdRoot,
+      ).thenReturn(Directory.systemTemp.createTempSync());
     });
 
     test('has a non-empty description', () {
@@ -66,29 +66,29 @@ void main() {
           when(() => platform.isWindows).thenReturn(true);
         });
 
-        test('tells the user how to find the issue and exits with code 70',
-            () async {
-          when(() => cache.clear()).thenThrow(
-            const FileSystemException('Failed to delete'),
-          );
+        test(
+          'tells the user how to find the issue and exits with code 70',
+          () async {
+            when(
+              () => cache.clear(),
+            ).thenThrow(const FileSystemException('Failed to delete'));
 
-          final result = await runWithOverrides(command.run);
+            final result = await runWithOverrides(command.run);
 
-          expect(result, equals(ExitCode.software.code));
-          verify(() => progress.fail(any())).called(1);
-          verify(
-            () => logger.info(
-              any(
-                that: stringContainsInOrder(
-                  [
+            expect(result, equals(ExitCode.software.code));
+            verify(() => progress.fail(any())).called(1);
+            verify(
+              () => logger.info(
+                any(
+                  that: stringContainsInOrder([
                     '''This could be because a program is using a file in the cache directory. To find and stop such a program, see''',
                     'https://superuser.com/questions/1333118/cant-delete-empty-folder-because-it-is-used',
-                  ],
+                  ]),
                 ),
               ),
-            ),
-          ).called(1);
-        });
+            ).called(1);
+          },
+        );
       });
 
       group('on a non-Windows OS', () {
@@ -97,9 +97,9 @@ void main() {
         });
 
         test('prints error message and exits with code 70', () async {
-          when(() => cache.clear()).thenThrow(
-            const FileSystemException('Failed to delete'),
-          );
+          when(
+            () => cache.clear(),
+          ).thenThrow(const FileSystemException('Failed to delete'));
 
           final result = await runWithOverrides(command.run);
 

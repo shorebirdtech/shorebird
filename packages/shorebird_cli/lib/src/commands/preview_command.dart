@@ -165,24 +165,27 @@ This is only applicable when previewing Android releases.''',
     //
     // With these two lists, we can now determine if a platform is previewable
     // or not, by making a difference between the two lists.
-    final (allReleases, sideloadableReleases) = await (
-      codePushClientWrapper.getReleases(appId: appId),
-      codePushClientWrapper.getReleases(
-        appId: appId,
-        sideloadableOnly: true,
-      )
-    ).wait;
+    final (allReleases, sideloadableReleases) =
+        await (
+          codePushClientWrapper.getReleases(appId: appId),
+          codePushClientWrapper.getReleases(
+            appId: appId,
+            sideloadableOnly: true,
+          ),
+        ).wait;
 
-    final maybePlatform = results['platform'] != null
-        ? ReleasePlatform.values.byName(results['platform'] as String)
-        : null;
-    final platformReleases = sideloadableReleases
-        .where(
-          (r) =>
-              maybePlatform == null ||
-              r.activePlatforms.contains(maybePlatform),
-        )
-        .toList();
+    final maybePlatform =
+        results['platform'] != null
+            ? ReleasePlatform.values.byName(results['platform'] as String)
+            : null;
+    final platformReleases =
+        sideloadableReleases
+            .where(
+              (r) =>
+                  maybePlatform == null ||
+                  r.activePlatforms.contains(maybePlatform),
+            )
+            .toList();
 
     if (platformReleases.isEmpty) {
       if (maybePlatform != null) {
@@ -195,7 +198,8 @@ This is only applicable when previewing Android releases.''',
       return ExitCode.usage.code;
     }
 
-    final releaseVersion = results['release-version'] as String? ??
+    final releaseVersion =
+        results['release-version'] as String? ??
         await promptForReleaseVersion(platformReleases);
 
     final release = platformReleases.firstWhereOrNull(
@@ -207,13 +211,15 @@ This is only applicable when previewing Android releases.''',
       return ExitCode.usage.code;
     }
 
-    final availablePlatforms = release.activePlatforms
-        .where((p) => supportedReleasePlatforms.contains(p))
-        .toList();
+    final availablePlatforms =
+        release.activePlatforms
+            .where((p) => supportedReleasePlatforms.contains(p))
+            .toList();
 
     if (availablePlatforms.isEmpty) {
-      final activePlatformsString =
-          release.activePlatforms.map((p) => p.displayName).join(', ');
+      final activePlatformsString = release.activePlatforms
+          .map((p) => p.displayName)
+          .join(', ');
       logger.err(
         '''This release can only be previewed on platforms that support $activePlatformsString''',
       );
@@ -248,32 +254,32 @@ This is only applicable when previewing Android releases.''',
 
     return switch (releasePlatform) {
       ReleasePlatform.android => installAndLaunchAndroid(
-          appId: appId,
-          release: release,
-          deviceId: deviceId,
-          track: track,
-        ),
+        appId: appId,
+        release: release,
+        deviceId: deviceId,
+        track: track,
+      ),
       ReleasePlatform.ios => installAndLaunchIos(
-          appId: appId,
-          release: release,
-          deviceId: deviceId,
-          track: track,
-        ),
+        appId: appId,
+        release: release,
+        deviceId: deviceId,
+        track: track,
+      ),
       ReleasePlatform.linux => installAndLaunchLinux(
-          appId: appId,
-          release: release,
-          track: track,
-        ),
+        appId: appId,
+        release: release,
+        track: track,
+      ),
       ReleasePlatform.macos => installAndLaunchMacos(
-          appId: appId,
-          release: release,
-          track: track,
-        ),
+        appId: appId,
+        release: release,
+        track: track,
+      ),
       ReleasePlatform.windows => installAndLaunchWindows(
-          appId: appId,
-          release: release,
-          track: track,
-        ),
+        appId: appId,
+        release: release,
+        track: track,
+      ),
     };
   }
 
@@ -447,10 +453,9 @@ This is only applicable when previewing Android releases.''',
       channel: track.name,
     );
 
-    final exeFile = appDirectory
-        .listSync()
-        .whereType<File>()
-        .firstWhere((file) => file.path.endsWith('.exe'));
+    final exeFile = appDirectory.listSync().whereType<File>().firstWhere(
+      (file) => file.path.endsWith('.exe'),
+    );
 
     final proc = await process.start(exeFile.path, []);
     proc.stdout.listen((log) => logger.info(utf8.decode(log)));
@@ -540,17 +545,14 @@ This is only applicable when previewing Android releases.''',
       return line.trim().replaceFirst(prefixRegex, '').trim();
     }
 
-    logs.listen(
-      (log) {
-        final logLine = utf8.decode(log);
-        if (logFilters.any((filter) => filter.hasMatch(logLine))) {
-          return;
-        }
+    logs.listen((log) {
+      final logLine = utf8.decode(log);
+      if (logFilters.any((filter) => filter.hasMatch(logLine))) {
+        return;
+      }
 
-        logger.info(removeLogPrefix(logLine));
-      },
-      onDone: completer.complete,
-    );
+      logger.info(removeLogPrefix(logLine));
+    }, onDone: completer.complete);
 
     return completer.future.then((_) => ExitCode.success.code);
   }
@@ -798,9 +800,10 @@ This is only applicable when previewing Android releases.''',
       }
 
       final shouldUseDeviceCtl = deviceForLaunch != null;
-      final progressCompleteMessage = deviceForLaunch != null
-          ? 'Using device ${deviceForLaunch.name}'
-          : '''No iOS 17+ device found, looking for devices running iOS 16 or lower''';
+      final progressCompleteMessage =
+          deviceForLaunch != null
+              ? 'Using device ${deviceForLaunch.name}'
+              : '''No iOS 17+ device found, looking for devices running iOS 16 or lower''';
       deviceLocateProgress.complete(progressCompleteMessage);
 
       final int installExitCode;
@@ -850,12 +853,7 @@ This is only applicable when previewing Android releases.''',
     required String channel,
   }) async {
     final shorebirdYamlFile = File(
-      p.join(
-        appDirectory.path,
-        'data',
-        'flutter_assets',
-        'shorebird.yaml',
-      ),
+      p.join(appDirectory.path, 'data', 'flutter_assets', 'shorebird.yaml'),
     );
 
     await _maybeSetChannelInShorebirdYaml(
@@ -979,12 +977,7 @@ This is only applicable when previewing Android releases.''',
     required Directory bundleDirectory,
   }) async {
     final shorebirdYamlFile = File(
-      p.join(
-        bundleDirectory.path,
-        'data',
-        'flutter_assets',
-        'shorebird.yaml',
-      ),
+      p.join(bundleDirectory.path, 'data', 'flutter_assets', 'shorebird.yaml'),
     );
 
     await _maybeSetChannelInShorebirdYaml(
@@ -1027,10 +1020,11 @@ This is only applicable when previewing Android releases.''',
 /// that can be previewed).
 extension Previewable on Release {
   /// Returns the platforms that can be previewed.
-  List<ReleasePlatform> get activePlatforms => platformStatuses.entries
-      .where((e) => e.value == ReleaseStatus.active)
-      .map((e) => e.key)
-      .toList();
+  List<ReleasePlatform> get activePlatforms =>
+      platformStatuses.entries
+          .where((e) => e.value == ReleaseStatus.active)
+          .map((e) => e.key)
+          .toList();
 }
 
 /// Given two [Release]s, one with all the platforms, previewable or not,

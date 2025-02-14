@@ -54,8 +54,9 @@ void main() {
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
-          shorebirdAndroidArtifactsRef
-              .overrideWith(() => shorebirdAndroidArtifacts),
+          shorebirdAndroidArtifactsRef.overrideWith(
+            () => shorebirdAndroidArtifacts,
+          ),
         },
       );
     }
@@ -79,8 +80,9 @@ void main() {
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
       when(() => argResults['build-number']).thenReturn(buildNumber);
-      when(() => argResults['target-platform'])
-          .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
+      when(
+        () => argResults['target-platform'],
+      ).thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults.wasParsed(any())).thenReturn(false);
 
@@ -122,11 +124,13 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
-              supportedOperatingSystems:
-                  any(named: 'supportedOperatingSystems'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
             ),
           ).thenAnswer((_) async {});
         });
@@ -162,8 +166,9 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
             ),
           ).thenThrow(exception);
@@ -174,8 +179,9 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
             ),
           ).thenThrow(exception);
@@ -257,9 +263,7 @@ void main() {
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
           ),
-        ).thenAnswer(
-          (_) async => File(''),
-        );
+        ).thenAnswer((_) async => File(''));
 
         setUpProjectRootArtifacts();
       });
@@ -311,9 +315,8 @@ void main() {
 
       test('returns value from argResults', () async {
         final result = await runWithOverrides(
-          () => aarReleaser.getReleaseVersion(
-            releaseArtifactRoot: Directory(''),
-          ),
+          () =>
+              aarReleaser.getReleaseVersion(releaseArtifactRoot: Directory('')),
         );
         expect(result, releaseVersion);
       });
@@ -408,7 +411,8 @@ void main() {
       test('returns expected instructions', () {
         expect(
           runWithOverrides(() => aarReleaser.postReleaseInstructions),
-          equals('''
+          equals(
+            '''
 
 Your next steps:
 
@@ -440,7 +444,8 @@ dependencies {
   releaseImplementation '${shorebirdEnv.androidPackageName}:flutter_release:$buildNumber'
   // ...
 }''')}
-'''),
+''',
+          ),
         );
       });
     });

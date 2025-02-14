@@ -19,10 +19,7 @@ void main() {
         isTrial: true,
       );
 
-      expect(
-        Plan.fromJson(plan.toJson()).toJson(),
-        equals(plan.toJson()),
-      );
+      expect(Plan.fromJson(plan.toJson()).toJson(), equals(plan.toJson()));
     });
   });
 }

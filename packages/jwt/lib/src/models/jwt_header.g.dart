@@ -8,15 +8,12 @@ part of 'jwt_header.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-JwtHeader _$JwtHeaderFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'JwtHeader',
-      json,
-      ($checkedConvert) {
-        final val = JwtHeader(
-          alg: $checkedConvert('alg', (v) => v as String),
-          kid: $checkedConvert('kid', (v) => v as String),
-          typ: $checkedConvert('typ', (v) => v as String),
-        );
-        return val;
-      },
-    );
+JwtHeader _$JwtHeaderFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('JwtHeader', json, ($checkedConvert) {
+      final val = JwtHeader(
+        alg: $checkedConvert('alg', (v) => v as String),
+        kid: $checkedConvert('kid', (v) => v as String),
+        typ: $checkedConvert('typ', (v) => v as String),
+      );
+      return val;
+    });

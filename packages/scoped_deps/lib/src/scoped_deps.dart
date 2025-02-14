@@ -10,9 +10,7 @@ class ScopedRef<T> {
   /// {@macro scoped_ref}
   ScopedRef(this._create) : _key = Object();
 
-  ScopedRef._(T Function() create, Object key)
-      : _create = create,
-        _key = key;
+  ScopedRef._(T Function() create, Object key) : _create = create, _key = key;
 
   final T Function() _create;
   final Object _key;
@@ -47,20 +45,15 @@ T read<T>(ScopedRef<T> ref, {T Function()? orElse}) {
   final value = (Zone.current[ref._key] as ScopedRef<T>?)?._value;
   if (value == null) {
     if (orElse != null) return orElse();
-    throw StateError(
-      '''
+    throw StateError('''
 read(ScopedRef<$T>) was called in a scope which does not contain a corresponding value for the provided ref.
-Did you forget to call: runScoped(() {...}, values: {value})?''',
-    );
+Did you forget to call: runScoped(() {...}, values: {value})?''');
   }
   return value;
 }
 
 /// Runs [body] within a scope which has access to the set of refs in [values].
-R runScoped<R>(
-  R Function() body, {
-  Set<ScopedRef<dynamic>> values = const {},
-}) {
+R runScoped<R>(R Function() body, {Set<ScopedRef<dynamic>> values = const {}}) {
   return runZoned(
     body,
     zoneValues: {for (final value in values) value._key: value},

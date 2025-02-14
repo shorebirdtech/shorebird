@@ -61,14 +61,13 @@ To change the version of this release, change your app's version in your pubspec
     }
     final flutterVersionArg = argResults['flutter-version'] as String?;
     if (flutterVersionArg != null) {
-      final version =
-          await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
+      final version = await shorebirdFlutter.resolveFlutterVersion(
+        flutterVersionArg,
+      );
       if (version != null && version < minimumSupportedLinuxFlutterVersion) {
-        logger.err(
-          '''
+        logger.err('''
 Linux releases are not supported with Flutter versions older than $minimumSupportedLinuxFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-        );
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         throw ProcessExit(ExitCode.usage.code);
       }
     }
@@ -88,10 +87,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   @override
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
-  }) async =>
-      linux.versionFromLinuxBundle(
-        bundleRoot: releaseArtifactRoot as Directory,
-      );
+  }) async => linux.versionFromLinuxBundle(
+    bundleRoot: releaseArtifactRoot as Directory,
+  );
 
   @override
   String get postReleaseInstructions => '''
@@ -103,10 +101,9 @@ Linux release created at ${artifactManager.linuxBundleDirectory.path}.
   Future<void> uploadReleaseArtifacts({
     required Release release,
     required String appId,
-  }) =>
-      codePushClientWrapper.createLinuxReleaseArtifacts(
-        appId: appId,
-        releaseId: release.id,
-        bundle: artifactManager.linuxBundleDirectory,
-      );
+  }) => codePushClientWrapper.createLinuxReleaseArtifacts(
+    appId: appId,
+    releaseId: release.id,
+    bundle: artifactManager.linuxBundleDirectory,
+  );
 }

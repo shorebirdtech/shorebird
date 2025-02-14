@@ -31,7 +31,7 @@ Handler gcpAlertHandler({required String webhookUrl, http.Client? client}) {
             {'name': 'Resource', 'value': resource, 'inline': true},
             {'name': 'Condition', 'value': conditionName, 'inline': true},
           ],
-        }
+        },
       ],
       'attachments': const <dynamic>[],
     };

@@ -82,14 +82,13 @@ To change the version of this release, change your app's version in your pubspec
 
     final flutterVersionArg = argResults['flutter-version'] as String?;
     if (flutterVersionArg != null) {
-      final version =
-          await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
+      final version = await shorebirdFlutter.resolveFlutterVersion(
+        flutterVersionArg,
+      );
       if (version != null && version < minimumSupportedIosFlutterVersion) {
-        logger.err(
-          '''
+        logger.err('''
 iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-        );
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         throw ProcessExit(ExitCode.usage.code);
       }
     }
@@ -173,9 +172,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory()!;
     final String? podfileLockHash;
     if (shorebirdEnv.iosPodfileLockFile.existsSync()) {
-      podfileLockHash = sha256
-          .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
-          .toString();
+      podfileLockHash =
+          sha256
+              .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
+              .toString();
     } else {
       podfileLockHash = null;
     }
@@ -183,9 +183,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       appId: appId,
       releaseId: release.id,
       xcarchivePath: xcarchiveDirectory.path,
-      runnerPath: artifactManager
-          .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
-          .path,
+      runnerPath:
+          artifactManager
+              .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
+              .path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
       supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,
@@ -195,12 +196,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   @override
   Future<UpdateReleaseMetadata> updatedReleaseMetadata(
     UpdateReleaseMetadata metadata,
-  ) async =>
-      metadata.copyWith(
-        environment: metadata.environment.copyWith(
-          xcodeVersion: await xcodeBuild.version(),
-        ),
-      );
+  ) async => metadata.copyWith(
+    environment: metadata.environment.copyWith(
+      xcodeVersion: await xcodeBuild.version(),
+    ),
+  );
 
   @override
   String get postReleaseInstructions {
