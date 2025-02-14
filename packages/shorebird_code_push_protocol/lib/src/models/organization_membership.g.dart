@@ -9,27 +9,27 @@ part of 'organization_membership.dart';
 // **************************************************************************
 
 OrganizationMembership _$OrganizationMembershipFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'OrganizationMembership',
-      json,
-      ($checkedConvert) {
-        final val = OrganizationMembership(
-          organization: $checkedConvert('organization',
-              (v) => Organization.fromJson(v as Map<String, dynamic>)),
-          role: $checkedConvert(
-              'role', (v) => $enumDecode(_$OrganizationRoleEnumMap, v)),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('OrganizationMembership', json, ($checkedConvert) {
+  final val = OrganizationMembership(
+    organization: $checkedConvert(
+      'organization',
+      (v) => Organization.fromJson(v as Map<String, dynamic>),
+    ),
+    role: $checkedConvert(
+      'role',
+      (v) => $enumDecode(_$OrganizationRoleEnumMap, v),
+    ),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$OrganizationMembershipToJson(
-        OrganizationMembership instance) =>
-    <String, dynamic>{
-      'organization': instance.organization.toJson(),
-      'role': _$OrganizationRoleEnumMap[instance.role]!,
-    };
+  OrganizationMembership instance,
+) => <String, dynamic>{
+  'organization': instance.organization.toJson(),
+  'role': _$OrganizationRoleEnumMap[instance.role]!,
+};
 
 const _$OrganizationRoleEnumMap = {
   OrganizationRole.owner: 'owner',

@@ -134,11 +134,10 @@ To fix, update your pubspec.yaml to include the following:
   Future<List<ValidationIssue>> runValidators(
     List<Validator> validators,
   ) async {
-    final validationIssues = (await Future.wait(
-      validators.map((v) => v.validate()),
-    ))
-        .flattened
-        .toList();
+    final validationIssues =
+        (await Future.wait(
+          validators.map((v) => v.validate()),
+        )).flattened.toList();
 
     for (final issue in validationIssues) {
       logger.info(issue.displayMessage);

@@ -26,10 +26,7 @@ void main() {
           size: 9876,
         );
         final instance = CreatePatchArtifactRequest.fromJson(request.toJson());
-        expect(
-          instance.toJson(),
-          equals(request.toJson()),
-        );
+        expect(instance.toJson(), equals(request.toJson()));
         expect(instance.hashSignature, equals('Shh'));
       });
     });

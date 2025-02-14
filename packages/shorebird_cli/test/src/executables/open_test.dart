@@ -16,12 +16,7 @@ void main() {
     late ShorebirdProcess process;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(
-        body,
-        values: {
-          processRef.overrideWith(() => process),
-        },
-      );
+      return runScoped(body, values: {processRef.overrideWith(() => process)});
     }
 
     setUp(() {
@@ -34,8 +29,9 @@ void main() {
 
       setUp(() {
         workingDirectory = Directory.systemTemp.createTempSync();
-        File(p.join(workingDirectory.path, 'Contents', 'MacOS', 'test'))
-            .createSync(recursive: true);
+        File(
+          p.join(workingDirectory.path, 'Contents', 'MacOS', 'test'),
+        ).createSync(recursive: true);
       });
 
       test('executes correct command and streams logs', () async {
@@ -60,10 +56,12 @@ void main() {
         expect(stream, emits(utf8.encode('hello world')));
         verify(() => process.start('open', ['-n', workingDirectory.path]));
         verify(
-          () => process.start(
-            'log',
-            ['stream', '--style=compact', '--process', 'test'],
-          ),
+          () => process.start('log', [
+            'stream',
+            '--style=compact',
+            '--process',
+            'test',
+          ]),
         ).called(1);
       });
     });

@@ -142,10 +142,7 @@ class GetApksCommand extends ShorebirdCommand {
       )..createSync(recursive: true);
     }
 
-    await extractFileToDisk(
-      apksZipFile.path,
-      outputDirectory.path,
-    );
+    await extractFileToDisk(apksZipFile.path, outputDirectory.path);
 
     logger.info('apk(s) generated at ${lightCyan.wrap(outputDirectory.path)}');
     return ExitCode.success.code;
@@ -169,9 +166,7 @@ class GetApksCommand extends ShorebirdCommand {
     );
   }
 
-  Future<File> _downloadAab({
-    required ReleaseArtifact releaseArtifact,
-  }) async {
+  Future<File> _downloadAab({required ReleaseArtifact releaseArtifact}) async {
     final File artifactFile;
     try {
       artifactFile = await artifactManager.downloadWithProgressUpdates(

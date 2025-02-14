@@ -23,9 +23,7 @@ void main() {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         () => body(),
-        values: {
-          platformRef.overrideWith(() => platform),
-        },
+        values: {platformRef.overrideWith(() => platform)},
       );
     }
 
@@ -34,9 +32,7 @@ void main() {
       platformScript = Uri.file(
         p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'),
       );
-      File(
-        p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
-      )
+      File(p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'))
         ..createSync(recursive: true)
         ..writeAsStringSync(flutterRevision, flush: true);
       platform = MockPlatform();
@@ -111,27 +107,27 @@ void main() {
         final tempDir = Directory.systemTemp.createTempSync();
         File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
         final projectRoot = IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.getFlutterProjectRoot(),
-          ),
+          () => runWithOverrides(() => shorebirdEnv.getFlutterProjectRoot()),
           getCurrentDirectory: () => tempDir,
         );
         expect(projectRoot!.path, equals(tempDir.path));
       });
 
-      test('returns correct directory when Flutter project exists (nested)',
-          () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final nestedDir = Directory(p.join(tempDir.path, 'nested'));
-        File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
-        final projectRoot = IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.getFlutterProjectRoot(),
-          ),
-          getCurrentDirectory: () => nestedDir,
-        );
-        expect(projectRoot!.path, equals(tempDir.path));
-      });
+      test(
+        'returns correct directory when Flutter project exists (nested)',
+        () {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final nestedDir = Directory(p.join(tempDir.path, 'nested'));
+          File(
+            p.join(tempDir.path, 'pubspec.yaml'),
+          ).createSync(recursive: true);
+          final projectRoot = IOOverrides.runZoned(
+            () => runWithOverrides(() => shorebirdEnv.getFlutterProjectRoot()),
+            getCurrentDirectory: () => nestedDir,
+          );
+          expect(projectRoot!.path, equals(tempDir.path));
+        },
+      );
     });
 
     group('getShorebirdProjectRoot', () {
@@ -139,45 +135,46 @@ void main() {
         final tempDir = Directory.systemTemp.createTempSync();
         expect(
           IOOverrides.runZoned(
-            () => runWithOverrides(
-              () => shorebirdEnv.getShorebirdProjectRoot(),
-            ),
+            () =>
+                runWithOverrides(() => shorebirdEnv.getShorebirdProjectRoot()),
             getCurrentDirectory: () => tempDir,
           ),
           isNull,
         );
       });
 
-      test('returns correct directory when Shorebird project exists (root)',
-          () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        File(
-          p.join(tempDir.path, 'shorebird.yaml'),
-        ).createSync(recursive: true);
-        final projectRoot = IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.getShorebirdProjectRoot(),
-          ),
-          getCurrentDirectory: () => tempDir,
-        );
-        expect(projectRoot!.path, equals(tempDir.path));
-      });
+      test(
+        'returns correct directory when Shorebird project exists (root)',
+        () {
+          final tempDir = Directory.systemTemp.createTempSync();
+          File(
+            p.join(tempDir.path, 'shorebird.yaml'),
+          ).createSync(recursive: true);
+          final projectRoot = IOOverrides.runZoned(
+            () =>
+                runWithOverrides(() => shorebirdEnv.getShorebirdProjectRoot()),
+            getCurrentDirectory: () => tempDir,
+          );
+          expect(projectRoot!.path, equals(tempDir.path));
+        },
+      );
 
-      test('returns correct directory when Flutter project exists (nested)',
-          () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        final nestedDir = Directory(p.join(tempDir.path, 'nested'));
-        File(
-          p.join(tempDir.path, 'shorebird.yaml'),
-        ).createSync(recursive: true);
-        final projectRoot = IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.getShorebirdProjectRoot(),
-          ),
-          getCurrentDirectory: () => nestedDir,
-        );
-        expect(projectRoot!.path, equals(tempDir.path));
-      });
+      test(
+        'returns correct directory when Flutter project exists (nested)',
+        () {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final nestedDir = Directory(p.join(tempDir.path, 'nested'));
+          File(
+            p.join(tempDir.path, 'shorebird.yaml'),
+          ).createSync(recursive: true);
+          final projectRoot = IOOverrides.runZoned(
+            () =>
+                runWithOverrides(() => shorebirdEnv.getShorebirdProjectRoot()),
+            getCurrentDirectory: () => nestedDir,
+          );
+          expect(projectRoot!.path, equals(tempDir.path));
+        },
+      );
     });
 
     group('dartBinaryFile', () {
@@ -204,9 +201,7 @@ void main() {
         final tempDir = Directory.systemTemp.createTempSync();
         File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
         final podfileLockFile = IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.iosPodfileLockFile,
-          ),
+          () => runWithOverrides(() => shorebirdEnv.iosPodfileLockFile),
           getCurrentDirectory: () => tempDir,
         );
         expect(
@@ -222,15 +217,10 @@ void main() {
         File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
         Directory(p.join(tempDir.path, 'build')).createSync(recursive: true);
         final buildDirectory = IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.buildDirectory,
-          ),
+          () => runWithOverrides(() => shorebirdEnv.buildDirectory),
           getCurrentDirectory: () => tempDir,
         );
-        expect(
-          buildDirectory.path,
-          equals(p.join(tempDir.path, 'build')),
-        );
+        expect(buildDirectory.path, equals(p.join(tempDir.path, 'build')));
       });
     });
 
@@ -239,9 +229,7 @@ void main() {
         final tempDir = Directory.systemTemp.createTempSync();
         File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
         final podfileLockFile = IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdEnv.macosPodfileLockFile,
-          ),
+          () => runWithOverrides(() => shorebirdEnv.macosPodfileLockFile),
           getCurrentDirectory: () => tempDir,
         );
         expect(
@@ -298,9 +286,8 @@ void main() {
         'returns null when error occurs reading pubspec.yaml',
         () {
           final tempDir = Directory.systemTemp.createTempSync();
-          final file = File(
-            p.join(tempDir.path, 'pubspec.yaml'),
-          )..writeAsStringSync('name: test');
+          final file = File(p.join(tempDir.path, 'pubspec.yaml'))
+            ..writeAsStringSync('name: test');
           // Make the file unreadable.
           Process.runSync('chmod', ['000', file.path]);
           expect(
@@ -330,13 +317,10 @@ void main() {
         );
       });
 
-      test(
-          'returns value when pubspec.yaml exists '
+      test('returns value when pubspec.yaml exists '
           'and contains a malformed value', () {
         final tempDir = Directory.systemTemp.createTempSync();
-        File(
-          p.join(tempDir.path, 'pubspec.yaml'),
-        ).writeAsStringSync('''
+        File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
 name: test
 publish_to: yon30c
         ''');
@@ -380,9 +364,7 @@ publish_to: yon30c
 
       test('returns true even if pubspec.yaml contains malformed values', () {
         final tempDir = Directory.systemTemp.createTempSync();
-        File(
-          p.join(tempDir.path, 'pubspec.yaml'),
-        ).writeAsStringSync('''
+        File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
 name: test
 publish_to: yon30c
         ''');
@@ -424,8 +406,7 @@ publish_to: yon30c
     });
 
     group('pubspecContainsShorebirdYaml', () {
-      test(
-          'returns false when pubspec.yaml does not '
+      test('returns false when pubspec.yaml does not '
           'contain shorebird.yaml in assets', () {
         final tempDir = Directory.systemTemp.createTempSync();
         File(
@@ -444,9 +425,7 @@ publish_to: yon30c
 
       test('returns false when pubspec.yaml contains empty flutter config', () {
         final tempDir = Directory.systemTemp.createTempSync();
-        File(
-          p.join(tempDir.path, 'pubspec.yaml'),
-        ).writeAsStringSync('''
+        File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
 name: test
 flutter:''');
         expect(
@@ -460,13 +439,10 @@ flutter:''');
         );
       });
 
-      test(
-          'returns true when pubspec.yaml does '
+      test('returns true when pubspec.yaml does '
           'contain shorebird.yaml in assets', () {
         final tempDir = Directory.systemTemp.createTempSync();
-        File(
-          p.join(tempDir.path, 'pubspec.yaml'),
-        ).writeAsStringSync('''
+        File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
 name: test
 flutter:
   assets:
@@ -485,28 +461,27 @@ flutter:
     });
 
     group('androidPackageName', () {
-      test('returns null when pubspec.yaml does not contain android module',
-          () {
-        final tempDir = Directory.systemTemp.createTempSync();
-        File(
-          p.join(tempDir.path, 'pubspec.yaml'),
-        ).writeAsStringSync('name: test');
-        expect(
-          IOOverrides.runZoned(
-            () => runWithOverrides(() => shorebirdEnv.androidPackageName),
-            getCurrentDirectory: () => tempDir,
-          ),
-          isNull,
-        );
-      });
-
       test(
-          'returns correct package name when '
+        'returns null when pubspec.yaml does not contain android module',
+        () {
+          final tempDir = Directory.systemTemp.createTempSync();
+          File(
+            p.join(tempDir.path, 'pubspec.yaml'),
+          ).writeAsStringSync('name: test');
+          expect(
+            IOOverrides.runZoned(
+              () => runWithOverrides(() => shorebirdEnv.androidPackageName),
+              getCurrentDirectory: () => tempDir,
+            ),
+            isNull,
+          );
+        },
+      );
+
+      test('returns correct package name when '
           'pubspec.yaml contains android module', () {
         final tempDir = Directory.systemTemp.createTempSync();
-        File(
-          p.join(tempDir.path, 'pubspec.yaml'),
-        ).writeAsStringSync('''
+        File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
 name: test
 flutter:
   module:
@@ -559,8 +534,10 @@ test-revision
           ..writeAsStringSync(revision, flush: true);
         expect(
           runWithOverrides(
-            () => const ShorebirdEnv(flutterRevisionOverride: override)
-                .flutterRevision,
+            () =>
+                const ShorebirdEnv(
+                  flutterRevisionOverride: override,
+                ).flutterRevision,
           ),
           equals(override),
         );
@@ -574,11 +551,17 @@ test-revision
 
 \r\n
 ''';
-        final version = File(
-          p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
-        )
-          ..createSync(recursive: true)
-          ..writeAsStringSync(revision, flush: true);
+        final version =
+            File(
+                p.join(
+                  shorebirdRoot.path,
+                  'bin',
+                  'internal',
+                  'flutter.version',
+                ),
+              )
+              ..createSync(recursive: true)
+              ..writeAsStringSync(revision, flush: true);
         final snapshot = File(
           p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'),
         )..createSync(recursive: true);
@@ -604,11 +587,17 @@ test-revision
 
 \r\n
 ''';
-        final version = File(
-          p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
-        )
-          ..createSync(recursive: true)
-          ..writeAsStringSync(revision, flush: true);
+        final version =
+            File(
+                p.join(
+                  shorebirdRoot.path,
+                  'bin',
+                  'internal',
+                  'flutter.version',
+                ),
+              )
+              ..createSync(recursive: true)
+              ..writeAsStringSync(revision, flush: true);
         final snapshot = File(
           p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'),
         )..createSync(recursive: true);
@@ -631,17 +620,17 @@ test-revision
       test('returns correct revision', () {
         const engineRevision = 'test-revision';
         File(
-          p.join(
-            shorebirdRoot.path,
-            'bin',
-            'cache',
-            'flutter',
-            flutterRevision,
-            'bin',
-            'internal',
-            'engine.version',
-          ),
-        )
+            p.join(
+              shorebirdRoot.path,
+              'bin',
+              'cache',
+              'flutter',
+              flutterRevision,
+              'bin',
+              'internal',
+              'engine.version',
+            ),
+          )
           ..createSync(recursive: true)
           ..writeAsStringSync(engineRevision, flush: true);
         expect(
@@ -653,9 +642,9 @@ test-revision
 
     group('hostedUrl', () {
       test('returns hosted url from env if available', () {
-        when(() => platform.environment).thenReturn({
-          'SHOREBIRD_HOSTED_URL': 'https://example.com',
-        });
+        when(
+          () => platform.environment,
+        ).thenReturn({'SHOREBIRD_HOSTED_URL': 'https://example.com'});
         expect(
           runWithOverrides(() => shorebirdEnv.hostedUri),
           equals(Uri.parse('https://example.com')),
@@ -769,23 +758,19 @@ base_url: https://example.com''');
 
     group('isRunningOnCI', () {
       test('returns true if BOT variable is "true"', () {
-        when(() => platform.environment).thenReturn({
-          'BOT': 'true',
-        });
+        when(() => platform.environment).thenReturn({'BOT': 'true'});
         expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
       });
 
       test('returns true if TRAVIS variable is "true"', () {
-        when(() => platform.environment).thenReturn({
-          'TRAVIS': 'true',
-        });
+        when(() => platform.environment).thenReturn({'TRAVIS': 'true'});
         expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
       });
 
       test('returns true if CONTINUOUS_INTEGRATION variable is "true"', () {
-        when(() => platform.environment).thenReturn({
-          'CONTINUOUS_INTEGRATION': 'true',
-        });
+        when(
+          () => platform.environment,
+        ).thenReturn({'CONTINUOUS_INTEGRATION': 'true'});
         expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
       });
 
@@ -805,14 +790,14 @@ base_url: https://example.com''');
       });
 
       test(
-          '''returns true if AWS_REGION and CODEBUILD_INITIATOR variables are set''',
-          () {
-        when(() => platform.environment).thenReturn({
-          'AWS_REGION': '',
-          'CODEBUILD_INITIATOR': '',
-        });
-        expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
-      });
+        '''returns true if AWS_REGION and CODEBUILD_INITIATOR variables are set''',
+        () {
+          when(
+            () => platform.environment,
+          ).thenReturn({'AWS_REGION': '', 'CODEBUILD_INITIATOR': ''});
+          expect(runWithOverrides(() => shorebirdEnv.isRunningOnCI), isTrue);
+        },
+      );
 
       test('returns true if JENKINS_URL variable is set', () {
         when(() => platform.environment).thenReturn({'JENKINS_URL': ''});

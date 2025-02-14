@@ -6,10 +6,7 @@ import 'package:test/test.dart';
 void main() {
   group('scoped', () {
     test('creates instance with default constructor', () {
-      final instance = runScoped(
-        () => httpClient,
-        values: {httpClientRef},
-      );
+      final instance = runScoped(() => httpClient, values: {httpClientRef});
       expect(instance, isA<RetryClient>());
     });
   });

@@ -19,7 +19,7 @@ enum OrganizationRole {
 
   /// Users who are not part of the organization but have visibility into it via
   /// app collaborator permissions.
-  none;
+  none,
 }
 
 /// {@template organization_type}
@@ -31,7 +31,7 @@ enum OrganizationType {
   personal,
 
   /// A team organization is created for multiple users to collaborate on apps.
-  team;
+  team,
 }
 
 /// {@template organization}
@@ -63,14 +63,13 @@ class Organization extends Equatable {
     OrganizationType organizationType = OrganizationType.personal,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) =>
-      Organization(
-        id: id,
-        name: name,
-        organizationType: organizationType,
-        createdAt: createdAt ?? DateTime.now(),
-        updatedAt: updatedAt ?? DateTime.now(),
-      );
+  }) => Organization(
+    id: id,
+    name: name,
+    organizationType: organizationType,
+    createdAt: createdAt ?? DateTime.now(),
+    updatedAt: updatedAt ?? DateTime.now(),
+  );
   // coverage:ignore-end
 
   /// Converts this [Organization] to a JSON map
@@ -92,11 +91,5 @@ class Organization extends Equatable {
   final DateTime updatedAt;
 
   @override
-  List<Object?> get props => [
-        id,
-        name,
-        organizationType,
-        createdAt,
-        updatedAt,
-      ];
+  List<Object?> get props => [id, name, organizationType, createdAt, updatedAt];
 }

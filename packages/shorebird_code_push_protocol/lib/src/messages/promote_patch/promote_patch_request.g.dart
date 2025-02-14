@@ -23,8 +23,8 @@ PromotePatchRequest _$PromotePatchRequestFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$PromotePatchRequestToJson(
-        PromotePatchRequest instance) =>
-    <String, dynamic>{
-      'patch_id': instance.patchId,
-      'channel_id': instance.channelId,
-    };
+  PromotePatchRequest instance,
+) => <String, dynamic>{
+  'patch_id': instance.patchId,
+  'channel_id': instance.channelId,
+};

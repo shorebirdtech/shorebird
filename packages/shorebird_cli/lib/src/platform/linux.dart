@@ -28,13 +28,8 @@ class Linux {
   /// Linux apps track their version in a json file at
   /// data/flutter_assets/version.json.
   File linuxBundleVersionFile(Directory bundleRoot) => File(
-        p.join(
-          bundleRoot.absolute.path,
-          'data',
-          'flutter_assets',
-          'version.json',
-        ),
-      );
+    p.join(bundleRoot.absolute.path, 'data', 'flutter_assets', 'version.json'),
+  );
 
   /// Reads the version from a Linux Flutter bundle.
   ///

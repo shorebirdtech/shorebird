@@ -318,9 +318,8 @@ void main() {
         () => shorebirdFlutter.getVersionAndRevision(),
       ).thenAnswer((_) async => flutterRevision);
       when(
-        () => shorebirdFlutter.installRevision(
-          revision: any(named: 'revision'),
-        ),
+        () =>
+            shorebirdFlutter.installRevision(revision: any(named: 'revision')),
       ).thenAnswer((_) async => {});
 
       when(
@@ -344,18 +343,19 @@ void main() {
         });
 
         test(
-            '''warns that staging flag will be deprecated and exits with usage code''',
-            () async {
-          await expectLater(
-            runWithOverrides(command.run),
-            completion(equals(ExitCode.usage.code)),
-          );
-          verify(
-            () => logger.err(
-              '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
-            ),
-          ).called(1);
-        });
+          '''warns that staging flag will be deprecated and exits with usage code''',
+          () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              completion(equals(ExitCode.usage.code)),
+            );
+            verify(
+              () => logger.err(
+                '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
+              ),
+            ).called(1);
+          },
+        );
       });
     });
 
@@ -411,28 +411,27 @@ void main() {
           });
         });
 
-        group(
-          'when given existing private and public key files',
-          () {
-            test('is valid', () async {
-              when(
-                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
-              ).thenReturn(true);
-              when(
-                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-              ).thenReturn(true);
-              when(() => argResults[CommonArguments.privateKeyArg.name])
-                  .thenReturn(createTempFile('private.pem').path);
-              when(() => argResults[CommonArguments.publicKeyArg.name])
-                  .thenReturn(createTempFile('public.pem').path);
+        group('when given existing private and public key files', () {
+          test('is valid', () async {
+            when(
+              () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+            ).thenReturn(true);
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+            ).thenReturn(true);
+            when(
+              () => argResults[CommonArguments.privateKeyArg.name],
+            ).thenReturn(createTempFile('private.pem').path);
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(createTempFile('public.pem').path);
 
-              await expectLater(
-                runWithOverrides(() => command.createPatch(patcher)),
-                completes,
-              );
-            });
-          },
-        );
+            await expectLater(
+              runWithOverrides(() => command.createPatch(patcher)),
+              completes,
+            );
+          });
+        });
 
         group(
           'when given an existing private key and nonexistent public key',
@@ -461,30 +460,32 @@ void main() {
           },
         );
 
-        group('when given an existing public key and nonexistent private key',
-            () {
-          test('fails and logs the err', () async {
-            when(
-              () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
-            ).thenReturn(false);
-            when(
-              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-            ).thenReturn(true);
-            when(
-              () => argResults[CommonArguments.publicKeyArg.name],
-            ).thenReturn(createTempFile('public.pem').path);
+        group(
+          'when given an existing public key and nonexistent private key',
+          () {
+            test('fails and logs the err', () async {
+              when(
+                () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+              ).thenReturn(false);
+              when(
+                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+              ).thenReturn(true);
+              when(
+                () => argResults[CommonArguments.publicKeyArg.name],
+              ).thenReturn(createTempFile('public.pem').path);
 
-            await expectLater(
-              runWithOverrides(() => command.createPatch(patcher)),
-              exitsWithCode(ExitCode.usage),
-            );
-            verify(
-              () => logger.err(
-                'Both public and private keys must be provided.',
-              ),
-            ).called(1);
-          });
-        });
+              await expectLater(
+                runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithCode(ExitCode.usage),
+              );
+              verify(
+                () => logger.err(
+                  'Both public and private keys must be provided.',
+                ),
+              ).called(1);
+            });
+          },
+        );
 
         group('when a supplemental release artifact exists', () {
           setUp(() {
@@ -544,34 +545,16 @@ void main() {
 
     group('getPatcher', () {
       test('maps the correct platform to the patcher', () async {
-        expect(
-          command.getPatcher(ReleaseType.aar),
-          isA<AarPatcher>(),
-        );
-        expect(
-          command.getPatcher(ReleaseType.android),
-          isA<AndroidPatcher>(),
-        );
-        expect(
-          command.getPatcher(ReleaseType.ios),
-          isA<IosPatcher>(),
-        );
+        expect(command.getPatcher(ReleaseType.aar), isA<AarPatcher>());
+        expect(command.getPatcher(ReleaseType.android), isA<AndroidPatcher>());
+        expect(command.getPatcher(ReleaseType.ios), isA<IosPatcher>());
         expect(
           command.getPatcher(ReleaseType.iosFramework),
           isA<IosFrameworkPatcher>(),
         );
-        expect(
-          command.getPatcher(ReleaseType.linux),
-          isA<LinuxPatcher>(),
-        );
-        expect(
-          command.getPatcher(ReleaseType.macos),
-          isA<MacosPatcher>(),
-        );
-        expect(
-          command.getPatcher(ReleaseType.windows),
-          isA<WindowsPatcher>(),
-        );
+        expect(command.getPatcher(ReleaseType.linux), isA<LinuxPatcher>());
+        expect(command.getPatcher(ReleaseType.macos), isA<MacosPatcher>());
+        expect(command.getPatcher(ReleaseType.windows), isA<WindowsPatcher>());
       });
     });
 
@@ -602,9 +585,7 @@ void main() {
             completes,
           );
           verify(
-            () => logger.info(
-              any(that: contains(expectedSummary.join('\n'))),
-            ),
+            () => logger.info(any(that: contains(expectedSummary.join('\n')))),
           ).called(1);
         });
       });
@@ -639,9 +620,7 @@ void main() {
             completes,
           );
           verify(
-            () => logger.info(
-              any(that: contains(expectedSummary.join('\n'))),
-            ),
+            () => logger.info(any(that: contains(expectedSummary.join('\n')))),
           ).called(1);
         });
       });
@@ -672,9 +651,7 @@ void main() {
             completes,
           );
           verify(
-            () => logger.info(
-              any(that: contains(expectedSummary.join('\n'))),
-            ),
+            () => logger.info(any(that: contains(expectedSummary.join('\n')))),
           ).called(1);
         });
       });
@@ -712,9 +689,7 @@ void main() {
             completes,
           );
           verify(
-            () => logger.info(
-              any(that: contains(expectedSummary.join('\n'))),
-            ),
+            () => logger.info(any(that: contains(expectedSummary.join('\n')))),
           ).called(1);
         });
 
@@ -817,35 +792,35 @@ void main() {
           () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
           () => codePushClientWrapper.getRelease(
-                appId: appId,
-                releaseVersion: releaseVersion,
-              ),
+            appId: appId,
+            releaseVersion: releaseVersion,
+          ),
           () => codePushClientWrapper.getReleaseArtifact(
-                appId: appId,
-                releaseId: release.id,
-                arch: patcher.primaryReleaseArtifactArch,
-                platform: releasePlatform,
-              ),
+            appId: appId,
+            releaseId: release.id,
+            arch: patcher.primaryReleaseArtifactArch,
+            platform: releasePlatform,
+          ),
           () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
           () => patcher.assertUnpatchableDiffs(
-                releaseArtifact: any(named: 'releaseArtifact'),
-                releaseArchive: any(named: 'releaseArchive'),
-                patchArchive: any(named: 'patchArchive'),
-              ),
+            releaseArtifact: any(named: 'releaseArtifact'),
+            releaseArchive: any(named: 'releaseArchive'),
+            patchArchive: any(named: 'patchArchive'),
+          ),
           () => patcher.createPatchArtifacts(
-                appId: appId,
-                releaseId: release.id,
-                releaseArtifact: any(named: 'releaseArtifact'),
-              ),
+            appId: appId,
+            releaseId: release.id,
+            releaseArtifact: any(named: 'releaseArtifact'),
+          ),
           () => logger.confirm('Would you like to continue?'),
           () => patcher.updatedCreatePatchMetadata(any()),
           () => patcher.uploadPatchArtifacts(
-                appId: appId,
-                releaseId: release.id,
-                metadata: patchMetadata.toJson(),
-                artifacts: any(named: 'artifacts'),
-                track: DeploymentTrack.stable,
-              ),
+            appId: appId,
+            releaseId: release.id,
+            metadata: patchMetadata.toJson(),
+            artifacts: any(named: 'artifacts'),
+            track: DeploymentTrack.stable,
+          ),
         ]);
       });
     });
@@ -908,9 +883,7 @@ void main() {
                 flutterRevision: flutterRevision,
                 flutterVersion: flutterVersion,
                 displayName: releaseVersion,
-                platformStatuses: {
-                  releasePlatform: ReleaseStatus.active,
-                },
+                platformStatuses: {releasePlatform: ReleaseStatus.active},
                 createdAt: DateTime(2024),
                 updatedAt: DateTime(2024),
               ),
@@ -921,9 +894,7 @@ void main() {
                 flutterRevision: flutterRevision,
                 flutterVersion: flutterVersion,
                 displayName: '99.99.99+99',
-                platformStatuses: {
-                  releasePlatform: ReleaseStatus.active,
-                },
+                platformStatuses: {releasePlatform: ReleaseStatus.active},
                 createdAt: DateTime(2023),
                 updatedAt: DateTime(2023),
               ),
@@ -948,58 +919,58 @@ void main() {
         when(() => argResults.wasParsed('release-version')).thenReturn(false);
       });
 
-      test('executes commands in order, prompts to determine release version',
-          () async {
-        final exitCode = await runWithOverrides(command.run);
-        expect(exitCode, equals(ExitCode.success.code));
+      test(
+        'executes commands in order, prompts to determine release version',
+        () async {
+          final exitCode = await runWithOverrides(command.run);
+          expect(exitCode, equals(ExitCode.success.code));
 
-        final verificationResult = verifyInOrder([
-          () => patcher.assertPreconditions(),
-          () => patcher.assertArgsAreValid(),
-          () => shorebirdValidator.validateFlavors(flavorArg: null),
-          () => cache.updateAll(),
-          () => codePushClientWrapper.getApp(appId: appId),
-          () => codePushClientWrapper.getReleases(appId: appId),
-          () => logger.chooseOne<Release>(
-                'Which release would you like to patch?',
-                choices: any(named: 'choices'),
-                display: captureAny(named: 'display'),
-              ),
-          () => codePushClientWrapper.getReleaseArtifact(
-                appId: appId,
-                releaseId: release.id,
-                arch: patcher.primaryReleaseArtifactArch,
-                platform: releasePlatform,
-              ),
-          () => patcher.assertUnpatchableDiffs(
-                releaseArtifact: any(named: 'releaseArtifact'),
-                releaseArchive: any(named: 'releaseArchive'),
-                patchArchive: any(named: 'patchArchive'),
-              ),
-          () => patcher.createPatchArtifacts(
-                appId: appId,
-                releaseId: release.id,
-                releaseArtifact: any(named: 'releaseArtifact'),
-              ),
-          () => logger.confirm('Would you like to continue?'),
-          () => patcher.uploadPatchArtifacts(
-                appId: appId,
-                releaseId: release.id,
-                metadata: any(named: 'metadata'),
-                artifacts: any(named: 'artifacts'),
-                track: DeploymentTrack.stable,
-              ),
-        ]);
+          final verificationResult = verifyInOrder([
+            () => patcher.assertPreconditions(),
+            () => patcher.assertArgsAreValid(),
+            () => shorebirdValidator.validateFlavors(flavorArg: null),
+            () => cache.updateAll(),
+            () => codePushClientWrapper.getApp(appId: appId),
+            () => codePushClientWrapper.getReleases(appId: appId),
+            () => logger.chooseOne<Release>(
+              'Which release would you like to patch?',
+              choices: any(named: 'choices'),
+              display: captureAny(named: 'display'),
+            ),
+            () => codePushClientWrapper.getReleaseArtifact(
+              appId: appId,
+              releaseId: release.id,
+              arch: patcher.primaryReleaseArtifactArch,
+              platform: releasePlatform,
+            ),
+            () => patcher.assertUnpatchableDiffs(
+              releaseArtifact: any(named: 'releaseArtifact'),
+              releaseArchive: any(named: 'releaseArchive'),
+              patchArchive: any(named: 'patchArchive'),
+            ),
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: release.id,
+              releaseArtifact: any(named: 'releaseArtifact'),
+            ),
+            () => logger.confirm('Would you like to continue?'),
+            () => patcher.uploadPatchArtifacts(
+              appId: appId,
+              releaseId: release.id,
+              metadata: any(named: 'metadata'),
+              artifacts: any(named: 'artifacts'),
+              track: DeploymentTrack.stable,
+            ),
+          ]);
 
-        // Verify that the logger.chooseOne<Release> display function is correct
-        final displayFunctionCapture = verificationResult.captured.flattened
-            .whereType<String Function(Release)>()
-            .first;
-        expect(
-          displayFunctionCapture(release),
-          equals(release.version),
-        );
-      });
+          // Verify that the logger.chooseOne<Release> display function is correct
+          final displayFunctionCapture =
+              verificationResult.captured.flattened
+                  .whereType<String Function(Release)>()
+                  .first;
+          expect(displayFunctionCapture(release), equals(release.version));
+        },
+      );
 
       group('when prompting for releases, but there is none', () {
         setUp(() {
@@ -1035,9 +1006,7 @@ void main() {
                 flutterRevision: flutterRevision,
                 flutterVersion: flutterVersion,
                 displayName: releaseVersion,
-                platformStatuses: {
-                  releasePlatform: ReleaseStatus.active,
-                },
+                platformStatuses: {releasePlatform: ReleaseStatus.active},
                 createdAt: DateTime(2023),
                 updatedAt: DateTime(2023),
               ),
@@ -1059,17 +1028,18 @@ void main() {
           );
         });
 
-        test(
-            'only lists and uses releases '
+        test('only lists and uses releases '
             'for the specified platform', () async {
           await expectLater(runWithOverrides(command.run), completes);
-          final captured = verify(
-            () => logger.chooseOne<Release>(
-              any(),
-              choices: captureAny(named: 'choices'),
-              display: any(named: 'display'),
-            ),
-          ).captured.single as List<Release>;
+          final captured =
+              verify(
+                    () => logger.chooseOne<Release>(
+                      any(),
+                      choices: captureAny(named: 'choices'),
+                      display: any(named: 'display'),
+                    ),
+                  ).captured.single
+                  as List<Release>;
 
           expect(captured.length, equals(1));
           expect(captured.first.version, equals(releaseVersion));
@@ -1109,39 +1079,44 @@ void main() {
             );
           });
 
-          test('builds app twice if release flutter version is not default',
-              () async {
-            final exitCode = await runWithOverrides(command.run);
-            expect(exitCode, equals(ExitCode.success.code));
+          test(
+            'builds app twice if release flutter version is not default',
+            () async {
+              final exitCode = await runWithOverrides(command.run);
+              expect(exitCode, equals(ExitCode.success.code));
 
-            verifyInOrder([
-              () => logger.info(
-                    '''Tip: make your patches build faster by specifying --release-version''',
-                  ),
-              () => patcher.buildPatchArtifact(),
-              () => patcher.extractReleaseVersionFromArtifact(any()),
-              () => shorebirdFlutter.installRevision(
-                    revision: releaseFlutterRevision,
-                  ),
-              () => shorebirdEnv.copyWith(
-                    flutterRevisionOverride: releaseFlutterRevision,
-                  ),
-              () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),
-            ]);
-          });
+              verifyInOrder([
+                () => logger.info(
+                  '''Tip: make your patches build faster by specifying --release-version''',
+                ),
+                () => patcher.buildPatchArtifact(),
+                () => patcher.extractReleaseVersionFromArtifact(any()),
+                () => shorebirdFlutter.installRevision(
+                  revision: releaseFlutterRevision,
+                ),
+                () => shorebirdEnv.copyWith(
+                  flutterRevisionOverride: releaseFlutterRevision,
+                ),
+                () =>
+                    patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+              ]);
+            },
+          );
 
-          test('updates cache with both default and release Flutter revisions',
-              () async {
-            await runWithOverrides(command.run);
+          test(
+            'updates cache with both default and release Flutter revisions',
+            () async {
+              await runWithOverrides(command.run);
 
-            verifyInOrder([
-              cache.updateAll,
-              () => shorebirdEnv.copyWith(
-                    flutterRevisionOverride: releaseFlutterRevision,
-                  ),
-              cache.updateAll,
-            ]);
-          });
+              verifyInOrder([
+                cache.updateAll,
+                () => shorebirdEnv.copyWith(
+                  flutterRevisionOverride: releaseFlutterRevision,
+                ),
+                cache.updateAll,
+              ]);
+            },
+          );
         });
       });
     });
@@ -1237,11 +1212,9 @@ void main() {
         );
 
         verify(
-          () => logger.err(
-            '''
+          () => logger.err('''
 Release ${release.version} is in an incomplete state. It's possible that the original release was terminated or failed to complete.
-Please re-run the release command for this version or create a new release.''',
-          ),
+Please re-run the release command for this version or create a new release.'''),
         ).called(1);
       });
     });

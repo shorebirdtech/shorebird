@@ -42,11 +42,7 @@ NSError(
 )''';
 
   @override
-  List<Object> get props => [
-        code,
-        domain,
-        userInfo,
-      ];
+  List<Object> get props => [code, domain, userInfo];
 }
 
 /// {@template user_info}
@@ -98,11 +94,11 @@ UserInfo(
 
   @override
   List<Object?> get props => [
-        description,
-        localizedDescription,
-        localizedFailureReason,
-        underlyingError,
-      ];
+    description,
+    localizedDescription,
+    localizedFailureReason,
+    underlyingError,
+  ];
 }
 
 /// {@template string_container}

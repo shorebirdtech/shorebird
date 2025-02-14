@@ -39,16 +39,15 @@ class CreatePatchMetadata extends Equatable {
     bool hasNativeChanges = false,
     double? linkPercentage,
     BuildEnvironmentMetadata? environment,
-  }) =>
-      CreatePatchMetadata(
-        releasePlatform: releasePlatform,
-        usedIgnoreAssetChangesFlag: usedIgnoreAssetChangesFlag,
-        hasAssetChanges: hasAssetChanges,
-        usedIgnoreNativeChangesFlag: usedIgnoreNativeChangesFlag,
-        hasNativeChanges: hasNativeChanges,
-        linkPercentage: linkPercentage,
-        environment: environment ?? BuildEnvironmentMetadata.forTest(),
-      );
+  }) => CreatePatchMetadata(
+    releasePlatform: releasePlatform,
+    usedIgnoreAssetChangesFlag: usedIgnoreAssetChangesFlag,
+    hasAssetChanges: hasAssetChanges,
+    usedIgnoreNativeChangesFlag: usedIgnoreNativeChangesFlag,
+    hasNativeChanges: hasNativeChanges,
+    linkPercentage: linkPercentage,
+    environment: environment ?? BuildEnvironmentMetadata.forTest(),
+  );
   // coverage:ignore-end
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchMetadata]
@@ -68,18 +67,17 @@ class CreatePatchMetadata extends Equatable {
     bool? hasNativeChanges,
     double? linkPercentage,
     BuildEnvironmentMetadata? environment,
-  }) =>
-      CreatePatchMetadata(
-        releasePlatform: releasePlatform ?? this.releasePlatform,
-        usedIgnoreAssetChangesFlag:
-            usedIgnoreAssetChangesFlag ?? this.usedIgnoreAssetChangesFlag,
-        hasAssetChanges: hasAssetChanges ?? this.hasAssetChanges,
-        usedIgnoreNativeChangesFlag:
-            usedIgnoreNativeChangesFlag ?? this.usedIgnoreNativeChangesFlag,
-        hasNativeChanges: hasNativeChanges ?? this.hasNativeChanges,
-        linkPercentage: linkPercentage ?? this.linkPercentage,
-        environment: environment ?? this.environment,
-      );
+  }) => CreatePatchMetadata(
+    releasePlatform: releasePlatform ?? this.releasePlatform,
+    usedIgnoreAssetChangesFlag:
+        usedIgnoreAssetChangesFlag ?? this.usedIgnoreAssetChangesFlag,
+    hasAssetChanges: hasAssetChanges ?? this.hasAssetChanges,
+    usedIgnoreNativeChangesFlag:
+        usedIgnoreNativeChangesFlag ?? this.usedIgnoreNativeChangesFlag,
+    hasNativeChanges: hasNativeChanges ?? this.hasNativeChanges,
+    linkPercentage: linkPercentage ?? this.linkPercentage,
+    environment: environment ?? this.environment,
+  );
 
   /// The platform for which the patch was created.
   final ReleasePlatform releasePlatform;
@@ -123,12 +121,12 @@ class CreatePatchMetadata extends Equatable {
 
   @override
   List<Object?> get props => [
-        releasePlatform,
-        usedIgnoreAssetChangesFlag,
-        hasAssetChanges,
-        usedIgnoreNativeChangesFlag,
-        hasNativeChanges,
-        linkPercentage,
-        environment,
-      ];
+    releasePlatform,
+    usedIgnoreAssetChangesFlag,
+    hasAssetChanges,
+    usedIgnoreNativeChangesFlag,
+    hasNativeChanges,
+    linkPercentage,
+    environment,
+  ];
 }

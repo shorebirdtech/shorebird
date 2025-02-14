@@ -8,11 +8,7 @@ part 'jwt_header.g.dart';
 @JsonSerializable(createToJson: false)
 class JwtHeader {
   /// {@macro jwt_header}
-  const JwtHeader({
-    required this.alg,
-    required this.kid,
-    required this.typ,
-  });
+  const JwtHeader({required this.alg, required this.kid, required this.typ});
 
   /// Decode a [JwtHeader] from a `Map<String, dynamic>`.
   factory JwtHeader.fromJson(Map<String, dynamic> json) {

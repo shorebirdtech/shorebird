@@ -44,18 +44,18 @@ class IosPatcher extends Patcher {
   });
 
   String get _patchClassTableLinkInfoPath => p.join(
-        shorebirdEnv.buildDirectory.path,
-        'ios',
-        'shorebird',
-        'App.ct.link',
-      );
+    shorebirdEnv.buildDirectory.path,
+    'ios',
+    'shorebird',
+    'App.ct.link',
+  );
 
   String get _patchClassTableLinkDebugInfoPath => p.join(
-        shorebirdEnv.buildDirectory.path,
-        'ios',
-        'shorebird',
-        'App.class_table.json',
-      );
+    shorebirdEnv.buildDirectory.path,
+    'ios',
+    'shorebird',
+    'App.class_table.json',
+  );
 
   String get _aotOutputPath =>
       p.join(shorebirdEnv.buildDirectory.path, 'out.aot');
@@ -74,10 +74,10 @@ class IosPatcher extends Patcher {
   static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) {
     return splitDebugInfoPath != null
         ? [
-            '--dwarf-stack-traces',
-            '--resolve-dwarf-paths',
-            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
-          ]
+          '--dwarf-stack-traces',
+          '--resolve-dwarf-paths',
+          '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
+        ]
         : <String>[];
   }
 
@@ -126,15 +126,15 @@ class IosPatcher extends Patcher {
     // can be nondeterministic. So we still have some hope of alerting users of
     // unpatchable native changes, we compare the Podfile.lock hash between the
     // patch and the release.
-    final diffStatus =
-        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-      localArchive: patchArchive,
-      releaseArchive: releaseArchive,
-      archiveDiffer: const AppleArchiveDiffer(),
-      allowAssetChanges: allowAssetDiffs,
-      allowNativeChanges: allowNativeDiffs,
-      confirmNativeChanges: false,
-    );
+    final diffStatus = await patchDiffChecker
+        .confirmUnpatchableDiffsIfNecessary(
+          localArchive: patchArchive,
+          releaseArchive: releaseArchive,
+          archiveDiffer: const AppleArchiveDiffer(),
+          allowAssetChanges: allowAssetDiffs,
+          allowNativeChanges: allowNativeDiffs,
+          confirmNativeChanges: false,
+        );
 
     if (!diffStatus.hasNativeChanges) {
       return diffStatus;
@@ -142,9 +142,10 @@ class IosPatcher extends Patcher {
 
     final String? podfileLockHash;
     if (shorebirdEnv.iosPodfileLockFile.existsSync()) {
-      podfileLockHash = sha256
-          .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
-          .toString();
+      podfileLockHash =
+          sha256
+              .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
+              .toString();
     } else {
       podfileLockHash = null;
     }
@@ -175,18 +176,17 @@ This may indicate that the patch contains native changes, which cannot be applie
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     try {
       final shouldCodesign = argResults['codesign'] == true;
-      final (flutterVersionAndRevision, flutterVersion) = await (
-        shorebirdFlutter.getVersionAndRevision(),
-        shorebirdFlutter.getVersion(),
-      ).wait;
+      final (flutterVersionAndRevision, flutterVersion) =
+          await (
+            shorebirdFlutter.getVersionAndRevision(),
+            shorebirdFlutter.getVersion(),
+          ).wait;
 
       if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
           minimumSupportedIosFlutterVersion) {
-        logger.err(
-          '''
+        logger.err('''
 iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-        );
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         throw ProcessExit(ExitCode.software.code);
       }
 
@@ -201,7 +201,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           codesign: shouldCodesign,
           flavor: flavor,
           target: target,
-          args: argResults.forwardedArgs +
+          args:
+              argResults.forwardedArgs +
               buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
           base64PublicKey: argResults.encodedPublicKey,
           buildProgress: buildProgress,
@@ -299,12 +300,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       throw ProcessExit(ExitCode.software.code);
     }
     final releaseArtifactFile = File(
-      p.join(
-        appDirectory.path,
-        'Frameworks',
-        'App.framework',
-        'App',
-      ),
+      p.join(appDirectory.path, 'Frameworks', 'App.framework', 'App'),
     );
 
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
@@ -324,9 +320,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
         // Copy the patch's class table link info file to the build directory
         // so that it can be used to generate a patch.
-        File(_patchClassTableLinkInfoPath).copySync(
-          p.join(shorebirdEnv.buildDirectory.path, 'out.ct.link'),
-        );
+        File(
+          _patchClassTableLinkInfoPath,
+        ).copySync(p.join(shorebirdEnv.buildDirectory.path, 'out.ct.link'));
         File(_patchClassTableLinkDebugInfoPath).copySync(
           p.join(shorebirdEnv.buildDirectory.path, 'out.class_table.json'),
         );
@@ -383,12 +379,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     final patchFileSize = patchFile.statSync().size;
     final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
     final hash = sha256.convert(patchBuildFile.readAsBytesSync()).toString();
-    final hashSignature = privateKeyFile != null
-        ? codeSigner.sign(
-            message: hash,
-            privateKeyPemFile: privateKeyFile,
-          )
-        : null;
+    final hashSignature =
+        privateKeyFile != null
+            ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
+            : null;
 
     return {
       Arch.arm64: PatchArtifactBundle(
@@ -429,11 +423,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   @override
   Future<CreatePatchMetadata> updatedCreatePatchMetadata(
     CreatePatchMetadata metadata,
-  ) async =>
-      metadata.copyWith(
-        linkPercentage: lastBuildLinkPercentage,
-        environment: metadata.environment.copyWith(
-          xcodeVersion: await xcodeBuild.version(),
-        ),
-      );
+  ) async => metadata.copyWith(
+    linkPercentage: lastBuildLinkPercentage,
+    environment: metadata.environment.copyWith(
+      xcodeVersion: await xcodeBuild.version(),
+    ),
+  );
 }

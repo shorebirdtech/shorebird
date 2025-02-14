@@ -114,7 +114,8 @@ class ReleaseCommand extends ShorebirdCommand {
       )
       ..addFlag(
         'split-per-abi',
-        help: 'Whether to split the APKs per ABIs (Android only). '
+        help:
+            'Whether to split the APKs per ABIs (Android only). '
             'To learn more, see: https://developer.android.com/studio/build/configure-apk-splits#configure-abi-split',
         hide: true,
         negatable: false,
@@ -164,8 +165,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       return ExitCode.usage.code;
     }
 
-    final releaserFutures =
-        results.releaseTypes.map(_resolveReleaser).map(createRelease);
+    final releaserFutures = results.releaseTypes
+        .map(_resolveReleaser)
+        .map(createRelease);
 
     for (final future in releaserFutures) {
       await future;
@@ -179,11 +181,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   Releaser getReleaser(ReleaseType releaseType) {
     switch (releaseType) {
       case ReleaseType.aar:
-        return AarReleaser(
-          argResults: results,
-          flavor: flavor,
-          target: target,
-        );
+        return AarReleaser(argResults: results, flavor: flavor, target: target);
       case ReleaseType.android:
         return AndroidReleaser(
           argResults: results,
@@ -191,11 +189,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           target: target,
         );
       case ReleaseType.ios:
-        return IosReleaser(
-          argResults: results,
-          flavor: flavor,
-          target: target,
-        );
+        return IosReleaser(argResults: results, flavor: flavor, target: target);
       case ReleaseType.iosFramework:
         return IosFrameworkReleaser(
           argResults: results,
@@ -269,98 +263,92 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: targetFlutterRevision,
     );
-    return await runScoped(
-      () async {
-        await cache.updateAll();
+    return await runScoped(() async {
+      await cache.updateAll();
 
-        final flutterVersionString =
-            await shorebirdFlutter.getVersionAndRevision();
-        final buildProgress = logger.detailProgress(
-          '''Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString''',
+      final flutterVersionString =
+          await shorebirdFlutter.getVersionAndRevision();
+      final buildProgress = logger.detailProgress(
+        '''Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString''',
+      );
+      final FileSystemEntity releaseArtifact;
+      try {
+        releaseArtifact = await releaser.buildReleaseArtifacts(
+          progress: buildProgress,
         );
-        final FileSystemEntity releaseArtifact;
-        try {
-          releaseArtifact = await releaser.buildReleaseArtifacts(
-            progress: buildProgress,
-          );
-          buildProgress.complete();
-        } on ArtifactBuildException catch (e) {
-          buildProgress.fail(e.message);
-          logger
-            ..detail('stdout: ${e.stdout.join(Platform.lineTerminator)}')
-            ..detail('stderr: ${e.stderr.join(Platform.lineTerminator)}');
-          if (!e.flutterError.isNullOrEmpty) {
-            logger.err(e.flutterError);
-          }
-          if (!e.fixRecommendation.isNullOrEmpty) {
-            logger.info(e.fixRecommendation);
-          }
-          if (e.fixRecommendation.isNullOrEmpty &&
-              e.flutterError.isNullOrEmpty) {
-            // If we have no fix recommendation or were unable to parse a
-            // flutter error, fall back to printing the raw stderr.
-            logger.info(e.stderr.join(Platform.lineTerminator));
-          }
-
-          throw ProcessExit(ExitCode.software.code);
-        } on Exception catch (e) {
-          buildProgress.fail('Failed to build release artifacts: $e');
-          throw ProcessExit(ExitCode.software.code);
-        }
-
-        final releaseVersion = await releaser.getReleaseVersion(
-          releaseArtifactRoot: releaseArtifact,
-        );
-
-        // Ensure we can create a release from what we've built.
-        await ensureVersionIsReleasable(
-          version: releaseVersion,
-          flutterRevision: targetFlutterRevision,
-          releasePlatform: releaser.releaseType.releasePlatform,
-        );
-
-        final dryRun = results['dry-run'] == true;
-        if (dryRun) {
-          logger
-            ..info('No issues detected.')
-            ..info('The server may enforce additional checks.');
-          throw ProcessExit(ExitCode.success.code);
-        }
-
-        // Ask the user to proceed (this is skipped when running via CI).
-        await confirmCreateRelease(
-          app: app,
-          releaseVersion: releaseVersion,
-          flutterVersion: targetFlutterRevision,
-          releasePlatform: releaser.releaseType.releasePlatform,
-        );
-
-        final release = await getOrCreateRelease(
-          version: releaseVersion,
-          releasePlatform: releaser.releaseType.releasePlatform,
-        );
-        await prepareRelease(release: release, releaser: releaser);
-        await releaser.uploadReleaseArtifacts(release: release, appId: appId);
-        await finalizeRelease(release: release, releaser: releaser);
-
+        buildProgress.complete();
+      } on ArtifactBuildException catch (e) {
+        buildProgress.fail(e.message);
         logger
-          ..success('''
+          ..detail('stdout: ${e.stdout.join(Platform.lineTerminator)}')
+          ..detail('stderr: ${e.stderr.join(Platform.lineTerminator)}');
+        if (!e.flutterError.isNullOrEmpty) {
+          logger.err(e.flutterError);
+        }
+        if (!e.fixRecommendation.isNullOrEmpty) {
+          logger.info(e.fixRecommendation);
+        }
+        if (e.fixRecommendation.isNullOrEmpty && e.flutterError.isNullOrEmpty) {
+          // If we have no fix recommendation or were unable to parse a
+          // flutter error, fall back to printing the raw stderr.
+          logger.info(e.stderr.join(Platform.lineTerminator));
+        }
+
+        throw ProcessExit(ExitCode.software.code);
+      } on Exception catch (e) {
+        buildProgress.fail('Failed to build release artifacts: $e');
+        throw ProcessExit(ExitCode.software.code);
+      }
+
+      final releaseVersion = await releaser.getReleaseVersion(
+        releaseArtifactRoot: releaseArtifact,
+      );
+
+      // Ensure we can create a release from what we've built.
+      await ensureVersionIsReleasable(
+        version: releaseVersion,
+        flutterRevision: targetFlutterRevision,
+        releasePlatform: releaser.releaseType.releasePlatform,
+      );
+
+      final dryRun = results['dry-run'] == true;
+      if (dryRun) {
+        logger
+          ..info('No issues detected.')
+          ..info('The server may enforce additional checks.');
+        throw ProcessExit(ExitCode.success.code);
+      }
+
+      // Ask the user to proceed (this is skipped when running via CI).
+      await confirmCreateRelease(
+        app: app,
+        releaseVersion: releaseVersion,
+        flutterVersion: targetFlutterRevision,
+        releasePlatform: releaser.releaseType.releasePlatform,
+      );
+
+      final release = await getOrCreateRelease(
+        version: releaseVersion,
+        releasePlatform: releaser.releaseType.releasePlatform,
+      );
+      await prepareRelease(release: release, releaser: releaser);
+      await releaser.uploadReleaseArtifacts(release: release, appId: appId);
+      await finalizeRelease(release: release, releaser: releaser);
+
+      logger
+        ..success('''
 
 ✅ Published Release ${release.version}!''')
-          ..info(releaser.postReleaseInstructions);
+        ..info(releaser.postReleaseInstructions);
 
-        printPatchInstructions(
-          releaser: releaser,
-          releaseVersion: releaseVersion,
-          releaseType: releaser.releaseType,
-          flavor: flavor,
-          target: target,
-        );
-      },
-      values: {
-        shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
-      },
-    );
+      printPatchInstructions(
+        releaser: releaser,
+        releaseVersion: releaseVersion,
+        releaseType: releaser.releaseType,
+        flavor: flavor,
+        target: target,
+      );
+    }, values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)});
   }
 
   /// Validates arguments that are common to all release types.
@@ -383,11 +371,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         flutterVersionArg!,
       );
     } on Exception catch (error) {
-      logger.err(
-        '''
+      logger.err('''
 Unable to determine revision for Flutter version: $flutterVersionArg.
-$error''',
-      );
+$error''');
       throw ProcessExit(ExitCode.software.code);
     }
 
@@ -398,12 +384,10 @@ $error''',
         ),
         message: 'open an issue',
       );
-      logger.err(
-        '''
+      logger.err('''
 Version $flutterVersionArg not found. Please $openIssueLink to request a new version.
 Use `shorebird flutter versions list` to list available versions.
-''',
-      );
+''');
       throw ProcessExit(ExitCode.software.code);
     }
 
@@ -452,7 +436,8 @@ Use `shorebird flutter versions list` to list available versions.
           ..err('''
 ${styleBold.wrap(lightRed.wrap('A release with version $version already exists but was built using a different Flutter revision.'))}
 ''')
-          ..info('''
+          ..info(
+            '''
 
   Existing release built with: ${lightCyan.wrap(formattedExistingReleaseVersion)}
   Current release built with: ${lightCyan.wrap(formattedCurrentReleaseVersion)}
@@ -462,7 +447,8 @@ ${styleBold.wrap(lightRed.wrap('All platforms for a given release must be built 
 To resolve this issue, you can:
   * Re-run the release command with "${lightCyan.wrap('--flutter-version=${existingRelease.flutterRevision}')}".
   * Delete the existing release and re-run the release command with the desired Flutter version.
-  * Bump the release version and re-run the release command with the desired Flutter version.''');
+  * Bump the release version and re-run the release command with the desired Flutter version.''',
+          );
         throw ProcessExit(ExitCode.software.code);
       }
     }
@@ -583,12 +569,10 @@ ${summary.join('\n')}
     );
 
     if (!releaser.requiresReleaseVersionArg) {
-      logger.info(
-        '''
+      logger.info('''
 
 Note: ${lightCyan.wrap(baseCommand)} without the --release-version option will patch the current version of the app.
-''',
-      );
+''');
     }
   }
 }

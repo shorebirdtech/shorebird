@@ -184,8 +184,7 @@ void main() {
     });
 
     group('uploadPatchArtifacts', () {
-      test(
-          'calls codePushClientWrapper.publishPatch '
+      test('calls codePushClientWrapper.publishPatch '
           'with correct args', () async {
         final args = MockArgResults();
         final patcher = _TestPatcher(

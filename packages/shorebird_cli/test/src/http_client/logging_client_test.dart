@@ -17,12 +17,7 @@ void main() {
     late LoggingClient loggingClient;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(
-        body,
-        values: {
-          loggerRef.overrideWith(() => logger),
-        },
-      );
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
     }
 
     setUpAll(() {
@@ -35,10 +30,7 @@ void main() {
       loggingClient = LoggingClient(httpClient: httpClient);
 
       when(() => httpClient.send(any())).thenAnswer(
-        (_) async => http.StreamedResponse(
-          const Stream.empty(),
-          HttpStatus.ok,
-        ),
+        (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
     });
 

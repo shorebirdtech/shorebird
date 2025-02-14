@@ -18,12 +18,7 @@ void main() {
     late ShorebirdVersion shorebirdVersionManager;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(
-        body,
-        values: {
-          gitRef.overrideWith(() => git),
-        },
-      );
+      return runScoped(body, values: {gitRef.overrideWith(() => git)});
     }
 
     setUpAll(() {
@@ -64,9 +59,7 @@ void main() {
     group('isShorebirdVersionCurrent', () {
       test('returns true if current and latest git hashes match', () async {
         expect(
-          await runWithOverrides(
-            shorebirdVersionManager.isLatest,
-          ),
+          await runWithOverrides(shorebirdVersionManager.isLatest),
           isTrue,
         );
         verify(
@@ -103,9 +96,7 @@ void main() {
         });
 
         expect(
-          await runWithOverrides(
-            shorebirdVersionManager.isLatest,
-          ),
+          await runWithOverrides(shorebirdVersionManager.isLatest),
           isFalse,
         );
         verify(
@@ -126,36 +117,35 @@ void main() {
       });
 
       test(
-          'throws ProcessException if git command exits with code other than 0',
-          () async {
-        const errorMessage = 'oh no!';
-        when(
-          () => git.revParse(
-            revision: any(named: 'revision'),
-            directory: any(named: 'directory'),
-          ),
-        ).thenThrow(
-          ProcessException(
-            'git',
-            ['rev-parse', 'HEAD'],
-            errorMessage,
-            ExitCode.software.code,
-          ),
-        );
-
-        expect(
-          runWithOverrides(
-            shorebirdVersionManager.isLatest,
-          ),
-          throwsA(
-            isA<ProcessException>().having(
-              (e) => e.message,
-              'message',
-              errorMessage,
+        'throws ProcessException if git command exits with code other than 0',
+        () async {
+          const errorMessage = 'oh no!';
+          when(
+            () => git.revParse(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
             ),
-          ),
-        );
-      });
+          ).thenThrow(
+            ProcessException(
+              'git',
+              ['rev-parse', 'HEAD'],
+              errorMessage,
+              ExitCode.software.code,
+            ),
+          );
+
+          expect(
+            runWithOverrides(shorebirdVersionManager.isLatest),
+            throwsA(
+              isA<ProcessException>().having(
+                (e) => e.message,
+                'message',
+                errorMessage,
+              ),
+            ),
+          );
+        },
+      );
     });
 
     group('attemptReset', () {
@@ -168,44 +158,47 @@ void main() {
         );
       });
 
-      test('throws ProcessException when git command exits with non-zero code',
-          () async {
-        const errorMessage = 'oh no!';
-        when(
-          () => git.reset(
-            revision: any(named: 'revision'),
-            directory: any(named: 'directory'),
-            args: any(named: 'args'),
-          ),
-        ).thenThrow(
-          ProcessException(
-            'git',
-            ['reset', '--hard', 'HEAD'],
-            errorMessage,
-            ExitCode.software.code,
-          ),
-        );
-
-        expect(
-          runWithOverrides(
-            () => shorebirdVersionManager.attemptReset(revision: 'HEAD'),
-          ),
-          throwsA(
-            isA<ProcessException>().having(
-              (e) => e.message,
-              'message',
-              errorMessage,
+      test(
+        'throws ProcessException when git command exits with non-zero code',
+        () async {
+          const errorMessage = 'oh no!';
+          when(
+            () => git.reset(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
+              args: any(named: 'args'),
             ),
-          ),
-        );
-      });
+          ).thenThrow(
+            ProcessException(
+              'git',
+              ['reset', '--hard', 'HEAD'],
+              errorMessage,
+              ExitCode.software.code,
+            ),
+          );
+
+          expect(
+            runWithOverrides(
+              () => shorebirdVersionManager.attemptReset(revision: 'HEAD'),
+            ),
+            throwsA(
+              isA<ProcessException>().having(
+                (e) => e.message,
+                'message',
+                errorMessage,
+              ),
+            ),
+          );
+        },
+      );
     });
 
     group('isTrackingStable', () {
       group('when on the stable branch', () {
         setUp(() {
-          when(() => git.currentBranch(directory: any(named: 'directory')))
-              .thenAnswer((_) async => 'stable');
+          when(
+            () => git.currentBranch(directory: any(named: 'directory')),
+          ).thenAnswer((_) async => 'stable');
         });
 
         test('returns true', () async {
@@ -218,8 +211,9 @@ void main() {
 
       group('when on a branch other than stable', () {
         setUp(() {
-          when(() => git.currentBranch(directory: any(named: 'directory')))
-              .thenAnswer((_) async => 'main');
+          when(
+            () => git.currentBranch(directory: any(named: 'directory')),
+          ).thenAnswer((_) async => 'main');
         });
 
         test('returns false', () async {

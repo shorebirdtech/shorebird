@@ -9,26 +9,23 @@ part of 'release_patch.dart';
 // **************************************************************************
 
 ReleasePatch _$ReleasePatchFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'ReleasePatch',
-      json,
-      ($checkedConvert) {
-        final val = ReleasePatch(
-          id: $checkedConvert('id', (v) => (v as num).toInt()),
-          number: $checkedConvert('number', (v) => (v as num).toInt()),
-          channel: $checkedConvert('channel', (v) => v as String?),
-          artifacts: $checkedConvert(
-              'artifacts',
-              (v) => (v as List<dynamic>)
+    $checkedCreate('ReleasePatch', json, ($checkedConvert) {
+      final val = ReleasePatch(
+        id: $checkedConvert('id', (v) => (v as num).toInt()),
+        number: $checkedConvert('number', (v) => (v as num).toInt()),
+        channel: $checkedConvert('channel', (v) => v as String?),
+        artifacts: $checkedConvert(
+          'artifacts',
+          (v) =>
+              (v as List<dynamic>)
                   .map((e) => PatchArtifact.fromJson(e as Map<String, dynamic>))
-                  .toList()),
-          isRolledBack: $checkedConvert('is_rolled_back', (v) => v as bool),
-          notes: $checkedConvert('notes', (v) => v as String?),
-        );
-        return val;
-      },
-      fieldKeyMap: const {'isRolledBack': 'is_rolled_back'},
-    );
+                  .toList(),
+        ),
+        isRolledBack: $checkedConvert('is_rolled_back', (v) => v as bool),
+        notes: $checkedConvert('notes', (v) => v as String?),
+      );
+      return val;
+    }, fieldKeyMap: const {'isRolledBack': 'is_rolled_back'});
 
 Map<String, dynamic> _$ReleasePatchToJson(ReleasePatch instance) =>
     <String, dynamic>{

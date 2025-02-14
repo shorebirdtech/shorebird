@@ -41,26 +41,27 @@ const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
 const shorebirdTokenEnvVar = 'SHOREBIRD_TOKEN';
 
 /// Callback for obtaining access credentials.
-typedef ObtainAccessCredentials = Future<oauth2.AccessCredentials> Function(
-  oauth2.ClientId clientId,
-  List<String> scopes,
-  http.Client client,
-  void Function(String) userPrompt, {
-  oauth2.AuthEndpoints authEndpoints,
-});
+typedef ObtainAccessCredentials =
+    Future<oauth2.AccessCredentials> Function(
+      oauth2.ClientId clientId,
+      List<String> scopes,
+      http.Client client,
+      void Function(String) userPrompt, {
+      oauth2.AuthEndpoints authEndpoints,
+    });
 
 /// Callback for refreshing access credentials.
-typedef RefreshCredentials = Future<oauth2.AccessCredentials> Function(
-  oauth2.ClientId clientId,
-  oauth2.AccessCredentials credentials,
-  http.Client client, {
-  oauth2.AuthEndpoints authEndpoints,
-});
+typedef RefreshCredentials =
+    Future<oauth2.AccessCredentials> Function(
+      oauth2.ClientId clientId,
+      oauth2.AccessCredentials credentials,
+      http.Client client, {
+      oauth2.AuthEndpoints authEndpoints,
+    });
 
 /// Callback when credentials are refreshed.
-typedef OnRefreshCredentials = void Function(
-  oauth2.AccessCredentials credentials,
-);
+typedef OnRefreshCredentials =
+    void Function(oauth2.AccessCredentials credentials);
 
 /// A client that automatically refreshes OAuth 2.0 credentials.
 class AuthenticatedClient extends http.BaseClient {
@@ -72,11 +73,11 @@ class AuthenticatedClient extends http.BaseClient {
     OnRefreshCredentials? onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : this._(
-          httpClient: httpClient,
-          onRefreshCredentials: onRefreshCredentials,
-          credentials: credentials,
-          refreshCredentials: refreshCredentials,
-        );
+         httpClient: httpClient,
+         onRefreshCredentials: onRefreshCredentials,
+         credentials: credentials,
+         refreshCredentials: refreshCredentials,
+       );
 
   /// Creates a new [AuthenticatedClient] with the given [httpClient] and
   /// [token].
@@ -86,11 +87,11 @@ class AuthenticatedClient extends http.BaseClient {
     OnRefreshCredentials? onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : this._(
-          httpClient: httpClient,
-          token: token,
-          onRefreshCredentials: onRefreshCredentials,
-          refreshCredentials: refreshCredentials,
-        );
+         httpClient: httpClient,
+         token: token,
+         onRefreshCredentials: onRefreshCredentials,
+         refreshCredentials: refreshCredentials,
+       );
 
   AuthenticatedClient._({
     required http.Client httpClient,
@@ -98,11 +99,11 @@ class AuthenticatedClient extends http.BaseClient {
     oauth2.AccessCredentials? credentials,
     CiToken? token,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
-  })  : _baseClient = httpClient,
-        _credentials = credentials,
-        _onRefreshCredentials = onRefreshCredentials,
-        _refreshCredentials = refreshCredentials,
-        _token = token;
+  }) : _baseClient = httpClient,
+       _credentials = credentials,
+       _onRefreshCredentials = onRefreshCredentials,
+       _refreshCredentials = refreshCredentials,
+       _token = token;
 
   final http.Client _baseClient;
   final OnRefreshCredentials? _onRefreshCredentials;
@@ -116,17 +117,18 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials == null) {
       final token = _token!;
-      credentials = _credentials = await _tryRefreshCredentials(
-        token.authProvider.clientId,
-        oauth2.AccessCredentials(
-          // This isn't relevant for a refresh operation.
-          AccessToken('Bearer', '', DateTime.timestamp()),
-          token.refreshToken,
-          token.authProvider.scopes,
-        ),
-        _baseClient,
-        authEndpoints: token.authProvider.authEndpoints,
-      );
+      credentials =
+          _credentials = await _tryRefreshCredentials(
+            token.authProvider.clientId,
+            oauth2.AccessCredentials(
+              // This isn't relevant for a refresh operation.
+              AccessToken('Bearer', '', DateTime.timestamp()),
+              token.refreshToken,
+              token.authProvider.scopes,
+            ),
+            _baseClient,
+            authEndpoints: token.authProvider.authEndpoints,
+          );
       _onRefreshCredentials?.call(credentials);
     }
 
@@ -134,12 +136,13 @@ class AuthenticatedClient extends http.BaseClient {
       final jwt = Jwt.parse(credentials.idToken!);
       final authProvider = jwt.authProvider;
 
-      credentials = _credentials = await _tryRefreshCredentials(
-        authProvider.clientId,
-        credentials,
-        _baseClient,
-        authEndpoints: authProvider.authEndpoints,
-      );
+      credentials =
+          _credentials = await _tryRefreshCredentials(
+            authProvider.clientId,
+            credentials,
+            _baseClient,
+            authEndpoints: authProvider.authEndpoints,
+          );
       _onRefreshCredentials?.call(credentials);
     }
 
@@ -183,12 +186,13 @@ class Auth {
     String? credentialsDir,
     ObtainAccessCredentials? obtainAccessCredentials,
     CodePushClientBuilder? buildCodePushClient,
-  })  : _httpClient = httpClient ?? _defaultHttpClient,
-        _credentialsDir =
-            credentialsDir ?? applicationConfigHome(executableName),
-        _obtainAccessCredentials = obtainAccessCredentials ??
-            oauth2.obtainAccessCredentialsViaUserConsent,
-        _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
+  }) : _httpClient = httpClient ?? _defaultHttpClient,
+       _credentialsDir =
+           credentialsDir ?? applicationConfigHome(executableName),
+       _obtainAccessCredentials =
+           obtainAccessCredentials ??
+           oauth2.obtainAccessCredentialsViaUserConsent,
+       _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
     _loadCredentials();
   }
 
@@ -212,10 +216,7 @@ class Auth {
     }
 
     if (_token != null) {
-      return AuthenticatedClient.token(
-        token: _token!,
-        httpClient: _httpClient,
-      );
+      return AuthenticatedClient.token(token: _token!, httpClient: _httpClient);
     }
 
     return AuthenticatedClient.credentials(
@@ -321,12 +322,10 @@ class Auth {
         _token = CiToken.fromBase64(envToken.trim());
       } on FormatException catch (e) {
         logger
-          ..err(
-            '''
+          ..err('''
 Failed to parse CI token from environment. This likely means that your CI token is incorrectly formatted.
 
-Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar environment variable, and try again.''',
-          )
+Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar environment variable, and try again.''')
           ..detail(e.toString());
         rethrow;
       }
@@ -430,9 +429,9 @@ extension OauthAuthProvider on Jwt {
 extension OauthValues on AuthProvider {
   /// The OAuth 2.0 endpoints for the provider.
   oauth2.AuthEndpoints get authEndpoints => switch (this) {
-        (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
-        (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
-      };
+    (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
+    (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
+  };
 
   /// The OAuth 2.0 client ID for the provider.
   oauth2.ClientId get clientId {
@@ -464,15 +463,15 @@ extension OauthValues on AuthProvider {
 
   /// The OAuth 2.0 scopes for the provider.
   List<String> get scopes => switch (this) {
-        (AuthProvider.google) => [
-            'openid',
-            'https://www.googleapis.com/auth/userinfo.email',
-          ],
-        (AuthProvider.microsoft) => [
-            'openid',
-            'email',
-            // Required to get refresh tokens.
-            'offline_access',
-          ],
-      };
+    (AuthProvider.google) => [
+      'openid',
+      'https://www.googleapis.com/auth/userinfo.email',
+    ],
+    (AuthProvider.microsoft) => [
+      'openid',
+      'email',
+      // Required to get refresh tokens.
+      'offline_access',
+    ],
+  };
 }

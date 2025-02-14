@@ -44,15 +44,13 @@ void main() {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
+        values: {shorebirdEnvRef.overrideWith(() => shorebirdEnv)},
       );
     }
 
     File releaseEntitlementsFile() => File(
-          p.join(projectRoot.path, 'macos', 'Runner', 'Release.entitlements'),
-        );
+      p.join(projectRoot.path, 'macos', 'Runner', 'Release.entitlements'),
+    );
 
     void setUpProjectRoot({String? entitlements}) {
       Directory(
@@ -177,16 +175,14 @@ void main() {
             );
             expect(unsignedMemoryIssue.fix, isNotNull);
             expect(
-              MacosEntitlementsValidator
-                  .hasAllowUnsignedExecutableMemoryEntitlement(
+              MacosEntitlementsValidator.hasAllowUnsignedExecutableMemoryEntitlement(
                 plistFile: releaseEntitlementsFile(),
               ),
               isFalse,
             );
             runWithOverrides(() => unsignedMemoryIssue.fix!());
             expect(
-              MacosEntitlementsValidator
-                  .hasAllowUnsignedExecutableMemoryEntitlement(
+              MacosEntitlementsValidator.hasAllowUnsignedExecutableMemoryEntitlement(
                 plistFile: releaseEntitlementsFile(),
               ),
               isTrue,

@@ -56,12 +56,9 @@ enum ExportMethod {
   appStore('app-store', 'Upload to the App Store'),
 
   /// Ad-hoc distribution.
-  adHoc(
-    'ad-hoc',
-    '''
+  adHoc('ad-hoc', '''
 Test on designated devices that do not need to be registered with the Apple developer account.
-    Requires a distribution certificate.''',
-  ),
+    Requires a distribution certificate.'''),
 
   /// Development distribution.
   development(
@@ -142,11 +139,7 @@ class Apple {
     }
 
     final xcschemesDir = Directory(
-      p.join(
-        xcodeProjDirectory.path,
-        'xcshareddata',
-        'xcschemes',
-      ),
+      p.join(xcodeProjDirectory.path, 'xcshareddata', 'xcschemes'),
     );
     if (!xcschemesDir.existsSync()) {
       throw Exception('Unable to detect schemes in $xcschemesDir');
@@ -196,9 +189,10 @@ class Apple {
 
     final linkProgress = logger.progress('Linking AOT files');
     double? linkPercentage;
-    final dumpDebugInfoDir = await aotTools.isLinkDebugInfoSupported()
-        ? Directory.systemTemp.createTempSync()
-        : null;
+    final dumpDebugInfoDir =
+        await aotTools.isLinkDebugInfoSupported()
+            ? Directory.systemTemp.createTempSync()
+            : null;
 
     Future<void> dumpDebugInfo() async {
       if (dumpDebugInfoDir == null) return;
@@ -219,11 +213,9 @@ class Apple {
             p.join(codemagicExportDir, p.basename(Patcher.debugInfoFile.path)),
           );
         } on Exception catch (error) {
-          logger.detail(
-            '''
+          logger.detail('''
 Failed to export ${Patcher.debugInfoFile.path} to $codemagicExportDir.
-$error''',
-          );
+$error''');
         }
       }
     }

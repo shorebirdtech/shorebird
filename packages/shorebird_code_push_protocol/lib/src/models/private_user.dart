@@ -37,16 +37,15 @@ class PrivateUser {
     String? displayName,
     String? stripeCustomerId,
     int? patchOverageLimit = 0,
-  }) =>
-      PrivateUser(
-        id: id,
-        email: email,
-        jwtIssuer: jwtIssuer,
-        hasActiveSubscription: hasActiveSubscription,
-        displayName: displayName,
-        stripeCustomerId: stripeCustomerId,
-        patchOverageLimit: patchOverageLimit,
-      );
+  }) => PrivateUser(
+    id: id,
+    email: email,
+    jwtIssuer: jwtIssuer,
+    hasActiveSubscription: hasActiveSubscription,
+    displayName: displayName,
+    stripeCustomerId: stripeCustomerId,
+    patchOverageLimit: patchOverageLimit,
+  );
   // coverage:ignore-end
 
   /// Converts a [PrivateUser] to a `Map<String, dynamic>`

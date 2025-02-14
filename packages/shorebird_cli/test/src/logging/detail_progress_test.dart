@@ -13,12 +13,7 @@ void main() {
     late DetailProgress detailProgress;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(
-        body,
-        values: {
-          loggerRef.overrideWith(() => logger),
-        },
-      );
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
     }
 
     setUp(() {

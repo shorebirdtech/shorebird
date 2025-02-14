@@ -66,20 +66,20 @@ class AarPatcher extends Patcher {
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
     required File patchArchive,
-  }) =>
-      patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-        localArchive: patchArchive,
-        releaseArchive: releaseArchive,
-        archiveDiffer: const AndroidArchiveDiffer(),
-        allowAssetChanges: allowAssetDiffs,
-        allowNativeChanges: allowNativeDiffs,
-      );
+  }) => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+    localArchive: patchArchive,
+    releaseArchive: releaseArchive,
+    archiveDiffer: const AndroidArchiveDiffer(),
+    allowAssetChanges: allowAssetDiffs,
+    allowNativeChanges: allowNativeDiffs,
+  );
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-    final buildProgress =
-        logger.progress('Building patch with Flutter $flutterVersionString');
+    final buildProgress = logger.progress(
+      'Building patch with Flutter $flutterVersionString',
+    );
 
     try {
       await artifactBuilder.buildAar(

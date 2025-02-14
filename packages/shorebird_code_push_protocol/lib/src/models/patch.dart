@@ -10,11 +10,7 @@ part 'patch.g.dart';
 @JsonSerializable()
 class Patch {
   /// {@macro patch}
-  const Patch({
-    required this.id,
-    required this.number,
-    this.notes,
-  });
+  const Patch({required this.id, required this.number, this.notes});
 
   /// Converts a `Map<String, dynamic>` to a [Patch]
   factory Patch.fromJson(Map<String, dynamic> json) => _$PatchFromJson(json);

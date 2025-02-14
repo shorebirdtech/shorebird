@@ -9,32 +9,40 @@ part of 'app_metadata.dart';
 // **************************************************************************
 
 AppMetadata _$AppMetadataFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'AppMetadata',
-      json,
-      ($checkedConvert) {
-        final val = AppMetadata(
-          appId: $checkedConvert('app_id', (v) => v as String),
-          displayName: $checkedConvert('display_name', (v) => v as String),
-          createdAt:
-              $checkedConvert('created_at', (v) => DateTime.parse(v as String)),
-          updatedAt:
-              $checkedConvert('updated_at', (v) => DateTime.parse(v as String)),
-          latestReleaseVersion:
-              $checkedConvert('latest_release_version', (v) => v as String?),
-          latestPatchNumber: $checkedConvert(
-              'latest_patch_number', (v) => (v as num?)?.toInt()),
-        );
-        return val;
-      },
-      fieldKeyMap: const {
-        'appId': 'app_id',
-        'displayName': 'display_name',
-        'createdAt': 'created_at',
-        'updatedAt': 'updated_at',
-        'latestReleaseVersion': 'latest_release_version',
-        'latestPatchNumber': 'latest_patch_number'
-      },
+  'AppMetadata',
+  json,
+  ($checkedConvert) {
+    final val = AppMetadata(
+      appId: $checkedConvert('app_id', (v) => v as String),
+      displayName: $checkedConvert('display_name', (v) => v as String),
+      createdAt: $checkedConvert(
+        'created_at',
+        (v) => DateTime.parse(v as String),
+      ),
+      updatedAt: $checkedConvert(
+        'updated_at',
+        (v) => DateTime.parse(v as String),
+      ),
+      latestReleaseVersion: $checkedConvert(
+        'latest_release_version',
+        (v) => v as String?,
+      ),
+      latestPatchNumber: $checkedConvert(
+        'latest_patch_number',
+        (v) => (v as num?)?.toInt(),
+      ),
     );
+    return val;
+  },
+  fieldKeyMap: const {
+    'appId': 'app_id',
+    'displayName': 'display_name',
+    'createdAt': 'created_at',
+    'updatedAt': 'updated_at',
+    'latestReleaseVersion': 'latest_release_version',
+    'latestPatchNumber': 'latest_patch_number',
+  },
+);
 
 Map<String, dynamic> _$AppMetadataToJson(AppMetadata instance) =>
     <String, dynamic>{

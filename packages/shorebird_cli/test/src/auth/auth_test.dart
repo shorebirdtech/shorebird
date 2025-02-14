@@ -32,10 +32,7 @@ void main() {
     test('creates instance with default constructor', () {
       final instance = runScoped(
         () => auth,
-        values: {
-          authRef,
-          httpClientRef.overrideWith(MockHttpClient.new),
-        },
+        values: {authRef, httpClientRef.overrideWith(MockHttpClient.new)},
       );
       expect(
         instance.credentialsFilePath,
@@ -127,11 +124,7 @@ void main() {
       authProvider: AuthProvider.google,
     );
     const email = 'test@email.com';
-    const user = PrivateUser(
-      id: 42,
-      email: email,
-      jwtIssuer: googleJwtIssuer,
-    );
+    const user = PrivateUser(id: 42, email: email, jwtIssuer: googleJwtIssuer);
     const scopes = <String>[];
     final accessToken = oauth2.AccessToken(
       'Bearer',
@@ -230,58 +223,62 @@ void main() {
             () => AuthenticatedClient.token(
               token: ciToken,
               httpClient: httpClient,
-              refreshCredentials: (
-                clientId,
-                credentials,
-                client, {
-                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-              }) async =>
-                  accessCredentials,
+              refreshCredentials:
+                  (
+                    clientId,
+                    credentials,
+                    client, {
+                    AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+                  }) async => accessCredentials,
             ),
             returnsNormally,
           );
         });
 
-        test('refreshes and uses new token when credentials are expired.',
-            () async {
-          when(() => httpClient.send(any())).thenAnswer(
-            (_) async => http.StreamedResponse(
-              const Stream.empty(),
-              HttpStatus.ok,
-            ),
-          );
+        test(
+          'refreshes and uses new token when credentials are expired.',
+          () async {
+            when(() => httpClient.send(any())).thenAnswer(
+              (_) async =>
+                  http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+            );
 
-          final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
+            final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
 
-          final client = AuthenticatedClient.token(
-            token: ciToken,
-            httpClient: httpClient,
-            onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials: (
-              clientId,
-              credentials,
-              client, {
-              AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-            }) async =>
-                accessCredentials,
-          );
+            final client = AuthenticatedClient.token(
+              token: ciToken,
+              httpClient: httpClient,
+              onRefreshCredentials: onRefreshCredentialsCalls.add,
+              refreshCredentials:
+                  (
+                    clientId,
+                    credentials,
+                    client, {
+                    AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+                  }) async => accessCredentials,
+            );
 
-          await runWithOverrides(
-            () => client.get(Uri.parse('https://example.com')),
-          );
+            await runWithOverrides(
+              () => client.get(Uri.parse('https://example.com')),
+            );
 
-          expect(
-            onRefreshCredentialsCalls,
-            equals([
-              isA<oauth2.AccessCredentials>()
-                  .having((c) => c.idToken, 'token', idToken),
-            ]),
-          );
-          final captured = verify(() => httpClient.send(captureAny())).captured;
-          expect(captured, hasLength(1));
-          final request = captured.first as http.BaseRequest;
-          expect(request.headers['Authorization'], equals('Bearer $idToken'));
-        });
+            expect(
+              onRefreshCredentialsCalls,
+              equals([
+                isA<oauth2.AccessCredentials>().having(
+                  (c) => c.idToken,
+                  'token',
+                  idToken,
+                ),
+              ]),
+            );
+            final captured =
+                verify(() => httpClient.send(captureAny())).captured;
+            expect(captured, hasLength(1));
+            final request = captured.first as http.BaseRequest;
+            expect(request.headers['Authorization'], equals('Bearer $idToken'));
+          },
+        );
 
         group('when refreshing the token fails', () {
           late AuthenticatedClient client;
@@ -299,13 +296,13 @@ void main() {
               token: ciToken,
               httpClient: httpClient,
               onRefreshCredentials: onRefreshCredentialsCalls.add,
-              refreshCredentials: (
-                clientId,
-                credentials,
-                client, {
-                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-              }) async =>
-                  throw Exception('error.'),
+              refreshCredentials:
+                  (
+                    clientId,
+                    credentials,
+                    client, {
+                    AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+                  }) async => throw Exception('error.'),
             );
           });
 
@@ -316,46 +313,41 @@ void main() {
               ),
               exitsWithCode(ExitCode.software),
             );
-            verify(() => logger.err('Failed to refresh credentials.'))
-                .called(1);
+            verify(
+              () => logger.err('Failed to refresh credentials.'),
+            ).called(1);
             verify(
               () => logger.info(
                 '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
               ),
             ).called(1);
-            verify(
-              () => logger.detail('Exception: error.'),
-            ).called(1);
+            verify(() => logger.detail('Exception: error.')).called(1);
           });
         });
 
         test('uses valid token when credentials valid.', () async {
           when(() => httpClient.send(any())).thenAnswer(
-            (_) async => http.StreamedResponse(
-              const Stream.empty(),
-              HttpStatus.ok,
-            ),
+            (_) async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
           );
           final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
           final client = AuthenticatedClient.token(
             token: ciToken,
             httpClient: httpClient,
             onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials: (
-              clientId,
-              credentials,
-              client, {
-              AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-            }) async =>
-                accessCredentials,
+            refreshCredentials:
+                (
+                  clientId,
+                  credentials,
+                  client, {
+                  AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+                }) async => accessCredentials,
           );
 
-          await runWithOverrides(
-            () async {
-              await client.get(Uri.parse('https://example.com'));
-              await client.get(Uri.parse('https://example.com'));
-            },
-          );
+          await runWithOverrides(() async {
+            await client.get(Uri.parse('https://example.com'));
+            await client.get(Uri.parse('https://example.com'));
+          });
 
           expect(onRefreshCredentialsCalls.length, equals(1));
           final captured = verify(() => httpClient.send(captureAny())).captured;
@@ -368,58 +360,62 @@ void main() {
       });
 
       group('credentials', () {
-        test('refreshes and uses new token when credentials are expired.',
-            () async {
-          when(() => httpClient.send(any())).thenAnswer(
-            (_) async => http.StreamedResponse(
-              const Stream.empty(),
-              HttpStatus.ok,
-            ),
-          );
+        test(
+          'refreshes and uses new token when credentials are expired.',
+          () async {
+            when(() => httpClient.send(any())).thenAnswer(
+              (_) async =>
+                  http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+            );
 
-          const expiredIdToken = // cspell:disable-next-line
-              '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
-          final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
-          final expiredCredentials = oauth2.AccessCredentials(
-            oauth2.AccessToken(
-              'Bearer',
-              'accessToken',
-              DateTime.now().subtract(const Duration(minutes: 1)).toUtc(),
-            ),
-            '',
-            [],
-            idToken: expiredIdToken,
-          );
+            const expiredIdToken = // cspell:disable-next-line
+                '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiI1MjMzMDIyMzMyOTMtZWlhNWFudG0wdGd2ZWsyNDB0NDZvcmN0a3RpYWJyZWsuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMjM0NSIsImhkIjoic2hvcmViaXJkLmRldiIsImVtYWlsIjoidGVzdEBlbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxMjM0LCJleHAiOjY3ODl9.MYbITALvKsGYTYjw1o7AQ0ObkqRWVBSr9cFYJrvA46g''';
+            final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
+            final expiredCredentials = oauth2.AccessCredentials(
+              oauth2.AccessToken(
+                'Bearer',
+                'accessToken',
+                DateTime.now().subtract(const Duration(minutes: 1)).toUtc(),
+              ),
+              '',
+              [],
+              idToken: expiredIdToken,
+            );
 
-          final client = AuthenticatedClient.credentials(
-            credentials: expiredCredentials,
-            httpClient: httpClient,
-            onRefreshCredentials: onRefreshCredentialsCalls.add,
-            refreshCredentials: (
-              clientId,
-              credentials,
-              client, {
-              AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-            }) async =>
-                accessCredentials,
-          );
+            final client = AuthenticatedClient.credentials(
+              credentials: expiredCredentials,
+              httpClient: httpClient,
+              onRefreshCredentials: onRefreshCredentialsCalls.add,
+              refreshCredentials:
+                  (
+                    clientId,
+                    credentials,
+                    client, {
+                    AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+                  }) async => accessCredentials,
+            );
 
-          await runWithOverrides(
-            () => client.get(Uri.parse('https://example.com')),
-          );
+            await runWithOverrides(
+              () => client.get(Uri.parse('https://example.com')),
+            );
 
-          expect(
-            onRefreshCredentialsCalls,
-            equals([
-              isA<oauth2.AccessCredentials>()
-                  .having((c) => c.idToken, 'token', idToken),
-            ]),
-          );
-          final captured = verify(() => httpClient.send(captureAny())).captured;
-          expect(captured, hasLength(1));
-          final request = captured.first as http.BaseRequest;
-          expect(request.headers['Authorization'], equals('Bearer $idToken'));
-        });
+            expect(
+              onRefreshCredentialsCalls,
+              equals([
+                isA<oauth2.AccessCredentials>().having(
+                  (c) => c.idToken,
+                  'token',
+                  idToken,
+                ),
+              ]),
+            );
+            final captured =
+                verify(() => httpClient.send(captureAny())).captured;
+            expect(captured, hasLength(1));
+            final request = captured.first as http.BaseRequest;
+            expect(request.headers['Authorization'], equals('Bearer $idToken'));
+          },
+        );
 
         group('when refreshing the token fails', () {
           late AuthenticatedClient client;
@@ -449,13 +445,13 @@ void main() {
               credentials: expiredCredentials,
               httpClient: httpClient,
               onRefreshCredentials: onRefreshCredentialsCalls.add,
-              refreshCredentials: (
-                clientId,
-                credentials,
-                client, {
-                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-              }) async =>
-                  throw Exception('error.'),
+              refreshCredentials:
+                  (
+                    clientId,
+                    credentials,
+                    client, {
+                    AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+                  }) async => throw Exception('error.'),
             );
           });
 
@@ -466,25 +462,22 @@ void main() {
               ),
               exitsWithCode(ExitCode.software),
             );
-            verify(() => logger.err('Failed to refresh credentials.'))
-                .called(1);
+            verify(
+              () => logger.err('Failed to refresh credentials.'),
+            ).called(1);
             verify(
               () => logger.info(
                 '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
               ),
             ).called(1);
-            verify(
-              () => logger.detail('Exception: error.'),
-            ).called(1);
+            verify(() => logger.detail('Exception: error.')).called(1);
           });
         });
 
         test('uses valid token when credentials valid.', () async {
           when(() => httpClient.send(any())).thenAnswer(
-            (_) async => http.StreamedResponse(
-              const Stream.empty(),
-              HttpStatus.ok,
-            ),
+            (_) async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
           );
           final onRefreshCredentialsCalls = <oauth2.AccessCredentials>[];
           final client = AuthenticatedClient.credentials(
@@ -507,14 +500,11 @@ void main() {
     });
 
     group('client', () {
-      test(
-          'returns an authenticated client '
+      test('returns an authenticated client '
           'when credentials are present.', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.ok,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
         );
         await auth.login(AuthProvider.google, prompt: (_) {});
         final client = auth.client;
@@ -533,41 +523,41 @@ void main() {
 
       group('when token is invalid', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(
-            <String, String>{shorebirdTokenEnvVar: 'not a base64 string'},
-          );
+          when(() => platform.environment).thenReturn(<String, String>{
+            shorebirdTokenEnvVar: 'not a base64 string',
+          });
         });
 
-        test('logs and throws error when token string is not valid base64',
-            () async {
-          expect(buildAuth, throwsA(isFormatException));
-          verify(
-            () => logger.info('$shorebirdTokenEnvVar detected'),
-          ).called(1);
-          verify(
-            () => logger.err(
-              '''
+        test(
+          'logs and throws error when token string is not valid base64',
+          () async {
+            expect(buildAuth, throwsA(isFormatException));
+            verify(
+              () => logger.info('$shorebirdTokenEnvVar detected'),
+            ).called(1);
+            verify(
+              () => logger.err(
+                '''
 Failed to parse CI token from environment. This likely means that your CI token is incorrectly formatted.
 
 Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar environment variable, and try again.''',
-            ),
-          ).called(1);
-          verifyNever(
-            () => logger.info('$shorebirdTokenEnvVar successfully parsed'),
-          );
-        });
+              ),
+            ).called(1);
+            verifyNever(
+              () => logger.info('$shorebirdTokenEnvVar successfully parsed'),
+            );
+          },
+        );
       });
 
       group('when token has leading or trailing spaces and newlines', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(
-            <String, String>{
-              shorebirdTokenEnvVar: '''
+          when(() => platform.environment).thenReturn(<String, String>{
+            shorebirdTokenEnvVar: '''
     ${ciToken.toBase64()}  
               
 ''',
-            },
-          );
+          });
         });
 
         test('trims string', () {
@@ -578,18 +568,15 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
         });
       });
 
-      test(
-          'returns an authenticated client '
+      test('returns an authenticated client '
           'when a token and token provider is present.', () async {
         when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.ok,
-          ),
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
         );
-        when(() => platform.environment).thenReturn(
-          <String, String>{shorebirdTokenEnvVar: ciToken.toBase64()},
-        );
+        when(() => platform.environment).thenReturn(<String, String>{
+          shorebirdTokenEnvVar: ciToken.toBase64(),
+        });
         auth = buildAuth();
         final client = auth.client;
         expect(client, isA<http.Client>());
@@ -600,49 +587,56 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
         ).called(1);
       });
 
-      test('returns a plain http client when credentials are not present.',
-          () async {
-        final client = auth.client;
-        expect(client, isA<http.Client>());
-        expect(client, isNot(isA<oauth2.AutoRefreshingAuthClient>()));
-      });
+      test(
+        'returns a plain http client when credentials are not present.',
+        () async {
+          final client = auth.client;
+          expect(client, isA<http.Client>());
+          expect(client, isNot(isA<oauth2.AutoRefreshingAuthClient>()));
+        },
+      );
     });
 
     group('login', () {
-      test('should set the email when claims are valid and current user exists',
-          () async {
-        await auth.login(AuthProvider.google, prompt: (_) {});
-        expect(auth.email, email);
-        expect(auth.isAuthenticated, isTrue);
-        expect(buildAuth().email, email);
-        expect(buildAuth().isAuthenticated, isTrue);
-      });
-
-      group('with custom auth provider', () {
-        test(
-            '''should set the email when claims are valid and current user exists''',
-            () async {
-          await auth.login(AuthProvider.microsoft, prompt: (_) {});
+      test(
+        'should set the email when claims are valid and current user exists',
+        () async {
+          await auth.login(AuthProvider.google, prompt: (_) {});
           expect(auth.email, email);
           expect(auth.isAuthenticated, isTrue);
           expect(buildAuth().email, email);
           expect(buildAuth().isAuthenticated, isTrue);
-        });
-      });
+        },
+      );
 
-      test('throws UserAlreadyLoggedInException if user is authenticated',
+      group('with custom auth provider', () {
+        test(
+          '''should set the email when claims are valid and current user exists''',
           () async {
-        writeCredentials();
-        auth = buildAuth();
-
-        await expectLater(
-          auth.login(AuthProvider.google, prompt: (_) {}),
-          throwsA(isA<UserAlreadyLoggedInException>()),
+            await auth.login(AuthProvider.microsoft, prompt: (_) {});
+            expect(auth.email, email);
+            expect(auth.isAuthenticated, isTrue);
+            expect(buildAuth().email, email);
+            expect(buildAuth().isAuthenticated, isTrue);
+          },
         );
-
-        expect(auth.email, isNotNull);
-        expect(auth.isAuthenticated, isTrue);
       });
+
+      test(
+        'throws UserAlreadyLoggedInException if user is authenticated',
+        () async {
+          writeCredentials();
+          auth = buildAuth();
+
+          await expectLater(
+            auth.login(AuthProvider.google, prompt: (_) {}),
+            throwsA(isA<UserAlreadyLoggedInException>()),
+          );
+
+          expect(auth.email, isNotNull);
+          expect(auth.isAuthenticated, isTrue);
+        },
+      );
 
       group('when login credentials are corrupted', () {
         setUp(() {
@@ -665,8 +659,9 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
       });
 
       test('should not set the email when user does not exist', () async {
-        when(() => codePushClient.getCurrentUser())
-            .thenAnswer((_) async => null);
+        when(
+          () => codePushClient.getCurrentUser(),
+        ).thenAnswer((_) async => null);
 
         await expectLater(
           auth.login(AuthProvider.google, prompt: (_) {}),
@@ -680,24 +675,26 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
 
     group('loginCI', () {
       setUp(() {
-        when(() => platform.environment).thenReturn(
-          <String, String>{shorebirdTokenEnvVar: ciToken.toBase64()},
-        );
+        when(() => platform.environment).thenReturn(<String, String>{
+          shorebirdTokenEnvVar: ciToken.toBase64(),
+        });
         auth = buildAuth();
       });
 
-      test('returns a CI token and does not set the email or cache credentials',
-          () async {
-        final token = await auth.loginCI(AuthProvider.google, prompt: (_) {});
-        expect(token.authProvider, ciToken.authProvider);
-        expect(token.refreshToken, ciToken.refreshToken);
-        expect(auth.email, isNull);
-        expect(auth.isAuthenticated, isTrue);
-        expect(buildAuth().email, isNull);
-        expect(buildAuth().isAuthenticated, isTrue);
-        when(() => platform.environment).thenReturn({});
-        expect(buildAuth().isAuthenticated, isFalse);
-      });
+      test(
+        'returns a CI token and does not set the email or cache credentials',
+        () async {
+          final token = await auth.loginCI(AuthProvider.google, prompt: (_) {});
+          expect(token.authProvider, ciToken.authProvider);
+          expect(token.refreshToken, ciToken.refreshToken);
+          expect(auth.email, isNull);
+          expect(auth.isAuthenticated, isTrue);
+          expect(buildAuth().email, isNull);
+          expect(buildAuth().isAuthenticated, isTrue);
+          when(() => platform.environment).thenReturn({});
+          expect(buildAuth().isAuthenticated, isFalse);
+        },
+      );
 
       test('throws when user does not exist', () async {
         when(

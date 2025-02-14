@@ -72,9 +72,7 @@ class WindowsPatcher extends Patcher {
   }
 
   @override
-  Future<File> buildPatchArtifact({
-    String? releaseVersion,
-  }) async {
+  Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
 
     final buildAppBundleProgress = logger.detailProgress(
@@ -123,15 +121,11 @@ class WindowsPatcher extends Patcher {
     // build/windows/x64/runner/Release
     final appSoPath = p.join(tempDir.path, 'data', 'app.so');
 
-    final privateKeyFile = argResults.file(
-      CommonArguments.privateKeyArg.name,
-    );
-    final hashSignature = privateKeyFile != null
-        ? codeSigner.sign(
-            message: hash,
-            privateKeyPemFile: privateKeyFile,
-          )
-        : null;
+    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
+    final hashSignature =
+        privateKeyFile != null
+            ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
+            : null;
 
     final String diffPath;
     try {
@@ -164,10 +158,9 @@ class WindowsPatcher extends Patcher {
       zipFile: artifact,
       outputDirectory: outputDirectory,
     );
-    final exeFile = outputDirectory
-        .listSync()
-        .whereType<File>()
-        .firstWhere((file) => p.extension(file.path) == '.exe');
+    final exeFile = outputDirectory.listSync().whereType<File>().firstWhere(
+      (file) => p.extension(file.path) == '.exe',
+    );
     return powershell.getExeVersionString(exeFile);
   }
 }

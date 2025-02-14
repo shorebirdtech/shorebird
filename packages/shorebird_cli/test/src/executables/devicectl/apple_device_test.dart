@@ -14,10 +14,7 @@ void main() {
       name: deviceName,
       osVersionNumber: '17.1',
     );
-    const hardwareProperties = HardwareProperties(
-      platform: 'iOS',
-      udid: udid,
-    );
+    const hardwareProperties = HardwareProperties(platform: 'iOS', udid: udid);
 
     late AppleDevice device;
 

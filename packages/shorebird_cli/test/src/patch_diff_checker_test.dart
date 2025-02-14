@@ -57,16 +57,21 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       patchDiffChecker = PatchDiffChecker();
 
-      when(() => archiveDiffer.changedFiles(any(), any()))
-          .thenAnswer((_) async => FileSetDiff.empty());
-      when(() => archiveDiffer.assetsFileSetDiff(any()))
-          .thenReturn(assetsFileSetDiff);
-      when(() => archiveDiffer.nativeFileSetDiff(any()))
-          .thenReturn(nativeFileSetDiff);
-      when(() => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()))
-          .thenReturn(false);
-      when(() => archiveDiffer.containsPotentiallyBreakingNativeDiffs(any()))
-          .thenReturn(false);
+      when(
+        () => archiveDiffer.changedFiles(any(), any()),
+      ).thenAnswer((_) async => FileSetDiff.empty());
+      when(
+        () => archiveDiffer.assetsFileSetDiff(any()),
+      ).thenReturn(assetsFileSetDiff);
+      when(
+        () => archiveDiffer.nativeFileSetDiff(any()),
+      ).thenReturn(nativeFileSetDiff);
+      when(
+        () => archiveDiffer.containsPotentiallyBreakingAssetDiffs(any()),
+      ).thenReturn(false);
+      when(
+        () => archiveDiffer.containsPotentiallyBreakingNativeDiffs(any()),
+      ).thenReturn(false);
 
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
@@ -77,10 +82,12 @@ void main() {
 
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
 
-      when(() => assetsFileSetDiff.prettyString)
-          .thenReturn(assetsDiffPrettyString);
-      when(() => nativeFileSetDiff.prettyString)
-          .thenReturn(nativeDiffPrettyString);
+      when(
+        () => assetsFileSetDiff.prettyString,
+      ).thenReturn(assetsDiffPrettyString);
+      when(
+        () => nativeFileSetDiff.prettyString,
+      ).thenReturn(nativeDiffPrettyString);
     });
 
     group('confirmUnpatchableDiffsIfNecessary', () {
@@ -113,8 +120,9 @@ void main() {
           verify(
             () => logger.info(
               any(
-                that:
-                    contains("If you don't know why you're seeing this error"),
+                that: contains(
+                  "If you don't know why you're seeing this error",
+                ),
               ),
             ),
           ).called(1);
@@ -148,27 +156,27 @@ void main() {
           verifyNever(() => logger.confirm('Continue anyways?'));
         });
 
-        test('throws UserCancelledException if user declines to continue',
-            () async {
-          when(() => logger.confirm(any())).thenReturn(false);
+        test(
+          'throws UserCancelledException if user declines to continue',
+          () async {
+            when(() => logger.confirm(any())).thenReturn(false);
 
-          await expectLater(
-            runWithOverrides(
-              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-                localArchive: localArtifact,
-                releaseArchive: releaseArtifact,
-                archiveDiffer: archiveDiffer,
-                allowAssetChanges: false,
-                allowNativeChanges: false,
+            await expectLater(
+              runWithOverrides(
+                () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                  localArchive: localArtifact,
+                  releaseArchive: releaseArtifact,
+                  archiveDiffer: archiveDiffer,
+                  allowAssetChanges: false,
+                  allowNativeChanges: false,
+                ),
               ),
-            ),
-            throwsA(
-              isA<UserCancelledException>(),
-            ),
-          );
+              throwsA(isA<UserCancelledException>()),
+            );
 
-          verify(() => logger.confirm('Continue anyways?')).called(1);
-        });
+            verify(() => logger.confirm('Continue anyways?')).called(1);
+          },
+        );
 
         test('does not prompt when unable to accept user input', () async {
           when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
@@ -246,25 +254,27 @@ void main() {
           verifyNever(() => logger.confirm('Continue anyways?'));
         });
 
-        test('throws UserCancelledException if user declines to continue',
-            () async {
-          when(() => logger.confirm(any())).thenReturn(false);
+        test(
+          'throws UserCancelledException if user declines to continue',
+          () async {
+            when(() => logger.confirm(any())).thenReturn(false);
 
-          await expectLater(
-            runWithOverrides(
-              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-                localArchive: localArtifact,
-                releaseArchive: releaseArtifact,
-                archiveDiffer: archiveDiffer,
-                allowAssetChanges: false,
-                allowNativeChanges: false,
+            await expectLater(
+              runWithOverrides(
+                () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                  localArchive: localArtifact,
+                  releaseArchive: releaseArtifact,
+                  archiveDiffer: archiveDiffer,
+                  allowAssetChanges: false,
+                  allowNativeChanges: false,
+                ),
               ),
-            ),
-            throwsA(isA<UserCancelledException>()),
-          );
+              throwsA(isA<UserCancelledException>()),
+            );
 
-          verify(() => logger.confirm('Continue anyways?')).called(1);
-        });
+            verify(() => logger.confirm('Continue anyways?')).called(1);
+          },
+        );
 
         test('does not prompt when unable to accept user input', () async {
           when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
@@ -286,21 +296,23 @@ void main() {
         });
       });
 
-      test('returns true if no potentially breaking diffs are detected',
-          () async {
-        await expectLater(
-          runWithOverrides(
-            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-              localArchive: localArtifact,
-              releaseArchive: releaseArtifact,
-              archiveDiffer: archiveDiffer,
-              allowAssetChanges: false,
-              allowNativeChanges: false,
+      test(
+        'returns true if no potentially breaking diffs are detected',
+        () async {
+          await expectLater(
+            runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+              ),
             ),
-          ),
-          completes,
-        );
-      });
+            completes,
+          );
+        },
+      );
     });
   });
 }

@@ -58,16 +58,16 @@ class ValidationIssue {
   /// Creates a new [ValidationIssue] with a severity of
   /// [ValidationIssueSeverity.error].
   factory ValidationIssue.error({required String message}) => ValidationIssue(
-        severity: ValidationIssueSeverity.error,
-        message: message,
-      );
+    severity: ValidationIssueSeverity.error,
+    message: message,
+  );
 
   /// Creates a new [ValidationIssue] with a severity of
   /// [ValidationIssueSeverity.warning].
   factory ValidationIssue.warning({required String message}) => ValidationIssue(
-        severity: ValidationIssueSeverity.warning,
-        message: message,
-      );
+    severity: ValidationIssueSeverity.warning,
+    message: message,
+  );
 
   /// How important it is to fix this issue.
   final ValidationIssueSeverity severity;

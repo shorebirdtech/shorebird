@@ -57,8 +57,9 @@ void main() {
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
 
-      when(() => cache.getArtifactDirectory(any()))
-          .thenReturn(cacheArtifactDirectory);
+      when(
+        () => cache.getArtifactDirectory(any()),
+      ).thenReturn(cacheArtifactDirectory);
       when(() => cache.updateAll()).thenAnswer((_) async {});
 
       when(() => httpClient.send(any())).thenAnswer(
@@ -87,12 +88,10 @@ void main() {
 
       setUp(() {
         final tmpDir = Directory.systemTemp.createTempSync();
-        releaseArtifactFile = File(
-          p.join(tmpDir.path, 'release_artifact'),
-        )..createSync(recursive: true);
-        patchArtifactFile = File(
-          p.join(tmpDir.path, 'patch_artifact'),
-        )..createSync(recursive: true);
+        releaseArtifactFile = File(p.join(tmpDir.path, 'release_artifact'))
+          ..createSync(recursive: true);
+        patchArtifactFile = File(p.join(tmpDir.path, 'patch_artifact'))
+          ..createSync(recursive: true);
       });
 
       test('throws error when release artifact file does not exist', () async {
@@ -110,11 +109,7 @@ void main() {
                   'message',
                   'Release artifact does not exist',
                 )
-                .having(
-                  (e) => e.path,
-                  'path',
-                  'not/a/real/file',
-                ),
+                .having((e) => e.path, 'path', 'not/a/real/file'),
           ),
         );
       });
@@ -134,11 +129,7 @@ void main() {
                   'message',
                   'Patch artifact does not exist',
                 )
-                .having(
-                  (e) => e.path,
-                  'path',
-                  'not/a/real/file',
-                ),
+                .having((e) => e.path, 'path', 'not/a/real/file'),
           ),
         );
       });
@@ -150,9 +141,7 @@ void main() {
             patchArtifactPath: patchArtifactFile.path,
             diffPath: any(named: 'diffPath'),
           ),
-        ).thenThrow(
-          PatchFailedException('error'),
-        );
+        ).thenThrow(PatchFailedException('error'));
 
         await expectLater(
           () => runWithOverrides(
@@ -162,11 +151,7 @@ void main() {
             ),
           ),
           throwsA(
-            isA<Exception>().having(
-              (e) => e.toString(),
-              'exception',
-              'error',
-            ),
+            isA<Exception>().having((e) => e.toString(), 'exception', 'error'),
           ),
         );
       });
@@ -203,9 +188,8 @@ void main() {
 
         await expectLater(
           () => runWithOverrides(
-            () async => artifactManager.downloadFile(
-              Uri.parse('https://example.com'),
-            ),
+            () async =>
+                artifactManager.downloadFile(Uri.parse('https://example.com')),
           ),
           throwsA(
             isA<Exception>().having(
@@ -219,9 +203,8 @@ void main() {
 
       test('returns path to file when download succeeds', () async {
         final result = await runWithOverrides(
-          () async => artifactManager.downloadFile(
-            Uri.parse('https://example.com'),
-          ),
+          () async =>
+              artifactManager.downloadFile(Uri.parse('https://example.com')),
         );
 
         expect(result.path, endsWith('artifact'));
@@ -393,9 +376,7 @@ void main() {
             await responseStreamController.close();
           });
         },
-        onPlatform: {
-          'windows': const Skip('Flaky on Windows'),
-        },
+        onPlatform: {'windows': const Skip('Flaky on Windows')},
       );
     });
 
@@ -446,57 +427,50 @@ void main() {
           expect(result, isNull);
         });
 
-        test('returns a path containing stripReleaseDebugSymbols if it exists',
-            () {
-          final stripNativeDebugLibsDirectory = Directory(
-            p.join(
-              strippedNativeLibsDirectory.path,
-              'release',
-              'stripReleaseDebugSymbols',
-              'out',
-              'lib',
-            ),
-          )..createSync(recursive: true);
+        test(
+          'returns a path containing stripReleaseDebugSymbols if it exists',
+          () {
+            final stripNativeDebugLibsDirectory = Directory(
+              p.join(
+                strippedNativeLibsDirectory.path,
+                'release',
+                'stripReleaseDebugSymbols',
+                'out',
+                'lib',
+              ),
+            )..createSync(recursive: true);
 
-          // Create paths with and without the stripReleaseDebugSymbols
-          // directory to ensure the method returns the correct path when both
-          // exist.
-          Directory(
-            p.join(
-              strippedNativeLibsDirectory.path,
-              'release',
-              'out',
-              'lib',
-            ),
-          ).createSync(recursive: true);
+            // Create paths with and without the stripReleaseDebugSymbols
+            // directory to ensure the method returns the correct path when both
+            // exist.
+            Directory(
+              p.join(strippedNativeLibsDirectory.path, 'release', 'out', 'lib'),
+            ).createSync(recursive: true);
 
-          final result = ArtifactManager.androidArchsDirectory(
-            projectRoot: projectRoot,
-          );
+            final result = ArtifactManager.androidArchsDirectory(
+              projectRoot: projectRoot,
+            );
 
-          expect(result, isNotNull);
-          expect(result!.path, equals(stripNativeDebugLibsDirectory.path));
-        });
+            expect(result, isNotNull);
+            expect(result!.path, equals(stripNativeDebugLibsDirectory.path));
+          },
+        );
 
         test(
-            '''returns a path not containing stripReleaseDebugSymbols no path containing stripReleaseDebugSymbols exists''',
-            () {
-          final noStripReleaseDebugSymbolsPath = Directory(
-            p.join(
-              strippedNativeLibsDirectory.path,
-              'release',
-              'out',
-              'lib',
-            ),
-          )..createSync(recursive: true);
+          '''returns a path not containing stripReleaseDebugSymbols no path containing stripReleaseDebugSymbols exists''',
+          () {
+            final noStripReleaseDebugSymbolsPath = Directory(
+              p.join(strippedNativeLibsDirectory.path, 'release', 'out', 'lib'),
+            )..createSync(recursive: true);
 
-          final result = ArtifactManager.androidArchsDirectory(
-            projectRoot: projectRoot,
-          );
+            final result = ArtifactManager.androidArchsDirectory(
+              projectRoot: projectRoot,
+            );
 
-          expect(result, isNotNull);
-          expect(result!.path, equals(noStripReleaseDebugSymbolsPath.path));
-        });
+            expect(result, isNotNull);
+            expect(result!.path, equals(noStripReleaseDebugSymbolsPath.path));
+          },
+        );
       });
 
       group('with a flavor named "internal"', () {
@@ -512,59 +486,61 @@ void main() {
         });
 
         test(
-            '''returns a path containing stripInternalReleaseDebugSymbols if it exists''',
-            () {
-          final stripNativeDebugLibsDirectory = Directory(
-            p.join(
-              strippedNativeLibsDirectory.path,
-              'internalRelease',
-              'stripInternalReleaseDebugSymbols',
-              'out',
-              'lib',
-            ),
-          )..createSync(recursive: true);
+          '''returns a path containing stripInternalReleaseDebugSymbols if it exists''',
+          () {
+            final stripNativeDebugLibsDirectory = Directory(
+              p.join(
+                strippedNativeLibsDirectory.path,
+                'internalRelease',
+                'stripInternalReleaseDebugSymbols',
+                'out',
+                'lib',
+              ),
+            )..createSync(recursive: true);
 
-          // Create paths with and without the stripReleaseDebugSymbols
-          // directory to ensure the method returns the correct path when both
-          // exist.
-          Directory(
-            p.join(
-              strippedNativeLibsDirectory.path,
-              'internalRelease',
-              'out',
-              'lib',
-            ),
-          ).createSync(recursive: true);
+            // Create paths with and without the stripReleaseDebugSymbols
+            // directory to ensure the method returns the correct path when both
+            // exist.
+            Directory(
+              p.join(
+                strippedNativeLibsDirectory.path,
+                'internalRelease',
+                'out',
+                'lib',
+              ),
+            ).createSync(recursive: true);
 
-          final result = ArtifactManager.androidArchsDirectory(
-            projectRoot: projectRoot,
-            flavor: flavor,
-          );
+            final result = ArtifactManager.androidArchsDirectory(
+              projectRoot: projectRoot,
+              flavor: flavor,
+            );
 
-          expect(result, isNotNull);
-          expect(result!.path, equals(stripNativeDebugLibsDirectory.path));
-        });
+            expect(result, isNotNull);
+            expect(result!.path, equals(stripNativeDebugLibsDirectory.path));
+          },
+        );
 
         test(
-            '''returns a path not containing stripInternalReleaseDebugSymbols no path containing stripInternalReleaseDebugSymbols exists''',
-            () {
-          final noStripReleaseDebugSymbolsPath = Directory(
-            p.join(
-              strippedNativeLibsDirectory.path,
-              'internalRelease',
-              'out',
-              'lib',
-            ),
-          )..createSync(recursive: true);
+          '''returns a path not containing stripInternalReleaseDebugSymbols no path containing stripInternalReleaseDebugSymbols exists''',
+          () {
+            final noStripReleaseDebugSymbolsPath = Directory(
+              p.join(
+                strippedNativeLibsDirectory.path,
+                'internalRelease',
+                'out',
+                'lib',
+              ),
+            )..createSync(recursive: true);
 
-          final result = ArtifactManager.androidArchsDirectory(
-            projectRoot: projectRoot,
-            flavor: flavor,
-          );
+            final result = ArtifactManager.androidArchsDirectory(
+              projectRoot: projectRoot,
+              flavor: flavor,
+            );
 
-          expect(result, isNotNull);
-          expect(result!.path, equals(noStripReleaseDebugSymbolsPath.path));
-        });
+            expect(result, isNotNull);
+            expect(result!.path, equals(noStripReleaseDebugSymbolsPath.path));
+          },
+        );
       });
     });
 
@@ -594,63 +570,59 @@ void main() {
         });
       });
 
-      group(
-        'when multiple xcarchive directories exist',
-        () {
-          late Directory oldArchiveDirectory;
-          late Directory newArchiveDirectory;
+      group('when multiple xcarchive directories exist', () {
+        late Directory oldArchiveDirectory;
+        late Directory newArchiveDirectory;
 
-          setUp(() async {
-            oldArchiveDirectory = Directory(
-              p.join(
-                projectRoot.path,
-                'build',
-                'ios',
-                'archive',
-                'Runner.xcarchive',
-              ),
-            )..createSync(recursive: true);
-            // Wait to ensure the new archive directory is created after the old
-            // archive directory.
-            await Future<void>.delayed(const Duration(milliseconds: 50));
-            newArchiveDirectory = Directory(
-              p.join(
-                projectRoot.path,
-                'build',
-                'ios',
-                'archive',
-                'Runner2.xcarchive',
-              ),
-            )..createSync(recursive: true);
-          });
+        setUp(() async {
+          oldArchiveDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner.xcarchive',
+            ),
+          )..createSync(recursive: true);
+          // Wait to ensure the new archive directory is created after the old
+          // archive directory.
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          newArchiveDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner2.xcarchive',
+            ),
+          )..createSync(recursive: true);
+        });
 
-          test('selects the most recently updated xcarchive', () async {
-            final firstResult = runWithOverrides(
-              () => artifactManager.getXcarchiveDirectory(),
-            );
-            // The new archive directory should be selected because it was
-            // created after the old archive directory.
-            expect(firstResult!.path, equals(newArchiveDirectory.path));
+        test('selects the most recently updated xcarchive', () async {
+          final firstResult = runWithOverrides(
+            () => artifactManager.getXcarchiveDirectory(),
+          );
+          // The new archive directory should be selected because it was
+          // created after the old archive directory.
+          expect(firstResult!.path, equals(newArchiveDirectory.path));
 
-            // Now recreate the old archive directory and ensure it is selected.
-            oldArchiveDirectory.deleteSync(recursive: true);
-            oldArchiveDirectory = Directory(
-              p.join(
-                projectRoot.path,
-                'build',
-                'ios',
-                'archive',
-                'Runner.xcarchive',
-              ),
-            )..createSync(recursive: true);
-            final secondResult = runWithOverrides(
-              () => artifactManager.getXcarchiveDirectory(),
-            );
-            expect(secondResult!.path, equals(oldArchiveDirectory.path));
-          });
-        },
-        testOn: 'mac-os',
-      );
+          // Now recreate the old archive directory and ensure it is selected.
+          oldArchiveDirectory.deleteSync(recursive: true);
+          oldArchiveDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'archive',
+              'Runner.xcarchive',
+            ),
+          )..createSync(recursive: true);
+          final secondResult = runWithOverrides(
+            () => artifactManager.getXcarchiveDirectory(),
+          );
+          expect(secondResult!.path, equals(oldArchiveDirectory.path));
+        });
+      }, testOn: 'mac-os');
 
       group('when archive directory does not exist', () {
         test('returns null', () {
@@ -689,69 +661,65 @@ void main() {
         });
       });
 
-      group(
-        'when multiple .app directories exist',
-        () {
-          late Directory oldAppDirectory;
-          late Directory newAppDirectory;
+      group('when multiple .app directories exist', () {
+        late Directory oldAppDirectory;
+        late Directory newAppDirectory;
 
-          setUp(() async {
-            oldAppDirectory = Directory(
-              p.join(
-                projectRoot.path,
-                'build',
-                'macos',
-                'Build',
-                'Products',
-                'Release',
-                'Runner.app',
-              ),
-            )..createSync(recursive: true);
-            // Wait to ensure the new app directory is created after the old
-            // app directory.
-            await Future<void>.delayed(const Duration(milliseconds: 50));
-            newAppDirectory = Directory(
-              p.join(
-                projectRoot.path,
-                'build',
-                'macos',
-                'Build',
-                'Products',
-                'Release',
-                'Runner2.app',
-              ),
-            )..createSync(recursive: true);
-          });
+        setUp(() async {
+          oldAppDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'macos',
+              'Build',
+              'Products',
+              'Release',
+              'Runner.app',
+            ),
+          )..createSync(recursive: true);
+          // Wait to ensure the new app directory is created after the old
+          // app directory.
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          newAppDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'macos',
+              'Build',
+              'Products',
+              'Release',
+              'Runner2.app',
+            ),
+          )..createSync(recursive: true);
+        });
 
-          test('selects the most recently updated app', () async {
-            final firstResult = runWithOverrides(
-              artifactManager.getMacOSAppDirectory,
-            );
-            // The new app directory should be selected because it was
-            // created after the old app directory.
-            expect(firstResult!.path, equals(newAppDirectory.path));
+        test('selects the most recently updated app', () async {
+          final firstResult = runWithOverrides(
+            artifactManager.getMacOSAppDirectory,
+          );
+          // The new app directory should be selected because it was
+          // created after the old app directory.
+          expect(firstResult!.path, equals(newAppDirectory.path));
 
-            // Now recreate the old app directory and ensure it is selected.
-            oldAppDirectory.deleteSync(recursive: true);
-            oldAppDirectory = Directory(
-              p.join(
-                projectRoot.path,
-                'build',
-                'macos',
-                'Build',
-                'Products',
-                'Release',
-                'Runner.app',
-              ),
-            )..createSync(recursive: true);
-            final secondResult = runWithOverrides(
-              artifactManager.getMacOSAppDirectory,
-            );
-            expect(secondResult!.path, equals(oldAppDirectory.path));
-          });
-        },
-        testOn: 'mac-os',
-      );
+          // Now recreate the old app directory and ensure it is selected.
+          oldAppDirectory.deleteSync(recursive: true);
+          oldAppDirectory = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'macos',
+              'Build',
+              'Products',
+              'Release',
+              'Runner.app',
+            ),
+          )..createSync(recursive: true);
+          final secondResult = runWithOverrides(
+            artifactManager.getMacOSAppDirectory,
+          );
+          expect(secondResult!.path, equals(oldAppDirectory.path));
+        });
+      }, testOn: 'mac-os');
 
       group('when app directory does not exist', () {
         test('returns null', () {
@@ -873,10 +841,7 @@ void main() {
     group('getIpa', () {
       group('when ipa build directory does not exist', () {
         test('returns null', () {
-          expect(
-            runWithOverrides(artifactManager.getIpa),
-            isNull,
-          );
+          expect(runWithOverrides(artifactManager.getIpa), isNull);
         });
       });
 
@@ -886,12 +851,7 @@ void main() {
 
         setUp(() {
           ipaBuildDirectory = Directory(
-            p.join(
-              projectRoot.path,
-              'build',
-              'ios',
-              'ipa',
-            ),
+            p.join(projectRoot.path, 'build', 'ios', 'ipa'),
           )..createSync(recursive: true);
           ipaFile = File(p.join(ipaBuildDirectory.path, 'Runner.ipa'))
             ..createSync();
@@ -907,10 +867,7 @@ void main() {
         test('returns null when multiple ipa files exist', () {
           File(p.join(ipaBuildDirectory.path, 'Runner2.ipa')).createSync();
 
-          expect(
-            runWithOverrides(artifactManager.getIpa),
-            isNull,
-          );
+          expect(runWithOverrides(artifactManager.getIpa), isNull);
           verify(
             () => logger.detail(
               'More than one .ipa file found in ${ipaBuildDirectory.path}',
@@ -921,10 +878,7 @@ void main() {
         test('returns null when no ipa files exist', () {
           ipaFile.deleteSync();
 
-          expect(
-            runWithOverrides(artifactManager.getIpa),
-            isNull,
-          );
+          expect(runWithOverrides(artifactManager.getIpa), isNull);
 
           verify(
             () => logger.detail(
@@ -958,13 +912,7 @@ void main() {
         expect(
           runWithOverrides(artifactManager.getAppXcframeworkDirectory).path,
           equals(
-            p.join(
-              projectRoot.path,
-              'build',
-              'ios',
-              'framework',
-              'Release',
-            ),
+            p.join(projectRoot.path, 'build', 'ios', 'framework', 'Release'),
           ),
         );
       });
@@ -983,12 +931,7 @@ void main() {
       group('when the directory exists', () {
         setUp(() {
           Directory(
-            p.join(
-              projectRoot.path,
-              'build',
-              'ios',
-              'shorebird',
-            ),
+            p.join(projectRoot.path, 'build', 'ios', 'shorebird'),
           ).createSync(recursive: true);
         });
 
@@ -997,14 +940,7 @@ void main() {
             runWithOverrides(
               artifactManager.getIosReleaseSupplementDirectory,
             )?.path,
-            equals(
-              p.join(
-                projectRoot.path,
-                'build',
-                'ios',
-                'shorebird',
-              ),
-            ),
+            equals(p.join(projectRoot.path, 'build', 'ios', 'shorebird')),
           );
         });
       });
@@ -1025,12 +961,7 @@ void main() {
       group('when the directory exists', () {
         setUp(() {
           Directory(
-            p.join(
-              projectRoot.path,
-              'build',
-              'macos',
-              'shorebird',
-            ),
+            p.join(projectRoot.path, 'build', 'macos', 'shorebird'),
           ).createSync(recursive: true);
         });
 
@@ -1039,14 +970,7 @@ void main() {
             runWithOverrides(
               artifactManager.getMacosReleaseSupplementDirectory,
             )?.path,
-            equals(
-              p.join(
-                projectRoot.path,
-                'build',
-                'macos',
-                'shorebird',
-              ),
-            ),
+            equals(p.join(projectRoot.path, 'build', 'macos', 'shorebird')),
           );
         });
       });

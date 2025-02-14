@@ -45,10 +45,8 @@ class LoginCiCommand extends ShorebirdCommand {
       ciToken = await auth.loginCI(provider, prompt: prompt);
     } on UserNotFoundException catch (error) {
       logger
-        ..err(
-          '''
-We could not find a Shorebird account for ${error.email}.''',
-        )
+        ..err('''
+We could not find a Shorebird account for ${error.email}.''')
         ..info(
           '''If you have not yet created an account, go to "${link(uri: Uri.parse('https://console.shorebird.dev'))}" to create one. If you believe this is an error, please reach out to us via Discord, we're happy to help!''',
         );

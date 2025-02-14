@@ -105,8 +105,7 @@ void main() {
         ..testArgResults = argResults;
     });
 
-    test(
-        'prints shorebird version, flutter revision, '
+    test('prints shorebird version, flutter revision, '
         'and engine revision '
         'when unable to determine Flutter version', () async {
       when(
@@ -130,26 +129,27 @@ Engine • revision $shorebirdEngineRevision
     });
 
     test(
-        '''prints shorebird version, flutter revision, flutter version, and engine revision''',
-        () async {
-      const flutterVersion = '1.2.3';
-      when(
-        () => shorebirdFlutter.getVersionString(),
-      ).thenAnswer((_) async => flutterVersion);
-      await runWithOverrides(command.run);
+      '''prints shorebird version, flutter revision, flutter version, and engine revision''',
+      () async {
+        const flutterVersion = '1.2.3';
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => flutterVersion);
+        await runWithOverrides(command.run);
 
-      verify(
-        () => logger.info('''
+        verify(
+          () => logger.info('''
 
 Shorebird v$packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter $flutterVersion • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
 '''),
-      ).called(1);
-      verify(() => networkChecker.checkReachability()).called(1);
-      verifyNever(() => networkChecker.performGCPDownloadSpeedTest());
-      verifyNever(() => networkChecker.performGCPUploadSpeedTest());
-    });
+        ).called(1);
+        verify(() => networkChecker.checkReachability()).called(1);
+        verifyNever(() => networkChecker.performGCPDownloadSpeedTest());
+        verifyNever(() => networkChecker.performGCPUploadSpeedTest());
+      },
+    );
 
     group('--verbose', () {
       setUp(() {
@@ -210,12 +210,8 @@ OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)'''
 
         final notDetectedText = red.wrap('not detected');
         expect(
-          msg.replaceAll(
-            Platform.lineTerminator,
-            '\n',
-          ),
-          equals(
-            '''
+          msg.replaceAll(Platform.lineTerminator, '\n'),
+          equals('''
 Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
@@ -231,8 +227,7 @@ Android Toolchain
                   OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
                   OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)
   • Gradle: $notDetectedText
-''',
-          ),
+'''),
         );
 
         verify(() => networkChecker.checkReachability()).called(1);
@@ -272,12 +267,8 @@ OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)'''
               verify(() => logger.info(captureAny())).captured.first as String;
 
           expect(
-            msg.replaceAll(
-              Platform.lineTerminator,
-              '\n',
-            ),
-            equals(
-              '''
+            msg.replaceAll(Platform.lineTerminator, '\n'),
+            equals('''
 Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter • revision ${shorebirdEnv.flutterRevision}
 Engine • revision $shorebirdEngineRevision
@@ -293,8 +284,7 @@ Android Toolchain
                   OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
                   OpenJDK 64-Bit Server VM (build 17.0.9+0-17.0.9b1087.7-11185874, mixed mode)
   • Gradle: 7.6.3
-''',
-            ),
+'''),
           );
         });
       });
@@ -315,10 +305,7 @@ Android Toolchain
           });
 
           test('logs error as detail, continues', () async {
-            await expectLater(
-              runWithOverrides(command.run),
-              completes,
-            );
+            await expectLater(runWithOverrides(command.run), completes);
 
             verify(
               () => progress.fail('GCP upload speed test failed: oops'),
@@ -334,10 +321,7 @@ Android Toolchain
           });
 
           test('logs error as detail, continues', () async {
-            await expectLater(
-              runWithOverrides(command.run),
-              completes,
-            );
+            await expectLater(runWithOverrides(command.run), completes);
 
             verify(
               () => progress.fail(
@@ -364,10 +348,7 @@ Android Toolchain
           });
 
           test('logs error as detail, continues', () async {
-            await expectLater(
-              runWithOverrides(command.run),
-              completes,
-            );
+            await expectLater(runWithOverrides(command.run), completes);
 
             verify(
               () => progress.fail('GCP download speed test failed: oops'),
@@ -383,10 +364,7 @@ Android Toolchain
           });
 
           test('logs error as detail, continues', () async {
-            await expectLater(
-              runWithOverrides(command.run),
-              completes,
-            );
+            await expectLater(runWithOverrides(command.run), completes);
 
             verify(
               () => progress.fail(
@@ -398,14 +376,16 @@ Android Toolchain
       });
     });
 
-    test('runs validators without applying fixes if no fix flag exists',
-        () async {
-      when(() => argResults['fix']).thenReturn(null);
-      final result = await runWithOverrides(command.run);
+    test(
+      'runs validators without applying fixes if no fix flag exists',
+      () async {
+        when(() => argResults['fix']).thenReturn(null);
+        final result = await runWithOverrides(command.run);
 
-      expect(result, equals(ExitCode.success.code));
-      verify(() => doctor.runValidators([validator])).called(1);
-    });
+        expect(result, equals(ExitCode.success.code));
+        verify(() => doctor.runValidators([validator])).called(1);
+      },
+    );
 
     test('runs validators and applies fixes fix flag is true', () async {
       when(() => argResults['fix']).thenReturn(true);

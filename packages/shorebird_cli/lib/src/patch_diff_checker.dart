@@ -52,8 +52,9 @@ class PatchDiffChecker {
     required bool allowNativeChanges,
     bool confirmNativeChanges = true,
   }) async {
-    final progress =
-        logger.progress('Verifying patch can be applied to release');
+    final progress = logger.progress(
+      'Verifying patch can be applied to release',
+    );
 
     final contentDiffs = await archiveDiffer.changedFiles(
       releaseArchive.path,
@@ -62,10 +63,12 @@ class PatchDiffChecker {
     progress.complete();
 
     final status = DiffStatus(
-      hasAssetChanges:
-          archiveDiffer.containsPotentiallyBreakingAssetDiffs(contentDiffs),
-      hasNativeChanges:
-          archiveDiffer.containsPotentiallyBreakingNativeDiffs(contentDiffs),
+      hasAssetChanges: archiveDiffer.containsPotentiallyBreakingAssetDiffs(
+        contentDiffs,
+      ),
+      hasNativeChanges: archiveDiffer.containsPotentiallyBreakingNativeDiffs(
+        contentDiffs,
+      ),
     );
 
     if (status.hasNativeChanges && confirmNativeChanges) {
@@ -79,9 +82,11 @@ class PatchDiffChecker {
           ),
         )
         ..info(
-          yellow.wrap('''
+          yellow.wrap(
+            '''
 
-If you don't know why you're seeing this error, visit our troubleshooting page at ${troubleshootingUrl.toLink()}'''),
+If you don't know why you're seeing this error, visit our troubleshooting page at ${troubleshootingUrl.toLink()}''',
+          ),
         );
 
       if (!allowNativeChanges) {

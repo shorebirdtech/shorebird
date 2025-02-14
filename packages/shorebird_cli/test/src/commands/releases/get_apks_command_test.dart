@@ -151,9 +151,7 @@ void main() {
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
-      when(
-        () => shorebirdEnv.getShorebirdYaml(),
-      ).thenReturn(shorebirdYaml);
+      when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
 
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -291,13 +289,15 @@ void main() {
       test('prompts for release', () async {
         await runWithOverrides(command.run);
 
-        final capturedDisplay = verify(
-          () => logger.chooseOne<Release>(
-            any(),
-            choices: any(named: 'choices'),
-            display: captureAny(named: 'display'),
-          ),
-        ).captured.single as String Function(Release);
+        final capturedDisplay =
+            verify(
+                  () => logger.chooseOne<Release>(
+                    any(),
+                    choices: any(named: 'choices'),
+                    display: captureAny(named: 'display'),
+                  ),
+                ).captured.single
+                as String Function(Release);
 
         expect(capturedDisplay(release), equals(releaseVersion));
       });

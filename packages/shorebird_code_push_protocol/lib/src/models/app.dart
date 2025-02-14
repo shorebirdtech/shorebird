@@ -8,10 +8,7 @@ part 'app.g.dart';
 @JsonSerializable()
 class App {
   /// {@macro app}
-  const App({
-    required this.id,
-    required this.displayName,
-  });
+  const App({required this.id, required this.displayName});
 
   /// Converts a `Map<String, dynamic>` to an [App]
   factory App.fromJson(Map<String, dynamic> json) => _$AppFromJson(json);

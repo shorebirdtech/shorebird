@@ -8,9 +8,7 @@ export 'retrying_client.dart';
 
 /// A reference to a [http.Client] instance.
 final httpClientRef = create(
-  () => retryingHttpClient(
-    LoggingClient(httpClient: http.Client()),
-  ),
+  () => retryingHttpClient(LoggingClient(httpClient: http.Client())),
 );
 
 /// The [http.Client] instance available in the current zone.

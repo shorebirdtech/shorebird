@@ -9,25 +9,22 @@ part of 'get_release_artifacts_response.dart';
 // **************************************************************************
 
 GetReleaseArtifactsResponse _$GetReleaseArtifactsResponseFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'GetReleaseArtifactsResponse',
-      json,
-      ($checkedConvert) {
-        final val = GetReleaseArtifactsResponse(
-          artifacts: $checkedConvert(
-              'artifacts',
-              (v) => (v as List<dynamic>)
-                  .map((e) =>
-                      ReleaseArtifact.fromJson(e as Map<String, dynamic>))
-                  .toList()),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('GetReleaseArtifactsResponse', json, ($checkedConvert) {
+  final val = GetReleaseArtifactsResponse(
+    artifacts: $checkedConvert(
+      'artifacts',
+      (v) =>
+          (v as List<dynamic>)
+              .map((e) => ReleaseArtifact.fromJson(e as Map<String, dynamic>))
+              .toList(),
+    ),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$GetReleaseArtifactsResponseToJson(
-        GetReleaseArtifactsResponse instance) =>
-    <String, dynamic>{
-      'artifacts': instance.artifacts.map((e) => e.toJson()).toList(),
-    };
+  GetReleaseArtifactsResponse instance,
+) => <String, dynamic>{
+  'artifacts': instance.artifacts.map((e) => e.toJson()).toList(),
+};

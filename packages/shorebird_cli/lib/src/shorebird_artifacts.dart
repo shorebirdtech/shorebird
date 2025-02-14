@@ -54,9 +54,7 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
   const ShorebirdCachedArtifacts();
 
   @override
-  String getArtifactPath({
-    required ShorebirdArtifact artifact,
-  }) {
+  String getArtifactPath({required ShorebirdArtifact artifact}) {
     switch (artifact) {
       case ShorebirdArtifact.analyzeSnapshotIos:
         return _analyzeSnapshotIosFile.path;

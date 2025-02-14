@@ -78,17 +78,15 @@ void main() {
         () => process.run(
           dartBinaryFile.path,
           any(
-            that: containsAllInOrder(
-              [
-                'run',
-                'shorebird_tools',
-                'package',
-                '-p',
-                'patchPath',
-                '-o',
-                'outputPath',
-              ],
-            ),
+            that: containsAllInOrder([
+              'run',
+              'shorebird_tools',
+              'package',
+              '-p',
+              'patchPath',
+              '-o',
+              'outputPath',
+            ]),
           ),
           workingDirectory: p.join(
             flutterDirectory.path,
@@ -130,8 +128,9 @@ Failed to create package (exit code ${processResult.exitCode}).
 
     group('when the shorebird tools directory exists', () {
       test('isSupported returns true', () {
-        Directory(p.join(flutterDirectory.path, 'packages', 'shorebird_tools'))
-            .createSync(recursive: true);
+        Directory(
+          p.join(flutterDirectory.path, 'packages', 'shorebird_tools'),
+        ).createSync(recursive: true);
         final isSupported = runWithOverrides(
           () => shorebirdTools.isSupported(),
         );

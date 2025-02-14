@@ -8,17 +8,16 @@ part of 'jwk_key_store.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-JwkKeyStore _$JwkKeyStoreFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'JwkKeyStore',
-      json,
-      ($checkedConvert) {
-        final val = JwkKeyStore(
-          keys: $checkedConvert(
-              'keys',
-              (v) => (v as List<dynamic>)
+JwkKeyStore _$JwkKeyStoreFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('JwkKeyStore', json, ($checkedConvert) {
+      final val = JwkKeyStore(
+        keys: $checkedConvert(
+          'keys',
+          (v) =>
+              (v as List<dynamic>)
                   .map((e) => Jwk.fromJson(e as Map<String, dynamic>))
-                  .toList()),
-        );
-        return val;
-      },
-    );
+                  .toList(),
+        ),
+      );
+      return val;
+    });

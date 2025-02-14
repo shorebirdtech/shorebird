@@ -45,11 +45,11 @@ class AppMetadata extends Equatable {
 
   @override
   List<Object?> get props => [
-        appId,
-        displayName,
-        latestReleaseVersion,
-        latestPatchNumber,
-        createdAt,
-        updatedAt,
-      ];
+    appId,
+    displayName,
+    latestReleaseVersion,
+    latestPatchNumber,
+    createdAt,
+    updatedAt,
+  ];
 }

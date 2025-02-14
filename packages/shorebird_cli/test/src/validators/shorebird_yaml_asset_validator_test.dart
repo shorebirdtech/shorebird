@@ -75,10 +75,7 @@ void main() {
         );
         expect(results, hasLength(1));
         expect(results.first.severity, ValidationIssueSeverity.error);
-        expect(
-          results.first.message,
-          startsWith('No pubspec.yaml file found'),
-        );
+        expect(results.first.message, startsWith('No pubspec.yaml file found'));
         expect(results.first.fix, isNull);
       });
 

@@ -19,9 +19,7 @@ void main() {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
-        values: {
-          engineConfigRef.overrideWith(() => engineConfig),
-        },
+        values: {engineConfigRef.overrideWith(() => engineConfig)},
       );
     }
 
@@ -53,21 +51,23 @@ void main() {
           );
         });
 
-        test('throws exception when unknown engine architecture is used',
-            () async {
-          when(() => engineConfig.localEngine).thenReturn('unknown_arch');
+        test(
+          'throws exception when unknown engine architecture is used',
+          () async {
+            when(() => engineConfig.localEngine).thenReturn('unknown_arch');
 
-          expect(
-            () => runWithOverrides(() => AndroidArch.availableAndroidArchs),
-            throwsA(
-              isA<Exception>().having(
-                (e) => e.toString(),
-                'toString()',
-                contains('Unknown local engine architecture for'),
+            expect(
+              () => runWithOverrides(() => AndroidArch.availableAndroidArchs),
+              throwsA(
+                isA<Exception>().having(
+                  (e) => e.toString(),
+                  'toString()',
+                  contains('Unknown local engine architecture for'),
+                ),
               ),
-            ),
-          );
-        });
+            );
+          },
+        );
       });
     });
 

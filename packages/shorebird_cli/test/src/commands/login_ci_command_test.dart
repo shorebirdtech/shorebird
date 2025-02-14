@@ -44,9 +44,7 @@ void main() {
       when(() => results.wasParsed('provider')).thenReturn(false);
       when(() => results['provider']).thenReturn(null);
       when(() => auth.client).thenReturn(httpClient);
-      when(
-        () => auth.loginCI(any(), prompt: any(named: 'prompt')),
-      ).thenAnswer(
+      when(() => auth.loginCI(any(), prompt: any(named: 'prompt'))).thenAnswer(
         (_) async => const CiToken(
           // "shorebird-token" in base64
           refreshToken: 'c2hvcmViaXJkLXRva2Vu', // cspell:disable-line
@@ -79,10 +77,7 @@ void main() {
           await runWithOverrides(() => command.run());
 
           verify(
-            () => auth.loginCI(
-              provider,
-              prompt: any(named: 'prompt'),
-            ),
+            () => auth.loginCI(provider, prompt: any(named: 'prompt')),
           ).called(1);
         });
       });
@@ -105,18 +100,17 @@ void main() {
           await runWithOverrides(() => command.run());
 
           verify(
-            () => auth.loginCI(
-              provider,
-              prompt: any(named: 'prompt'),
-            ),
+            () => auth.loginCI(provider, prompt: any(named: 'prompt')),
           ).called(1);
-          final captured = verify(
-            () => logger.chooseOne<AuthProvider>(
-              any(),
-              choices: any(named: 'choices'),
-              display: captureAny(named: 'display'),
-            ),
-          ).captured.single as String Function(AuthProvider);
+          final captured =
+              verify(
+                    () => logger.chooseOne<AuthProvider>(
+                      any(),
+                      choices: any(named: 'choices'),
+                      display: captureAny(named: 'display'),
+                    ),
+                  ).captured.single
+                  as String Function(AuthProvider);
           expect(captured(AuthProvider.google), contains('Google'));
         });
       });
@@ -124,10 +118,7 @@ void main() {
 
     test('exits with code 70 if no user is found', () async {
       when(
-        () => auth.loginCI(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
+        () => auth.loginCI(any(), prompt: any(named: 'prompt')),
       ).thenThrow(UserNotFoundException(email: email));
 
       final result = await runWithOverrides(command.run);
@@ -144,21 +135,13 @@ void main() {
     test('exits with code 70 when error occurs', () async {
       final error = Exception('oops something went wrong!');
       when(
-        () => auth.loginCI(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
+        () => auth.loginCI(any(), prompt: any(named: 'prompt')),
       ).thenThrow(error);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
 
-      verify(
-        () => auth.loginCI(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
-      ).called(1);
+      verify(() => auth.loginCI(any(), prompt: any(named: 'prompt'))).called(1);
       verify(() => logger.err(error.toString())).called(1);
     });
 
@@ -169,22 +152,14 @@ void main() {
         authProvider: AuthProvider.google,
       );
       when(
-        () => auth.loginCI(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
+        () => auth.loginCI(any(), prompt: any(named: 'prompt')),
       ).thenAnswer((_) async => token);
       when(() => auth.email).thenReturn(email);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
-      verify(
-        () => auth.loginCI(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
-      ).called(1);
+      verify(() => auth.loginCI(any(), prompt: any(named: 'prompt'))).called(1);
       verify(
         () => logger.info(
           any(that: contains('${lightCyan.wrap(token.toBase64())}')),

@@ -10,9 +10,7 @@ part 'update_app_collaborator_request.g.dart';
 @JsonSerializable()
 class UpdateAppCollaboratorRequest {
   /// {@macro update_app_collaborator_request}
-  const UpdateAppCollaboratorRequest({
-    required this.role,
-  });
+  const UpdateAppCollaboratorRequest({required this.role});
 
   /// Converts a `Map<String, dynamic>` to a [UpdateAppCollaboratorRequest].
   factory UpdateAppCollaboratorRequest.fromJson(Map<String, dynamic> json) =>

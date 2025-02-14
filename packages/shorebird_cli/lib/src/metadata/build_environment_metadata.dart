@@ -36,15 +36,14 @@ class BuildEnvironmentMetadata extends Equatable {
     String operatingSystemVersion = '1.2.3',
     ShorebirdYaml shorebirdYaml = const ShorebirdYaml(appId: '123'),
     String? xcodeVersion = '15.0',
-  }) =>
-      BuildEnvironmentMetadata(
-        flutterRevision: flutterRevision,
-        shorebirdVersion: shorebirdVersion,
-        operatingSystem: operatingSystem,
-        operatingSystemVersion: operatingSystemVersion,
-        shorebirdYaml: shorebirdYaml,
-        xcodeVersion: xcodeVersion,
-      );
+  }) => BuildEnvironmentMetadata(
+    flutterRevision: flutterRevision,
+    shorebirdVersion: shorebirdVersion,
+    operatingSystem: operatingSystem,
+    operatingSystemVersion: operatingSystemVersion,
+    shorebirdYaml: shorebirdYaml,
+    xcodeVersion: xcodeVersion,
+  );
   // coverage:ignore-end
 
   /// Converts a `Map<String, dynamic>` to a [BuildEnvironmentMetadata]
@@ -63,16 +62,15 @@ class BuildEnvironmentMetadata extends Equatable {
     String? operatingSystemVersion,
     ShorebirdYaml? shorebirdYaml,
     String? xcodeVersion,
-  }) =>
-      BuildEnvironmentMetadata(
-        flutterRevision: flutterRevision ?? this.flutterRevision,
-        shorebirdVersion: shorebirdVersion ?? this.shorebirdVersion,
-        operatingSystem: operatingSystem ?? this.operatingSystem,
-        operatingSystemVersion:
-            operatingSystemVersion ?? this.operatingSystemVersion,
-        shorebirdYaml: shorebirdYaml ?? this.shorebirdYaml,
-        xcodeVersion: xcodeVersion ?? this.xcodeVersion,
-      );
+  }) => BuildEnvironmentMetadata(
+    flutterRevision: flutterRevision ?? this.flutterRevision,
+    shorebirdVersion: shorebirdVersion ?? this.shorebirdVersion,
+    operatingSystem: operatingSystem ?? this.operatingSystem,
+    operatingSystemVersion:
+        operatingSystemVersion ?? this.operatingSystemVersion,
+    shorebirdYaml: shorebirdYaml ?? this.shorebirdYaml,
+    xcodeVersion: xcodeVersion ?? this.xcodeVersion,
+  );
 
   /// The revision of Flutter used to run the command.
   ///
@@ -110,11 +108,11 @@ class BuildEnvironmentMetadata extends Equatable {
 
   @override
   List<Object?> get props => [
-        flutterRevision,
-        shorebirdVersion,
-        operatingSystem,
-        operatingSystemVersion,
-        shorebirdYaml,
-        xcodeVersion,
-      ];
+    flutterRevision,
+    shorebirdVersion,
+    operatingSystem,
+    operatingSystemVersion,
+    shorebirdYaml,
+    xcodeVersion,
+  ];
 }

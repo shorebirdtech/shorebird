@@ -52,9 +52,9 @@ void main() {
       shorebirdVersion = MockShorebirdVersion();
       when(() => logger.level).thenReturn(Level.info);
       final logFile = MockFile();
-      when(() => shorebirdEnv.logsDirectory).thenReturn(
-        Directory.systemTemp.createTempSync(),
-      );
+      when(
+        () => shorebirdEnv.logsDirectory,
+      ).thenReturn(Directory.systemTemp.createTempSync());
       when(() => logFile.absolute).thenReturn(logFile);
       when(() => logFile.path).thenReturn('test.log');
       when(
@@ -137,11 +137,7 @@ void main() {
       ).called(1);
       verify(
         () => logger.info(
-          any(
-            that: contains(
-              'Usage: shorebird <command> [arguments]',
-            ),
-          ),
+          any(that: contains('Usage: shorebird <command> [arguments]')),
         ),
       ).called(1);
     });
@@ -164,14 +160,12 @@ void main() {
       expect(result, equals(ExitCode.usage.code));
       verify(() => logger.err(exception.message)).called(1);
       verify(
-        () => logger.err(
-          '''
+        () => logger.err('''
 To proxy an option to the flutter command, use the -- --<option> syntax.
 
 Example:
 
-${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''',
-        ),
+${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}'''),
       ).called(1);
       verify(() => logger.info('exception usage')).called(1);
     });
@@ -195,14 +189,12 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''',
       expect(result, equals(ExitCode.usage.code));
       verify(() => logger.err(exception.message)).called(1);
       verify(
-        () => logger.err(
-          '''
+        () => logger.err('''
 To proxy an option to the flutter command, use the '--' --<option> syntax.
 
 Example:
 
-${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}''',
-        ),
+${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}'''),
       ).called(1);
       verify(() => logger.info('exception usage')).called(1);
     });
@@ -215,12 +207,10 @@ ${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}''',
         expect(result, equals(ExitCode.success.code));
 
         verify(
-          () => logger.info(
-            '''
+          () => logger.info('''
 Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 Flutter $flutterVersion • revision $flutterRevision
-Engine • revision $shorebirdEngineRevision''',
-          ),
+Engine • revision $shorebirdEngineRevision'''),
         ).called(1);
 
         // Making sure the only thing that was logged was the version info.
@@ -257,9 +247,7 @@ Engine • revision $shorebirdEngineRevision''',
 
       group('when no local engine args are provided', () {
         test('uses empty engine config', () async {
-          final result = await runWithOverrides(
-            () => commandRunner.run([]),
-          );
+          final result = await runWithOverrides(() => commandRunner.run([]));
           expect(result, equals(ExitCode.success.code));
         });
       });
@@ -333,10 +321,12 @@ Engine • revision $shorebirdEngineRevision''',
       group('when running upgrade command', () {
         setUp(() {
           when(() => logger.progress(any())).thenReturn(MockProgress());
-          when(shorebirdVersion.fetchCurrentGitHash)
-              .thenAnswer((_) async => 'current');
-          when(shorebirdVersion.fetchLatestGitHash)
-              .thenAnswer((_) async => 'current');
+          when(
+            shorebirdVersion.fetchCurrentGitHash,
+          ).thenAnswer((_) async => 'current');
+          when(
+            shorebirdVersion.fetchLatestGitHash,
+          ).thenAnswer((_) async => 'current');
         });
         test('does not check for update', () async {
           final result = await runWithOverrides(
@@ -353,19 +343,21 @@ Engine • revision $shorebirdEngineRevision''',
           when(shorebirdVersion.isTrackingStable).thenAnswer((_) async => true);
         });
 
-        test('gracefully handles case when latest version cannot be determined',
-            () async {
-          when(shorebirdVersion.isLatest).thenThrow(Exception('error'));
-          final result = await runWithOverrides(
-            () => commandRunner.run(['--version']),
-          );
-          expect(result, equals(ExitCode.success.code));
-          verify(
-            () => logger.detail(
-              'Unable to check for updates.\nException: error',
-            ),
-          ).called(1);
-        });
+        test(
+          'gracefully handles case when latest version cannot be determined',
+          () async {
+            when(shorebirdVersion.isLatest).thenThrow(Exception('error'));
+            final result = await runWithOverrides(
+              () => commandRunner.run(['--version']),
+            );
+            expect(result, equals(ExitCode.success.code));
+            verify(
+              () => logger.detail(
+                'Unable to check for updates.\nException: error',
+              ),
+            ).called(1);
+          },
+        );
 
         group('when update is available', () {
           test('logs update message', () async {
@@ -403,25 +395,29 @@ Engine • revision $shorebirdEngineRevision''',
         });
 
         test(
-            'gracefully handles case when flutter version cannot be determined',
-            () async {
-          when(shorebirdFlutter.getVersionString).thenThrow(Exception('error'));
-          final result = await runWithOverrides(
-            () => commandRunner.run(['--version']),
-          );
-          expect(result, equals(ExitCode.success.code));
-          verify(
-            () => logger.detail(
-              'Unable to determine Flutter version.\nException: error',
-            ),
-          ).called(1);
-        });
+          'gracefully handles case when flutter version cannot be determined',
+          () async {
+            when(
+              shorebirdFlutter.getVersionString,
+            ).thenThrow(Exception('error'));
+            final result = await runWithOverrides(
+              () => commandRunner.run(['--version']),
+            );
+            expect(result, equals(ExitCode.success.code));
+            verify(
+              () => logger.detail(
+                'Unable to determine Flutter version.\nException: error',
+              ),
+            ).called(1);
+          },
+        );
       });
 
       group('when not tracking the stable branch', () {
         setUp(() {
-          when(shorebirdVersion.isTrackingStable)
-              .thenAnswer((_) async => false);
+          when(
+            shorebirdVersion.isTrackingStable,
+          ).thenAnswer((_) async => false);
           when(shorebirdVersion.isLatest).thenAnswer((_) async => false);
         });
 

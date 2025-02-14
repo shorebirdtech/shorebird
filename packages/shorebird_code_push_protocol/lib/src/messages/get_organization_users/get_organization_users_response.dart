@@ -12,9 +12,7 @@ part 'get_organization_users_response.g.dart';
 @JsonSerializable()
 class GetOrganizationUsersResponse {
   /// {@macro get_organization_users_request}
-  GetOrganizationUsersResponse({
-    required this.users,
-  });
+  GetOrganizationUsersResponse({required this.users});
 
   /// Deserializes the [GetOrganizationUsersResponse] from a JSON map.
   factory GetOrganizationUsersResponse.fromJson(Map<String, dynamic> json) =>

@@ -10,9 +10,10 @@ void main() {
     late ArgParser argParser;
 
     setUp(() {
-      argParser = ArgParser()
-        ..addOption('foo', abbr: 'f')
-        ..addOption('bar');
+      argParser =
+          ArgParser()
+            ..addOption('foo', abbr: 'f')
+            ..addOption('bar');
     });
 
     group('findOption', () {
@@ -31,10 +32,7 @@ void main() {
         test('returns null', () {
           final args = ['--bar=value'];
           final argResults = argParser.parse(args);
-          expect(
-            argResults.findOption('foo', argParser: argParser),
-            isNull,
-          );
+          expect(argResults.findOption('foo', argParser: argParser), isNull);
         });
       });
 
@@ -90,40 +88,41 @@ void main() {
     late ArgParser parser;
 
     setUp(() {
-      parser = ArgParser()
-        ..addMultiOption(
-          CommonArguments.dartDefineArg.name,
-          help: CommonArguments.dartDefineArg.description,
-        )
-        ..addMultiOption(
-          CommonArguments.dartDefineFromFileArg.name,
-          help: CommonArguments.dartDefineFromFileArg.description,
-        )
-        ..addOption(
-          CommonArguments.buildNameArg.name,
-          help: CommonArguments.buildNameArg.description,
-        )
-        ..addOption(
-          CommonArguments.buildNumberArg.name,
-          help: CommonArguments.buildNumberArg.description,
-        )
-        ..addOption(
-          CommonArguments.splitDebugInfoArg.name,
-          help: CommonArguments.splitDebugInfoArg.description,
-        )
-        ..addOption(
-          CommonArguments.exportMethodArg.name,
-          help: CommonArguments.exportMethodArg.description,
-        )
-        ..addOption(
-          CommonArguments.exportOptionsPlistArg.name,
-          help: CommonArguments.exportOptionsPlistArg.description,
-        )
-        ..addMultiOption(
-          'platforms',
-          allowed: ReleaseType.values.map((e) => e.cliName),
-        )
-        ..addFlag('verbose', abbr: 'v');
+      parser =
+          ArgParser()
+            ..addMultiOption(
+              CommonArguments.dartDefineArg.name,
+              help: CommonArguments.dartDefineArg.description,
+            )
+            ..addMultiOption(
+              CommonArguments.dartDefineFromFileArg.name,
+              help: CommonArguments.dartDefineFromFileArg.description,
+            )
+            ..addOption(
+              CommonArguments.buildNameArg.name,
+              help: CommonArguments.buildNameArg.description,
+            )
+            ..addOption(
+              CommonArguments.buildNumberArg.name,
+              help: CommonArguments.buildNumberArg.description,
+            )
+            ..addOption(
+              CommonArguments.splitDebugInfoArg.name,
+              help: CommonArguments.splitDebugInfoArg.description,
+            )
+            ..addOption(
+              CommonArguments.exportMethodArg.name,
+              help: CommonArguments.exportMethodArg.description,
+            )
+            ..addOption(
+              CommonArguments.exportOptionsPlistArg.name,
+              help: CommonArguments.exportOptionsPlistArg.description,
+            )
+            ..addMultiOption(
+              'platforms',
+              allowed: ReleaseType.values.map((e) => e.cliName),
+            )
+            ..addFlag('verbose', abbr: 'v');
     });
 
     test('returns an empty list when rest is empty', () {
@@ -169,9 +168,12 @@ void main() {
         expect(result.forwardedArgs, hasLength(4));
         expect(
           result.forwardedArgs,
-          containsAll(
-            ['asdf', 'qwer', '--dart-define=foo=bar', '--dart-define=bar=baz'],
-          ),
+          containsAll([
+            'asdf',
+            'qwer',
+            '--dart-define=foo=bar',
+            '--dart-define=bar=baz',
+          ]),
         );
       });
     });
@@ -189,13 +191,11 @@ void main() {
         expect(result.forwardedArgs, hasLength(3));
         expect(
           result.forwardedArgs,
-          containsAll(
-            [
-              '--dart-define=foo=bar',
-              '--dart-define-from-file=bar.json',
-              '--test',
-            ],
-          ),
+          containsAll([
+            '--dart-define=foo=bar',
+            '--dart-define-from-file=bar.json',
+            '--test',
+          ]),
         );
       });
     });
@@ -212,43 +212,26 @@ void main() {
         expect(result.forwardedArgs, hasLength(2));
         expect(
           result.forwardedArgs,
-          containsAll(
-            [
-              '--build-name=1.2.3',
-              '--build-number=4',
-            ],
-          ),
+          containsAll(['--build-name=1.2.3', '--build-number=4']),
         );
       });
     });
 
     group('when build-name and build-number are before the --', () {
       test('forwards build-name and build-number', () {
-        final args = [
-          '--verbose',
-          '--build-name=1.2.3',
-          '--build-number=4',
-        ];
+        final args = ['--verbose', '--build-name=1.2.3', '--build-number=4'];
         final result = parser.parse(args);
         expect(result.forwardedArgs, hasLength(2));
         expect(
           result.forwardedArgs,
-          containsAll(
-            [
-              '--build-name=1.2.3',
-              '--build-number=4',
-            ],
-          ),
+          containsAll(['--build-name=1.2.3', '--build-number=4']),
         );
       });
     });
 
     group('when split-debug-info is provided before the --', () {
       test('forwards it', () {
-        final args = [
-          '--verbose',
-          '--split-debug-info=build/symbols',
-        ];
+        final args = ['--verbose', '--split-debug-info=build/symbols'];
         final result = parser.parse(args);
         expect(result.forwardedArgs, hasLength(1));
         expect(
@@ -260,11 +243,7 @@ void main() {
 
     group('when split-debug-info is provided after the --', () {
       test('forwards it', () {
-        final args = [
-          '--verbose',
-          '--',
-          '--split-debug-info=build/symbols',
-        ];
+        final args = ['--verbose', '--', '--split-debug-info=build/symbols'];
         final result = parser.parse(args);
         expect(result.forwardedArgs, hasLength(1));
         expect(
@@ -276,32 +255,19 @@ void main() {
 
     group('when export method is provided before the --', () {
       test('forwards it', () {
-        final args = [
-          '--verbose',
-          '--export-method=development',
-        ];
+        final args = ['--verbose', '--export-method=development'];
         final result = parser.parse(args);
         expect(result.forwardedArgs, hasLength(1));
-        expect(
-          result.forwardedArgs,
-          contains('--export-method=development'),
-        );
+        expect(result.forwardedArgs, contains('--export-method=development'));
       });
     });
 
     group('when export method is provided after the --', () {
       test('forwards it', () {
-        final args = [
-          '--verbose',
-          '--',
-          '--export-method=development',
-        ];
+        final args = ['--verbose', '--', '--export-method=development'];
         final result = parser.parse(args);
         expect(result.forwardedArgs, hasLength(1));
-        expect(
-          result.forwardedArgs,
-          contains('--export-method=development'),
-        );
+        expect(result.forwardedArgs, contains('--export-method=development'));
       });
     });
 

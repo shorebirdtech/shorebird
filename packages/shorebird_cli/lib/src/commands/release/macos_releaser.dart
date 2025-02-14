@@ -83,14 +83,13 @@ To change the version of this release, change your app's version in your pubspec
 
     final flutterVersionArg = argResults['flutter-version'] as String?;
     if (flutterVersionArg != null) {
-      final version =
-          await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
+      final version = await shorebirdFlutter.resolveFlutterVersion(
+        flutterVersionArg,
+      );
       if (version != null && version < minimumSupportedMacosFlutterVersion) {
-        logger.err(
-          '''
+        logger.err('''
 macOS releases are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-        );
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         throw ProcessExit(ExitCode.usage.code);
       }
     }
@@ -163,9 +162,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
     final String? podfileLockHash;
     if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
-      podfileLockHash = sha256
-          .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
-          .toString();
+      podfileLockHash =
+          sha256
+              .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
+              .toString();
     } else {
       podfileLockHash = null;
     }
@@ -182,12 +182,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   @override
   Future<UpdateReleaseMetadata> updatedReleaseMetadata(
     UpdateReleaseMetadata metadata,
-  ) async =>
-      metadata.copyWith(
-        environment: metadata.environment.copyWith(
-          xcodeVersion: await xcodeBuild.version(),
-        ),
-      );
+  ) async => metadata.copyWith(
+    environment: metadata.environment.copyWith(
+      xcodeVersion: await xcodeBuild.version(),
+    ),
+  );
 
   @override
   String get postReleaseInstructions => '''

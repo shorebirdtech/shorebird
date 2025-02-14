@@ -9,18 +9,12 @@ part of 'create_user_request.dart';
 // **************************************************************************
 
 CreateUserRequest _$CreateUserRequestFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'CreateUserRequest',
-      json,
-      ($checkedConvert) {
-        final val = CreateUserRequest(
-          name: $checkedConvert('name', (v) => v as String),
-        );
-        return val;
-      },
-    );
+    $checkedCreate('CreateUserRequest', json, ($checkedConvert) {
+      final val = CreateUserRequest(
+        name: $checkedConvert('name', (v) => v as String),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$CreateUserRequestToJson(CreateUserRequest instance) =>
-    <String, dynamic>{
-      'name': instance.name,
-    };
+    <String, dynamic>{'name': instance.name};

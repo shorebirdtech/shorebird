@@ -16,11 +16,7 @@ class RunCommand extends ShorebirdCommand {
   /// {@macro run_command}
   RunCommand() {
     argParser
-      ..addOption(
-        'device-id',
-        abbr: 'd',
-        help: 'Target device id or name.',
-      )
+      ..addOption('device-id', abbr: 'd', help: 'Target device id or name.')
       ..addOption(
         'target',
         abbr: 't',
@@ -28,7 +24,8 @@ class RunCommand extends ShorebirdCommand {
       )
       ..addMultiOption(
         'dart-define',
-        help: 'Additional key-value pairs that will be available as constants '
+        help:
+            'Additional key-value pairs that will be available as constants '
             '''from the String.fromEnvironment, bool.fromEnvironment, and int.fromEnvironment '''
             'constructors.\n'
             '''Multiple defines can be passed by repeating "--dart-define" multiple times.''',
@@ -52,11 +49,9 @@ class RunCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    logger.warn(
-      '''
+    logger.warn('''
 This command is deprecated and will be removed in a future release.
-Please use "shorebird preview" instead.''',
-    );
+Please use "shorebird preview" instead.''');
 
     // TODO(bryanoltman): check run target and run either
     // doctor.iosValidators or doctor.androidValidators as appropriate.
@@ -75,20 +70,16 @@ Please use "shorebird preview" instead.''',
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final dartDefines = results['dart-define'] as List<String>?;
-    final flutter = await process.start(
-      'flutter',
-      [
-        'run',
-        // Eventually we should support running in both debug and release mode.
-        '--release',
-        if (deviceId != null) '--device-id=$deviceId',
-        if (flavor != null) '--flavor=$flavor',
-        if (target != null) '--target=$target',
-        if (dartDefines != null) ...dartDefines.map((e) => '--dart-define=$e'),
-        ...results.rest,
-      ],
-      runInShell: true,
-    );
+    final flutter = await process.start('flutter', [
+      'run',
+      // Eventually we should support running in both debug and release mode.
+      '--release',
+      if (deviceId != null) '--device-id=$deviceId',
+      if (flavor != null) '--flavor=$flavor',
+      if (target != null) '--target=$target',
+      if (dartDefines != null) ...dartDefines.map((e) => '--dart-define=$e'),
+      ...results.rest,
+    ], runInShell: true);
 
     flutter.stdout.listen((event) {
       logger.info(utf8.decode(event));

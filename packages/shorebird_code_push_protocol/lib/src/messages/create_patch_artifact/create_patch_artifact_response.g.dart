@@ -9,37 +9,34 @@ part of 'create_patch_artifact_response.dart';
 // **************************************************************************
 
 CreatePatchArtifactResponse _$CreatePatchArtifactResponseFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'CreatePatchArtifactResponse',
-      json,
-      ($checkedConvert) {
-        final val = CreatePatchArtifactResponse(
-          id: $checkedConvert('id', (v) => (v as num).toInt()),
-          patchId: $checkedConvert('patch_id', (v) => (v as num).toInt()),
-          arch: $checkedConvert('arch', (v) => v as String),
-          platform: $checkedConvert(
-              'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
-          hash: $checkedConvert('hash', (v) => v as String),
-          size: $checkedConvert('size', (v) => (v as num).toInt()),
-          url: $checkedConvert('url', (v) => v as String),
-        );
-        return val;
-      },
-      fieldKeyMap: const {'patchId': 'patch_id'},
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('CreatePatchArtifactResponse', json, ($checkedConvert) {
+  final val = CreatePatchArtifactResponse(
+    id: $checkedConvert('id', (v) => (v as num).toInt()),
+    patchId: $checkedConvert('patch_id', (v) => (v as num).toInt()),
+    arch: $checkedConvert('arch', (v) => v as String),
+    platform: $checkedConvert(
+      'platform',
+      (v) => $enumDecode(_$ReleasePlatformEnumMap, v),
+    ),
+    hash: $checkedConvert('hash', (v) => v as String),
+    size: $checkedConvert('size', (v) => (v as num).toInt()),
+    url: $checkedConvert('url', (v) => v as String),
+  );
+  return val;
+}, fieldKeyMap: const {'patchId': 'patch_id'});
 
 Map<String, dynamic> _$CreatePatchArtifactResponseToJson(
-        CreatePatchArtifactResponse instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'patch_id': instance.patchId,
-      'arch': instance.arch,
-      'platform': _$ReleasePlatformEnumMap[instance.platform]!,
-      'hash': instance.hash,
-      'size': instance.size,
-      'url': instance.url,
-    };
+  CreatePatchArtifactResponse instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'patch_id': instance.patchId,
+  'arch': instance.arch,
+  'platform': _$ReleasePlatformEnumMap[instance.platform]!,
+  'hash': instance.hash,
+  'size': instance.size,
+  'url': instance.url,
+};
 
 const _$ReleasePlatformEnumMap = {
   ReleasePlatform.android: 'android',

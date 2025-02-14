@@ -18,11 +18,15 @@ PatchArtifact _$PatchArtifactFromJson(Map<String, dynamic> json) =>
           patchId: $checkedConvert('patch_id', (v) => (v as num).toInt()),
           arch: $checkedConvert('arch', (v) => v as String),
           platform: $checkedConvert(
-              'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
+            'platform',
+            (v) => $enumDecode(_$ReleasePlatformEnumMap, v),
+          ),
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert('size', (v) => (v as num).toInt()),
-          createdAt:
-              $checkedConvert('created_at', (v) => DateTime.parse(v as String)),
+          createdAt: $checkedConvert(
+            'created_at',
+            (v) => DateTime.parse(v as String),
+          ),
         );
         return val;
       },

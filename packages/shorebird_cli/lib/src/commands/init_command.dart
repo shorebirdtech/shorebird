@@ -155,8 +155,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     // don't care about which flavors are new.
     if (!force && newFlavors.isNotEmpty) {
       logger.info('New flavors detected: ${newFlavors.join(', ')}');
-      final updateShorebirdYamlProgress =
-          logger.progress('Adding flavors to shorebird.yaml');
+      final updateShorebirdYamlProgress = logger.progress(
+        'Adding flavors to shorebird.yaml',
+      );
 
       final AppMetadata existingApp;
       try {

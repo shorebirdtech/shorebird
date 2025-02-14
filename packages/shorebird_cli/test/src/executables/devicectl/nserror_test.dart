@@ -32,9 +32,7 @@ void main() {
           ),
         );
 
-        expect(
-          error.toString(),
-          '''
+        expect(error.toString(), '''
 NSError(
   code: 1,
   domain: com.example,
@@ -44,8 +42,7 @@ NSError(
   localizedFailureReason: localizedFailureReason,
   underlyingError: null
 )
-)''',
-        );
+)''');
       });
     });
   });
@@ -72,16 +69,13 @@ NSError(
           localizedFailureReason: StringContainer('localizedFailureReason'),
         );
 
-        expect(
-          userInfo.toString(),
-          '''
+        expect(userInfo.toString(), '''
 UserInfo(
   description: description,
   localizedDescription: localizedDescription,
   localizedFailureReason: localizedFailureReason,
   underlyingError: null
-)''',
-        );
+)''');
       });
     });
   });
@@ -139,9 +133,7 @@ UserInfo(
           ),
         );
 
-        expect(
-          underlyingError.toString(),
-          '''
+        expect(underlyingError.toString(), '''
 NSUnderlyingError(
   NSError(
   code: 1,
@@ -153,8 +145,7 @@ NSUnderlyingError(
   underlyingError: null
 )
 )
-)''',
-        );
+)''');
       });
     });
   });

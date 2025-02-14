@@ -36,9 +36,7 @@ typedef ResolvePatcher = Patcher Function(ReleaseType releaseType);
 /// {@endtemplate}
 class PatchCommand extends ShorebirdCommand {
   /// {@macro patch_command}
-  PatchCommand({
-    ResolvePatcher? resolvePatcher,
-  }) {
+  PatchCommand({ResolvePatcher? resolvePatcher}) {
     _resolvePatcher = resolvePatcher ?? getPatcher;
     argParser
       ..addMultiOption(
@@ -219,8 +217,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return ExitCode.usage.code;
     }
 
-    final patcherFutures =
-        results.releaseTypes.map(_resolvePatcher).map(createPatch);
+    final patcherFutures = results.releaseTypes
+        .map(_resolvePatcher)
+        .map(createPatch);
 
     for (final patcherFuture in patcherFutures) {
       await patcherFuture;
@@ -360,20 +359,23 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     final supplementalArtifact =
         patcher.supplementaryReleaseArtifactArch != null
             ? await codePushClientWrapper.maybeGetReleaseArtifact(
-                appId: appId,
-                releaseId: release.id,
-                arch: patcher.supplementaryReleaseArtifactArch!,
-                platform: releasePlatform,
-              )
+              appId: appId,
+              releaseId: release.id,
+              arch: patcher.supplementaryReleaseArtifactArch!,
+              platform: releasePlatform,
+            )
             : null;
 
     final releaseArchive = await downloadReleaseArtifact(
       releaseArtifact: releaseArtifact,
     );
 
-    final supplementArchive = supplementalArtifact != null
-        ? await downloadReleaseArtifact(releaseArtifact: supplementalArtifact)
-        : null;
+    final supplementArchive =
+        supplementalArtifact != null
+            ? await downloadReleaseArtifact(
+              releaseArtifact: supplementalArtifact,
+            )
+            : null;
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
@@ -444,17 +446,13 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
           artifacts: patchArtifactBundles,
         );
       },
-      values: {
-        shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv),
-      },
+      values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
     );
   }
 
   /// Prompts the user for the specific release to patch.
   Future<Release> promptForRelease(ReleasePlatform platform) async {
-    final releases = await codePushClientWrapper.getReleases(
-      appId: appId,
-    );
+    final releases = await codePushClientWrapper.getReleases(appId: appId);
 
     final releasesForPlatform = releases.where(
       (release) => release.platformStatuses.keys.contains(platform),
@@ -537,13 +535,14 @@ Please re-run the release command for this version or create a new release.''');
       final size = formatBytes(patchArtifactBundles[arch]!.size);
       return '${arch.name} ($size)';
     });
-    final trackSummary = (() {
-      return switch (track) {
-        DeploymentTrack.staging => '🟠 Track: ${lightCyan.wrap('Staging')}',
-        DeploymentTrack.beta => '🔵 Track: ${lightCyan.wrap('Beta')}',
-        DeploymentTrack.stable => '🟢 Track: ${lightCyan.wrap('Stable')}',
-      };
-    })();
+    final trackSummary =
+        (() {
+          return switch (track) {
+            DeploymentTrack.staging => '🟠 Track: ${lightCyan.wrap('Staging')}',
+            DeploymentTrack.beta => '🔵 Track: ${lightCyan.wrap('Beta')}',
+            DeploymentTrack.stable => '🟢 Track: ${lightCyan.wrap('Stable')}',
+          };
+        })();
 
     final linkPercentage = patcher.linkPercentage;
     final minLinkPercentage = int.parse(
@@ -567,14 +566,12 @@ Please re-run the release command for this version or create a new release.''');
         '''🔍 Debug Info: ${lightCyan.wrap(Patcher.debugInfoFile.path)}''',
     ];
 
-    logger.info(
-      '''
+    logger.info('''
 
 ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
 ${summary.join('\n')}
-''',
-    );
+''');
 
     if (shorebirdEnv.canAcceptUserInput && !noConfirm) {
       final confirm = logger.confirm('Would you like to continue?');

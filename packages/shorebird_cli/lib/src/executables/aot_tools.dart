@@ -152,19 +152,19 @@ class AotTools {
       final stdout = StringBuffer();
       final stderr = StringBuffer();
 
-      final stdoutSubscription = subprocess.stdout.map(utf8.decode).listen(
-        (data) {
-          logger.detail(data);
-          stdout.write(data);
-        },
-      );
+      final stdoutSubscription = subprocess.stdout.map(utf8.decode).listen((
+        data,
+      ) {
+        logger.detail(data);
+        stdout.write(data);
+      });
 
-      final stderrSubscription = subprocess.stderr.map(utf8.decode).listen(
-        (data) {
-          logger.detail(data);
-          stderr.write(data);
-        },
-      );
+      final stderrSubscription = subprocess.stderr.map(utf8.decode).listen((
+        data,
+      ) {
+        logger.detail(data);
+        stderr.write(data);
+      });
 
       final exitCode = await subprocess.exitCode;
 
@@ -189,11 +189,11 @@ class AotTools {
       );
     } else {
       // local engine versions use .dart and we distribute aot-tools as a .dill
-      result = await execute(
-        shorebirdEnv.dartBinaryFile.path,
-        ['run', artifactPath, ...command],
-        workingDirectory: workingDirectory,
-      );
+      result = await execute(shorebirdEnv.dartBinaryFile.path, [
+        'run',
+        artifactPath,
+        ...command,
+      ], workingDirectory: workingDirectory);
     }
 
     if (throwOnError && result.exitCode != 0) {
@@ -249,28 +249,22 @@ class AotTools {
     const linkJson = 'link.jsonl';
     final outputDir = p.dirname(outputPath);
     final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
-    await _exec(
-      [
-        'link',
-        '--base=$base',
-        '--patch=$patch',
-        '--analyze-snapshot=$analyzeSnapshot',
-        '--output=$outputPath',
-        '--verbose',
-        if (linkerUsesGenSnapshot) ...[
-          '--gen-snapshot=$genSnapshot',
-          '--kernel=$kernel',
-          '--reporter=json',
-          '--redirect-to=${p.join(outputDir, linkJson)}',
-        ],
-        if (dumpDebugInfoPath != null) '--dump-debug-info=$dumpDebugInfoPath',
-        if (additionalArgs.isNotEmpty) ...[
-          '--',
-          ...additionalArgs,
-        ],
+    await _exec([
+      'link',
+      '--base=$base',
+      '--patch=$patch',
+      '--analyze-snapshot=$analyzeSnapshot',
+      '--output=$outputPath',
+      '--verbose',
+      if (linkerUsesGenSnapshot) ...[
+        '--gen-snapshot=$genSnapshot',
+        '--kernel=$kernel',
+        '--reporter=json',
+        '--redirect-to=${p.join(outputDir, linkJson)}',
       ],
-      workingDirectory: workingDirectory,
-    );
+      if (dumpDebugInfoPath != null) '--dump-debug-info=$dumpDebugInfoPath',
+      if (additionalArgs.isNotEmpty) ...['--', ...additionalArgs],
+    ], workingDirectory: workingDirectory);
 
     return linkerUsesGenSnapshot
         ? _extractLinkPercentage(File(p.join(workingDirectory!, linkJson)))
@@ -279,11 +273,12 @@ class AotTools {
 
   double? _extractLinkPercentage(File file) {
     if (!file.existsSync()) return null;
-    final status = const LineSplitter()
-        .convert(file.readAsStringSync())
-        .map(json.decode)
-        .cast<Map<String, dynamic>>()
-        .toList();
+    final status =
+        const LineSplitter()
+            .convert(file.readAsStringSync())
+            .map(json.decode)
+            .cast<Map<String, dynamic>>()
+            .toList();
 
     final linkSuccess = status.firstWhereOrNull(
       (line) => line['type'] == 'link_success',
@@ -312,14 +307,12 @@ class AotTools {
   }) async {
     final tmpDir = Directory.systemTemp.createTempSync();
     final outFile = File(p.join(tmpDir.path, 'diff_base'));
-    await _exec(
-      [
-        'dump_blobs',
-        '--analyze-snapshot=$analyzeSnapshotPath',
-        '--output=${outFile.path}',
-        '--snapshot=${releaseSnapshot.path}',
-      ],
-    );
+    await _exec([
+      'dump_blobs',
+      '--analyze-snapshot=$analyzeSnapshotPath',
+      '--output=${outFile.path}',
+      '--snapshot=${releaseSnapshot.path}',
+    ]);
 
     if (!outFile.existsSync()) {
       throw Exception(

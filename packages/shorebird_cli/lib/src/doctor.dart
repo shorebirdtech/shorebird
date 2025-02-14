@@ -28,9 +28,7 @@ class Doctor {
   final List<Validator> linuxCommandValidators = [];
 
   /// Validators that verify shorebird will work on macOS.
-  final List<Validator> macosCommandValidators = [
-    MacosEntitlementsValidator(),
-  ];
+  final List<Validator> macosCommandValidators = [MacosEntitlementsValidator()];
 
   /// Validators that verify shorebird will work on Windows.
   final List<Validator> windowsCommandValidators = [

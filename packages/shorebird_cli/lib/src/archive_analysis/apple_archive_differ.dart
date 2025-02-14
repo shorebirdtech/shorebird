@@ -43,9 +43,7 @@ class AppleArchiveDiffer extends ArchiveDiffer {
   );
 
   /// The regex pattern for identifying executable files within a macOS .app.
-  static final RegExp macosAppRegex = RegExp(
-    r'^Contents/MacOS/.+$',
-  );
+  static final RegExp macosAppRegex = RegExp(r'^Contents/MacOS/.+$');
 
   /// Files that have been added, removed, or that have changed between the
   /// archives at the two provided paths. This method will also unsign mach-o
@@ -101,8 +99,9 @@ class AppleArchiveDiffer extends ArchiveDiffer {
         .where((file) => file.isFile)
         .where(
           (file) =>
-              _binaryFilePatterns
-                  .any((pattern) => pattern.hasMatch(file.name)) ||
+              _binaryFilePatterns.any(
+                (pattern) => pattern.hasMatch(file.name),
+              ) ||
               xcFrameworkAppRegex.hasMatch(file.name),
         )
         .toList();

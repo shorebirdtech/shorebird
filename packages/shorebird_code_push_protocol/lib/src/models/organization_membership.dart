@@ -29,8 +29,5 @@ class OrganizationMembership extends Equatable {
   final OrganizationRole role;
 
   @override
-  List<Object?> get props => [
-        organization,
-        role,
-      ];
+  List<Object?> get props => [organization, role];
 }

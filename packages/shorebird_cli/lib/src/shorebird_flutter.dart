@@ -33,10 +33,7 @@ class ShorebirdFlutter {
       'https://github.com/shorebirdtech/flutter.git';
 
   /// Arguments to pass to `flutter precache`.
-  List<String> get precacheArgs => [
-        '--android',
-        if (platform.isMacOS) '--ios',
-      ];
+  List<String> get precacheArgs => ['--android', if (platform.isMacOS) '--ios'];
 
   String _workingDirectory({String? revision}) {
     revision ??= shorebirdEnv.flutterRevision;
@@ -59,10 +56,7 @@ class ShorebirdFlutter {
       await git.clone(
         url: flutterGitUrl,
         outputDirectory: targetDirectory.path,
-        args: [
-          '--filter=tree:0',
-          '--no-checkout',
-        ],
+        args: ['--filter=tree:0', '--no-checkout'],
       );
 
       // Checkout the correct revision.
@@ -168,9 +162,7 @@ class ShorebirdFlutter {
   /// parsed.
   Future<String?> getVersionString() async {
     final flutterRevision = shorebirdEnv.flutterRevision;
-    return getVersionForRevision(
-      flutterRevision: flutterRevision,
-    );
+    return getVersionForRevision(flutterRevision: flutterRevision);
   }
 
   /// The current Shorebird Flutter version as a [Version]. Returns null if the
@@ -221,8 +213,9 @@ class ShorebirdFlutter {
 
     // If we were unable to parse the version, assume it's a revision hash.
     try {
-      final version =
-          await getVersionForRevision(flutterRevision: versionOrHash);
+      final version = await getVersionForRevision(
+        flutterRevision: versionOrHash,
+      );
       if (version != null) {
         return versionOrHash;
       }
@@ -245,8 +238,9 @@ class ShorebirdFlutter {
 
     try {
       // If we were unable to parse the version, assume it's a revision hash.
-      final versionString =
-          await getVersionForRevision(flutterRevision: versionOrHash);
+      final versionString = await getVersionForRevision(
+        flutterRevision: versionOrHash,
+      );
       return versionString != null ? tryParseVersion(versionString) : null;
     } on Exception {
       return null;
@@ -270,9 +264,9 @@ class ShorebirdFlutter {
       pattern: 'refs/remotes/origin/flutter_release/*',
       directory: _workingDirectory(revision: revision),
     );
-    return LineSplitter.split(result)
-        .map((e) => e.replaceFirst('origin/flutter_release/', ''))
-        .toList();
+    return LineSplitter.split(
+      result,
+    ).map((e) => e.replaceFirst('origin/flutter_release/', '')).toList();
   }
 
   /// Use the provided [version] of Flutter.

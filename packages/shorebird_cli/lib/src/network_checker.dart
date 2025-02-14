@@ -35,13 +35,14 @@ class NetworkCheckerException implements Exception {
 /// {@endtemplate}
 class NetworkChecker {
   /// The URLs to check for network reachability.
-  static final urlsToCheck = [
-    'https://api.shorebird.dev',
-    'https://console.shorebird.dev',
-    'https://oauth2.googleapis.com',
-    'https://storage.googleapis.com',
-    'https://cdn.shorebird.cloud',
-  ].map(Uri.parse).toList();
+  static final urlsToCheck =
+      [
+        'https://api.shorebird.dev',
+        'https://console.shorebird.dev',
+        'https://oauth2.googleapis.com',
+        'https://storage.googleapis.com',
+        'https://cdn.shorebird.cloud',
+      ].map(Uri.parse).toList();
 
   /// Verify that each of [urlsToCheck] responds to an HTTP GET request.
   Future<void> checkReachability() async {
@@ -73,20 +74,18 @@ class NetworkChecker {
       file = await artifactManager
           .downloadFile(uri, outputPath: file.path)
           .timeout(
-        timeout,
-        onTimeout: () {
-          throw const NetworkCheckerException('Download timed out');
-        },
-      );
+            timeout,
+            onTimeout: () {
+              throw const NetworkCheckerException('Download timed out');
+            },
+          );
       final end = clock.now();
       final fileSize = file.existsSync() ? file.lengthSync() : 0;
       if (fileSize != 16000000) {
-        throw NetworkCheckerException(
-          '''
+        throw NetworkCheckerException('''
 Unexpected file size.
 Expected: 16MB
-Actual: ${formatBytes(fileSize)}''',
-        );
+Actual: ${formatBytes(fileSize)}''');
       }
       return fileSize / (end.difference(start).inMilliseconds * 1000);
     } finally {
@@ -113,12 +112,14 @@ Actual: ${formatBytes(fileSize)}''',
       final start = clock.now();
       final file = await http.MultipartFile.fromPath('file', testFile.path);
       final uploadRequest = http.MultipartRequest('POST', uri)..files.add(file);
-      final uploadResponse = await httpClient.send(uploadRequest).timeout(
-        timeout,
-        onTimeout: () {
-          throw const NetworkCheckerException('Upload timed out');
-        },
-      );
+      final uploadResponse = await httpClient
+          .send(uploadRequest)
+          .timeout(
+            timeout,
+            onTimeout: () {
+              throw const NetworkCheckerException('Upload timed out');
+            },
+          );
       if (uploadResponse.statusCode != HttpStatus.noContent) {
         final body = await uploadResponse.stream.bytesToString();
         throw NetworkCheckerException(

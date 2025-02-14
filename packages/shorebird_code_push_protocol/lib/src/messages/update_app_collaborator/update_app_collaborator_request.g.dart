@@ -9,24 +9,20 @@ part of 'update_app_collaborator_request.dart';
 // **************************************************************************
 
 UpdateAppCollaboratorRequest _$UpdateAppCollaboratorRequestFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'UpdateAppCollaboratorRequest',
-      json,
-      ($checkedConvert) {
-        final val = UpdateAppCollaboratorRequest(
-          role: $checkedConvert(
-              'role', (v) => $enumDecode(_$AppCollaboratorRoleEnumMap, v)),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('UpdateAppCollaboratorRequest', json, ($checkedConvert) {
+  final val = UpdateAppCollaboratorRequest(
+    role: $checkedConvert(
+      'role',
+      (v) => $enumDecode(_$AppCollaboratorRoleEnumMap, v),
+    ),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$UpdateAppCollaboratorRequestToJson(
-        UpdateAppCollaboratorRequest instance) =>
-    <String, dynamic>{
-      'role': _$AppCollaboratorRoleEnumMap[instance.role]!,
-    };
+  UpdateAppCollaboratorRequest instance,
+) => <String, dynamic>{'role': _$AppCollaboratorRoleEnumMap[instance.role]!};
 
 const _$AppCollaboratorRoleEnumMap = {
   AppCollaboratorRole.admin: 'admin',

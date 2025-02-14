@@ -5,10 +5,7 @@ part 'shorebird_yaml.g.dart';
 /// {@template shorebird_yaml}
 /// A Shorebird configuration file which contains metadata about the app.
 /// {@endtemplate}
-@JsonSerializable(
-  anyMap: true,
-  disallowUnrecognizedKeys: true,
-)
+@JsonSerializable(anyMap: true, disallowUnrecognizedKeys: true)
 class ShorebirdYaml {
   /// {@macro shorebird_yaml}
   const ShorebirdYaml({
