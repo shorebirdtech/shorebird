@@ -299,7 +299,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       });
     });
 
-    group('when orgnization id argument is provided', () {
+    group('when organization id argument is provided', () {
       group('when arg is not a parseable int', () {
         setUp(() {
           when(() => argResults['organization-id']).thenReturn('not-an-int');
@@ -424,15 +424,13 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         () async {
           final exitCode = await runWithOverrides(command.run);
           expect(exitCode, equals(ExitCode.success.code));
-          final capturedDisplay =
-              verify(
-                    () => logger.chooseOne<Organization>(
-                      'Which organization should this app belong to?',
-                      choices: [org1, org2],
-                      display: captureAny(named: 'display'),
-                    ),
-                  ).captured.single
-                  as String Function(Organization);
+          final capturedDisplay = verify(
+            () => logger.chooseOne<Organization>(
+              'Which organization should this app belong to?',
+              choices: [org1, org2],
+              display: captureAny(named: 'display'),
+            ),
+          ).captured.single as String Function(Organization);
           expect(capturedDisplay(org1), equals(org1.name));
           expect(capturedDisplay(org2), equals(org2.name));
           verify(
@@ -573,13 +571,13 @@ flavors:
         ).called(1);
         verifyInOrder([
           () => codePushClientWrapper.createApp(
-            appName: '$appName (internal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (internal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (stable)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (stable)',
+                organizationId: organizationId,
+              ),
         ]);
       });
     });
@@ -641,29 +639,29 @@ flavors:
         );
         verifyInOrder([
           () => codePushClientWrapper.createApp(
-            appName: '$appName (development)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (development)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (developmentInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (production)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (production)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (productionInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (productionInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (staging)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (staging)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (stagingInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
+              ),
         ]);
       });
 
@@ -715,29 +713,29 @@ flavors:
         );
         verifyInOrder([
           () => codePushClientWrapper.createApp(
-            appName: '$appName (development)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (development)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (developmentInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (production)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (production)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (productionInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (productionInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (staging)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (staging)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (stagingInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
+              ),
         ]);
       });
 
@@ -788,29 +786,29 @@ flavors:
         );
         verifyInOrder([
           () => codePushClientWrapper.createApp(
-            appName: '$appName (development)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (development)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (developmentInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (production)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (production)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (productionInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (productionInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (staging)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (staging)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (stagingInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
+              ),
         ]);
       });
 
@@ -863,29 +861,29 @@ flavors:
         );
         verifyInOrder([
           () => codePushClientWrapper.createApp(
-            appName: '$appName (development)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (development)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (developmentInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (production)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (production)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (productionInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (productionInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (staging)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (staging)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (stagingInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
+              ),
         ]);
       });
 
@@ -940,29 +938,29 @@ flavors:
         );
         verifyInOrder([
           () => codePushClientWrapper.createApp(
-            appName: '$appName (development)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (development)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (developmentInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (production)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (production)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (productionInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (productionInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (staging)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (staging)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (stagingInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
+              ),
         ]);
       });
 
@@ -1037,41 +1035,41 @@ flavors:
         );
         verifyInOrder([
           () => codePushClientWrapper.createApp(
-            appName: '$appName (dev)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (dev)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (devInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (devInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (production)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (production)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (productionInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (productionInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (development)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (development)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (developmentInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (developmentInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (staging)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (staging)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (stagingInternal)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (stagingInternal)',
+                organizationId: organizationId,
+              ),
           () => codePushClientWrapper.createApp(
-            appName: '$appName (production-macos)',
-            organizationId: organizationId,
-          ),
+                appName: '$appName (production-macos)',
+                organizationId: organizationId,
+              ),
         ]);
       });
 
@@ -1216,12 +1214,12 @@ flutter:
       await runWithOverrides(command.run);
       verifyInOrder([
         () => logger.info(
-          any(
-            that: contains(
-              lightGreen.wrap('🐦 Shorebird initialized successfully!'),
+              any(
+                that: contains(
+                  lightGreen.wrap('🐦 Shorebird initialized successfully!'),
+                ),
+              ),
             ),
-          ),
-        ),
         () => doctor.runValidators(any(), applyFixes: true),
       ]);
     });
