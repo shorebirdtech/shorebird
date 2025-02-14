@@ -102,6 +102,7 @@ void main() {
         'shorebird init --verbose',
         workingDirectory: cwd,
       );
+      print(initShorebirdResult.stderr);
       expect(initShorebirdResult.stderr, isEmpty);
       expect(initShorebirdResult.exitCode, equals(0));
 
