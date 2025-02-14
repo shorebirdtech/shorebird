@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.17 (February 14, 2025)
+
+- 🐦 Support for Flutter 3.29.0
+
 ## 1.6.16 (February 12, 2025)
 
 - 🩹 Updates package:shorebird_code_push integration to apply rollbacks when
