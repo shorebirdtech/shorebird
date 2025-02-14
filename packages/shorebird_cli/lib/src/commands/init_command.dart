@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -33,6 +34,10 @@ class InitCommand extends ShorebirdCommand {
       ..addOption(
         'display-name',
         help: 'The display name of the app.',
+      )
+      ..addOption(
+        'organization-id',
+        help: 'The organization ID to use.',
       );
   }
 
@@ -65,8 +70,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       return ExitCode.software.code;
     }
 
-    final orgs = await codePushClientWrapper.getOrganizationMemberships();
-    if (orgs.isEmpty) {
+    final organizationMemberships =
+        await codePushClientWrapper.getOrganizationMemberships();
+    if (organizationMemberships.isEmpty) {
       logger.err(
         '''You do not have any organizations. This should never happen. Please contact us on Discord or send us an email at contact@shorebird.dev.''',
       );
@@ -74,14 +80,30 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     }
 
     final Organization organization;
-    if (orgs.length > 1) {
+    final orgIdArg = results['organization-id'] as String?;
+    if (orgIdArg != null) {
+      final orgId = int.tryParse(orgIdArg);
+      if (orgId == null) {
+        logger.err('Invalid organization ID: "$orgIdArg"');
+        return ExitCode.usage.code;
+      }
+
+      final organizationMembership = organizationMemberships.firstWhereOrNull(
+        (o) => o.organization.id == orgId,
+      );
+      if (organizationMembership == null) {
+        logger.err('Organization with ID "$orgId" not found.');
+        return ExitCode.usage.code;
+      }
+      organization = organizationMembership.organization;
+    } else if (organizationMemberships.length > 1) {
       organization = logger.chooseOne(
         'Which organization should this app belong to?',
-        choices: orgs.map((o) => o.organization).toList(),
+        choices: organizationMemberships.map((o) => o.organization).toList(),
         display: (o) => o.name,
       );
     } else {
-      organization = orgs.first.organization;
+      organization = organizationMemberships.first.organization;
     }
 
     final force = results['force'] == true;
