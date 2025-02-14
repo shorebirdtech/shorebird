@@ -323,14 +323,15 @@ void main() {
           const podfileLockContents = 'lock file';
           podfileLockHash =
               sha256.convert(utf8.encode(podfileLockContents)).toString();
-          final podfileLockFile = File(
-            p.join(
-              Directory.systemTemp.createTempSync().path,
-              'Podfile.lock',
-            ),
-          )
-            ..createSync(recursive: true)
-            ..writeAsStringSync(podfileLockContents);
+          final podfileLockFile =
+              File(
+                  p.join(
+                    Directory.systemTemp.createTempSync().path,
+                    'Podfile.lock',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..writeAsStringSync(podfileLockContents);
 
           when(
             () => shorebirdEnv.macosPodfileLockFile,
@@ -510,9 +511,7 @@ This may indicate that the patch contains native changes, which cannot be applie
         setUp(() {
           when(
             () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(
-                named: 'checkUserIsAuthenticated',
-              ),
+              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
               checkShorebirdInitialized: any(
                 named: 'checkShorebirdInitialized',
               ),
@@ -552,13 +551,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               buildProgress: any(named: 'buildProgress'),
             ),
           ).thenThrow(
-            const ProcessException(
-                'flutter',
-                [
-                  'build',
-                  'macos',
-                ],
-                'Build failed'),
+            const ProcessException('flutter', [
+              'build',
+              'macos',
+            ], 'Build failed'),
           );
         });
 
