@@ -219,9 +219,7 @@ void main() {
 
         test('exits with software error code', () async {
           expect(
-            () => runWithOverrides(
-              () => patcher.buildPatchArtifact(),
-            ),
+            () => runWithOverrides(() => patcher.buildPatchArtifact()),
             throwsA(
               isA<ProcessExit>().having((e) => e.exitCode, 'exitCode', 70),
             ),
@@ -251,9 +249,7 @@ void main() {
 
         test('returns a zipped exe file', () async {
           await expectLater(
-            runWithOverrides(
-              () => patcher.buildPatchArtifact(),
-            ),
+            runWithOverrides(() => patcher.buildPatchArtifact()),
             completion(
               isA<File>().having((f) => f.path, 'path', endsWith('.zip')),
             ),
@@ -290,13 +286,8 @@ void main() {
           ),
         )..createSync(recursive: true);
 
-        patchArtifact = File(
-          p.join(
-            releaseDirectory.path,
-            'lib',
-            'libapp.so',
-          ),
-        )..createSync(recursive: true);
+        patchArtifact = File(p.join(releaseDirectory.path, 'lib', 'libapp.so'))
+          ..createSync(recursive: true);
 
         when(
           () => artifactManager.linuxBundleDirectory,
@@ -307,8 +298,9 @@ void main() {
             outputDirectory: any(named: 'outputDirectory'),
           ),
         ).thenAnswer((invocation) async {
-          (invocation.namedArguments[#outputDirectory] as Directory)
-              .createSync(recursive: true);
+          (invocation.namedArguments[#outputDirectory] as Directory).createSync(
+            recursive: true,
+          );
         });
       });
 
@@ -383,10 +375,12 @@ void main() {
               patchArtifactPath: any(named: 'patchArtifactPath'),
             ),
           ).thenAnswer((_) async => diffFile.path);
-          when(() => argResults[CommonArguments.publicKeyArg.name])
-              .thenReturn('public-key.pem');
-          when(() => argResults[CommonArguments.privateKeyArg.name])
-              .thenReturn('private-key.pem');
+          when(
+            () => argResults[CommonArguments.publicKeyArg.name],
+          ).thenReturn('public-key.pem');
+          when(
+            () => argResults[CommonArguments.privateKeyArg.name],
+          ).thenReturn('private-key.pem');
           when(
             () => codeSigner.sign(
               message: any(named: 'message'),
@@ -430,8 +424,9 @@ void main() {
             outputDirectory: any(named: 'outputDirectory'),
           ),
         ).thenAnswer((invocation) async {
-          (invocation.namedArguments[#outputDirectory] as Directory)
-              .createSync(recursive: true);
+          (invocation.namedArguments[#outputDirectory] as Directory).createSync(
+            recursive: true,
+          );
         });
 
         when(
@@ -443,9 +438,7 @@ void main() {
 
       test('returns version from archived exe', () async {
         final version = await runWithOverrides(
-          () => patcher.extractReleaseVersionFromArtifact(
-            File('bundle.zip'),
-          ),
+          () => patcher.extractReleaseVersionFromArtifact(File('bundle.zip')),
         );
 
         expect(version, '1.2.3');

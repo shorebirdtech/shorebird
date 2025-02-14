@@ -84,10 +84,7 @@ class CodePushClientWrapper {
 
   final CodePushClient codePushClient;
 
-  Future<App> createApp({
-    required int organizationId,
-    String? appName,
-  }) async {
+  Future<App> createApp({required int organizationId, String? appName}) async {
     late final String displayName;
     if (appName == null) {
       final defaultAppName = shorebirdEnv.getPubspecYaml()?.name;
@@ -132,11 +129,9 @@ class CodePushClientWrapper {
   Future<AppMetadata> getApp({required String appId}) async {
     final app = await maybeGetApp(appId: appId);
     if (app == null) {
-      logger.err(
-        '''
+      logger.err('''
 Could not find app with id: "$appId".
-This app may not exist or you may not have permission to view it.''',
-      );
+This app may not exist or you may not have permission to view it.''');
 
       throw ProcessExit(ExitCode.software.code);
     }
@@ -191,10 +186,7 @@ This app may not exist or you may not have permission to view it.''',
     required ReleasePlatform platform,
   }) {
     if (release.platformStatuses[platform] == ReleaseStatus.active) {
-      final uri = ShorebirdWebConsole.appReleaseUri(
-        release.appId,
-        release.id,
-      );
+      final uri = ShorebirdWebConsole.appReleaseUri(release.appId, release.id);
       logger.err(
         '''
 It looks like you have an existing ${platform.name} release for version ${lightCyan.wrap(release.version)}.
@@ -216,14 +208,12 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
     );
 
     if (release == null) {
-      logger.err(
-        '''
+      logger.err('''
 Release not found: "$releaseVersion"
 
 Patches can only be published for existing releases.
 Please create a release using "shorebird release" and try again.
-''',
-      );
+''');
       throw ProcessExit(ExitCode.software.code);
     }
 
@@ -478,11 +468,9 @@ Looked in:
         );
       } on CodePushConflictException catch (_) {
         // Newlines are due to how logger.info interacts with logger.progress.
-        logger.info(
-          '''
+        logger.info('''
 
-${arch.arch} artifact already exists, continuing...''',
-        );
+${arch.arch} artifact already exists, continuing...''');
       } catch (error) {
         _handleErrorAndExit(
           error,
@@ -506,11 +494,9 @@ ${arch.arch} artifact already exists, continuing...''',
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
-      logger.info(
-        '''
+      logger.info('''
 
-aab artifact already exists, continuing...''',
-      );
+aab artifact already exists, continuing...''');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -545,11 +531,9 @@ aab artifact already exists, continuing...''',
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
-      logger.info(
-        '''
+      logger.info('''
 
-Windows release (exe) artifact already exists, continuing...''',
-      );
+Windows release (exe) artifact already exists, continuing...''');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -594,11 +578,9 @@ Windows release (exe) artifact already exists, continuing...''',
         );
       } on CodePushConflictException catch (_) {
         // Newlines are due to how logger.info interacts with logger.progress.
-        logger.info(
-          '''
+        logger.info('''
 
-${arch.arch} artifact already exists, continuing...''',
-        );
+${arch.arch} artifact already exists, continuing...''');
       } catch (error) {
         _handleErrorAndExit(
           error,
@@ -622,11 +604,9 @@ ${arch.arch} artifact already exists, continuing...''',
       );
     } on CodePushConflictException catch (_) {
       // Newlines are due to how logger.info interacts with logger.progress.
-      logger.info(
-        '''
+      logger.info('''
 
-aar artifact already exists, continuing...''',
-      );
+aar artifact already exists, continuing...''');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -643,8 +623,9 @@ aar artifact already exists, continuing...''',
   Future<Directory> _thinXcarchive({required String xcarchivePath}) async {
     final xcarchiveDirectoryName = p.basename(xcarchivePath);
     final tempDir = Directory.systemTemp.createTempSync();
-    final thinnedArchiveDirectory =
-        Directory(p.join(tempDir.path, xcarchiveDirectoryName));
+    final thinnedArchiveDirectory = Directory(
+      p.join(tempDir.path, xcarchiveDirectoryName),
+    );
     await io.copyPath(xcarchivePath, thinnedArchiveDirectory.path);
     thinnedArchiveDirectory
         .listSync(recursive: true)
@@ -776,9 +757,9 @@ aar artifact already exists, continuing...''',
     }
 
     if (supplementPath != null) {
-      final zippedSupplement = await Directory(supplementPath).zipToTempFile(
-        name: 'ios_supplement',
-      );
+      final zippedSupplement = await Directory(
+        supplementPath,
+      ).zipToTempFile(name: 'ios_supplement');
       try {
         await codePushClient.createReleaseArtifact(
           appId: appId,
@@ -820,9 +801,10 @@ aar artifact already exists, continuing...''',
         artifactPath: zippedAppFrameworkFile.path,
         arch: 'xcframework',
         platform: ReleasePlatform.ios,
-        hash: sha256
-            .convert(await zippedAppFrameworkFile.readAsBytes())
-            .toString(),
+        hash:
+            sha256
+                .convert(await zippedAppFrameworkFile.readAsBytes())
+                .toString(),
         canSideload: false,
         podfileLockHash: null,
       );
@@ -835,9 +817,9 @@ aar artifact already exists, continuing...''',
     }
 
     if (supplementPath != null) {
-      final zippedSupplement = await Directory(supplementPath).zipToTempFile(
-        name: 'ios_framework_supplement',
-      );
+      final zippedSupplement = await Directory(
+        supplementPath,
+      ).zipToTempFile(name: 'ios_framework_supplement');
       try {
         await codePushClient.createReleaseArtifact(
           appId: appId,
@@ -948,14 +930,9 @@ aar artifact already exists, continuing...''',
       patchArtifactBundles: patchArtifactBundles,
     );
 
-    final channel = await maybeGetChannel(
-          appId: appId,
-          name: track.channel,
-        ) ??
-        await createChannel(
-          appId: appId,
-          name: track.channel,
-        );
+    final channel =
+        await maybeGetChannel(appId: appId, name: track.channel) ??
+        await createChannel(appId: appId, name: track.channel);
 
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);
 

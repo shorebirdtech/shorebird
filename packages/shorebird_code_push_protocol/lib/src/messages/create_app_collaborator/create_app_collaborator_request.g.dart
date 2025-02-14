@@ -9,20 +9,14 @@ part of 'create_app_collaborator_request.dart';
 // **************************************************************************
 
 CreateAppCollaboratorRequest _$CreateAppCollaboratorRequestFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'CreateAppCollaboratorRequest',
-      json,
-      ($checkedConvert) {
-        final val = CreateAppCollaboratorRequest(
-          email: $checkedConvert('email', (v) => v as String),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('CreateAppCollaboratorRequest', json, ($checkedConvert) {
+  final val = CreateAppCollaboratorRequest(
+    email: $checkedConvert('email', (v) => v as String),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$CreateAppCollaboratorRequestToJson(
-        CreateAppCollaboratorRequest instance) =>
-    <String, dynamic>{
-      'email': instance.email,
-    };
+  CreateAppCollaboratorRequest instance,
+) => <String, dynamic>{'email': instance.email};

@@ -45,10 +45,11 @@ class CodeSigner {
       _pemBytes(pemFile: publicKeyPemFile, type: PemLabel.publicKey),
     );
 
-    final publicKeySeq = ASN1Sequence()
-      ..add(ASN1Integer(publicKey.modulus))
-      ..add(ASN1Integer(publicKey.exponent))
-      ..encode();
+    final publicKeySeq =
+        ASN1Sequence()
+          ..add(ASN1Integer(publicKey.modulus))
+          ..add(ASN1Integer(publicKey.exponent))
+          ..encode();
     return base64.encode(publicKeySeq.encodedBytes!);
   }
 
@@ -94,8 +95,9 @@ extension _RSAPublicKeyFromBytes on RSAPublicKey {
     final asn1Parser = ASN1Parser(Uint8List.fromList(bytes));
     final topLevelSeq = asn1Parser.nextObject() as ASN1Sequence;
     final publicKeyBitString = topLevelSeq.elements![1] as ASN1BitString;
-    final publicKeyAsn =
-        ASN1Parser(publicKeyBitString.stringValues as Uint8List?);
+    final publicKeyAsn = ASN1Parser(
+      publicKeyBitString.stringValues as Uint8List?,
+    );
     final publicKeySeq = publicKeyAsn.nextObject() as ASN1Sequence;
     final modulus = publicKeySeq.elements![0] as ASN1Integer;
     final exponent = publicKeySeq.elements![1] as ASN1Integer;

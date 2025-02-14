@@ -11,9 +11,7 @@ part 'get_organizations_response.g.dart';
 @JsonSerializable()
 class GetOrganizationsResponse {
   /// {@macro get_organizations_request}
-  GetOrganizationsResponse({
-    required this.organizations,
-  });
+  GetOrganizationsResponse({required this.organizations});
 
   /// Deserializes the [GetOrganizationsResponse] from a JSON map.
   factory GetOrganizationsResponse.fromJson(Map<String, dynamic> json) =>

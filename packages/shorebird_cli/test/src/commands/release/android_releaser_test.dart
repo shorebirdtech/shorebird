@@ -62,8 +62,9 @@ void main() {
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
-          shorebirdAndroidArtifactsRef
-              .overrideWith(() => shorebirdAndroidArtifacts),
+          shorebirdAndroidArtifactsRef.overrideWith(
+            () => shorebirdAndroidArtifacts,
+          ),
         },
       );
     }
@@ -90,8 +91,9 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
-      when(() => argResults['target-platform'])
-          .thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
+      when(
+        () => argResults['target-platform'],
+      ).thenReturn(Arch.values.map((a) => a.targetPlatformCliArg).toList());
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults.wasParsed(any())).thenReturn(false);
 
@@ -122,8 +124,9 @@ void main() {
 
     group('assertPreconditions', () {
       setUp(() {
-        when(() => doctor.androidCommandValidators)
-            .thenReturn([flavorValidator]);
+        when(
+          () => doctor.androidCommandValidators,
+        ).thenReturn([flavorValidator]);
         when(flavorValidator.validate).thenAnswer((_) async => []);
       });
 
@@ -132,11 +135,13 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
-              supportedOperatingSystems:
-                  any(named: 'supportedOperatingSystems'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
             ),
           ).thenAnswer((_) async {});
         });
@@ -155,8 +160,9 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
             ),
           ).thenThrow(exception);
@@ -167,8 +173,9 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
             ),
           ).thenThrow(exception);
@@ -264,9 +271,7 @@ To change the version of this release, change your app's version in your pubspec
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
           ),
-        ).thenAnswer(
-          (_) async => File(''),
-        );
+        ).thenAnswer((_) async => File(''));
         when(
           () => shorebirdAndroidArtifacts.findAab(
             project: any(named: 'project'),
@@ -310,9 +315,7 @@ To change the version of this release, change your app's version in your pubspec
       });
 
       test('does not built apk by default', () async {
-        await runWithOverrides(
-          () => androidReleaser.buildReleaseArtifacts(),
-        );
+        await runWithOverrides(() => androidReleaser.buildReleaseArtifacts());
         verifyNever(
           () => artifactBuilder.buildApk(
             flavor: any(named: 'flavor'),
@@ -387,8 +390,9 @@ To change the version of this release, change your app's version in your pubspec
               'patch-signing-public-key.pem',
             ),
           )..createSync(recursive: true);
-          when(() => argResults[CommonArguments.publicKeyArg.name])
-              .thenReturn(patchSigningPublicKeyFile.path);
+          when(
+            () => argResults[CommonArguments.publicKeyArg.name],
+          ).thenReturn(patchSigningPublicKeyFile.path);
 
           when(
             () => artifactBuilder.buildAppBundle(
@@ -410,8 +414,9 @@ To change the version of this release, change your app's version in your pubspec
             ),
           ).thenAnswer((_) async => File(''));
 
-          when(() => codeSigner.base64PublicKey(any()))
-              .thenReturn(base64PublicKey);
+          when(
+            () => codeSigner.base64PublicKey(any()),
+          ).thenReturn(base64PublicKey);
         });
 
         test(
@@ -560,26 +565,28 @@ To change the version of this release, change your app's version in your pubspec
         ).thenReturn(aabFile);
       });
 
-      test('calls codePushClientWrapper.createAndroidReleaseArtifacts',
-          () async {
-        await runWithOverrides(
-          () => androidReleaser.uploadReleaseArtifacts(
-            appId: appId,
-            release: release,
-          ),
-        );
-        verify(
-          () => codePushClientWrapper.createAndroidReleaseArtifacts(
-            appId: appId,
-            releaseId: release.id,
-            projectRoot: projectRoot.path,
-            aabPath: aabFile.path,
-            platform: ReleasePlatform.android,
-            architectures: Arch.values,
-            flavor: androidReleaser.flavor,
-          ),
-        ).called(1);
-      });
+      test(
+        'calls codePushClientWrapper.createAndroidReleaseArtifacts',
+        () async {
+          await runWithOverrides(
+            () => androidReleaser.uploadReleaseArtifacts(
+              appId: appId,
+              release: release,
+            ),
+          );
+          verify(
+            () => codePushClientWrapper.createAndroidReleaseArtifacts(
+              appId: appId,
+              releaseId: release.id,
+              projectRoot: projectRoot.path,
+              aabPath: aabFile.path,
+              platform: ReleasePlatform.android,
+              architectures: Arch.values,
+              flavor: androidReleaser.flavor,
+            ),
+          ).called(1);
+        },
+      );
     });
 
     group('updatedReleaseMetadata', () {

@@ -14,17 +14,16 @@ typedef HashFunction = String Function(List<int> bytes);
 typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
 
 /// Signature for a function which builds a [CodePushClient].
-typedef CodePushClientBuilder = CodePushClient Function({
-  required http.Client httpClient,
-  Uri? hostedUri,
-});
+typedef CodePushClientBuilder =
+    CodePushClient Function({required http.Client httpClient, Uri? hostedUri});
 
 /// Signature for a function which starts a process (e.g. [Process.start]).
-typedef StartProcess = Future<Process> Function(
-  String executable,
-  List<String> arguments, {
-  bool runInShell,
-});
+typedef StartProcess =
+    Future<Process> Function(
+      String executable,
+      List<String> arguments, {
+      bool runInShell,
+    });
 
 /// {@template shorebird_command}
 /// A command in the Shorebird CLI.

@@ -35,9 +35,7 @@ class FakeReleaser extends Releaser {
   String get artifactDisplayName => 'Fake artifact';
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts({
-    DetailProgress? progress,
-  }) {
+  Future<FileSystemEntity> buildReleaseArtifacts({DetailProgress? progress}) {
     throw UnimplementedError();
   }
 
@@ -54,8 +52,7 @@ class FakeReleaser extends Releaser {
   @override
   Future<UpdateReleaseMetadata> updatedReleaseMetadata(
     UpdateReleaseMetadata metadata,
-  ) =>
-      throw UnimplementedError();
+  ) => throw UnimplementedError();
 
   @override
   ReleaseType get releaseType => throw UnimplementedError();

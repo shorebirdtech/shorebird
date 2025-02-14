@@ -63,22 +63,17 @@ void main() {
       verify(() => client.getManifest(shorebirdEngineRevision)).called(1);
     });
 
-    test(
-        'should proxy to Flutter artifacts '
+    test('should proxy to Flutter artifacts '
         'when no engine revision is detected', () async {
       const path =
           'flutter_infra_release/flutter/fonts/3012db47f3130e62f7cc0beabff968a33cbec8d8/fonts.zip';
       final request = buildRequest(path);
       final response = await handler(request);
-      expect(
-        response,
-        isRedirectTo('https://storage.googleapis.com/$path'),
-      );
+      expect(response, isRedirectTo('https://storage.googleapis.com/$path'));
       verifyNever(() => client.getManifest(any()));
     });
 
-    test(
-        'should proxy to Shorebird artifacts '
+    test('should proxy to Shorebird artifacts '
         'when an engine revision is detected with an override', () async {
       const path =
           'flutter_infra_release/flutter/$shorebirdEngineRevision/android-x64-release/artifacts.zip';
@@ -93,8 +88,7 @@ void main() {
       verify(() => client.getManifest(shorebirdEngineRevision)).called(1);
     });
 
-    test(
-        'should proxy to Flutter artifacts '
+    test('should proxy to Flutter artifacts '
         'when an engine revision is detected with no override', () async {
       const path =
           'flutter_infra_release/flutter/$shorebirdEngineRevision/windows-x64/font-subset.zip';
@@ -109,8 +103,7 @@ void main() {
       verify(() => client.getManifest(shorebirdEngineRevision)).called(1);
     });
 
-    test(
-        'should return 404 '
+    test('should return 404 '
         'when pattern is not recognized', () async {
       const path =
           'flutter_infra_release/flutter/$shorebirdEngineRevision/unknown/artifacts.zip';

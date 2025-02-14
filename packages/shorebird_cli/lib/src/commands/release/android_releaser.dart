@@ -34,12 +34,14 @@ class AndroidReleaser extends Releaser {
   String get artifactDisplayName => 'Android app bundle';
 
   /// The architectures to build for.
-  Set<Arch> get architectures => (argResults['target-platform'] as List<String>)
-      .map(
-        (platform) => AndroidArch.availableAndroidArchs
-            .firstWhere((arch) => arch.targetPlatformCliArg == platform),
-      )
-      .toSet();
+  Set<Arch> get architectures =>
+      (argResults['target-platform'] as List<String>)
+          .map(
+            (platform) => AndroidArch.availableAndroidArchs.firstWhere(
+              (arch) => arch.targetPlatformCliArg == platform,
+            ),
+          )
+          .toSet();
 
   /// Whether to generate an APK in addition to the AAB.
   late bool generateApk = argResults['artifact'] as String == 'apk';
@@ -93,12 +95,14 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   Future<FileSystemEntity> buildReleaseArtifacts({
     DetailProgress? progress,
   }) async {
-    final architectures = (argResults['target-platform'] as List<String>)
-        .map(
-          (platform) => AndroidArch.availableAndroidArchs
-              .firstWhere((arch) => arch.targetPlatformCliArg == platform),
-        )
-        .toSet();
+    final architectures =
+        (argResults['target-platform'] as List<String>)
+            .map(
+              (platform) => AndroidArch.availableAndroidArchs.firstWhere(
+                (arch) => arch.targetPlatformCliArg == platform,
+              ),
+            )
+            .toSet();
 
     final base64PublicKey = argResults.encodedPublicKey;
     final aab = await artifactBuilder.buildAppBundle(
@@ -128,15 +132,14 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    final releaseVersionProgress =
-        logger.progress('Determining release version');
+    final releaseVersionProgress = logger.progress(
+      'Determining release version',
+    );
     final String releaseVersion;
 
     try {
-      releaseVersion =
-          await shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle(
-        releaseArtifactRoot.path,
-      );
+      releaseVersion = await shorebirdAndroidArtifacts
+          .extractReleaseVersionFromAppBundle(releaseArtifactRoot.path);
       releaseVersionProgress.complete('Release version: $releaseVersion');
     } on Exception catch (error) {
       releaseVersionProgress.fail('$error');
@@ -169,8 +172,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   @override
   Future<UpdateReleaseMetadata> updatedReleaseMetadata(
     UpdateReleaseMetadata metadata,
-  ) async =>
-      metadata.copyWith(generatedApks: generateApk);
+  ) async => metadata.copyWith(generatedApks: generateApk);
 
   @override
   String get postReleaseInstructions {
@@ -185,13 +187,14 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         project: projectRoot,
         flavor: flavor,
       );
-      apkText = generateApk
-          ? '''
+      apkText =
+          generateApk
+              ? '''
 
 Or distribute the apk:
 ${lightCyan.wrap(apkFile.path)}
 '''
-          : '';
+              : '';
     } else {
       apkText = '';
     }

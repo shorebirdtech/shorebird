@@ -9,10 +9,7 @@ part 'create_patch_request.g.dart';
 @JsonSerializable()
 class CreatePatchRequest {
   /// {@macro create_patch_request}
-  const CreatePatchRequest({
-    required this.releaseId,
-    required this.metadata,
-  });
+  const CreatePatchRequest({required this.releaseId, required this.metadata});
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchRequest]
   factory CreatePatchRequest.fromJson(Map<String, dynamic> json) =>

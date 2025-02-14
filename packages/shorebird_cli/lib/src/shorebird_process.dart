@@ -117,9 +117,7 @@ class ShorebirdProcess {
     final resolvedEnvironment = environment ?? {};
     if (useVendedFlutter) {
       // Note: this will overwrite existing environment values.
-      resolvedEnvironment.addAll(
-        _environmentOverrides(executable: executable),
-      );
+      resolvedEnvironment.addAll(_environmentOverrides(executable: executable));
     }
     final resolvedExecutable = _resolveExecutable(
       executable,
@@ -151,9 +149,7 @@ class ShorebirdProcess {
     final resolvedEnvironment = baseEnvironment ?? {};
     if (useVendedFlutter) {
       // Note: this will overwrite existing environment values.
-      resolvedEnvironment.addAll(
-        _environmentOverrides(executable: executable),
-      );
+      resolvedEnvironment.addAll(_environmentOverrides(executable: executable));
     }
 
     return resolvedEnvironment;
@@ -216,9 +212,7 @@ $stderr''');
     }
   }
 
-  Map<String, String> _environmentOverrides({
-    required String executable,
-  }) {
+  Map<String, String> _environmentOverrides({required String executable}) {
     if (executable == 'flutter') {
       // If this ever changes we also need to update the `shorebird` shell
       // wrapper which downloads runs Flutter to fetch artifacts the first time.
@@ -313,4 +307,5 @@ class ProcessWrapper {
     );
   }
 }
+
 // coverage:ignore-end

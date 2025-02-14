@@ -9,19 +9,13 @@ part of 'create_patch_request.dart';
 // **************************************************************************
 
 CreatePatchRequest _$CreatePatchRequestFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'CreatePatchRequest',
-      json,
-      ($checkedConvert) {
-        final val = CreatePatchRequest(
-          releaseId: $checkedConvert('release_id', (v) => (v as num).toInt()),
-          metadata:
-              $checkedConvert('metadata', (v) => v as Map<String, dynamic>),
-        );
-        return val;
-      },
-      fieldKeyMap: const {'releaseId': 'release_id'},
-    );
+    $checkedCreate('CreatePatchRequest', json, ($checkedConvert) {
+      final val = CreatePatchRequest(
+        releaseId: $checkedConvert('release_id', (v) => (v as num).toInt()),
+        metadata: $checkedConvert('metadata', (v) => v as Map<String, dynamic>),
+      );
+      return val;
+    }, fieldKeyMap: const {'releaseId': 'release_id'});
 
 Map<String, dynamic> _$CreatePatchRequestToJson(CreatePatchRequest instance) =>
     <String, dynamic>{

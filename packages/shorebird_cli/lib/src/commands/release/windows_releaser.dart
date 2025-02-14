@@ -66,27 +66,25 @@ To change the version of this release, change your app's version in your pubspec
 
     final flutterVersionArg = argResults['flutter-version'] as String?;
     if (flutterVersionArg != null) {
-      final version =
-          await shorebirdFlutter.resolveFlutterVersion(flutterVersionArg);
-      final gitHash =
-          await shorebirdFlutter.getRevisionForVersion(flutterVersionArg);
+      final version = await shorebirdFlutter.resolveFlutterVersion(
+        flutterVersionArg,
+      );
+      final gitHash = await shorebirdFlutter.getRevisionForVersion(
+        flutterVersionArg,
+      );
       if (version != null &&
           version < minimumSupportedWindowsFlutterVersion &&
           !windowsFlutterGitHashesBelowMinVersion.contains(gitHash)) {
-        logger.err(
-          '''
+        logger.err('''
 Windows releases are not supported with Flutter versions older than $minimumSupportedWindowsFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-        );
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         throw ProcessExit(ExitCode.usage.code);
       }
     }
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts({
-    DetailProgress? progress,
-  }) {
+  Future<FileSystemEntity> buildReleaseArtifacts({DetailProgress? progress}) {
     return artifactBuilder.buildWindowsApp(
       flavor: flavor,
       target: target,

@@ -8,103 +8,97 @@ part of 'nserror.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-NSError _$NSErrorFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'NSError',
-      json,
-      ($checkedConvert) {
-        final val = NSError(
-          code: $checkedConvert('code', (v) => (v as num).toInt()),
-          domain: $checkedConvert('domain', (v) => v as String),
-          userInfo: $checkedConvert(
-              'userInfo', (v) => UserInfo.fromJson(v as Map<String, dynamic>)),
-        );
-        return val;
-      },
-    );
+NSError _$NSErrorFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('NSError', json, ($checkedConvert) {
+      final val = NSError(
+        code: $checkedConvert('code', (v) => (v as num).toInt()),
+        domain: $checkedConvert('domain', (v) => v as String),
+        userInfo: $checkedConvert(
+          'userInfo',
+          (v) => UserInfo.fromJson(v as Map<String, dynamic>),
+        ),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$NSErrorToJson(NSError instance) => <String, dynamic>{
-      'code': instance.code,
-      'domain': instance.domain,
-      'userInfo': instance.userInfo.toJson(),
-    };
+  'code': instance.code,
+  'domain': instance.domain,
+  'userInfo': instance.userInfo.toJson(),
+};
 
 UserInfo _$UserInfoFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'UserInfo',
-      json,
-      ($checkedConvert) {
-        final val = UserInfo(
-          description: $checkedConvert(
-              'NSDescription',
-              (v) => v == null
-                  ? null
-                  : StringContainer.fromJson(v as Map<String, dynamic>)),
-          localizedDescription: $checkedConvert(
-              'NSLocalizedDescription',
-              (v) => v == null
-                  ? null
-                  : StringContainer.fromJson(v as Map<String, dynamic>)),
-          localizedFailureReason: $checkedConvert(
-              'NSLocalizedFailureReason',
-              (v) => v == null
-                  ? null
-                  : StringContainer.fromJson(v as Map<String, dynamic>)),
-          underlyingError: $checkedConvert(
-              'NSUnderlyingError',
-              (v) => v == null
-                  ? null
-                  : NSUnderlyingError.fromJson(v as Map<String, dynamic>)),
-        );
-        return val;
-      },
-      fieldKeyMap: const {
-        'description': 'NSDescription',
-        'localizedDescription': 'NSLocalizedDescription',
-        'localizedFailureReason': 'NSLocalizedFailureReason',
-        'underlyingError': 'NSUnderlyingError'
-      },
+  'UserInfo',
+  json,
+  ($checkedConvert) {
+    final val = UserInfo(
+      description: $checkedConvert(
+        'NSDescription',
+        (v) =>
+            v == null
+                ? null
+                : StringContainer.fromJson(v as Map<String, dynamic>),
+      ),
+      localizedDescription: $checkedConvert(
+        'NSLocalizedDescription',
+        (v) =>
+            v == null
+                ? null
+                : StringContainer.fromJson(v as Map<String, dynamic>),
+      ),
+      localizedFailureReason: $checkedConvert(
+        'NSLocalizedFailureReason',
+        (v) =>
+            v == null
+                ? null
+                : StringContainer.fromJson(v as Map<String, dynamic>),
+      ),
+      underlyingError: $checkedConvert(
+        'NSUnderlyingError',
+        (v) =>
+            v == null
+                ? null
+                : NSUnderlyingError.fromJson(v as Map<String, dynamic>),
+      ),
     );
+    return val;
+  },
+  fieldKeyMap: const {
+    'description': 'NSDescription',
+    'localizedDescription': 'NSLocalizedDescription',
+    'localizedFailureReason': 'NSLocalizedFailureReason',
+    'underlyingError': 'NSUnderlyingError',
+  },
+);
 
 Map<String, dynamic> _$UserInfoToJson(UserInfo instance) => <String, dynamic>{
-      'NSDescription': instance.description?.toJson(),
-      'NSLocalizedDescription': instance.localizedDescription?.toJson(),
-      'NSLocalizedFailureReason': instance.localizedFailureReason?.toJson(),
-      'NSUnderlyingError': instance.underlyingError?.toJson(),
-    };
+  'NSDescription': instance.description?.toJson(),
+  'NSLocalizedDescription': instance.localizedDescription?.toJson(),
+  'NSLocalizedFailureReason': instance.localizedFailureReason?.toJson(),
+  'NSUnderlyingError': instance.underlyingError?.toJson(),
+};
 
 StringContainer _$StringContainerFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'StringContainer',
-      json,
-      ($checkedConvert) {
-        final val = StringContainer(
-          $checkedConvert('string', (v) => v as String),
-        );
-        return val;
-      },
-    );
+    $checkedCreate('StringContainer', json, ($checkedConvert) {
+      final val = StringContainer(
+        $checkedConvert('string', (v) => v as String),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$StringContainerToJson(StringContainer instance) =>
-    <String, dynamic>{
-      'string': instance.string,
-    };
+    <String, dynamic>{'string': instance.string};
 
 NSUnderlyingError _$NSUnderlyingErrorFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'NSUnderlyingError',
-      json,
-      ($checkedConvert) {
-        final val = NSUnderlyingError(
-          error: $checkedConvert(
-              'error',
-              (v) => v == null
-                  ? null
-                  : NSError.fromJson(v as Map<String, dynamic>)),
-        );
-        return val;
-      },
-    );
+    $checkedCreate('NSUnderlyingError', json, ($checkedConvert) {
+      final val = NSUnderlyingError(
+        error: $checkedConvert(
+          'error',
+          (v) => v == null ? null : NSError.fromJson(v as Map<String, dynamic>),
+        ),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$NSUnderlyingErrorToJson(NSUnderlyingError instance) =>
-    <String, dynamic>{
-      'error': instance.error?.toJson(),
-    };
+    <String, dynamic>{'error': instance.error?.toJson()};

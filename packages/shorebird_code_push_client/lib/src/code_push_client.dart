@@ -91,11 +91,11 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
     Map<String, String>? customHeaders,
-  })  : _httpClient = _CodePushHttpClient(
-          httpClient ?? http.Client(),
-          {...standardHeaders, ...?customHeaders},
-        ),
-        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
+  }) : _httpClient = _CodePushHttpClient(httpClient ?? http.Client(), {
+         ...standardHeaders,
+         ...?customHeaders,
+       }),
+       hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
   static const standardHeaders = <String, String>{'x-version': packageVersion};
@@ -339,9 +339,7 @@ class CodePushClient {
   /// Create a new Shorebird user with the provided [name].
   ///
   /// The email associated with the user's JWT will be used as the user's email.
-  Future<PrivateUser> createUser({
-    required String name,
-  }) async {
+  Future<PrivateUser> createUser({required String name}) async {
     final response = await _httpClient.post(
       Uri.parse('$_v1/users'),
       body: jsonEncode(CreateUserRequest(name: name).toJson()),
@@ -357,9 +355,7 @@ class CodePushClient {
 
   /// Delete the app with the provided [appId].
   Future<void> deleteApp({required String appId}) async {
-    final response = await _httpClient.delete(
-      Uri.parse('$_v1/apps/$appId'),
-    );
+    final response = await _httpClient.delete(Uri.parse('$_v1/apps/$appId'));
 
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
@@ -368,9 +364,7 @@ class CodePushClient {
 
   /// List all apps for the current account.
   Future<List<AppMetadata>> getApps() async {
-    final response = await _httpClient.get(
-      Uri.parse('$_v1/apps'),
-    );
+    final response = await _httpClient.get(Uri.parse('$_v1/apps'));
 
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
@@ -403,13 +397,9 @@ class CodePushClient {
     required String appId,
     bool sideloadableOnly = false,
   }) async {
-    var uri = Uri.parse(
-      '$_v1/apps/$appId/releases',
-    );
+    var uri = Uri.parse('$_v1/apps/$appId/releases');
     if (sideloadableOnly) {
-      uri = uri.replace(
-        queryParameters: {'sideloadable': 'true'},
-      );
+      uri = uri.replace(queryParameters: {'sideloadable': 'true'});
     }
 
     final response = await _httpClient.get(uri);
@@ -488,9 +478,7 @@ class CodePushClient {
   /// Gets the list of organizations the user is a member of, along with the
   /// user's role in each organization.
   Future<List<OrganizationMembership>> getOrganizationMemberships() async {
-    final response = await _httpClient.get(
-      Uri.parse('$_v1/organizations'),
-    );
+    final response = await _httpClient.get(Uri.parse('$_v1/organizations'));
 
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);

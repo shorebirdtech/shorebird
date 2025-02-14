@@ -43,28 +43,24 @@ class IosFrameworkPatcher extends Patcher {
       p.join(shorebirdEnv.buildDirectory.path, 'out.aot');
 
   String get _patchClassTableLinkInfoFile => p.join(
-        shorebirdEnv.buildDirectory.path,
-        'ios',
-        'shorebird',
-        'App.ct.link',
-      );
+    shorebirdEnv.buildDirectory.path,
+    'ios',
+    'shorebird',
+    'App.ct.link',
+  );
 
   String get _patchClassTableLinkDebugInfoPath => p.join(
-        shorebirdEnv.buildDirectory.path,
-        'ios',
-        'shorebird',
-        'App.class_table.json',
-      );
+    shorebirdEnv.buildDirectory.path,
+    'ios',
+    'shorebird',
+    'App.class_table.json',
+  );
 
-  String get _vmcodeOutputPath => p.join(
-        shorebirdEnv.buildDirectory.path,
-        'out.vmcode',
-      );
+  String get _vmcodeOutputPath =>
+      p.join(shorebirdEnv.buildDirectory.path, 'out.vmcode');
 
-  String get _appDillCopyPath => p.join(
-        shorebirdEnv.buildDirectory.path,
-        'app.dill',
-      );
+  String get _appDillCopyPath =>
+      p.join(shorebirdEnv.buildDirectory.path, 'app.dill');
 
   @override
   String get primaryReleaseArtifactArch => 'xcframework';
@@ -109,14 +105,13 @@ class IosFrameworkPatcher extends Patcher {
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
     required File patchArchive,
-  }) =>
-      patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-        localArchive: patchArchive,
-        releaseArchive: releaseArchive,
-        archiveDiffer: const AppleArchiveDiffer(),
-        allowAssetChanges: allowAssetDiffs,
-        allowNativeChanges: allowNativeDiffs,
-      );
+  }) => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+    localArchive: patchArchive,
+    releaseArchive: releaseArchive,
+    archiveDiffer: const AppleArchiveDiffer(),
+    allowAssetChanges: allowAssetDiffs,
+    allowNativeChanges: allowNativeDiffs,
+  );
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
@@ -208,20 +203,11 @@ class IosFrameworkPatcher extends Patcher {
       'Extracted release artifact to $releaseXcframeworkPath',
     );
     final releaseArtifactFile = File(
-      p.join(
-        releaseXcframeworkPath,
-        'ios-arm64',
-        'App.framework',
-        'App',
-      ),
+      p.join(releaseXcframeworkPath, 'ios-arm64', 'App.framework', 'App'),
     );
 
     final aotSnapshotFile = File(
-      p.join(
-        shorebirdEnv.getShorebirdProjectRoot()!.path,
-        'build',
-        'out.aot',
-      ),
+      p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'build', 'out.aot'),
     );
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
@@ -240,9 +226,9 @@ class IosFrameworkPatcher extends Patcher {
 
         // Copy the patch's class table link info file to the build directory
         // so that it can be used to generate a patch.
-        File(_patchClassTableLinkInfoFile).copySync(
-          p.join(shorebirdEnv.buildDirectory.path, 'out.ct.link'),
-        );
+        File(
+          _patchClassTableLinkInfoFile,
+        ).copySync(p.join(shorebirdEnv.buildDirectory.path, 'out.ct.link'));
         File(_patchClassTableLinkDebugInfoPath).copySync(
           p.join(shorebirdEnv.buildDirectory.path, 'out.class_table.json'),
         );
@@ -311,11 +297,10 @@ class IosFrameworkPatcher extends Patcher {
   @override
   Future<CreatePatchMetadata> updatedCreatePatchMetadata(
     CreatePatchMetadata metadata,
-  ) async =>
-      metadata.copyWith(
-        linkPercentage: lastBuildLinkPercentage,
-        environment: metadata.environment.copyWith(
-          xcodeVersion: await xcodeBuild.version(),
-        ),
-      );
+  ) async => metadata.copyWith(
+    linkPercentage: lastBuildLinkPercentage,
+    environment: metadata.environment.copyWith(
+      xcodeVersion: await xcodeBuild.version(),
+    ),
+  );
 }

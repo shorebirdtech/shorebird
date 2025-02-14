@@ -9,9 +9,7 @@ part 'create_release_response.g.dart';
 @JsonSerializable()
 class CreateReleaseResponse {
   /// {@macro create_release_response}
-  const CreateReleaseResponse({
-    required this.release,
-  });
+  const CreateReleaseResponse({required this.release});
 
   /// Converts a `Map<String, dynamic>` to a [CreateReleaseResponse]
   factory CreateReleaseResponse.fromJson(Map<String, dynamic> json) =>

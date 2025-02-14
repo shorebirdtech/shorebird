@@ -50,9 +50,9 @@ void main() {
       when(() => results['provider']).thenReturn(null);
       when(() => auth.isAuthenticated).thenReturn(false);
       when(() => auth.client).thenReturn(httpClient);
-      when(() => auth.credentialsFilePath).thenReturn(
-        p.join(applicationConfigHome.path, 'credentials.json'),
-      );
+      when(
+        () => auth.credentialsFilePath,
+      ).thenReturn(p.join(applicationConfigHome.path, 'credentials.json'));
       when(
         () => auth.login(any(), prompt: any(named: 'prompt')),
       ).thenAnswer((_) async {});
@@ -83,10 +83,7 @@ void main() {
           await runWithOverrides(() => command.run());
 
           verify(
-            () => auth.login(
-              provider,
-              prompt: any(named: 'prompt'),
-            ),
+            () => auth.login(provider, prompt: any(named: 'prompt')),
           ).called(1);
         });
       });
@@ -109,18 +106,17 @@ void main() {
           await runWithOverrides(() => command.run());
 
           verify(
-            () => auth.login(
-              provider,
-              prompt: any(named: 'prompt'),
-            ),
+            () => auth.login(provider, prompt: any(named: 'prompt')),
           ).called(1);
-          final captured = verify(
-            () => logger.chooseOne<AuthProvider>(
-              any(),
-              choices: any(named: 'choices'),
-              display: captureAny(named: 'display'),
-            ),
-          ).captured.single as String Function(AuthProvider);
+          final captured =
+              verify(
+                    () => logger.chooseOne<AuthProvider>(
+                      any(),
+                      choices: any(named: 'choices'),
+                      display: captureAny(named: 'display'),
+                    ),
+                  ).captured.single
+                  as String Function(AuthProvider);
           expect(captured(AuthProvider.google), contains('Google'));
         });
       });
@@ -132,29 +128,28 @@ void main() {
         when(() => auth.email).thenReturn(email);
       });
 
-      test('prints message and exits with code 0 when already logged in',
-          () async {
-        final result = await runWithOverrides(command.run);
+      test(
+        'prints message and exits with code 0 when already logged in',
+        () async {
+          final result = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.success.code));
-        verify(
-          () => logger.info('You are already logged in as <$email>.'),
-        ).called(1);
-        verify(
-          () => logger.info(
-            '''Run ${lightCyan.wrap('shorebird logout')} to log out and try again.''',
-          ),
-        ).called(1);
-        verifyNever(() => auth.login(any(), prompt: any(named: 'prompt')));
-      });
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.info('You are already logged in as <$email>.'),
+          ).called(1);
+          verify(
+            () => logger.info(
+              '''Run ${lightCyan.wrap('shorebird logout')} to log out and try again.''',
+            ),
+          ).called(1);
+          verifyNever(() => auth.login(any(), prompt: any(named: 'prompt')));
+        },
+      );
     });
 
     test('exits with code 70 if no user is found', () async {
       when(
-        () => auth.login(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
+        () => auth.login(any(), prompt: any(named: 'prompt')),
       ).thenThrow(UserNotFoundException(email: email));
 
       final result = await runWithOverrides(command.run);
@@ -171,42 +166,26 @@ void main() {
     test('exits with code 70 when error occurs', () async {
       final error = Exception('oops something went wrong!');
       when(
-        () => auth.login(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
+        () => auth.login(any(), prompt: any(named: 'prompt')),
       ).thenThrow(error);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
 
-      verify(
-        () => auth.login(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
-      ).called(1);
+      verify(() => auth.login(any(), prompt: any(named: 'prompt'))).called(1);
       verify(() => logger.err(error.toString())).called(1);
     });
 
     test('exits with code 0 when logged in successfully', () async {
       when(
-        () => auth.login(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
+        () => auth.login(any(), prompt: any(named: 'prompt')),
       ).thenAnswer((_) async {});
       when(() => auth.email).thenReturn(email);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
-      verify(
-        () => auth.login(
-          any(),
-          prompt: any(named: 'prompt'),
-        ),
-      ).called(1);
+      verify(() => auth.login(any(), prompt: any(named: 'prompt'))).called(1);
       verify(
         () => logger.info(
           any(that: contains('You are now logged in as <$email>.')),

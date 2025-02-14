@@ -32,12 +32,12 @@ void main() {
 
     group('when given a valid exe', () {
       late File file;
-      final winArchivesFixturesBasePath =
-          p.join('test', 'fixtures', 'win_archives');
-      final releasePath = p.join(
-        winArchivesFixturesBasePath,
-        'release.zip',
+      final winArchivesFixturesBasePath = p.join(
+        'test',
+        'fixtures',
+        'win_archives',
       );
+      final releasePath = p.join(winArchivesFixturesBasePath, 'release.zip');
 
       setUp(() async {
         final tempDir = Directory.systemTemp.createTempSync();

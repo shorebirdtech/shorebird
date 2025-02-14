@@ -107,15 +107,13 @@ class Gradlew {
       args,
       runInShell: true,
       workingDirectory: p.dirname(executablePath),
-      environment: {
-        if (!javaHome.isNullOrEmpty) 'JAVA_HOME': javaHome!,
-      },
+      environment: {if (!javaHome.isNullOrEmpty) 'JAVA_HOME': javaHome!},
     );
 
     if (result.exitCode != ExitCode.success.code) {
-      if (result.stderr
-          .toString()
-          .contains(IncompatibleGradleException.errorPattern)) {
+      if (result.stderr.toString().contains(
+        IncompatibleGradleException.errorPattern,
+      )) {
         throw IncompatibleGradleException();
       }
     }
@@ -142,10 +140,11 @@ class Gradlew {
   /// Return the set of product flavors configured for the app at [projectRoot].
   /// Returns an empty set for apps that do not use product flavors.
   Future<Set<String>> productFlavors(String projectRoot) async {
-    final result = await _run(
-      ['app:tasks', '--all', '--console=auto'],
-      projectRoot,
-    );
+    final result = await _run([
+      'app:tasks',
+      '--all',
+      '--console=auto',
+    ], projectRoot);
 
     if (result.exitCode != 0) {
       throw Exception('${result.stdout}\n${result.stderr}');

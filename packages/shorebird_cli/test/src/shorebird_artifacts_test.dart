@@ -44,8 +44,9 @@ void main() {
         () => cache.getArtifactDirectory(any()),
       ).thenReturn(artifactDirectory);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
-      when(() => shorebirdEnv.shorebirdEngineRevision)
-          .thenReturn(engineRevision);
+      when(
+        () => shorebirdEnv.shorebirdEngineRevision,
+      ).thenReturn(engineRevision);
     });
 
     group('getArtifactPath', () {
@@ -220,9 +221,7 @@ void main() {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         () => body(),
-        values: {
-          engineConfigRef.overrideWith(() => engineConfig),
-        },
+        values: {engineConfigRef.overrideWith(() => engineConfig)},
       );
     }
 
@@ -235,18 +234,15 @@ void main() {
       when(
         () => engineConfig.localEngineSrcPath,
       ).thenReturn(localEngineSrcPath);
-      when(
-        () => engineConfig.localEngine,
-      ).thenReturn(localEngine);
+      when(() => engineConfig.localEngine).thenReturn(localEngine);
     });
 
     group('getArtifactPath', () {
       test('returns correct path for aot tools', () {
         expect(
           runWithOverrides(
-            () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.aotTools,
-            ),
+            () =>
+                artifacts.getArtifactPath(artifact: ShorebirdArtifact.aotTools),
           ),
           equals(
             p.join(

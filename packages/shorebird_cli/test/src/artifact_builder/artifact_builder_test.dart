@@ -47,8 +47,9 @@ void main() {
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-          shorebirdAndroidArtifactsRef
-              .overrideWith(() => shorebirdAndroidArtifacts),
+          shorebirdAndroidArtifactsRef.overrideWith(
+            () => shorebirdAndroidArtifacts,
+          ),
         },
       );
     }
@@ -79,8 +80,9 @@ void main() {
           useVendedFlutter: false,
         ),
       ).thenAnswer((_) async => pubGetProcessResult);
-      when(() => pubGetProcessResult.exitCode)
-          .thenReturn(ExitCode.success.code);
+      when(
+        () => pubGetProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
       when(
         () => shorebirdProcess.run(
           any(),
@@ -99,25 +101,18 @@ void main() {
         ),
       ).thenAnswer((_) async => buildProcess);
       when(() => buildProcess.stdout).thenAnswer(
-        (_) => Stream.fromIterable(
-          [
-            'Some build output',
-          ].map(utf8.encode),
-        ),
+        (_) => Stream.fromIterable(['Some build output'].map(utf8.encode)),
       );
       when(() => buildProcess.stderr).thenAnswer(
-        (_) => Stream.fromIterable(
-          [
-            'Some build output',
-          ].map(utf8.encode),
-        ),
+        (_) => Stream.fromIterable(['Some build output'].map(utf8.encode)),
       );
       when(() => buildProcess.exitCode).thenAnswer((_) async => 0);
 
       when(() => logger.progress(any())).thenReturn(MockProgress());
       when(() => logger.info(any())).thenReturn(null);
-      when(() => operatingSystemInterface.which('flutter'))
-          .thenReturn('/path/to/flutter');
+      when(
+        () => operatingSystemInterface.which('flutter'),
+      ).thenReturn('/path/to/flutter');
       when(() => shorebirdEnv.flutterRevision).thenReturn('1234');
 
       when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(projectRoot);
@@ -125,13 +120,12 @@ void main() {
       builder = ArtifactBuilder();
     });
 
-    void verifyCorrectFlutterPubGet(
-      Future<void> Function() testCall,
-    ) {
+    void verifyCorrectFlutterPubGet(Future<void> Function() testCall) {
       group('when flutter is installed', () {
         setUp(() {
-          when(() => operatingSystemInterface.which('flutter'))
-              .thenReturn('/path/to/flutter');
+          when(
+            () => operatingSystemInterface.which('flutter'),
+          ).thenReturn('/path/to/flutter');
         });
 
         test('runs flutter pub get with system flutter', () async {
@@ -153,21 +147,20 @@ void main() {
           await testCall();
 
           verify(
-            () => logger.warn(
-              '''
+            () => logger.warn('''
 Build was successful, but `flutter pub get` failed to run after the build completed. You may see unexpected behavior in VS Code.
 
 Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCodeUrl.toLink()}.
-''',
-            ),
+'''),
           ).called(1);
         });
       });
 
       group('when flutter is not installed', () {
         setUp(() {
-          when(() => operatingSystemInterface.which('flutter'))
-              .thenReturn(null);
+          when(
+            () => operatingSystemInterface.which('flutter'),
+          ).thenReturn(null);
         });
 
         test('does not attempt to run flutter pub get', () async {
@@ -219,20 +212,16 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         );
 
         verify(
-          () => shorebirdProcess.start(
-            'flutter',
-            [
-              'build',
-              'appbundle',
-              '--release',
-              '--flavor=flavor',
-              '--target=target',
-              '--target-platform=android-arm64',
-              '--foo',
-              'bar',
-            ],
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => shorebirdProcess.start('flutter', [
+            'build',
+            'appbundle',
+            '--release',
+            '--flavor=flavor',
+            '--target=target',
+            '--target-platform=android-arm64',
+            '--foo',
+            'bar',
+          ], runInShell: any(named: 'runInShell')),
         ).called(1);
       });
 
@@ -252,9 +241,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target-platform=android-arm64',
               ],
               runInShell: any(named: 'runInShell'),
-              environment: {
-                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-              },
+              environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).thenAnswer((_) async => buildProcess);
         });
@@ -281,9 +268,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target-platform=android-arm64',
               ],
               runInShell: any(named: 'runInShell'),
-              environment: {
-                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-              },
+              environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).called(1);
         });
@@ -356,29 +341,25 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           when(() => buildProcess.stdout).thenAnswer(
             (_) => Stream.fromIterable(
               [
-                'Some build output',
-                '[  ] > Task :app:bundleRelease',
-                'More build output',
-                '[  ] > Task :app:someOtherTask',
-                'Even more build output',
-              ]
+                    'Some build output',
+                    '[  ] > Task :app:bundleRelease',
+                    'More build output',
+                    '[  ] > Task :app:someOtherTask',
+                    'Even more build output',
+                  ]
                   .map((line) => '$line${Platform.lineTerminator}')
                   .map(utf8.encode),
             ),
           );
           when(() => buildProcess.stderr).thenAnswer(
-            (_) => Stream.fromIterable(
-              ['Some build output'].map(utf8.encode),
-            ),
+            (_) => Stream.fromIterable(['Some build output'].map(utf8.encode)),
           );
         });
 
         test('updates progress with gradle task names', () async {
           await expectLater(
             runWithOverrides(
-              () => builder.buildAppBundle(
-                buildProgress: progress,
-              ),
+              () => builder.buildAppBundle(buildProgress: progress),
             ),
             completes,
           );
@@ -389,21 +370,20 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           // Ensure we update the progress in the correct order and with the
           // correct messages, and reset to the base message after the build
           // completes.
-          verifyInOrder(
-            [
-              () => progress.updateDetailMessage('Task :app:bundleRelease'),
-              () => progress.updateDetailMessage('Task :app:someOtherTask'),
-              () => progress.updateDetailMessage(null),
-            ],
-          );
+          verifyInOrder([
+            () => progress.updateDetailMessage('Task :app:bundleRelease'),
+            () => progress.updateDetailMessage('Task :app:someOtherTask'),
+            () => progress.updateDetailMessage(null),
+          ]);
         });
       });
 
       group('after a build', () {
         group('when the build is successful', () {
           setUp(() {
-            when(() => buildProcess.exitCode)
-                .thenAnswer((_) async => ExitCode.success.code);
+            when(
+              () => buildProcess.exitCode,
+            ).thenAnswer((_) async => ExitCode.success.code);
           });
 
           verifyCorrectFlutterPubGet(
@@ -412,8 +392,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
           group('when the build fails', () {
             setUp(() {
-              when(() => buildProcess.exitCode)
-                  .thenAnswer((_) async => ExitCode.software.code);
+              when(
+                () => buildProcess.exitCode,
+              ).thenAnswer((_) async => ExitCode.software.code);
             });
 
             verifyCorrectFlutterPubGet(
@@ -461,20 +442,16 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         );
 
         verify(
-          () => shorebirdProcess.run(
-            'flutter',
-            [
-              'build',
-              'apk',
-              '--release',
-              '--flavor=flavor',
-              '--target=target',
-              '--target-platform=android-arm64',
-              '--foo',
-              'bar',
-            ],
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => shorebirdProcess.run('flutter', [
+            'build',
+            'apk',
+            '--release',
+            '--flavor=flavor',
+            '--target=target',
+            '--target-platform=android-arm64',
+            '--foo',
+            'bar',
+          ], runInShell: any(named: 'runInShell')),
         ).called(1);
       });
 
@@ -494,9 +471,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target-platform=android-arm64',
               ],
               runInShell: any(named: 'runInShell'),
-              environment: {
-                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-              },
+              environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).thenAnswer((_) async => buildProcessResult);
         });
@@ -523,9 +498,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target-platform=android-arm64',
               ],
               runInShell: any(named: 'runInShell'),
-              environment: {
-                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-              },
+              environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).called(1);
         });
@@ -592,8 +565,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       group('after a build', () {
         group('when the build is successful', () {
           setUp(() {
-            when(() => buildProcessResult.exitCode)
-                .thenReturn(ExitCode.success.code);
+            when(
+              () => buildProcessResult.exitCode,
+            ).thenReturn(ExitCode.success.code);
           });
 
           verifyCorrectFlutterPubGet(
@@ -602,8 +576,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
           group('when the build fails', () {
             setUp(() {
-              when(() => buildProcessResult.exitCode)
-                  .thenReturn(ExitCode.software.code);
+              when(
+                () => buildProcessResult.exitCode,
+              ).thenReturn(ExitCode.software.code);
             });
 
             verifyCorrectFlutterPubGet(
@@ -651,28 +626,25 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         );
 
         verify(
-          () => shorebirdProcess.run(
-            'flutter',
-            [
-              'build',
-              'aar',
-              '--no-debug',
-              '--no-profile',
-              '--build-number=1.0',
-              '--target-platform=android-arm64',
-              '--foo',
-              'bar',
-            ],
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => shorebirdProcess.run('flutter', [
+            'build',
+            'aar',
+            '--no-debug',
+            '--no-profile',
+            '--build-number=1.0',
+            '--target-platform=android-arm64',
+            '--foo',
+            'bar',
+          ], runInShell: any(named: 'runInShell')),
         ).called(1);
       });
 
       group('after a build', () {
         group('when the build is successful', () {
           setUp(() {
-            when(() => buildProcessResult.exitCode)
-                .thenReturn(ExitCode.success.code);
+            when(
+              () => buildProcessResult.exitCode,
+            ).thenReturn(ExitCode.success.code);
           });
 
           verifyCorrectFlutterPubGet(
@@ -683,8 +655,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
           group('when the build fails', () {
             setUp(() {
-              when(() => buildProcessResult.exitCode)
-                  .thenReturn(ExitCode.software.code);
+              when(
+                () => buildProcessResult.exitCode,
+              ).thenReturn(ExitCode.software.code);
             });
 
             verifyCorrectFlutterPubGet(
@@ -718,15 +691,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           () => artifactManager.linuxBundleDirectory,
         ).thenReturn(linuxBundleDirectory);
         when(
-          () => shorebirdProcess.start(
-            'flutter',
-            [
-              'build',
-              'linux',
-              '--release',
-            ],
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => shorebirdProcess.start('flutter', [
+            'build',
+            'linux',
+            '--release',
+          ], runInShell: any(named: 'runInShell')),
         ).thenAnswer((_) async => buildProcess);
       });
 
@@ -736,11 +705,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             () => buildProcess.exitCode,
           ).thenAnswer((_) async => ExitCode.software.code);
           when(() => buildProcess.stderr).thenAnswer(
-            (_) => Stream.fromIterable(
-              [
-                'stderr contents',
-              ].map(utf8.encode),
-            ),
+            (_) => Stream.fromIterable(['stderr contents'].map(utf8.encode)),
           );
         });
 
@@ -761,22 +726,16 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       group('when target is provided', () {
         test('forwards target to flutter command', () async {
           await runWithOverrides(
-            () => builder.buildLinuxApp(
-              target: 'target.dart',
-            ),
+            () => builder.buildLinuxApp(target: 'target.dart'),
           );
 
           verify(
-            () => shorebirdProcess.start(
-              'flutter',
-              [
-                'build',
-                'linux',
-                '--release',
-                '--target=target.dart',
-              ],
-              runInShell: any(named: 'runInShell'),
-            ),
+            () => shorebirdProcess.start('flutter', [
+              'build',
+              'linux',
+              '--release',
+              '--target=target.dart',
+            ], runInShell: any(named: 'runInShell')),
           ).called(1);
         });
       });
@@ -790,9 +749,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
         test('completes', () async {
           await expectLater(
-            runWithOverrides(
-              () => builder.buildLinuxApp(),
-            ),
+            runWithOverrides(() => builder.buildLinuxApp()),
             completes,
           );
         });
@@ -815,15 +772,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           verify(
             () => shorebirdProcess.start(
               'flutter',
-              [
-                'build',
-                'linux',
-                '--release',
-              ],
+              ['build', 'linux', '--release'],
               runInShell: any(named: 'runInShell'),
-              environment: {
-                'SHOREBIRD_PUBLIC_KEY': publicKey,
-              },
+              environment: {'SHOREBIRD_PUBLIC_KEY': publicKey},
             ),
           ).called(1);
         });
@@ -856,9 +807,8 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         late Directory dartToolDir;
 
         setUp(() {
-          dartToolDir = Directory(
-            p.join(projectRoot.path, '.dart_tool'),
-          )..createSync(recursive: true);
+          dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'))
+            ..createSync(recursive: true);
         });
 
         test('deletes .dart_tool directory before building', () async {
@@ -875,11 +825,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           verify(
             () => shorebirdProcess.start(
               'flutter',
-              [
-                'build',
-                'macos',
-                '--release',
-              ],
+              ['build', 'macos', '--release'],
               runInShell: true,
               environment: any(named: 'environment'),
             ),
@@ -895,38 +841,24 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           when(
             () => shorebirdProcess.start(
               'flutter',
-              [
-                'build',
-                'macos',
-                '--release',
-              ],
+              ['build', 'macos', '--release'],
               runInShell: any(named: 'runInShell'),
-              environment: {
-                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-              },
+              environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).thenAnswer((_) async => buildProcess);
         });
 
         test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
           await runWithOverrides(
-            () => builder.buildMacos(
-              base64PublicKey: base64PublicKey,
-            ),
+            () => builder.buildMacos(base64PublicKey: base64PublicKey),
           );
 
           verify(
             () => shorebirdProcess.start(
               'flutter',
-              [
-                'build',
-                'macos',
-                '--release',
-              ],
+              ['build', 'macos', '--release'],
               runInShell: any(named: 'runInShell'),
-              environment: {
-                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-              },
+              environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).called(1);
         });
@@ -943,35 +875,30 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         );
 
         verify(
-          () => shorebirdProcess.start(
-            'flutter',
-            [
-              'build',
-              'macos',
-              '--release',
-              '--flavor=flavor',
-              '--target=target.dart',
-              '--no-codesign',
-              '--foo',
-              'bar',
-            ],
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => shorebirdProcess.start('flutter', [
+            'build',
+            'macos',
+            '--release',
+            '--flavor=flavor',
+            '--target=target.dart',
+            '--no-codesign',
+            '--foo',
+            'bar',
+          ], runInShell: any(named: 'runInShell')),
         ).called(1);
       });
 
       group('when the build fails', () {
         group('with non-zero exit code', () {
           setUp(() {
-            when(() => buildProcess.exitCode)
-                .thenAnswer((_) async => ExitCode.software.code);
+            when(
+              () => buildProcess.exitCode,
+            ).thenAnswer((_) async => ExitCode.software.code);
           });
 
           test('throws ArtifactBuildException', () {
             expect(
-              () => runWithOverrides(
-                () => builder.buildMacos(codesign: false),
-              ),
+              () => runWithOverrides(() => builder.buildMacos(codesign: false)),
               throwsA(isA<ArtifactBuildException>()),
             );
           });
@@ -981,11 +908,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       group('when an app.dill file is not found in build stdout', () {
         setUp(() {
           when(() => buildProcess.stdout).thenAnswer(
-            (_) => Stream.fromIterable(
-              [
-                'no app.dill',
-              ].map(utf8.encode),
-            ),
+            (_) => Stream.fromIterable(['no app.dill'].map(utf8.encode)),
           );
         });
 
@@ -995,15 +918,15 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             throwsA(
               isA<ArtifactBuildException>()
                   .having(
-                (e) => e.message,
-                'message',
-                'Unable to find app.dill file.',
-              )
+                    (e) => e.message,
+                    'message',
+                    'Unable to find app.dill file.',
+                  )
                   .having(
-                (e) => e.fixRecommendation,
-                'fixRecommendation',
-                '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
-              ),
+                    (e) => e.fixRecommendation,
+                    'fixRecommendation',
+                    '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
+                  ),
             ),
           );
         });
@@ -1018,9 +941,8 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           });
 
           verifyCorrectFlutterPubGet(
-            () async => runWithOverrides(
-              () => builder.buildMacos(codesign: false),
-            ),
+            () async =>
+                runWithOverrides(() => builder.buildMacos(codesign: false)),
           );
 
           group('when the build fails', () {
@@ -1032,9 +954,8 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
             verifyCorrectFlutterPubGet(
               () async => expectLater(
-                () async => runWithOverrides(
-                  () => builder.buildMacos(codesign: false),
-                ),
+                () async =>
+                    runWithOverrides(() => builder.buildMacos(codesign: false)),
                 throwsA(isA<ArtifactBuildException>()),
               ),
             );
@@ -1065,11 +986,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           verify(
             () => shorebirdProcess.start(
               'flutter',
-              [
-                'build',
-                'ipa',
-                '--release',
-              ],
+              ['build', 'ipa', '--release'],
               runInShell: true,
               environment: any(named: 'environment'),
             ),
@@ -1085,38 +1002,24 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           when(
             () => shorebirdProcess.start(
               'flutter',
-              [
-                'build',
-                'ipa',
-                '--release',
-              ],
+              ['build', 'ipa', '--release'],
               runInShell: any(named: 'runInShell'),
-              environment: {
-                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-              },
+              environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).thenAnswer((_) async => buildProcess);
         });
 
         test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
           await runWithOverrides(
-            () => builder.buildIpa(
-              base64PublicKey: base64PublicKey,
-            ),
+            () => builder.buildIpa(base64PublicKey: base64PublicKey),
           );
 
           verify(
             () => shorebirdProcess.start(
               'flutter',
-              [
-                'build',
-                'ipa',
-                '--release',
-              ],
+              ['build', 'ipa', '--release'],
               runInShell: any(named: 'runInShell'),
-              environment: {
-                'SHOREBIRD_PUBLIC_KEY': base64PublicKey,
-              },
+              environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).called(1);
         });
@@ -1133,20 +1036,16 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         );
 
         verify(
-          () => shorebirdProcess.start(
-            'flutter',
-            [
-              'build',
-              'ipa',
-              '--release',
-              '--flavor=flavor',
-              '--target=target.dart',
-              '--no-codesign',
-              '--foo',
-              'bar',
-            ],
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => shorebirdProcess.start('flutter', [
+            'build',
+            'ipa',
+            '--release',
+            '--flavor=flavor',
+            '--target=target.dart',
+            '--no-codesign',
+            '--foo',
+            'bar',
+          ], runInShell: any(named: 'runInShell')),
         ).called(1);
       });
 
@@ -1175,25 +1074,17 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '[+5925 ms] Command line invocation:',
                 '/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -configuration Release VERBOSE_SCRIPT_LOGGING=YES -workspace Runner.xcworkspace -scheme Runner -sdk iphoneos -destination generic/platform=iOS SCRIPT_OUTPUT_STREAM_FILE=/var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout -resultBundlePath /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/temporary_xcresult_bundle -resultBundleVersion 3 FLUTTER_SUPPRESS_ANALYTICS=true COMPILER_INDEX_STORE_ENABLE=NO -archivePath /Users/bryanoltman/Documents/sandbox/notification_extension/build/ios/archive/Runner archive',
                 // cSpell:enable
-              ]
-                  .map((line) => '$line${Platform.lineTerminator}')
-                  .map(utf8.encode),
+              ].map((line) => '$line${Platform.lineTerminator}').map(utf8.encode),
             ),
           );
           when(() => buildProcess.stderr).thenAnswer(
-            (_) => Stream.fromIterable(
-              ['Some build output'].map(utf8.encode),
-            ),
+            (_) => Stream.fromIterable(['Some build output'].map(utf8.encode)),
           );
         });
 
         test('updates progress with known build steps', () async {
           await expectLater(
-            runWithOverrides(
-              () => builder.buildIpa(
-                buildProgress: progress,
-              ),
-            ),
+            runWithOverrides(() => builder.buildIpa(buildProgress: progress)),
             completes,
           );
 
@@ -1203,24 +1094,22 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           // Ensure we update the progress in the correct order and with the
           // correct messages, and reset to the base message after the build
           // completes.
-          verifyInOrder(
-            [
-              () => progress.updateDetailMessage('Collecting schemes'),
-              () => progress.updateDetailMessage('Running Xcode build'),
-              () => progress.updateDetailMessage('Running Xcode build'),
-              () => progress.updateDetailMessage(
-                    'Compiling, linking and signing',
-                  ),
-            ],
-          );
+          verifyInOrder([
+            () => progress.updateDetailMessage('Collecting schemes'),
+            () => progress.updateDetailMessage('Running Xcode build'),
+            () => progress.updateDetailMessage('Running Xcode build'),
+            () =>
+                progress.updateDetailMessage('Compiling, linking and signing'),
+          ]);
         });
       });
 
       group('when the build fails', () {
         group('with non-zero exit code', () {
           setUp(() {
-            when(() => buildProcess.exitCode)
-                .thenAnswer((_) async => ExitCode.software.code);
+            when(
+              () => buildProcess.exitCode,
+            ).thenAnswer((_) async => ExitCode.software.code);
           });
 
           test('throws ArtifactBuildException', () {
@@ -1233,8 +1122,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
         group('with error message in stderr (Xcode <= 15.x)', () {
           setUp(() {
-            when(() => buildProcess.exitCode)
-                .thenAnswer((_) async => ExitCode.success.code);
+            when(
+              () => buildProcess.exitCode,
+            ).thenAnswer((_) async => ExitCode.success.code);
             when(() => buildProcess.stderr).thenAnswer(
               (_) => Stream.fromIterable(
                 [
@@ -1266,8 +1156,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found''',
                     .having(
                       (e) => e.stderr,
                       'stderr',
-                      const LineSplitter().convert(
-                        '''
+                      const LineSplitter().convert('''
 Encountered error while creating the IPA:
 error: exportArchive: Communication with Apple failed
 error: exportArchive: No signing certificate "iOS Distribution" found
@@ -1280,8 +1169,7 @@ error: exportArchive: No signing certificate "iOS Distribution" found
 error: exportArchive: Communication with Apple failed
 error: exportArchive: No signing certificate "iOS Distribution" found
 error: exportArchive: Communication with Apple failed
-error: exportArchive: No signing certificate "iOS Distribution" found''',
-                      ),
+error: exportArchive: No signing certificate "iOS Distribution" found'''),
                     ),
               ),
             );
@@ -1290,8 +1178,9 @@ error: exportArchive: No signing certificate "iOS Distribution" found''',
 
         group('with error message in stderr (Xcode >= 16.x)', () {
           setUp(() {
-            when(() => buildProcess.exitCode)
-                .thenAnswer((_) async => ExitCode.success.code);
+            when(
+              () => buildProcess.exitCode,
+            ).thenAnswer((_) async => ExitCode.success.code);
             when(() => buildProcess.stderr).thenAnswer(
               (_) => Stream.fromIterable(
                 [
@@ -1319,11 +1208,7 @@ error: exportArchive No signing certificate "iOS Distribution" found''',
               () => runWithOverrides(() => builder.buildIpa(codesign: false)),
               throwsA(
                 isA<ArtifactBuildException>()
-                    .having(
-                      (e) => e.message,
-                      'message',
-                      'Failed to build',
-                    )
+                    .having((e) => e.message, 'message', 'Failed to build')
                     .having(
                       (e) => e.stderr,
                       'stderr',
@@ -1351,11 +1236,7 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
       group('when an app.dill file is not found in build stdout', () {
         setUp(() {
           when(() => buildProcess.stdout).thenAnswer(
-            (_) => Stream.fromIterable(
-              [
-                'no app.dill',
-              ].map(utf8.encode),
-            ),
+            (_) => Stream.fromIterable(['no app.dill'].map(utf8.encode)),
           );
         });
 
@@ -1365,15 +1246,15 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
             throwsA(
               isA<ArtifactBuildException>()
                   .having(
-                (e) => e.message,
-                'message',
-                'Unable to find app.dill file.',
-              )
+                    (e) => e.message,
+                    'message',
+                    'Unable to find app.dill file.',
+                  )
                   .having(
-                (e) => e.fixRecommendation,
-                'fixRecommendation',
-                '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
-              ),
+                    (e) => e.fixRecommendation,
+                    'fixRecommendation',
+                    '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
+                  ),
             ),
           );
         });
@@ -1388,9 +1269,8 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
           });
 
           verifyCorrectFlutterPubGet(
-            () async => runWithOverrides(
-              () => builder.buildIpa(codesign: false),
-            ),
+            () async =>
+                runWithOverrides(() => builder.buildIpa(codesign: false)),
           );
 
           group('when the build fails', () {
@@ -1402,9 +1282,8 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
 
             verifyCorrectFlutterPubGet(
               () async => expectLater(
-                () async => runWithOverrides(
-                  () => builder.buildIpa(codesign: false),
-                ),
+                () async =>
+                    runWithOverrides(() => builder.buildIpa(codesign: false)),
                 throwsA(isA<ArtifactBuildException>()),
               ),
             );
@@ -1415,13 +1294,11 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
 
     group('buildIosFramework', () {
       setUp(() {
-        when(() => buildProcessResult.stdout).thenReturn(
-          '''
+        when(() => buildProcessResult.stdout).thenReturn('''
            [        ] Will strip AOT snapshot manually after build and dSYM generation.
            [        ] executing: /bin/cache/artifacts/engine/ios-release/gen_snapshot_arm64 --deterministic --snapshot_kind=app-aot-assembly --assembly=snapshot_assembly.S /path/to/app.dill
            [+3688 ms] executing: sysctl hw.optional.arm64
-''',
-        );
+''');
       });
 
       test('invokes the correct flutter build command', () async {
@@ -1430,12 +1307,7 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
         verify(
           () => shorebirdProcess.run(
             'flutter',
-            [
-              'build',
-              'ios-framework',
-              '--no-debug',
-              '--no-profile',
-            ],
+            ['build', 'ios-framework', '--no-debug', '--no-profile'],
             runInShell: true,
             environment: any(named: 'environment'),
           ),
@@ -1449,26 +1321,23 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
         );
 
         verify(
-          () => shorebirdProcess.run(
-            'flutter',
-            [
-              'build',
-              'ios-framework',
-              '--no-debug',
-              '--no-profile',
-              '--foo',
-              'bar',
-            ],
-            runInShell: true,
-          ),
+          () => shorebirdProcess.run('flutter', [
+            'build',
+            'ios-framework',
+            '--no-debug',
+            '--no-profile',
+            '--foo',
+            'bar',
+          ], runInShell: true),
         ).called(1);
       });
 
       group('after a build', () {
         group('when the build is successful', () {
           setUp(() {
-            when(() => buildProcessResult.exitCode)
-                .thenReturn(ExitCode.success.code);
+            when(
+              () => buildProcessResult.exitCode,
+            ).thenReturn(ExitCode.success.code);
           });
 
           verifyCorrectFlutterPubGet(
@@ -1486,15 +1355,15 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
                 throwsA(
                   isA<ArtifactBuildException>()
                       .having(
-                    (e) => e.message,
-                    'message',
-                    'Unable to find app.dill file.',
-                  )
+                        (e) => e.message,
+                        'message',
+                        'Unable to find app.dill file.',
+                      )
                       .having(
-                    (e) => e.fixRecommendation,
-                    'fixRecommendation',
-                    '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
-                  ),
+                        (e) => e.fixRecommendation,
+                        'fixRecommendation',
+                        '''Please file a bug at https://github.com/shorebirdtech/shorebird/issues/new with the logs for this command.''',
+                      ),
                 ),
               );
             });
@@ -1502,8 +1371,9 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
 
           group('when the build fails', () {
             setUp(() {
-              when(() => buildProcessResult.exitCode)
-                  .thenReturn(ExitCode.software.code);
+              when(
+                () => buildProcessResult.exitCode,
+              ).thenReturn(ExitCode.software.code);
             });
 
             verifyCorrectFlutterPubGet(
@@ -1536,17 +1406,14 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
           );
 
           verify(
-            () => shorebirdProcess.run(
-              'gen_snapshot',
-              [
-                '--deterministic',
-                '--snapshot-kind=app-aot-elf',
-                '--elf=/path/to/out',
-                '--foo',
-                'bar',
-                '/app/dill/path',
-              ],
-            ),
+            () => shorebirdProcess.run('gen_snapshot', [
+              '--deterministic',
+              '--snapshot-kind=app-aot-elf',
+              '--elf=/path/to/out',
+              '--foo',
+              'bar',
+              '/app/dill/path',
+            ]),
           ).called(1);
         });
 
@@ -1605,15 +1472,11 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
           () => artifactManager.getWindowsReleaseDirectory(),
         ).thenReturn(windowsReleaseDirectory);
         when(
-          () => shorebirdProcess.start(
-            'flutter',
-            [
-              'build',
-              'windows',
-              '--release',
-            ],
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => shorebirdProcess.start('flutter', [
+            'build',
+            'windows',
+            '--release',
+          ], runInShell: any(named: 'runInShell')),
         ).thenAnswer((_) async => buildProcess);
       });
 
@@ -1623,11 +1486,7 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
             () => buildProcess.exitCode,
           ).thenAnswer((_) async => ExitCode.software.code);
           when(() => buildProcess.stderr).thenAnswer(
-            (_) => Stream.fromIterable(
-              [
-                'stderr contents',
-              ].map(utf8.encode),
-            ),
+            (_) => Stream.fromIterable(['stderr contents'].map(utf8.encode)),
           );
         });
 
@@ -1681,15 +1540,9 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
           verify(
             () => shorebirdProcess.start(
               'flutter',
-              [
-                'build',
-                'windows',
-                '--release',
-              ],
+              ['build', 'windows', '--release'],
               runInShell: any(named: 'runInShell'),
-              environment: {
-                'SHOREBIRD_PUBLIC_KEY': publicKey,
-              },
+              environment: {'SHOREBIRD_PUBLIC_KEY': publicKey},
             ),
           ).called(1);
         });

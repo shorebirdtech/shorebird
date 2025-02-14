@@ -126,8 +126,7 @@ void main() {
         ).called(1);
       });
 
-      test(
-          'does not replace flutter with our local flutter if'
+      test('does not replace flutter with our local flutter if'
           ' useVendedFlutter is false', () async {
         await runWithOverrides(
           () => shorebirdProcess.run(
@@ -206,9 +205,7 @@ void main() {
           localEngineHost: 'host_release',
         );
         final localEngineSrcPath = p.join('path', 'to', 'engine', 'src');
-        shorebirdProcess = ShorebirdProcess(
-          processWrapper: processWrapper,
-        );
+        shorebirdProcess = ShorebirdProcess(processWrapper: processWrapper);
 
         await runWithOverrides(() => shorebirdProcess.run('flutter', []));
 
@@ -231,12 +228,8 @@ void main() {
       test('logs stdout and stderr', () async {
         await runWithOverrides(() => shorebirdProcess.run('flutter', []));
 
-        verify(
-          () => logger.detail(any(that: contains('stdout'))),
-        ).called(1);
-        verify(
-          () => logger.detail(any(that: contains('stderr'))),
-        ).called(1);
+        verify(() => logger.detail(any(that: contains('stdout')))).called(1);
+        verify(() => logger.detail(any(that: contains('stderr')))).called(1);
       });
     });
 
@@ -300,28 +293,29 @@ void main() {
       });
 
       test(
-          '''does not replace flutter with our local flutter if useVendedFlutter is false''',
-          () {
-        runWithOverrides(
-          () => shorebirdProcess.runSync(
-            'flutter',
-            ['--version'],
-            runInShell: true,
-            workingDirectory: '~',
-            useVendedFlutter: false,
-          ),
-        );
+        '''does not replace flutter with our local flutter if useVendedFlutter is false''',
+        () {
+          runWithOverrides(
+            () => shorebirdProcess.runSync(
+              'flutter',
+              ['--version'],
+              runInShell: true,
+              workingDirectory: '~',
+              useVendedFlutter: false,
+            ),
+          );
 
-        verify(
-          () => processWrapper.runSync(
-            'flutter',
-            ['--version', '--verbose'],
-            runInShell: true,
-            environment: {},
-            workingDirectory: '~',
-          ),
-        ).called(1);
-      });
+          verify(
+            () => processWrapper.runSync(
+              'flutter',
+              ['--version', '--verbose'],
+              runInShell: true,
+              environment: {},
+              workingDirectory: '~',
+            ),
+          ).called(1);
+        },
+      );
 
       test('Updates environment if useVendedFlutter is true', () {
         runWithOverrides(
@@ -346,31 +340,28 @@ void main() {
         ).called(1);
       });
 
-      test(
-        'Makes no changes to environment if useVendedFlutter is false',
-        () {
-          runWithOverrides(
-            () => shorebirdProcess.runSync(
-              'flutter',
-              ['--version'],
-              runInShell: true,
-              workingDirectory: '~',
-              useVendedFlutter: false,
-              environment: {'ENV_VAR': 'asdfasdf'},
-            ),
-          );
+      test('Makes no changes to environment if useVendedFlutter is false', () {
+        runWithOverrides(
+          () => shorebirdProcess.runSync(
+            'flutter',
+            ['--version'],
+            runInShell: true,
+            workingDirectory: '~',
+            useVendedFlutter: false,
+            environment: {'ENV_VAR': 'asdfasdf'},
+          ),
+        );
 
-          verify(
-            () => processWrapper.runSync(
-              'flutter',
-              ['--version', '--verbose'],
-              runInShell: true,
-              workingDirectory: '~',
-              environment: {'ENV_VAR': 'asdfasdf'},
-            ),
-          ).called(1);
-        },
-      );
+        verify(
+          () => processWrapper.runSync(
+            'flutter',
+            ['--version', '--verbose'],
+            runInShell: true,
+            workingDirectory: '~',
+            environment: {'ENV_VAR': 'asdfasdf'},
+          ),
+        ).called(1);
+      });
 
       group('when log level is verbose', () {
         setUp(() {
@@ -378,9 +369,7 @@ void main() {
         });
 
         test('passes --verbose to flutter executable', () {
-          runWithOverrides(
-            () => shorebirdProcess.runSync('flutter', []),
-          );
+          runWithOverrides(() => shorebirdProcess.runSync('flutter', []));
 
           verify(
             () => processWrapper.runSync(
@@ -403,10 +392,12 @@ void main() {
           test('logs stdout and stderr if present', () {
             runWithOverrides(() => shorebirdProcess.runSync('flutter', []));
 
-            verify(() => logger.detail(any(that: contains('stdout'))))
-                .called(1);
-            verify(() => logger.detail(any(that: contains('stderr'))))
-                .called(1);
+            verify(
+              () => logger.detail(any(that: contains('stdout'))),
+            ).called(1);
+            verify(
+              () => logger.detail(any(that: contains('stderr'))),
+            ).called(1);
           });
         });
       });
@@ -426,11 +417,7 @@ void main() {
 
       test('forwards non-flutter executables to Process.run', () async {
         await runWithOverrides(
-          () => shorebirdProcess.start(
-            'git',
-            ['pull'],
-            runInShell: true,
-          ),
+          () => shorebirdProcess.start('git', ['pull'], runInShell: true),
         );
 
         verify(
@@ -462,8 +449,7 @@ void main() {
         ).called(1);
       });
 
-      test(
-          'does not replace flutter with our local flutter if'
+      test('does not replace flutter with our local flutter if'
           ' useVendedFlutter is false', () async {
         await runWithOverrides(
           () => shorebirdProcess.start(
@@ -502,10 +488,7 @@ void main() {
             ),
             ['--version', '--verbose'],
             runInShell: true,
-            environment: {
-              'ENV_VAR': 'asdfasdf',
-              ...flutterStorageBaseUrlEnv,
-            },
+            environment: {'ENV_VAR': 'asdfasdf', ...flutterStorageBaseUrlEnv},
           ),
         ).called(1);
       });

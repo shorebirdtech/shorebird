@@ -9,32 +9,31 @@ part of 'update_release_request.dart';
 // **************************************************************************
 
 UpdateReleaseRequest _$UpdateReleaseRequestFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'UpdateReleaseRequest',
-      json,
-      ($checkedConvert) {
-        final val = UpdateReleaseRequest(
-          status: $checkedConvert(
-              'status', (v) => $enumDecodeNullable(_$ReleaseStatusEnumMap, v)),
-          platform: $checkedConvert('platform',
-              (v) => $enumDecodeNullable(_$ReleasePlatformEnumMap, v)),
-          metadata:
-              $checkedConvert('metadata', (v) => v as Map<String, dynamic>?),
-          notes: $checkedConvert('notes', (v) => v as String?),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('UpdateReleaseRequest', json, ($checkedConvert) {
+  final val = UpdateReleaseRequest(
+    status: $checkedConvert(
+      'status',
+      (v) => $enumDecodeNullable(_$ReleaseStatusEnumMap, v),
+    ),
+    platform: $checkedConvert(
+      'platform',
+      (v) => $enumDecodeNullable(_$ReleasePlatformEnumMap, v),
+    ),
+    metadata: $checkedConvert('metadata', (v) => v as Map<String, dynamic>?),
+    notes: $checkedConvert('notes', (v) => v as String?),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$UpdateReleaseRequestToJson(
-        UpdateReleaseRequest instance) =>
-    <String, dynamic>{
-      'status': _$ReleaseStatusEnumMap[instance.status],
-      'platform': _$ReleasePlatformEnumMap[instance.platform],
-      'metadata': instance.metadata,
-      'notes': instance.notes,
-    };
+  UpdateReleaseRequest instance,
+) => <String, dynamic>{
+  'status': _$ReleaseStatusEnumMap[instance.status],
+  'platform': _$ReleasePlatformEnumMap[instance.platform],
+  'metadata': instance.metadata,
+  'notes': instance.notes,
+};
 
 const _$ReleaseStatusEnumMap = {
   ReleaseStatus.draft: 'draft',

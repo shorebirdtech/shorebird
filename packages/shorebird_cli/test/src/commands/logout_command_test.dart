@@ -42,9 +42,7 @@ void main() {
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
-      verify(
-        () => logger.info('You are already logged out.'),
-      ).called(1);
+      verify(() => logger.info('You are already logged out.')).called(1);
     });
 
     test('exits with code 0 when logged out successfully', () async {

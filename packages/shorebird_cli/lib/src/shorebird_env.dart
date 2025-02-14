@@ -22,13 +22,13 @@ ShorebirdEnv get shorebirdEnv => read(shorebirdEnvRef);
 class ShorebirdEnv {
   /// {@macro shorebird_env}
   const ShorebirdEnv({String? flutterRevisionOverride})
-      : _flutterRevisionOverride = flutterRevisionOverride;
+    : _flutterRevisionOverride = flutterRevisionOverride;
 
   /// Copy the [ShorebirdEnv] and optionally override the flutter revision.
   ShorebirdEnv copyWith({String? flutterRevisionOverride}) => ShorebirdEnv(
-        flutterRevisionOverride:
-            flutterRevisionOverride ?? _flutterRevisionOverride,
-      );
+    flutterRevisionOverride:
+        flutterRevisionOverride ?? _flutterRevisionOverride,
+  );
 
   final String? _flutterRevisionOverride;
 
@@ -52,12 +52,7 @@ class ShorebirdEnv {
   /// The Shorebird engine revision.
   String get shorebirdEngineRevision {
     return File(
-      p.join(
-        flutterDirectory.path,
-        'bin',
-        'internal',
-        'engine.version',
-      ),
+      p.join(flutterDirectory.path, 'bin', 'internal', 'engine.version'),
     ).readAsStringSync().trim();
   }
 
@@ -84,13 +79,7 @@ class ShorebirdEnv {
   /// The root of the Shorebird-vended Flutter git checkout.
   Directory get flutterDirectory {
     return Directory(
-      p.join(
-        shorebirdRoot.path,
-        'bin',
-        'cache',
-        'flutter',
-        flutterRevision,
-      ),
+      p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter', flutterRevision),
     );
   }
 
@@ -221,7 +210,8 @@ class ShorebirdEnv {
   /// its default.
   Uri? get hostedUri {
     try {
-      final baseUrl = platform.environment['SHOREBIRD_HOSTED_URL'] ??
+      final baseUrl =
+          platform.environment['SHOREBIRD_HOSTED_URL'] ??
           getShorebirdYaml()?.baseUrl;
       return baseUrl == null ? null : Uri.tryParse(baseUrl);
     } on Exception {
@@ -238,34 +228,27 @@ class ShorebirdEnv {
   /// https://github.com/flutter/flutter/blob/0c10e1ca54ae74043909059e2ff56bf5dd0c3d23/packages/flutter_tools/lib/src/base/bot_detector.dart#L48-L69
   bool get isRunningOnCI =>
       platform.environment['BOT'] == 'true'
-
       // https://docs.travis-ci.com/user/environment-variables/#Default-Environment-Variables
       ||
       platform.environment['TRAVIS'] == 'true' ||
       platform.environment['CONTINUOUS_INTEGRATION'] == 'true' ||
       platform.environment.containsKey('CI') // Travis and AppVeyor
-
       // https://www.appveyor.com/docs/environment-variables/
       ||
       platform.environment.containsKey('APPVEYOR')
-
       // https://cirrus-ci.org/guide/writing-tasks/#environment-variables
       ||
       platform.environment.containsKey('CIRRUS_CI')
-
       // https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-env-vars.html
       ||
       (platform.environment.containsKey('AWS_REGION') &&
           platform.environment.containsKey('CODEBUILD_INITIATOR'))
-
       // https://wiki.jenkins.io/display/JENKINS/Building+a+software+project#Buildingasoftwareproject-belowJenkinsSetEnvironmentVariables
       ||
       platform.environment.containsKey('JENKINS_URL')
-
       // https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables
       ||
       platform.environment.containsKey('GITHUB_ACTIONS')
-
       // https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml
       ||
       platform.environment.containsKey('TF_BUILD');

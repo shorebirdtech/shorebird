@@ -12,7 +12,7 @@ import 'package:quiver/collection.dart';
 class ArtifactManifestClient {
   /// {@macro artifact_manifest_client}
   ArtifactManifestClient({http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+    : _httpClient = httpClient ?? http.Client();
 
   final http.Client _httpClient;
 
@@ -33,11 +33,9 @@ class ArtifactManifestClient {
     );
     final response = await _httpClient.get(url);
     if (response.statusCode != HttpStatus.ok) {
-      throw Exception(
-        '''
+      throw Exception('''
 Failed to fetch artifacts manifest for revision $revision.
-${response.statusCode} ${response.reasonPhrase}''',
-      );
+${response.statusCode} ${response.reasonPhrase}''');
     }
 
     return checkedYamlDecode(

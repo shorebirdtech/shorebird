@@ -44,364 +44,354 @@ import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
-  group(
-    IosPatcher,
-    () {
-      late AotTools aotTools;
-      late Apple apple;
-      late ArgParser argParser;
-      late ArgResults argResults;
-      late ArtifactBuilder artifactBuilder;
-      late ArtifactManager artifactManager;
-      late CodePushClientWrapper codePushClientWrapper;
-      late CodeSigner codeSigner;
-      late Doctor doctor;
-      late Directory flutterDirectory;
-      late Directory projectRoot;
-      late EngineConfig engineConfig;
-      late FlavorValidator flavorValidator;
-      late ShorebirdLogger logger;
-      late OperatingSystemInterface operatingSystemInterface;
-      late PatchDiffChecker patchDiffChecker;
-      late Progress progress;
-      late ShorebirdArtifacts shorebirdArtifacts;
-      late ShorebirdProcess shorebirdProcess;
-      late ShorebirdEnv shorebirdEnv;
-      late ShorebirdFlutter shorebirdFlutter;
-      late ShorebirdValidator shorebirdValidator;
-      late XcodeBuild xcodeBuild;
-      late IosPatcher patcher;
+  group(IosPatcher, () {
+    late AotTools aotTools;
+    late Apple apple;
+    late ArgParser argParser;
+    late ArgResults argResults;
+    late ArtifactBuilder artifactBuilder;
+    late ArtifactManager artifactManager;
+    late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
+    late Doctor doctor;
+    late Directory flutterDirectory;
+    late Directory projectRoot;
+    late EngineConfig engineConfig;
+    late FlavorValidator flavorValidator;
+    late ShorebirdLogger logger;
+    late OperatingSystemInterface operatingSystemInterface;
+    late PatchDiffChecker patchDiffChecker;
+    late Progress progress;
+    late ShorebirdArtifacts shorebirdArtifacts;
+    late ShorebirdProcess shorebirdProcess;
+    late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
+    late ShorebirdValidator shorebirdValidator;
+    late XcodeBuild xcodeBuild;
+    late IosPatcher patcher;
 
-      R runWithOverrides<R>(R Function() body) {
-        return runScoped(
-          body,
-          values: {
-            aotToolsRef.overrideWith(() => aotTools),
-            appleRef.overrideWith(() => apple),
-            artifactBuilderRef.overrideWith(() => artifactBuilder),
-            artifactManagerRef.overrideWith(() => artifactManager),
-            codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
-            codeSignerRef.overrideWith(() => codeSigner),
-            doctorRef.overrideWith(() => doctor),
-            engineConfigRef.overrideWith(() => engineConfig),
-            loggerRef.overrideWith(() => logger),
-            osInterfaceRef.overrideWith(() => operatingSystemInterface),
-            patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
-            processRef.overrideWith(() => shorebirdProcess),
-            shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
-            shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-            shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
-            shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
-            xcodeBuildRef.overrideWith(() => xcodeBuild),
-          },
-        );
-      }
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        body,
+        values: {
+          aotToolsRef.overrideWith(() => aotTools),
+          appleRef.overrideWith(() => apple),
+          artifactBuilderRef.overrideWith(() => artifactBuilder),
+          artifactManagerRef.overrideWith(() => artifactManager),
+          codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
+          doctorRef.overrideWith(() => doctor),
+          engineConfigRef.overrideWith(() => engineConfig),
+          loggerRef.overrideWith(() => logger),
+          osInterfaceRef.overrideWith(() => operatingSystemInterface),
+          patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
+          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
+          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          xcodeBuildRef.overrideWith(() => xcodeBuild),
+        },
+      );
+    }
 
-      setUpAll(() {
-        registerFallbackValue(FakeArgResults());
-        registerFallbackValue(Directory(''));
-        registerFallbackValue(File(''));
-        registerFallbackValue(const AppleArchiveDiffer());
-        registerFallbackValue(ReleasePlatform.ios);
-        registerFallbackValue(ShorebirdArtifact.genSnapshotIos);
-        registerFallbackValue(Uri.parse('https://example.com'));
+    setUpAll(() {
+      registerFallbackValue(FakeArgResults());
+      registerFallbackValue(Directory(''));
+      registerFallbackValue(File(''));
+      registerFallbackValue(const AppleArchiveDiffer());
+      registerFallbackValue(ReleasePlatform.ios);
+      registerFallbackValue(ShorebirdArtifact.genSnapshotIos);
+      registerFallbackValue(Uri.parse('https://example.com'));
+    });
+
+    setUp(() {
+      aotTools = MockAotTools();
+      apple = MockApple();
+      argParser = MockArgParser();
+      argResults = MockArgResults();
+      artifactBuilder = MockArtifactBuilder();
+      artifactManager = MockArtifactManager();
+      codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
+      doctor = MockDoctor();
+      engineConfig = MockEngineConfig();
+      flavorValidator = MockFlavorValidator();
+      operatingSystemInterface = MockOperatingSystemInterface();
+      patchDiffChecker = MockPatchDiffChecker();
+      progress = MockProgress();
+      projectRoot = Directory.systemTemp.createTempSync();
+      logger = MockShorebirdLogger();
+      shorebirdArtifacts = MockShorebirdArtifacts();
+      shorebirdProcess = MockShorebirdProcess();
+      shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
+      shorebirdValidator = MockShorebirdValidator();
+      xcodeBuild = MockXcodeBuild();
+
+      when(() => argParser.options).thenReturn({});
+
+      when(() => argResults.options).thenReturn([]);
+      when(() => argResults.rest).thenReturn([]);
+      when(() => argResults.wasParsed(any())).thenReturn(false);
+
+      when(() => logger.progress(any())).thenReturn(progress);
+
+      when(
+        () => shorebirdEnv.getShorebirdProjectRoot(),
+      ).thenReturn(projectRoot);
+      when(
+        () => shorebirdEnv.buildDirectory,
+      ).thenReturn(Directory(p.join(projectRoot.path, 'build')));
+
+      when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
+
+      patcher = IosPatcher(
+        argParser: argParser,
+        argResults: argResults,
+        flavor: null,
+        target: null,
+      );
+    });
+
+    group('primaryReleaseArtifactArch', () {
+      test('is "xcarchive"', () {
+        expect(patcher.primaryReleaseArtifactArch, 'xcarchive');
+      });
+    });
+
+    group('supplementaryReleaseArtifactArch', () {
+      test('is "ios_supplement"', () {
+        expect(patcher.supplementaryReleaseArtifactArch, 'ios_supplement');
+      });
+    });
+
+    group('releaseType', () {
+      test('is ReleaseType.ios', () {
+        expect(patcher.releaseType, ReleaseType.ios);
+      });
+    });
+
+    group('linkPercentage', () {
+      group('when linking has not occurred', () {
+        test('returns null', () {
+          expect(patcher.linkPercentage, isNull);
+        });
       });
 
+      group('when linking has occurred', () {
+        const linkPercentage = 42.1337;
+
+        setUp(() {
+          patcher.lastBuildLinkPercentage = linkPercentage;
+        });
+
+        test('returns correct link percentage', () {
+          expect(patcher.linkPercentage, equals(linkPercentage));
+        });
+      });
+    });
+
+    group('assertPreconditions', () {
       setUp(() {
-        aotTools = MockAotTools();
-        apple = MockApple();
-        argParser = MockArgParser();
-        argResults = MockArgResults();
-        artifactBuilder = MockArtifactBuilder();
-        artifactManager = MockArtifactManager();
-        codePushClientWrapper = MockCodePushClientWrapper();
-        codeSigner = MockCodeSigner();
-        doctor = MockDoctor();
-        engineConfig = MockEngineConfig();
-        flavorValidator = MockFlavorValidator();
-        operatingSystemInterface = MockOperatingSystemInterface();
-        patchDiffChecker = MockPatchDiffChecker();
-        progress = MockProgress();
-        projectRoot = Directory.systemTemp.createTempSync();
-        logger = MockShorebirdLogger();
-        shorebirdArtifacts = MockShorebirdArtifacts();
-        shorebirdProcess = MockShorebirdProcess();
-        shorebirdEnv = MockShorebirdEnv();
-        shorebirdFlutter = MockShorebirdFlutter();
-        shorebirdValidator = MockShorebirdValidator();
-        xcodeBuild = MockXcodeBuild();
-
-        when(() => argParser.options).thenReturn({});
-
-        when(() => argResults.options).thenReturn([]);
-        when(() => argResults.rest).thenReturn([]);
-        when(() => argResults.wasParsed(any())).thenReturn(false);
-
-        when(() => logger.progress(any())).thenReturn(progress);
-
-        when(
-          () => shorebirdEnv.getShorebirdProjectRoot(),
-        ).thenReturn(projectRoot);
-        when(() => shorebirdEnv.buildDirectory).thenReturn(
-          Directory(p.join(projectRoot.path, 'build')),
-        );
-
-        when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
-
-        patcher = IosPatcher(
-          argParser: argParser,
-          argResults: argResults,
-          flavor: null,
-          target: null,
-        );
+        when(() => doctor.iosCommandValidators).thenReturn([flavorValidator]);
       });
 
-      group('primaryReleaseArtifactArch', () {
-        test('is "xcarchive"', () {
-          expect(patcher.primaryReleaseArtifactArch, 'xcarchive');
-        });
-      });
-
-      group('supplementaryReleaseArtifactArch', () {
-        test('is "ios_supplement"', () {
-          expect(patcher.supplementaryReleaseArtifactArch, 'ios_supplement');
-        });
-      });
-
-      group('releaseType', () {
-        test('is ReleaseType.ios', () {
-          expect(patcher.releaseType, ReleaseType.ios);
-        });
-      });
-
-      group('linkPercentage', () {
-        group('when linking has not occurred', () {
-          test('returns null', () {
-            expect(patcher.linkPercentage, isNull);
-          });
-        });
-
-        group('when linking has occurred', () {
-          const linkPercentage = 42.1337;
-
-          setUp(() {
-            patcher.lastBuildLinkPercentage = linkPercentage;
-          });
-
-          test('returns correct link percentage', () {
-            expect(patcher.linkPercentage, equals(linkPercentage));
-          });
-        });
-      });
-
-      group('assertPreconditions', () {
+      group('when validation succeeds', () {
         setUp(() {
           when(
-            () => doctor.iosCommandValidators,
-          ).thenReturn([flavorValidator]);
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
+              validators: any(named: 'validators'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
+            ),
+          ).thenAnswer((_) async {});
         });
 
-        group('when validation succeeds', () {
-          setUp(() {
-            when(
-              () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated: any(
-                  named: 'checkUserIsAuthenticated',
-                ),
-                checkShorebirdInitialized: any(
-                  named: 'checkShorebirdInitialized',
-                ),
-                validators: any(named: 'validators'),
-                supportedOperatingSystems: any(
-                  named: 'supportedOperatingSystems',
-                ),
-              ),
-            ).thenAnswer((_) async {});
-          });
-
-          test('returns normally', () async {
-            await expectLater(
-              () => runWithOverrides(patcher.assertPreconditions),
-              returnsNormally,
-            );
-          });
-        });
-
-        group('when validation fails', () {
-          setUp(() {
-            final exception = ValidationFailedException();
-            when(
-              () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated: any(
-                  named: 'checkUserIsAuthenticated',
-                ),
-                checkShorebirdInitialized: any(
-                  named: 'checkShorebirdInitialized',
-                ),
-                validators: any(
-                  named: 'validators',
-                ),
-              ),
-            ).thenThrow(exception);
-          });
-
-          test('exits with code 70', () async {
-            final exception = ValidationFailedException();
-            when(
-              () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated: any(
-                  named: 'checkUserIsAuthenticated',
-                ),
-                checkShorebirdInitialized: any(
-                  named: 'checkShorebirdInitialized',
-                ),
-                validators: any(named: 'validators'),
-                supportedOperatingSystems: any(
-                  named: 'supportedOperatingSystems',
-                ),
-              ),
-            ).thenThrow(exception);
-            await expectLater(
-              () => runWithOverrides(patcher.assertPreconditions),
-              exitsWithCode(exception.exitCode),
-            );
-            verify(
-              () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated: true,
-                checkShorebirdInitialized: true,
-                validators: [flavorValidator],
-                supportedOperatingSystems: {Platform.macOS},
-              ),
-            ).called(1);
-          });
+        test('returns normally', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.assertPreconditions),
+            returnsNormally,
+          );
         });
       });
 
-      group('assertUnpatchableDiffs', () {
-        group('when no native changes are detected', () {
-          const noChangeDiffStatus = DiffStatus(
-            hasAssetChanges: false,
-            hasNativeChanges: false,
-          );
-
-          setUp(() {
-            when(
-              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-                localArchive: any(named: 'localArchive'),
-                releaseArchive: any(named: 'releaseArchive'),
-                archiveDiffer: any(named: 'archiveDiffer'),
-                allowAssetChanges: any(named: 'allowAssetChanges'),
-                allowNativeChanges: any(named: 'allowNativeChanges'),
-                confirmNativeChanges: false,
+      group('when validation fails', () {
+        setUp(() {
+          final exception = ValidationFailedException();
+          when(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
               ),
-            ).thenAnswer((_) async => noChangeDiffStatus);
-          });
-
-          test('returns diff status from patchDiffChecker', () async {
-            final diffStatus = await runWithOverrides(
-              () => patcher.assertUnpatchableDiffs(
-                releaseArtifact: FakeReleaseArtifact(),
-                releaseArchive: File(''),
-                patchArchive: File(''),
-              ),
-            );
-            expect(diffStatus, equals(noChangeDiffStatus));
-            verifyNever(
-              () => logger.warn(
-                '''Your ios/Podfile.lock is different from the one used to build the release.''',
-              ),
-            );
-          });
+              validators: any(named: 'validators'),
+            ),
+          ).thenThrow(exception);
         });
 
-        group('when native changes are detected', () {
-          const nativeChangeDiffStatus = DiffStatus(
-            hasAssetChanges: false,
-            hasNativeChanges: true,
+        test('exits with code 70', () async {
+          final exception = ValidationFailedException();
+          when(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
+              validators: any(named: 'validators'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
+            ),
+          ).thenThrow(exception);
+          await expectLater(
+            () => runWithOverrides(patcher.assertPreconditions),
+            exitsWithCode(exception.exitCode),
           );
+          verify(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: true,
+              checkShorebirdInitialized: true,
+              validators: [flavorValidator],
+              supportedOperatingSystems: {Platform.macOS},
+            ),
+          ).called(1);
+        });
+      });
+    });
 
-          late String podfileLockHash;
+    group('assertUnpatchableDiffs', () {
+      group('when no native changes are detected', () {
+        const noChangeDiffStatus = DiffStatus(
+          hasAssetChanges: false,
+          hasNativeChanges: false,
+        );
 
-          setUp(() {
-            when(
-              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-                localArchive: any(named: 'localArchive'),
-                releaseArchive: any(named: 'releaseArchive'),
-                archiveDiffer: any(named: 'archiveDiffer'),
-                allowAssetChanges: any(named: 'allowAssetChanges'),
-                allowNativeChanges: any(named: 'allowNativeChanges'),
-                confirmNativeChanges: false,
-              ),
-            ).thenAnswer((_) async => nativeChangeDiffStatus);
+        setUp(() {
+          when(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: any(named: 'localArchive'),
+              releaseArchive: any(named: 'releaseArchive'),
+              archiveDiffer: any(named: 'archiveDiffer'),
+              allowAssetChanges: any(named: 'allowAssetChanges'),
+              allowNativeChanges: any(named: 'allowNativeChanges'),
+              confirmNativeChanges: false,
+            ),
+          ).thenAnswer((_) async => noChangeDiffStatus);
+        });
 
-            const podfileLockContents = 'lock file';
-            podfileLockHash =
-                sha256.convert(utf8.encode(podfileLockContents)).toString();
-            final podfileLockFile = File(
-              p.join(
-                Directory.systemTemp.createTempSync().path,
-                'Podfile.lock',
-              ),
-            )
-              ..createSync(recursive: true)
-              ..writeAsStringSync(podfileLockContents);
+        test('returns diff status from patchDiffChecker', () async {
+          final diffStatus = await runWithOverrides(
+            () => patcher.assertUnpatchableDiffs(
+              releaseArtifact: FakeReleaseArtifact(),
+              releaseArchive: File(''),
+              patchArchive: File(''),
+            ),
+          );
+          expect(diffStatus, equals(noChangeDiffStatus));
+          verifyNever(
+            () => logger.warn(
+              '''Your ios/Podfile.lock is different from the one used to build the release.''',
+            ),
+          );
+        });
+      });
 
-            when(() => shorebirdEnv.iosPodfileLockFile)
-                .thenReturn(podfileLockFile);
+      group('when native changes are detected', () {
+        const nativeChangeDiffStatus = DiffStatus(
+          hasAssetChanges: false,
+          hasNativeChanges: true,
+        );
+
+        late String podfileLockHash;
+
+        setUp(() {
+          when(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: any(named: 'localArchive'),
+              releaseArchive: any(named: 'releaseArchive'),
+              archiveDiffer: any(named: 'archiveDiffer'),
+              allowAssetChanges: any(named: 'allowAssetChanges'),
+              allowNativeChanges: any(named: 'allowNativeChanges'),
+              confirmNativeChanges: false,
+            ),
+          ).thenAnswer((_) async => nativeChangeDiffStatus);
+
+          const podfileLockContents = 'lock file';
+          podfileLockHash =
+              sha256.convert(utf8.encode(podfileLockContents)).toString();
+          final podfileLockFile =
+              File(
+                  p.join(
+                    Directory.systemTemp.createTempSync().path,
+                    'Podfile.lock',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..writeAsStringSync(podfileLockContents);
+
+          when(
+            () => shorebirdEnv.iosPodfileLockFile,
+          ).thenReturn(podfileLockFile);
+        });
+
+        group('when release has podspec lock hash', () {
+          group('when release podspec lock hash matches patch', () {
+            late final releaseArtifact = ReleaseArtifact(
+              id: 0,
+              releaseId: 0,
+              arch: 'aarch64',
+              platform: ReleasePlatform.ios,
+              hash: '#',
+              size: 42,
+              url: 'https://example.com',
+              podfileLockHash: podfileLockHash,
+              canSideload: true,
+            );
+
+            test('does not warn of native changes', () async {
+              final diffStatus = await runWithOverrides(
+                () => patcher.assertUnpatchableDiffs(
+                  releaseArtifact: releaseArtifact,
+                  releaseArchive: File(''),
+                  patchArchive: File(''),
+                ),
+              );
+              expect(diffStatus, equals(nativeChangeDiffStatus));
+              verifyNever(
+                () => logger.warn(
+                  '''Your ios/Podfile.lock is different from the one used to build the release.''',
+                ),
+              );
+            });
           });
 
-          group('when release has podspec lock hash', () {
-            group('when release podspec lock hash matches patch', () {
-              late final releaseArtifact = ReleaseArtifact(
-                id: 0,
-                releaseId: 0,
-                arch: 'aarch64',
-                platform: ReleasePlatform.ios,
-                hash: '#',
-                size: 42,
-                url: 'https://example.com',
-                podfileLockHash: podfileLockHash,
-                canSideload: true,
-              );
+          group('when release podspec lock hash does not match patch', () {
+            const releaseArtifact = ReleaseArtifact(
+              id: 0,
+              releaseId: 0,
+              arch: 'aarch64',
+              platform: ReleasePlatform.ios,
+              hash: '#',
+              size: 42,
+              url: 'https://example.com',
+              podfileLockHash: 'podfile-lock-hash',
+              canSideload: true,
+            );
 
-              test('does not warn of native changes', () async {
-                final diffStatus = await runWithOverrides(
-                  () => patcher.assertUnpatchableDiffs(
-                    releaseArtifact: releaseArtifact,
-                    releaseArchive: File(''),
-                    patchArchive: File(''),
-                  ),
-                );
-                expect(diffStatus, equals(nativeChangeDiffStatus));
-                verifyNever(
-                  () => logger.warn(
-                    '''Your ios/Podfile.lock is different from the one used to build the release.''',
-                  ),
-                );
+            group('when native diffs are allowed', () {
+              setUp(() {
+                when(() => argResults['allow-native-diffs']).thenReturn(true);
               });
-            });
 
-            group('when release podspec lock hash does not match patch', () {
-              const releaseArtifact = ReleaseArtifact(
-                id: 0,
-                releaseId: 0,
-                arch: 'aarch64',
-                platform: ReleasePlatform.ios,
-                hash: '#',
-                size: 42,
-                url: 'https://example.com',
-                podfileLockHash: 'podfile-lock-hash',
-                canSideload: true,
-              );
-
-              group('when native diffs are allowed', () {
-                setUp(() {
-                  when(() => argResults['allow-native-diffs']).thenReturn(true);
-                });
-
-                test(
-                    'logs warning, does not prompt for confirmation to proceed',
-                    () async {
+              test(
+                'logs warning, does not prompt for confirmation to proceed',
+                () async {
                   final diffStatus = await runWithOverrides(
                     () => patcher.assertUnpatchableDiffs(
                       releaseArtifact: releaseArtifact,
@@ -418,58 +408,60 @@ This may indicate that the patch contains native changes, which cannot be applie
                     ),
                   ).called(1);
                   verifyNever(() => logger.confirm(any()));
-                });
-              });
+                },
+              );
+            });
 
-              group('when native diffs are not allowed', () {
-                group('when in an environment that accepts user input', () {
+            group('when native diffs are not allowed', () {
+              group('when in an environment that accepts user input', () {
+                setUp(() {
+                  when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+                });
+
+                group('when user opts to continue at prompt', () {
                   setUp(() {
-                    when(() => shorebirdEnv.canAcceptUserInput)
-                        .thenReturn(true);
+                    when(() => logger.confirm(any())).thenReturn(true);
                   });
 
-                  group('when user opts to continue at prompt', () {
-                    setUp(() {
-                      when(() => logger.confirm(any())).thenReturn(true);
-                    });
+                  test('returns diff status from patchDiffChecker', () async {
+                    final diffStatus = await runWithOverrides(
+                      () => patcher.assertUnpatchableDiffs(
+                        releaseArtifact: releaseArtifact,
+                        releaseArchive: File(''),
+                        patchArchive: File(''),
+                      ),
+                    );
+                    expect(diffStatus, equals(nativeChangeDiffStatus));
+                  });
+                });
 
-                    test('returns diff status from patchDiffChecker', () async {
-                      final diffStatus = await runWithOverrides(
+                group('when user aborts at prompt', () {
+                  setUp(() {
+                    when(() => logger.confirm(any())).thenReturn(false);
+                  });
+
+                  test('throws UserCancelledException', () async {
+                    await expectLater(
+                      () => runWithOverrides(
                         () => patcher.assertUnpatchableDiffs(
                           releaseArtifact: releaseArtifact,
                           releaseArchive: File(''),
                           patchArchive: File(''),
                         ),
-                      );
-                      expect(diffStatus, equals(nativeChangeDiffStatus));
-                    });
-                  });
-
-                  group('when user aborts at prompt', () {
-                    setUp(() {
-                      when(() => logger.confirm(any())).thenReturn(false);
-                    });
-
-                    test('throws UserCancelledException', () async {
-                      await expectLater(
-                        () => runWithOverrides(
-                          () => patcher.assertUnpatchableDiffs(
-                            releaseArtifact: releaseArtifact,
-                            releaseArchive: File(''),
-                            patchArchive: File(''),
-                          ),
-                        ),
-                        throwsA(isA<UserCancelledException>()),
-                      );
-                    });
+                      ),
+                      throwsA(isA<UserCancelledException>()),
+                    );
                   });
                 });
+              });
 
-                group('when in an environment that does not accept user input',
-                    () {
+              group(
+                'when in an environment that does not accept user input',
+                () {
                   setUp(() {
-                    when(() => shorebirdEnv.canAcceptUserInput)
-                        .thenReturn(false);
+                    when(
+                      () => shorebirdEnv.canAcceptUserInput,
+                    ).thenReturn(false);
                   });
 
                   test('throws UnpatchableChangeException', () async {
@@ -484,451 +476,156 @@ This may indicate that the patch contains native changes, which cannot be applie
                       throwsA(isA<UnpatchableChangeException>()),
                     );
                   });
-                });
-              });
+                },
+              );
             });
           });
-
-          group('when release does not have podspec lock hash', () {});
         });
+
+        group('when release does not have podspec lock hash', () {});
+      });
+    });
+
+    group('buildPatchArtifact', () {
+      const flutterVersionAndRevision = '3.22.2 (83305b5088)';
+      setUp(() {
+        when(
+          () => shorebirdFlutter.getVersionAndRevision(),
+        ).thenAnswer((_) async => flutterVersionAndRevision);
+        when(
+          () => shorebirdFlutter.getVersion(),
+        ).thenAnswer((_) async => Version(3, 22, 2));
       });
 
-      group('buildPatchArtifact', () {
-        const flutterVersionAndRevision = '3.22.2 (83305b5088)';
+      group('when specified flutter version is less than minimum', () {
         setUp(() {
           when(
-            () => shorebirdFlutter.getVersionAndRevision(),
-          ).thenAnswer((_) async => flutterVersionAndRevision);
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
+              validators: any(named: 'validators'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
+            ),
+          ).thenAnswer((_) async {});
           when(
             () => shorebirdFlutter.getVersion(),
-          ).thenAnswer((_) async => Version(3, 22, 2));
+          ).thenAnswer((_) async => Version(3, 0, 0));
         });
 
-        group('when specified flutter version is less than minimum', () {
-          setUp(() {
-            when(
-              () => shorebirdValidator.validatePreconditions(
-                checkUserIsAuthenticated: any(
-                  named: 'checkUserIsAuthenticated',
-                ),
-                checkShorebirdInitialized: any(
-                  named: 'checkShorebirdInitialized',
-                ),
-                validators: any(named: 'validators'),
-                supportedOperatingSystems: any(
-                  named: 'supportedOperatingSystems',
-                ),
-              ),
-            ).thenAnswer((_) async {});
-            when(
-              () => shorebirdFlutter.getVersion(),
-            ).thenAnswer((_) async => Version(3, 0, 0));
-          });
+        test('logs error and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            exitsWithCode(ExitCode.software),
+          );
 
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(patcher.buildPatchArtifact),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(
-              () => logger.err(
-                '''
+          verify(
+            () => logger.err('''
 iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-              ),
-            ).called(1);
-          });
-        });
-
-        group('when build fails with ProcessException', () {
-          setUp(() {
-            when(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                args: any(named: 'args'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                buildProgress: any(named: 'buildProgress'),
-              ),
-            ).thenThrow(
-              const ProcessException(
-                'flutter',
-                ['build', 'ipa'],
-                'Build failed',
-              ),
-            );
-          });
-
-          test('exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(patcher.buildPatchArtifact),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(() => progress.fail('Failed to build: Build failed'));
-          });
-        });
-
-        group('when build fails with ArtifactBuildException', () {
-          setUp(() {
-            when(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                args: any(named: 'args'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                buildProgress: any(named: 'buildProgress'),
-              ),
-            ).thenThrow(
-              ArtifactBuildException('Build failed'),
-            );
-          });
-
-          test('exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(patcher.buildPatchArtifact),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(() => progress.fail('Failed to build IPA'));
-          });
-        });
-
-        group('when elf aot snapshot build fails', () {
-          setUp(() {
-            when(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                args: any(named: 'args'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                buildProgress: any(named: 'buildProgress'),
-              ),
-            ).thenAnswer(
-              (_) async =>
-                  IpaBuildResult(kernelFile: File('/path/to/app.dill')),
-            );
-            when(
-              () => artifactBuilder.buildElfAotSnapshot(
-                appDillPath: any(named: 'appDillPath'),
-                outFilePath: any(named: 'outFilePath'),
-                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
-              ),
-            ).thenThrow(const FileSystemException('error'));
-          });
-
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(patcher.buildPatchArtifact),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(
-              () => progress.fail("FileSystemException: error, path = ''"),
-            );
-          });
-        });
-
-        group('when build succeeds', () {
-          late File kernelFile;
-          setUp(() {
-            kernelFile = File(
-              p.join(Directory.systemTemp.createTempSync().path, 'app.dill'),
-            )..createSync(recursive: true);
-            when(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                args: any(named: 'args'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                base64PublicKey: any(named: 'base64PublicKey'),
-                buildProgress: any(named: 'buildProgress'),
-              ),
-            ).thenAnswer(
-              (_) async => IpaBuildResult(kernelFile: kernelFile),
-            );
-            when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
-              Directory(
-                p.join(
-                  projectRoot.path,
-                  'build',
-                  'ios',
-                  'framework',
-                  'Release',
-                  'App.xcframework',
-                ),
-              )..createSync(recursive: true),
-            );
-            when(
-              () => artifactBuilder.buildElfAotSnapshot(
-                appDillPath: any(named: 'appDillPath'),
-                outFilePath: any(named: 'outFilePath'),
-                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
-                additionalArgs: any(named: 'additionalArgs'),
-              ),
-            ).thenAnswer(
-              (invocation) async =>
-                  File(invocation.namedArguments[#outFilePath] as String)
-                    ..createSync(recursive: true),
-            );
-          });
-
-          group('when --split-debug-info is provided', () {
-            final tempDir = Directory.systemTemp.createTempSync();
-            final splitDebugInfoPath = p.join(tempDir.path, 'symbols');
-            final splitDebugInfoFile = File(
-              p.join(splitDebugInfoPath, 'app.ios-arm64.symbols'),
-            );
-            setUp(() {
-              when(
-                () => argResults.wasParsed(
-                  CommonArguments.splitDebugInfoArg.name,
-                ),
-              ).thenReturn(true);
-              when(
-                () => argResults[CommonArguments.splitDebugInfoArg.name],
-              ).thenReturn(splitDebugInfoPath);
-            });
-
-            test('forwards --split-debug-info to builder', () async {
-              try {
-                await runWithOverrides(patcher.buildPatchArtifact);
-              } on Exception {
-                // ignore
-              }
-              verify(
-                () => artifactBuilder.buildElfAotSnapshot(
-                  appDillPath: any(named: 'appDillPath'),
-                  outFilePath: any(named: 'outFilePath'),
-                  genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
-                  additionalArgs: [
-                    '--dwarf-stack-traces',
-                    '--resolve-dwarf-paths',
-                    '--save-debugging-info=${splitDebugInfoFile.path}',
-                  ],
-                ),
-              ).called(1);
-            });
-          });
-
-          group('when releaseVersion is provided', () {
-            test('forwards --build-name and --build-number to builder',
-                () async {
-              await runWithOverrides(
-                () => patcher.buildPatchArtifact(releaseVersion: '1.2.3+4'),
-              );
-              verify(
-                () => artifactBuilder.buildIpa(
-                  flavor: any(named: 'flavor'),
-                  codesign: any(named: 'codesign'),
-                  target: any(named: 'target'),
-                  args: any(
-                    named: 'args',
-                    that: containsAll(
-                      ['--build-name=1.2.3', '--build-number=4'],
-                    ),
-                  ),
-                  buildProgress: any(named: 'buildProgress'),
-                ),
-              ).called(1);
-            });
-          });
-
-          group('when platform was specified via arg results rest', () {
-            setUp(() {
-              when(() => argResults.rest).thenReturn(['ios', '--verbose']);
-            });
-
-            test('returns xcarchive zip', () async {
-              final artifact = await runWithOverrides(
-                patcher.buildPatchArtifact,
-              );
-              expect(p.basename(artifact.path), endsWith('.zip'));
-              verify(
-                () => artifactBuilder.buildIpa(
-                  codesign: any(named: 'codesign'),
-                  args: ['--verbose'],
-                  buildProgress: any(named: 'buildProgress'),
-                ),
-              ).called(1);
-            });
-          });
-
-          group('when the key pair is provided', () {
-            setUp(() {
-              when(
-                () => codeSigner.base64PublicKey(any()),
-              ).thenReturn('public_key_encoded');
-            });
-
-            test('calls the buildIpa passing the key', () async {
-              when(
-                () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-              ).thenReturn(true);
-
-              final key = createTempFile('public.pem')
-                ..writeAsStringSync('public_key');
-
-              when(
-                () => argResults[CommonArguments.publicKeyArg.name],
-              ).thenReturn(key.path);
-              when(
-                () => argResults[CommonArguments.publicKeyArg.name],
-              ).thenReturn(key.path);
-              await runWithOverrides(patcher.buildPatchArtifact);
-
-              verify(
-                () => artifactBuilder.buildIpa(
-                  codesign: any(named: 'codesign'),
-                  args: any(named: 'args'),
-                  flavor: any(named: 'flavor'),
-                  target: any(named: 'target'),
-                  base64PublicKey: 'public_key_encoded',
-                  buildProgress: any(named: 'buildProgress'),
-                ),
-              ).called(1);
-            });
-          });
-
-          test('returns xcarchive zip', () async {
-            final artifact = await runWithOverrides(patcher.buildPatchArtifact);
-            expect(p.basename(artifact.path), endsWith('.zip'));
-          });
-
-          test('copies app.dill to build directory', () async {
-            final copiedKernelFile = File(
-              p.join(
-                projectRoot.path,
-                'build',
-                'app.dill',
-              ),
-            );
-            expect(copiedKernelFile.existsSync(), isFalse);
-            await runWithOverrides(patcher.buildPatchArtifact);
-            expect(copiedKernelFile.existsSync(), isTrue);
-          });
+For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
+          ).called(1);
         });
       });
 
-      group('createPatchArtifacts', () {
-        const postLinkerFlutterRevision = // cspell: disable-next-line
-            'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
-        const preLinkerFlutterRevision =
-            '83305b5088e6fe327fb3334a73ff190828d85713';
-        const appId = 'appId';
-        const arch = 'aarch64';
-        const releaseId = 1;
-        const linkFileName = 'out.vmcode';
-        const elfAotSnapshotFileName = 'out.aot';
-        const releaseArtifact = ReleaseArtifact(
-          id: 0,
-          releaseId: releaseId,
-          arch: arch,
-          platform: ReleasePlatform.ios,
-          hash: '#',
-          size: 42,
-          url: 'https://example.com',
-          podfileLockHash: 'podfile-lock-hash',
-          canSideload: true,
-        );
-        late File releaseArtifactFile;
-        late File supplementArtifactFile;
-
-        void setUpProjectRootArtifacts() {
-          File(
-            p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
-          ).createSync(recursive: true);
-          Directory(
-            p.join(
-              projectRoot.path,
-              'build',
-              'ios',
-              'framework',
-              'Release',
-              'App.xcframework',
-            ),
-          ).createSync(recursive: true);
-          File(
-            p.join(
-              projectRoot.path,
-              'build',
-              'ios',
-              'framework',
-              'Release',
-              'App.xcframework',
-              'Products',
-              'Applications',
-              'Runner.app',
-              'Frameworks',
-              'App.framework',
-              'App',
-            ),
-          ).createSync(recursive: true);
-          File(
-            p.join(
-              projectRoot.path,
-              'build',
-              'ios',
-              'shorebird',
-              'App.ct.link',
-            ),
-          ).createSync(recursive: true);
-          File(
-            p.join(
-              projectRoot.path,
-              'build',
-              'ios',
-              'shorebird',
-              'App.class_table.json',
-            ),
-          ).createSync(recursive: true);
-          File(
-            p.join(projectRoot.path, 'build', linkFileName),
-          ).createSync(recursive: true);
-        }
-
+      group('when build fails with ProcessException', () {
         setUp(() {
-          releaseArtifactFile = File(
-            p.join(
-              Directory.systemTemp.createTempSync().path,
-              'release.xcarchive',
+          when(
+            () => artifactBuilder.buildIpa(
+              codesign: any(named: 'codesign'),
+              args: any(named: 'args'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              buildProgress: any(named: 'buildProgress'),
             ),
-          )..createSync(recursive: true);
-          supplementArtifactFile = File(
-            p.join(
-              Directory.systemTemp.createTempSync().path,
-              'ios_supplement.zip',
-            ),
-          )..createSync(recursive: true);
+          ).thenThrow(
+            const ProcessException('flutter', ['build', 'ipa'], 'Build failed'),
+          );
+        });
 
+        test('exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(() => progress.fail('Failed to build: Build failed'));
+        });
+      });
+
+      group('when build fails with ArtifactBuildException', () {
+        setUp(() {
           when(
-            () => codePushClientWrapper.getReleaseArtifact(
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
+            () => artifactBuilder.buildIpa(
+              codesign: any(named: 'codesign'),
+              args: any(named: 'args'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              buildProgress: any(named: 'buildProgress'),
             ),
-          ).thenAnswer((_) async => releaseArtifact);
-          when(() => artifactManager.downloadFile(any())).thenAnswer((_) async {
-            final tempDirectory = Directory.systemTemp.createTempSync();
-            final file = File(p.join(tempDirectory.path, 'libapp.so'))
-              ..createSync();
-            return file;
-          });
+          ).thenThrow(ArtifactBuildException('Build failed'));
+        });
+
+        test('exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(() => progress.fail('Failed to build IPA'));
+        });
+      });
+
+      group('when elf aot snapshot build fails', () {
+        setUp(() {
           when(
-            () => artifactManager.extractZip(
-              zipFile: any(named: 'zipFile'),
-              outputDirectory: any(named: 'outputDirectory'),
+            () => artifactBuilder.buildIpa(
+              codesign: any(named: 'codesign'),
+              args: any(named: 'args'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              buildProgress: any(named: 'buildProgress'),
             ),
-          ).thenAnswer((invocation) async {
-            final zipFile = invocation.namedArguments[#zipFile] as File;
-            final outDir =
-                invocation.namedArguments[#outputDirectory] as Directory;
-            File(
-              p.join(outDir.path, '${p.basename(zipFile.path)}.zip'),
-            ).createSync();
-          });
+          ).thenAnswer(
+            (_) async => IpaBuildResult(kernelFile: File('/path/to/app.dill')),
+          );
+          when(
+            () => artifactBuilder.buildElfAotSnapshot(
+              appDillPath: any(named: 'appDillPath'),
+              outFilePath: any(named: 'outFilePath'),
+              genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+            ),
+          ).thenThrow(const FileSystemException('error'));
+        });
+
+        test('logs error and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(() => progress.fail("FileSystemException: error, path = ''"));
+        });
+      });
+
+      group('when build succeeds', () {
+        late File kernelFile;
+        setUp(() {
+          kernelFile = File(
+            p.join(Directory.systemTemp.createTempSync().path, 'app.dill'),
+          )..createSync(recursive: true);
+          when(
+            () => artifactBuilder.buildIpa(
+              codesign: any(named: 'codesign'),
+              args: any(named: 'args'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              buildProgress: any(named: 'buildProgress'),
+            ),
+          ).thenAnswer((_) async => IpaBuildResult(kernelFile: kernelFile));
           when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
             Directory(
               p.join(
@@ -939,150 +636,556 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 'Release',
                 'App.xcframework',
               ),
+            )..createSync(recursive: true),
+          );
+          when(
+            () => artifactBuilder.buildElfAotSnapshot(
+              appDillPath: any(named: 'appDillPath'),
+              outFilePath: any(named: 'outFilePath'),
+              genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+              additionalArgs: any(named: 'additionalArgs'),
+            ),
+          ).thenAnswer(
+            (invocation) async =>
+                File(invocation.namedArguments[#outFilePath] as String)
+                  ..createSync(recursive: true),
+          );
+        });
+
+        group('when --split-debug-info is provided', () {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final splitDebugInfoPath = p.join(tempDir.path, 'symbols');
+          final splitDebugInfoFile = File(
+            p.join(splitDebugInfoPath, 'app.ios-arm64.symbols'),
+          );
+          setUp(() {
+            when(
+              () =>
+                  argResults.wasParsed(CommonArguments.splitDebugInfoArg.name),
+            ).thenReturn(true);
+            when(
+              () => argResults[CommonArguments.splitDebugInfoArg.name],
+            ).thenReturn(splitDebugInfoPath);
+          });
+
+          test('forwards --split-debug-info to builder', () async {
+            try {
+              await runWithOverrides(patcher.buildPatchArtifact);
+            } on Exception {
+              // ignore
+            }
+            verify(
+              () => artifactBuilder.buildElfAotSnapshot(
+                appDillPath: any(named: 'appDillPath'),
+                outFilePath: any(named: 'outFilePath'),
+                genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                additionalArgs: [
+                  '--dwarf-stack-traces',
+                  '--resolve-dwarf-paths',
+                  '--save-debugging-info=${splitDebugInfoFile.path}',
+                ],
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when releaseVersion is provided', () {
+          test('forwards --build-name and --build-number to builder', () async {
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(releaseVersion: '1.2.3+4'),
+            );
+            verify(
+              () => artifactBuilder.buildIpa(
+                flavor: any(named: 'flavor'),
+                codesign: any(named: 'codesign'),
+                target: any(named: 'target'),
+                args: any(
+                  named: 'args',
+                  that: containsAll(['--build-name=1.2.3', '--build-number=4']),
+                ),
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when platform was specified via arg results rest', () {
+          setUp(() {
+            when(() => argResults.rest).thenReturn(['ios', '--verbose']);
+          });
+
+          test('returns xcarchive zip', () async {
+            final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+            expect(p.basename(artifact.path), endsWith('.zip'));
+            verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: ['--verbose'],
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when the key pair is provided', () {
+          setUp(() {
+            when(
+              () => codeSigner.base64PublicKey(any()),
+            ).thenReturn('public_key_encoded');
+          });
+
+          test('calls the buildIpa passing the key', () async {
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+            ).thenReturn(true);
+
+            final key = createTempFile('public.pem')
+              ..writeAsStringSync('public_key');
+
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(key.path);
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(key.path);
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: any(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: 'public_key_encoded',
+                buildProgress: any(named: 'buildProgress'),
+              ),
+            ).called(1);
+          });
+        });
+
+        test('returns xcarchive zip', () async {
+          final artifact = await runWithOverrides(patcher.buildPatchArtifact);
+          expect(p.basename(artifact.path), endsWith('.zip'));
+        });
+
+        test('copies app.dill to build directory', () async {
+          final copiedKernelFile = File(
+            p.join(projectRoot.path, 'build', 'app.dill'),
+          );
+          expect(copiedKernelFile.existsSync(), isFalse);
+          await runWithOverrides(patcher.buildPatchArtifact);
+          expect(copiedKernelFile.existsSync(), isTrue);
+        });
+      });
+    });
+
+    group('createPatchArtifacts', () {
+      const postLinkerFlutterRevision = // cspell: disable-next-line
+          'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
+      const preLinkerFlutterRevision =
+          '83305b5088e6fe327fb3334a73ff190828d85713';
+      const appId = 'appId';
+      const arch = 'aarch64';
+      const releaseId = 1;
+      const linkFileName = 'out.vmcode';
+      const elfAotSnapshotFileName = 'out.aot';
+      const releaseArtifact = ReleaseArtifact(
+        id: 0,
+        releaseId: releaseId,
+        arch: arch,
+        platform: ReleasePlatform.ios,
+        hash: '#',
+        size: 42,
+        url: 'https://example.com',
+        podfileLockHash: 'podfile-lock-hash',
+        canSideload: true,
+      );
+      late File releaseArtifactFile;
+      late File supplementArtifactFile;
+
+      void setUpProjectRootArtifacts() {
+        File(
+          p.join(projectRoot.path, 'build', elfAotSnapshotFileName),
+        ).createSync(recursive: true);
+        Directory(
+          p.join(
+            projectRoot.path,
+            'build',
+            'ios',
+            'framework',
+            'Release',
+            'App.xcframework',
+          ),
+        ).createSync(recursive: true);
+        File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'ios',
+            'framework',
+            'Release',
+            'App.xcframework',
+            'Products',
+            'Applications',
+            'Runner.app',
+            'Frameworks',
+            'App.framework',
+            'App',
+          ),
+        ).createSync(recursive: true);
+        File(
+          p.join(projectRoot.path, 'build', 'ios', 'shorebird', 'App.ct.link'),
+        ).createSync(recursive: true);
+        File(
+          p.join(
+            projectRoot.path,
+            'build',
+            'ios',
+            'shorebird',
+            'App.class_table.json',
+          ),
+        ).createSync(recursive: true);
+        File(
+          p.join(projectRoot.path, 'build', linkFileName),
+        ).createSync(recursive: true);
+      }
+
+      setUp(() {
+        releaseArtifactFile = File(
+          p.join(
+            Directory.systemTemp.createTempSync().path,
+            'release.xcarchive',
+          ),
+        )..createSync(recursive: true);
+        supplementArtifactFile = File(
+          p.join(
+            Directory.systemTemp.createTempSync().path,
+            'ios_supplement.zip',
+          ),
+        )..createSync(recursive: true);
+
+        when(
+          () => codePushClientWrapper.getReleaseArtifact(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            arch: any(named: 'arch'),
+            platform: any(named: 'platform'),
+          ),
+        ).thenAnswer((_) async => releaseArtifact);
+        when(() => artifactManager.downloadFile(any())).thenAnswer((_) async {
+          final tempDirectory = Directory.systemTemp.createTempSync();
+          final file = File(p.join(tempDirectory.path, 'libapp.so'))
+            ..createSync();
+          return file;
+        });
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer((invocation) async {
+          final zipFile = invocation.namedArguments[#zipFile] as File;
+          final outDir =
+              invocation.namedArguments[#outputDirectory] as Directory;
+          File(
+            p.join(outDir.path, '${p.basename(zipFile.path)}.zip'),
+          ).createSync();
+        });
+        when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
+          Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'framework',
+              'Release',
+              'App.xcframework',
+            ),
+          ),
+        );
+        when(
+          () => artifactManager.getIosAppDirectory(
+            xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+          ),
+        ).thenReturn(projectRoot);
+        when(() => engineConfig.localEngine).thenReturn(null);
+      });
+
+      group('when patch .xcarchive does not exist', () {
+        setUp(() {
+          when(() => artifactManager.getXcarchiveDirectory()).thenReturn(null);
+        });
+
+        test('logs error and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+        });
+      });
+
+      group('when uses linker', () {
+        const linkPercentage = 50.0;
+        late File analyzeSnapshotFile;
+        late File genSnapshotFile;
+
+        setUp(() {
+          final shorebirdRoot = Directory.systemTemp.createTempSync();
+          flutterDirectory = Directory(
+            p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
+          );
+          genSnapshotFile = File(
+            p.join(
+              flutterDirectory.path,
+              'bin',
+              'cache',
+              'artifacts',
+              'engine',
+              'ios-release',
+              'gen_snapshot_arm64',
             ),
           );
+          analyzeSnapshotFile = File(
+            p.join(
+              flutterDirectory.path,
+              'bin',
+              'cache',
+              'artifacts',
+              'engine',
+              'ios-release',
+              'analyze_snapshot_arm64',
+            ),
+          )..createSync(recursive: true);
+
+          when(
+            () => apple.runLinker(
+              kernelFile: any(named: 'kernelFile'),
+              aotOutputFile: any(named: 'aotOutputFile'),
+              releaseArtifact: any(named: 'releaseArtifact'),
+              splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+              vmCodeFile: any(named: 'vmCodeFile'),
+            ),
+          ).thenAnswer(
+            (_) async => (
+              exitCode: ExitCode.success.code,
+              linkPercentage: linkPercentage,
+            ),
+          );
+          when(
+            aotTools.isGeneratePatchDiffBaseSupported,
+          ).thenAnswer((_) async => false);
           when(
             () => artifactManager.getIosAppDirectory(
               xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
             ),
-          ).thenReturn(projectRoot);
-          when(() => engineConfig.localEngine).thenReturn(null);
+          ).thenReturn(Directory(p.join(projectRoot.path, 'build', 'ios')));
+          when(
+            () => artifactManager.getIosAppDirectory(
+              xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+            ),
+          ).thenReturn(Directory(p.join(projectRoot.path, 'build', 'ios')));
+          when(
+            () => artifactManager.getIosAppDirectory(
+              xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+            ),
+          ).thenReturn(
+            Directory(
+              p.join(
+                projectRoot.path,
+                'build',
+                'ios',
+                'framework',
+                'Release',
+                'App.xcframework',
+                'Products',
+                'Applications',
+                'Runner.app',
+              ),
+            ),
+          );
+          when(
+            () => shorebirdEnv.flutterRevision,
+          ).thenReturn(postLinkerFlutterRevision);
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshotIos,
+            ),
+          ).thenReturn(analyzeSnapshotFile.path);
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.genSnapshotIos,
+            ),
+          ).thenReturn(genSnapshotFile.path);
         });
 
-        group('when patch .xcarchive does not exist', () {
+        group('when linking fails', () {
+          group('when .app does not exist', () {
+            setUp(() {
+              when(
+                () => artifactManager.getIosAppDirectory(
+                  xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+                ),
+              ).thenReturn(null);
+            });
+
+            test('logs error and exits with code 70', () async {
+              await expectLater(
+                () => runWithOverrides(
+                  () => patcher.createPatchArtifacts(
+                    appId: appId,
+                    releaseId: releaseId,
+                    releaseArtifact: releaseArtifactFile,
+                  ),
+                ),
+                exitsWithCode(ExitCode.software),
+              );
+
+              verify(
+                () => logger.err(
+                  any(
+                    that: startsWith(
+                      'Unable to find release artifact .app directory',
+                    ),
+                  ),
+                ),
+              ).called(1);
+            });
+          });
+        });
+
+        group('when generate patch diff base is supported', () {
           setUp(() {
             when(
-              () => artifactManager.getXcarchiveDirectory(),
-            ).thenReturn(null);
+              () => aotTools.isGeneratePatchDiffBaseSupported(),
+            ).thenAnswer((_) async => true);
+            when(
+              () => aotTools.generatePatchDiffBase(
+                analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+                releaseSnapshot: any(named: 'releaseSnapshot'),
+              ),
+            ).thenAnswer((_) async => File(''));
           });
 
-          test('logs error and exits with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(
+          group('when we fail to generate patch diff base', () {
+            setUp(() {
+              when(
+                () => aotTools.generatePatchDiffBase(
+                  analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+                  releaseSnapshot: any(named: 'releaseSnapshot'),
+                ),
+              ).thenThrow(Exception('oops'));
+
+              setUpProjectRootArtifacts();
+            });
+
+            test('logs error and exits with code 70', () async {
+              await expectLater(
+                () => runWithOverrides(
+                  () => patcher.createPatchArtifacts(
+                    appId: appId,
+                    releaseId: releaseId,
+                    releaseArtifact: releaseArtifactFile,
+                  ),
+                ),
+                exitsWithCode(ExitCode.software),
+              );
+
+              verify(() => progress.fail('Exception: oops')).called(1);
+            });
+          });
+
+          group('when linking and patch diff generation succeeds', () {
+            const diffPath = 'path/to/diff';
+
+            setUp(() {
+              when(
+                () => artifactManager.createDiff(
+                  releaseArtifactPath: any(named: 'releaseArtifactPath'),
+                  patchArtifactPath: any(named: 'patchArtifactPath'),
+                ),
+              ).thenAnswer((_) async => diffPath);
+              setUpProjectRootArtifacts();
+            });
+
+            test('returns linked patch artifact in patch bundle', () async {
+              final patchBundle = await runWithOverrides(
                 () => patcher.createPatchArtifacts(
                   appId: appId,
                   releaseId: releaseId,
                   releaseArtifact: releaseArtifactFile,
                 ),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-          });
-        });
+              );
 
-        group('when uses linker', () {
-          const linkPercentage = 50.0;
-          late File analyzeSnapshotFile;
-          late File genSnapshotFile;
-
-          setUp(() {
-            final shorebirdRoot = Directory.systemTemp.createTempSync();
-            flutterDirectory = Directory(
-              p.join(shorebirdRoot.path, 'bin', 'cache', 'flutter'),
-            );
-            genSnapshotFile = File(
-              p.join(
-                flutterDirectory.path,
-                'bin',
-                'cache',
-                'artifacts',
-                'engine',
-                'ios-release',
-                'gen_snapshot_arm64',
-              ),
-            );
-            analyzeSnapshotFile = File(
-              p.join(
-                flutterDirectory.path,
-                'bin',
-                'cache',
-                'artifacts',
-                'engine',
-                'ios-release',
-                'analyze_snapshot_arm64',
-              ),
-            )..createSync(recursive: true);
-
-            when(
-              () => apple.runLinker(
-                kernelFile: any(named: 'kernelFile'),
-                aotOutputFile: any(named: 'aotOutputFile'),
-                releaseArtifact: any(named: 'releaseArtifact'),
-                splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
-                vmCodeFile: any(named: 'vmCodeFile'),
-              ),
-            ).thenAnswer(
-              (_) async => (
-                exitCode: ExitCode.success.code,
-                linkPercentage: linkPercentage
-              ),
-            );
-            when(
-              aotTools.isGeneratePatchDiffBaseSupported,
-            ).thenAnswer((_) async => false);
-            when(
-              () => artifactManager.getIosAppDirectory(
-                xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
-              ),
-            ).thenReturn(
-              Directory(p.join(projectRoot.path, 'build', 'ios')),
-            );
-            when(
-              () => artifactManager.getIosAppDirectory(
-                xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
-              ),
-            ).thenReturn(Directory(p.join(projectRoot.path, 'build', 'ios')));
-            when(
-              () => artifactManager.getIosAppDirectory(
-                xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
-              ),
-            ).thenReturn(
-              Directory(
-                p.join(
-                  projectRoot.path,
-                  'build',
-                  'ios',
-                  'framework',
-                  'Release',
-                  'App.xcframework',
-                  'Products',
-                  'Applications',
-                  'Runner.app',
+              expect(patchBundle, hasLength(1));
+              expect(
+                patchBundle[Arch.arm64],
+                isA<PatchArtifactBundle>().having(
+                  (b) => b.path,
+                  'path',
+                  endsWith(diffPath),
                 ),
-              ),
-            );
-            when(
-              () => shorebirdEnv.flutterRevision,
-            ).thenReturn(postLinkerFlutterRevision);
-            when(
-              () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.analyzeSnapshotIos,
-              ),
-            ).thenReturn(analyzeSnapshotFile.path);
-            when(
-              () => shorebirdArtifacts.getArtifactPath(
-                artifact: ShorebirdArtifact.genSnapshotIos,
-              ),
-            ).thenReturn(genSnapshotFile.path);
-          });
+              );
+            });
 
-          group('when linking fails', () {
-            group('when .app does not exist', () {
+            group('when class table link info is not present', () {
               setUp(() {
                 when(
-                  () => artifactManager.getIosAppDirectory(
-                    xcarchiveDirectory: any(named: 'xcarchiveDirectory'),
+                  () => artifactManager.extractZip(
+                    zipFile: supplementArtifactFile,
+                    outputDirectory: any(named: 'outputDirectory'),
                   ),
-                ).thenReturn(null);
+                ).thenAnswer((invocation) async {});
               });
 
-              test('logs error and exits with code 70', () async {
+              test('exits with code 70', () async {
                 await expectLater(
                   () => runWithOverrides(
                     () => patcher.createPatchArtifacts(
                       appId: appId,
                       releaseId: releaseId,
                       releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
+                    ),
+                  ),
+                  exitsWithCode(ExitCode.software),
+                );
+
+                verify(
+                  () => logger.err('Unable to find class table link info file'),
+                ).called(1);
+              });
+            });
+
+            group('when debug info is missing', () {
+              setUp(() {
+                when(
+                  () => artifactManager.extractZip(
+                    zipFile: supplementArtifactFile,
+                    outputDirectory: any(named: 'outputDirectory'),
+                  ),
+                ).thenAnswer((invocation) async {
+                  final outDir =
+                      invocation.namedArguments[#outputDirectory] as Directory;
+                  File(
+                    p.join(outDir.path, 'App.ct.link'),
+                  ).createSync(recursive: true);
+                });
+              });
+
+              test('exits with code 70', () async {
+                await expectLater(
+                  () => runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                      supplementArtifact: supplementArtifactFile,
                     ),
                   ),
                   exitsWithCode(ExitCode.software),
@@ -1090,69 +1193,29 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
                 verify(
                   () => logger.err(
-                    any(
-                      that: startsWith(
-                        'Unable to find release artifact .app directory',
-                      ),
-                    ),
+                    'Unable to find class table link debug info file',
                   ),
                 ).called(1);
               });
             });
-          });
 
-          group('when generate patch diff base is supported', () {
-            setUp(() {
-              when(
-                () => aotTools.isGeneratePatchDiffBaseSupported(),
-              ).thenAnswer((_) async => true);
-              when(
-                () => aotTools.generatePatchDiffBase(
-                  analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
-                  releaseSnapshot: any(named: 'releaseSnapshot'),
-                ),
-              ).thenAnswer((_) async => File(''));
-            });
-
-            group('when we fail to generate patch diff base', () {
+            group('when class table link info & debug info are present', () {
               setUp(() {
                 when(
-                  () => aotTools.generatePatchDiffBase(
-                    analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
-                    releaseSnapshot: any(named: 'releaseSnapshot'),
+                  () => artifactManager.extractZip(
+                    zipFile: supplementArtifactFile,
+                    outputDirectory: any(named: 'outputDirectory'),
                   ),
-                ).thenThrow(Exception('oops'));
-
-                setUpProjectRootArtifacts();
-              });
-
-              test('logs error and exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(() => progress.fail('Exception: oops')).called(1);
-              });
-            });
-
-            group('when linking and patch diff generation succeeds', () {
-              const diffPath = 'path/to/diff';
-
-              setUp(() {
-                when(
-                  () => artifactManager.createDiff(
-                    releaseArtifactPath: any(named: 'releaseArtifactPath'),
-                    patchArtifactPath: any(named: 'patchArtifactPath'),
-                  ),
-                ).thenAnswer((_) async => diffPath);
-                setUpProjectRootArtifacts();
+                ).thenAnswer((invocation) async {
+                  final outDir =
+                      invocation.namedArguments[#outputDirectory] as Directory;
+                  File(
+                    p.join(outDir.path, 'App.ct.link'),
+                  ).createSync(recursive: true);
+                  File(
+                    p.join(outDir.path, 'App.class_table.json'),
+                  ).createSync(recursive: true);
+                });
               });
 
               test('returns linked patch artifact in patch bundle', () async {
@@ -1161,6 +1224,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                     appId: appId,
                     releaseId: releaseId,
                     releaseArtifact: releaseArtifactFile,
+                    supplementArtifact: supplementArtifactFile,
                   ),
                 );
 
@@ -1174,143 +1238,35 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                   ),
                 );
               });
+            });
 
-              group('when class table link info is not present', () {
-                setUp(() {
-                  when(
-                    () => artifactManager.extractZip(
-                      zipFile: supplementArtifactFile,
-                      outputDirectory: any(named: 'outputDirectory'),
-                    ),
-                  ).thenAnswer((invocation) async {});
-                });
+            group('when code signing the patch', () {
+              setUp(() {
+                final privateKey = File(
+                  p.join(
+                    Directory.systemTemp.createTempSync().path,
+                    'test-private.pem',
+                  ),
+                )..createSync();
 
-                test('exits with code 70', () async {
-                  await expectLater(
-                    () => runWithOverrides(
-                      () => patcher.createPatchArtifacts(
-                        appId: appId,
-                        releaseId: releaseId,
-                        releaseArtifact: releaseArtifactFile,
-                        supplementArtifact: supplementArtifactFile,
-                      ),
-                    ),
-                    exitsWithCode(ExitCode.software),
-                  );
+                when(
+                  () => argResults[CommonArguments.privateKeyArg.name],
+                ).thenReturn(privateKey.path);
 
-                  verify(
-                    () => logger.err(
-                      'Unable to find class table link info file',
-                    ),
-                  ).called(1);
+                when(
+                  () => codeSigner.sign(
+                    message: any(named: 'message'),
+                    privateKeyPemFile: any(named: 'privateKeyPemFile'),
+                  ),
+                ).thenAnswer((invocation) {
+                  final message = invocation.namedArguments[#message] as String;
+                  return '$message-signature';
                 });
               });
 
-              group('when debug info is missing', () {
-                setUp(() {
-                  when(
-                    () => artifactManager.extractZip(
-                      zipFile: supplementArtifactFile,
-                      outputDirectory: any(named: 'outputDirectory'),
-                    ),
-                  ).thenAnswer((invocation) async {
-                    final outDir = invocation.namedArguments[#outputDirectory]
-                        as Directory;
-                    File(
-                      p.join(outDir.path, 'App.ct.link'),
-                    ).createSync(recursive: true);
-                  });
-                });
-
-                test('exits with code 70', () async {
-                  await expectLater(
-                    () => runWithOverrides(
-                      () => patcher.createPatchArtifacts(
-                        appId: appId,
-                        releaseId: releaseId,
-                        releaseArtifact: releaseArtifactFile,
-                        supplementArtifact: supplementArtifactFile,
-                      ),
-                    ),
-                    exitsWithCode(ExitCode.software),
-                  );
-
-                  verify(
-                    () => logger.err(
-                      'Unable to find class table link debug info file',
-                    ),
-                  ).called(1);
-                });
-              });
-
-              group('when class table link info & debug info are present', () {
-                setUp(() {
-                  when(
-                    () => artifactManager.extractZip(
-                      zipFile: supplementArtifactFile,
-                      outputDirectory: any(named: 'outputDirectory'),
-                    ),
-                  ).thenAnswer((invocation) async {
-                    final outDir = invocation.namedArguments[#outputDirectory]
-                        as Directory;
-                    File(
-                      p.join(outDir.path, 'App.ct.link'),
-                    ).createSync(recursive: true);
-                    File(
-                      p.join(outDir.path, 'App.class_table.json'),
-                    ).createSync(recursive: true);
-                  });
-                });
-
-                test('returns linked patch artifact in patch bundle', () async {
-                  final patchBundle = await runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  );
-
-                  expect(patchBundle, hasLength(1));
-                  expect(
-                    patchBundle[Arch.arm64],
-                    isA<PatchArtifactBundle>().having(
-                      (b) => b.path,
-                      'path',
-                      endsWith(diffPath),
-                    ),
-                  );
-                });
-              });
-
-              group('when code signing the patch', () {
-                setUp(() {
-                  final privateKey = File(
-                    p.join(
-                      Directory.systemTemp.createTempSync().path,
-                      'test-private.pem',
-                    ),
-                  )..createSync();
-
-                  when(() => argResults[CommonArguments.privateKeyArg.name])
-                      .thenReturn(privateKey.path);
-
-                  when(
-                    () => codeSigner.sign(
-                      message: any(named: 'message'),
-                      privateKeyPemFile: any(named: 'privateKeyPemFile'),
-                    ),
-                  ).thenAnswer((invocation) {
-                    final message =
-                        invocation.namedArguments[#message] as String;
-                    return '$message-signature';
-                  });
-                });
-
-                test(
-                    '''returns patch artifact bundles with proper hash signatures''',
-                    () async {
+              test(
+                '''returns patch artifact bundles with proper hash signatures''',
+                () async {
                   final result = await runWithOverrides(
                     () => patcher.createPatchArtifacts(
                       appId: appId,
@@ -1327,59 +1283,24 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
                   expect(
                     result.values.first.hashSignature,
-                    equals(
-                      expectedSignature,
-                    ),
+                    equals(expectedSignature),
                   );
-                });
-              });
-            });
-          });
-
-          group('when generate patch diff base is not supported', () {
-            setUp(() {
-              when(
-                aotTools.isGeneratePatchDiffBaseSupported,
-              ).thenAnswer((_) async => false);
-              setUpProjectRootArtifacts();
-            });
-
-            test('returns vmcode file as patch file', () async {
-              final patchBundle = await runWithOverrides(
-                () => patcher.createPatchArtifacts(
-                  appId: appId,
-                  releaseId: releaseId,
-                  releaseArtifact: releaseArtifactFile,
-                ),
-              );
-
-              expect(patchBundle, hasLength(1));
-              expect(
-                patchBundle[Arch.arm64],
-                isA<PatchArtifactBundle>().having(
-                  (b) => b.path,
-                  'path',
-                  endsWith('out.vmcode'),
-                ),
+                },
               );
             });
           });
         });
 
-        group('when does not use linker', () {
+        group('when generate patch diff base is not supported', () {
           setUp(() {
             when(
-              () => shorebirdEnv.flutterRevision,
-            ).thenReturn(preLinkerFlutterRevision);
-            when(
-              () => aotTools.isGeneratePatchDiffBaseSupported(),
+              aotTools.isGeneratePatchDiffBaseSupported,
             ).thenAnswer((_) async => false);
-
             setUpProjectRootArtifacts();
           });
 
-          test('returns base patch artifact in patch bundle', () async {
-            final patchArtifacts = await runWithOverrides(
+          test('returns vmcode file as patch file', () async {
+            final patchBundle = await runWithOverrides(
               () => patcher.createPatchArtifacts(
                 appId: appId,
                 releaseId: releaseId,
@@ -1387,85 +1308,89 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
               ),
             );
 
-            expect(patchArtifacts, hasLength(1));
-            verifyNever(
-              () => aotTools.link(
-                base: any(named: 'base'),
-                patch: any(named: 'patch'),
-                analyzeSnapshot: any(named: 'analyzeSnapshot'),
-                genSnapshot: any(named: 'genSnapshot'),
-                kernel: any(named: 'kernel'),
-                outputPath: any(named: 'outputPath'),
+            expect(patchBundle, hasLength(1));
+            expect(
+              patchBundle[Arch.arm64],
+              isA<PatchArtifactBundle>().having(
+                (b) => b.path,
+                'path',
+                endsWith('out.vmcode'),
               ),
             );
           });
         });
       });
 
-      group('extractReleaseVersionFromArtifact', () {
+      group('when does not use linker', () {
         setUp(() {
-          when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
-            Directory(
-              p.join(
-                projectRoot.path,
-                'build',
-                'ios',
-                'framework',
-                'Release',
-                'App.xcframework',
-              ),
+          when(
+            () => shorebirdEnv.flutterRevision,
+          ).thenReturn(preLinkerFlutterRevision);
+          when(
+            () => aotTools.isGeneratePatchDiffBaseSupported(),
+          ).thenAnswer((_) async => false);
+
+          setUpProjectRootArtifacts();
+        });
+
+        test('returns base patch artifact in patch bundle', () async {
+          final patchArtifacts = await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          expect(patchArtifacts, hasLength(1));
+          verifyNever(
+            () => aotTools.link(
+              base: any(named: 'base'),
+              patch: any(named: 'patch'),
+              analyzeSnapshot: any(named: 'analyzeSnapshot'),
+              genSnapshot: any(named: 'genSnapshot'),
+              kernel: any(named: 'kernel'),
+              outputPath: any(named: 'outputPath'),
             ),
           );
         });
+      });
+    });
 
-        group('when xcarchive directory does not exist', () {
-          setUp(() {
-            when(
-              () => artifactManager.getXcarchiveDirectory(),
-            ).thenReturn(null);
-          });
+    group('extractReleaseVersionFromArtifact', () {
+      setUp(() {
+        when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
+          Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'ios',
+              'framework',
+              'Release',
+              'App.xcframework',
+            ),
+          ),
+        );
+      });
 
-          test('exit with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(
-                () => patcher.extractReleaseVersionFromArtifact(File('')),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-          });
+      group('when xcarchive directory does not exist', () {
+        setUp(() {
+          when(() => artifactManager.getXcarchiveDirectory()).thenReturn(null);
         });
 
-        group('when Info.plist does not exist', () {
-          setUp(() {
-            try {
-              File(
-                p.join(
-                  projectRoot.path,
-                  'build',
-                  'ios',
-                  'framework',
-                  'Release',
-                  'App.xcframework',
-                  'Info.plist',
-                ),
-              ).deleteSync(recursive: true);
-            } on Exception {
-              // ignore
-            }
-          });
-
-          test('exit with code 70', () async {
-            await expectLater(
-              () => runWithOverrides(
-                () => patcher.extractReleaseVersionFromArtifact(File('')),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-          });
+        test('exit with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patcher.extractReleaseVersionFromArtifact(File('')),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
         });
+      });
 
-        group('when empty Info.plist does exist', () {
-          setUp(() {
+      group('when Info.plist does not exist', () {
+        setUp(() {
+          try {
             File(
               p.join(
                 projectRoot.path,
@@ -1476,37 +1401,63 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 'App.xcframework',
                 'Info.plist',
               ),
+            ).deleteSync(recursive: true);
+          } on Exception {
+            // ignore
+          }
+        });
+
+        test('exit with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patcher.extractReleaseVersionFromArtifact(File('')),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+        });
+      });
+
+      group('when empty Info.plist does exist', () {
+        setUp(() {
+          File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'ios',
+                'framework',
+                'Release',
+                'App.xcframework',
+                'Info.plist',
+              ),
             )
-              ..createSync(recursive: true)
-              ..writeAsStringSync('''
+            ..createSync(recursive: true)
+            ..writeAsStringSync('''
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict></dict>
 </plist>
 ''');
-          });
-
-          test('exits with code 70 and logs error', () async {
-            await expectLater(
-              runWithOverrides(
-                () => patcher.extractReleaseVersionFromArtifact(File('')),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-            verify(
-              () => logger.err(
-                any(
-                  that: startsWith('Failed to determine release version'),
-                ),
-              ),
-            ).called(1);
-          });
         });
 
-        group('when Info.plist does exist', () {
-          setUp(() {
-            File(
+        test('exits with code 70 and logs error', () async {
+          await expectLater(
+            runWithOverrides(
+              () => patcher.extractReleaseVersionFromArtifact(File('')),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(
+            () => logger.err(
+              any(that: startsWith('Failed to determine release version')),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when Info.plist does exist', () {
+        setUp(() {
+          File(
               p.join(
                 projectRoot.path,
                 'build',
@@ -1517,8 +1468,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
                 'Info.plist',
               ),
             )
-              ..createSync(recursive: true)
-              ..writeAsStringSync('''
+            ..createSync(recursive: true)
+            ..writeAsStringSync('''
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -1547,125 +1498,121 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 </dict>
 </plist>
 ''');
-          });
+        });
 
-          test('returns correct version', () async {
-            await expectLater(
-              runWithOverrides(
-                () => patcher.extractReleaseVersionFromArtifact(File('')),
+        test('returns correct version', () async {
+          await expectLater(
+            runWithOverrides(
+              () => patcher.extractReleaseVersionFromArtifact(File('')),
+            ),
+            completion('1.2.3+1'),
+          );
+        });
+      });
+    });
+
+    group('updatedCreatePatchMetadata', () {
+      const allowAssetDiffs = false;
+      const allowNativeDiffs = true;
+      const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
+      const operatingSystem = 'Mac OS X';
+      const operatingSystemVersion = '10.15.7';
+      const xcodeVersion = '11';
+
+      setUp(() {
+        when(() => xcodeBuild.version()).thenAnswer((_) async => xcodeVersion);
+      });
+
+      group('when linker is not enabled', () {
+        test('returns correct metadata', () async {
+          const metadata = CreatePatchMetadata(
+            releasePlatform: ReleasePlatform.ios,
+            usedIgnoreAssetChangesFlag: allowAssetDiffs,
+            hasAssetChanges: false,
+            usedIgnoreNativeChangesFlag: allowNativeDiffs,
+            hasNativeChanges: true,
+            environment: BuildEnvironmentMetadata(
+              flutterRevision: flutterRevision,
+              operatingSystem: operatingSystem,
+              operatingSystemVersion: operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            ),
+          );
+
+          expect(
+            runWithOverrides(
+              () => patcher.updatedCreatePatchMetadata(metadata),
+            ),
+            completion(
+              const CreatePatchMetadata(
+                releasePlatform: ReleasePlatform.ios,
+                usedIgnoreAssetChangesFlag: allowAssetDiffs,
+                hasAssetChanges: false,
+                usedIgnoreNativeChangesFlag: allowNativeDiffs,
+                hasNativeChanges: true,
+                environment: BuildEnvironmentMetadata(
+                  flutterRevision: flutterRevision,
+                  operatingSystem: operatingSystem,
+                  operatingSystemVersion: operatingSystemVersion,
+                  shorebirdVersion: packageVersion,
+                  shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+                  xcodeVersion: xcodeVersion,
+                ),
               ),
-              completion('1.2.3+1'),
-            );
-          });
+            ),
+          );
         });
       });
 
-      group('updatedCreatePatchMetadata', () {
-        const allowAssetDiffs = false;
-        const allowNativeDiffs = true;
-        const flutterRevision = '853d13d954df3b6e9c2f07b72062f33c52a9a64b';
-        const operatingSystem = 'Mac OS X';
-        const operatingSystemVersion = '10.15.7';
-        const xcodeVersion = '11';
+      group('when linker is enabled', () {
+        const linkPercentage = 100.0;
 
         setUp(() {
-          when(
-            () => xcodeBuild.version(),
-          ).thenAnswer((_) async => xcodeVersion);
+          patcher.lastBuildLinkPercentage = linkPercentage;
         });
 
-        group('when linker is not enabled', () {
-          test('returns correct metadata', () async {
-            const metadata = CreatePatchMetadata(
-              releasePlatform: ReleasePlatform.ios,
-              usedIgnoreAssetChangesFlag: allowAssetDiffs,
-              hasAssetChanges: false,
-              usedIgnoreNativeChangesFlag: allowNativeDiffs,
-              hasNativeChanges: true,
-              environment: BuildEnvironmentMetadata(
-                flutterRevision: flutterRevision,
-                operatingSystem: operatingSystem,
-                operatingSystemVersion: operatingSystemVersion,
-                shorebirdVersion: packageVersion,
-                shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
-              ),
-            );
+        test('returns correct metadata', () async {
+          const metadata = CreatePatchMetadata(
+            releasePlatform: ReleasePlatform.ios,
+            usedIgnoreAssetChangesFlag: allowAssetDiffs,
+            hasAssetChanges: true,
+            usedIgnoreNativeChangesFlag: allowNativeDiffs,
+            hasNativeChanges: false,
+            environment: BuildEnvironmentMetadata(
+              flutterRevision: flutterRevision,
+              operatingSystem: operatingSystem,
+              operatingSystemVersion: operatingSystemVersion,
+              shorebirdVersion: packageVersion,
+              shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            ),
+          );
 
-            expect(
-              runWithOverrides(
-                () => patcher.updatedCreatePatchMetadata(metadata),
-              ),
-              completion(
-                const CreatePatchMetadata(
-                  releasePlatform: ReleasePlatform.ios,
-                  usedIgnoreAssetChangesFlag: allowAssetDiffs,
-                  hasAssetChanges: false,
-                  usedIgnoreNativeChangesFlag: allowNativeDiffs,
-                  hasNativeChanges: true,
-                  environment: BuildEnvironmentMetadata(
-                    flutterRevision: flutterRevision,
-                    operatingSystem: operatingSystem,
-                    operatingSystemVersion: operatingSystemVersion,
-                    shorebirdVersion: packageVersion,
-                    shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
-                    xcodeVersion: xcodeVersion,
-                  ),
+          expect(
+            runWithOverrides(
+              () => patcher.updatedCreatePatchMetadata(metadata),
+            ),
+            completion(
+              const CreatePatchMetadata(
+                releasePlatform: ReleasePlatform.ios,
+                usedIgnoreAssetChangesFlag: allowAssetDiffs,
+                hasAssetChanges: true,
+                usedIgnoreNativeChangesFlag: allowNativeDiffs,
+                hasNativeChanges: false,
+                linkPercentage: linkPercentage,
+                environment: BuildEnvironmentMetadata(
+                  flutterRevision: flutterRevision,
+                  operatingSystem: operatingSystem,
+                  operatingSystemVersion: operatingSystemVersion,
+                  shorebirdVersion: packageVersion,
+                  xcodeVersion: xcodeVersion,
+                  shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
                 ),
               ),
-            );
-          });
-        });
-
-        group('when linker is enabled', () {
-          const linkPercentage = 100.0;
-
-          setUp(() {
-            patcher.lastBuildLinkPercentage = linkPercentage;
-          });
-
-          test('returns correct metadata', () async {
-            const metadata = CreatePatchMetadata(
-              releasePlatform: ReleasePlatform.ios,
-              usedIgnoreAssetChangesFlag: allowAssetDiffs,
-              hasAssetChanges: true,
-              usedIgnoreNativeChangesFlag: allowNativeDiffs,
-              hasNativeChanges: false,
-              environment: BuildEnvironmentMetadata(
-                flutterRevision: flutterRevision,
-                operatingSystem: operatingSystem,
-                operatingSystemVersion: operatingSystemVersion,
-                shorebirdVersion: packageVersion,
-                shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
-              ),
-            );
-
-            expect(
-              runWithOverrides(
-                () => patcher.updatedCreatePatchMetadata(metadata),
-              ),
-              completion(
-                const CreatePatchMetadata(
-                  releasePlatform: ReleasePlatform.ios,
-                  usedIgnoreAssetChangesFlag: allowAssetDiffs,
-                  hasAssetChanges: true,
-                  usedIgnoreNativeChangesFlag: allowNativeDiffs,
-                  hasNativeChanges: false,
-                  linkPercentage: linkPercentage,
-                  environment: BuildEnvironmentMetadata(
-                    flutterRevision: flutterRevision,
-                    operatingSystem: operatingSystem,
-                    operatingSystemVersion: operatingSystemVersion,
-                    shorebirdVersion: packageVersion,
-                    xcodeVersion: xcodeVersion,
-                    shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
-                  ),
-                ),
-              ),
-            );
-          });
+            ),
+          );
         });
       });
-    },
-    testOn: 'mac-os',
-  );
+    });
+  }, testOn: 'mac-os');
 }

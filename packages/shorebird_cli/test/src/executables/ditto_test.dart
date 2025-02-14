@@ -12,12 +12,7 @@ void main() {
     late Ditto ditto;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(
-        body,
-        values: {
-          processRef.overrideWith(() => process),
-        },
-      );
+      return runScoped(body, values: {processRef.overrideWith(() => process)});
     }
 
     setUp(() {
@@ -31,9 +26,7 @@ void main() {
 
       group('when process exits with code 0', () {
         setUp(() {
-          when(
-            () => process.run('ditto', any()),
-          ).thenAnswer(
+          when(() => process.run('ditto', any())).thenAnswer(
             (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: '',
@@ -50,10 +43,7 @@ void main() {
             completes,
           );
           verify(
-            () => process.run(
-              'ditto',
-              ['-x', '-k', source, destination],
-            ),
+            () => process.run('ditto', ['-x', '-k', source, destination]),
           ).called(1);
         });
       });
@@ -61,9 +51,7 @@ void main() {
       group('when process exits with non-zero exit code', () {
         const error = 'oops something went wrong';
         setUp(() {
-          when(
-            () => process.run('ditto', any()),
-          ).thenAnswer(
+          when(() => process.run('ditto', any())).thenAnswer(
             (_) async => const ShorebirdProcessResult(
               exitCode: 1,
               stdout: '',
@@ -86,10 +74,7 @@ void main() {
             ),
           );
           verify(
-            () => process.run(
-              'ditto',
-              ['-x', '-k', source, destination],
-            ),
+            () => process.run('ditto', ['-x', '-k', source, destination]),
           ).called(1);
         });
       });
@@ -102,10 +87,7 @@ void main() {
       group('when process exits with code 0', () {
         setUp(() {
           when(
-            () => process.run(
-              'ditto',
-              ['-c', '-k', source, destination],
-            ),
+            () => process.run('ditto', ['-c', '-k', source, destination]),
           ).thenAnswer(
             (_) async => const ShorebirdProcessResult(
               exitCode: 0,
@@ -118,16 +100,13 @@ void main() {
         group('when keepParent is true', () {
           setUp(() {
             when(
-              () => process.run(
-                'ditto',
-                [
-                  '-c',
-                  '-k',
-                  '--keepParent',
-                  source,
-                  destination,
-                ],
-              ),
+              () => process.run('ditto', [
+                '-c',
+                '-k',
+                '--keepParent',
+                source,
+                destination,
+              ]),
             ).thenAnswer(
               (_) async => const ShorebirdProcessResult(
                 exitCode: 0,
@@ -149,16 +128,13 @@ void main() {
               completes,
             );
             verify(
-              () => process.run(
-                'ditto',
-                [
-                  '-c',
-                  '-k',
-                  '--keepParent',
-                  source,
-                  destination,
-                ],
-              ),
+              () => process.run('ditto', [
+                '-c',
+                '-k',
+                '--keepParent',
+                source,
+                destination,
+              ]),
             ).called(1);
           });
         });
@@ -171,10 +147,7 @@ void main() {
             completes,
           );
           verify(
-            () => process.run(
-              'ditto',
-              ['-c', '-k', source, destination],
-            ),
+            () => process.run('ditto', ['-c', '-k', source, destination]),
           ).called(1);
         });
       });
@@ -183,10 +156,7 @@ void main() {
         const error = 'oops something went wrong';
         setUp(() {
           when(
-            () => process.run(
-              'ditto',
-              ['-c', '-k', source, destination],
-            ),
+            () => process.run('ditto', ['-c', '-k', source, destination]),
           ).thenAnswer(
             (_) async => const ShorebirdProcessResult(
               exitCode: 1,
@@ -210,10 +180,7 @@ void main() {
             ),
           );
           verify(
-            () => process.run(
-              'ditto',
-              ['-c', '-k', source, destination],
-            ),
+            () => process.run('ditto', ['-c', '-k', source, destination]),
           ).called(1);
         });
       });

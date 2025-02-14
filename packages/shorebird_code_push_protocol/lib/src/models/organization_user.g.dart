@@ -9,19 +9,19 @@ part of 'organization_user.dart';
 // **************************************************************************
 
 OrganizationUser _$OrganizationUserFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'OrganizationUser',
-      json,
-      ($checkedConvert) {
-        final val = OrganizationUser(
-          user: $checkedConvert(
-              'user', (v) => PublicUser.fromJson(v as Map<String, dynamic>)),
-          role: $checkedConvert(
-              'role', (v) => $enumDecode(_$OrganizationRoleEnumMap, v)),
-        );
-        return val;
-      },
-    );
+    $checkedCreate('OrganizationUser', json, ($checkedConvert) {
+      final val = OrganizationUser(
+        user: $checkedConvert(
+          'user',
+          (v) => PublicUser.fromJson(v as Map<String, dynamic>),
+        ),
+        role: $checkedConvert(
+          'role',
+          (v) => $enumDecode(_$OrganizationRoleEnumMap, v),
+        ),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$OrganizationUserToJson(OrganizationUser instance) =>
     <String, dynamic>{

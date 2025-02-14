@@ -31,9 +31,7 @@ class CleanCacheCommand extends ShorebirdCommand {
       await cache.clear();
     } on FileSystemException catch (error) {
       final cachePath = Cache.shorebirdCacheDirectory.path;
-      progress.fail(
-        '''Failed to delete cache directory $cachePath: $error''',
-      );
+      progress.fail('''Failed to delete cache directory $cachePath: $error''');
 
       if (!platform.isWindows) {
         return ExitCode.software.code;
@@ -45,12 +43,10 @@ class CleanCacheCommand extends ShorebirdCommand {
         ),
       );
 
-      logger.info(
-        '''
+      logger.info('''
 This could be because a program is using a file in the cache directory. To find and stop such a program, see:
     ${lightCyan.wrap(superuserLink)}
-''',
-      );
+''');
       return ExitCode.software.code;
     }
 

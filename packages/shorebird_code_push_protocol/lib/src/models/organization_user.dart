@@ -9,10 +9,7 @@ part 'organization_user.g.dart';
 @JsonSerializable()
 class OrganizationUser {
   /// {@macro organization_user}
-  OrganizationUser({
-    required this.user,
-    required this.role,
-  });
+  OrganizationUser({required this.user, required this.role});
 
   /// Converts this [OrganizationUser] to a JSON map.
   factory OrganizationUser.fromJson(Map<String, dynamic> json) =>

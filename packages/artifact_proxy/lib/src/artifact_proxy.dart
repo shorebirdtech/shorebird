@@ -114,9 +114,10 @@ String getFlutterArtifactLocation({
   required String artifactPath,
   String? engine,
 }) {
-  final adjustedPath = engine != null
-      ? artifactPath.replaceAll(r'$engine', engine)
-      : artifactPath;
+  final adjustedPath =
+      engine != null
+          ? artifactPath.replaceAll(r'$engine', engine)
+          : artifactPath;
 
   return 'https://storage.googleapis.com/$adjustedPath';
 }

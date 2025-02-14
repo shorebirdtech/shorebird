@@ -24,8 +24,9 @@ void main() {
   final jwkKeyStoreJsonString =
       File(p.join('test', 'fixtures', 'jwk_key_store.json')).readAsStringSync();
   final keyValueKeyStoreString =
-      File(p.join('test', 'fixtures', 'key_value_key_store.json'))
-          .readAsStringSync();
+      File(
+        p.join('test', 'fixtures', 'key_value_key_store.json'),
+      ).readAsStringSync();
   final expiresAt = DateTime.fromMillisecondsSinceEpoch(1643687866 * 1000);
   final validTime = expiresAt.subtract(const Duration(minutes: 15));
 
@@ -69,24 +70,26 @@ void main() {
         );
       });
 
-      test('throws a JwtVerificationFailure if string is not valid jwt',
-          () async {
-        await expectLater(
-          () => verify(
-            'not.a.jwt',
-            audience: {audience},
-            issuer: issuer,
-            publicKeysUrl: keyValuePublicKeysUrl,
-          ),
-          throwsA(
-            isA<JwtVerificationFailure>().having(
-              (e) => e.reason,
-              'reason',
-              'JWT header is malformed.',
+      test(
+        'throws a JwtVerificationFailure if string is not valid jwt',
+        () async {
+          await expectLater(
+            () => verify(
+              'not.a.jwt',
+              audience: {audience},
+              issuer: issuer,
+              publicKeysUrl: keyValuePublicKeysUrl,
             ),
-          ),
-        );
-      });
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'JWT header is malformed.',
+              ),
+            ),
+          );
+        },
+      );
 
       test('throws a JwtVerificationFailure if payload is not valid', () async {
         await expectLater(
@@ -106,26 +109,28 @@ void main() {
         );
       });
 
-      test('throws a JwtVerificationFailure if signature is not valid',
-          () async {
-        await withClock(Clock.fixed(validTime), () async {
-          await expectLater(
-            () => verify(
-              tokenInvalidSignature,
-              audience: {audience},
-              issuer: issuer,
-              publicKeysUrl: keyValuePublicKeysUrl,
-            ),
-            throwsA(
-              isA<JwtVerificationFailure>().having(
-                (e) => e.reason,
-                'reason',
-                'JWT signature is malformed.',
+      test(
+        'throws a JwtVerificationFailure if signature is not valid',
+        () async {
+          await withClock(Clock.fixed(validTime), () async {
+            await expectLater(
+              () => verify(
+                tokenInvalidSignature,
+                audience: {audience},
+                issuer: issuer,
+                publicKeysUrl: keyValuePublicKeysUrl,
               ),
-            ),
-          );
-        });
-      });
+              throwsA(
+                isA<JwtVerificationFailure>().having(
+                  (e) => e.reason,
+                  'reason',
+                  'JWT signature is malformed.',
+                ),
+              ),
+            );
+          });
+        },
+      );
 
       test('throws exception if jwt has no matching public key id', () async {
         await withClock(Clock.fixed(validTime), () async {
@@ -147,8 +152,7 @@ void main() {
         });
       });
 
-      test(
-          'throws exception if invalid keys are provided '
+      test('throws exception if invalid keys are provided '
           'by the publicKeysUrl (KeyValueKeyStore)', () async {
         getOverride = (Uri uri) async {
           return Response(
@@ -177,8 +181,7 @@ void main() {
         });
       });
 
-      test(
-          'throws exception if invalid keys are provided '
+      test('throws exception if invalid keys are provided '
           'by the publicKeysUrl (JwkKeyStore)', () async {
         getOverride = (Uri uri) async {
           return Response(

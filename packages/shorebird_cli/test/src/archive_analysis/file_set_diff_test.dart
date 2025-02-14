@@ -6,14 +6,8 @@ void main() {
   group(FileSetDiff, () {
     group('fromPathHashes', () {
       test('detects added, changed, and removed files', () {
-        final oldPathHashes = {
-          'a': 'asdf',
-          'b': 'qwer',
-        };
-        final newPathHashes = {
-          'a': 'qwer',
-          'c': 'zxcv',
-        };
+        final oldPathHashes = {'a': 'asdf', 'b': 'qwer'};
+        final newPathHashes = {'a': 'qwer', 'c': 'zxcv'};
 
         final fileSetDiff = FileSetDiff.fromPathHashes(
           oldPathHashes: oldPathHashes,
@@ -32,17 +26,14 @@ void main() {
           changedPaths: {'c'},
           removedPaths: {'d'},
         );
-        expect(
-          fileSetDiff.prettyString,
-          '''
+        expect(fileSetDiff.prettyString, '''
     Added files:
         a
         b
     Changed files:
         c
     Removed files:
-        d''',
-        );
+        d''');
       });
 
       test('does not include empty path sets', () {
@@ -51,13 +42,10 @@ void main() {
           changedPaths: {},
           removedPaths: {},
         );
-        expect(
-          fileSetDiff.prettyString,
-          '''
+        expect(fileSetDiff.prettyString, '''
     Added files:
         a
-        b''',
-        );
+        b''');
       });
     });
 

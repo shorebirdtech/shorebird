@@ -1,3 +1,8 @@
 include: package:very_good_analysis/analysis_options.7.0.0.yaml
+linter:
+  rules:
+    # Disabling in favor of the new Dart 3.7 format.
+    # https://github.com/VeryGoodOpenSource/very_good_analysis/issues/136
+    require_trailing_commas: false
 analyzer:
   exclude: ["example/**"]

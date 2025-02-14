@@ -18,12 +18,16 @@ ReleaseArtifact _$ReleaseArtifactFromJson(Map<String, dynamic> json) =>
           releaseId: $checkedConvert('release_id', (v) => (v as num).toInt()),
           arch: $checkedConvert('arch', (v) => v as String),
           platform: $checkedConvert(
-              'platform', (v) => $enumDecode(_$ReleasePlatformEnumMap, v)),
+            'platform',
+            (v) => $enumDecode(_$ReleasePlatformEnumMap, v),
+          ),
           hash: $checkedConvert('hash', (v) => v as String),
           size: $checkedConvert('size', (v) => (v as num).toInt()),
           url: $checkedConvert('url', (v) => v as String),
-          podfileLockHash:
-              $checkedConvert('podfile_lock_hash', (v) => v as String?),
+          podfileLockHash: $checkedConvert(
+            'podfile_lock_hash',
+            (v) => v as String?,
+          ),
           canSideload: $checkedConvert('can_sideload', (v) => v as bool),
         );
         return val;
@@ -31,7 +35,7 @@ ReleaseArtifact _$ReleaseArtifactFromJson(Map<String, dynamic> json) =>
       fieldKeyMap: const {
         'releaseId': 'release_id',
         'podfileLockHash': 'podfile_lock_hash',
-        'canSideload': 'can_sideload'
+        'canSideload': 'can_sideload',
       },
     );
 

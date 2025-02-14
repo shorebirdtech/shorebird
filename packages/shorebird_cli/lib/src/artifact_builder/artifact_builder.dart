@@ -46,9 +46,7 @@ class IpaBuildResult {
 /// {@endtemplate}
 class IosFrameworkBuildResult {
   /// {@macro ios_framework_build_result}
-  IosFrameworkBuildResult({
-    required this.kernelFile,
-  });
+  IosFrameworkBuildResult({required this.kernelFile});
 
   /// The app.dill file produced by this invocation of `flutter build ipa`.
   final File kernelFile;
@@ -126,20 +124,21 @@ class ArtifactBuilder {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        stdoutLines.add(line);
-        if (buildProgress == null) {
-          return;
-        }
-        final captured = gradleTaskRegex.firstMatch(line)?.group(1);
-        if (captured != null) {
-          buildProgress.updateDetailMessage(captured);
-        }
-      });
+            stdoutLines.add(line);
+            if (buildProgress == null) {
+              return;
+            }
+            final captured = gradleTaskRegex.firstMatch(line)?.group(1);
+            if (captured != null) {
+              buildProgress.updateDetailMessage(captured);
+            }
+          });
 
-      final stderrLines = await buildProcess.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .toList();
+      final stderrLines =
+          await buildProcess.stderr
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .toList();
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
@@ -257,11 +256,7 @@ class ArtifactBuilder {
         ...args,
       ];
 
-      final result = await process.run(
-        executable,
-        arguments,
-        runInShell: true,
-      );
+      final result = await process.run(executable, arguments, runInShell: true);
 
       if (result.exitCode != ExitCode.success.code) {
         throw ArtifactBuildException.fromProcessResult(
@@ -301,14 +296,15 @@ class ArtifactBuilder {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        logger.detail(line);
-        stdoutLines.add(line);
-      });
+            logger.detail(line);
+            stdoutLines.add(line);
+          });
 
-      final stderrLines = await buildProcess.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .toList();
+      final stderrLines =
+          await buildProcess.stderr
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .toList();
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
@@ -364,22 +360,23 @@ class ArtifactBuilder {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        stdoutLines.add(line);
-        if (buildProgress == null) {
-          return;
-        }
+            stdoutLines.add(line);
+            if (buildProgress == null) {
+              return;
+            }
 
-        // TODO(bryanoltman): update the progress message for macOS builds.
-        // final update = _progressUpdateFromMacosBuildLog(line);
-        // if (update != null) {
-        //   buildProgress.updateDetailMessage(update);
-        // }
-      });
+            // TODO(bryanoltman): update the progress message for macOS builds.
+            // final update = _progressUpdateFromMacosBuildLog(line);
+            // if (update != null) {
+            //   buildProgress.updateDetailMessage(update);
+            // }
+          });
 
-      final stderrLines = await buildProcess.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .toList();
+      final stderrLines =
+          await buildProcess.stderr
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .toList();
       final stdout = stdoutLines.join('\n');
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
@@ -439,21 +436,22 @@ class ArtifactBuilder {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        stdoutLines.add(line);
-        if (buildProgress == null) {
-          return;
-        }
+            stdoutLines.add(line);
+            if (buildProgress == null) {
+              return;
+            }
 
-        final update = _progressUpdateFromIpaBuildLog(line);
-        if (update != null) {
-          buildProgress.updateDetailMessage(update);
-        }
-      });
+            final update = _progressUpdateFromIpaBuildLog(line);
+            if (update != null) {
+              buildProgress.updateDetailMessage(update);
+            }
+          });
 
-      final stderrLines = await buildProcess.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .toList();
+      final stderrLines =
+          await buildProcess.stderr
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .toList();
       final stderr = stderrLines.join('\n');
       final stdout = stdoutLines.join('\n');
       final exitCode = await buildProcess.exitCode;
@@ -510,11 +508,7 @@ class ArtifactBuilder {
         ...args,
       ];
 
-      final result = await process.run(
-        executable,
-        arguments,
-        runInShell: true,
-      );
+      final result = await process.run(executable, arguments, runInShell: true);
 
       if (result.exitCode != ExitCode.success.code) {
         throw ArtifactBuildException('Failed to build: ${result.stderr}');
@@ -569,13 +563,11 @@ class ArtifactBuilder {
     );
 
     if (result.exitCode != ExitCode.success.code) {
-      logger.warn(
-        '''
+      logger.warn('''
 Build was successful, but `flutter pub get` failed to run after the build completed. You may see unexpected behavior in VS Code.
 
 Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCodeUrl.toLink()}.
-''',
-      );
+''');
     }
   }
 
@@ -620,12 +612,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final arguments = [
-        'build',
-        'windows',
-        '--release',
-        ...args,
-      ];
+      final arguments = ['build', 'windows', '--release', ...args];
 
       final buildProcess = await process.start(
         executable,
@@ -639,15 +626,16 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        logger.detail(line);
-        stdoutLines.add(line);
-        // TODO(bryanoltman): update build progress
-      });
+            logger.detail(line);
+            stdoutLines.add(line);
+            // TODO(bryanoltman): update build progress
+          });
 
-      final stderrLines = await buildProcess.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .toList();
+      final stderrLines =
+          await buildProcess.stderr
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .toList();
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
@@ -668,14 +656,17 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     // xcodebuild -list is a command run early in `flutter build ipa` to read
     // build settings and schemes. Most users aren't familiar with this command,
     // so we translate it to "Collecting schemes" below.
-    final collectingSchemesRegex =
-        RegExp(r'\[.*\] executing:.*xcrun xcodebuild -list$');
+    final collectingSchemesRegex = RegExp(
+      r'\[.*\] executing:.*xcrun xcodebuild -list$',
+    );
     final archivingRegex = RegExp(r'^\[.*\] (Archiving .+$)');
     final runningXcodeBuildRegex = RegExp(r'^\[.*\] (Running Xcode build).*$');
-    final compilingLinkingSigningRegex =
-        RegExp(r'^\[.*\]\s+└─(Compiling, linking and signing).*$');
-    final buildingAppStoreIpaRegex =
-        RegExp(r'^\[.*\] (Building App Store IPA).*$');
+    final compilingLinkingSigningRegex = RegExp(
+      r'^\[.*\]\s+└─(Compiling, linking and signing).*$',
+    );
+    final buildingAppStoreIpaRegex = RegExp(
+      r'^\[.*\] (Building App Store IPA).*$',
+    );
     final builtAppStoreIpaRegex = RegExp(r'^\[.*\] ✓ (Built IPA to \S+).*$');
 
     final regexes = [
@@ -706,7 +697,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   /// command, finds the path to the app.dill file that was built.
   @visibleForTesting
   String? findAppDill({required String stdout}) {
-    final appDillLine = stdout.split('\n').firstWhereOrNull(
+    final appDillLine = stdout
+        .split('\n')
+        .firstWhereOrNull(
           (l) => l.contains('gen_snapshot') && l.endsWith('app.dill'),
         );
 

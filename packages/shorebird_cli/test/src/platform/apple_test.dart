@@ -61,13 +61,10 @@ void main() {
     group(MissingXcodeProjectException, () {
       test('toString', () {
         const exception = MissingXcodeProjectException('test_project_path');
-        expect(
-          exception.toString(),
-          '''
+        expect(exception.toString(), '''
 Could not find an Xcode project in test_project_path.
 To add iOS, run "flutter create . --platforms ios"
-To add macOS, run "flutter create . --platforms macos"''',
-        );
+To add macOS, run "flutter create . --platforms macos"''');
       });
     });
 
@@ -79,20 +76,10 @@ To add macOS, run "flutter create . --platforms macos"''',
           return;
         }
 
-        final fixturesDir = Directory(
-          p.join(
-            'test',
-            'fixtures',
-            'xcschemes',
-          ),
-        );
+        final fixturesDir = Directory(p.join('test', 'fixtures', 'xcschemes'));
         for (final file in fixturesDir.listSync().whereType<File>()) {
           final destination = File(
-            p.join(
-              projectRoot.path,
-              schemesPath,
-              p.basename(file.path),
-            ),
+            p.join(projectRoot.path, schemesPath, p.basename(file.path)),
           )..createSync(recursive: true);
           file.copySync(destination.path);
         }
@@ -100,8 +87,9 @@ To add macOS, run "flutter create . --platforms macos"''',
 
       setUp(() {
         projectRoot = Directory.systemTemp.createTempSync();
-        when(() => shorebirdEnv.getFlutterProjectRoot())
-            .thenReturn(projectRoot);
+        when(
+          () => shorebirdEnv.getFlutterProjectRoot(),
+        ).thenReturn(projectRoot);
       });
 
       group('ios', () {
@@ -319,9 +307,8 @@ To add macOS, run "flutter create . --platforms macos"''',
         analyzeSnapshotFile = File(
           p.join(buildDirectory.path, 'analyze_snapshot'),
         )..createSync();
-        genSnapshotFile = File(
-          p.join(buildDirectory.path, 'gen_snapshot'),
-        )..createSync();
+        genSnapshotFile = File(p.join(buildDirectory.path, 'gen_snapshot'))
+          ..createSync();
 
         when(
           () => shorebirdArtifacts.getArtifactPath(
@@ -448,9 +435,7 @@ To add macOS, run "flutter create . --platforms macos"''',
 
       group('when isLinkDebugInfoSupported is true', () {
         setUp(() {
-          when(
-            aotTools.isLinkDebugInfoSupported,
-          ).thenAnswer((_) async => true);
+          when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
         });
 
         test('dumps debug info', () async {
@@ -479,9 +464,8 @@ To add macOS, run "flutter create . --platforms macos"''',
             ),
           ).called(1);
           verify(
-            () => logger.detail(
-              any(that: contains('Link debug info saved to')),
-            ),
+            () =>
+                logger.detail(any(that: contains('Link debug info saved to'))),
           ).called(1);
         });
 
@@ -490,9 +474,9 @@ To add macOS, run "flutter create . --platforms macos"''',
 
           setUp(() {
             codemagicExportDir = Directory.systemTemp.createTempSync();
-            when(() => platform.environment).thenReturn(
-              {'CM_EXPORT_DIR': codemagicExportDir.path},
-            );
+            when(
+              () => platform.environment,
+            ).thenReturn({'CM_EXPORT_DIR': codemagicExportDir.path});
           });
 
           test('copies debug info to codemagic exports', () async {
@@ -518,9 +502,9 @@ To add macOS, run "flutter create . --platforms macos"''',
           });
 
           test('gracefully handles errors', () async {
-            when(() => platform.environment).thenReturn(
-              {'CM_EXPORT_DIR': 'invalid path'},
-            );
+            when(
+              () => platform.environment,
+            ).thenReturn({'CM_EXPORT_DIR': 'invalid path'});
             await runWithOverrides(
               () => apple.runLinker(
                 aotOutputFile: aotOutputFile,
@@ -569,9 +553,7 @@ To add macOS, run "flutter create . --platforms macos"''',
           );
 
           verify(
-            () => progress.fail(
-              'Failed to link AOT files: Exception: oops',
-            ),
+            () => progress.fail('Failed to link AOT files: Exception: oops'),
           ).called(1);
         });
       });

@@ -14,10 +14,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 extension OptionFinder on ArgResults {
   /// Detects flags even when passed to underlying commands via a `--`
   /// separator.
-  String? findOption(
-    String name, {
-    required ArgParser argParser,
-  }) {
+  String? findOption(String name, {required ArgParser argParser}) {
     if (wasParsed(name)) {
       return this[name] as String?;
     }
@@ -25,14 +22,12 @@ extension OptionFinder on ArgResults {
     // We would ideally check for abbreviations here as well, but ArgResults
     // doesn't expose its parser (which we could use to get the list of
     // [Options] being parsed) or an abbreviations map.
-    final abbr = argParser.options.values
-        .firstWhereOrNull((option) => option.name == name)
-        ?.abbr;
+    final abbr =
+        argParser.options.values
+            .firstWhereOrNull((option) => option.name == name)
+            ?.abbr;
 
-    final flagsToCheck = [
-      '--$name',
-      if (abbr != null) '-$abbr',
-    ];
+    final flagsToCheck = ['--$name', if (abbr != null) '-$abbr'];
 
     for (var i = 0; i < rest.length; i++) {
       for (final flag in flagsToCheck) {
@@ -133,17 +128,15 @@ extension ForwardedArgs on ArgResults {
       forwarded = rest.toList();
     }
 
-    forwarded.addAll(
-      [
-        ..._argsNamed(CommonArguments.dartDefineArg.name),
-        ..._argsNamed(CommonArguments.dartDefineFromFileArg.name),
-        ..._argsNamed(CommonArguments.buildNameArg.name),
-        ..._argsNamed(CommonArguments.buildNumberArg.name),
-        ..._argsNamed(CommonArguments.splitDebugInfoArg.name),
-        ..._argsNamed(CommonArguments.exportMethodArg.name),
-        ..._argsNamed(CommonArguments.exportOptionsPlistArg.name),
-      ],
-    );
+    forwarded.addAll([
+      ..._argsNamed(CommonArguments.dartDefineArg.name),
+      ..._argsNamed(CommonArguments.dartDefineFromFileArg.name),
+      ..._argsNamed(CommonArguments.buildNameArg.name),
+      ..._argsNamed(CommonArguments.buildNumberArg.name),
+      ..._argsNamed(CommonArguments.splitDebugInfoArg.name),
+      ..._argsNamed(CommonArguments.exportMethodArg.name),
+      ..._argsNamed(CommonArguments.exportOptionsPlistArg.name),
+    ]);
 
     return forwarded;
   }

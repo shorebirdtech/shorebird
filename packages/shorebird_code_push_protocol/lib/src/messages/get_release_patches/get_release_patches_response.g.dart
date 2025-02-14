@@ -9,24 +9,22 @@ part of 'get_release_patches_response.dart';
 // **************************************************************************
 
 GetReleasePatchesResponse _$GetReleasePatchesResponseFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'GetReleasePatchesResponse',
-      json,
-      ($checkedConvert) {
-        final val = GetReleasePatchesResponse(
-          patches: $checkedConvert(
-              'patches',
-              (v) => (v as List<dynamic>)
-                  .map((e) => ReleasePatch.fromJson(e as Map<String, dynamic>))
-                  .toList()),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('GetReleasePatchesResponse', json, ($checkedConvert) {
+  final val = GetReleasePatchesResponse(
+    patches: $checkedConvert(
+      'patches',
+      (v) =>
+          (v as List<dynamic>)
+              .map((e) => ReleasePatch.fromJson(e as Map<String, dynamic>))
+              .toList(),
+    ),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$GetReleasePatchesResponseToJson(
-        GetReleasePatchesResponse instance) =>
-    <String, dynamic>{
-      'patches': instance.patches.map((e) => e.toJson()).toList(),
-    };
+  GetReleasePatchesResponse instance,
+) => <String, dynamic>{
+  'patches': instance.patches.map((e) => e.toJson()).toList(),
+};

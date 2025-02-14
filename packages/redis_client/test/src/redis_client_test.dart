@@ -27,32 +27,39 @@ void main() {
     });
 
     group('connect', () {
-      test('authenticates automatically when credentials are provided',
-          () async {
-        await expectLater(client.connect(), completes);
-        await expectLater(client.execute(['PING']), completion(equals('PONG')));
-      });
+      test(
+        'authenticates automatically when credentials are provided',
+        () async {
+          await expectLater(client.connect(), completes);
+          await expectLater(
+            client.execute(['PING']),
+            completion(equals('PONG')),
+          );
+        },
+      );
 
-      test('throws SocketException when connection times out w/retry',
-          () async {
-        final client = RedisClient(
-          socket: const RedisSocketOptions(
-            timeout: Duration(microseconds: 1),
-            retryAttempts: 1,
-          ),
-        );
-        await expectLater(
-          client.connect,
-          throwsA(
-            isA<SocketException>().having(
-              (e) => e.message,
-              'message',
-              contains('Connection retry limit exceeded'),
+      test(
+        'throws SocketException when connection times out w/retry',
+        () async {
+          final client = RedisClient(
+            socket: const RedisSocketOptions(
+              timeout: Duration(microseconds: 1),
+              retryAttempts: 1,
             ),
-          ),
-        );
-        await client.close();
-      });
+          );
+          await expectLater(
+            client.connect,
+            throwsA(
+              isA<SocketException>().having(
+                (e) => e.message,
+                'message',
+                contains('Connection retry limit exceeded'),
+              ),
+            ),
+          );
+          await client.close();
+        },
+      );
 
       test('throws SocketException after max connection attempts', () async {
         final client = RedisClient(
@@ -159,10 +166,7 @@ void main() {
       });
 
       test('succeeds when username/password are correct', () async {
-        await expectLater(
-          client.auth(password: 'password'),
-          completes,
-        );
+        await expectLater(client.auth(password: 'password'), completes);
       });
     });
 
@@ -205,8 +209,7 @@ void main() {
         await expectLater(client.get(key: key), completion(isNull));
       });
 
-      test(
-          'throws TimeoutException '
+      test('throws TimeoutException '
           'when command timeout is exceeded', () async {
         final client = RedisClient(
           command: const RedisCommandOptions(timeout: Duration.zero),
@@ -243,9 +246,7 @@ void main() {
             'nested': {
               '1.0.0+1': {
                 'android': {
-                  'arch64': {
-                    'url': 'http://example.com',
-                  },
+                  'arch64': {'url': 'http://example.com'},
                 },
               },
             },
@@ -268,17 +269,13 @@ void main() {
           await expectLater(
             client.json.get(key: key, path: r'$.nested'),
             completion(
-              equals(
-                {
-                  '1.0.0+1': {
-                    'android': {
-                      'arch64': {
-                        'url': 'http://example.com',
-                      },
-                    },
+              equals({
+                '1.0.0+1': {
+                  'android': {
+                    'arch64': {'url': 'http://example.com'},
                   },
                 },
-              ),
+              }),
             ),
           );
           await expectLater(

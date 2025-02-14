@@ -40,13 +40,15 @@ void main() {
     });
 
     group('init', () {
-      test('throws UnsupportedError when operating system is not supported',
-          () {
-        expect(
-          () => runWithOverrides(OperatingSystemInterface.new),
-          throwsUnsupportedError,
-        );
-      });
+      test(
+        'throws UnsupportedError when operating system is not supported',
+        () {
+          expect(
+            () => runWithOverrides(OperatingSystemInterface.new),
+            throwsUnsupportedError,
+          );
+        },
+      );
     });
 
     group('on macOS/Linux', () {

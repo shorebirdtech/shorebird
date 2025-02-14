@@ -57,14 +57,13 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
     required File patchArchive,
-  }) =>
-      patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-        localArchive: patchArchive,
-        releaseArchive: releaseArchive,
-        archiveDiffer: const AndroidArchiveDiffer(),
-        allowAssetChanges: allowAssetDiffs,
-        allowNativeChanges: allowNativeDiffs,
-      );
+  }) => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+    localArchive: patchArchive,
+    releaseArchive: releaseArchive,
+    archiveDiffer: const AndroidArchiveDiffer(),
+    allowAssetChanges: allowAssetDiffs,
+    allowNativeChanges: allowNativeDiffs,
+  );
 
   @override
   Future<void> assertPreconditions() async {
@@ -91,14 +90,16 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       logger.warn(updaterPatchErrorWarning);
     }
 
-    final buildProgress = logger
-        .detailProgress('Building patch with Flutter $flutterVersionString');
+    final buildProgress = logger.detailProgress(
+      'Building patch with Flutter $flutterVersionString',
+    );
 
     try {
       aabFile = await artifactBuilder.buildAppBundle(
         flavor: flavor,
         target: target,
-        args: argResults.forwardedArgs +
+        args:
+            argResults.forwardedArgs +
             buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
         base64PublicKey: argResults.encodedPublicKey,
         buildProgress: buildProgress,
@@ -117,8 +118,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
     if (patchArchsBuildDir == null) {
       logger
         ..err('Cannot find patch build artifacts.')
-        ..info(
-          '''
+        ..info('''
 Please run `shorebird cache clean` and try again. If the issue persists, please
 file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
 
@@ -126,8 +126,7 @@ Looked in:
   - build/app/intermediates/stripped_native_libs/stripReleaseDebugSymbols/release/out/lib
   - build/app/intermediates/stripped_native_libs/strip{flavor}ReleaseDebugSymbols/{flavor}Release/out/lib
   - build/app/intermediates/stripped_native_libs/release/out/lib
-  - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib''',
-        );
+  - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib''');
       throw ProcessExit(ExitCode.software.code);
     }
     return aabFile;
@@ -154,27 +153,25 @@ Looked in:
     // until we can provide a better solution.
     var artifactsDownloadCompleted = false;
     unawaited(
-      Future<void>.delayed(downloadMessageTimeout).then(
-        (_) {
-          if (artifactsDownloadCompleted) {
-            return;
-          }
-          logger.info(
-            '''
+      Future<void>.delayed(downloadMessageTimeout).then((_) {
+        if (artifactsDownloadCompleted) {
+          return;
+        }
+        logger.info(
+          '''
 It seems like your download is taking longer than expected. If you are on Windows, this is a known issue.
 Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/2532'))} for potential workarounds.''',
-          );
-        },
-      ),
+        );
+      }),
     );
 
     for (final (i, releaseArtifact) in releaseArtifacts.entries.indexed) {
       try {
-        final releaseArtifactFile =
-            await artifactManager.downloadWithProgressUpdates(
-          Uri.parse(releaseArtifact.value.url),
-          message: 'Downloading release artifact ${i + 1}/$numArtifacts',
-        );
+        final releaseArtifactFile = await artifactManager
+            .downloadWithProgressUpdates(
+              Uri.parse(releaseArtifact.value.url),
+              message: 'Downloading release artifact ${i + 1}/$numArtifacts',
+            );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;
       } on Exception {
         throw ProcessExit(ExitCode.software.code);
@@ -208,12 +205,13 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
       final privateKeyFile = argResults.file(
         CommonArguments.privateKeyArg.name,
       );
-      final hashSignature = privateKeyFile != null
-          ? codeSigner.sign(
-              message: hash,
-              privateKeyPemFile: privateKeyFile,
-            )
-          : null;
+      final hashSignature =
+          privateKeyFile != null
+              ? codeSigner.sign(
+                message: hash,
+                privateKeyPemFile: privateKeyFile,
+              )
+              : null;
 
       try {
         final diffPath = await artifactManager.createDiff(

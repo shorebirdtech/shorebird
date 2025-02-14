@@ -45,15 +45,7 @@ class Git {
     required String outputDirectory,
     List<String>? args,
   }) async {
-    await git(
-      [
-        'clone',
-        url,
-        ...?args,
-        outputDirectory,
-      ],
-      runInShell: true,
-    );
+    await git(['clone', url, ...?args, outputDirectory], runInShell: true);
   }
 
   /// Checks out the git repository located at [directory] to the [revision].
@@ -61,17 +53,14 @@ class Git {
     required String directory,
     required String revision,
   }) async {
-    await git(
-      [
-        '-C',
-        directory,
-        '-c',
-        'advice.detachedHead=false',
-        'checkout',
-        revision,
-      ],
-      runInShell: true,
-    );
+    await git([
+      '-C',
+      directory,
+      '-c',
+      'advice.detachedHead=false',
+      'checkout',
+      revision,
+    ], runInShell: true);
   }
 
   /// Fetch branches/tags from the repository at [directory].
@@ -80,10 +69,7 @@ class Git {
   }
 
   /// Run `git remote` at [directory].
-  Future<void> remote({
-    required String directory,
-    List<String>? args,
-  }) async {
+  Future<void> remote({required String directory, List<String>? args}) async {
     await git(['remote', ...?args], workingDirectory: directory);
   }
 
@@ -95,16 +81,13 @@ class Git {
     required String pattern,
     String? contains,
   }) async {
-    final result = await git(
-      [
-        'for-each-ref',
-        if (contains != null) ...['--contains', contains],
-        '--format',
-        format,
-        pattern,
-      ],
-      workingDirectory: directory,
-    );
+    final result = await git([
+      'for-each-ref',
+      if (contains != null) ...['--contains', contains],
+      '--format',
+      format,
+      pattern,
+    ], workingDirectory: directory);
     return '${result.stdout}'.trim();
   }
 
@@ -122,10 +105,11 @@ class Git {
     required String revision,
     required String directory,
   }) async {
-    final result = await git(
-      ['rev-parse', '--verify', revision],
-      workingDirectory: directory,
-    );
+    final result = await git([
+      'rev-parse',
+      '--verify',
+      revision,
+    ], workingDirectory: directory);
     return '${result.stdout}'.trim();
   }
 
@@ -141,18 +125,19 @@ class Git {
     required Directory directory,
     String revision = 'HEAD',
   }) async {
-    final result = await git(
-      ['symbolic-ref', revision],
-      workingDirectory: directory.path,
-    );
+    final result = await git([
+      'symbolic-ref',
+      revision,
+    ], workingDirectory: directory.path);
     return '${result.stdout}'.trim();
   }
 
   /// Returns the name of the branch the git repository located at [directory]
   /// is currently on.
   Future<String> currentBranch({required Directory directory}) async {
-    return (await symbolicRef(directory: directory))
-        .replaceAll('refs/heads/', '');
+    return (await symbolicRef(
+      directory: directory,
+    )).replaceAll('refs/heads/', '');
   }
 
   /// Whether [directory] is part of a git repository.
@@ -160,10 +145,7 @@ class Git {
     try {
       // [git] throws if the command's exit code is nonzero, which is what we're
       // checking for here.
-      await git(
-        ['status'],
-        workingDirectory: directory.path,
-      );
+      await git(['status'], workingDirectory: directory.path);
     } on Exception {
       return false;
     }
@@ -176,14 +158,11 @@ class Git {
     try {
       // [git] throws if the command's exit code is nonzero, which is what we're
       // checking for here.
-      await git(
-        [
-          'ls-files',
-          '--error-unmatch',
-          file.absolute.path,
-        ],
-        workingDirectory: file.parent.path,
-      );
+      await git([
+        'ls-files',
+        '--error-unmatch',
+        file.absolute.path,
+      ], workingDirectory: file.parent.path);
     } on Exception {
       return false;
     }

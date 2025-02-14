@@ -9,25 +9,25 @@ part of 'get_organizations_response.dart';
 // **************************************************************************
 
 GetOrganizationsResponse _$GetOrganizationsResponseFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'GetOrganizationsResponse',
-      json,
-      ($checkedConvert) {
-        final val = GetOrganizationsResponse(
-          organizations: $checkedConvert(
-              'organizations',
-              (v) => (v as List<dynamic>)
-                  .map((e) => OrganizationMembership.fromJson(
-                      e as Map<String, dynamic>))
-                  .toList()),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('GetOrganizationsResponse', json, ($checkedConvert) {
+  final val = GetOrganizationsResponse(
+    organizations: $checkedConvert(
+      'organizations',
+      (v) =>
+          (v as List<dynamic>)
+              .map(
+                (e) =>
+                    OrganizationMembership.fromJson(e as Map<String, dynamic>),
+              )
+              .toList(),
+    ),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$GetOrganizationsResponseToJson(
-        GetOrganizationsResponse instance) =>
-    <String, dynamic>{
-      'organizations': instance.organizations.map((e) => e.toJson()).toList(),
-    };
+  GetOrganizationsResponse instance,
+) => <String, dynamic>{
+  'organizations': instance.organizations.map((e) => e.toJson()).toList(),
+};

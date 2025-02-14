@@ -58,10 +58,7 @@ void main() {
 
     late AndroidPatcher patcher;
 
-    File patchArtifactForArch(
-      Arch arch, {
-      String? flavor,
-    }) {
+    File patchArtifactForArch(Arch arch, {String? flavor}) {
       return File(
         p.join(
           projectRoot.path,
@@ -102,8 +99,9 @@ void main() {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
-          shorebirdAndroidArtifactsRef
-              .overrideWith(() => shorebirdAndroidArtifacts),
+          shorebirdAndroidArtifactsRef.overrideWith(
+            () => shorebirdAndroidArtifacts,
+          ),
         },
       );
     }
@@ -162,8 +160,9 @@ void main() {
 
     group('assertPreconditions', () {
       setUp(() {
-        when(() => doctor.androidCommandValidators)
-            .thenReturn([flavorValidator]);
+        when(
+          () => doctor.androidCommandValidators,
+        ).thenReturn([flavorValidator]);
         when(flavorValidator.validate).thenAnswer((_) async => []);
       });
 
@@ -172,11 +171,13 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
-              supportedOperatingSystems:
-                  any(named: 'supportedOperatingSystems'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
             ),
           ).thenAnswer((_) async {});
         });
@@ -195,8 +196,9 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
             ),
           ).thenThrow(exception);
@@ -207,8 +209,9 @@ void main() {
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
             ),
           ).thenThrow(exception);
@@ -364,8 +367,7 @@ void main() {
             () => logger.err('Cannot find patch build artifacts.'),
           ).called(1);
           verify(
-            () => logger.info(
-              '''
+            () => logger.info('''
 Please run `shorebird cache clean` and try again. If the issue persists, please
 file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
 
@@ -373,8 +375,7 @@ Looked in:
   - build/app/intermediates/stripped_native_libs/stripReleaseDebugSymbols/release/out/lib
   - build/app/intermediates/stripped_native_libs/strip{flavor}ReleaseDebugSymbols/{flavor}Release/out/lib
   - build/app/intermediates/stripped_native_libs/release/out/lib
-  - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib''',
-            ),
+  - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib'''),
           ).called(1);
         });
       });
@@ -422,24 +423,26 @@ Looked in:
 
         group('when the key pair is provided', () {
           setUp(() {
-            when(() => codeSigner.base64PublicKey(any()))
-                .thenReturn('public_key_encoded');
+            when(
+              () => codeSigner.base64PublicKey(any()),
+            ).thenReturn('public_key_encoded');
           });
 
           test('calls buildIpa with the provided key', () async {
-            when(() => argResults.wasParsed(CommonArguments.publicKeyArg.name))
-                .thenReturn(true);
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+            ).thenReturn(true);
 
             final key = createTempFile('public.der')
               ..writeAsStringSync('public_key');
 
-            when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn(key.path);
-            when(() => argResults[CommonArguments.publicKeyArg.name])
-                .thenReturn(key.path);
-            await runWithOverrides(
-              patcher.buildPatchArtifact,
-            );
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(key.path);
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(key.path);
+            await runWithOverrides(patcher.buildPatchArtifact);
 
             verify(
               () => artifactBuilder.buildAppBundle(
@@ -608,8 +611,9 @@ Looked in:
               ),
             )..createSync();
 
-            when(() => argResults[CommonArguments.privateKeyArg.name])
-                .thenReturn(privateKey.path);
+            when(
+              () => argResults[CommonArguments.privateKeyArg.name],
+            ).thenReturn(privateKey.path);
 
             when(
               () => codeSigner.sign(
@@ -622,28 +626,33 @@ Looked in:
             });
           });
 
-          test('returns patch artifact bundles with proper hash signatures',
-              () async {
-            final result = await runWithOverrides(
-              () => patcher.createPatchArtifacts(
-                appId: 'appId',
-                releaseId: 0,
-                releaseArtifact: File('release.aab'),
-              ),
-            );
+          test(
+            'returns patch artifact bundles with proper hash signatures',
+            () async {
+              final result = await runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: 'appId',
+                  releaseId: 0,
+                  releaseArtifact: File('release.aab'),
+                ),
+              );
 
-            // Hash the patch artifacts and append '-signature' to get the
-            // expected signatures, per the mock of [codeSigner.sign] above.
-            final expectedSignatures = Arch.values
-                .map(patchArtifactForArch)
-                .map((f) => sha256.convert(f.readAsBytesSync()).toString())
-                .map((hash) => '$hash-signature')
-                .toList();
+              // Hash the patch artifacts and append '-signature' to get the
+              // expected signatures, per the mock of [codeSigner.sign] above.
+              final expectedSignatures =
+                  Arch.values
+                      .map(patchArtifactForArch)
+                      .map(
+                        (f) => sha256.convert(f.readAsBytesSync()).toString(),
+                      )
+                      .map((hash) => '$hash-signature')
+                      .toList();
 
-            final signatures =
-                result.values.map((bundle) => bundle.hashSignature).toList();
-            expect(signatures, equals(expectedSignatures));
-          });
+              final signatures =
+                  result.values.map((bundle) => bundle.hashSignature).toList();
+              expect(signatures, equals(expectedSignatures));
+            },
+          );
         });
 
         group('when artifacts download takes longer than provided timeout', () {
@@ -693,15 +702,16 @@ Looked in:
       });
 
       test(
-          '''returns value of shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle''',
-          () async {
-        expect(
-          await runWithOverrides(
-            () => patcher.extractReleaseVersionFromArtifact(File('')),
-          ),
-          equals('1.0.0'),
-        );
-      });
+        '''returns value of shorebirdAndroidArtifacts.extractReleaseVersionFromAppBundle''',
+        () async {
+          expect(
+            await runWithOverrides(
+              () => patcher.extractReleaseVersionFromArtifact(File('')),
+            ),
+            equals('1.0.0'),
+          );
+        },
+      );
     });
 
     group('patchArtifactForDiffCheck', () {

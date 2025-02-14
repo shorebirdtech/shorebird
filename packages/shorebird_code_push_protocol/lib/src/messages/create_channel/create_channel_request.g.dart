@@ -9,20 +9,14 @@ part of 'create_channel_request.dart';
 // **************************************************************************
 
 CreateChannelRequest _$CreateChannelRequestFromJson(
-        Map<String, dynamic> json) =>
-    $checkedCreate(
-      'CreateChannelRequest',
-      json,
-      ($checkedConvert) {
-        final val = CreateChannelRequest(
-          channel: $checkedConvert('channel', (v) => v as String),
-        );
-        return val;
-      },
-    );
+  Map<String, dynamic> json,
+) => $checkedCreate('CreateChannelRequest', json, ($checkedConvert) {
+  final val = CreateChannelRequest(
+    channel: $checkedConvert('channel', (v) => v as String),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$CreateChannelRequestToJson(
-        CreateChannelRequest instance) =>
-    <String, dynamic>{
-      'channel': instance.channel,
-    };
+  CreateChannelRequest instance,
+) => <String, dynamic>{'channel': instance.channel};

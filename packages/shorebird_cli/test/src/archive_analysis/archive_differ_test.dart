@@ -65,8 +65,7 @@ class TestArchiveDiffer extends ArchiveDiffer {
   Future<FileSetDiff> changedFiles(
     String oldArchivePath,
     String newArchivePath,
-  ) async =>
-      changedFileSetDiff;
+  ) async => changedFileSetDiff;
 
   @override
   bool containsPotentiallyBreakingNativeDiffs(FileSetDiff fileSetDiff) => false;

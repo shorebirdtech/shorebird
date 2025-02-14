@@ -161,8 +161,9 @@ To change the version of this release, change your app's version in your pubspec
 
     group('assertPreconditions', () {
       setUp(() {
-        when(() => doctor.windowsCommandValidators)
-            .thenReturn([flavorValidator]);
+        when(
+          () => doctor.windowsCommandValidators,
+        ).thenReturn([flavorValidator]);
         when(flavorValidator.validate).thenAnswer((_) async => []);
       });
 
@@ -171,11 +172,13 @@ To change the version of this release, change your app's version in your pubspec
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
-              supportedOperatingSystems:
-                  any(named: 'supportedOperatingSystems'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
             ),
           ).thenAnswer((_) async {});
         });
@@ -195,11 +198,13 @@ To change the version of this release, change your app's version in your pubspec
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
-              supportedOperatingSystems:
-                  any(named: 'supportedOperatingSystems'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
             ),
           ).thenThrow(exception);
         });
@@ -225,17 +230,21 @@ To change the version of this release, change your app's version in your pubspec
           when(
             () => shorebirdValidator.validatePreconditions(
               checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized:
-                  any(named: 'checkShorebirdInitialized'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
               validators: any(named: 'validators'),
-              supportedOperatingSystems:
-                  any(named: 'supportedOperatingSystems'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
             ),
           ).thenAnswer((_) async {});
-          when(() => argResults['flutter-version'] as String?)
-              .thenReturn('3.27.1');
-          when(() => shorebirdFlutter.resolveFlutterVersion('3.27.1'))
-              .thenAnswer((_) async => Version(3, 27, 1));
+          when(
+            () => argResults['flutter-version'] as String?,
+          ).thenReturn('3.27.1');
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion('3.27.1'),
+          ).thenAnswer((_) async => Version(3, 27, 1));
           when(
             () => shorebirdFlutter.getRevisionForVersion(any()),
           ).thenAnswer((_) async => 'deadbeef');
@@ -248,11 +257,9 @@ To change the version of this release, change your app's version in your pubspec
           );
 
           verify(
-            () => logger.err(
-              '''
+            () => logger.err('''
 Windows releases are not supported with Flutter versions older than $minimumSupportedWindowsFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-            ),
+For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           ).called(1);
         });
 
@@ -288,8 +295,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       });
 
       test('returns path to release directory', () async {
-        final releaseDir =
-            await runWithOverrides(releaser.buildReleaseArtifacts);
+        final releaseDir = await runWithOverrides(
+          releaser.buildReleaseArtifacts,
+        );
         expect(releaseDir, projectRoot);
       });
 
@@ -335,9 +343,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
         test('throws exception', () {
           expect(
             () => runWithOverrides(
-              () => releaser.getReleaseVersion(
-                releaseArtifactRoot: projectRoot,
-              ),
+              () =>
+                  releaser.getReleaseVersion(releaseArtifactRoot: projectRoot),
             ),
             throwsA(isA<Exception>()),
           );
@@ -347,17 +354,16 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
       group('when exe exists', () {
         setUp(() {
           File(p.join(projectRoot.path, 'app.exe')).createSync();
-          when(() => powershell.getExeVersionString(any())).thenAnswer(
-            (_) async => '1.2.3',
-          );
+          when(
+            () => powershell.getExeVersionString(any()),
+          ).thenAnswer((_) async => '1.2.3');
         });
 
         test('returns result of getExeVersionString', () async {
           await expectLater(
             runWithOverrides(
-              () => releaser.getReleaseVersion(
-                releaseArtifactRoot: projectRoot,
-              ),
+              () =>
+                  releaser.getReleaseVersion(releaseArtifactRoot: projectRoot),
             ),
             completion(equals('1.2.3')),
           );
@@ -412,10 +418,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
 
         test('zips and uploads release directory', () async {
           await runWithOverrides(
-            () => releaser.uploadReleaseArtifacts(
-              release: release,
-              appId: appId,
-            ),
+            () =>
+                releaser.uploadReleaseArtifacts(release: release, appId: appId),
           );
           verify(
             () => codePushClientWrapper.createWindowsReleaseArtifacts(

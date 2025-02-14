@@ -77,14 +77,8 @@ class ArtifactManager {
   /// temporary directory if not.
   ///
   /// Returns the downloaded [File].
-  Future<File> downloadFile(
-    Uri uri, {
-    String? outputPath,
-  }) async {
-    final download = await startFileDownload(
-      uri,
-      outputPath: outputPath,
-    );
+  Future<File> downloadFile(Uri uri, {String? outputPath}) async {
+    final download = await startFileDownload(uri, outputPath: outputPath);
     return download.file;
   }
 
@@ -94,10 +88,7 @@ class ArtifactManager {
   /// Returns a [FileDownload] object containing the [Future<File>] and a
   /// [Stream] of download progress updates.
   @visibleForTesting
-  Future<FileDownload> startFileDownload(
-    Uri uri, {
-    String? outputPath,
-  }) async {
+  Future<FileDownload> startFileDownload(Uri uri, {String? outputPath}) async {
     final request = http.Request('GET', uri);
     final response = await httpClient.send(request);
 
@@ -167,10 +158,10 @@ class ArtifactManager {
       final subscription = download.progress
           .throttle(throttleDuration, trailing: true)
           .listen((progress) {
-        downloadProgress.update(
-          '$message (${(progress * 100).toStringAsFixed(0)}%)',
-        );
-      });
+            downloadProgress.update(
+              '$message (${(progress * 100).toStringAsFixed(0)}%)',
+            );
+          });
 
       artifactFile = await download.file;
       await subscription.cancel();
@@ -235,30 +226,15 @@ class ArtifactManager {
     //
     // See https://github.com/shorebirdtech/shorebird/issues/1798
     final strippedSymbolsDir = Directory(
-      p.join(
-        releasePath,
-        stripReleaseDebugSymbolsDirName,
-      ),
+      p.join(releasePath, stripReleaseDebugSymbolsDirName),
     );
 
     final Directory archsDirectory;
     if (strippedSymbolsDir.existsSync()) {
-      archsDirectory = Directory(
-        p.join(
-          strippedSymbolsDir.path,
-          'out',
-          'lib',
-        ),
-      );
+      archsDirectory = Directory(p.join(strippedSymbolsDir.path, 'out', 'lib'));
     } else {
       // If the new path doesn't exist, fallback to the old path.
-      archsDirectory = Directory(
-        p.join(
-          releasePath,
-          'out',
-          'lib',
-        ),
-      );
+      archsDirectory = Directory(p.join(releasePath, 'out', 'lib'));
     }
 
     return archsDirectory.existsSync() ? archsDirectory : null;
@@ -301,12 +277,7 @@ class ArtifactManager {
   Directory? getXcarchiveDirectory() {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     final archiveDirectory = Directory(
-      p.join(
-        projectRoot.path,
-        'build',
-        'ios',
-        'archive',
-      ),
+      p.join(projectRoot.path, 'build', 'ios', 'archive'),
     );
 
     if (!archiveDirectory.existsSync()) return null;
@@ -330,11 +301,7 @@ class ArtifactManager {
   /// traditionally named `Runner.app`, but can now be renamed.
   Directory? getIosAppDirectory({required Directory xcarchiveDirectory}) {
     final applicationsDirectory = Directory(
-      p.join(
-        xcarchiveDirectory.path,
-        'Products',
-        'Applications',
-      ),
+      p.join(xcarchiveDirectory.path, 'Products', 'Applications'),
     );
 
     if (!applicationsDirectory.existsSync()) {
@@ -351,14 +318,7 @@ class ArtifactManager {
   Directory get linuxBundleDirectory {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     return Directory(
-      p.join(
-        projectRoot.path,
-        'build',
-        'linux',
-        'x64',
-        'release',
-        'bundle',
-      ),
+      p.join(projectRoot.path, 'build', 'linux', 'x64', 'release', 'bundle'),
     );
   }
 
@@ -366,14 +326,7 @@ class ArtifactManager {
   Directory getWindowsReleaseDirectory() {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     return Directory(
-      p.join(
-        projectRoot.path,
-        'build',
-        'windows',
-        'x64',
-        'runner',
-        'Release',
-      ),
+      p.join(projectRoot.path, 'build', 'windows', 'x64', 'runner', 'Release'),
     );
   }
 
@@ -386,12 +339,7 @@ class ArtifactManager {
   File? getIpa() {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     final ipaBuildDirectory = Directory(
-      p.join(
-        projectRoot.path,
-        'build',
-        'ios',
-        'ipa',
-      ),
+      p.join(projectRoot.path, 'build', 'ios', 'ipa'),
     );
 
     if (!ipaBuildDirectory.existsSync()) {
@@ -475,13 +423,7 @@ class ArtifactManager {
   Directory getAppXcframeworkDirectory() {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     return Directory(
-      p.join(
-        projectRoot.path,
-        'build',
-        'ios',
-        'framework',
-        'Release',
-      ),
+      p.join(projectRoot.path, 'build', 'ios', 'framework', 'Release'),
     );
   }
 }

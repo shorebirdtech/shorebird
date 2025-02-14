@@ -21,11 +21,7 @@ class Powershell {
     String? workingDirectory,
     bool runInShell = false,
   }) async {
-    final result = await process.run(
-      executable,
-      arguments,
-      runInShell: true,
-    );
+    final result = await process.run(executable, arguments, runInShell: true);
     if (result.exitCode != ExitCode.success.code) {
       throw ProcessException(
         executable,
@@ -42,10 +38,7 @@ class Powershell {
     final exePath = exeFile.path;
     final pwshCommand = '(Get-Item -Path $exePath).VersionInfo.ProductVersion';
 
-    final result = await pwsh(
-      ['-Command', pwshCommand],
-      runInShell: true,
-    );
+    final result = await pwsh(['-Command', pwshCommand], runInShell: true);
 
     var versionString = (result.stdout as String).trim();
     if (!versionString.contains('+')) {

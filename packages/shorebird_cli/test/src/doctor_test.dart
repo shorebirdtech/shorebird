@@ -29,12 +29,7 @@ with multiple lines''',
     late Doctor doctor;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(
-        body,
-        values: {
-          loggerRef.overrideWith(() => logger),
-        },
-      );
+      return runScoped(body, values: {loggerRef.overrideWith(() => logger)});
     }
 
     setUp(() {
@@ -51,12 +46,13 @@ with multiple lines''',
 
       when(noIssuesValidator.validate).thenAnswer((_) async => []);
       when(noIssuesValidator.canRunInCurrentContext).thenReturn(true);
-      when(() => noIssuesValidator.description)
-          .thenReturn('no issues validator');
+      when(
+        () => noIssuesValidator.description,
+      ).thenReturn('no issues validator');
 
-      when(warningValidator.validate).thenAnswer(
-        (_) async => [validationWarning],
-      );
+      when(
+        warningValidator.validate,
+      ).thenAnswer((_) async => [validationWarning]);
       when(warningValidator.canRunInCurrentContext).thenReturn(true);
       when(() => warningValidator.description).thenReturn('warning validator');
 
@@ -67,10 +63,7 @@ with multiple lines''',
 
     group('runValidators', () {
       test('prints messages when warnings and errors found', () async {
-        final validators = [
-          warningValidator,
-          errorValidator,
-        ];
+        final validators = [warningValidator, errorValidator];
         await runWithOverrides(() => doctor.runValidators(validators));
 
         for (final validator in validators) {
@@ -96,35 +89,35 @@ with multiple lines''',
 
       group('when validators yield errors', () {
         test('completes validator progress as failure', () async {
-          await runWithOverrides(
-            () => doctor.runValidators([errorValidator]),
-          );
+          await runWithOverrides(() => doctor.runValidators([errorValidator]));
 
           verify(() => progress.fail(any())).called(1);
           verifyNever(() => progress.complete(any()));
         });
       });
 
-      test('only runs validators that can run in the current context',
-          () async {
-        final validators = [
-          noIssuesValidator,
-          warningValidator,
-          errorValidator,
-        ];
-        when(() => warningValidator.canRunInCurrentContext()).thenReturn(false);
+      test(
+        'only runs validators that can run in the current context',
+        () async {
+          final validators = [
+            noIssuesValidator,
+            warningValidator,
+            errorValidator,
+          ];
+          when(
+            () => warningValidator.canRunInCurrentContext(),
+          ).thenReturn(false);
 
-        await runWithOverrides(() async => doctor.runValidators(validators));
+          await runWithOverrides(() async => doctor.runValidators(validators));
 
-        verify(noIssuesValidator.validate).called(1);
-        verifyNever(warningValidator.validate);
-        verify(errorValidator.validate).called(1);
-      });
+          verify(noIssuesValidator.validate).called(1);
+          verifyNever(warningValidator.validate);
+          verify(errorValidator.validate).called(1);
+        },
+      );
 
       test('tells the user when no issues are found', () async {
-        final validators = [
-          noIssuesValidator,
-        ];
+        final validators = [noIssuesValidator];
 
         await runWithOverrides(() async => doctor.runValidators(validators));
 
@@ -152,32 +145,34 @@ with multiple lines''',
           wasFixCalled = false;
           fixableWarningValidator = MockValidator();
 
-          when(fixableWarningValidator.validate).thenAnswer(
-            (_) async => [fixableValidationWarning],
-          );
-          when(() => fixableWarningValidator.description)
-              .thenReturn('fixable warning validator');
+          when(
+            fixableWarningValidator.validate,
+          ).thenAnswer((_) async => [fixableValidationWarning]);
+          when(
+            () => fixableWarningValidator.description,
+          ).thenReturn('fixable warning validator');
           when(fixableWarningValidator.canRunInCurrentContext).thenReturn(true);
         });
 
         test(
-            '''does not tell the user we can fix issues if no fixable issues are found''',
-            () async {
-          await runWithOverrides(
-            () => doctor.runValidators([warningValidator, errorValidator]),
-          );
+          '''does not tell the user we can fix issues if no fixable issues are found''',
+          () async {
+            await runWithOverrides(
+              () => doctor.runValidators([warningValidator, errorValidator]),
+            );
 
-          verifyNever(
-            () => logger.info(
-              any(
-                that: stringContainsInOrder([
-                  'can be fixed automatically with',
-                  'shorebird doctor --fix',
-                ]),
+            verifyNever(
+              () => logger.info(
+                any(
+                  that: stringContainsInOrder([
+                    'can be fixed automatically with',
+                    'shorebird doctor --fix',
+                  ]),
+                ),
               ),
-            ),
-          );
-        });
+            );
+          },
+        );
 
         test('does not perform fixes if applyFixes is false', () async {
           await runWithOverrides(
@@ -202,10 +197,9 @@ with multiple lines''',
             (_) async => wasFixCalled ? [] : [fixableValidationWarning],
           );
           await runWithOverrides(
-            () async => doctor.runValidators(
-              [fixableWarningValidator],
-              applyFixes: true,
-            ),
+            () async => doctor.runValidators([
+              fixableWarningValidator,
+            ], applyFixes: true),
           );
 
           verify(() => progress.update('Fixing'));
@@ -218,14 +212,13 @@ with multiple lines''',
         });
 
         test('prints error if fixes fail to apply', () async {
-          when(fixableWarningValidator.validate).thenAnswer(
-            (_) async => [erroringValidationWarning],
-          );
+          when(
+            fixableWarningValidator.validate,
+          ).thenAnswer((_) async => [erroringValidationWarning]);
           await runWithOverrides(
-            () async => doctor.runValidators(
-              [fixableWarningValidator],
-              applyFixes: true,
-            ),
+            () async => doctor.runValidators([
+              fixableWarningValidator,
+            ], applyFixes: true),
           );
 
           verify(

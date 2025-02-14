@@ -50,19 +50,17 @@ class Bundletool {
     String? keyPassword,
     String? keyAlias,
   }) async {
-    final result = await _exec(
-      [
-        'build-apks',
-        '--overwrite',
-        '--bundle=$bundle',
-        '--output=$output',
-        if (universal) '--mode=universal',
-        if (keystore != null) '--ks=$keystore',
-        if (keystorePassword != null) '--ks-pass=$keystorePassword',
-        if (keyPassword != null) '--key-pass=$keyPassword',
-        if (keyAlias != null) '--ks-key-alias=$keyAlias',
-      ],
-    );
+    final result = await _exec([
+      'build-apks',
+      '--overwrite',
+      '--bundle=$bundle',
+      '--output=$output',
+      if (universal) '--mode=universal',
+      if (keystore != null) '--ks=$keystore',
+      if (keystorePassword != null) '--ks-pass=$keystorePassword',
+      if (keyPassword != null) '--key-pass=$keyPassword',
+      if (keyAlias != null) '--ks-key-alias=$keyAlias',
+    ]);
     if (result.exitCode != 0) {
       throw Exception('Failed to build apks: ${result.stderr}');
     }
@@ -73,10 +71,7 @@ class Bundletool {
   /// e.g. `bundletool install-apks --apks=/MyApp/my_app.apks --allow-downgrade`
   ///
   /// https://developer.android.com/tools/bundletool#deploy_with_bundletool
-  Future<void> installApks({
-    required String apks,
-    String? deviceId,
-  }) async {
+  Future<void> installApks({required String apks, String? deviceId}) async {
     final args = [
       'install-apks',
       '--apks=$apks',
@@ -91,15 +86,13 @@ class Bundletool {
 
   /// Extract the package name from an app bundle.
   Future<String> getPackageName(String appBundlePath) async {
-    final result = await _exec(
-      [
-        'dump',
-        'manifest',
-        '--bundle=$appBundlePath',
-        '--xpath',
-        '/manifest/@package',
-      ],
-    );
+    final result = await _exec([
+      'dump',
+      'manifest',
+      '--bundle=$appBundlePath',
+      '--xpath',
+      '/manifest/@package',
+    ]);
 
     if (result.exitCode != 0) {
       throw Exception(
@@ -112,15 +105,13 @@ class Bundletool {
 
   /// Extract the version name from an app bundle.
   Future<String> getVersionName(String appBundlePath) async {
-    final result = await _exec(
-      [
-        'dump',
-        'manifest',
-        '--bundle=$appBundlePath',
-        '--xpath',
-        '/manifest/@android:versionName',
-      ],
-    );
+    final result = await _exec([
+      'dump',
+      'manifest',
+      '--bundle=$appBundlePath',
+      '--xpath',
+      '/manifest/@android:versionName',
+    ]);
 
     if (result.exitCode != 0) {
       throw Exception(
@@ -133,15 +124,13 @@ class Bundletool {
 
   /// Extract the version code from an app bundle.
   Future<String> getVersionCode(String appBundlePath) async {
-    final result = await _exec(
-      [
-        'dump',
-        'manifest',
-        '--bundle=$appBundlePath',
-        '--xpath',
-        '/manifest/@android:versionCode',
-      ],
-    );
+    final result = await _exec([
+      'dump',
+      'manifest',
+      '--bundle=$appBundlePath',
+      '--xpath',
+      '/manifest/@android:versionCode',
+    ]);
 
     if (result.exitCode != 0) {
       throw Exception(

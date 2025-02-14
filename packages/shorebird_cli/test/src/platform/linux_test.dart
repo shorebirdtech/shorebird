@@ -8,10 +8,7 @@ void main() {
   group('linux', () {
     group('minimumSupportedLinuxFlutterVersion', () {
       test('is 3.27.4', () {
-        expect(
-          minimumSupportedLinuxFlutterVersion,
-          equals(Version(3, 27, 4)),
-        );
+        expect(minimumSupportedLinuxFlutterVersion, equals(Version(3, 27, 4)));
       });
     });
 

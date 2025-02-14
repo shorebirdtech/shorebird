@@ -15,11 +15,13 @@ class ArtifactBuildException implements Exception {
     List<String>? stdout,
     List<String>? stderr,
     String? fixRecommendation,
-  })  : stdout = stdout ?? [],
-        stderr = stderr ?? [] {
-    flutterError =
-        _errorMessageFromOutput(this.stdout + this.stderr).join('\n');
-    this.fixRecommendation = fixRecommendation ??
+  }) : stdout = stdout ?? [],
+       stderr = stderr ?? [] {
+    flutterError = _errorMessageFromOutput(
+      this.stdout + this.stderr,
+    ).join('\n');
+    this.fixRecommendation =
+        fixRecommendation ??
         _recommendationFromOutput(this.stdout + this.stderr);
   }
 

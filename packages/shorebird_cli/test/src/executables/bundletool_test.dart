@@ -63,11 +63,8 @@ void main() {
 
       test('throws exception if process returns non-zero exit code', () async {
         when(
-          () => process.run(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-          ),
+          () =>
+              process.run(any(), any(), environment: any(named: 'environment')),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -91,17 +88,11 @@ void main() {
 
       test('completes when process succeeds', () async {
         when(
-          () => process.run(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-          ),
+          () =>
+              process.run(any(), any(), environment: any(named: 'environment')),
         ).thenAnswer(
-          (_) async => const ShorebirdProcessResult(
-            exitCode: 0,
-            stdout: '',
-            stderr: '',
-          ),
+          (_) async =>
+              const ShorebirdProcessResult(exitCode: 0, stdout: '', stderr: ''),
         );
         await expectLater(
           runWithOverrides(
@@ -245,11 +236,8 @@ void main() {
 
       test('throws exception if process returns non-zero exit code', () async {
         when(
-          () => process.run(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-          ),
+          () =>
+              process.run(any(), any(), environment: any(named: 'environment')),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -272,17 +260,11 @@ void main() {
       test('completes when process succeeds', () async {
         const deviceId = '1234';
         when(
-          () => process.run(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-          ),
+          () =>
+              process.run(any(), any(), environment: any(named: 'environment')),
         ).thenAnswer(
-          (_) async => const ShorebirdProcessResult(
-            exitCode: 0,
-            stdout: '',
-            stderr: '',
-          ),
+          (_) async =>
+              const ShorebirdProcessResult(exitCode: 0, stdout: '', stderr: ''),
         );
         await expectLater(
           runWithOverrides(
@@ -313,11 +295,8 @@ void main() {
     group('getPackageName', () {
       test('throws exception if process returns non-zero exit code', () async {
         when(
-          () => process.run(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-          ),
+          () =>
+              process.run(any(), any(), environment: any(named: 'environment')),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -326,9 +305,8 @@ void main() {
           ),
         );
         await expectLater(
-          () => runWithOverrides(
-            () => bundletool.getPackageName(appBundlePath),
-          ),
+          () =>
+              runWithOverrides(() => bundletool.getPackageName(appBundlePath)),
           throwsA(
             isA<Exception>().having(
               (e) => e.toString(),
@@ -341,11 +319,8 @@ void main() {
 
       test('returns the correct package name', () async {
         when(
-          () => process.run(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-          ),
+          () =>
+              process.run(any(), any(), environment: any(named: 'environment')),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 0,
@@ -382,11 +357,8 @@ void main() {
     group('getVersionName', () {
       test('throws exception if process returns non-zero exit code', () async {
         when(
-          () => process.run(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-          ),
+          () =>
+              process.run(any(), any(), environment: any(named: 'environment')),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -395,9 +367,8 @@ void main() {
           ),
         );
         await expectLater(
-          () => runWithOverrides(
-            () => bundletool.getVersionName(appBundlePath),
-          ),
+          () =>
+              runWithOverrides(() => bundletool.getVersionName(appBundlePath)),
           throwsA(
             isA<Exception>().having(
               (e) => e.toString(),
@@ -410,11 +381,8 @@ void main() {
 
       test('returns the correct version name', () async {
         when(
-          () => process.run(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-          ),
+          () =>
+              process.run(any(), any(), environment: any(named: 'environment')),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 0,
@@ -451,11 +419,8 @@ void main() {
     group('getVersionCode', () {
       test('throws exception if process returns non-zero exit code', () async {
         when(
-          () => process.run(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-          ),
+          () =>
+              process.run(any(), any(), environment: any(named: 'environment')),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -464,9 +429,8 @@ void main() {
           ),
         );
         await expectLater(
-          () => runWithOverrides(
-            () => bundletool.getVersionCode(appBundlePath),
-          ),
+          () =>
+              runWithOverrides(() => bundletool.getVersionCode(appBundlePath)),
           throwsA(
             isA<Exception>().having(
               (e) => e.toString(),
@@ -479,11 +443,8 @@ void main() {
 
       test('returns the correct version code', () async {
         when(
-          () => process.run(
-            any(),
-            any(),
-            environment: any(named: 'environment'),
-          ),
+          () =>
+              process.run(any(), any(), environment: any(named: 'environment')),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 0,

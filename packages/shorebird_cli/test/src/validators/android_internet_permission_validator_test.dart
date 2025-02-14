@@ -51,9 +51,7 @@ void main() {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
+        values: {shorebirdEnvRef.overrideWith(() => shorebirdEnv)},
       );
     }
 
@@ -107,24 +105,26 @@ void main() {
       },
     );
 
-    test('returns an error if AndroidManifest.xml file does not exist',
-        () async {
-      Directory(
-        p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
-      ).createSync(recursive: true);
+    test(
+      'returns an error if AndroidManifest.xml file does not exist',
+      () async {
+        Directory(
+          p.join(projectRoot.path, 'android', 'app', 'src', 'main'),
+        ).createSync(recursive: true);
 
-      final results = await runWithOverrides(
-        AndroidInternetPermissionValidator().validate,
-      );
+        final results = await runWithOverrides(
+          AndroidInternetPermissionValidator().validate,
+        );
 
-      expect(results, hasLength(1));
-      expect(results.first.severity, ValidationIssueSeverity.error);
-      expect(
-        results.first.message,
-        startsWith('No AndroidManifest.xml file found at'),
-      );
-      expect(results.first.fix, isNull);
-    });
+        expect(results, hasLength(1));
+        expect(results.first.severity, ValidationIssueSeverity.error);
+        expect(
+          results.first.message,
+          startsWith('No AndroidManifest.xml file found at'),
+        );
+        expect(results.first.fix, isNull);
+      },
+    );
 
     group('when the INTERNET permission is commented out', () {
       test('returns error', () async {
@@ -199,10 +199,7 @@ void main() {
           'main',
         );
 
-        writeManifestToPath(
-          manifestWithNonInternetPermissions,
-          manifestPath,
-        );
+        writeManifestToPath(manifestWithNonInternetPermissions, manifestPath);
 
         final results = await runWithOverrides(
           AndroidInternetPermissionValidator().validate,

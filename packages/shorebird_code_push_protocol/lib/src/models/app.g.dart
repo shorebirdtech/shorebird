@@ -8,20 +8,16 @@ part of 'app.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-App _$AppFromJson(Map<String, dynamic> json) => $checkedCreate(
-      'App',
-      json,
-      ($checkedConvert) {
-        final val = App(
-          id: $checkedConvert('id', (v) => v as String),
-          displayName: $checkedConvert('display_name', (v) => v as String),
-        );
-        return val;
-      },
-      fieldKeyMap: const {'displayName': 'display_name'},
-    );
+App _$AppFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('App', json, ($checkedConvert) {
+      final val = App(
+        id: $checkedConvert('id', (v) => v as String),
+        displayName: $checkedConvert('display_name', (v) => v as String),
+      );
+      return val;
+    }, fieldKeyMap: const {'displayName': 'display_name'});
 
 Map<String, dynamic> _$AppToJson(App instance) => <String, dynamic>{
-      'id': instance.id,
-      'display_name': instance.displayName,
-    };
+  'id': instance.id,
+  'display_name': instance.displayName,
+};

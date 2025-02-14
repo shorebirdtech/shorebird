@@ -42,21 +42,15 @@ class MacosPatcher extends Patcher {
   });
 
   // The elf snapshot built for Apple Silicon macs.
-  String get _arm64AotOutputPath => p.join(
-        shorebirdEnv.buildDirectory.path,
-        'out.arm64.aot',
-      );
+  String get _arm64AotOutputPath =>
+      p.join(shorebirdEnv.buildDirectory.path, 'out.arm64.aot');
 
   // The elf snapshot built for Intel macs.
-  String get _x64AotOutputPath => p.join(
-        shorebirdEnv.buildDirectory.path,
-        'out.x64.aot',
-      );
+  String get _x64AotOutputPath =>
+      p.join(shorebirdEnv.buildDirectory.path, 'out.x64.aot');
 
-  String get _appDillCopyPath => p.join(
-        shorebirdEnv.buildDirectory.path,
-        'app.dill',
-      );
+  String get _appDillCopyPath =>
+      p.join(shorebirdEnv.buildDirectory.path, 'app.dill');
 
   @override
   ReleaseType get releaseType => ReleaseType.macos;
@@ -93,15 +87,15 @@ class MacosPatcher extends Patcher {
     // can be nondeterministic. So we still have some hope of alerting users of
     // unpatchable native changes, we compare the Podfile.lock hash between the
     // patch and the release.
-    final diffStatus =
-        await patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-      localArchive: patchArchive,
-      releaseArchive: releaseArchive,
-      archiveDiffer: const AppleArchiveDiffer(),
-      allowAssetChanges: allowAssetDiffs,
-      allowNativeChanges: allowNativeDiffs,
-      confirmNativeChanges: false,
-    );
+    final diffStatus = await patchDiffChecker
+        .confirmUnpatchableDiffsIfNecessary(
+          localArchive: patchArchive,
+          releaseArchive: releaseArchive,
+          archiveDiffer: const AppleArchiveDiffer(),
+          allowAssetChanges: allowAssetDiffs,
+          allowNativeChanges: allowNativeDiffs,
+          confirmNativeChanges: false,
+        );
 
     if (!diffStatus.hasNativeChanges) {
       return diffStatus;
@@ -109,9 +103,10 @@ class MacosPatcher extends Patcher {
 
     final String? podfileLockHash;
     if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
-      podfileLockHash = sha256
-          .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
-          .toString();
+      podfileLockHash =
+          sha256
+              .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
+              .toString();
     } else {
       podfileLockHash = null;
     }
@@ -141,18 +136,17 @@ This may indicate that the patch contains native changes, which cannot be applie
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     try {
-      final (flutterVersionAndRevision, flutterVersion) = await (
-        shorebirdFlutter.getVersionAndRevision(),
-        shorebirdFlutter.getVersion(),
-      ).wait;
+      final (flutterVersionAndRevision, flutterVersion) =
+          await (
+            shorebirdFlutter.getVersionAndRevision(),
+            shorebirdFlutter.getVersion(),
+          ).wait;
 
       if ((flutterVersion ?? minimumSupportedMacosFlutterVersion) <
           minimumSupportedMacosFlutterVersion) {
-        logger.err(
-          '''
+        logger.err('''
 macOS patches are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
-        );
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         throw ProcessExit(ExitCode.software.code);
       }
 
@@ -167,7 +161,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
           codesign: codesign,
           flavor: flavor,
           target: target,
-          args: argResults.forwardedArgs +
+          args:
+              argResults.forwardedArgs +
               buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
           base64PublicKey: argResults.encodedPublicKey,
           buildProgress: buildProgress,
@@ -244,17 +239,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     final patchFile = File(patchFilePath);
     final patchFileSize = patchFile.statSync().size;
     final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
-    final hash = sha256
-        .convert(
-          patchArtifact.readAsBytesSync(),
-        )
-        .toString();
-    final hashSignature = privateKeyFile != null
-        ? codeSigner.sign(
-            message: hash,
-            privateKeyPemFile: privateKeyFile,
-          )
-        : null;
+    final hash = sha256.convert(patchArtifact.readAsBytesSync()).toString();
+    final hashSignature =
+        privateKeyFile != null
+            ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
+            : null;
 
     return PatchArtifactBundle(
       arch: arch.arch,
@@ -303,10 +292,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
     );
     createDiffProgress.complete();
 
-    return {
-      Arch.x86_64: x64Bundle,
-      Arch.arm64: arm64Bundle,
-    };
+    return {Arch.x86_64: x64Bundle, Arch.arm64: arm64Bundle};
   }
 
   @override
@@ -337,10 +323,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''',
   @override
   Future<CreatePatchMetadata> updatedCreatePatchMetadata(
     CreatePatchMetadata metadata,
-  ) async =>
-      metadata.copyWith(
-        environment: metadata.environment.copyWith(
-          xcodeVersion: await xcodeBuild.version(),
-        ),
-      );
+  ) async => metadata.copyWith(
+    environment: metadata.environment.copyWith(
+      xcodeVersion: await xcodeBuild.version(),
+    ),
+  );
 }

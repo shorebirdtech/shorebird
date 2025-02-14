@@ -57,9 +57,9 @@ void main() {
     group('checkReachability', () {
       group('when endpoints are reachable', () {
         setUp(() {
-          when(() => httpClient.get(any())).thenAnswer(
-            (_) async => http.Response('', HttpStatus.ok),
-          );
+          when(
+            () => httpClient.get(any()),
+          ).thenAnswer((_) async => http.Response('', HttpStatus.ok));
         });
 
         test('logs reachability for each checked url', () async {
@@ -130,12 +130,10 @@ void main() {
               any(),
               outputPath: any(named: 'outputPath'),
             ),
-          ).thenAnswer(
-            (_) async {
-              await Future<void>.delayed(responseTime);
-              return File('');
-            },
-          );
+          ).thenAnswer((_) async {
+            await Future<void>.delayed(responseTime);
+            return File('');
+          });
         });
 
         test('throws a NetworkCheckerException', () async {
@@ -227,9 +225,9 @@ void main() {
       final gcpUri = Uri.parse('http://localhost');
 
       setUp(() {
-        when(() => codePushClientWrapper.getGCPUploadSpeedTestUrl()).thenAnswer(
-          (_) async => gcpUri,
-        );
+        when(
+          () => codePushClientWrapper.getGCPUploadSpeedTestUrl(),
+        ).thenAnswer((_) async => gcpUri);
       });
 
       group('when upload fails', () {
@@ -262,15 +260,13 @@ void main() {
         // on slow (read: Windows) CI machines.
         final responseTime = uploadTimeout * 5;
         setUp(() {
-          when(() => httpClient.send(any())).thenAnswer(
-            (_) async {
-              await Future<void>.delayed(responseTime);
-              return http.StreamedResponse(
-                const Stream.empty(),
-                HttpStatus.noContent,
-              );
-            },
-          );
+          when(() => httpClient.send(any())).thenAnswer((_) async {
+            await Future<void>.delayed(responseTime);
+            return http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.noContent,
+            );
+          });
         });
 
         test('throws a NetworkCheckerException', () async {
@@ -324,9 +320,9 @@ void main() {
             // Our 5MB file took 1 second to upload, so our speed is 5 MB/s.
             expect(speed, equals(5.0));
 
-            final capturedRequest = verify(() => httpClient.send(captureAny()))
-                .captured
-                .last as http.MultipartRequest;
+            final capturedRequest =
+                verify(() => httpClient.send(captureAny())).captured.last
+                    as http.MultipartRequest;
             expect(capturedRequest.method, equals('POST'));
             expect(capturedRequest.url, equals(gcpUri));
           });

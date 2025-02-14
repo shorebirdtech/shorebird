@@ -23,9 +23,7 @@ void main() {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
-        values: {
-          shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-        },
+        values: {shorebirdEnvRef.overrideWith(() => shorebirdEnv)},
       );
     }
 
@@ -43,8 +41,9 @@ void main() {
     group('validate', () {
       group('when project does not have flavors', () {
         setUp(() {
-          when(() => shorebirdEnv.getShorebirdYaml())
-              .thenReturn(shorebirdYamlWithoutFlavors);
+          when(
+            () => shorebirdEnv.getShorebirdYaml(),
+          ).thenReturn(shorebirdYamlWithoutFlavors);
         });
 
         group('when flavor arg is provided', () {
@@ -78,8 +77,9 @@ void main() {
 
       group('when project has flavors', () {
         setUp(() {
-          when(() => shorebirdEnv.getShorebirdYaml())
-              .thenReturn(shorebirdYamlWithFlavors);
+          when(
+            () => shorebirdEnv.getShorebirdYaml(),
+          ).thenReturn(shorebirdYamlWithFlavors);
         });
 
         group('when flavor arg is provided', () {
