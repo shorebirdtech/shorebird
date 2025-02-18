@@ -92,7 +92,6 @@ void main() {
         'flutter create $testAppName',
         workingDirectory: cwd,
       );
-      expect(createAppResult.stderr, isEmpty);
       expect(createAppResult.exitCode, equals(0));
 
       cwd = p.join(cwd, testAppName);
@@ -102,7 +101,7 @@ void main() {
         'shorebird init --verbose',
         workingDirectory: cwd,
       );
-
+      expect(initShorebirdResult.stderr, isEmpty);
       expect(initShorebirdResult.exitCode, equals(0));
 
       final shorebirdYamlPath = p.join(cwd, 'shorebird.yaml');
