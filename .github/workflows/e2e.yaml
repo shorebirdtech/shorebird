@@ -15,93 +15,93 @@ env:
   FLUTTER_VERSION: 3.29.0
 
 jobs:
-  # patch:
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       flutter-version: [3.29.0, 3.27.2, 3.27.1, 3.27.0, 3.24.5, 3.24.4, 3.24.3, 3.24.1, 3.24.0, 3.22.3, 3.22.2, 3.19.6]
+  patch:
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter-version: [3.29.0, 3.27.2, 3.27.1, 3.27.0, 3.24.5, 3.24.4, 3.24.3, 3.24.1, 3.24.0, 3.22.3, 3.22.2, 3.19.6]
 
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 15
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
-  #   env:
-  #     SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+    env:
+      SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
 
-  #   steps:
-  #     - name: 📚 Git Checkout
-  #       uses: actions/checkout@v4
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v4
 
-  #     - name: 🖥️ Add Shorebird to PATH
-  #       shell: bash
-  #       run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+      - name: 🖥️ Add Shorebird to PATH
+        shell: bash
+        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
 
-  #     - name: 🐦 Verify Shorebird Installation
-  #       run: |
-  #         if [[ $(shorebird --version) =~ "Engine • revision" ]]; then          
-  #           echo '✅ Shorebird CLI is installed!'
-  #         else
-  #           echo '❌ Shorebird CLI is not installed.'
-  #         exit 1
-  #         fi
-  #       shell: bash
+      - name: 🐦 Verify Shorebird Installation
+        run: |
+          if [[ $(shorebird --version) =~ "Engine • revision" ]]; then          
+            echo '✅ Shorebird CLI is installed!'
+          else
+            echo '❌ Shorebird CLI is not installed.'
+          exit 1
+          fi
+        shell: bash
 
-  #     - name: ☕ Set up Java
-  #       uses: actions/setup-java@v4
-  #       with:
-  #         distribution: "temurin"
-  #         java-version: "17"
+      - name: ☕ Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
 
-  #     - name: 🎯 Set up Flutter
-  #       uses: subosito/flutter-action@v2
-  #       with:
-  #         channel: stable
-  #         flutter-version: ${{ matrix.flutter-version }}
-  #         cache: true
+      - name: 🎯 Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ matrix.flutter-version }}
+          cache: true
 
-  #     - name: 🚀 Enable KVM for Linux Runners
-  #       if: runner.os == 'Linux'
-  #       run: |
-  #         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-  #         sudo udevadm control --reload-rules
-  #         sudo udevadm trigger --name-match=kvm
+      - name: 🚀 Enable KVM for Linux Runners
+        if: runner.os == 'Linux'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
-  #     - name: 🤖 AVD Cache
-  #       uses: actions/cache@v4
-  #       id: avd-cache
-  #       with:
-  #         path: |
-  #           ~/.android/avd/*
-  #           ~/.android/adb*
-  #         key: avd-29-${{ runner.os }}-${{ hashFiles('.github/workflows/e2e.yaml') }}
+      - name: 🤖 AVD Cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-29-${{ runner.os }}-${{ hashFiles('.github/workflows/e2e.yaml') }}
 
-  #     - name: 🤖 Cache AVD Snapshot
-  #       if: steps.avd-cache.outputs.cache-hit != 'true'
-  #       uses: reactivecircus/android-emulator-runner@v2
-  #       with:
-  #         api-level: 29
-  #         arch: x86_64
-  #         target: default
-  #         force-avd-creation: false
-  #         sdcard-path-or-size: 512M
-  #         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-  #         disable-animations: false
-  #         channel: canary
-  #         script: echo "Generated AVD Snapshot"
+      - name: 🤖 Cache AVD Snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          force-avd-creation: false
+          sdcard-path-or-size: 512M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          disable-animations: false
+          channel: canary
+          script: echo "Generated AVD Snapshot"
 
-  #     - name: 🧪 Run Patch E2E Tests
-  #       uses: reactivecircus/android-emulator-runner@v2
-  #       with:
-  #         api-level: 29
-  #         arch: x86_64
-  #         target: default
-  #         script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
+      - name: 🧪 Run Patch E2E Tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest]
-        branch: [main]
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        branch: [stable, main]
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
