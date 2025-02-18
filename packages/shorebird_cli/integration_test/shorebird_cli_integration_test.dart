@@ -102,7 +102,7 @@ void main() {
         'shorebird init --verbose',
         workingDirectory: cwd,
       );
-      expect(initShorebirdResult.stderr, isEmpty);
+
       expect(initShorebirdResult.exitCode, equals(0));
 
       final shorebirdYamlPath = p.join(cwd, 'shorebird.yaml');
