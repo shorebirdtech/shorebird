@@ -348,6 +348,8 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         flavor: flavor,
         target: target,
       );
+      // https://github.com/dart-lang/sdk/issues/60173
+      // ignore: lines_longer_than_80_chars
     }, values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)});
   }
 

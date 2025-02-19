@@ -25,10 +25,10 @@ export 'artifact_build_exception.dart';
 /// Flutter.
 typedef ShorebirdBuildCommand = Future<void> Function();
 
-// FIXME: The following three apple BuildResult classes are identical and
-// should be merged. They are all capturing the idea that we want to get the
-// kernel (app.dill) file generated during a build so we can use it to link
-// when patching.
+// TODO(bryanoltman): The following three apple BuildResult classes are
+// identical and should be merged. They are all capturing the idea that we want
+// to get the kernel (app.dill) file generated during a build so we can use it
+// to link when patching.
 
 /// {@template ipa_build_result}
 /// Metadata about the result of a `flutter build ipa` invocation.
