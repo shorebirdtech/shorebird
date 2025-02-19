@@ -75,8 +75,8 @@ class MacosPatcher extends Patcher {
     }
   }
 
-  // FIXME: this is a direct copy of IosPatcher's implementation. We should
-  // consolidate this and other copied code.
+  // TODO(bryanoltman): this is a direct copy of IosPatcher's implementation. We
+  // should consolidate this and other copied code.
   @override
   Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,

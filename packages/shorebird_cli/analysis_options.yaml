@@ -4,6 +4,9 @@ linter:
     # Disabling in favor of the new Dart 3.7 format.
     # https://github.com/VeryGoodOpenSource/very_good_analysis/issues/136
     require_trailing_commas: false
+    # Dart 3.7 format sometimes produces lines longer than 80 characters.
+    # https://github.com/dart-lang/sdk/issues/60173
+    lines_longer_than_80_chars: false
 analyzer:
   exclude:
     - lib/**.g.dart
