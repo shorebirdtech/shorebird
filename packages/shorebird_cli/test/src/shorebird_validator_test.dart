@@ -128,8 +128,7 @@ void main() {
             );
           });
 
-          group("when pubspec.yaml doesn't "
-              'contain shorebird.yaml as an asset', () {
+          group("when pubspec.yaml doesn't contain shorebird.yaml as an asset", () {
             setUp(() {
               when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
               when(
