@@ -175,8 +175,6 @@ void main() {
             );
             expect(unsignedMemoryIssue.fix, isNotNull);
             expect(
-              // https://github.com/dart-lang/sdk/issues/60173
-              // ignore: lines_longer_than_80_chars
               MacosEntitlementsValidator.hasAllowUnsignedExecutableMemoryEntitlement(
                 plistFile: releaseEntitlementsFile(),
               ),
@@ -184,8 +182,6 @@ void main() {
             );
             runWithOverrides(() => unsignedMemoryIssue.fix!());
             expect(
-              // https://github.com/dart-lang/sdk/issues/60173
-              // ignore: lines_longer_than_80_chars
               MacosEntitlementsValidator.hasAllowUnsignedExecutableMemoryEntitlement(
                 plistFile: releaseEntitlementsFile(),
               ),

@@ -1074,8 +1074,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '[+5925 ms] Command line invocation:',
                 '/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -configuration Release VERBOSE_SCRIPT_LOGGING=YES -workspace Runner.xcworkspace -scheme Runner -sdk iphoneos -destination generic/platform=iOS SCRIPT_OUTPUT_STREAM_FILE=/var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/pipe_to_stdout -resultBundlePath /var/folders/64/dj6krpq1093dmx08dy4r1cwh0000gn/T/flutter_tools.WDvaE9/flutter_ios_build_temp_dirUAyStV/temporary_xcresult_bundle -resultBundleVersion 3 FLUTTER_SUPPRESS_ANALYTICS=true COMPILER_INDEX_STORE_ENABLE=NO -archivePath /Users/bryanoltman/Documents/sandbox/notification_extension/build/ios/archive/Runner archive',
                 // cSpell:enable
-                // https://github.com/dart-lang/sdk/issues/60173
-                // ignore: lines_longer_than_80_chars
               ].map((line) => '$line${Platform.lineTerminator}').map(utf8.encode),
             ),
           );
