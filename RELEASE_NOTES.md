@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.19 (February 19, 2025)
+
+- 📝 Fix `shorebird release` descriptions for `--build-name` and `--build-number`
+
 ## 1.6.18 (February 18, 2025)
 
 - ↩️ Fix rollbacks when automatic updates are disabled
