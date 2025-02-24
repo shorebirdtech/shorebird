@@ -12,7 +12,7 @@ dependencies:
   http: ^1.0.0
   json_annotation: ^4.9.0
   meta: ^1.7.0
-  pointycastle: ^3.5.0
+  pointycastle: ^4.0.0
   rsa_pkcs: ^2.0.0
   ttl_cache: ^0.3.0
 
