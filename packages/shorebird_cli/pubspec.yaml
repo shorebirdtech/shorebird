@@ -32,7 +32,7 @@ dependencies:
   path: ^1.9.1
   pem: ^2.0.5
   platform: ^3.1.6
-  pointycastle: ^3.9.1
+  pointycastle: ^4.0.0
   propertylistserialization: ^1.4.1
   pub_semver: ^2.1.5
   pubspec_parse: ^1.5.0
