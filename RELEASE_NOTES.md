@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.20 (February 27, 2025)
+
+- 🐚 Fix `powershell` execution on Windows due to whitespace in file paths
+- 🧹 Various dependency upgrades
+
 ## 1.6.19 (February 19, 2025)
 
 - 📝 Fix `shorebird release` descriptions for `--build-name` and `--build-number`
