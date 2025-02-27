@@ -66,6 +66,27 @@ void main() {
           });
         });
 
+        group('when path contains a space', () {
+          setUp(() {
+            when(() => processResult.exitCode).thenReturn(0);
+            when(() => processResult.stdout).thenReturn('1.0.0+1');
+          });
+
+          test('executes correct command', () async {
+            final directory = Directory.systemTemp.createTempSync(
+              'directory with spaces',
+            );
+            final file = File('${directory.path}/file.exe');
+            await runWithOverrides(() => powershell.getExeVersionString(file));
+            verify(
+              () => process.run('powershell.exe', [
+                '-Command',
+                "(Get-Item -Path '${file.path}').VersionInfo.ProductVersion",
+              ], runInShell: true),
+            ).called(1);
+          });
+        });
+
         group('when version code does not include a build number', () {
           setUp(() {
             when(() => processResult.exitCode).thenReturn(0);
