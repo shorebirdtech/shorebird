@@ -272,7 +272,7 @@ void main() {
               'out',
               localEngine,
               'clang_x64',
-              'gen_snapshot_arm64',
+              'gen_snapshot',
             ),
           ),
         );
