@@ -19,7 +19,6 @@ class Powershell {
   Future<ShorebirdProcessResult> pwsh(
     List<String> arguments, {
     String? workingDirectory,
-    bool runInShell = false,
   }) async {
     final result = await process.run(executable, arguments, runInShell: true);
     if (result.exitCode != ExitCode.success.code) {
@@ -36,9 +35,10 @@ class Powershell {
   /// Returns the version string of the given executable file.
   Future<String> getExeVersionString(File exeFile) async {
     final exePath = exeFile.path;
-    final pwshCommand = '(Get-Item -Path $exePath).VersionInfo.ProductVersion';
+    final pwshCommand =
+        "(Get-Item -Path '$exePath').VersionInfo.ProductVersion";
 
-    final result = await pwsh(['-Command', pwshCommand], runInShell: true);
+    final result = await pwsh(['-Command', pwshCommand]);
 
     var versionString = (result.stdout as String).trim();
     if (!versionString.contains('+')) {
