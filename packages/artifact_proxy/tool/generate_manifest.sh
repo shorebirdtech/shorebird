@@ -67,6 +67,9 @@ artifact_overrides:
   - download.flutter.io/io/flutter/x86_64_release/1.0.0-\$engine/x86_64_release-1.0.0-\$engine.pom
   - download.flutter.io/io/flutter/x86_64_release/1.0.0-\$engine/x86_64_release-1.0.0-\$engine.jar
 
+  # Common release artifacts
+  - flutter_infra_release/flutter/\$engine/flutter_patched_sdk_product.zip',
+
   # iOS release artifacts
   # Includes unified Flutter.framework for device and simulator (debug)
   - flutter_infra_release/flutter/\$engine/ios-release/artifacts.zip
