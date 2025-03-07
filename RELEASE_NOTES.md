@@ -6,7 +6,7 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
-## 1.6.21 (February 27, 2025)
+## 1.6.21 (March 7, 2025)
 
 - 🎯 Fix ios linking errors due to Dart SDK hash mismatches
 
