@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.21 (March 7, 2025)
+
+- 🎯 Fix iOS patching errors due to Dart SDK hash mismatches
+
 ## 1.6.20 (February 27, 2025)
 
 - 🐚 Fix `powershell` execution on Windows due to whitespace in file paths
