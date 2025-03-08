@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.22 (March 7, 2025)
+
+- 🐦 Support for Flutter 3.29.0
+- 🧹 Various dependency upgrades
+
 ## 1.6.21 (March 7, 2025)
 
 - 🎯 Fix iOS patching errors due to Dart SDK hash mismatches
