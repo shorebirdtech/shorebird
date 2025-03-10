@@ -111,7 +111,6 @@ class ArtifactBuilder {
       final buildProcess = await process.start(
         executable,
         arguments,
-        runInShell: true,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
@@ -205,7 +204,6 @@ class ArtifactBuilder {
       final result = await process.run(
         executable,
         arguments,
-        runInShell: true,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
@@ -256,7 +254,7 @@ class ArtifactBuilder {
         ...args,
       ];
 
-      final result = await process.run(executable, arguments, runInShell: true);
+      final result = await process.run(executable, arguments);
 
       if (result.exitCode != ExitCode.success.code) {
         throw ArtifactBuildException.fromProcessResult(
@@ -351,7 +349,6 @@ class ArtifactBuilder {
       final buildProcess = await process.start(
         executable,
         arguments,
-        runInShell: true,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
@@ -427,7 +424,6 @@ class ArtifactBuilder {
       final buildProcess = await process.start(
         executable,
         arguments,
-        runInShell: true,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
@@ -508,7 +504,7 @@ class ArtifactBuilder {
         ...args,
       ];
 
-      final result = await process.run(executable, arguments, runInShell: true);
+      final result = await process.run(executable, arguments);
 
       if (result.exitCode != ExitCode.success.code) {
         throw ArtifactBuildException('Failed to build: ${result.stderr}');
@@ -558,7 +554,6 @@ class ArtifactBuilder {
     final result = await process.run(
       executable,
       arguments,
-      runInShell: true,
       useVendedFlutter: false,
     );
 
@@ -617,7 +612,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       final buildProcess = await process.start(
         executable,
         arguments,
-        runInShell: true,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 

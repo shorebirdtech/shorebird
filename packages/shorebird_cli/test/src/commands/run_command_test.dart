@@ -55,11 +55,7 @@ void main() {
       validator = MockValidator();
 
       when(
-        () => shorebirdProcess.start(
-          any(),
-          any(),
-          runInShell: any(named: 'runInShell'),
-        ),
+        () => shorebirdProcess.start(any(), any()),
       ).thenAnswer((_) async => process);
       when(() => argResults.rest).thenReturn([]);
       when(() => doctor.generalValidators).thenReturn([validator]);
@@ -177,11 +173,7 @@ Please use "shorebird preview" instead.'''),
 
       final args =
           verify(
-                () => shorebirdProcess.start(
-                  any(),
-                  captureAny(),
-                  runInShell: any(named: 'runInShell'),
-                ),
+                () => shorebirdProcess.start(any(), captureAny()),
               ).captured.first
               as List<String>;
       expect(

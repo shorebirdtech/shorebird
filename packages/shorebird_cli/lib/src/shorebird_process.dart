@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:meta/meta.dart';
@@ -29,7 +30,6 @@ class ShorebirdProcess {
   Future<ShorebirdProcessResult> run(
     String executable,
     List<String> arguments, {
-    bool runInShell = false,
     Map<String, String>? environment,
     String? workingDirectory,
     bool useVendedFlutter = true,
@@ -55,7 +55,6 @@ class ShorebirdProcess {
     final result = await processWrapper.run(
       resolvedExecutable,
       resolvedArguments,
-      runInShell: runInShell,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
     );
@@ -69,7 +68,6 @@ class ShorebirdProcess {
   ShorebirdProcessResult runSync(
     String executable,
     List<String> arguments, {
-    bool runInShell = false,
     Map<String, String>? environment,
     String? workingDirectory,
     bool useVendedFlutter = true,
@@ -95,7 +93,6 @@ class ShorebirdProcess {
     final result = processWrapper.runSync(
       resolvedExecutable,
       resolvedArguments,
-      runInShell: runInShell,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
     );
@@ -110,7 +107,6 @@ class ShorebirdProcess {
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
-    bool runInShell = false,
     bool useVendedFlutter = true,
     String? workingDirectory,
   }) {
@@ -135,7 +131,6 @@ class ShorebirdProcess {
     return processWrapper.start(
       resolvedExecutable,
       resolvedArguments,
-      runInShell: runInShell,
       environment: resolvedEnvironment,
       workingDirectory: workingDirectory,
     );
@@ -250,7 +245,6 @@ class ProcessWrapper {
   Future<ShorebirdProcessResult> run(
     String executable,
     List<String> arguments, {
-    bool runInShell = false,
     Map<String, String>? environment,
     String? workingDirectory,
   }) async {
@@ -258,7 +252,7 @@ class ProcessWrapper {
       executable,
       arguments,
       environment: environment,
-      runInShell: runInShell,
+      runInShell: Platform.isWindows,
       workingDirectory: workingDirectory,
     );
     return ShorebirdProcessResult(
@@ -272,7 +266,6 @@ class ProcessWrapper {
   ShorebirdProcessResult runSync(
     String executable,
     List<String> arguments, {
-    bool runInShell = false,
     Map<String, String>? environment,
     String? workingDirectory,
   }) {
@@ -280,7 +273,7 @@ class ProcessWrapper {
       executable,
       arguments,
       environment: environment,
-      runInShell: runInShell,
+      runInShell: Platform.isWindows,
       workingDirectory: workingDirectory,
     );
     return ShorebirdProcessResult(
@@ -294,14 +287,13 @@ class ProcessWrapper {
   Future<Process> start(
     String executable,
     List<String> arguments, {
-    bool runInShell = false,
     Map<String, String>? environment,
     String? workingDirectory,
   }) {
     return Process.start(
       executable,
       arguments,
-      runInShell: runInShell,
+      runInShell: Platform.isWindows,
       environment: environment,
       workingDirectory: workingDirectory,
     );

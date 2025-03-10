@@ -79,7 +79,7 @@ Please use "shorebird preview" instead.''');
       if (target != null) '--target=$target',
       if (dartDefines != null) ...dartDefines.map((e) => '--dart-define=$e'),
       ...results.rest,
-    ], runInShell: true);
+    ]);
 
     flutter.stdout.listen((event) {
       logger.info(utf8.decode(event));

@@ -96,19 +96,13 @@ void main() {
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
-        () => process.run(
-          'flutter',
-          ['--version'],
-          runInShell: true,
-          useVendedFlutter: false,
-        ),
+        () => process.run('flutter', ['--version'], useVendedFlutter: false),
       ).thenAnswer((_) async => versionProcessResult);
       when(() => versionProcessResult.exitCode).thenReturn(0);
       when(
         () => process.run(
           'flutter',
           any(that: contains('precache')),
-          runInShell: true,
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => precacheProcessResult);
@@ -157,12 +151,8 @@ void main() {
             throwsA(isA<ProcessException>()),
           );
           verify(
-            () => process.run(
-              'flutter',
-              ['--version'],
-              runInShell: true,
-              useVendedFlutter: false,
-            ),
+            () =>
+                process.run('flutter', ['--version'], useVendedFlutter: false),
           ).called(1);
         },
       );
@@ -174,12 +164,7 @@ void main() {
           completion(isNull),
         );
         verify(
-          () => process.run(
-            'flutter',
-            ['--version'],
-            runInShell: true,
-            useVendedFlutter: false,
-          ),
+          () => process.run('flutter', ['--version'], useVendedFlutter: false),
         ).called(1);
       });
 
@@ -194,12 +179,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
           completion(equals('3.10.6')),
         );
         verify(
-          () => process.run(
-            'flutter',
-            ['--version'],
-            runInShell: true,
-            useVendedFlutter: false,
-          ),
+          () => process.run('flutter', ['--version'], useVendedFlutter: false),
         ).called(1);
       });
     });
@@ -731,11 +711,7 @@ origin/flutter_release/3.10.6''';
           ),
         );
         verifyNever(
-          () => process.run(
-            'flutter',
-            any(that: contains('precache')),
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => process.run('flutter', any(that: contains('precache'))),
         );
       });
 
@@ -764,11 +740,7 @@ origin/flutter_release/3.10.6''';
           ),
         ).called(1);
         verifyNever(
-          () => process.run(
-            'flutter',
-            any(that: contains('precache')),
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => process.run('flutter', any(that: contains('precache'))),
         );
       });
 
@@ -815,7 +787,6 @@ origin/flutter_release/3.10.6''';
               'flutter',
               any(that: contains('precache')),
               workingDirectory: any(named: 'workingDirectory'),
-              runInShell: any(named: 'runInShell'),
             ),
           ).thenThrow(Exception('oh no!'));
         });
@@ -835,7 +806,6 @@ origin/flutter_release/3.10.6''';
                 ...runWithOverrides(() => shorebirdFlutter.precacheArgs),
               ],
               workingDirectory: p.join(flutterDirectory.parent.path, revision),
-              runInShell: true,
             ),
           ).called(1);
 
@@ -866,7 +836,6 @@ origin/flutter_release/3.10.6''';
                 ...runWithOverrides(() => shorebirdFlutter.precacheArgs),
               ],
               workingDirectory: p.join(flutterDirectory.parent.path, revision),
-              runInShell: true,
             ),
           ).called(1);
           verify(
