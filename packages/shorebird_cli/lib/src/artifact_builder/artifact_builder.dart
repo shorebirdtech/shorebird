@@ -1,6 +1,5 @@
 // cspell:words endtemplate aabs ipas appbundle bryanoltman codesign xcarchive
 // cspell:words xcframework
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -108,45 +107,22 @@ class ArtifactBuilder {
         ...args,
       ];
 
-      final buildProcess = await process.start(
+      final buildProcess = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        progress: buildProgress,
       );
 
-      // Android builds are a series of gradle tasks that are all logged in
-      // this format. We can use the 'Task :' line to get the current task
-      // being run.
-      final gradleTaskRegex = RegExp(r'^\[.*\] \> (Task :.*)$');
-      final stdoutLines = <String>[];
-      buildProcess.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-            stdoutLines.add(line);
-            if (buildProgress == null) {
-              return;
-            }
-            final captured = gradleTaskRegex.firstMatch(line)?.group(1);
-            if (captured != null) {
-              buildProgress.updateDetailMessage(captured);
-            }
-          });
-
-      final stderrLines =
-          await buildProcess.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .toList();
-      final exitCode = await buildProcess.exitCode;
+      final exitCode = buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
           '''
 Failed to build AAB.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          stderr: stderrLines,
-          stdout: stdoutLines,
+          stderr: '${buildProcess.stderr}'.split('\n'),
+          stdout: '${buildProcess.stdout}'.split('\n'),
         );
       }
     });
@@ -204,7 +180,7 @@ Reason: Exited with code $exitCode.''',
         ...args,
       ];
 
-      final result = await process.run(
+      final result = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
@@ -257,7 +233,7 @@ Reason: Exited with code $exitCode.''', buildProcessResult: result);
         ...args,
       ];
 
-      final result = await process.run(executable, arguments);
+      final result = await process.stream(executable, arguments);
 
       if (result.exitCode != ExitCode.success.code) {
         throw ArtifactBuildException.fromProcessResult('''
@@ -286,35 +262,22 @@ Reason: Exited with code $exitCode.''', buildProcessResult: result);
         ...args,
       ];
 
-      final buildProcess = await process.start(
+      final buildProcess = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        progress: buildProgress,
       );
 
-      final stdoutLines = <String>[];
-      buildProcess.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-            logger.detail(line);
-            stdoutLines.add(line);
-          });
-
-      final stderrLines =
-          await buildProcess.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .toList();
-      final exitCode = await buildProcess.exitCode;
+      final exitCode = buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
           '''
 Failed to build linux app.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          stdout: stdoutLines,
-          stderr: stderrLines,
+          stdout: '${buildProcess.stdout}'.split('\n'),
+          stderr: '${buildProcess.stderr}'.split('\n'),
         );
       }
     });
@@ -352,48 +315,27 @@ Reason: Exited with code $exitCode.''',
         ...args,
       ];
 
-      final buildProcess = await process.start(
+      final buildProcess = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        progress: buildProgress,
+        evalOutput: true,
       );
 
-      final stdoutLines = <String>[];
-      buildProcess.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-            stdoutLines.add(line);
-            if (buildProgress == null) {
-              return;
-            }
-
-            // TODO(bryanoltman): update the progress message for macOS builds.
-            // final update = _progressUpdateFromMacosBuildLog(line);
-            // if (update != null) {
-            //   buildProgress.updateDetailMessage(update);
-            // }
-          });
-
-      final stderrLines =
-          await buildProcess.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .toList();
-      final stdout = stdoutLines.join('\n');
-      final exitCode = await buildProcess.exitCode;
+      final exitCode = buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
           '''
 Failed to build macOS app.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          stdout: stdoutLines,
-          stderr: stderrLines,
+          stdout: '${buildProcess.stdout}'.split('\n'),
+          stderr: '${buildProcess.stderr}'.split('\n'),
         );
       }
 
-      appDillPath = findAppDill(stdout: stdout);
+      appDillPath = findAppDill(stdout: '${buildProcess.stdout}');
     });
 
     if (appDillPath == null) {
@@ -430,36 +372,19 @@ Reason: Exited with code $exitCode.''',
         ...args,
       ];
 
-      final buildProcess = await process.start(
+      final buildProcess = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        progress: buildProgress,
+        evalOutput: true,
       );
 
-      final stdoutLines = <String>[];
-      buildProcess.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-            stdoutLines.add(line);
-            if (buildProgress == null) {
-              return;
-            }
+      final stdout = '${buildProcess.stdout}';
+      final stdoutLines = stdout.split('\n');
 
-            final update = _progressUpdateFromIpaBuildLog(line);
-            if (update != null) {
-              buildProgress.updateDetailMessage(update);
-            }
-          });
-
-      final stderrLines =
-          await buildProcess.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .toList();
-      final stderr = stderrLines.join('\n');
-      final stdout = stdoutLines.join('\n');
-      final exitCode = await buildProcess.exitCode;
+      final stderr = '${buildProcess.stderr}';
+      final stderrLines = stderr.split('\n');
 
       // If we've been updating the progress, reset it to the original base
       // message so as not to leave the user with a confusing message.
@@ -519,7 +444,11 @@ Reason: stderr contains "Encountered error while creating the IPA".''',
         ...args,
       ];
 
-      final result = await process.run(executable, arguments);
+      final result = await process.stream(
+        executable,
+        arguments,
+        evalOutput: true,
+      );
 
       if (result.exitCode != ExitCode.success.code) {
         throw ArtifactBuildException('''
@@ -601,7 +530,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       appDillPath,
     ];
 
-    final result = await process.run(
+    final result = await process.stream(
       shorebirdArtifacts.getArtifactPath(artifact: genSnapshotArtifact),
       arguments,
     );
@@ -628,82 +557,23 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       const executable = 'flutter';
       final arguments = ['build', 'windows', '--release', ...args];
 
-      final buildProcess = await process.start(
+      final buildProcess = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
-      final stdoutLines = <String>[];
-      buildProcess.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-            logger.detail(line);
-            stdoutLines.add(line);
-            // TODO(bryanoltman): update build progress
-          });
-
-      final stderrLines =
-          await buildProcess.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .toList();
-      final exitCode = await buildProcess.exitCode;
+      final exitCode = buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
           'Failed to build',
-          stderr: stderrLines,
-          stdout: stdoutLines,
+          stderr: '${buildProcess.stderr}'.split('\n'),
+          stdout: '${buildProcess.stdout}'.split('\n'),
         );
       }
     });
 
     return artifactManager.getWindowsReleaseDirectory();
-  }
-
-  /// Given a log of verbose output from `flutter build ipa`, returns a
-  /// progress update message to display to the user if the line contains
-  /// a known progress update step. Returns null (no update) otherwise.
-  String? _progressUpdateFromIpaBuildLog(String line) {
-    // xcodebuild -list is a command run early in `flutter build ipa` to read
-    // build settings and schemes. Most users aren't familiar with this command,
-    // so we translate it to "Collecting schemes" below.
-    final collectingSchemesRegex = RegExp(
-      r'\[.*\] executing:.*xcrun xcodebuild -list$',
-    );
-    final archivingRegex = RegExp(r'^\[.*\] (Archiving .+$)');
-    final runningXcodeBuildRegex = RegExp(r'^\[.*\] (Running Xcode build).*$');
-    final compilingLinkingSigningRegex = RegExp(
-      r'^\[.*\]\s+└─(Compiling, linking and signing).*$',
-    );
-    final buildingAppStoreIpaRegex = RegExp(
-      r'^\[.*\] (Building App Store IPA).*$',
-    );
-    final builtAppStoreIpaRegex = RegExp(r'^\[.*\] ✓ (Built IPA to \S+).*$');
-
-    final regexes = [
-      archivingRegex,
-      collectingSchemesRegex,
-      runningXcodeBuildRegex,
-      compilingLinkingSigningRegex,
-      buildingAppStoreIpaRegex,
-      builtAppStoreIpaRegex,
-    ];
-
-    for (final regex in regexes) {
-      final match = regex.firstMatch(line);
-      if (match == null) continue;
-
-      // See the note above about the collectingSchemesRegex.
-      if (regex == collectingSchemesRegex) {
-        return 'Collecting schemes';
-      }
-
-      return match.group(1);
-    }
-
-    return null;
   }
 
   /// Given the full stdout from a `flutter build ipa` or `flutter build macos`

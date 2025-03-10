@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
@@ -25,6 +27,80 @@ class ShorebirdProcess {
 
   /// The underlying process wrapper.
   final ProcessWrapper processWrapper;
+
+  /// Starts a process and streams the output in real-time.
+  Future<ShorebirdProcessResult> stream(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+    bool useVendedFlutter = true,
+    String? workingDirectory,
+    DetailProgress? progress,
+    bool evalOutput = false,
+  }) async {
+    final process = await start(
+      executable,
+      arguments,
+      environment: environment,
+      useVendedFlutter: useVendedFlutter,
+      workingDirectory: workingDirectory,
+      mode:
+          evalOutput ? ProcessStartMode.normal : ProcessStartMode.inheritStdio,
+    );
+
+    if (!evalOutput) {
+      return ShorebirdProcessResult(
+        exitCode: await process.exitCode,
+        stdout: null,
+        stderr: null,
+      );
+    }
+
+    final stdoutBuffer = StringBuffer();
+    final stderrBuffer = StringBuffer();
+
+    final stdoutSubscription = process.stdout
+        .transform<String>(utf8.decoder)
+        .transform<String>(const LineSplitter())
+        .listen((String line) {
+          stdoutBuffer.writeln(line);
+          logger.detail(line);
+          if (progress != null) {
+            progress.updateDetailMessage(line);
+          }
+        });
+    final stderrSubscription = process.stderr
+        .transform<String>(utf8.decoder)
+        .transform<String>(const LineSplitter())
+        .listen((String line) {
+          stderrBuffer.writeln(line);
+          logger.detail(red.wrap(line));
+          if (progress != null) {
+            progress.updateDetailMessage(line);
+          }
+        });
+
+    // Wait for stdout to be fully processed
+    // because process.exitCode may complete first causing flaky tests.
+    await Future.wait<void>(<Future<void>>[
+      stdoutSubscription.asFuture<void>(),
+      stderrSubscription.asFuture<void>(),
+    ]);
+
+    // The streams as futures have already completed, so waiting for the
+    // potentially async stream cancellation to complete likely has no benefit.
+    // Further, some Stream implementations commonly used in tests don't
+    // complete the Future returned here, which causes tests using
+    // mocks/FakeAsync to fail when these Futures are awaited.
+    unawaited(stdoutSubscription.cancel());
+    unawaited(stderrSubscription.cancel());
+
+    return ShorebirdProcessResult(
+      exitCode: exitCode,
+      stdout: stdoutBuffer.toString(),
+      stderr: stderrBuffer.toString(),
+    );
+  }
 
   /// Runs the process and returns the result.
   Future<ShorebirdProcessResult> run(
@@ -109,6 +185,7 @@ class ShorebirdProcess {
     Map<String, String>? environment,
     bool useVendedFlutter = true,
     String? workingDirectory,
+    ProcessStartMode mode = ProcessStartMode.normal,
   }) {
     final resolvedEnvironment = environment ?? {};
     if (useVendedFlutter) {
@@ -133,6 +210,7 @@ class ShorebirdProcess {
       resolvedArguments,
       environment: resolvedEnvironment,
       workingDirectory: workingDirectory,
+      mode: mode,
     );
   }
 
@@ -289,6 +367,7 @@ class ProcessWrapper {
     List<String> arguments, {
     Map<String, String>? environment,
     String? workingDirectory,
+    ProcessStartMode mode = ProcessStartMode.normal,
   }) {
     return Process.start(
       executable,
@@ -296,6 +375,7 @@ class ProcessWrapper {
       runInShell: Platform.isWindows,
       environment: environment,
       workingDirectory: workingDirectory,
+      mode: mode,
     );
   }
 }
