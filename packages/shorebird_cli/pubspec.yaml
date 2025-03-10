@@ -34,7 +34,7 @@ dependencies:
   platform: ^3.1.6
   pointycastle: ^4.0.0
   propertylistserialization: ^1.4.1
-  pub_semver: ^2.1.5
+  pub_semver: ^2.2.0
   pubspec_parse: ^1.5.0
   retry: ^3.1.2
   scoped_deps: ^0.1.0
