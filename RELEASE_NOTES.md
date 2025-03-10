@@ -8,7 +8,7 @@ This section contains past updates we've sent to customers.
 
 ## 1.6.23 (March 10, 2025)
 
-- 🍎 Fix async ffi crashes
+- 🍎 Fix async ffi crashes (seen in package:cupertino_http)
 
 ## 1.6.22 (March 7, 2025)
 
