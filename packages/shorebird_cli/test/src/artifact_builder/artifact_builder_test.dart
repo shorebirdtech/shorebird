@@ -73,22 +73,18 @@ void main() {
       buildProcess = MockProcess();
 
       when(
-        () => shorebirdProcess.run(
-          'flutter',
-          ['--no-version-check', 'pub', 'get', '--offline'],
-          runInShell: any(named: 'runInShell'),
-          useVendedFlutter: false,
-        ),
+        () => shorebirdProcess.run('flutter', [
+          '--no-version-check',
+          'pub',
+          'get',
+          '--offline',
+        ], useVendedFlutter: false),
       ).thenAnswer((_) async => pubGetProcessResult);
       when(
         () => pubGetProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
       when(
-        () => shorebirdProcess.run(
-          any(),
-          any(),
-          runInShell: any(named: 'runInShell'),
-        ),
+        () => shorebirdProcess.run(any(), any()),
       ).thenAnswer((_) async => buildProcessResult);
       when(() => buildProcessResult.exitCode).thenReturn(ExitCode.success.code);
       when(() => buildProcessResult.stdout).thenReturn('some stdout');
@@ -96,7 +92,6 @@ void main() {
         () => shorebirdProcess.start(
           any(),
           any(),
-          runInShell: any(named: 'runInShell'),
           environment: any(named: 'environment'),
         ),
       ).thenAnswer((_) async => buildProcess);
@@ -132,12 +127,12 @@ void main() {
           await testCall();
 
           verify(
-            () => shorebirdProcess.run(
-              'flutter',
-              ['--no-version-check', 'pub', 'get', '--offline'],
-              runInShell: any(named: 'runInShell'),
-              useVendedFlutter: false,
-            ),
+            () => shorebirdProcess.run('flutter', [
+              '--no-version-check',
+              'pub',
+              'get',
+              '--offline',
+            ], useVendedFlutter: false),
           ).called(1);
         });
 
@@ -167,12 +162,12 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           await testCall();
 
           verifyNever(
-            () => shorebirdProcess.run(
-              'flutter',
-              ['--no-version-check', 'pub', 'get', '--offline'],
-              runInShell: any(named: 'runInShell'),
-              useVendedFlutter: false,
-            ),
+            () => shorebirdProcess.run('flutter', [
+              '--no-version-check',
+              'pub',
+              'get',
+              '--offline',
+            ], useVendedFlutter: false),
           );
         });
       });
@@ -192,12 +187,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         await runWithOverrides(() => builder.buildAppBundle());
 
         verify(
-          () => shorebirdProcess.start(
-            'flutter',
-            ['build', 'appbundle', '--release'],
-            runInShell: any(named: 'runInShell'),
-            environment: any(named: 'environment'),
-          ),
+          () => shorebirdProcess.start('flutter', [
+            'build',
+            'appbundle',
+            '--release',
+          ], environment: any(named: 'environment')),
         ).called(1);
       });
 
@@ -221,7 +215,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             '--target-platform=android-arm64',
             '--foo',
             'bar',
-          ], runInShell: any(named: 'runInShell')),
+          ]),
         ).called(1);
       });
 
@@ -240,7 +234,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target=target',
                 '--target-platform=android-arm64',
               ],
-              runInShell: any(named: 'runInShell'),
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).thenAnswer((_) async => buildProcess);
@@ -267,7 +260,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target=target',
                 '--target-platform=android-arm64',
               ],
-              runInShell: any(named: 'runInShell'),
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).called(1);
@@ -422,12 +414,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         await runWithOverrides(() => builder.buildApk());
 
         verify(
-          () => shorebirdProcess.run(
-            'flutter',
-            ['build', 'apk', '--release'],
-            runInShell: any(named: 'runInShell'),
-            environment: any(named: 'environment'),
-          ),
+          () => shorebirdProcess.run('flutter', [
+            'build',
+            'apk',
+            '--release',
+          ], environment: any(named: 'environment')),
         ).called(1);
       });
 
@@ -451,7 +442,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             '--target-platform=android-arm64',
             '--foo',
             'bar',
-          ], runInShell: any(named: 'runInShell')),
+          ]),
         ).called(1);
       });
 
@@ -470,7 +461,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target=target',
                 '--target-platform=android-arm64',
               ],
-              runInShell: any(named: 'runInShell'),
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).thenAnswer((_) async => buildProcessResult);
@@ -497,7 +487,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target=target',
                 '--target-platform=android-arm64',
               ],
-              runInShell: any(named: 'runInShell'),
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).called(1);
@@ -601,18 +590,13 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         );
 
         verify(
-          () => shorebirdProcess.run(
-            'flutter',
-            [
-              'build',
-              'aar',
-              '--no-debug',
-              '--no-profile',
-              '--build-number=1.0',
-            ],
-            runInShell: any(named: 'runInShell'),
-            environment: any(named: 'environment'),
-          ),
+          () => shorebirdProcess.run('flutter', [
+            'build',
+            'aar',
+            '--no-debug',
+            '--no-profile',
+            '--build-number=1.0',
+          ], environment: any(named: 'environment')),
         ).called(1);
       });
 
@@ -635,7 +619,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             '--target-platform=android-arm64',
             '--foo',
             'bar',
-          ], runInShell: any(named: 'runInShell')),
+          ]),
         ).called(1);
       });
 
@@ -695,7 +679,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             'build',
             'linux',
             '--release',
-          ], runInShell: any(named: 'runInShell')),
+          ]),
         ).thenAnswer((_) async => buildProcess);
       });
 
@@ -735,7 +719,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               'linux',
               '--release',
               '--target=target.dart',
-            ], runInShell: any(named: 'runInShell')),
+            ]),
           ).called(1);
         });
       });
@@ -773,7 +757,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             () => shorebirdProcess.start(
               'flutter',
               ['build', 'linux', '--release'],
-              runInShell: any(named: 'runInShell'),
               environment: {'SHOREBIRD_PUBLIC_KEY': publicKey},
             ),
           ).called(1);
@@ -823,12 +806,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           final result = await runWithOverrides(builder.buildMacos);
 
           verify(
-            () => shorebirdProcess.start(
-              'flutter',
-              ['build', 'macos', '--release'],
-              runInShell: true,
-              environment: any(named: 'environment'),
-            ),
+            () => shorebirdProcess.start('flutter', [
+              'build',
+              'macos',
+              '--release',
+            ], environment: any(named: 'environment')),
           ).called(1);
           expect(result.kernelFile.path, equals('/path/to/app.dill'));
         });
@@ -842,7 +824,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             () => shorebirdProcess.start(
               'flutter',
               ['build', 'macos', '--release'],
-              runInShell: any(named: 'runInShell'),
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).thenAnswer((_) async => buildProcess);
@@ -857,7 +838,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             () => shorebirdProcess.start(
               'flutter',
               ['build', 'macos', '--release'],
-              runInShell: any(named: 'runInShell'),
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).called(1);
@@ -884,7 +864,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             '--no-codesign',
             '--foo',
             'bar',
-          ], runInShell: any(named: 'runInShell')),
+          ]),
         ).called(1);
       });
 
@@ -984,12 +964,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           final result = await runWithOverrides(builder.buildIpa);
 
           verify(
-            () => shorebirdProcess.start(
-              'flutter',
-              ['build', 'ipa', '--release'],
-              runInShell: true,
-              environment: any(named: 'environment'),
-            ),
+            () => shorebirdProcess.start('flutter', [
+              'build',
+              'ipa',
+              '--release',
+            ], environment: any(named: 'environment')),
           ).called(1);
           expect(result.kernelFile.path, equals('/path/to/app.dill'));
         });
@@ -1003,7 +982,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             () => shorebirdProcess.start(
               'flutter',
               ['build', 'ipa', '--release'],
-              runInShell: any(named: 'runInShell'),
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).thenAnswer((_) async => buildProcess);
@@ -1018,7 +996,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             () => shorebirdProcess.start(
               'flutter',
               ['build', 'ipa', '--release'],
-              runInShell: any(named: 'runInShell'),
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
             ),
           ).called(1);
@@ -1045,7 +1022,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             '--no-codesign',
             '--foo',
             'bar',
-          ], runInShell: any(named: 'runInShell')),
+          ]),
         ).called(1);
       });
 
@@ -1305,12 +1282,12 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
         final result = await runWithOverrides(builder.buildIosFramework);
 
         verify(
-          () => shorebirdProcess.run(
-            'flutter',
-            ['build', 'ios-framework', '--no-debug', '--no-profile'],
-            runInShell: true,
-            environment: any(named: 'environment'),
-          ),
+          () => shorebirdProcess.run('flutter', [
+            'build',
+            'ios-framework',
+            '--no-debug',
+            '--no-profile',
+          ], environment: any(named: 'environment')),
         ).called(1);
         expect(result.kernelFile.path, equals('/path/to/app.dill'));
       });
@@ -1328,7 +1305,7 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
             '--no-profile',
             '--foo',
             'bar',
-          ], runInShell: true),
+          ]),
         ).called(1);
       });
 
@@ -1476,7 +1453,7 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
             'build',
             'windows',
             '--release',
-          ], runInShell: any(named: 'runInShell')),
+          ]),
         ).thenAnswer((_) async => buildProcess);
       });
 
@@ -1541,7 +1518,6 @@ error: exportArchive No signing certificate "iOS Distribution" found'''),
             () => shorebirdProcess.start(
               'flutter',
               ['build', 'windows', '--release'],
-              runInShell: any(named: 'runInShell'),
               environment: {'SHOREBIRD_PUBLIC_KEY': publicKey},
             ),
           ).called(1);

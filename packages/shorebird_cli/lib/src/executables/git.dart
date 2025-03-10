@@ -19,12 +19,10 @@ class Git {
   Future<ShorebirdProcessResult> git(
     List<String> arguments, {
     String? workingDirectory,
-    bool runInShell = false,
   }) async {
     final result = await process.run(
       executable,
       arguments,
-      runInShell: runInShell,
       workingDirectory: workingDirectory,
     );
     if (result.exitCode != 0) {
@@ -45,7 +43,7 @@ class Git {
     required String outputDirectory,
     List<String>? args,
   }) async {
-    await git(['clone', url, ...?args, outputDirectory], runInShell: true);
+    await git(['clone', url, ...?args, outputDirectory]);
   }
 
   /// Checks out the git repository located at [directory] to the [revision].
@@ -60,7 +58,7 @@ class Git {
       'advice.detachedHead=false',
       'checkout',
       revision,
-    ], runInShell: true);
+    ]);
   }
 
   /// Fetch branches/tags from the repository at [directory].

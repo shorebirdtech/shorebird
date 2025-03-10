@@ -20,7 +20,7 @@ class Powershell {
     List<String> arguments, {
     String? workingDirectory,
   }) async {
-    final result = await process.run(executable, arguments, runInShell: true);
+    final result = await process.run(executable, arguments);
     if (result.exitCode != ExitCode.success.code) {
       throw ProcessException(
         executable,

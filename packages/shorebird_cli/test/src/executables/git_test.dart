@@ -31,7 +31,6 @@ void main() {
         () => process.run(
           any(),
           any(),
-          runInShell: any(named: 'runInShell'),
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => processResult);
@@ -47,11 +46,7 @@ void main() {
           () => git.clone(url: url, outputDirectory: outputDirectory),
         );
         verify(
-          () => process.run('git', [
-            'clone',
-            url,
-            outputDirectory,
-          ], runInShell: true),
+          () => process.run('git', ['clone', url, outputDirectory]),
         ).called(1);
       });
 
@@ -65,12 +60,7 @@ void main() {
           ),
         );
         verify(
-          () => process.run('git', [
-            'clone',
-            url,
-            ...args,
-            outputDirectory,
-          ], runInShell: true),
+          () => process.run('git', ['clone', url, ...args, outputDirectory]),
         ).called(1);
       });
 
@@ -105,7 +95,7 @@ void main() {
             'advice.detachedHead=false',
             'checkout',
             revision,
-          ], runInShell: true),
+          ]),
         ).called(1);
       });
 

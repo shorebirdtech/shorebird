@@ -73,7 +73,6 @@ void main() {
           () => processWrapper.run(
             any(),
             any(),
-            runInShell: any(named: 'runInShell'),
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
           ),
@@ -82,19 +81,13 @@ void main() {
 
       test('forwards non-flutter executables to Process.run', () async {
         await runWithOverrides(
-          () => shorebirdProcess.run(
-            'git',
-            ['pull'],
-            runInShell: true,
-            workingDirectory: '~',
-          ),
+          () => shorebirdProcess.run('git', ['pull'], workingDirectory: '~'),
         );
 
         verify(
           () => processWrapper.run(
             'git',
             ['pull'],
-            runInShell: true,
             environment: {},
             workingDirectory: '~',
           ),
@@ -103,12 +96,9 @@ void main() {
 
       test('replaces "flutter" with our local flutter', () async {
         await runWithOverrides(
-          () => shorebirdProcess.run(
-            'flutter',
-            ['--version'],
-            runInShell: true,
-            workingDirectory: '~',
-          ),
+          () => shorebirdProcess.run('flutter', [
+            '--version',
+          ], workingDirectory: '~'),
         );
 
         verify(
@@ -119,7 +109,6 @@ void main() {
               ),
             ),
             ['--version', '--verbose'],
-            runInShell: true,
             environment: flutterStorageBaseUrlEnv,
             workingDirectory: '~',
           ),
@@ -132,7 +121,6 @@ void main() {
           () => shorebirdProcess.run(
             'flutter',
             ['--version'],
-            runInShell: true,
             workingDirectory: '~',
             useVendedFlutter: false,
           ),
@@ -142,7 +130,6 @@ void main() {
           () => processWrapper.run(
             'flutter',
             ['--version', '--verbose'],
-            runInShell: true,
             environment: {},
             workingDirectory: '~',
           ),
@@ -154,7 +141,6 @@ void main() {
           () => shorebirdProcess.run(
             'flutter',
             ['--version'],
-            runInShell: true,
             workingDirectory: '~',
             useVendedFlutter: false,
             environment: {'ENV_VAR': 'asdfasdf'},
@@ -165,7 +151,6 @@ void main() {
           () => processWrapper.run(
             'flutter',
             ['--version', '--verbose'],
-            runInShell: true,
             workingDirectory: '~',
             environment: {'ENV_VAR': 'asdfasdf'},
           ),
@@ -179,7 +164,6 @@ void main() {
             () => shorebirdProcess.run(
               'flutter',
               ['--version'],
-              runInShell: true,
               workingDirectory: '~',
               useVendedFlutter: false,
               environment: {'ENV_VAR': 'asdfasdf'},
@@ -190,7 +174,6 @@ void main() {
             () => processWrapper.run(
               'flutter',
               ['--version', '--verbose'],
-              runInShell: true,
               workingDirectory: '~',
               environment: {'ENV_VAR': 'asdfasdf'},
             ),
@@ -218,7 +201,6 @@ void main() {
               '--local-engine-host=host_release',
               '--verbose',
             ],
-            runInShell: any(named: 'runInShell'),
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
           ),
@@ -239,7 +221,6 @@ void main() {
           () => processWrapper.runSync(
             any(),
             any(),
-            runInShell: any(named: 'runInShell'),
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
           ),
@@ -248,19 +229,14 @@ void main() {
 
       test('forwards non-flutter executables to Process.runSync', () async {
         runWithOverrides(
-          () => shorebirdProcess.runSync(
-            'git',
-            ['pull'],
-            runInShell: true,
-            workingDirectory: '~',
-          ),
+          () =>
+              shorebirdProcess.runSync('git', ['pull'], workingDirectory: '~'),
         );
 
         verify(
           () => processWrapper.runSync(
             'git',
             ['pull'],
-            runInShell: true,
             environment: {},
             workingDirectory: '~',
           ),
@@ -269,12 +245,9 @@ void main() {
 
       test('replaces "flutter" with our local flutter', () {
         runWithOverrides(
-          () => shorebirdProcess.runSync(
-            'flutter',
-            ['--version'],
-            runInShell: true,
-            workingDirectory: '~',
-          ),
+          () => shorebirdProcess.runSync('flutter', [
+            '--version',
+          ], workingDirectory: '~'),
         );
 
         verify(
@@ -285,7 +258,6 @@ void main() {
               ),
             ),
             ['--version', '--verbose'],
-            runInShell: true,
             environment: flutterStorageBaseUrlEnv,
             workingDirectory: '~',
           ),
@@ -299,7 +271,6 @@ void main() {
             () => shorebirdProcess.runSync(
               'flutter',
               ['--version'],
-              runInShell: true,
               workingDirectory: '~',
               useVendedFlutter: false,
             ),
@@ -309,7 +280,6 @@ void main() {
             () => processWrapper.runSync(
               'flutter',
               ['--version', '--verbose'],
-              runInShell: true,
               environment: {},
               workingDirectory: '~',
             ),
@@ -322,7 +292,6 @@ void main() {
           () => shorebirdProcess.runSync(
             'flutter',
             ['--version'],
-            runInShell: true,
             workingDirectory: '~',
             useVendedFlutter: false,
             environment: {'ENV_VAR': 'asdfasdf'},
@@ -333,7 +302,6 @@ void main() {
           () => processWrapper.runSync(
             'flutter',
             ['--version', '--verbose'],
-            runInShell: true,
             workingDirectory: '~',
             environment: {'ENV_VAR': 'asdfasdf'},
           ),
@@ -345,7 +313,6 @@ void main() {
           () => shorebirdProcess.runSync(
             'flutter',
             ['--version'],
-            runInShell: true,
             workingDirectory: '~',
             useVendedFlutter: false,
             environment: {'ENV_VAR': 'asdfasdf'},
@@ -356,7 +323,6 @@ void main() {
           () => processWrapper.runSync(
             'flutter',
             ['--version', '--verbose'],
-            runInShell: true,
             workingDirectory: '~',
             environment: {'ENV_VAR': 'asdfasdf'},
           ),
@@ -375,7 +341,6 @@ void main() {
             () => processWrapper.runSync(
               any(),
               ['--verbose'],
-              runInShell: any(named: 'runInShell'),
               environment: any(named: 'environment'),
               workingDirectory: any(named: 'workingDirectory'),
             ),
@@ -410,29 +375,21 @@ void main() {
             any(),
             any(),
             environment: any(named: 'environment'),
-            runInShell: any(named: 'runInShell'),
           ),
         ).thenAnswer((_) async => startProcess);
       });
 
       test('forwards non-flutter executables to Process.run', () async {
-        await runWithOverrides(
-          () => shorebirdProcess.start('git', ['pull'], runInShell: true),
-        );
+        await runWithOverrides(() => shorebirdProcess.start('git', ['pull']));
 
         verify(
-          () => processWrapper.start(
-            'git',
-            ['pull'],
-            runInShell: true,
-            environment: {},
-          ),
+          () => processWrapper.start('git', ['pull'], environment: {}),
         ).called(1);
       });
 
       test('replaces "flutter" with our local flutter', () async {
         await runWithOverrides(
-          () => shorebirdProcess.start('flutter', ['run'], runInShell: true),
+          () => shorebirdProcess.start('flutter', ['run']),
         );
 
         verify(
@@ -443,7 +400,6 @@ void main() {
               ),
             ),
             ['run', '--verbose'],
-            runInShell: true,
             environment: flutterStorageBaseUrlEnv,
           ),
         ).called(1);
@@ -452,21 +408,16 @@ void main() {
       test('does not replace flutter with our local flutter if'
           ' useVendedFlutter is false', () async {
         await runWithOverrides(
-          () => shorebirdProcess.start(
-            'flutter',
-            ['--version'],
-            runInShell: true,
-            useVendedFlutter: false,
-          ),
+          () => shorebirdProcess.start('flutter', [
+            '--version',
+          ], useVendedFlutter: false),
         );
 
         verify(
-          () => processWrapper.start(
-            'flutter',
-            ['--version', '--verbose'],
-            runInShell: true,
-            environment: {},
-          ),
+          () => processWrapper.start('flutter', [
+            '--version',
+            '--verbose',
+          ], environment: {}),
         ).called(1);
       });
       test('Updates environment if useVendedFlutter is true', () async {
@@ -474,7 +425,6 @@ void main() {
           () => shorebirdProcess.start(
             'flutter',
             ['--version'],
-            runInShell: true,
             environment: {'ENV_VAR': 'asdfasdf'},
           ),
         );
@@ -487,7 +437,6 @@ void main() {
               ),
             ),
             ['--version', '--verbose'],
-            runInShell: true,
             environment: {'ENV_VAR': 'asdfasdf', ...flutterStorageBaseUrlEnv},
           ),
         ).called(1);
@@ -500,7 +449,6 @@ void main() {
             () => shorebirdProcess.start(
               'flutter',
               ['--version'],
-              runInShell: true,
               useVendedFlutter: false,
               environment: {'hello': 'world'},
             ),
@@ -510,7 +458,6 @@ void main() {
             () => processWrapper.start(
               'flutter',
               ['--version', '--verbose'],
-              runInShell: true,
               environment: {'hello': 'world'},
             ),
           ).called(1);

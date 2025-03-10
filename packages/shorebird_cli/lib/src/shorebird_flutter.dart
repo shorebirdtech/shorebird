@@ -75,12 +75,10 @@ class ShorebirdFlutter {
     );
 
     try {
-      await process.run(
-        executable,
-        ['precache', ...precacheArgs],
-        workingDirectory: targetDirectory.path,
-        runInShell: true,
-      );
+      await process.run(executable, [
+        'precache',
+        ...precacheArgs,
+      ], workingDirectory: targetDirectory.path);
       precacheProgress.complete();
     } on Exception {
       precacheProgress.fail('Failed to precache Flutter $version');
@@ -105,12 +103,7 @@ class ShorebirdFlutter {
   /// parsed.
   Future<String?> getSystemVersion() async {
     const args = ['--version'];
-    final result = await process.run(
-      executable,
-      args,
-      runInShell: true,
-      useVendedFlutter: false,
-    );
+    final result = await process.run(executable, args, useVendedFlutter: false);
 
     if (result.exitCode != 0) {
       throw ProcessException(

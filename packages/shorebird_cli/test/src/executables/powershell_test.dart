@@ -29,7 +29,6 @@ void main() {
         () => process.run(
           any(),
           any(),
-          runInShell: any(named: 'runInShell'),
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => processResult);
@@ -82,7 +81,7 @@ void main() {
               () => process.run('powershell.exe', [
                 '-Command',
                 "(Get-Item -Path '${file.path}').VersionInfo.ProductVersion",
-              ], runInShell: true),
+              ]),
             ).called(1);
           });
         });

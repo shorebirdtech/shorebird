@@ -105,7 +105,6 @@ class Gradlew {
     final result = await process.run(
       executablePath,
       args,
-      runInShell: true,
       workingDirectory: p.dirname(executablePath),
       environment: {if (!javaHome.isNullOrEmpty) 'JAVA_HOME': javaHome!},
     );
