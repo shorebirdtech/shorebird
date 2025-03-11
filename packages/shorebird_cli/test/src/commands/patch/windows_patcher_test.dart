@@ -285,18 +285,15 @@ void main() {
       });
 
       group('when build fails', () {
+        final exception = Exception('Failed to build Windows app');
         setUp(() {
-          when(
-            () => artifactBuilder.buildWindowsApp(),
-          ).thenThrow(Exception('Failed to build Windows app'));
+          when(() => artifactBuilder.buildWindowsApp()).thenThrow(exception);
         });
 
-        test('exits with software error code', () async {
+        test('throws exception', () async {
           expect(
             () => runWithOverrides(() => patcher.buildPatchArtifact()),
-            throwsA(
-              isA<ProcessExit>().having((e) => e.exitCode, 'exitCode', 70),
-            ),
+            throwsA(exception),
           );
         });
       });

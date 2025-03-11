@@ -540,7 +540,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         });
       });
 
-      group('when build fails with ProcessException', () {
+      group('when build fails with exception', () {
+        final exception = Exception('Build failed');
         setUp(() {
           when(
             () => artifactBuilder.buildMacos(
@@ -549,47 +550,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
             ),
-          ).thenThrow(
-            const ProcessException('flutter', [
-              'build',
-              'macos',
-            ], 'Build failed'),
-          );
+          ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail('Failed to build: Build failed'));
-        });
-      });
-
-      group('when build fails with ArtifactBuildException', () {
-        setUp(() {
-          when(
-            () => artifactBuilder.buildMacos(
-              codesign: any(named: 'codesign'),
-              args: any(named: 'args'),
-              flavor: any(named: 'flavor'),
-              target: any(named: 'target'),
-            ),
-          ).thenThrow(ArtifactBuildException('Build failed'));
-        });
-
-        test('exits with code 70', () async {
-          await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail('Failed to build macOS app'));
         });
       });
 
       group('when elf aot snapshot build fails', () {
+        const exception = FileSystemException('error');
         setUp(() {
           when(
             () => artifactBuilder.buildMacos(
@@ -608,16 +581,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               outFilePath: any(named: 'outFilePath'),
               genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
             ),
-          ).thenThrow(const FileSystemException('error'));
+          ).thenThrow(exception);
         });
 
-        test('logs error and exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail("FileSystemException: error, path = ''"));
         });
       });
 
@@ -652,10 +623,16 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           });
         });
 
-        test('exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'toString',
+                contains('Failed to build arm64 AOT snapshot'),
+              ),
+            ),
           );
         });
       });
@@ -691,10 +668,16 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           });
         });
 
-        test('exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'toString',
+                contains('Failed to build x64 AOT snapshot'),
+              ),
+            ),
           );
         });
       });

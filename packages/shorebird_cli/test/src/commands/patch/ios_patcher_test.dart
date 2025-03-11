@@ -531,6 +531,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
       });
 
       group('when build fails with ProcessException', () {
+        const exception = ProcessException('flutter', [
+          'build',
+          'ipa',
+        ], 'Build failed');
+
         setUp(() {
           when(
             () => artifactBuilder.buildIpa(
@@ -539,22 +544,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
             ),
-          ).thenThrow(
-            const ProcessException('flutter', ['build', 'ipa'], 'Build failed'),
-          );
+          ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail('Failed to build: Build failed'));
         });
       });
 
       group('when build fails with ArtifactBuildException', () {
+        final exception = ArtifactBuildException('Build failed');
         setUp(() {
           when(
             () => artifactBuilder.buildIpa(
@@ -563,20 +565,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
             ),
-          ).thenThrow(ArtifactBuildException('Build failed'));
+          ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail('Failed to build IPA'));
         });
       });
 
       group('when elf aot snapshot build fails', () {
+        const exception = FileSystemException('error');
         setUp(() {
           when(
             () => artifactBuilder.buildIpa(
@@ -594,16 +595,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               outFilePath: any(named: 'outFilePath'),
               genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
             ),
-          ).thenThrow(const FileSystemException('error'));
+          ).thenThrow(exception);
         });
 
-        test('logs error and exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail("FileSystemException: error, path = ''"));
         });
       });
 

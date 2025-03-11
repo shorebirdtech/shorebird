@@ -252,13 +252,10 @@ void main() {
         () => shorebirdValidator.validateFlavors(flavorArg: null),
         cache.updateAll,
         () => codePushClientWrapper.getApp(appId: appId),
-        () => logger.progress(
+        () => logger.info(
           'Building $artifactDisplayName with Flutter $flutterRevision',
         ),
         () => releaser.buildReleaseArtifacts(),
-        () => progress.complete(
-          'Building $artifactDisplayName with Flutter $flutterRevision',
-        ),
         () => releaser.getReleaseVersion(
           releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
         ),
@@ -290,9 +287,8 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
           exitsWithCode(ExitCode.software),
         );
         verify(
-          () => progress.fail(
-            'Failed to build release artifacts: Exception: oops',
-          ),
+          () =>
+              logger.err('Failed to build release artifacts: Exception: oops'),
         ).called(1);
       });
 
@@ -428,13 +424,10 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
           () => shorebirdValidator.validateFlavors(flavorArg: flavor),
           cache.updateAll,
           () => codePushClientWrapper.getApp(appId: appId),
-          () => logger.progress(
+          () => logger.info(
             'Building $artifactDisplayName with Flutter $flutterRevision',
           ),
           () => releaser.buildReleaseArtifacts(),
-          () => progress.complete(
-            'Building $artifactDisplayName with Flutter $flutterRevision',
-          ),
           () => releaser.getReleaseVersion(
             releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
           ),
