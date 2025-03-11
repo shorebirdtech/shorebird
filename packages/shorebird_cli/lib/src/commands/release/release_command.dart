@@ -275,22 +275,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       try {
         releaseArtifact = await releaser.buildReleaseArtifacts();
       } on ArtifactBuildException catch (e) {
-        logger
-          ..err(e.message)
-          ..detail('stdout: ${e.stdout.join(Platform.lineTerminator)}')
-          ..detail('stderr: ${e.stderr.join(Platform.lineTerminator)}');
-        if (!e.flutterError.isNullOrEmpty) {
-          logger.err(e.flutterError);
-        }
+        logger.err(e.message);
         if (!e.fixRecommendation.isNullOrEmpty) {
           logger.info(e.fixRecommendation);
         }
-        if (e.fixRecommendation.isNullOrEmpty && e.flutterError.isNullOrEmpty) {
-          // If we have no fix recommendation or were unable to parse a
-          // flutter error, fall back to printing the raw stderr.
-          logger.info(e.stderr.join(Platform.lineTerminator));
-        }
-
         throw ProcessExit(ExitCode.software.code);
       } on Exception catch (e) {
         logger.err('Failed to build release artifacts: $e');

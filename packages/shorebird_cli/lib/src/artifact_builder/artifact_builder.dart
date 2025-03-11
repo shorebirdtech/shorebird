@@ -7,7 +7,6 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/artifact_builder/artifact_build_exception.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -18,7 +17,19 @@ import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
-export 'artifact_build_exception.dart';
+/// {@template artifact_build_exception}
+/// Thrown when a build fails.
+/// {@endtemplate}
+class ArtifactBuildException implements Exception {
+  /// {@macro artifact_build_exception}
+  ArtifactBuildException(this.message, {this.fixRecommendation});
+
+  /// Information about the build failure.
+  final String message;
+
+  /// An optional tip to help the user fix the build failure.
+  final String? fixRecommendation;
+}
 
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
 /// Flutter.

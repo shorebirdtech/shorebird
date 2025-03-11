@@ -5,7 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/artifact_builder/artifact_build_exception.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
@@ -298,23 +298,7 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
         setUp(() {
           exception = MockArtifactBuildException();
           when(() => exception.message).thenReturn('oops');
-          when(() => exception.stderr).thenReturn(['stderr']);
-          when(() => exception.stdout).thenReturn(['stdout']);
           when(() => releaser.buildReleaseArtifacts()).thenThrow(exception);
-        });
-
-        group('when a Flutter error was detected', () {
-          setUp(() {
-            when(() => exception.flutterError).thenReturn('flutter error');
-          });
-
-          test('logs Flutter error at the err level', () async {
-            await expectLater(
-              () => runWithOverrides(command.run),
-              exitsWithCode(ExitCode.software),
-            );
-            verify(() => logger.err('flutter error')).called(1);
-          });
         });
 
         group('when a fix recommendation is provided', () {
@@ -328,21 +312,6 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
               exitsWithCode(ExitCode.software),
             );
             verify(() => logger.info('fix it')).called(1);
-          });
-        });
-
-        group('when neither flutter error nor fix suggestion are provided', () {
-          setUp(() {
-            when(() => exception.flutterError).thenReturn(null);
-            when(() => exception.fixRecommendation).thenReturn(null);
-          });
-
-          test('logs stderr', () async {
-            await expectLater(
-              () => runWithOverrides(command.run),
-              exitsWithCode(ExitCode.software),
-            );
-            verify(() => logger.info('stderr')).called(1);
           });
         });
       });
