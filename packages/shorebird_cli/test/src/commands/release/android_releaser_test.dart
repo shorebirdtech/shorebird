@@ -327,7 +327,7 @@ To change the version of this release, change your app's version in your pubspec
 
         test('builds apk', () async {
           await runWithOverrides(() => androidReleaser.buildReleaseArtifacts());
-          verify(() => progress.update('Building APK')).called(1);
+          verify(() => logger.info('Building APK')).called(1);
           verify(
             () => artifactBuilder.buildApk(
               targetPlatforms: Arch.values,
