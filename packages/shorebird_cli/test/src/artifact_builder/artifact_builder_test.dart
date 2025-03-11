@@ -1061,7 +1061,7 @@ Reason: Exited with code 70.'''),
 
         test('deletes .dart_tool directory before building', () async {
           expect(foo.existsSync(), isTrue);
-          await runWithOverrides(builder.buildIpa);
+          await runWithOverrides(builder.buildIosFramework);
           expect(foo.existsSync(), isFalse);
         });
       });
