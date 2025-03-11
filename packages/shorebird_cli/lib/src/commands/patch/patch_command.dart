@@ -329,8 +329,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       logger.info(
         '''Tip: make your patches build faster by specifying --release-version''',
       );
+      final flutterVersionString =
+          await shorebirdFlutter.getVersionAndRevision();
+      logger.info('Building patch with Flutter $flutterVersionString');
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
-      logger.info('Building patch with Flutter $lastBuiltFlutterRevision');
       patchArtifactFile = await patcher.buildPatchArtifact();
       final releaseVersion = await patcher.extractReleaseVersionFromArtifact(
         patchArtifactFile,
@@ -388,8 +390,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
         // Don't built the patch artifact twice with the same Flutter revision.
         if (lastBuiltFlutterRevision != release.flutterRevision) {
+          final flutterVersionString =
+              await shorebirdFlutter.getVersionAndRevision();
           logger.info('''
-Building patch with Flutter ${release.flutterRevision}
+Building patch with Flutter $flutterVersionString
 ''');
           patchArtifactFile = await patcher.buildPatchArtifact(
             releaseVersion: release.version,
