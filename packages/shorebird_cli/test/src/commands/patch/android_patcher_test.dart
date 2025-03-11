@@ -341,16 +341,13 @@ void main() {
               base64PublicKey: any(named: 'base64PublicKey'),
             ),
           ).thenThrow(exception);
-          when(() => logger.progress(any())).thenReturn(progress);
         });
 
-        test('logs error and exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail('error')).called(1);
         });
       });
 

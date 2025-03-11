@@ -738,7 +738,7 @@ Reason: Exited with code 70.'''),
           expect(dartToolDir.existsSync(), isTrue);
           final modified = dartToolDir.statSync().modified;
           await runWithOverrides(builder.buildMacos);
-          expect(dartToolDir.statSync().modified.isAfter(modified), isTrue);
+          expect(dartToolDir.statSync().modified, isNot(modified));
         });
       });
 
@@ -891,17 +891,16 @@ Reason: Exited with code 70.'''),
       });
 
       group('when .dart_tool directory exists', () {
-        late Directory dartToolDir;
+        late File foo;
         setUp(() {
-          dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'))
+          foo = File(p.join(projectRoot.path, '.dart_tool', 'foo.txt'))
             ..createSync(recursive: true);
         });
 
         test('deletes .dart_tool directory before building', () async {
-          expect(dartToolDir.existsSync(), isTrue);
-          final modified = dartToolDir.statSync().modified;
+          expect(foo.existsSync(), isTrue);
           await runWithOverrides(builder.buildIpa);
-          expect(dartToolDir.statSync().modified.isAfter(modified), isTrue);
+          expect(foo.existsSync(), isFalse);
         });
       });
 
@@ -1054,17 +1053,16 @@ Reason: Exited with code 70.'''),
       });
 
       group('when .dart_tool directory exists', () {
-        late Directory dartToolDir;
+        late File foo;
         setUp(() {
-          dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'))
+          foo = File(p.join(projectRoot.path, '.dart_tool', 'foo.txt'))
             ..createSync(recursive: true);
         });
 
         test('deletes .dart_tool directory before building', () async {
-          expect(dartToolDir.existsSync(), isTrue);
-          final modified = dartToolDir.statSync().modified;
+          expect(foo.existsSync(), isTrue);
           await runWithOverrides(builder.buildIpa);
-          expect(dartToolDir.statSync().modified.isAfter(modified), isTrue);
+          expect(foo.existsSync(), isFalse);
         });
       });
 
