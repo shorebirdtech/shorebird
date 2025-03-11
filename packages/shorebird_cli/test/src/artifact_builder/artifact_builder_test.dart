@@ -700,7 +700,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               isA<ArtifactBuildException>().having(
                 (e) => e.message,
                 'message',
-                equals('Failed to build'),
+                equals('''
+Failed to build linux app.
+Command: flutter build linux --release
+Reason: Exited with code 70.'''),
               ),
             ),
           );
@@ -1129,7 +1132,10 @@ error: exportArchive: No signing certificate "iOS Distribution" found''',
               () => runWithOverrides(() => builder.buildIpa(codesign: false)),
               throwsA(
                 isA<ArtifactBuildException>()
-                    .having((e) => e.message, 'message', 'Failed to build')
+                    .having((e) => e.message, 'message', '''
+Failed to build IPA.
+Command: flutter build ipa --release --no-codesign
+Reason: stderr contains "Encountered error while creating the IPA".''')
                     .having(
                       (e) => e.stderr,
                       'stderr',
@@ -1185,7 +1191,10 @@ error: exportArchive No signing certificate "iOS Distribution" found''',
               () => runWithOverrides(() => builder.buildIpa(codesign: false)),
               throwsA(
                 isA<ArtifactBuildException>()
-                    .having((e) => e.message, 'message', 'Failed to build')
+                    .having((e) => e.message, 'message', '''
+Failed to build IPA.
+Command: flutter build ipa --release --no-codesign
+Reason: stderr contains "Encountered error while creating the IPA".''')
                     .having(
                       (e) => e.stderr,
                       'stderr',
