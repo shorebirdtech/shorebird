@@ -275,6 +275,13 @@ Reason: Exited with code $exitCode.''');
     List<String> args = const [],
     String? base64PublicKey,
   }) async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    // Delete the .dart_tool directory to ensure that the app is rebuilt.
+    // This is necessary because we always look for a recently modified app.dill.
+    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
+    if (dartToolDir.existsSync()) {
+      dartToolDir.deleteSync(recursive: true);
+    }
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -287,7 +294,6 @@ Reason: Exited with code $exitCode.''');
         if (!codesign) '--no-codesign',
         ...args,
       ];
-      final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
       final buildStart = clock.now();
       final exitCode = await process.stream(
         executable,
@@ -325,6 +331,14 @@ Reason: Exited with code $exitCode.''');
     List<String> args = const [],
     String? base64PublicKey,
   }) async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    // Delete the .dart_tool directory to ensure that the app is rebuilt.
+    // This is necessary because we always look for a recently modified app.dill.
+    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
+    if (dartToolDir.existsSync()) {
+      dartToolDir.deleteSync(recursive: true);
+    }
+
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -338,7 +352,6 @@ Reason: Exited with code $exitCode.''');
         ...args,
       ];
 
-      final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
       final buildStart = clock.now();
       final exitCode = await process.stream(
         executable,
@@ -371,6 +384,13 @@ Reason: Exited with code $exitCode.''');
   Future<IosFrameworkBuildResult> buildIosFramework({
     List<String> args = const [],
   }) async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    // Delete the .dart_tool directory to ensure that the app is rebuilt.
+    // This is necessary because we always look for a recently modified app.dill.
+    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
+    if (dartToolDir.existsSync()) {
+      dartToolDir.deleteSync(recursive: true);
+    }
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -382,7 +402,6 @@ Reason: Exited with code $exitCode.''');
         ...args,
       ];
 
-      final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
       final buildStart = clock.now();
       final exitCode = await process.stream(executable, arguments);
 
