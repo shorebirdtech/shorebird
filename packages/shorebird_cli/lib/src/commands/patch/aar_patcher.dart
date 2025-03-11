@@ -17,7 +17,6 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -76,21 +75,10 @@ class AarPatcher extends Patcher {
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-    final buildProgress = logger.progress(
-      'Building patch with Flutter $flutterVersionString',
+    await artifactBuilder.buildAar(
+      buildNumber: buildNumber,
+      args: argResults.forwardedArgs,
     );
-
-    try {
-      await artifactBuilder.buildAar(
-        buildNumber: buildNumber,
-        args: argResults.forwardedArgs,
-      );
-      buildProgress.complete();
-    } on ArtifactBuildException catch (error) {
-      buildProgress.fail('Failed to build: ${error.message}');
-      throw ProcessExit(ExitCode.software.code);
-    }
 
     return File(
       ShorebirdAndroidArtifacts.aarArtifactPath(

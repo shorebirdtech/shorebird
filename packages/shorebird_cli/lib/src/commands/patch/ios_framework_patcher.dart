@@ -22,7 +22,6 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -115,36 +114,19 @@ class IosFrameworkPatcher extends Patcher {
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-    final buildProgress = logger.progress(
-      'Building patch with Flutter $flutterVersionString',
+    final buildResult = await artifactBuilder.buildIosFramework(
+      args: argResults.forwardedArgs,
     );
 
-    final IosFrameworkBuildResult buildResult;
-    try {
-      buildResult = await artifactBuilder.buildIosFramework(
-        args: argResults.forwardedArgs,
-      );
-    } on ArtifactBuildException catch (error) {
-      buildProgress.fail(error.message);
-      throw ProcessExit(ExitCode.software.code);
+    if (splitDebugInfoPath != null) {
+      Directory(splitDebugInfoPath!).createSync(recursive: true);
     }
-    try {
-      if (splitDebugInfoPath != null) {
-        Directory(splitDebugInfoPath!).createSync(recursive: true);
-      }
-      await artifactBuilder.buildElfAotSnapshot(
-        appDillPath: buildResult.kernelFile.path,
-        outFilePath: _aotOutputPath,
-        genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
-        additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
-      );
-    } on Exception catch (error) {
-      buildProgress.fail('$error');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    buildProgress.complete();
+    await artifactBuilder.buildElfAotSnapshot(
+      appDillPath: buildResult.kernelFile.path,
+      outFilePath: _aotOutputPath,
+      genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+      additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+    );
 
     // Copy the kernel file to the build directory so that it can be used
     // to generate a patch.

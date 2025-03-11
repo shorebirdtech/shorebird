@@ -268,18 +268,15 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
       final flutterVersionString =
           await shorebirdFlutter.getVersionAndRevision();
-      final buildProgress = logger.detailProgress(
-        '''Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString''',
+      logger.info(
+        'Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString',
       );
       final FileSystemEntity releaseArtifact;
       try {
-        releaseArtifact = await releaser.buildReleaseArtifacts(
-          progress: buildProgress,
-        );
-        buildProgress.complete();
+        releaseArtifact = await releaser.buildReleaseArtifacts();
       } on ArtifactBuildException catch (e) {
-        buildProgress.fail(e.message);
         logger
+          ..err(e.message)
           ..detail('stdout: ${e.stdout.join(Platform.lineTerminator)}')
           ..detail('stderr: ${e.stderr.join(Platform.lineTerminator)}');
         if (!e.flutterError.isNullOrEmpty) {
@@ -296,7 +293,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
         throw ProcessExit(ExitCode.software.code);
       } on Exception catch (e) {
-        buildProgress.fail('Failed to build release artifacts: $e');
+        logger.err('Failed to build release artifacts: $e');
         throw ProcessExit(ExitCode.software.code);
       }
 

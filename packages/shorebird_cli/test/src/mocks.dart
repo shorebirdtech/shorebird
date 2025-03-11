@@ -84,8 +84,6 @@ class MockCodePushClientWrapper extends Mock implements CodePushClientWrapper {}
 
 class MockCodeSigner extends Mock implements CodeSigner {}
 
-class MockDetailProgress extends Mock implements DetailProgress {}
-
 class MockDevicectl extends Mock implements Devicectl {}
 
 class MockDitto extends Mock implements Ditto {}

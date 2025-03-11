@@ -289,7 +289,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             args: any(named: 'args'),
-            buildProgress: any(named: 'buildProgress'),
           ),
         ).thenAnswer((_) async => projectRoot);
       });
@@ -308,7 +307,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
-              buildProgress: any(named: 'buildProgress'),
               base64PublicKey: any(named: 'base64PublicKey'),
             ),
           ).thenAnswer((_) async => projectRoot);
@@ -331,7 +329,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).called(1);
         });

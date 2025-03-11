@@ -548,7 +548,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenThrow(
             const ProcessException('flutter', [
@@ -576,7 +575,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenThrow(ArtifactBuildException('Build failed'));
         });
@@ -599,7 +597,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -632,7 +629,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -672,7 +668,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -723,7 +718,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -773,7 +767,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer((_) async => MacosBuildResult(kernelFile: kernelFile));
           when(
@@ -814,7 +807,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 args: any(named: 'args'),
                 flavor: flavor,
                 target: any(named: 'target'),
-                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
             verify(
@@ -837,7 +829,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                   named: 'args',
                   that: containsAll(['--build-name=1.2.3', '--build-number=4']),
                 ),
-                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           });
@@ -873,7 +864,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: 'public_key_encoded',
-                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           });
@@ -891,7 +881,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               () => artifactBuilder.buildMacos(
                 codesign: any(named: 'codesign'),
                 args: ['--verbose'],
-                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           });

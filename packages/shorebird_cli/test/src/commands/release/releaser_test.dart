@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
-import 'package:shorebird_cli/src/logging/detail_progress.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_code_push_protocol/src/models/release.dart';
@@ -35,7 +34,7 @@ class FakeReleaser extends Releaser {
   String get artifactDisplayName => 'Fake artifact';
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts({DetailProgress? progress}) {
+  Future<FileSystemEntity> buildReleaseArtifacts() {
     throw UnimplementedError();
   }
 

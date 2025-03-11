@@ -258,7 +258,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           () => artifactBuilder.buildLinuxApp(
             target: any(named: 'target'),
             args: any(named: 'args'),
-            buildProgress: any(named: 'buildProgress'),
           ),
         ).thenAnswer((_) async => projectRoot);
       });
@@ -277,7 +276,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           () => artifactBuilder.buildLinuxApp(
             target: any(named: 'target'),
             args: any(named: 'args'),
-            buildProgress: any(named: 'buildProgress'),
             base64PublicKey: any(named: 'base64PublicKey'),
           ),
         ).thenAnswer((_) async => projectRoot);
@@ -299,7 +297,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             base64PublicKey: 'encoded_public_key',
             target: any(named: 'target'),
             args: any(named: 'args'),
-            buildProgress: any(named: 'buildProgress'),
           ),
         ).called(1);
       });

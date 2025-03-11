@@ -95,9 +95,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts({
-    DetailProgress? progress,
-  }) async {
+  Future<FileSystemEntity> buildReleaseArtifacts() async {
     if (!codesign) {
       logger
         ..info(
@@ -123,7 +121,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       target: target,
       args: argResults.forwardedArgs,
       base64PublicKey: argResults.encodedPublicKey,
-      buildProgress: progress,
     );
 
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory();

@@ -140,7 +140,7 @@ void main() {
       when(() => releaser.assertPreconditions()).thenAnswer((_) async => {});
       when(() => releaser.assertArgsAreValid()).thenAnswer((_) async => {});
       when(
-        () => releaser.buildReleaseArtifacts(progress: any(named: 'progress')),
+        () => releaser.buildReleaseArtifacts(),
       ).thenAnswer((_) async => File(''));
       when(
         () => releaser.getReleaseVersion(
@@ -255,7 +255,7 @@ void main() {
         () => logger.progress(
           'Building $artifactDisplayName with Flutter $flutterRevision',
         ),
-        () => releaser.buildReleaseArtifacts(progress: any(named: 'progress')),
+        () => releaser.buildReleaseArtifacts(),
         () => progress.complete(
           'Building $artifactDisplayName with Flutter $flutterRevision',
         ),
@@ -280,8 +280,7 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
     group('when build fails', () {
       setUp(() {
         when(
-          () =>
-              releaser.buildReleaseArtifacts(progress: any(named: 'progress')),
+          () => releaser.buildReleaseArtifacts(),
         ).thenThrow(Exception('oops'));
       });
 
@@ -305,11 +304,7 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
           when(() => exception.message).thenReturn('oops');
           when(() => exception.stderr).thenReturn(['stderr']);
           when(() => exception.stdout).thenReturn(['stdout']);
-          when(
-            () => releaser.buildReleaseArtifacts(
-              progress: any(named: 'progress'),
-            ),
-          ).thenThrow(exception);
+          when(() => releaser.buildReleaseArtifacts()).thenThrow(exception);
         });
 
         group('when a Flutter error was detected', () {
@@ -436,8 +431,7 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
           () => logger.progress(
             'Building $artifactDisplayName with Flutter $flutterRevision',
           ),
-          () =>
-              releaser.buildReleaseArtifacts(progress: any(named: 'progress')),
+          () => releaser.buildReleaseArtifacts(),
           () => progress.complete(
             'Building $artifactDisplayName with Flutter $flutterRevision',
           ),
@@ -601,11 +595,7 @@ $exception'''),
 
         test('uses specified flutter version to build '
             'and reverts to original flutter version', () async {
-          when(
-            () => releaser.buildReleaseArtifacts(
-              progress: any(named: 'progress'),
-            ),
-          ).thenAnswer((_) async {
+          when(() => releaser.buildReleaseArtifacts()).thenAnswer((_) async {
             // Ensure we're using the correct flutter version.
             expect(shorebirdEnv.flutterRevision, equals(revision));
             return File('');

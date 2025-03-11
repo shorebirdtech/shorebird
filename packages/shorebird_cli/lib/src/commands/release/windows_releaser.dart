@@ -84,13 +84,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts({DetailProgress? progress}) {
+  Future<FileSystemEntity> buildReleaseArtifacts() {
     return artifactBuilder.buildWindowsApp(
       flavor: flavor,
       target: target,
       args: argResults.forwardedArgs,
       base64PublicKey: argResults.encodedPublicKey,
-      buildProgress: progress,
     );
   }
 

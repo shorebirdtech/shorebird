@@ -19,7 +19,6 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -73,23 +72,9 @@ class WindowsPatcher extends Patcher {
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-
-    final buildAppBundleProgress = logger.detailProgress(
-      'Building Windows app with Flutter $flutterVersionString',
+    final releaseDir = await artifactBuilder.buildWindowsApp(
+      base64PublicKey: argResults.encodedPublicKey,
     );
-
-    final Directory releaseDir;
-    try {
-      releaseDir = await artifactBuilder.buildWindowsApp(
-        base64PublicKey: argResults.encodedPublicKey,
-      );
-      buildAppBundleProgress.complete();
-    } on Exception catch (e) {
-      buildAppBundleProgress.fail(e.toString());
-      throw ProcessExit(ExitCode.software.code);
-    }
-
     return releaseDir.zipToTempFile();
   }
 

@@ -77,9 +77,7 @@ class AarReleaser extends Releaser {
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts({
-    DetailProgress? progress,
-  }) async {
+  Future<FileSystemEntity> buildReleaseArtifacts() async {
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
       targetPlatforms: architectures,
