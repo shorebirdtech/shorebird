@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_build_exception.dart';
@@ -308,7 +307,7 @@ Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''');
       }
 
-      appDillPath = findAppDill(projectRoot: projectRoot, after: buildStart);
+      appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
     });
 
     if (appDillPath == null) {
@@ -366,7 +365,7 @@ Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''');
       }
 
-      appDillPath = findAppDill(projectRoot: projectRoot, after: buildStart);
+      appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
     });
 
     if (appDillPath == null) {
@@ -413,7 +412,7 @@ Reason: Exited with code $exitCode.
 ''');
       }
 
-      appDillPath = findAppDill(projectRoot: projectRoot, after: buildStart);
+      appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
     });
 
     if (appDillPath == null) {
@@ -518,8 +517,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         throw ArtifactBuildException('''
 Failed to build windows app.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.
-''');
+Reason: Exited with code $exitCode.''');
       }
     });
 
@@ -530,12 +528,13 @@ Reason: Exited with code $exitCode.
   /// .dart_tool directory of the provided [projectRoot] for the most recently
   /// modified app.dill file (newer than [after]). Returns the path to the
   /// app.dill file, or null if no app.dill file is found.
-  @visibleForTesting
-  String? findAppDill({
+  String? _findAppDill({
     required Directory projectRoot,
     required DateTime after,
   }) {
-    return Directory(p.join(projectRoot.path, '.dart_tool'))
+    final dartToolDirectory = Directory(p.join(projectRoot.path, '.dart_tool'));
+    if (!dartToolDirectory.existsSync()) return null;
+    return dartToolDirectory
         .listSync(recursive: true)
         .where(
           (e) =>

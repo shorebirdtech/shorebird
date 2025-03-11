@@ -31,7 +31,6 @@ class ShorebirdProcess {
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
-    bool useVendedFlutter = true,
     String? workingDirectory,
   }) async {
     logger.detail(
@@ -41,7 +40,6 @@ class ShorebirdProcess {
       executable,
       arguments,
       environment: environment,
-      useVendedFlutter: useVendedFlutter,
       workingDirectory: workingDirectory,
       mode: ProcessStartMode.inheritStdio,
     );
