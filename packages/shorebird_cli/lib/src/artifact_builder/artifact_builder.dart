@@ -141,7 +141,10 @@ class ArtifactBuilder {
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
-          'Failed to build',
+          '''
+Failed to build AAB.
+Command: $executable ${arguments.join(' ')}
+Reason: Exited with code $exitCode.''',
           stderr: stderrLines,
           stdout: stdoutLines,
         );
@@ -208,10 +211,10 @@ class ArtifactBuilder {
       );
 
       if (result.exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException.fromProcessResult(
-          'Failed to build',
-          buildProcessResult: result,
-        );
+        throw ArtifactBuildException.fromProcessResult('''
+Failed to build APK.
+Command: $executable ${arguments.join(' ')}
+Reason: Exited with code $exitCode.''', buildProcessResult: result);
       }
     });
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
@@ -257,10 +260,10 @@ class ArtifactBuilder {
       final result = await process.run(executable, arguments);
 
       if (result.exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException.fromProcessResult(
-          'Failed to build',
-          buildProcessResult: result,
-        );
+        throw ArtifactBuildException.fromProcessResult('''
+Failed to build AAR.
+Command: $executable ${arguments.join(' ')}
+Reason: Exited with code $exitCode.''', buildProcessResult: result);
       }
     });
   }
@@ -306,7 +309,10 @@ class ArtifactBuilder {
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
-          'Failed to build',
+          '''
+Failed to build linux app.
+Command: $executable ${arguments.join(' ')}
+Reason: Exited with code $exitCode.''',
           stdout: stdoutLines,
           stderr: stderrLines,
         );
@@ -378,7 +384,10 @@ class ArtifactBuilder {
       final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
-          'Failed to build',
+          '''
+Failed to build macOS app.
+Command: $executable ${arguments.join(' ')}
+Reason: Exited with code $exitCode.''',
           stdout: stdoutLines,
           stderr: stderrLines,
         );
@@ -458,7 +467,10 @@ class ArtifactBuilder {
 
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException(
-          'Failed to build',
+          '''
+Failed to build IPA.
+Command: $executable ${arguments.join(' ')}
+Reason: Exited with code $exitCode.''',
           stdout: stdoutLines,
           stderr: stderrLines,
         );
@@ -469,7 +481,10 @@ class ArtifactBuilder {
       // https://github.com/shorebirdtech/shorebird/issues/2855
       if (stderr.contains('Encountered error while creating the IPA')) {
         throw ArtifactBuildException(
-          'Failed to build',
+          '''
+Failed to build IPA.
+Command: $executable ${arguments.join(' ')}
+Reason: stderr contains "Encountered error while creating the IPA".''',
           stdout: stdoutLines,
           stderr: stderrLines,
         );
@@ -507,7 +522,11 @@ class ArtifactBuilder {
       final result = await process.run(executable, arguments);
 
       if (result.exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('Failed to build: ${result.stderr}');
+        throw ArtifactBuildException('''
+Failed to build iOS framework.
+Command: $executable ${arguments.join(' ')}
+Reason: Exited with code $exitCode.
+''');
       }
 
       appDillPath = findAppDill(stdout: result.stdout.toString());
