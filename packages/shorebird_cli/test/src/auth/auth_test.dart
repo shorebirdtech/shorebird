@@ -533,7 +533,7 @@ void main() {
           () async {
             expect(buildAuth, throwsA(isFormatException));
             verify(
-              () => logger.info('$shorebirdTokenEnvVar detected'),
+              () => logger.detail('[env] $shorebirdTokenEnvVar detected'),
             ).called(1);
             verify(
               () => logger.err(
@@ -544,7 +544,7 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
               ),
             ).called(1);
             verifyNever(
-              () => logger.info('$shorebirdTokenEnvVar successfully parsed'),
+              () => logger.detail('[env] $shorebirdTokenEnvVar parsed'),
             );
           },
         );
@@ -581,9 +581,11 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
         final client = auth.client;
         expect(client, isA<http.Client>());
         expect(client, isA<AuthenticatedClient>());
-        verify(() => logger.info('$shorebirdTokenEnvVar detected')).called(1);
         verify(
-          () => logger.info('$shorebirdTokenEnvVar successfully parsed'),
+          () => logger.detail('[env] $shorebirdTokenEnvVar detected'),
+        ).called(1);
+        verify(
+          () => logger.detail('[env] $shorebirdTokenEnvVar parsed'),
         ).called(1);
       });
 
