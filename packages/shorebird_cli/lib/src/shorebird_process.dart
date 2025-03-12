@@ -26,7 +26,7 @@ class ShorebirdProcess {
   /// The underlying process wrapper.
   final ProcessWrapper processWrapper;
 
-  /// Starts a process and streams the output in real-time.
+  /// Starts a process, streams the output in real-time, and returns the exit code.
   Future<int> stream(
     String executable,
     List<String> arguments, {
@@ -34,7 +34,7 @@ class ShorebirdProcess {
     String? workingDirectory,
   }) async {
     logger.detail(
-      '''[Process.run] $executable ${arguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
+      '''[Process.stream] $executable ${arguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
     );
     final process = await start(
       executable,
