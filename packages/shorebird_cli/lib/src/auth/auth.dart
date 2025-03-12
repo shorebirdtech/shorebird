@@ -316,7 +316,7 @@ class Auth {
   void _loadCredentials() {
     final envToken = platform.environment[shorebirdTokenEnvVar];
     if (envToken != null) {
-      logger.info('$shorebirdTokenEnvVar detected');
+      logger.detail('[env] $shorebirdTokenEnvVar detected');
 
       try {
         _token = CiToken.fromBase64(envToken.trim());
@@ -330,7 +330,7 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
         rethrow;
       }
 
-      logger.info('$shorebirdTokenEnvVar successfully parsed');
+      logger.detail('[env] $shorebirdTokenEnvVar parsed');
       return;
     }
 
