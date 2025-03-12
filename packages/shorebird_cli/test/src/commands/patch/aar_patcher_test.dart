@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -9,7 +10,9 @@ import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -27,6 +30,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../fakes.dart';
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -40,6 +44,7 @@ void main() {
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Directory projectRoot;
     late ShorebirdLogger logger;
     late PatchDiffChecker patchDiffChecker;
@@ -58,6 +63,7 @@ void main() {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
@@ -72,15 +78,15 @@ void main() {
       );
     }
 
+    File patchArtifactForArch(Directory root, Arch arch, {String? flavor}) {
+      return File(p.join(root.path, 'jni', arch.androidBuildPath, 'libapp.so'));
+    }
+
     void setUpExtractedAarDirectory(Directory root) {
-      for (final archMetadata in Arch.values) {
-        final artifactPath = p.join(
-          root.path,
-          'jni',
-          archMetadata.androidBuildPath,
-          'libapp.so',
-        );
-        File(artifactPath).createSync(recursive: true);
+      for (final arch in Arch.values) {
+        patchArtifactForArch(root, arch)
+          ..createSync(recursive: true)
+          ..writeAsStringSync(arch.arch);
       }
     }
 
@@ -99,6 +105,7 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       patchDiffChecker = MockPatchDiffChecker();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -304,6 +311,7 @@ void main() {
             () => artifactBuilder.buildAar(
               buildNumber: any(named: 'buildNumber'),
               args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
             ),
           ).thenAnswer((_) async => {});
         });
@@ -339,6 +347,39 @@ void main() {
               () => artifactBuilder.buildAar(
                 buildNumber: buildNumber,
                 args: ['--verbose'],
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when the key pair is provided', () {
+          setUp(() {
+            when(
+              () => codeSigner.base64PublicKey(any()),
+            ).thenReturn('public_key_encoded');
+          });
+
+          test('calls buildIpa with the provided key', () async {
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+            ).thenReturn(true);
+
+            final key = createTempFile('public.der')
+              ..writeAsStringSync('public_key');
+
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(key.path);
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(key.path);
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            verify(
+              () => artifactBuilder.buildAar(
+                buildNumber: buildNumber,
+                args: any(named: 'args'),
+                base64PublicKey: 'public_key_encoded',
               ),
             ).called(1);
           });
@@ -505,6 +546,62 @@ void main() {
           expect(
             patchArtifacts.values,
             everyElement(isA<PatchArtifactBundle>()),
+          );
+        });
+
+        group('when a private key is provided', () {
+          setUp(() {
+            final privateKey = File(
+              p.join(
+                Directory.systemTemp.createTempSync().path,
+                'test-private.pem',
+              ),
+            )..createSync();
+
+            when(
+              () => argResults[CommonArguments.privateKeyArg.name],
+            ).thenReturn(privateKey.path);
+
+            when(
+              () => codeSigner.sign(
+                message: any(named: 'message'),
+                privateKeyPemFile: any(named: 'privateKeyPemFile'),
+              ),
+            ).thenAnswer((invocation) {
+              final message = invocation.namedArguments[#message] as String;
+              return '$message-signature';
+            });
+          });
+
+          test(
+            'returns patch artifact bundles with proper hash signatures',
+            () async {
+              final result = await runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                ),
+              );
+
+              // Hash the patch artifacts and append '-signature' to get the
+              // expected signatures, per the mock of [codeSigner.sign] above.
+              final expectedSignatures =
+                  Arch.values
+                      .map(
+                        (arch) =>
+                            patchArtifactForArch(extractedAarDirectory, arch),
+                      )
+                      .map(
+                        (f) => sha256.convert(f.readAsBytesSync()).toString(),
+                      )
+                      .map((hash) => '$hash-signature')
+                      .toList();
+
+              final signatures =
+                  result.values.map((bundle) => bundle.hashSignature).toList();
+              expect(signatures, equals(expectedSignatures));
+            },
           );
         });
       });
