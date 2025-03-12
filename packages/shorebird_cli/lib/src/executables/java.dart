@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Java] instance.
@@ -37,9 +38,13 @@ class Java {
 
   /// Returns a path to the user's JDK. If one is not found, returns `null`.
   ///
-  /// This first looks for the Java bundled with Android Studio, then the
-  /// JAVA_HOME environment variable.
+  /// This first looks a jdk-dir override, then for the Java bundled with
+  /// Android Studio, then the JAVA_HOME environment variable.
   String? get home {
+    const jdkDir = 'jdk-dir';
+    final config = shorebirdFlutter.getConfig();
+    if (config.containsKey(jdkDir)) return config[jdkDir] as String;
+
     if (!_androidStudioJavaPath.isNullOrEmpty) {
       return _androidStudioJavaPath;
     }

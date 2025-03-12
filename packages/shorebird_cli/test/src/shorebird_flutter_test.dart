@@ -137,6 +137,83 @@ void main() {
       });
     });
 
+    group('getConfig', () {
+      late ShorebirdProcessResult configProcessResult;
+
+      setUp(() {
+        configProcessResult = MockProcessResult();
+        when(
+          () => process.runSync(any(), any()),
+        ).thenReturn(configProcessResult);
+      });
+
+      group('when process exists with non-zero code', () {
+        setUp(() {
+          when(
+            () => configProcessResult.exitCode,
+          ).thenReturn(ExitCode.software.code);
+          when(() => configProcessResult.stderr).thenReturn('oops');
+        });
+
+        test('throws ProcessException', () {
+          expect(
+            () => runWithOverrides(shorebirdFlutter.getConfig),
+            throwsA(isA<ProcessException>()),
+          );
+          verify(
+            () => process.runSync('flutter', ['config', '--list']),
+          ).called(1);
+        });
+      });
+
+      group('when process completes successfully', () {
+        setUp(() {
+          when(() => configProcessResult.stdout).thenReturn('''
+All Settings:
+  enable-web: (Not set)
+  enable-linux-desktop: (Not set)
+  enable-macos-desktop: (Not set)
+  enable-windows-desktop: (Not set)
+  enable-android: (Not set)
+  enable-ios: (Not set)
+  enable-fuchsia: (Not set) (Unavailable)
+  enable-custom-devices: (Not set)
+  cli-animations: (Not set)
+  enable-native-assets: (Not set) (Unavailable)
+  enable-flutter-preview: (Not set) (Unavailable)
+  enable-swift-package-manager: (Not set)
+  explicit-package-dependencies: (Not set)
+  jdk-dir: ./jdk/dir/override
+  ''');
+          when(
+            () => configProcessResult.exitCode,
+          ).thenReturn(ExitCode.success.code);
+        });
+
+        test('returns correct config map', () {
+          expect(
+            runWithOverrides(shorebirdFlutter.getConfig),
+            equals({
+              'enable-web': '(Not set)',
+              'enable-linux-desktop': '(Not set)',
+              'enable-macos-desktop': '(Not set)',
+              'enable-windows-desktop': '(Not set)',
+              'enable-android': '(Not set)',
+              'enable-ios': '(Not set)',
+              'enable-fuchsia': '(Not set) (Unavailable)',
+              'enable-custom-devices': '(Not set)',
+              'cli-animations': '(Not set)',
+              'enable-native-assets': '(Not set) (Unavailable)',
+              'enable-flutter-preview': '(Not set) (Unavailable)',
+              'enable-swift-package-manager': '(Not set)',
+              'explicit-package-dependencies': '(Not set)',
+              'jdk-dir': './jdk/dir/override',
+            }),
+          );
+        });
+      });
+    });
+
     group('getSystemVersion', () {
       test(
         'throws ProcessException when process exits with non-zero code',
