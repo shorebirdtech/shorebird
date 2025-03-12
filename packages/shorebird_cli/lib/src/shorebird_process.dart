@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
@@ -190,12 +191,12 @@ class ShorebirdProcess {
   }) {
     var resolvedArguments = arguments;
     if (executable == 'flutter') {
-      // *Always* run with `--verbose` to get more detailed logs. We rely on
-      // this to determine the path to the app.dill file for iOS builds.
-      // Ideally we'd use this for all commands, but not all commands recognize
-      // `--verbose` and some error if it's provided.
-      // resolvedArguments = [...resolvedArguments, '--verbose'];
-
+      if (logger.level == Level.verbose) {
+        /// We explicitly add the `--verbose` flag to flutter commands when the
+        /// shorebird command was run with `--verbose`
+        /// (e.g. `shorebird release ios --verbose`).
+        resolvedArguments = [...resolvedArguments, '--verbose'];
+      }
       if (useVendedFlutter && engineConfig.localEngine != null) {
         resolvedArguments = [
           '--local-engine-src-path=${engineConfig.localEngineSrcPath}',

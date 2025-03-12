@@ -59,9 +59,8 @@ void main() {
 
   test('--version', () {
     final result = runCommand('shorebird --version', workingDirectory: '.');
-    expect(result.stderr, isEmpty);
-    expect(result.stdout, stringContainsInOrder(['Engine', 'revision']));
     expect(result.exitCode, equals(0));
+    expect(result.stdout, stringContainsInOrder(['Engine', 'revision']));
   });
 
   test(
@@ -101,7 +100,6 @@ void main() {
         'shorebird init --verbose',
         workingDirectory: cwd,
       );
-      expect(initShorebirdResult.stderr, isEmpty);
       expect(initShorebirdResult.exitCode, equals(0));
 
       final shorebirdYamlPath = p.join(cwd, 'shorebird.yaml');
@@ -133,12 +131,11 @@ void main() {
         'shorebird release android --verbose',
         workingDirectory: cwd,
       );
-      expect(shorebirdReleaseResult.stderr, isEmpty);
+      expect(shorebirdReleaseResult.exitCode, equals(0));
       expect(
         shorebirdReleaseResult.stdout,
         contains('Published Release $releaseVersion!'),
       );
-      expect(shorebirdReleaseResult.exitCode, equals(0));
 
       // Verify that no patch is available.
       await expectLater(
@@ -174,9 +171,8 @@ void main() {
         'shorebird patch android --verbose',
         workingDirectory: cwd,
       );
-      expect(shorebirdPatchResult.stderr, isEmpty);
-      expect(shorebirdPatchResult.stdout, contains('Published Patch 1!'));
       expect(shorebirdPatchResult.exitCode, equals(0));
+      expect(shorebirdPatchResult.stdout, contains('Published Patch 1!'));
 
       // Verify that the patch is available.
       await expectLater(
