@@ -174,71 +174,46 @@ This may indicate that the patch contains native changes, which cannot be applie
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    try {
-      final shouldCodesign = argResults['codesign'] == true;
-      final (flutterVersionAndRevision, flutterVersion) =
-          await (
-            shorebirdFlutter.getVersionAndRevision(),
-            shorebirdFlutter.getVersion(),
-          ).wait;
+    final shouldCodesign = argResults['codesign'] == true;
+    final (flutterVersionAndRevision, flutterVersion) =
+        await (
+          shorebirdFlutter.getVersionAndRevision(),
+          shorebirdFlutter.getVersion(),
+        ).wait;
 
-      if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
-          minimumSupportedIosFlutterVersion) {
-        logger.err('''
+    if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
+        minimumSupportedIosFlutterVersion) {
+      logger.err('''
 iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
-        throw ProcessExit(ExitCode.software.code);
-      }
-
-      final buildProgress = logger.detailProgress(
-        'Building patch with Flutter $flutterVersionAndRevision',
-      );
-      final IpaBuildResult ipaBuildResult;
-      try {
-        // If buildIpa is called with a different codesign value than the
-        // release was, we will erroneously report native diffs.
-        ipaBuildResult = await artifactBuilder.buildIpa(
-          codesign: shouldCodesign,
-          flavor: flavor,
-          target: target,
-          args:
-              argResults.forwardedArgs +
-              buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
-          base64PublicKey: argResults.encodedPublicKey,
-          buildProgress: buildProgress,
-        );
-      } on ProcessException catch (error) {
-        buildProgress.fail('Failed to build: ${error.message}');
-        rethrow;
-      } on ArtifactBuildException catch (error) {
-        buildProgress.fail('Failed to build IPA');
-        logger.err(error.message);
-        rethrow;
-      }
-
-      try {
-        if (splitDebugInfoPath != null) {
-          Directory(splitDebugInfoPath!).createSync(recursive: true);
-        }
-        await artifactBuilder.buildElfAotSnapshot(
-          appDillPath: ipaBuildResult.kernelFile.path,
-          outFilePath: _aotOutputPath,
-          genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
-          additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
-        );
-      } catch (error) {
-        buildProgress.fail('$error');
-        rethrow;
-      }
-
-      // Copy the kernel file to the build directory so that it can be used
-      // to generate a patch.
-      ipaBuildResult.kernelFile.copySync(_appDillCopyPath);
-
-      buildProgress.complete();
-    } on Exception {
       throw ProcessExit(ExitCode.software.code);
     }
+
+    // If buildIpa is called with a different codesign value than the
+    // release was, we will erroneously report native diffs.
+    final ipaBuildResult = await artifactBuilder.buildIpa(
+      codesign: shouldCodesign,
+      flavor: flavor,
+      target: target,
+      args:
+          argResults.forwardedArgs +
+          buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+      base64PublicKey: argResults.encodedPublicKey,
+    );
+
+    if (splitDebugInfoPath != null) {
+      Directory(splitDebugInfoPath!).createSync(recursive: true);
+    }
+    await artifactBuilder.buildElfAotSnapshot(
+      appDillPath: ipaBuildResult.kernelFile.path,
+      outFilePath: _aotOutputPath,
+      genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+      additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
+    );
+
+    // Copy the kernel file to the build directory so that it can be used
+    // to generate a patch.
+    ipaBuildResult.kernelFile.copySync(_appDillCopyPath);
 
     return artifactManager.getXcarchiveDirectory()!.zipToTempFile();
   }

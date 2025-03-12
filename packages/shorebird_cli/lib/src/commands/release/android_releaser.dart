@@ -92,9 +92,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts({
-    DetailProgress? progress,
-  }) async {
+  Future<FileSystemEntity> buildReleaseArtifacts() async {
     final architectures =
         (argResults['target-platform'] as List<String>)
             .map(
@@ -111,11 +109,10 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       targetPlatforms: architectures,
       args: argResults.forwardedArgs,
       base64PublicKey: base64PublicKey,
-      buildProgress: progress,
     );
 
     if (generateApk) {
-      progress?.update('Building APK');
+      logger.info('Building APK');
       await artifactBuilder.buildApk(
         flavor: flavor,
         target: target,

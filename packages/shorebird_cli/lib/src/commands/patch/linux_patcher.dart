@@ -16,7 +16,6 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -52,22 +51,9 @@ class LinuxPatcher extends Patcher {
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
-
-    final buildAppBundleProgress = logger.detailProgress(
-      'Building Linux app with Flutter $flutterVersionString',
+    await artifactBuilder.buildLinuxApp(
+      base64PublicKey: argResults.encodedPublicKey,
     );
-
-    try {
-      await artifactBuilder.buildLinuxApp(
-        base64PublicKey: argResults.encodedPublicKey,
-      );
-      buildAppBundleProgress.complete();
-    } on Exception catch (e) {
-      buildAppBundleProgress.fail(e.toString());
-      throw ProcessExit(ExitCode.software.code);
-    }
-
     return artifactManager.linuxBundleDirectory.zipToTempFile();
   }
 

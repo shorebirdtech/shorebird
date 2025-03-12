@@ -1,14 +1,12 @@
 // cspell:words endtemplate aabs ipas appbundle bryanoltman codesign xcarchive
 // cspell:words xcframework
-import 'dart:convert';
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/artifact_builder/artifact_build_exception.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -19,7 +17,19 @@ import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
-export 'artifact_build_exception.dart';
+/// {@template artifact_build_exception}
+/// Thrown when a build fails.
+/// {@endtemplate}
+class ArtifactBuildException implements Exception {
+  /// {@macro artifact_build_exception}
+  ArtifactBuildException(this.message, {this.fixRecommendation});
+
+  /// Information about the build failure.
+  final String message;
+
+  /// An optional tip to help the user fix the build failure.
+  final String? fixRecommendation;
+}
 
 /// Used to wrap code that invokes `flutter build` with Shorebird's fork of
 /// Flutter.
@@ -93,7 +103,6 @@ class ArtifactBuilder {
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
-    DetailProgress? buildProgress,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -108,53 +117,19 @@ class ArtifactBuilder {
         ...args,
       ];
 
-      final buildProcess = await process.start(
+      final exitCode = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
-      // Android builds are a series of gradle tasks that are all logged in
-      // this format. We can use the 'Task :' line to get the current task
-      // being run.
-      final gradleTaskRegex = RegExp(r'^\[.*\] \> (Task :.*)$');
-      final stdoutLines = <String>[];
-      buildProcess.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-            stdoutLines.add(line);
-            if (buildProgress == null) {
-              return;
-            }
-            final captured = gradleTaskRegex.firstMatch(line)?.group(1);
-            if (captured != null) {
-              buildProgress.updateDetailMessage(captured);
-            }
-          });
-
-      final stderrLines =
-          await buildProcess.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .toList();
-      final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
+        throw ArtifactBuildException('''
 Failed to build AAB.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          stderr: stderrLines,
-          stdout: stdoutLines,
-        );
+Reason: Exited with code $exitCode.''');
       }
     });
-
-    // If we've been updating the progress with gradle tasks, reset it to the
-    // original base message so as not to leave the user with a confusing
-    // message.
-    buildProgress?.updateDetailMessage(null);
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     try {
@@ -204,17 +179,17 @@ Reason: Exited with code $exitCode.''',
         ...args,
       ];
 
-      final result = await process.run(
+      final exitCode = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
-      if (result.exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException.fromProcessResult('''
+      if (exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('''
 Failed to build APK.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''', buildProcessResult: result);
+Reason: Exited with code $exitCode.''');
       }
     });
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
@@ -257,13 +232,13 @@ Reason: Exited with code $exitCode.''', buildProcessResult: result);
         ...args,
       ];
 
-      final result = await process.run(executable, arguments);
+      final exitCode = await process.stream(executable, arguments);
 
-      if (result.exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException.fromProcessResult('''
+      if (exitCode != ExitCode.success.code) {
+        throw ArtifactBuildException('''
 Failed to build AAR.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''', buildProcessResult: result);
+Reason: Exited with code $exitCode.''');
       }
     });
   }
@@ -274,7 +249,6 @@ Reason: Exited with code $exitCode.''', buildProcessResult: result);
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
-    DetailProgress? buildProgress,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -286,36 +260,17 @@ Reason: Exited with code $exitCode.''', buildProcessResult: result);
         ...args,
       ];
 
-      final buildProcess = await process.start(
+      final exitCode = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
-      final stdoutLines = <String>[];
-      buildProcess.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-            logger.detail(line);
-            stdoutLines.add(line);
-          });
-
-      final stderrLines =
-          await buildProcess.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .toList();
-      final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
+        throw ArtifactBuildException('''
 Failed to build linux app.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          stdout: stdoutLines,
-          stderr: stderrLines,
-        );
+Reason: Exited with code $exitCode.''');
       }
     });
   }
@@ -329,16 +284,14 @@ Reason: Exited with code $exitCode.''',
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
-    DetailProgress? buildProgress,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt.
-    // Without this, the build command will not print the app.dill path
+    // This is necessary because we always look for a recently modified app.dill.
     final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
     if (dartToolDir.existsSync()) {
       dartToolDir.deleteSync(recursive: true);
     }
-
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -351,49 +304,21 @@ Reason: Exited with code $exitCode.''',
         if (!codesign) '--no-codesign',
         ...args,
       ];
-
-      final buildProcess = await process.start(
+      final buildStart = clock.now();
+      final exitCode = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
-      final stdoutLines = <String>[];
-      buildProcess.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-            stdoutLines.add(line);
-            if (buildProgress == null) {
-              return;
-            }
-
-            // TODO(bryanoltman): update the progress message for macOS builds.
-            // final update = _progressUpdateFromMacosBuildLog(line);
-            // if (update != null) {
-            //   buildProgress.updateDetailMessage(update);
-            // }
-          });
-
-      final stderrLines =
-          await buildProcess.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .toList();
-      final stdout = stdoutLines.join('\n');
-      final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
+        throw ArtifactBuildException('''
 Failed to build macOS app.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          stdout: stdoutLines,
-          stderr: stderrLines,
-        );
+Reason: Exited with code $exitCode.''');
       }
 
-      appDillPath = findAppDill(stdout: stdout);
+      appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
     });
 
     if (appDillPath == null) {
@@ -415,8 +340,15 @@ Reason: Exited with code $exitCode.''',
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
-    DetailProgress? buildProgress,
   }) async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    // Delete the .dart_tool directory to ensure that the app is rebuilt.
+    // This is necessary because we always look for a recently modified app.dill.
+    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
+    if (dartToolDir.existsSync()) {
+      dartToolDir.deleteSync(recursive: true);
+    }
+
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -430,67 +362,21 @@ Reason: Exited with code $exitCode.''',
         ...args,
       ];
 
-      final buildProcess = await process.start(
+      final buildStart = clock.now();
+      final exitCode = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
-      final stdoutLines = <String>[];
-      buildProcess.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-            stdoutLines.add(line);
-            if (buildProgress == null) {
-              return;
-            }
-
-            final update = _progressUpdateFromIpaBuildLog(line);
-            if (update != null) {
-              buildProgress.updateDetailMessage(update);
-            }
-          });
-
-      final stderrLines =
-          await buildProcess.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .toList();
-      final stderr = stderrLines.join('\n');
-      final stdout = stdoutLines.join('\n');
-      final exitCode = await buildProcess.exitCode;
-
-      // If we've been updating the progress, reset it to the original base
-      // message so as not to leave the user with a confusing message.
-      buildProgress?.updateDetailMessage(null);
-
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          '''
+        throw ArtifactBuildException('''
 Failed to build IPA.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''',
-          stdout: stdoutLines,
-          stderr: stderrLines,
-        );
+Reason: Exited with code $exitCode.''');
       }
 
-      // TODO(bryanoltman): this is not treated as an error by Flutter.
-      // We should not throw here, see:
-      // https://github.com/shorebirdtech/shorebird/issues/2855
-      if (stderr.contains('Encountered error while creating the IPA')) {
-        throw ArtifactBuildException(
-          '''
-Failed to build IPA.
-Command: $executable ${arguments.join(' ')}
-Reason: stderr contains "Encountered error while creating the IPA".''',
-          stdout: stdoutLines,
-          stderr: stderrLines,
-        );
-      }
-
-      appDillPath = findAppDill(stdout: stdout);
+      appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
     });
 
     if (appDillPath == null) {
@@ -508,6 +394,13 @@ Reason: stderr contains "Encountered error while creating the IPA".''',
   Future<IosFrameworkBuildResult> buildIosFramework({
     List<String> args = const [],
   }) async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    // Delete the .dart_tool directory to ensure that the app is rebuilt.
+    // This is necessary because we always look for a recently modified app.dill.
+    final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
+    if (dartToolDir.existsSync()) {
+      dartToolDir.deleteSync(recursive: true);
+    }
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -519,9 +412,10 @@ Reason: stderr contains "Encountered error while creating the IPA".''',
         ...args,
       ];
 
-      final result = await process.run(executable, arguments);
+      final buildStart = clock.now();
+      final exitCode = await process.stream(executable, arguments);
 
-      if (result.exitCode != ExitCode.success.code) {
+      if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException('''
 Failed to build iOS framework.
 Command: $executable ${arguments.join(' ')}
@@ -529,7 +423,7 @@ Reason: Exited with code $exitCode.
 ''');
       }
 
-      appDillPath = findAppDill(stdout: result.stdout.toString());
+      appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
     });
 
     if (appDillPath == null) {
@@ -601,16 +495,13 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       appDillPath,
     ];
 
-    final result = await process.run(
+    final exitCode = await process.stream(
       shorebirdArtifacts.getArtifactPath(artifact: genSnapshotArtifact),
       arguments,
     );
 
-    if (result.exitCode != ExitCode.success.code) {
-      throw ArtifactBuildException.fromProcessResult(
-        'Failed to create snapshot',
-        buildProcessResult: result,
-      );
+    if (exitCode != ExitCode.success.code) {
+      throw ArtifactBuildException('Failed to create snapshot');
     }
 
     return File(outFilePath);
@@ -622,107 +513,48 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
-    DetailProgress? buildProgress,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final arguments = ['build', 'windows', '--release', ...args];
 
-      final buildProcess = await process.start(
+      final exitCode = await process.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
       );
 
-      final stdoutLines = <String>[];
-      buildProcess.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
-            logger.detail(line);
-            stdoutLines.add(line);
-            // TODO(bryanoltman): update build progress
-          });
-
-      final stderrLines =
-          await buildProcess.stderr
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())
-              .toList();
-      final exitCode = await buildProcess.exitCode;
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException(
-          'Failed to build',
-          stderr: stderrLines,
-          stdout: stdoutLines,
-        );
+        throw ArtifactBuildException('''
+Failed to build windows app.
+Command: $executable ${arguments.join(' ')}
+Reason: Exited with code $exitCode.''');
       }
     });
 
     return artifactManager.getWindowsReleaseDirectory();
   }
 
-  /// Given a log of verbose output from `flutter build ipa`, returns a
-  /// progress update message to display to the user if the line contains
-  /// a known progress update step. Returns null (no update) otherwise.
-  String? _progressUpdateFromIpaBuildLog(String line) {
-    // xcodebuild -list is a command run early in `flutter build ipa` to read
-    // build settings and schemes. Most users aren't familiar with this command,
-    // so we translate it to "Collecting schemes" below.
-    final collectingSchemesRegex = RegExp(
-      r'\[.*\] executing:.*xcrun xcodebuild -list$',
-    );
-    final archivingRegex = RegExp(r'^\[.*\] (Archiving .+$)');
-    final runningXcodeBuildRegex = RegExp(r'^\[.*\] (Running Xcode build).*$');
-    final compilingLinkingSigningRegex = RegExp(
-      r'^\[.*\]\s+└─(Compiling, linking and signing).*$',
-    );
-    final buildingAppStoreIpaRegex = RegExp(
-      r'^\[.*\] (Building App Store IPA).*$',
-    );
-    final builtAppStoreIpaRegex = RegExp(r'^\[.*\] ✓ (Built IPA to \S+).*$');
-
-    final regexes = [
-      archivingRegex,
-      collectingSchemesRegex,
-      runningXcodeBuildRegex,
-      compilingLinkingSigningRegex,
-      buildingAppStoreIpaRegex,
-      builtAppStoreIpaRegex,
-    ];
-
-    for (final regex in regexes) {
-      final match = regex.firstMatch(line);
-      if (match == null) continue;
-
-      // See the note above about the collectingSchemesRegex.
-      if (regex == collectingSchemesRegex) {
-        return 'Collecting schemes';
-      }
-
-      return match.group(1);
-    }
-
-    return null;
-  }
-
-  /// Given the full stdout from a `flutter build ipa` or `flutter build macos`
-  /// command, finds the path to the app.dill file that was built.
-  @visibleForTesting
-  String? findAppDill({required String stdout}) {
-    final appDillLine = stdout
-        .split('\n')
-        .firstWhereOrNull(
-          (l) => l.contains('gen_snapshot') && l.endsWith('app.dill'),
-        );
-
-    if (appDillLine == null) return null;
-
-    // The last argument in the line is the path to app.dill. Because
-    //   1) paths can contain spaces and
-    //   2) the path to the app.dill is absolute (i.e., it starts with a '/')
-    // we can grab the last space-separated part of the line that starts with
-    // a '/' and assume everything after it is the path to app.dill.
-    return '/${appDillLine.split(' /').last}';
+  /// Finds the app.dill file generated during the build process. Looks in the
+  /// .dart_tool directory of the provided [projectRoot] for the most recently
+  /// modified app.dill file (newer than [after]). Returns the path to the
+  /// app.dill file, or null if no app.dill file is found.
+  String? _findAppDill({
+    required Directory projectRoot,
+    required DateTime after,
+  }) {
+    final dartToolDirectory = Directory(p.join(projectRoot.path, '.dart_tool'));
+    if (!dartToolDirectory.existsSync()) return null;
+    return dartToolDirectory
+        .listSync(recursive: true)
+        .where(
+          (e) =>
+              e is File &&
+              p.basename(e.path) == 'app.dill' &&
+              e.statSync().modified.isAfter(after),
+        )
+        .sortedBy((e) => e.statSync().modified)
+        .firstOrNull
+        ?.path;
   }
 }

@@ -278,7 +278,6 @@ To change the version of this release, change your app's version in your pubspec
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             args: any(named: 'args'),
-            buildProgress: any(named: 'buildProgress'),
           ),
         ).thenAnswer(
           (_) async => MacosBuildResult(kernelFile: File('/path/to/app.dill')),
@@ -319,7 +318,6 @@ To change the version of this release, change your app's version in your pubspec
             () => artifactBuilder.buildMacos(
               flavor: flavor,
               args: any(named: 'args'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).called(1);
           verify(
@@ -362,10 +360,7 @@ To change the version of this release, change your app's version in your pubspec
 
           verify(() => artifactManager.getMacOSAppDirectory()).called(1);
           verify(
-            () => artifactBuilder.buildMacos(
-              args: ['--verbose'],
-              buildProgress: any(named: 'buildProgress'),
-            ),
+            () => artifactBuilder.buildMacos(args: ['--verbose']),
           ).called(1);
         });
       });

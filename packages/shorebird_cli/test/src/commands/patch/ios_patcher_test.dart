@@ -531,6 +531,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
       });
 
       group('when build fails with ProcessException', () {
+        const exception = ProcessException('flutter', [
+          'build',
+          'ipa',
+        ], 'Build failed');
+
         setUp(() {
           when(
             () => artifactBuilder.buildIpa(
@@ -538,24 +543,20 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              buildProgress: any(named: 'buildProgress'),
             ),
-          ).thenThrow(
-            const ProcessException('flutter', ['build', 'ipa'], 'Build failed'),
-          );
+          ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail('Failed to build: Build failed'));
         });
       });
 
       group('when build fails with ArtifactBuildException', () {
+        final exception = ArtifactBuildException('Build failed');
         setUp(() {
           when(
             () => artifactBuilder.buildIpa(
@@ -563,22 +564,20 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              buildProgress: any(named: 'buildProgress'),
             ),
-          ).thenThrow(ArtifactBuildException('Build failed'));
+          ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail('Failed to build IPA'));
         });
       });
 
       group('when elf aot snapshot build fails', () {
+        const exception = FileSystemException('error');
         setUp(() {
           when(
             () => artifactBuilder.buildIpa(
@@ -586,7 +585,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               args: any(named: 'args'),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer(
             (_) async => IpaBuildResult(kernelFile: File('/path/to/app.dill')),
@@ -597,16 +595,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               outFilePath: any(named: 'outFilePath'),
               genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
             ),
-          ).thenThrow(const FileSystemException('error'));
+          ).thenThrow(exception);
         });
 
-        test('logs error and exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail("FileSystemException: error, path = ''"));
         });
       });
 
@@ -623,7 +619,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer((_) async => IpaBuildResult(kernelFile: kernelFile));
           when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
@@ -703,7 +698,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                   named: 'args',
                   that: containsAll(['--build-name=1.2.3', '--build-number=4']),
                 ),
-                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           });
@@ -721,7 +715,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               () => artifactBuilder.buildIpa(
                 codesign: any(named: 'codesign'),
                 args: ['--verbose'],
-                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           });
@@ -757,7 +750,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: 'public_key_encoded',
-                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           });

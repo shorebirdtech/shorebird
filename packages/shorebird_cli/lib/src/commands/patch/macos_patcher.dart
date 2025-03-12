@@ -15,7 +15,6 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logging/detail_progress.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -135,83 +134,58 @@ This may indicate that the patch contains native changes, which cannot be applie
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    try {
-      final (flutterVersionAndRevision, flutterVersion) =
-          await (
-            shorebirdFlutter.getVersionAndRevision(),
-            shorebirdFlutter.getVersion(),
-          ).wait;
+    final (flutterVersionAndRevision, flutterVersion) =
+        await (
+          shorebirdFlutter.getVersionAndRevision(),
+          shorebirdFlutter.getVersion(),
+        ).wait;
 
-      if ((flutterVersion ?? minimumSupportedMacosFlutterVersion) <
-          minimumSupportedMacosFlutterVersion) {
-        logger.err('''
+    if ((flutterVersion ?? minimumSupportedMacosFlutterVersion) <
+        minimumSupportedMacosFlutterVersion) {
+      logger.err('''
 macOS patches are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
-        throw ProcessExit(ExitCode.software.code);
-      }
-
-      final buildProgress = logger.detailProgress(
-        'Building patch with Flutter $flutterVersionAndRevision',
-      );
-      final MacosBuildResult macosBuildResult;
-      try {
-        // If buildMacos is called with a different codesign value than the
-        // release was, we will erroneously report native diffs.
-        macosBuildResult = await artifactBuilder.buildMacos(
-          codesign: codesign,
-          flavor: flavor,
-          target: target,
-          args:
-              argResults.forwardedArgs +
-              buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
-          base64PublicKey: argResults.encodedPublicKey,
-          buildProgress: buildProgress,
-        );
-      } on ProcessException catch (error) {
-        buildProgress.fail('Failed to build: ${error.message}');
-        rethrow;
-      } on ArtifactBuildException catch (error) {
-        buildProgress.fail('Failed to build macOS app');
-        logger.err(error.message);
-        rethrow;
-      }
-
-      try {
-        if (splitDebugInfoPath != null) {
-          Directory(splitDebugInfoPath!).createSync(recursive: true);
-        }
-        await artifactBuilder.buildElfAotSnapshot(
-          appDillPath: macosBuildResult.kernelFile.path,
-          outFilePath: _arm64AotOutputPath,
-          genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
-        );
-
-        if (!File(_arm64AotOutputPath).existsSync()) {
-          throw Exception('Failed to build arm64 AOT snapshot');
-        }
-
-        await artifactBuilder.buildElfAotSnapshot(
-          appDillPath: macosBuildResult.kernelFile.path,
-          outFilePath: _x64AotOutputPath,
-          genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
-        );
-
-        if (!File(_x64AotOutputPath).existsSync()) {
-          throw Exception('Failed to build x64 AOT snapshot');
-        }
-      } catch (error) {
-        buildProgress.fail('$error');
-        rethrow;
-      }
-
-      // Copy the kernel file to the build directory so that it can be used
-      // to generate a patch.
-      macosBuildResult.kernelFile.copySync(_appDillCopyPath);
-
-      buildProgress.complete();
-    } on Exception {
       throw ProcessExit(ExitCode.software.code);
     }
+
+    // If buildMacos is called with a different codesign value than the
+    // release was, we will erroneously report native diffs.
+    final macosBuildResult = await artifactBuilder.buildMacos(
+      codesign: codesign,
+      flavor: flavor,
+      target: target,
+      args:
+          argResults.forwardedArgs +
+          buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+      base64PublicKey: argResults.encodedPublicKey,
+    );
+
+    if (splitDebugInfoPath != null) {
+      Directory(splitDebugInfoPath!).createSync(recursive: true);
+    }
+    await artifactBuilder.buildElfAotSnapshot(
+      appDillPath: macosBuildResult.kernelFile.path,
+      outFilePath: _arm64AotOutputPath,
+      genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
+    );
+
+    if (!File(_arm64AotOutputPath).existsSync()) {
+      throw Exception('Failed to build arm64 AOT snapshot');
+    }
+
+    await artifactBuilder.buildElfAotSnapshot(
+      appDillPath: macosBuildResult.kernelFile.path,
+      outFilePath: _x64AotOutputPath,
+      genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
+    );
+
+    if (!File(_x64AotOutputPath).existsSync()) {
+      throw Exception('Failed to build x64 AOT snapshot');
+    }
+
+    // Copy the kernel file to the build directory so that it can be used
+    // to generate a patch.
+    macosBuildResult.kernelFile.copySync(_appDillCopyPath);
 
     final appPath = artifactManager.getMacOSAppDirectory(flavor: flavor)!.path;
     final tempDir = await Directory.systemTemp.createTemp();

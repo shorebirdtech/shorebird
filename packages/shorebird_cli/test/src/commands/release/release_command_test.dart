@@ -5,7 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/artifact_builder/artifact_build_exception.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
@@ -140,7 +140,7 @@ void main() {
       when(() => releaser.assertPreconditions()).thenAnswer((_) async => {});
       when(() => releaser.assertArgsAreValid()).thenAnswer((_) async => {});
       when(
-        () => releaser.buildReleaseArtifacts(progress: any(named: 'progress')),
+        () => releaser.buildReleaseArtifacts(),
       ).thenAnswer((_) async => File(''));
       when(
         () => releaser.getReleaseVersion(
@@ -252,13 +252,10 @@ void main() {
         () => shorebirdValidator.validateFlavors(flavorArg: null),
         cache.updateAll,
         () => codePushClientWrapper.getApp(appId: appId),
-        () => logger.progress(
+        () => logger.info(
           'Building $artifactDisplayName with Flutter $flutterRevision',
         ),
-        () => releaser.buildReleaseArtifacts(progress: any(named: 'progress')),
-        () => progress.complete(
-          'Building $artifactDisplayName with Flutter $flutterRevision',
-        ),
+        () => releaser.buildReleaseArtifacts(),
         () => releaser.getReleaseVersion(
           releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
         ),
@@ -280,8 +277,7 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
     group('when build fails', () {
       setUp(() {
         when(
-          () =>
-              releaser.buildReleaseArtifacts(progress: any(named: 'progress')),
+          () => releaser.buildReleaseArtifacts(),
         ).thenThrow(Exception('oops'));
       });
 
@@ -291,9 +287,8 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
           exitsWithCode(ExitCode.software),
         );
         verify(
-          () => progress.fail(
-            'Failed to build release artifacts: Exception: oops',
-          ),
+          () =>
+              logger.err('Failed to build release artifacts: Exception: oops'),
         ).called(1);
       });
 
@@ -303,27 +298,7 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
         setUp(() {
           exception = MockArtifactBuildException();
           when(() => exception.message).thenReturn('oops');
-          when(() => exception.stderr).thenReturn(['stderr']);
-          when(() => exception.stdout).thenReturn(['stdout']);
-          when(
-            () => releaser.buildReleaseArtifacts(
-              progress: any(named: 'progress'),
-            ),
-          ).thenThrow(exception);
-        });
-
-        group('when a Flutter error was detected', () {
-          setUp(() {
-            when(() => exception.flutterError).thenReturn('flutter error');
-          });
-
-          test('logs Flutter error at the err level', () async {
-            await expectLater(
-              () => runWithOverrides(command.run),
-              exitsWithCode(ExitCode.software),
-            );
-            verify(() => logger.err('flutter error')).called(1);
-          });
+          when(() => releaser.buildReleaseArtifacts()).thenThrow(exception);
         });
 
         group('when a fix recommendation is provided', () {
@@ -337,21 +312,6 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
               exitsWithCode(ExitCode.software),
             );
             verify(() => logger.info('fix it')).called(1);
-          });
-        });
-
-        group('when neither flutter error nor fix suggestion are provided', () {
-          setUp(() {
-            when(() => exception.flutterError).thenReturn(null);
-            when(() => exception.fixRecommendation).thenReturn(null);
-          });
-
-          test('logs stderr', () async {
-            await expectLater(
-              () => runWithOverrides(command.run),
-              exitsWithCode(ExitCode.software),
-            );
-            verify(() => logger.info('stderr')).called(1);
           });
         });
       });
@@ -433,14 +393,10 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
           () => shorebirdValidator.validateFlavors(flavorArg: flavor),
           cache.updateAll,
           () => codePushClientWrapper.getApp(appId: appId),
-          () => logger.progress(
+          () => logger.info(
             'Building $artifactDisplayName with Flutter $flutterRevision',
           ),
-          () =>
-              releaser.buildReleaseArtifacts(progress: any(named: 'progress')),
-          () => progress.complete(
-            'Building $artifactDisplayName with Flutter $flutterRevision',
-          ),
+          () => releaser.buildReleaseArtifacts(),
           () => releaser.getReleaseVersion(
             releaseArtifactRoot: any(named: 'releaseArtifactRoot'),
           ),
@@ -601,11 +557,7 @@ $exception'''),
 
         test('uses specified flutter version to build '
             'and reverts to original flutter version', () async {
-          when(
-            () => releaser.buildReleaseArtifacts(
-              progress: any(named: 'progress'),
-            ),
-          ).thenAnswer((_) async {
+          when(() => releaser.buildReleaseArtifacts()).thenAnswer((_) async {
             // Ensure we're using the correct flutter version.
             expect(shorebirdEnv.flutterRevision, equals(revision));
             return File('');

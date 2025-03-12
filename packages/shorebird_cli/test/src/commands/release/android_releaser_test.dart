@@ -248,12 +248,9 @@ To change the version of this release, change your app's version in your pubspec
 
     group('buildReleaseArtifacts', () {
       late File aabFile;
-      late DetailProgress progress;
 
       setUp(() {
         aabFile = File('');
-        progress = MockDetailProgress();
-        when(() => logger.detailProgress(any())).thenReturn(progress);
         when(() => argResults['artifact']).thenReturn('aab');
         when(
           () => artifactBuilder.buildAppBundle(
@@ -261,7 +258,6 @@ To change the version of this release, change your app's version in your pubspec
             target: any(named: 'target'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
-            buildProgress: any(named: 'buildProgress'),
           ),
         ).thenAnswer((_) async => aabFile);
         when(
@@ -294,7 +290,6 @@ To change the version of this release, change your app's version in your pubspec
             () => artifactBuilder.buildAppBundle(
               targetPlatforms: Arch.values,
               args: ['--verbose'],
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).called(1);
         });
@@ -309,7 +304,6 @@ To change the version of this release, change your app's version in your pubspec
           () => artifactBuilder.buildAppBundle(
             targetPlatforms: Arch.values,
             args: [],
-            buildProgress: any(named: 'buildProgress'),
           ),
         ).called(1);
       });
@@ -332,10 +326,8 @@ To change the version of this release, change your app's version in your pubspec
         });
 
         test('builds apk', () async {
-          await runWithOverrides(
-            () => androidReleaser.buildReleaseArtifacts(progress: progress),
-          );
-          verify(() => progress.update('Building APK')).called(1);
+          await runWithOverrides(() => androidReleaser.buildReleaseArtifacts());
+          verify(() => logger.info('Building APK')).called(1);
           verify(
             () => artifactBuilder.buildApk(
               targetPlatforms: Arch.values,
@@ -366,7 +358,6 @@ To change the version of this release, change your app's version in your pubspec
               target: target,
               targetPlatforms: Arch.values,
               args: [],
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).called(1);
           verify(
@@ -401,7 +392,6 @@ To change the version of this release, change your app's version in your pubspec
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer((_) async => aabFile);
           when(
@@ -433,7 +423,6 @@ To change the version of this release, change your app's version in your pubspec
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
-                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           },
@@ -458,7 +447,6 @@ To change the version of this release, change your app's version in your pubspec
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
                   base64PublicKey: base64PublicKey,
-                  buildProgress: any(named: 'buildProgress'),
                 ),
               ).called(1);
 

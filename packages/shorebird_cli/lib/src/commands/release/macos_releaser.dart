@@ -12,7 +12,6 @@ import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logging/detail_progress.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/metadata/update_release_metadata.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -96,9 +95,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts({
-    DetailProgress? progress,
-  }) async {
+  Future<FileSystemEntity> buildReleaseArtifacts() async {
     if (!codesign) {
       logger
         ..info(
@@ -115,7 +112,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       target: target,
       args: argResults.forwardedArgs,
       base64PublicKey: argResults.encodedPublicKey,
-      buildProgress: progress,
     );
 
     final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);

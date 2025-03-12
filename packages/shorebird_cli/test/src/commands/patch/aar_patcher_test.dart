@@ -290,13 +290,11 @@ void main() {
           ).thenThrow(exception);
         });
 
-        test('logs error and exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail('Failed to build: error')).called(1);
         });
       });
 

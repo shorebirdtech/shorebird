@@ -26,6 +26,26 @@ class ShorebirdProcess {
   /// The underlying process wrapper.
   final ProcessWrapper processWrapper;
 
+  /// Starts a process, streams the output in real-time, and returns the exit code.
+  Future<int> stream(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+    String? workingDirectory,
+  }) async {
+    logger.detail(
+      '''[Process.stream] $executable ${arguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
+    );
+    final process = await start(
+      executable,
+      arguments,
+      environment: environment,
+      workingDirectory: workingDirectory,
+      mode: ProcessStartMode.inheritStdio,
+    );
+    return process.exitCode;
+  }
+
   /// Runs the process and returns the result.
   Future<ShorebirdProcessResult> run(
     String executable,
@@ -109,6 +129,7 @@ class ShorebirdProcess {
     Map<String, String>? environment,
     bool useVendedFlutter = true,
     String? workingDirectory,
+    ProcessStartMode mode = ProcessStartMode.normal,
   }) {
     final resolvedEnvironment = environment ?? {};
     if (useVendedFlutter) {
@@ -133,6 +154,7 @@ class ShorebirdProcess {
       resolvedArguments,
       environment: resolvedEnvironment,
       workingDirectory: workingDirectory,
+      mode: mode,
     );
   }
 
@@ -172,7 +194,7 @@ class ShorebirdProcess {
       // this to determine the path to the app.dill file for iOS builds.
       // Ideally we'd use this for all commands, but not all commands recognize
       // `--verbose` and some error if it's provided.
-      resolvedArguments = [...resolvedArguments, '--verbose'];
+      // resolvedArguments = [...resolvedArguments, '--verbose'];
 
       if (useVendedFlutter && engineConfig.localEngine != null) {
         resolvedArguments = [
@@ -289,6 +311,7 @@ class ProcessWrapper {
     List<String> arguments, {
     Map<String, String>? environment,
     String? workingDirectory,
+    ProcessStartMode mode = ProcessStartMode.normal,
   }) {
     return Process.start(
       executable,
@@ -296,6 +319,7 @@ class ProcessWrapper {
       runInShell: Platform.isWindows,
       environment: environment,
       workingDirectory: workingDirectory,
+      mode: mode,
     );
   }
 }

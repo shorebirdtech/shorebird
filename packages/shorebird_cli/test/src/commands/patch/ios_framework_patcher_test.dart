@@ -333,23 +333,23 @@ void main() {
       });
 
       group('when build fails', () {
+        final exception = ArtifactBuildException('Build failed');
         setUp(() {
           when(
             () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
-          ).thenThrow(ArtifactBuildException('Build failed'));
+          ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail('Build failed'));
         });
       });
 
       group('when elf aot snapshot build fails', () {
+        const exception = FileSystemException('error');
         setUp(() {
           when(
             () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
@@ -363,16 +363,14 @@ void main() {
               genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
               additionalArgs: any(named: 'additionalArgs'),
             ),
-          ).thenThrow(const FileSystemException('error'));
+          ).thenThrow(exception);
         });
 
-        test('logs error and exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail("FileSystemException: error, path = ''"));
         });
       });
 

@@ -302,7 +302,6 @@ To change the version of this release, change your app's version in your pubspec
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             args: any(named: 'args'),
-            buildProgress: any(named: 'buildProgress'),
           ),
         ).thenAnswer(
           (_) async => IpaBuildResult(kernelFile: File('/path/to/app.dill')),
@@ -348,7 +347,6 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenAnswer(
             (_) async => IpaBuildResult(kernelFile: File('/path/to/app.dill')),
@@ -367,7 +365,6 @@ To change the version of this release, change your app's version in your pubspec
                 target: any(named: 'target'),
                 args: any(named: 'args'),
                 base64PublicKey: base64PublicKey,
-                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           },
@@ -431,12 +428,7 @@ To change the version of this release, change your app's version in your pubspec
               xcarchiveDirectory: xcarchiveDirectory,
             ),
           ).called(1);
-          verify(
-            () => artifactBuilder.buildIpa(
-              args: ['--verbose'],
-              buildProgress: any(named: 'buildProgress'),
-            ),
-          ).called(1);
+          verify(() => artifactBuilder.buildIpa(args: ['--verbose'])).called(1);
         });
       });
 

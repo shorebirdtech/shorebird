@@ -80,8 +80,6 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final File aabFile;
-    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
     final flutterVersion = await shorebirdFlutter.getVersion();
     // Android versions prior to 3.24.2 have a bug that can cause patches to
     // be erroneously uninstalled.
@@ -90,25 +88,14 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       logger.warn(updaterPatchErrorWarning);
     }
 
-    final buildProgress = logger.detailProgress(
-      'Building patch with Flutter $flutterVersionString',
+    final aabFile = await artifactBuilder.buildAppBundle(
+      flavor: flavor,
+      target: target,
+      args:
+          argResults.forwardedArgs +
+          buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+      base64PublicKey: argResults.encodedPublicKey,
     );
-
-    try {
-      aabFile = await artifactBuilder.buildAppBundle(
-        flavor: flavor,
-        target: target,
-        args:
-            argResults.forwardedArgs +
-            buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
-        base64PublicKey: argResults.encodedPublicKey,
-        buildProgress: buildProgress,
-      );
-      buildProgress.complete();
-    } on ArtifactBuildException catch (error) {
-      buildProgress.fail(error.message);
-      throw ProcessExit(ExitCode.software.code);
-    }
 
     final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
       projectRoot: projectRoot,

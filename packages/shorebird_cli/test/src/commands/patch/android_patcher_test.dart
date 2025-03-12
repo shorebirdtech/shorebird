@@ -289,7 +289,6 @@ void main() {
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
             base64PublicKey: any(named: 'base64PublicKey'),
-            buildProgress: any(named: 'buildProgress'),
           ),
         ).thenAnswer((_) async => aabFile);
       });
@@ -340,19 +339,15 @@ void main() {
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).thenThrow(exception);
-          when(() => logger.progress(any())).thenReturn(progress);
         });
 
-        test('logs error and exits with code 70', () async {
+        test('throws exception', () async {
           await expectLater(
             () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
+            throwsA(exception),
           );
-
-          verify(() => progress.fail('error')).called(1);
         });
       });
 
@@ -395,7 +390,6 @@ Looked in:
                 named: 'args',
                 that: containsAll(['--build-name=1.2.3', '--build-number=4']),
               ),
-              buildProgress: any(named: 'buildProgress'),
             ),
           ).called(1);
         });
@@ -413,10 +407,7 @@ Looked in:
             final result = await runWithOverrides(patcher.buildPatchArtifact);
             expect(result, equals(aabFile));
             verify(
-              () => artifactBuilder.buildAppBundle(
-                args: ['--verbose'],
-                buildProgress: any(named: 'buildProgress'),
-              ),
+              () => artifactBuilder.buildAppBundle(args: ['--verbose']),
             ).called(1);
           });
         });
@@ -450,7 +441,6 @@ Looked in:
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: 'public_key_encoded',
-                buildProgress: any(named: 'buildProgress'),
               ),
             ).called(1);
           });
