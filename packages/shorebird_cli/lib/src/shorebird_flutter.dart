@@ -121,6 +121,32 @@ class ShorebirdFlutter {
     return match?.group(1);
   }
 
+  /// Executes `flutter config --list` and returns the output as a map.
+  Map<String, dynamic> getConfig() {
+    final args = ['config', '--list'];
+    final result = process.runSync(executable, args);
+    if (result.exitCode != ExitCode.success.code) {
+      throw ProcessException(
+        executable,
+        args,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+    final output = '${result.stdout}';
+    final config = <String, dynamic>{};
+    final lines = LineSplitter.split(output).toList();
+    for (final line in lines.skip(1)) {
+      final parts = line.split(':');
+      if (parts.length == 2) {
+        final key = parts[0].trim();
+        final value = parts[1].trim();
+        config[key] = value;
+      }
+    }
+    return config;
+  }
+
   /// Converts a full git revision to a short revision string.
   String shortRevisionString(String revision) => revision.substring(0, 10);
 

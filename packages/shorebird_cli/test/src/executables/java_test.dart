@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -18,6 +19,7 @@ void main() {
     late AndroidStudio androidStudio;
     late OperatingSystemInterface osInterface;
     late Platform platform;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdProcess shorebirdProcess;
     late Java java;
 
@@ -29,6 +31,7 @@ void main() {
           osInterfaceRef.overrideWith(() => osInterface),
           processRef.overrideWith(() => shorebirdProcess),
           platformRef.overrideWith(() => platform),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
       );
     }
@@ -43,6 +46,7 @@ void main() {
       androidStudio = MockAndroidStudio();
       osInterface = MockOperatingSystemInterface();
       platform = MockPlatform();
+      shorebirdFlutter = MockShorebirdFlutter();
       shorebirdProcess = MockShorebirdProcess();
       java = Java();
 
@@ -52,6 +56,8 @@ void main() {
       when(() => platform.isLinux).thenReturn(false);
 
       when(() => osInterface.which(any())).thenReturn(null);
+
+      when(shorebirdFlutter.getConfig).thenReturn({});
     });
 
     group('version', () {
@@ -146,7 +152,7 @@ void main() {
       group('when Android Studio is installed', () {
         late Directory jbrDir;
 
-        group('when on macOS', () {
+        group('on macOS', () {
           setUp(() {
             when(() => platform.isMacOS).thenReturn(true);
 
@@ -169,6 +175,19 @@ void main() {
             when(() => platform.environment).thenReturn({'HOME': tempDir.path});
           });
 
+          group('when flutter config contains jdk override', () {
+            const jdkDirOverride = '/jdk';
+            setUp(() {
+              when(
+                shorebirdFlutter.getConfig,
+              ).thenReturn({'jdk-dir': jdkDirOverride});
+            });
+
+            test('returns value of jdk-dir', () {
+              expect(runWithOverrides(() => java.home), equals(jdkDirOverride));
+            });
+          });
+
           test('returns correct path', () async {
             await expectLater(
               runWithOverrides(() => java.home),
@@ -184,7 +203,7 @@ void main() {
           });
         });
 
-        group('when on Windows', () {
+        group('on Windows', () {
           late Directory jbrDir;
 
           setUp(() {
@@ -221,7 +240,7 @@ void main() {
           });
         });
 
-        group('when on Linux', () {
+        group('on Linux', () {
           setUp(() {
             when(() => platform.isLinux).thenReturn(true);
 
@@ -255,6 +274,19 @@ void main() {
             when(
               () => platform.environment,
             ).thenReturn({'JAVA_HOME': javaHome});
+          });
+
+          group('when flutter config contains jdk override', () {
+            const jdkDirOverride = '/jdk';
+            setUp(() {
+              when(
+                shorebirdFlutter.getConfig,
+              ).thenReturn({'jdk-dir': jdkDirOverride});
+            });
+
+            test('returns value of jdk-dir', () {
+              expect(runWithOverrides(() => java.home), equals(jdkDirOverride));
+            });
           });
 
           test('returns value of JAVA_HOME', () {
