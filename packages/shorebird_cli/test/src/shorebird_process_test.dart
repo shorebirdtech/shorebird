@@ -328,6 +328,25 @@ void main() {
         ).called(1);
       });
 
+      group('when log level is verbose', () {
+        setUp(() {
+          when(() => logger.level).thenReturn(Level.verbose);
+        });
+
+        test('passes --verbose to flutter executable', () {
+          runWithOverrides(() => shorebirdProcess.runSync('flutter', []));
+
+          verify(
+            () => processWrapper.runSync(
+              any(),
+              ['--verbose'],
+              environment: any(named: 'environment'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).called(1);
+        });
+      });
+
       group('when result has non-zero exit code', () {
         setUp(() {
           when(() => runProcessResult.exitCode).thenReturn(1);
