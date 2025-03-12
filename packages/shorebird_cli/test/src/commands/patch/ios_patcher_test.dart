@@ -587,7 +587,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               target: any(named: 'target'),
             ),
           ).thenAnswer(
-            (_) async => IpaBuildResult(kernelFile: File('/path/to/app.dill')),
+            (_) async =>
+                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
           );
           when(
             () => artifactBuilder.buildElfAotSnapshot(
@@ -620,7 +621,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
             ),
-          ).thenAnswer((_) async => IpaBuildResult(kernelFile: kernelFile));
+          ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
             Directory(
               p.join(

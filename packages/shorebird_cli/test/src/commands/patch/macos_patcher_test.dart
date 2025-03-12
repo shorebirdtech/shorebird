@@ -573,7 +573,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ),
           ).thenAnswer(
             (_) async =>
-                MacosBuildResult(kernelFile: File('/path/to/app.dill')),
+                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
           );
           when(
             () => artifactBuilder.buildElfAotSnapshot(
@@ -603,7 +603,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ),
           ).thenAnswer(
             (_) async =>
-                MacosBuildResult(kernelFile: File('/path/to/app.dill')),
+                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
           );
           when(
             () => artifactBuilder.buildElfAotSnapshot(
@@ -648,7 +648,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ),
           ).thenAnswer(
             (_) async =>
-                MacosBuildResult(kernelFile: File('/path/to/app.dill')),
+                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
           );
           when(
             () => artifactBuilder.buildElfAotSnapshot(
@@ -704,7 +704,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ),
           ).thenAnswer(
             (_) async =>
-                MacosBuildResult(kernelFile: File('/path/to/app.dill')),
+                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
           );
           when(
             () => artifactBuilder.buildElfAotSnapshot(
@@ -751,7 +751,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
             ),
-          ).thenAnswer((_) async => MacosBuildResult(kernelFile: kernelFile));
+          ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(
             () => artifactBuilder.buildElfAotSnapshot(
               appDillPath: any(named: 'appDillPath'),

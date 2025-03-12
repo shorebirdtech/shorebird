@@ -304,7 +304,7 @@ To change the version of this release, change your app's version in your pubspec
             args: any(named: 'args'),
           ),
         ).thenAnswer(
-          (_) async => IpaBuildResult(kernelFile: File('/path/to/app.dill')),
+          (_) async => AppleBuildResult(kernelFile: File('/path/to/app.dill')),
         );
 
         when(
@@ -349,7 +349,8 @@ To change the version of this release, change your app's version in your pubspec
               base64PublicKey: any(named: 'base64PublicKey'),
             ),
           ).thenAnswer(
-            (_) async => IpaBuildResult(kernelFile: File('/path/to/app.dill')),
+            (_) async =>
+                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
           );
         });
 

@@ -280,7 +280,7 @@ To change the version of this release, change your app's version in your pubspec
             args: any(named: 'args'),
           ),
         ).thenAnswer(
-          (_) async => MacosBuildResult(kernelFile: File('/path/to/app.dill')),
+          (_) async => AppleBuildResult(kernelFile: File('/path/to/app.dill')),
         );
 
         appDirectory = Directory.systemTemp.createTempSync();

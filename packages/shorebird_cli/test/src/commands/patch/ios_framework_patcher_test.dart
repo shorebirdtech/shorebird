@@ -354,7 +354,7 @@ void main() {
           when(
             () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
           ).thenAnswer(
-            (_) async => IosFrameworkBuildResult(kernelFile: File('app.dill')),
+            (_) async => AppleBuildResult(kernelFile: File('app.dill')),
           );
           when(
             () => artifactBuilder.buildElfAotSnapshot(
@@ -382,9 +382,7 @@ void main() {
           )..createSync(recursive: true);
           when(
             () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
-          ).thenAnswer(
-            (_) async => IosFrameworkBuildResult(kernelFile: kernelFile),
-          );
+          ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(
             () => artifactBuilder.buildElfAotSnapshot(
               appDillPath: any(named: 'appDillPath'),
