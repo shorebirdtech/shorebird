@@ -168,7 +168,7 @@ void main() {
 
       group('when process completes successfully', () {
         setUp(() {
-          when(() => configProcessResult.stdout).thenReturn('''
+          when(() => configProcessResult.stdout).thenReturn(r'''
 All Settings:
   enable-web: (Not set)
   enable-linux-desktop: (Not set)
@@ -183,7 +183,7 @@ All Settings:
   enable-flutter-preview: (Not set) (Unavailable)
   enable-swift-package-manager: (Not set)
   explicit-package-dependencies: (Not set)
-  jdk-dir: ./jdk/dir/override
+  jdk-dir: C:\Program Files\Android\Android Studio\jdk
   ''');
           when(
             () => configProcessResult.exitCode,
@@ -207,7 +207,7 @@ All Settings:
               'enable-flutter-preview': '(Not set) (Unavailable)',
               'enable-swift-package-manager': '(Not set)',
               'explicit-package-dependencies': '(Not set)',
-              'jdk-dir': './jdk/dir/override',
+              'jdk-dir': r'C:\Program Files\Android\Android Studio\jdk',
             }),
           );
         });

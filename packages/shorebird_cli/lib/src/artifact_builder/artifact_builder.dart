@@ -191,6 +191,7 @@ Reason: Exited with code $exitCode.''');
     required String buildNumber,
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
+    String? base64PublicKey,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -205,7 +206,11 @@ Reason: Exited with code $exitCode.''');
         ...args,
       ];
 
-      final exitCode = await process.stream(executable, arguments);
+      final exitCode = await process.stream(
+        executable,
+        arguments,
+        environment: base64PublicKey?.toPublicKeyEnv(),
+      );
 
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException('''
@@ -366,6 +371,7 @@ Reason: Exited with code $exitCode.''');
   /// Builds a release iOS framework (.xcframework) for the current project.
   Future<AppleBuildResult> buildIosFramework({
     List<String> args = const [],
+    String? base64PublicKey,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt.
@@ -386,7 +392,11 @@ Reason: Exited with code $exitCode.''');
       ];
 
       final buildStart = clock.now();
-      final exitCode = await process.stream(executable, arguments);
+      final exitCode = await process.stream(
+        executable,
+        arguments,
+        environment: base64PublicKey?.toPublicKeyEnv(),
+      );
 
       if (exitCode != ExitCode.success.code) {
         throw ArtifactBuildException('''

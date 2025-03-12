@@ -7,7 +7,9 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/aar_releaser.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -32,6 +34,7 @@ void main() {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Directory projectRoot;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
@@ -48,6 +51,7 @@ void main() {
         values: {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
@@ -63,6 +67,7 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(Directory(''));
+      registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.android);
     });
 
@@ -70,6 +75,7 @@ void main() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       operatingSystemInterface = MockOperatingSystemInterface();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -303,6 +309,51 @@ void main() {
               args: [],
             ),
           ).called(1);
+        });
+
+        group('when a patch signing key path is provided', () {
+          const base64PublicKey = 'base64PublicKey';
+
+          setUp(() {
+            final patchSigningPublicKeyFile = File(
+              p.join(
+                Directory.systemTemp.createTempSync().path,
+                'patch-signing-public-key.pem',
+              ),
+            )..createSync(recursive: true);
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(patchSigningPublicKeyFile.path);
+
+            when(
+              () => artifactBuilder.buildAar(
+                buildNumber: any(named: 'buildNumber'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).thenAnswer((_) async => File(''));
+
+            when(
+              () => codeSigner.base64PublicKey(any()),
+            ).thenReturn(base64PublicKey);
+          });
+
+          test(
+            'encodes the patch signing public key and forward it to buildAar',
+            () async {
+              await runWithOverrides(() => aarReleaser.buildReleaseArtifacts());
+
+              verify(
+                () => artifactBuilder.buildAar(
+                  buildNumber: buildNumber,
+                  targetPlatforms: any(named: 'targetPlatforms'),
+                  args: any(named: 'args'),
+                  base64PublicKey: base64PublicKey,
+                ),
+              ).called(1);
+            },
+          );
         });
       });
     });
