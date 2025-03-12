@@ -10,7 +10,9 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/ios_framework_releaser.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -38,6 +40,7 @@ void main() {
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Doctor doctor;
     late Directory projectRoot;
     late FlavorValidator flavorValidator;
@@ -58,6 +61,7 @@ void main() {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
@@ -72,6 +76,7 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(Directory(''));
+      registerFallbackValue(File(''));
       registerFallbackValue(ReleasePlatform.ios);
     });
 
@@ -80,6 +85,7 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       doctor = MockDoctor();
       flavorValidator = MockFlavorValidator();
       operatingSystemInterface = MockOperatingSystemInterface();
@@ -287,6 +293,50 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         );
 
         setUpProjectRootArtifacts();
+      });
+
+      group('when a patch signing key path is provided', () {
+        const base64PublicKey = 'base64PublicKey';
+        setUp(() {
+          final patchSigningPublicKeyFile = File(
+            p.join(
+              Directory.systemTemp.createTempSync().path,
+              'patch-signing-public-key.pem',
+            ),
+          )..createSync(recursive: true);
+          when(
+            () => argResults[CommonArguments.publicKeyArg.name],
+          ).thenReturn(patchSigningPublicKeyFile.path);
+
+          when(
+            () => artifactBuilder.buildIosFramework(
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).thenAnswer(
+            (_) async =>
+                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
+          );
+          when(
+            () => codeSigner.base64PublicKey(any()),
+          ).thenReturn(base64PublicKey);
+        });
+
+        test(
+          'encodes the patch signing public key and forward it to buildIosFramework',
+          () async {
+            await runWithOverrides(
+              () => iosFrameworkReleaser.buildReleaseArtifacts(),
+            );
+
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                args: any(named: 'args'),
+                base64PublicKey: base64PublicKey,
+              ),
+            ).called(1);
+          },
+        );
       });
 
       group('when stale build/ios/shorebird directory exists', () {
