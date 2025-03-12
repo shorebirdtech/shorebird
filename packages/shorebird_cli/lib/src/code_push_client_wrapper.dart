@@ -1,5 +1,3 @@
-// TODO(felangel): Add public member API docs and remove the ignore.
-// ignore_for_file: public_member_api_docs
 // cspell:words endtemplate pubspec sideloadable bryanoltman archs sideload
 // cspell:words xcarchive codesigned xcframework
 
@@ -59,7 +57,7 @@ class PatchArtifactBundle extends Equatable {
   List<Object?> get props => [arch, path, hash, size, hashSignature];
 }
 
-// A reference to a [CodePushClientWrapper] instance.
+/// A reference to a [CodePushClientWrapper] instance.
 ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(() {
   return CodePushClientWrapper(
     codePushClient: CodePushClient(
@@ -70,7 +68,7 @@ ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(() {
   );
 });
 
-// The [CodePushClientWrapper] instance available in the current zone.
+/// The [CodePushClientWrapper] instance available in the current zone.
 CodePushClientWrapper get codePushClientWrapper =>
     read(codePushClientWrapperRef);
 
@@ -82,8 +80,10 @@ class CodePushClientWrapper {
   /// {@macro code_push_client_wrapper}
   CodePushClientWrapper({required this.codePushClient});
 
+  /// The underlying code push client.
   final CodePushClient codePushClient;
 
+  /// Create an app with the given [organizationId] and [appName].
   Future<App> createApp({required int organizationId, String? appName}) async {
     late final String displayName;
     if (appName == null) {
@@ -102,6 +102,7 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Fetches the organization memberships for the current user.
   Future<List<OrganizationMembership>> getOrganizationMemberships() async {
     final progress = logger.progress('Fetching organizations');
     final List<OrganizationMembership> memberships;
@@ -115,6 +116,7 @@ class CodePushClientWrapper {
     return memberships;
   }
 
+  /// Fetches the apps for the current user.
   Future<List<AppMetadata>> getApps() async {
     final fetchAppsProgress = logger.progress('Fetching apps');
     try {
@@ -126,6 +128,7 @@ class CodePushClientWrapper {
     }
   }
 
+  /// Returns [AppMetadata] for the provided [appId].
   Future<AppMetadata> getApp({required String appId}) async {
     final app = await maybeGetApp(appId: appId);
     if (app == null) {
@@ -139,11 +142,15 @@ This app may not exist or you may not have permission to view it.''');
     return app;
   }
 
+  /// Returns [AppMetadata] for the provided [appId] or null if the app does not
+  /// exist.
   Future<AppMetadata?> maybeGetApp({required String appId}) async {
     final apps = await getApps();
     return apps.firstWhereOrNull((a) => a.appId == appId);
   }
 
+  /// Fetches the channels for the given [appId] and channel [name].
+  /// Returns null if a channel does not exist.
   Future<Channel?> maybeGetChannel({
     required String appId,
     required String name,
@@ -161,6 +168,7 @@ This app may not exist or you may not have permission to view it.''');
     }
   }
 
+  /// Creates a channel for the provided [appId] with the given [name].
   @visibleForTesting
   Future<Channel> createChannel({
     required String appId,
@@ -198,6 +206,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
     }
   }
 
+  /// Fetches the release for the given [appId] and [releaseVersion].
   Future<Release> getRelease({
     required String appId,
     required String releaseVersion,
@@ -220,6 +229,7 @@ Please create a release using "shorebird release" and try again.
     return release;
   }
 
+  /// Fetches the releases for the given [appId].
   Future<List<Release>> getReleases({
     required String appId,
     bool sideloadableOnly = false,
@@ -237,6 +247,8 @@ Please create a release using "shorebird release" and try again.
     }
   }
 
+  /// Fetches the release for the given [appId] and [releaseVersion] or null if
+  /// the release does not exist.
   Future<Release?> maybeGetRelease({
     required String appId,
     required String releaseVersion,
@@ -263,6 +275,8 @@ Please create a release using "shorebird release" and try again.
     }
   }
 
+  /// Creates a release for the given [appId], [version], [flutterRevision], and
+  /// [platform].
   Future<Release> createRelease({
     required String appId,
     required String version,
@@ -293,6 +307,8 @@ Please create a release using "shorebird release" and try again.
     }
   }
 
+  /// Updates the status of a release for the given [appId], [releaseId],
+  /// [platform], and [status].
   Future<void> updateReleaseStatus({
     required String appId,
     required int releaseId,
@@ -351,6 +367,9 @@ Please create a release using "shorebird release" and try again.
     return releaseArtifacts;
   }
 
+  /// Returns a release artifact for the given [appId], [releaseId], [arch], and
+  /// [platform].
+  /// Throws a [CodePushNotFoundException] if no artifact is found.
   Future<ReleaseArtifact> getReleaseArtifact({
     required String appId,
     required int releaseId,
@@ -380,6 +399,8 @@ Please create a release using "shorebird release" and try again.
     }
   }
 
+  /// Fetches a release artifact for the given [appId], [releaseId], [arch], and
+  /// [platform]. Returns null if no artifact is found.
   Future<ReleaseArtifact?> maybeGetReleaseArtifact({
     required String appId,
     required int releaseId,
@@ -412,6 +433,7 @@ Please create a release using "shorebird release" and try again.
     }
   }
 
+  /// Uploads android release artifacts for a specific app/release combination.
   Future<void> createAndroidReleaseArtifacts({
     required String appId,
     required int releaseId,
@@ -508,6 +530,7 @@ aab artifact already exists, continuing...''');
     createArtifactProgress.complete();
   }
 
+  /// Uploads windows release artifacts for a specific app/release combination.
   Future<void> createWindowsReleaseArtifacts({
     required String appId,
     required int releaseId,
@@ -544,6 +567,7 @@ Windows release (exe) artifact already exists, continuing...''');
     createArtifactProgress.complete();
   }
 
+  /// Uploads android archive release artifacts for a specific app/release combination.
   Future<void> createAndroidArchiveReleaseArtifacts({
     required String appId,
     required int releaseId,
@@ -843,6 +867,7 @@ aar artifact already exists, continuing...''');
     createArtifactProgress.complete();
   }
 
+  /// Creates a patch for the given [appId], [releaseId], and [metadata].
   @visibleForTesting
   Future<Patch> createPatch({
     required String appId,
@@ -863,6 +888,7 @@ aar artifact already exists, continuing...''');
     }
   }
 
+  /// Uploads patch artifacts for a specific app/patch combination.
   @visibleForTesting
   Future<void> createPatchArtifacts({
     required String appId,
@@ -889,6 +915,7 @@ aar artifact already exists, continuing...''');
     createArtifactProgress.complete();
   }
 
+  /// Promotes a patch to a specific [channel].
   Future<void> promotePatch({
     required String appId,
     required int patchId,
@@ -909,6 +936,9 @@ aar artifact already exists, continuing...''');
     }
   }
 
+  /// Publishes a patch to the Shorebird server.
+  /// This consists of creating a patch, uploading patch artifacts, and promoting
+  /// the patch to a specific channel based on the provided [track].
   Future<void> publishPatch({
     required String appId,
     required int releaseId,

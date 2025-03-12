@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -28,9 +30,21 @@ void main() {
     });
 
     test('creates a log file in the logs directory', () {
-      final file = runWithOverrides(() => currentRunLogFile);
+      final date = DateTime(2021);
+      final file = withClock(
+        Clock.fixed(date),
+        () => runWithOverrides(() => currentRunLogFile),
+      );
       expect(file.existsSync(), isTrue);
-      expect(file.path, startsWith(logsDirectory.path));
+      expect(
+        file.path,
+        equals(
+          p.join(
+            logsDirectory.path,
+            '${date.millisecondsSinceEpoch}_shorebird.log',
+          ),
+        ),
+      );
     });
   });
 
