@@ -344,6 +344,41 @@ void main() {
       });
     });
 
+    group('stream', () {
+      late Process streamProcess;
+
+      setUp(() {
+        streamProcess = MockProcess();
+        when(
+          () => processWrapper.start(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            mode: ProcessStartMode.inheritStdio,
+          ),
+        ).thenAnswer((_) async => streamProcess);
+        when(
+          () => streamProcess.exitCode,
+        ).thenAnswer((_) async => ExitCode.success.code);
+      });
+
+      test('proxies to start with correct mode', () async {
+        await expectLater(
+          runWithOverrides(() => shorebirdProcess.stream('git', ['pull'])),
+          completion(equals(ExitCode.success.code)),
+        );
+
+        verify(
+          () => processWrapper.start(
+            'git',
+            ['pull'],
+            environment: {},
+            mode: ProcessStartMode.inheritStdio,
+          ),
+        ).called(1);
+      });
+    });
+
     group('start', () {
       setUp(() {
         when(
