@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
@@ -18,8 +19,7 @@ const _logFileName = 'shorebird.log';
 /// `timestamp_shorebird.log`.
 final File currentRunLogFile =
     (() {
-      // TODO(bryanoltman): use package:clock to test for the correct timestamp
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final timestamp = clock.now().millisecondsSinceEpoch;
       final file = File(
         p.join(shorebirdEnv.logsDirectory.path, '${timestamp}_$_logFileName'),
       );
