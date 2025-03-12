@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.25 (March 12, 2025)
+
+- ☕️ Use `jdk-dir` override from `flutter config` if specified
+
 ## 1.6.24 (March 12, 2025)
 
 - 🛠️ Stream `flutter build` logs during `shorebird release` and `shorebird patch`
