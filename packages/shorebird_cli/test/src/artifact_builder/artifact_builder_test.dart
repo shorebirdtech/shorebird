@@ -561,6 +561,33 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         ).called(1);
       });
 
+      group('when base64PublicKey is not null', () {
+        const base64PublicKey = 'base64PublicKey';
+
+        test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
+          await runWithOverrides(
+            () => builder.buildAar(
+              buildNumber: buildNumber,
+              base64PublicKey: 'base64PublicKey',
+            ),
+          );
+
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              [
+                'build',
+                'aar',
+                '--no-debug',
+                '--no-profile',
+                '--build-number=1.0',
+              ],
+              environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
+            ),
+          ).called(1);
+        });
+      });
+
       group('after a build', () {
         group('when the build is successful', () {
           setUp(() {
@@ -1094,6 +1121,24 @@ Reason: Exited with code 70.'''),
             'bar',
           ]),
         ).called(1);
+      });
+
+      group('when base64PublicKey is not null', () {
+        const base64PublicKey = 'base64PublicKey';
+
+        test('adds the SHOREBIRD_PUBLIC_KEY to the environment', () async {
+          await runWithOverrides(
+            () => builder.buildIosFramework(base64PublicKey: 'base64PublicKey'),
+          );
+
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              ['build', 'ios-framework', '--no-debug', '--no-profile'],
+              environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
+            ),
+          ).called(1);
+        });
       });
 
       group('after a build', () {

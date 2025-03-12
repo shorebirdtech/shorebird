@@ -83,7 +83,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts({Progress? progress}) async {
+  Future<FileSystemEntity> buildReleaseArtifacts() async {
     // Delete the Shorebird supplement directory if it exists.
     // This is to ensure that we don't accidentally upload stale artifacts
     // when building with older versions of Flutter.
@@ -93,7 +93,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
-    await artifactBuilder.buildIosFramework(args: argResults.forwardedArgs);
+    await artifactBuilder.buildIosFramework(
+      args: argResults.forwardedArgs,
+      base64PublicKey: argResults.encodedPublicKey,
+    );
 
     // Copy release xcframework to a new directory to avoid overwriting with
     // subsequent patch builds.

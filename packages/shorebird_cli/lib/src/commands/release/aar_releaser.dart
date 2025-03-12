@@ -82,6 +82,7 @@ class AarReleaser extends Releaser {
       buildNumber: buildNumber,
       targetPlatforms: architectures,
       args: argResults.forwardedArgs,
+      base64PublicKey: argResults.encodedPublicKey,
     );
 
     // Copy release AAR to a new directory to avoid overwriting with

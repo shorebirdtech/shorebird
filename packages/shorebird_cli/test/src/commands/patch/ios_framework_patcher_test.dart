@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -34,6 +35,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../fakes.dart';
+import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
@@ -46,6 +48,7 @@ void main() {
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Doctor doctor;
     late Directory flutterDirectory;
     late Directory projectRoot;
@@ -72,6 +75,7 @@ void main() {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
           engineConfigRef.overrideWith(() => engineConfig),
           loggerRef.overrideWith(() => logger),
@@ -104,6 +108,7 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       doctor = MockDoctor();
       engineConfig = MockEngineConfig();
       flavorValidator = MockFlavorValidator();
@@ -451,6 +456,44 @@ void main() {
             expect(p.basename(artifact.path), equals('App.xcframework.zip'));
             verify(
               () => artifactBuilder.buildIosFramework(args: ['--verbose']),
+            ).called(1);
+          });
+        });
+
+        group('when the key pair is provided', () {
+          setUp(() {
+            when(
+              () => codeSigner.base64PublicKey(any()),
+            ).thenReturn('public_key_encoded');
+            when(
+              () => artifactBuilder.buildIosFramework(
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
+          });
+
+          test('calls the buildIosFramework passing the key', () async {
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+            ).thenReturn(true);
+
+            final key = createTempFile('public.pem')
+              ..writeAsStringSync('public_key');
+
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(key.path);
+            when(
+              () => argResults[CommonArguments.publicKeyArg.name],
+            ).thenReturn(key.path);
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                args: any(named: 'args'),
+                base64PublicKey: 'public_key_encoded',
+              ),
             ).called(1);
           });
         });
@@ -877,6 +920,55 @@ void main() {
                   ),
                 );
               });
+            });
+
+            group('when code signing the patch', () {
+              setUp(() {
+                final privateKey = File(
+                  p.join(
+                    Directory.systemTemp.createTempSync().path,
+                    'test-private.pem',
+                  ),
+                )..createSync();
+
+                when(
+                  () => argResults[CommonArguments.privateKeyArg.name],
+                ).thenReturn(privateKey.path);
+
+                when(
+                  () => codeSigner.sign(
+                    message: any(named: 'message'),
+                    privateKeyPemFile: any(named: 'privateKeyPemFile'),
+                  ),
+                ).thenAnswer((invocation) {
+                  final message = invocation.namedArguments[#message] as String;
+                  return '$message-signature';
+                });
+              });
+
+              test(
+                '''returns patch artifact bundles with proper hash signatures''',
+                () async {
+                  final result = await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                    ),
+                  );
+
+                  // Hash the patch artifacts and append '-signature' to get the
+                  // expected signatures, per the mock of [codeSigner.sign]
+                  // above.
+                  const expectedSignature =
+                      '''e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-signature''';
+
+                  expect(
+                    result.values.first.hashSignature,
+                    equals(expectedSignature),
+                  );
+                },
+              );
             });
           });
         });
