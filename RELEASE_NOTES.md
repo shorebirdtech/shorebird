@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.24 (March 12, 2025)
+
+- 🛠️ Stream `flutter build` logs during `shorebird release` and `shorebird patch`
+- ⚠️ Improve `flutter build` errors during `shorebird release` and `shorebird patch`
+- 🧹 Various dependency upgrades
+
 ## 1.6.23 (March 10, 2025)
 
 - 🍎 Fix async ffi crashes (seen in package:cupertino_http)
