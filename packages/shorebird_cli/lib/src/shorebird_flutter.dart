@@ -137,12 +137,11 @@ class ShorebirdFlutter {
     final config = <String, dynamic>{};
     final lines = LineSplitter.split(output).toList();
     for (final line in lines.skip(1)) {
-      final parts = line.split(':');
-      if (parts.length == 2) {
-        final key = parts[0].trim();
-        final value = parts[1].trim();
-        config[key] = value;
-      }
+      final index = line.indexOf(':');
+      if (index == -1) continue;
+      final key = line.substring(0, index).trim();
+      final value = line.substring(index + 1).trim();
+      config[key] = value;
     }
     return config;
   }
