@@ -166,7 +166,7 @@ void main() {
         });
       });
 
-      group('when process completes succcessfully', () {
+      group('when process completes successfully', () {
         setUp(() {
           when(() => configProcessResult.stdout).thenReturn('''
 All Settings:
