@@ -299,6 +299,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
     final app = await codePushClientWrapper.getApp(appId: appId);
 
+    var inferredReleaseVersion = false;
     File? patchArtifactFile;
     final Release release;
     final releasePlatform = patcher.releaseType.releasePlatform;
@@ -338,6 +339,7 @@ Building with Flutter $flutterVersionString to determine the release version...
 +-------------------------------------------------------------------------------+
 ''');
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
+      inferredReleaseVersion = true;
       patchArtifactFile = await patcher.buildPatchArtifact();
       final releaseVersion = await patcher.extractReleaseVersionFromArtifact(
         patchArtifactFile,
@@ -439,6 +441,7 @@ Building patch with Flutter $flutterVersionString
           hasAssetChanges: diffStatus.hasAssetChanges,
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: diffStatus.hasNativeChanges,
+          inferredReleaseVersion: inferredReleaseVersion,
           environment: BuildEnvironmentMetadata(
             flutterRevision: shorebirdEnv.flutterRevision,
             operatingSystem: platform.operatingSystem,

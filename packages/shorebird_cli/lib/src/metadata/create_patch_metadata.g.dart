@@ -29,6 +29,10 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(
         (v) => v as bool,
       ),
       hasNativeChanges: $checkedConvert('has_native_changes', (v) => v as bool),
+      inferredReleaseVersion: $checkedConvert(
+        'inferred_release_version',
+        (v) => v as bool,
+      ),
       environment: $checkedConvert(
         'environment',
         (v) => BuildEnvironmentMetadata.fromJson(v as Map<String, dynamic>),
@@ -46,6 +50,7 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(
     'hasAssetChanges': 'has_asset_changes',
     'usedIgnoreNativeChangesFlag': 'used_ignore_native_changes_flag',
     'hasNativeChanges': 'has_native_changes',
+    'inferredReleaseVersion': 'inferred_release_version',
     'linkPercentage': 'link_percentage',
   },
 );
@@ -58,6 +63,7 @@ Map<String, dynamic> _$CreatePatchMetadataToJson(
   'has_asset_changes': instance.hasAssetChanges,
   'used_ignore_native_changes_flag': instance.usedIgnoreNativeChangesFlag,
   'has_native_changes': instance.hasNativeChanges,
+  'inferred_release_version': instance.inferredReleaseVersion,
   'link_percentage': instance.linkPercentage,
   'environment': instance.environment.toJson(),
 };

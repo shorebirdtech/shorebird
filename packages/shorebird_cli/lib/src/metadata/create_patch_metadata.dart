@@ -24,6 +24,7 @@ class CreatePatchMetadata extends Equatable {
     required this.hasAssetChanges,
     required this.usedIgnoreNativeChangesFlag,
     required this.hasNativeChanges,
+    required this.inferredReleaseVersion,
     required this.environment,
     this.linkPercentage,
   });
@@ -37,6 +38,7 @@ class CreatePatchMetadata extends Equatable {
     bool hasAssetChanges = false,
     bool usedIgnoreNativeChangesFlag = false,
     bool hasNativeChanges = false,
+    bool inferredReleaseVersion = false,
     double? linkPercentage,
     BuildEnvironmentMetadata? environment,
   }) => CreatePatchMetadata(
@@ -45,6 +47,7 @@ class CreatePatchMetadata extends Equatable {
     hasAssetChanges: hasAssetChanges,
     usedIgnoreNativeChangesFlag: usedIgnoreNativeChangesFlag,
     hasNativeChanges: hasNativeChanges,
+    inferredReleaseVersion: inferredReleaseVersion,
     linkPercentage: linkPercentage,
     environment: environment ?? BuildEnvironmentMetadata.forTest(),
   );
@@ -65,6 +68,7 @@ class CreatePatchMetadata extends Equatable {
     bool? hasAssetChanges,
     bool? usedIgnoreNativeChangesFlag,
     bool? hasNativeChanges,
+    bool? inferredReleaseVersion,
     double? linkPercentage,
     BuildEnvironmentMetadata? environment,
   }) => CreatePatchMetadata(
@@ -75,6 +79,8 @@ class CreatePatchMetadata extends Equatable {
     usedIgnoreNativeChangesFlag:
         usedIgnoreNativeChangesFlag ?? this.usedIgnoreNativeChangesFlag,
     hasNativeChanges: hasNativeChanges ?? this.hasNativeChanges,
+    inferredReleaseVersion:
+        inferredReleaseVersion ?? this.inferredReleaseVersion,
     linkPercentage: linkPercentage ?? this.linkPercentage,
     environment: environment ?? this.environment,
   );
@@ -108,6 +114,10 @@ class CreatePatchMetadata extends Equatable {
   /// behavior in a patch.
   final bool hasNativeChanges;
 
+  /// Whether the release version had to be inferred by Shorebird because
+  /// it was not explicitly specified via the --release-version flag.
+  final bool inferredReleaseVersion;
+
   /// The percentage of code that was linked in the patch.
   /// Generally, the higher the percentage, the better the patch performance
   /// since more code will be run on the CPU as opposed to the simulator.
@@ -127,6 +137,7 @@ class CreatePatchMetadata extends Equatable {
     usedIgnoreNativeChangesFlag,
     hasNativeChanges,
     linkPercentage,
+    inferredReleaseVersion,
     environment,
   ];
 }

@@ -813,7 +813,15 @@ void main() {
             releaseArtifact: any(named: 'releaseArtifact'),
           ),
           () => logger.confirm('Would you like to continue?'),
-          () => patcher.updatedCreatePatchMetadata(any()),
+          () => patcher.updatedCreatePatchMetadata(
+            any(
+              that: isA<CreatePatchMetadata>().having(
+                (m) => m.inferredReleaseVersion,
+                'inferredReleaseVersion',
+                isFalse,
+              ),
+            ),
+          ),
           () => patcher.uploadPatchArtifacts(
             appId: appId,
             releaseId: release.id,
@@ -1104,6 +1112,15 @@ void main() {
                 ),
                 () =>
                     patcher.buildPatchArtifact(releaseVersion: releaseVersion),
+                () => patcher.updatedCreatePatchMetadata(
+                  any(
+                    that: isA<CreatePatchMetadata>().having(
+                      (m) => m.inferredReleaseVersion,
+                      'inferredReleaseVersion',
+                      isTrue,
+                    ),
+                  ),
+                ),
               ]);
             },
           );
