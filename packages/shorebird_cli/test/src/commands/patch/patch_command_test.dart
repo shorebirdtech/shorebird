@@ -1087,8 +1087,12 @@ void main() {
               expect(exitCode, equals(ExitCode.success.code));
 
               verifyInOrder([
-                () => logger.info(
-                  '''Tip: make your patches build faster by specifying --release-version''',
+                () => logger.warn(
+                  any(
+                    that: startsWith(
+                      'The release version to patch was not specified.',
+                    ),
+                  ),
                 ),
                 () => patcher.buildPatchArtifact(),
                 () => patcher.extractReleaseVersionFromArtifact(any()),
