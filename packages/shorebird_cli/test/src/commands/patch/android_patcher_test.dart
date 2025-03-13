@@ -731,6 +731,7 @@ Looked in:
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: false,
+          inferredReleaseVersion: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: flutterRevision,
             operatingSystem: operatingSystem,
