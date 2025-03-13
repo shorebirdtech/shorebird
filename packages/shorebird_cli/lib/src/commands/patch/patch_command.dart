@@ -326,12 +326,17 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     } else if (shorebirdEnv.canAcceptUserInput) {
       release = await promptForRelease(releasePlatform);
     } else {
-      logger.info(
-        '''Tip: make your patches build faster by specifying --release-version''',
-      );
       final flutterVersionString =
           await shorebirdFlutter.getVersionAndRevision();
-      logger.info('Building patch with Flutter $flutterVersionString');
+      logger.warn('''
+The release version to patch was not specified.
+Building with Flutter $flutterVersionString to determine the release version...
++-------------------------------------------------------------------------------+
+| Specify a release version (e.g. --release-version=1.0.0+1)                    |
+| to avoid a speculative build with the latest Flutter version.                 |
+| Tip: Use --release-version=latest to target the highest release version.      |
++-------------------------------------------------------------------------------+
+''');
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
       patchArtifactFile = await patcher.buildPatchArtifact();
       final releaseVersion = await patcher.extractReleaseVersionFromArtifact(
