@@ -77,7 +77,7 @@ class PatchCommand extends ShorebirdCommand {
         help: '''
 The version of the associated release (e.g. "1.0.0").
 If you are building an xcframework or aar, this number needs to match the host app's release version.
-To target the latest release (e.g. the highest release version) use --release-version=latest.''',
+To target the latest release (e.g. the release that was most recently updated) use --release-version=latest.''',
       )
       ..addFlag(
         'allow-native-diffs',
