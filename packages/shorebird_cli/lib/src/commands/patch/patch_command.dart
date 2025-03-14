@@ -335,7 +335,7 @@ Building with Flutter $flutterVersionString to determine the release version...
 +-------------------------------------------------------------------------------+
 | Specify a release version (e.g. --release-version=1.0.0+1)                    |
 | to avoid a speculative build with the latest Flutter version.                 |
-| Tip: Use --release-version=latest to target the highest release version.      |
+| Tip: Use --release-version=latest to target the most recent release.          |
 +-------------------------------------------------------------------------------+
 ''');
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
