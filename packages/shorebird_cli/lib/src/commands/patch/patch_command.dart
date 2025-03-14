@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -12,6 +13,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -340,7 +342,9 @@ Building with Flutter $flutterVersionString to determine the release version...
 ''');
       lastBuiltFlutterRevision = shorebirdEnv.flutterRevision;
       inferredReleaseVersion = true;
-      patchArtifactFile = await patcher.buildPatchArtifact();
+      patchArtifactFile = await _tryBuildingArtifact<File>(
+        patcher.buildPatchArtifact,
+      );
       final releaseVersion = await patcher.extractReleaseVersionFromArtifact(
         patchArtifactFile,
       );
@@ -402,8 +406,8 @@ Building with Flutter $flutterVersionString to determine the release version...
           logger.info('''
 Building patch with Flutter $flutterVersionString
 ''');
-          patchArtifactFile = await patcher.buildPatchArtifact(
-            releaseVersion: release.version,
+          patchArtifactFile = await _tryBuildingArtifact<File>(
+            () => patcher.buildPatchArtifact(releaseVersion: release.version),
           );
         }
 
@@ -614,6 +618,23 @@ ${summary.join('\n')}
     }
 
     return artifactFile;
+  }
+}
+
+/// Executes [build] to build the artifact and includes
+/// special handling thrown exceptions such as [ArtifactBuildException].
+Future<R> _tryBuildingArtifact<R>(Future<R> Function() build) async {
+  try {
+    return await build();
+  } on ArtifactBuildException catch (e) {
+    logger.err(e.message);
+    if (!e.fixRecommendation.isNullOrEmpty) {
+      logger.info(e.fixRecommendation);
+    }
+    throw ProcessExit(ExitCode.software.code);
+  } on Exception catch (e) {
+    logger.err('Failed to build release artifacts: $e');
+    throw ProcessExit(ExitCode.software.code);
   }
 }
 
