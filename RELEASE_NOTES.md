@@ -8,7 +8,7 @@ This section contains past updates we've sent to customers.
 
 ## 1.6.26 (March 14, 2025)
 
-- 🐦 Support for Flutter 3.29.1
+- 🐦 Support for Flutter 3.29.2
 - ✨ `shorebird release` supports `--flutter-version=latest`
 - ⚠️ Show warning when running `shorebird patch` without an explicit `--release-version`
 - 🧹 Various dependency upgrades
