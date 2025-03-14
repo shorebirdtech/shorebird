@@ -633,7 +633,7 @@ Future<R> _tryBuildingArtifact<R>(Future<R> Function() build) async {
     }
     throw ProcessExit(ExitCode.software.code);
   } on Exception catch (e) {
-    logger.err('Failed to build release artifacts: $e');
+    logger.err('Failed to build patch artifacts: $e');
     throw ProcessExit(ExitCode.software.code);
   }
 }

@@ -855,6 +855,29 @@ void main() {
           verify(() => logger.info('fix it')).called(1);
         });
       });
+
+      group('when building artifact throws generic Exception', () {
+        late Exception exception;
+
+        setUp(() {
+          exception = Exception('oops');
+          when(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('logs error, and throws ProcessExit', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(
+            () => logger.err('Failed to build patch artifacts: $exception'),
+          ).called(1);
+        });
+      });
     });
 
     group('when release version is latest', () {
