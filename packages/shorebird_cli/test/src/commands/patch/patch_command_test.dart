@@ -831,6 +831,53 @@ void main() {
           ),
         ]);
       });
+
+      group('when building artifact throws ArtifactBuildException', () {
+        late ArtifactBuildException exception;
+
+        setUp(() {
+          exception = MockArtifactBuildException();
+          when(() => exception.message).thenReturn('oops');
+          when(() => exception.fixRecommendation).thenReturn('fix it');
+          when(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('logs error, fixes, and throws ProcessExit', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => logger.err(exception.message)).called(1);
+          verify(() => logger.info('fix it')).called(1);
+        });
+      });
+
+      group('when building artifact throws generic Exception', () {
+        late Exception exception;
+
+        setUp(() {
+          exception = Exception('oops');
+          when(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('logs error, and throws ProcessExit', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(
+            () => logger.err('Failed to build patch artifacts: $exception'),
+          ).called(1);
+        });
+      });
     });
 
     group('when release version is latest', () {
