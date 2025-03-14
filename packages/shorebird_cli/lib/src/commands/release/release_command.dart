@@ -224,16 +224,16 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
 
   /// The build flavor, if provided.
-  late String? flavor = results.findOption('flavor', argParser: argParser);
+  String? get flavor => results.findOption('flavor', argParser: argParser);
 
   /// The target script, if provided.
-  late String? target = results.findOption('target', argParser: argParser);
+  String? get target => results.findOption('target', argParser: argParser);
 
   /// Whether --no-confirm was passed.
   bool get noConfirm => results['no-confirm'] == true;
 
   /// The flutter version specified.
-  late String flutterVersionArg = results['flutter-version'] as String;
+  String get flutterVersionArg => results['flutter-version'] as String;
 
   /// The workflow to create a new release for a Shorebird app.
   ///
