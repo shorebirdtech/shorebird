@@ -94,7 +94,7 @@ class ReleaseCommand extends ShorebirdCommand {
         help: '''
 The Flutter version to use when building the app (e.g: 3.16.3).
 This option also accepts Flutter commit hashes (e.g. 611a4066f1).
-Defaults to latest which builds using the latest stable Flutter version.''',
+Defaults to "latest" which builds using the latest stable Flutter version.''',
       )
       ..addOption(
         'artifact',
