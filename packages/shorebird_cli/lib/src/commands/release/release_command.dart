@@ -90,8 +90,11 @@ class ReleaseCommand extends ShorebirdCommand {
       )
       ..addOption(
         'flutter-version',
-        help:
-            '''The Flutter version to use when building the app (e.g: 3.16.3). This option also accepts Flutter commit hashes.''',
+        defaultsTo: 'latest',
+        help: '''
+The Flutter version to use when building the app (e.g: 3.16.3).
+This option also accepts Flutter commit hashes (e.g. 611a4066f1).
+Defaults to "latest" which builds using the latest stable Flutter version.''',
       )
       ..addOption(
         'artifact',
@@ -221,16 +224,16 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
 
   /// The build flavor, if provided.
-  late String? flavor = results.findOption('flavor', argParser: argParser);
+  String? get flavor => results.findOption('flavor', argParser: argParser);
 
   /// The target script, if provided.
-  late String? target = results.findOption('target', argParser: argParser);
+  String? get target => results.findOption('target', argParser: argParser);
 
   /// Whether --no-confirm was passed.
   bool get noConfirm => results['no-confirm'] == true;
 
-  /// The flutter version specified by the user, if any.
-  late String? flutterVersionArg = results['flutter-version'] as String?;
+  /// The flutter version specified.
+  String get flutterVersionArg => results['flutter-version'] as String;
 
   /// The workflow to create a new release for a Shorebird app.
   ///
@@ -346,14 +349,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   /// [shorebirdEnv]. Will exit with [ExitCode.software] if the version
   /// specified by the user is not found/supported.
   Future<String> resolveTargetFlutterRevision() async {
-    if (flutterVersionArg == null) {
-      return shorebirdEnv.flutterRevision;
-    }
+    if (flutterVersionArg == 'latest') return shorebirdEnv.flutterRevision;
 
     final String? revision;
     try {
       revision = await shorebirdFlutter.resolveFlutterRevision(
-        flutterVersionArg!,
+        flutterVersionArg,
       );
     } on Exception catch (error) {
       logger.err('''

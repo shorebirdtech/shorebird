@@ -102,6 +102,7 @@ void main() {
 
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
+      when(() => argResults['flutter-version']).thenReturn('latest');
       when(() => argResults.wasParsed(any())).thenReturn(true);
 
       when(cache.updateAll).thenAnswer((_) async => {});
