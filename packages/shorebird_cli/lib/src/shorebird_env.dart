@@ -56,18 +56,6 @@ class ShorebirdEnv {
     ).readAsStringSync().trim();
   }
 
-  /// Set the Shorebird Flutter revision.
-  set flutterRevision(String revision) {
-    if (revision == flutterRevision) return;
-    File(
-      p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
-    ).writeAsStringSync(revision);
-    final snapshot = File(
-      p.join(shorebirdRoot.path, 'bin', 'cache', 'shorebird.snapshot'),
-    );
-    if (snapshot.existsSync()) snapshot.deleteSync();
-  }
-
   /// Get the Shorebird Flutter revision.
   String get flutterRevision {
     return _flutterRevisionOverride ??

@@ -286,24 +286,4 @@ class ShorebirdFlutter {
       result,
     ).map((e) => e.replaceFirst('origin/flutter_release/', '')).toList();
   }
-
-  /// Use the provided [version] of Flutter.
-  Future<void> useVersion({required String version}) async {
-    final revision = await git.revParse(
-      revision: 'origin/flutter_release/$version',
-      directory: _workingDirectory(),
-    );
-
-    await useRevision(revision: revision);
-  }
-
-  /// Use the provided [revision] of Flutter.
-  Future<void> useRevision({required String revision}) async {
-    await installRevision(revision: revision);
-
-    final version = await getVersionForRevision(flutterRevision: revision);
-    final useFlutterProgress = logger.progress('Using Flutter $version');
-    shorebirdEnv.flutterRevision = revision;
-    useFlutterProgress.complete();
-  }
 }
