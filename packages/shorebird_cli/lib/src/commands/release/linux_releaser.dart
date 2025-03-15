@@ -59,8 +59,8 @@ To change the version of this release, change your app's version in your pubspec
     } on PreconditionFailedException catch (e) {
       throw ProcessExit(e.exitCode.code);
     }
-    final flutterVersionArg = argResults['flutter-version'] as String?;
-    if (flutterVersionArg != null) {
+    final flutterVersionArg = argResults['flutter-version'] as String;
+    if (flutterVersionArg != 'latest') {
       final version = await shorebirdFlutter.resolveFlutterVersion(
         flutterVersionArg,
       );
