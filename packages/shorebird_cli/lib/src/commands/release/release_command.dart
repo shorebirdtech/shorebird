@@ -517,7 +517,7 @@ ${summary.join('\n')}
   }) async {
     final baseMetadata = UpdateReleaseMetadata(
       releasePlatform: releaser.releaseType.releasePlatform,
-      flutterVersionOverride: results['flutter-version'] as String?,
+      flutterVersionOverride: results['flutter-version'] as String,
       environment: BuildEnvironmentMetadata(
         flutterRevision: shorebirdEnv.flutterRevision,
         operatingSystem: platform.operatingSystem,

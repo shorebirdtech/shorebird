@@ -105,6 +105,7 @@ void main() {
 
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults.wasParsed(any())).thenReturn(false);
+      when(() => argResults['flutter-version']).thenReturn('latest');
 
       when(() => logger.progress(any())).thenReturn(progress);
 
