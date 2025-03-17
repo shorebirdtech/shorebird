@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.28 (March 17, 2025)
+
+- ⚙️ add `shorebird flutter config` command
+- 🪟 `shorebird release windows` should support `--flutter-version=<hash>`
+- 🧹 Various dependency upgrades
+
 ## 1.6.27 (March 15, 2025)
 
 - 🩹 Fix error in `shorebird release windows` when no `--flutter-version` is specified.
