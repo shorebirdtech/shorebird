@@ -44,3 +44,11 @@ abstract class ShorebirdCommand extends Command<int> {
   /// [ArgResults] for the current command.
   ArgResults get results => testArgResults ?? argResults!;
 }
+
+/// {@template shorebird_proxy_command}
+/// A command in the Shorebird CLI that proxies to an underlying process.
+/// {@endtemplate}
+abstract class ShorebirdProxyCommand extends ShorebirdCommand {
+  @override
+  ArgParser get argParser => ArgParser.allowAnything();
+}
