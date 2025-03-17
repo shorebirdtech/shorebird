@@ -246,9 +246,6 @@ To change the version of this release, change your app's version in your pubspec
           when(
             () => shorebirdFlutter.resolveFlutterVersion('3.27.1'),
           ).thenAnswer((_) async => Version(3, 27, 1));
-          when(
-            () => shorebirdFlutter.getRevisionForVersion(any()),
-          ).thenAnswer((_) async => 'deadbeef');
         });
 
         test('logs error and exits with usage err', () async {
@@ -262,23 +259,6 @@ To change the version of this release, change your app's version in your pubspec
 Windows releases are not supported with Flutter versions older than $minimumSupportedWindowsFlutterVersion.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           ).called(1);
-        });
-
-        group('when flutter version is 3.27.1 but hash is supported', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.getRevisionForVersion(any()),
-            ).thenAnswer(
-              (_) async => windowsFlutterGitHashesBelowMinVersion.first,
-            );
-          });
-
-          test('completes normally', () async {
-            await expectLater(
-              runWithOverrides(releaser.assertPreconditions),
-              completes,
-            );
-          });
         });
       });
     });
