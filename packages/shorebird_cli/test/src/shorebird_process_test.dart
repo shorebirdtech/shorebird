@@ -1,12 +1,14 @@
 // cspell:ignore asdfasdf
-import 'dart:io';
+import 'dart:io' hide Platform;
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
@@ -21,6 +23,7 @@ void main() {
 
     late EngineConfig engineConfig;
     late ShorebirdLogger logger;
+    late Platform platform;
     late ProcessWrapper processWrapper;
     late Process startProcess;
     late ShorebirdProcessResult runProcessResult;
@@ -33,6 +36,7 @@ void main() {
         values: {
           engineConfigRef.overrideWith(() => engineConfig),
           loggerRef.overrideWith(() => logger),
+          platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
@@ -41,6 +45,7 @@ void main() {
     setUp(() {
       engineConfig = const EngineConfig.empty();
       logger = MockShorebirdLogger();
+      platform = MockPlatform();
       processWrapper = MockProcessWrapper();
       runProcessResult = MockProcessResult();
       startProcess = MockProcess();
@@ -58,6 +63,8 @@ void main() {
       when(() => runProcessResult.exitCode).thenReturn(ExitCode.success.code);
 
       when(() => logger.level).thenReturn(Level.info);
+
+      when(() => platform.isWindows).thenReturn(false);
     });
 
     test('ShorebirdProcessResult can be instantiated as a const', () {
@@ -90,6 +97,21 @@ void main() {
             ['pull'],
             environment: {},
             workingDirectory: '~',
+          ),
+        ).called(1);
+      });
+
+      test('sanitizes executable on windows', () {
+        when(() => platform.isWindows).thenReturn(true);
+        const executable =
+            r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
+        runWithOverrides(() => shorebirdProcess.run(executable, ['--version']));
+        verify(
+          () => processWrapper.run(
+            '"$executable"',
+            ['--version'],
+            environment: any(named: 'environment'),
+            workingDirectory: any(named: 'workingDirectory'),
           ),
         ).called(1);
       });
@@ -238,6 +260,23 @@ void main() {
             ['pull'],
             environment: {},
             workingDirectory: '~',
+          ),
+        ).called(1);
+      });
+
+      test('sanitizes executable on windows', () {
+        when(() => platform.isWindows).thenReturn(true);
+        const executable =
+            r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
+        runWithOverrides(
+          () => shorebirdProcess.runSync(executable, ['--version']),
+        );
+        verify(
+          () => processWrapper.runSync(
+            '"$executable"',
+            ['--version'],
+            environment: any(named: 'environment'),
+            workingDirectory: any(named: 'workingDirectory'),
           ),
         ).called(1);
       });
@@ -414,6 +453,23 @@ void main() {
 
         verify(
           () => processWrapper.start('git', ['pull'], environment: {}),
+        ).called(1);
+      });
+
+      test('sanitizes executable on windows', () {
+        when(() => platform.isWindows).thenReturn(true);
+        const executable =
+            r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
+        runWithOverrides(
+          () => shorebirdProcess.start(executable, ['--version']),
+        );
+        verify(
+          () => processWrapper.start(
+            '"$executable"',
+            ['--version'],
+            environment: any(named: 'environment'),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
         ).called(1);
       });
 

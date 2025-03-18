@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [ShorebirdProcess] instance.
@@ -13,6 +14,19 @@ final processRef = create(ShorebirdProcess.new);
 
 /// The [ShorebirdProcess] instance available in the current zone.
 ShorebirdProcess get process => read(processRef);
+
+/// Sanitizes the executable path on Windows.
+/// https://github.com/dart-lang/sdk/issues/37751
+String _sanitizeExecutablePath(String executable) {
+  if (executable.isEmpty) return executable;
+  if (!platform.isWindows) return executable;
+  if (executable.contains(' ') && !executable.contains('"')) {
+    // Use quoted strings to indicate where the file name ends and the arguments begin;
+    // otherwise, the file name is ambiguous.
+    return '"$executable"';
+  }
+  return executable;
+}
 
 /// A wrapper around [Process] that replaces executables to Shorebird-vended
 /// versions.
@@ -34,9 +48,6 @@ class ShorebirdProcess {
     Map<String, String>? environment,
     String? workingDirectory,
   }) async {
-    logger.detail(
-      '''[Process.stream] $executable ${arguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
-    );
     final process = await start(
       executable,
       arguments,
@@ -60,9 +71,8 @@ class ShorebirdProcess {
       executable: executable,
       useVendedFlutter: useVendedFlutter,
     );
-    final resolvedExecutable = _resolveExecutable(
-      executable,
-      useVendedFlutter: useVendedFlutter,
+    final resolvedExecutable = _sanitizeExecutablePath(
+      _resolveExecutable(executable, useVendedFlutter: useVendedFlutter),
     );
     final resolvedArguments = _resolveArguments(
       executable,
@@ -98,9 +108,8 @@ class ShorebirdProcess {
       executable: executable,
       useVendedFlutter: useVendedFlutter,
     );
-    final resolvedExecutable = _resolveExecutable(
-      executable,
-      useVendedFlutter: useVendedFlutter,
+    final resolvedExecutable = _sanitizeExecutablePath(
+      _resolveExecutable(executable, useVendedFlutter: useVendedFlutter),
     );
     final resolvedArguments = _resolveArguments(
       executable,
@@ -137,9 +146,8 @@ class ShorebirdProcess {
       // Note: this will overwrite existing environment values.
       resolvedEnvironment.addAll(_environmentOverrides(executable: executable));
     }
-    final resolvedExecutable = _resolveExecutable(
-      executable,
-      useVendedFlutter: useVendedFlutter,
+    final resolvedExecutable = _sanitizeExecutablePath(
+      _resolveExecutable(executable, useVendedFlutter: useVendedFlutter),
     );
     final resolvedArguments = _resolveArguments(
       executable,
