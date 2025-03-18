@@ -45,16 +45,24 @@ void main() {
     required String workingDirectory,
     Logger? logger,
   }) {
+    logger ??= Logger();
     final parts = command.split(' ');
     final executable = parts.first;
     final arguments = parts.skip(1).toList();
-    (logger ?? Logger()).info('running $command in $workingDirectory');
-    return Process.runSync(
+    logger.info('Running $command in $workingDirectory');
+    final result = Process.runSync(
       executable,
       arguments,
       runInShell: true,
       workingDirectory: workingDirectory,
     );
+    logger
+      ..info('Exited with code: ${result.exitCode}')
+      ..info(result.stdout.toString());
+    if (result.exitCode != ExitCode.success.code) {
+      logger.err(result.stderr.toString());
+    }
+    return result;
   }
 
   test('--version', () {
