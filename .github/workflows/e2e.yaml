@@ -115,23 +115,15 @@ jobs:
           script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
-    strategy:
-      fail-fast: false
-      matrix:
-        # os: [macos-latest, windows-latest, ubuntu-latest]
-        branch: [main]
-
     runs-on: windows-latest
     timeout-minutes: 20
 
     env:
-      SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
+      SHOREBIRD_HOSTED_URL: https://api.shorebird.dev
 
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
-        # with:
-        #   ref: ${{ matrix.branch }}
 
       - name: 🖥️ Add Shorebird to macOS/Linux PATH
         shell: bash
