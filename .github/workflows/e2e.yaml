@@ -37,7 +37,7 @@ jobs:
             # 3.19.6,
           ]
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 15
 
     env:
