@@ -159,9 +159,10 @@ class Gradlew {
     return match?.group(1) ?? 'unknown';
   }
 
-  /// Return whether the gradle daemon is available at [projectRoot].
+  /// Whether the gradle daemon is available at [projectRoot].
   Future<bool> isDaemonAvailable(String projectRoot) async {
-    // PID STATUS   INFO
+    // Sample output:
+    // PID   STATUS   INFO
     // 30047 IDLE     8.11.1
     // 26397 STOPPED  (after the daemon registry became unreadable)
     // 23432 STOPPED  (by user or operating system)
@@ -176,7 +177,7 @@ class Gradlew {
         status.stdout.toString().contains('BUSY');
   }
 
-  ///  Starts the daemon if not running at [projectRoot].
+  /// Starts the daemon if not running at [projectRoot].
   Future<void> startDaemon(String projectRoot) async {
     final exitCode = await _stream(['--daemon'], projectRoot);
     if (exitCode != 0) {

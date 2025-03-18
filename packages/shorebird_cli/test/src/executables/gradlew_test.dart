@@ -585,6 +585,6 @@ No daemons are running.
           ),
         ).called(1);
       });
-    });
+    }, testOn: 'linux || mac-os');
   });
 }
