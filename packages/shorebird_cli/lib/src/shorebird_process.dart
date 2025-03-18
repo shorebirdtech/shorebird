@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [ShorebirdProcess] instance.
@@ -34,9 +35,6 @@ class ShorebirdProcess {
     Map<String, String>? environment,
     String? workingDirectory,
   }) async {
-    logger.detail(
-      '''[Process.stream] $executable ${arguments.join(' ')}${workingDirectory == null ? '' : ' (in $workingDirectory)'}''',
-    );
     final process = await start(
       executable,
       arguments,
@@ -178,9 +176,21 @@ class ShorebirdProcess {
     required bool useVendedFlutter,
   }) {
     if (useVendedFlutter && executable == 'flutter') {
-      return shorebirdEnv.flutterBinaryFile.path;
+      return _sanitizeExecutablePath(shorebirdEnv.flutterBinaryFile.path);
     }
+    return _sanitizeExecutablePath(executable);
+  }
 
+  /// Sanitizes the executable path on Windows.
+  /// https://github.com/dart-lang/sdk/issues/37751
+  String _sanitizeExecutablePath(String executable) {
+    if (executable.isEmpty) return executable;
+    if (!platform.isWindows) return executable;
+    if (executable.contains(' ') && !executable.contains('"')) {
+      // Use quoted strings to indicate where the file name ends and the arguments begin;
+      // otherwise, the file name is ambiguous.
+      return '"$executable"';
+    }
     return executable;
   }
 
