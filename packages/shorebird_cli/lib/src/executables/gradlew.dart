@@ -168,7 +168,7 @@ class Gradlew {
     // 23432 STOPPED  (by user or operating system)
     final status = await _run(['--status'], projectRoot);
     if (status.exitCode != 0) {
-      throw Exception('Failed to check gradle daemon status');
+      throw Exception('Unable to determine gradle daemon status');
     }
 
     // If we have a daemon that is either IDLE or BUSY then subsequent
@@ -181,7 +181,7 @@ class Gradlew {
   Future<void> startDaemon(String projectRoot) async {
     final exitCode = await _stream(['--daemon'], projectRoot);
     if (exitCode != 0) {
-      throw Exception('Failed to initialize gradle daemon');
+      throw Exception('Unable to start gradle daemon');
     }
   }
 
