@@ -160,6 +160,7 @@ class Gradlew {
   }
 
   /// Whether the gradle daemon is available at [projectRoot].
+  /// Command: `./gradlew --status`
   Future<bool> isDaemonAvailable(String projectRoot) async {
     // Sample output:
     // PID   STATUS   INFO
@@ -178,6 +179,7 @@ class Gradlew {
   }
 
   /// Starts the daemon if not running at [projectRoot].
+  /// Command: `./gradlew --daemon`
   Future<void> startDaemon(String projectRoot) async {
     final exitCode = await _stream(['--daemon'], projectRoot);
     if (exitCode != 0) {
