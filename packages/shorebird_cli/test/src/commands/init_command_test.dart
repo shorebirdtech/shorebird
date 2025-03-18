@@ -113,6 +113,9 @@ environment:
       ).thenAnswer((_) async => {});
       when(() => doctor.generalValidators).thenReturn([]);
       when(
+        () => gradlew.isDaemonAvailable(any()),
+      ).thenAnswer((_) async => true);
+      when(
         () => shorebirdEnv.getShorebirdYamlFile(cwd: any(named: 'cwd')),
       ).thenReturn(shorebirdYamlFile);
       when(
@@ -249,6 +252,47 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           any(that: contains('app_id: $appId')),
         ),
       ).called(1);
+    });
+
+    test('gracefully handles missing android project exceptions', () async {
+      when(
+        () => gradlew.isDaemonAvailable(any()),
+      ).thenThrow(const MissingAndroidProjectException(''));
+      final exitCode = await runWithOverrides(command.run);
+      expect(exitCode, ExitCode.success.code);
+      verifyNever(() => gradlew.startDaemon(any()));
+    });
+
+    test('throws when unable to initialize gradle wrapper', () async {
+      when(() => gradlew.isDaemonAvailable(any())).thenThrow(Exception('oops'));
+      final exitCode = await runWithOverrides(command.run);
+      expect(exitCode, ExitCode.software.code);
+      verifyNever(() => gradlew.startDaemon(any()));
+      verify(
+        () => logger.err('Failed to initialize gradle wrapper.'),
+      ).called(1);
+    });
+
+    test('starts gradle daemon if needed and throws on error', () async {
+      when(
+        () => gradlew.isDaemonAvailable(any()),
+      ).thenAnswer((_) async => false);
+      when(() => gradlew.startDaemon(any())).thenThrow(Exception('oops'));
+      final exitCode = await runWithOverrides(command.run);
+      expect(exitCode, ExitCode.software.code);
+      verify(() => gradlew.startDaemon(projectRoot.path)).called(1);
+      verify(() => logger.err('Failed to start gradle daemon.')).called(1);
+    });
+
+    test('starts gradle daemon if needed and streams logs', () async {
+      when(
+        () => gradlew.isDaemonAvailable(any()),
+      ).thenAnswer((_) async => false);
+      when(() => gradlew.startDaemon(any())).thenAnswer((_) async {});
+      final exitCode = await runWithOverrides(command.run);
+      expect(exitCode, ExitCode.success.code);
+      verify(() => gradlew.startDaemon(projectRoot.path)).called(1);
+      verify(() => gradlew.isDaemonAvailable(projectRoot.path)).called(1);
     });
 
     test('fails when an error occurs while extracting flavors', () async {
