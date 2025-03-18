@@ -268,9 +268,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
       verifyNever(() => gradlew.startDaemon(any()));
-      verify(
-        () => logger.err('Failed to initialize gradle wrapper.'),
-      ).called(1);
+      verify(() => logger.err('Unable to initialize gradlew.')).called(1);
     });
 
     test('starts gradle daemon if needed and throws on error', () async {
@@ -281,7 +279,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
       verify(() => gradlew.startDaemon(projectRoot.path)).called(1);
-      verify(() => logger.err('Failed to start gradle daemon.')).called(1);
+      verify(() => logger.err('Unable to start gradle daemon.')).called(1);
     });
 
     test('starts gradle daemon if needed and streams logs', () async {

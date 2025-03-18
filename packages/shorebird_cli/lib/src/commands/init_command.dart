@@ -107,7 +107,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     Set<String>? macosFlavors;
     var productFlavors = <String>{};
     final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
-    final initializeGradleProgress = logger.progress('Initializing gradle');
+    final initializeGradleProgress = logger.progress('Initializing gradlew');
     final bool shouldStartGradleDaemon;
     try {
       shouldStartGradleDaemon = await _shouldStartGradleDaemon(
@@ -115,7 +115,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       );
     } on Exception {
       initializeGradleProgress.fail();
-      logger.err('Failed to initialize gradle wrapper.');
+      logger.err('Unable to initialize gradlew.');
       return ExitCode.software.code;
     }
     initializeGradleProgress.complete();
@@ -124,7 +124,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       try {
         await gradlew.startDaemon(projectRoot.path);
       } on Exception {
-        logger.err('Failed to start gradle daemon.');
+        logger.err('Unable to start gradle daemon.');
         return ExitCode.software.code;
       }
     }
