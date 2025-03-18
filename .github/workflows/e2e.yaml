@@ -67,18 +67,18 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: ☕️ Adjust JAVA_HOME
-        if: runner.os == 'Windows'
-        run: |
-          where.exe java
-          echo "${JAVA_HOME}"
-          cp "$(where.exe java)" "C:\Program Files\Java\jdk-17\bin\java.exe"
-          echo "Copied Java to C:\Program Files\Java\jdk-17\bin\java.exe"
-          # Add the new location to the PATH
-          echo "C:\Program Files\Java\jdk-17\bin" >> $env:PATH
-          echo "Added C:\Program Files\Java\jdk-17\bin to PATH"
-          # Update JAVA_HOME
-          echo "JAVA_HOME=C:\Program Files\Java\jdk-17" >> $GITHUB_ENV
+      # - name: ☕️ Adjust JAVA_HOME
+      #   if: runner.os == 'Windows'
+      #   run: |
+      #     where.exe java
+      #     echo "${JAVA_HOME}"
+      #     cp "$(where.exe java)" "C:\Program Files\Java\jdk-17\bin\java.exe"
+      #     echo "Copied Java to C:\Program Files\Java\jdk-17\bin\java.exe"
+      #     # Add the new location to the PATH
+      #     echo "C:\Program Files\Java\jdk-17\bin" >> $env:PATH
+      #     echo "Added C:\Program Files\Java\jdk-17\bin to PATH"
+      #     # Update JAVA_HOME
+      #     echo "JAVA_HOME=C:\Program Files\Java\jdk-17" >> $GITHUB_ENV
 
       - name: 🎯 Set up Flutter
         uses: subosito/flutter-action@v2
@@ -86,6 +86,9 @@ jobs:
           channel: stable
           flutter-version: ${{ matrix.flutter-version }}
           cache: true
+
+      - name: 🐦 Shorebird Doctor
+        run: shorebird doctor -v
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
