@@ -119,7 +119,7 @@ jobs:
       fail-fast: false
       matrix:
         # os: [macos-latest, windows-latest, ubuntu-latest]
-        branch: [stable, main]
+        branch: [main]
 
     runs-on: windows-latest
     timeout-minutes: 20
@@ -130,8 +130,8 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ matrix.branch }}
+        # with:
+        #   ref: ${{ matrix.branch }}
 
       - name: 🖥️ Add Shorebird to macOS/Linux PATH
         shell: bash
