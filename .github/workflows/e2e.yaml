@@ -5,6 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  push:
   workflow_dispatch:
   schedule:
     # At the end of every day
@@ -16,6 +17,7 @@ env:
 
 jobs:
   patch:
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -116,10 +118,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        # os: [macos-latest, windows-latest, ubuntu-latest]
         branch: [stable, main]
 
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     timeout-minutes: 20
 
     env:
