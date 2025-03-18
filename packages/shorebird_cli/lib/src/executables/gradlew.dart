@@ -120,6 +120,29 @@ class Gradlew {
     return result;
   }
 
+  Future<int> _stream(List<String> args, String projectRoot) async {
+    final javaHome = java.home;
+    final androidRoot = Directory(p.join(projectRoot, 'android'));
+
+    if (!androidRoot.existsSync()) {
+      throw MissingAndroidProjectException(projectRoot);
+    }
+
+    final executableFile = File(p.join(androidRoot.path, executable));
+
+    if (!executableFile.existsSync()) {
+      throw MissingGradleWrapperException(p.relative(executableFile.path));
+    }
+
+    final executablePath = executableFile.path;
+    return process.stream(
+      executablePath,
+      args,
+      workingDirectory: p.dirname(executablePath),
+      environment: {if (!javaHome.isNullOrEmpty) 'JAVA_HOME': javaHome!},
+    );
+  }
+
   /// Returns whether the gradle wrapper exists at [projectRoot].
   bool exists(String projectRoot) =>
       File(p.join(projectRoot, 'android', executable)).existsSync();
@@ -134,6 +157,34 @@ class Gradlew {
     final match = versionPattern.firstMatch(result.stdout.toString());
 
     return match?.group(1) ?? 'unknown';
+  }
+
+  /// Whether the gradle daemon is available at [projectRoot].
+  /// Command: `./gradlew --status`
+  Future<bool> isDaemonAvailable(String projectRoot) async {
+    // Sample output:
+    // PID   STATUS   INFO
+    // 30047 IDLE     8.11.1
+    // 26397 STOPPED  (after the daemon registry became unreadable)
+    // 23432 STOPPED  (by user or operating system)
+    final status = await _run(['--status'], projectRoot);
+    if (status.exitCode != 0) {
+      throw Exception('Unable to determine gradle daemon status');
+    }
+
+    // If we have a daemon that is either IDLE or BUSY then subsequent
+    // gradle commands will be faster.
+    return status.stdout.toString().contains('IDLE') ||
+        status.stdout.toString().contains('BUSY');
+  }
+
+  /// Starts the daemon if not running at [projectRoot].
+  /// Command: `./gradlew --daemon`
+  Future<void> startDaemon(String projectRoot) async {
+    final exitCode = await _stream(['--daemon'], projectRoot);
+    if (exitCode != 0) {
+      throw Exception('Unable to start gradle daemon');
+    }
   }
 
   /// Return the set of product flavors configured for the app at [projectRoot].

@@ -107,6 +107,28 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     Set<String>? macosFlavors;
     var productFlavors = <String>{};
     final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
+    final initializeGradleProgress = logger.progress('Initializing gradlew');
+    final bool shouldStartGradleDaemon;
+    try {
+      shouldStartGradleDaemon = await _shouldStartGradleDaemon(
+        projectRoot.path,
+      );
+    } on Exception {
+      initializeGradleProgress.fail();
+      logger.err('Unable to initialize gradlew.');
+      return ExitCode.software.code;
+    }
+    initializeGradleProgress.complete();
+
+    if (shouldStartGradleDaemon) {
+      try {
+        await gradlew.startDaemon(projectRoot.path);
+      } on Exception {
+        logger.err('Unable to start gradle daemon.');
+        return ExitCode.software.code;
+      }
+    }
+
     final detectFlavorsProgress = logger.progress('Detecting product flavors');
     try {
       androidFlavors = await _maybeGetAndroidFlavors(projectRoot.path);
@@ -285,6 +307,15 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     await doctor.runValidators(doctor.generalValidators, applyFixes: true);
 
     return ExitCode.success.code;
+  }
+
+  Future<bool> _shouldStartGradleDaemon(String projectPath) async {
+    try {
+      final isAvailable = await gradlew.isDaemonAvailable(projectPath);
+      return !isAvailable;
+    } on MissingAndroidProjectException {
+      return false;
+    }
   }
 
   Future<Set<String>?> _maybeGetAndroidFlavors(String projectPath) async {

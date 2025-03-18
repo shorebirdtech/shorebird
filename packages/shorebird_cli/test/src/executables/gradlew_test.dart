@@ -429,5 +429,162 @@ OS:           Mac OS X 14.4.1 aarch64
         }, testOn: 'linux || mac-os');
       });
     });
+
+    group('isDaemonAvailable', () {
+      late Directory projectRoot;
+
+      setUp(() {
+        projectRoot = setUpAppTempDir();
+        File(
+          p.join(projectRoot.path, 'android', 'gradlew'),
+        ).createSync(recursive: true);
+      });
+
+      test('returns true when status is IDLE', () async {
+        when(() => result.stdout).thenReturn('''
+PID STATUS   INFO
+30047 IDLE     8.11.1
+''');
+        expect(
+          await runWithOverrides(
+            () => gradlew.isDaemonAvailable(projectRoot.path),
+          ),
+          isTrue,
+        );
+      });
+
+      test('returns true when status is BUSY', () async {
+        when(() => result.stdout).thenReturn('''
+PID STATUS   INFO
+30047 BUSY     8.11.1
+''');
+        expect(
+          await runWithOverrides(
+            () => gradlew.isDaemonAvailable(projectRoot.path),
+          ),
+          isTrue,
+        );
+      });
+
+      test('returns false when status is STOPPED', () async {
+        when(() => result.stdout).thenReturn('''
+PID STATUS   INFO
+26397 STOPPED  (after the daemon registry became unreadable)
+''');
+        expect(
+          await runWithOverrides(
+            () => gradlew.isDaemonAvailable(projectRoot.path),
+          ),
+          isFalse,
+        );
+      });
+
+      group('when there are no daemons', () {
+        test('returns false when no daemons are running', () async {
+          when(() => result.stdout).thenReturn('''
+No daemons are running.
+''');
+          expect(
+            await runWithOverrides(
+              () => gradlew.isDaemonAvailable(projectRoot.path),
+            ),
+            isFalse,
+          );
+        });
+      });
+
+      test('throws when the process exits with non-zero exit code', () async {
+        when(() => result.exitCode).thenReturn(1);
+        await expectLater(
+          runWithOverrides(() => gradlew.isDaemonAvailable(projectRoot.path)),
+          throwsA(isA<Exception>()),
+        );
+      });
+    }, testOn: 'linux || mac-os');
+
+    group('startDaemon', () {
+      late Directory projectRoot;
+
+      setUp(() {
+        projectRoot = setUpAppTempDir();
+        File(
+          p.join(projectRoot.path, 'android', 'gradlew'),
+        ).createSync(recursive: true);
+      });
+
+      test('throws MissingAndroidProjectException '
+          'when android root does not exist', () async {
+        final tempDir = Directory.systemTemp.createTempSync();
+        await expectLater(
+          runWithOverrides(() => gradlew.startDaemon(tempDir.path)),
+          throwsA(isA<MissingAndroidProjectException>()),
+        );
+        verifyNever(
+          () => process.stream(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
+          ),
+        );
+      });
+
+      test('throws MissingGradleWrapperException '
+          'when gradlew does not exist', () async {
+        final tempDir = setUpAppTempDir();
+        await expectLater(
+          runWithOverrides(() => gradlew.startDaemon(tempDir.path)),
+          throwsA(isA<MissingGradleWrapperException>()),
+        );
+        verifyNever(
+          () => process.stream(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
+          ),
+        );
+      });
+
+      test('throws when the process exits with non-zero exit code', () async {
+        final exitCode = ExitCode.software.code;
+        when(
+          () => process.stream(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer((_) async => exitCode);
+        await expectLater(
+          runWithOverrides(() => gradlew.startDaemon(projectRoot.path)),
+          throwsA(isA<Exception>()),
+        );
+      });
+
+      test('calls process.stream with correct args', () async {
+        final exitCode = ExitCode.success.code;
+        when(
+          () => process.stream(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+            environment: any(named: 'environment'),
+          ),
+        ).thenAnswer((_) async => exitCode);
+        await expectLater(
+          runWithOverrides(() => gradlew.startDaemon(projectRoot.path)),
+          completes,
+        );
+        verify(
+          () => process.stream(
+            p.join(projectRoot.path, 'android', 'gradlew'),
+            ['--daemon'],
+            workingDirectory: p.join(projectRoot.path, 'android'),
+            environment: {'JAVA_HOME': javaHome},
+          ),
+        ).called(1);
+      });
+    }, testOn: 'linux || mac-os');
   });
 }
