@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.29 (March 18, 2025)
+
+- 🪵 improve `gradlew` logs during `shorebird init`
+- 🧼 sanitize executable paths on windows
+- 📦 fix `bundletool` execution on windows
+
 ## 1.6.28 (March 17, 2025)
 
 - ⚙️ add `shorebird flutter config` command
