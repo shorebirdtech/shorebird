@@ -52,6 +52,7 @@ class ShorebirdProcess {
     Map<String, String>? environment,
     String? workingDirectory,
     bool useVendedFlutter = true,
+    bool? runInShell,
   }) async {
     final resolvedEnvironment = _resolveEnvironment(
       environment,
@@ -76,6 +77,7 @@ class ShorebirdProcess {
       resolvedArguments,
       workingDirectory: workingDirectory,
       environment: resolvedEnvironment,
+      runInShell: runInShell,
     );
 
     _logResult(result);
@@ -281,12 +283,14 @@ class ProcessWrapper {
     List<String> arguments, {
     Map<String, String>? environment,
     String? workingDirectory,
+    bool? runInShell,
   }) async {
     final result = await Process.run(
       executable,
       arguments,
       environment: environment,
-      runInShell: Platform.isWindows,
+      // TODO(felangel): Refacgtor to never runInShell
+      runInShell: runInShell ?? Platform.isWindows,
       workingDirectory: workingDirectory,
     );
     return ShorebirdProcessResult(

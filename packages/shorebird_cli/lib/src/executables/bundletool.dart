@@ -28,6 +28,9 @@ class Bundletool {
     return process.run(
       javaExecutable,
       ['-jar', bundletool, ...command],
+      // Never run in shell because we always have a fully resolved
+      // executable path.
+      runInShell: false,
       environment: {
         if (!androidSdkPath.isNullOrEmpty) 'ANDROID_HOME': androidSdkPath!,
         if (!javaHome.isNullOrEmpty) 'JAVA_HOME': javaHome!,
