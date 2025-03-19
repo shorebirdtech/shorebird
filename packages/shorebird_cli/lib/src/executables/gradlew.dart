@@ -141,6 +141,8 @@ class Gradlew {
     return process.stream(
       executablePath,
       args,
+      // Never run in shell because we always have a fully resolved
+      // executable path.
       runInShell: false,
       workingDirectory: p.dirname(executablePath),
       environment: {if (!javaHome.isNullOrEmpty) 'JAVA_HOME': javaHome!},
