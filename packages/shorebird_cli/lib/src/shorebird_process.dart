@@ -314,6 +314,7 @@ class ProcessWrapper {
       executable,
       arguments,
       environment: environment,
+      runInShell: Platform.isWindows,
       workingDirectory: workingDirectory,
     );
     return ShorebirdProcessResult(
