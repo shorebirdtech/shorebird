@@ -32,6 +32,7 @@ dependencies:
   pem: ^2.0.5
   platform: ^3.1.6
   pointycastle: ^4.0.0
+  process: ^5.0.3
   propertylistserialization: ^1.4.1
   pub_semver: ^2.2.0
   pubspec_parse: ^1.5.0
