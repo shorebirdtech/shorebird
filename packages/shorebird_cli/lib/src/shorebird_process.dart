@@ -33,12 +33,14 @@ class ShorebirdProcess {
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
+    bool? runInShell,
     String? workingDirectory,
   }) async {
     final process = await start(
       executable,
       arguments,
       environment: environment,
+      runInShell: runInShell,
       workingDirectory: workingDirectory,
       mode: ProcessStartMode.inheritStdio,
     );
@@ -50,9 +52,9 @@ class ShorebirdProcess {
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
+    bool? runInShell,
     String? workingDirectory,
     bool useVendedFlutter = true,
-    bool? runInShell,
   }) async {
     final resolvedEnvironment = _resolveEnvironment(
       environment,
@@ -129,6 +131,7 @@ class ShorebirdProcess {
     List<String> arguments, {
     Map<String, String>? environment,
     bool useVendedFlutter = true,
+    bool? runInShell,
     String? workingDirectory,
     ProcessStartMode mode = ProcessStartMode.normal,
   }) {
@@ -154,6 +157,7 @@ class ShorebirdProcess {
       resolvedExecutable,
       resolvedArguments,
       environment: resolvedEnvironment,
+      runInShell: runInShell,
       workingDirectory: workingDirectory,
       mode: mode,
     );
@@ -310,7 +314,6 @@ class ProcessWrapper {
       executable,
       arguments,
       environment: environment,
-      runInShell: Platform.isWindows,
       workingDirectory: workingDirectory,
     );
     return ShorebirdProcessResult(
@@ -325,13 +328,15 @@ class ProcessWrapper {
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
+    bool? runInShell,
     String? workingDirectory,
     ProcessStartMode mode = ProcessStartMode.normal,
   }) {
     return Process.start(
       executable,
       arguments,
-      runInShell: Platform.isWindows,
+      // TODO(felangel): refactor to never runInShell
+      runInShell: runInShell ?? Platform.isWindows,
       environment: environment,
       workingDirectory: workingDirectory,
       mode: mode,
