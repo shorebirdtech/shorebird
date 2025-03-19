@@ -288,7 +288,7 @@ class ProcessWrapper {
       executable,
       arguments,
       environment: environment,
-      // TODO(felangel): Refacgtor to never runInShell
+      // TODO(felangel): refactor to never runInShell
       runInShell: runInShell ?? Platform.isWindows,
       workingDirectory: workingDirectory,
     );
