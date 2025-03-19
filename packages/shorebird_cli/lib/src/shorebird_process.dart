@@ -141,7 +141,6 @@ class ShorebirdProcess {
       executable,
       useVendedFlutter: useVendedFlutter,
     );
-
     final resolvedArguments = _resolveArguments(
       executable,
       arguments,
