@@ -82,8 +82,25 @@ void main() {
             any(),
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
+            runInShell: any(named: 'runInShell'),
           ),
         ).thenAnswer((_) async => runProcessResult);
+      });
+
+      test('can override runInShell', () async {
+        await runWithOverrides(
+          () => shorebirdProcess.run('git', ['pull'], runInShell: true),
+        );
+
+        verify(
+          () => processWrapper.run(
+            'git',
+            ['pull'],
+            environment: {},
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
+        ).called(1);
       });
 
       test('forwards non-flutter executables to Process.run', () async {

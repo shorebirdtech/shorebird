@@ -63,8 +63,12 @@ void main() {
 
       test('throws exception if process returns non-zero exit code', () async {
         when(
-          () =>
-              process.run(any(), any(), environment: any(named: 'environment')),
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -88,8 +92,12 @@ void main() {
 
       test('completes when process succeeds', () async {
         when(
-          () =>
-              process.run(any(), any(), environment: any(named: 'environment')),
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer(
           (_) async =>
               const ShorebirdProcessResult(exitCode: 0, stdout: '', stderr: ''),
@@ -112,6 +120,7 @@ void main() {
               '--output=$output',
               '--mode=universal',
             ],
+            runInShell: false,
             environment: {
               'ANDROID_HOME': androidSdkPath,
               'JAVA_HOME': javaHome,
@@ -132,6 +141,7 @@ void main() {
               any(),
               any(),
               environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
             ),
           ).thenAnswer(
             (_) async => const ShorebirdProcessResult(
@@ -173,6 +183,7 @@ void main() {
                 '--key-pass=$keyPassword',
                 '--ks-key-alias=$keyAlias',
               ],
+              runInShell: false,
               environment: {
                 'ANDROID_HOME': androidSdkPath,
                 'JAVA_HOME': javaHome,
@@ -189,6 +200,7 @@ void main() {
               any(),
               any(),
               environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
             ),
           ).thenAnswer(
             (_) async => const ShorebirdProcessResult(
@@ -221,6 +233,7 @@ void main() {
                 '--bundle=$appBundlePath',
                 '--output=$output',
               ],
+              runInShell: false,
               environment: {
                 'ANDROID_HOME': androidSdkPath,
                 'JAVA_HOME': javaHome,
@@ -236,8 +249,12 @@ void main() {
 
       test('throws exception if process returns non-zero exit code', () async {
         when(
-          () =>
-              process.run(any(), any(), environment: any(named: 'environment')),
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -260,8 +277,12 @@ void main() {
       test('completes when process succeeds', () async {
         const deviceId = '1234';
         when(
-          () =>
-              process.run(any(), any(), environment: any(named: 'environment')),
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer(
           (_) async =>
               const ShorebirdProcessResult(exitCode: 0, stdout: '', stderr: ''),
@@ -283,6 +304,7 @@ void main() {
               '--allow-downgrade',
               '--device-id=$deviceId',
             ],
+            runInShell: false,
             environment: {
               'ANDROID_HOME': androidSdkPath,
               'JAVA_HOME': javaHome,
@@ -295,8 +317,12 @@ void main() {
     group('getPackageName', () {
       test('throws exception if process returns non-zero exit code', () async {
         when(
-          () =>
-              process.run(any(), any(), environment: any(named: 'environment')),
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -319,8 +345,12 @@ void main() {
 
       test('returns the correct package name', () async {
         when(
-          () =>
-              process.run(any(), any(), environment: any(named: 'environment')),
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 0,
@@ -345,6 +375,7 @@ void main() {
               '--xpath',
               '/manifest/@package',
             ],
+            runInShell: false,
             environment: {
               'ANDROID_HOME': androidSdkPath,
               'JAVA_HOME': javaHome,
@@ -357,8 +388,12 @@ void main() {
     group('getVersionName', () {
       test('throws exception if process returns non-zero exit code', () async {
         when(
-          () =>
-              process.run(any(), any(), environment: any(named: 'environment')),
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -381,8 +416,12 @@ void main() {
 
       test('returns the correct version name', () async {
         when(
-          () =>
-              process.run(any(), any(), environment: any(named: 'environment')),
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 0,
@@ -407,6 +446,7 @@ void main() {
               '--xpath',
               '/manifest/@android:versionName',
             ],
+            runInShell: false,
             environment: {
               'ANDROID_HOME': androidSdkPath,
               'JAVA_HOME': javaHome,
@@ -419,8 +459,12 @@ void main() {
     group('getVersionCode', () {
       test('throws exception if process returns non-zero exit code', () async {
         when(
-          () =>
-              process.run(any(), any(), environment: any(named: 'environment')),
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 1,
@@ -443,8 +487,12 @@ void main() {
 
       test('returns the correct version code', () async {
         when(
-          () =>
-              process.run(any(), any(), environment: any(named: 'environment')),
+          () => process.run(
+            any(),
+            any(),
+            environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer(
           (_) async => const ShorebirdProcessResult(
             exitCode: 0,
@@ -468,6 +516,7 @@ void main() {
               '--xpath',
               '/manifest/@android:versionCode',
             ],
+            runInShell: false,
             environment: {
               'ANDROID_HOME': androidSdkPath,
               'JAVA_HOME': javaHome,
