@@ -108,7 +108,7 @@ void main() {
         runWithOverrides(() => shorebirdProcess.run(executable, ['--version']));
         verify(
           () => processWrapper.run(
-            '"$executable"',
+            "'$executable'",
             ['--version'],
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
@@ -273,7 +273,7 @@ void main() {
         );
         verify(
           () => processWrapper.runSync(
-            '"$executable"',
+            "'$executable'",
             ['--version'],
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
@@ -465,7 +465,7 @@ void main() {
         );
         verify(
           () => processWrapper.start(
-            '"$executable"',
+            "'$executable'",
             ['--version'],
             environment: any(named: 'environment'),
             workingDirectory: any(named: 'workingDirectory'),
