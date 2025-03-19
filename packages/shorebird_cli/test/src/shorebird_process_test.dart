@@ -460,6 +460,7 @@ void main() {
           () => processWrapper.start(
             any(),
             any(),
+            runInShell: any(named: 'runInShell'),
             environment: any(named: 'environment'),
           ),
         ).thenAnswer((_) async => startProcess);
@@ -470,6 +471,22 @@ void main() {
 
         verify(
           () => processWrapper.start('git', ['pull'], environment: {}),
+        ).called(1);
+      });
+
+      test('can override runInShell', () async {
+        await runWithOverrides(
+          () => shorebirdProcess.start('git', ['pull'], runInShell: true),
+        );
+
+        verify(
+          () => processWrapper.start(
+            'git',
+            ['pull'],
+            environment: {},
+            workingDirectory: any(named: 'workingDirectory'),
+            runInShell: true,
+          ),
         ).called(1);
       });
 
