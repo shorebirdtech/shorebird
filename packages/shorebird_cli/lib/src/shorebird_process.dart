@@ -3,10 +3,10 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
-import 'package:process/process.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [ShorebirdProcess] instance.
@@ -139,6 +139,7 @@ class ShorebirdProcess {
       executable,
       useVendedFlutter: useVendedFlutter,
     );
+
     final resolvedArguments = _resolveArguments(
       executable,
       arguments,
@@ -176,7 +177,20 @@ class ShorebirdProcess {
     required bool useVendedFlutter,
   }) {
     if (useVendedFlutter && executable == 'flutter') {
-      return shorebirdEnv.flutterBinaryFile.path;
+      return _sanitizeExecutablePath(shorebirdEnv.flutterBinaryFile.path);
+    }
+    return _sanitizeExecutablePath(executable);
+  }
+
+  /// Sanitizes the executable path on Windows.
+  /// https://github.com/dart-lang/sdk/issues/37751
+  String _sanitizeExecutablePath(String executable) {
+    if (executable.isEmpty) return executable;
+    if (!platform.isWindows) return executable;
+    if (executable.contains(' ') && !executable.contains('"')) {
+      // Use quoted strings to indicate where the file name ends and the arguments begin;
+      // otherwise, the file name is ambiguous.
+      return '"$executable"';
     }
     return executable;
   }
@@ -268,8 +282,9 @@ class ProcessWrapper {
     Map<String, String>? environment,
     String? workingDirectory,
   }) async {
-    final result = await const LocalProcessManager().run(
-      [executable, ...arguments],
+    final result = await Process.run(
+      executable,
+      arguments,
       environment: environment,
       runInShell: Platform.isWindows,
       workingDirectory: workingDirectory,
@@ -288,8 +303,9 @@ class ProcessWrapper {
     Map<String, String>? environment,
     String? workingDirectory,
   }) {
-    final result = const LocalProcessManager().runSync(
-      [executable, ...arguments],
+    final result = Process.runSync(
+      executable,
+      arguments,
       environment: environment,
       runInShell: Platform.isWindows,
       workingDirectory: workingDirectory,
@@ -309,8 +325,9 @@ class ProcessWrapper {
     String? workingDirectory,
     ProcessStartMode mode = ProcessStartMode.normal,
   }) {
-    return const LocalProcessManager().start(
-      [executable, ...arguments],
+    return Process.start(
+      executable,
+      arguments,
       runInShell: Platform.isWindows,
       environment: environment,
       workingDirectory: workingDirectory,
