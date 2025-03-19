@@ -41,6 +41,7 @@ void main() {
         () => process.run(
           any(),
           any(),
+          runInShell: any(named: 'runInShell'),
           workingDirectory: any(named: 'workingDirectory'),
           environment: any(named: 'environment'),
         ),
@@ -119,6 +120,7 @@ Make sure you have run "flutter build apk" at least once.''');
           () => process.run(
             p.join(tempDir.path, 'android', 'gradlew'),
             ['app:tasks', '--all', '--console=auto'],
+            runInShell: false,
             workingDirectory: p.join(tempDir.path, 'android'),
             environment: {'JAVA_HOME': javaHome},
           ),
@@ -147,6 +149,7 @@ Make sure you have run "flutter build apk" at least once.''');
           () => process.run(
             p.join(tempDir.path, 'android', 'gradlew'),
             ['app:tasks', '--all', '--console=auto'],
+            runInShell: false,
             workingDirectory: p.join(tempDir.path, 'android'),
             environment: {'JAVA_HOME': javaHome},
           ),
@@ -234,6 +237,7 @@ BUILD FAILED in 3s
           () => process.run(
             p.join(tempDir.path, 'android', 'gradlew'),
             ['app:tasks', '--all', '--console=auto'],
+            runInShell: false,
             workingDirectory: p.join(tempDir.path, 'android'),
             environment: {'JAVA_HOME': javaHome},
           ),
@@ -552,6 +556,7 @@ No daemons are running.
           () => process.stream(
             any(),
             any(),
+            runInShell: any(named: 'runInShell'),
             workingDirectory: any(named: 'workingDirectory'),
             environment: any(named: 'environment'),
           ),
@@ -568,6 +573,7 @@ No daemons are running.
           () => process.stream(
             any(),
             any(),
+            runInShell: any(named: 'runInShell'),
             workingDirectory: any(named: 'workingDirectory'),
             environment: any(named: 'environment'),
           ),
@@ -580,6 +586,7 @@ No daemons are running.
           () => process.stream(
             p.join(projectRoot.path, 'android', 'gradlew'),
             ['--daemon'],
+            runInShell: false,
             workingDirectory: p.join(projectRoot.path, 'android'),
             environment: {'JAVA_HOME': javaHome},
           ),
