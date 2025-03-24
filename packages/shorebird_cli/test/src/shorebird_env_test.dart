@@ -179,6 +179,7 @@ void main() {
 
     group('dartBinaryFile', () {
       test('returns correct path', () {
+        when(() => platform.isWindows).thenReturn(false);
         expect(
           runWithOverrides(() => shorebirdEnv.dartBinaryFile.path),
           equals(
@@ -190,6 +191,21 @@ void main() {
               flutterRevision,
               'bin',
               'dart',
+            ),
+          ),
+        );
+        when(() => platform.isWindows).thenReturn(true);
+        expect(
+          runWithOverrides(() => shorebirdEnv.dartBinaryFile.path),
+          equals(
+            p.join(
+              shorebirdRoot.path,
+              'bin',
+              'cache',
+              'flutter',
+              flutterRevision,
+              'bin',
+              'dart.bat',
             ),
           ),
         );
@@ -241,6 +257,7 @@ void main() {
 
     group('flutterBinaryFile', () {
       test('returns correct path', () {
+        when(() => platform.isWindows).thenReturn(false);
         expect(
           runWithOverrides(() => shorebirdEnv.flutterBinaryFile.path),
           equals(
@@ -252,6 +269,21 @@ void main() {
               flutterRevision,
               'bin',
               'flutter',
+            ),
+          ),
+        );
+        when(() => platform.isWindows).thenReturn(true);
+        expect(
+          runWithOverrides(() => shorebirdEnv.flutterBinaryFile.path),
+          equals(
+            p.join(
+              shorebirdRoot.path,
+              'bin',
+              'cache',
+              'flutter',
+              flutterRevision,
+              'bin',
+              'flutter.bat',
             ),
           ),
         );
