@@ -125,14 +125,9 @@ class ShorebirdFlutter {
   Map<String, dynamic> getConfig() {
     final args = ['config', '--list'];
     final result = process.runSync(executable, args);
-    if (result.exitCode != ExitCode.success.code) {
-      throw ProcessException(
-        executable,
-        args,
-        '${result.stderr}',
-        result.exitCode,
-      );
-    }
+    // Gracefully handle errors (e.g. older Flutter versions that don't support
+    // `flutter config --list`).
+    if (result.exitCode != ExitCode.success.code) return <String, dynamic>{};
     final output = '${result.stdout}';
     final config = <String, dynamic>{};
     final lines = LineSplitter.split(output).toList();
