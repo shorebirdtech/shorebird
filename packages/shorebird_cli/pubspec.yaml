@@ -9,7 +9,7 @@ environment:
   sdk: ">=3.7.0 <4.0.0"
 
 dependencies:
-  archive: ^4.0.4
+  archive: ^4.0.5
   args: ^2.7.0
   checked_yaml: ^2.0.3
   cli_completion: ^0.5.0
