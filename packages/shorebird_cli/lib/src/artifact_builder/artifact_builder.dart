@@ -94,6 +94,9 @@ class ArtifactBuilder {
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        // Never run in shell because we always have a fully resolved
+        // executable path.
+        runInShell: false,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -156,6 +159,9 @@ Reason: Exited with code $exitCode.''');
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        // Never run in shell because we always have a fully resolved
+        // executable path.
+        runInShell: false,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -210,6 +216,9 @@ Reason: Exited with code $exitCode.''');
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        // Never run in shell because we always have a fully resolved
+        // executable path.
+        runInShell: false,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -242,6 +251,9 @@ Reason: Exited with code $exitCode.''');
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        // Never run in shell because we always have a fully resolved
+        // executable path.
+        runInShell: false,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -287,6 +299,9 @@ Reason: Exited with code $exitCode.''');
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        // Never run in shell because we always have a fully resolved
+        // executable path.
+        runInShell: false,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -345,6 +360,9 @@ Reason: Exited with code $exitCode.''');
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        // Never run in shell because we always have a fully resolved
+        // executable path.
+        runInShell: false,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -396,6 +414,9 @@ Reason: Exited with code $exitCode.''');
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        // Never run in shell because we always have a fully resolved
+        // executable path.
+        runInShell: false,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -481,6 +502,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     final exitCode = await process.stream(
       shorebirdArtifacts.getArtifactPath(artifact: genSnapshotArtifact),
       arguments,
+      // Never run in shell because we always have a fully resolved
+      // executable path.
+      runInShell: false,
     );
 
     if (exitCode != ExitCode.success.code) {
@@ -505,6 +529,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
+        // Never run in shell because we always have a fully resolved
+        // executable path.
+        runInShell: false,
       );
 
       if (exitCode != ExitCode.success.code) {
