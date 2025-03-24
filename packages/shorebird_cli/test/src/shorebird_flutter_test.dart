@@ -155,11 +155,8 @@ void main() {
           when(() => configProcessResult.stderr).thenReturn('oops');
         });
 
-        test('throws ProcessException', () {
-          expect(
-            () => runWithOverrides(shorebirdFlutter.getConfig),
-            throwsA(isA<ProcessException>()),
-          );
+        test('returns empty map', () {
+          expect(runWithOverrides(shorebirdFlutter.getConfig), isEmpty);
           verify(
             () => process.runSync('flutter', ['config', '--list']),
           ).called(1);
