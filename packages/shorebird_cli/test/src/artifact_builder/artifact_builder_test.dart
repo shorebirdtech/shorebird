@@ -84,6 +84,7 @@ void main() {
           any(),
           any(),
           environment: any(named: 'environment'),
+          runInShell: any(named: 'runInShell'),
         ),
       ).thenAnswer((_) async => ExitCode.success.code);
 
@@ -146,12 +147,12 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           await testCall();
 
           verifyNever(
-            () => shorebirdProcess.run('flutter', [
-              '--no-version-check',
-              'pub',
-              'get',
-              '--offline',
-            ], useVendedFlutter: false),
+            () => shorebirdProcess.run(
+              'flutter',
+              ['--no-version-check', 'pub', 'get', '--offline'],
+              useVendedFlutter: false,
+              runInShell: any(named: 'runInShell'),
+            ),
           );
         });
       });
@@ -171,11 +172,12 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         await runWithOverrides(() => builder.buildAppBundle());
 
         verify(
-          () => shorebirdProcess.stream('flutter', [
-            'build',
-            'appbundle',
-            '--release',
-          ], environment: any(named: 'environment')),
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'appbundle', '--release'],
+            environment: any(named: 'environment'),
+            runInShell: false,
+          ),
         ).called(1);
       });
 
@@ -199,7 +201,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             '--target-platform=android-arm64',
             '--foo',
             'bar',
-          ]),
+          ], runInShell: false),
         ).called(1);
       });
 
@@ -219,6 +221,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target-platform=android-arm64',
               ],
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
+              runInShell: false,
             ),
           ).thenAnswer((_) async => ExitCode.success.code);
         });
@@ -245,6 +248,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target-platform=android-arm64',
               ],
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
+              runInShell: false,
             ),
           ).called(1);
         });
@@ -312,7 +316,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         group('when the build is successful', () {
           setUp(() {
             when(
-              () => shorebirdProcess.stream(any(), any()),
+              () => shorebirdProcess.stream(
+                any(),
+                any(),
+                runInShell: any(named: 'runInShell'),
+              ),
             ).thenAnswer((_) async => ExitCode.success.code);
           });
 
@@ -323,7 +331,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           group('when the build fails', () {
             setUp(() {
               when(
-                () => shorebirdProcess.stream(any(), any()),
+                () => shorebirdProcess.stream(
+                  any(),
+                  any(),
+                  runInShell: any(named: 'runInShell'),
+                ),
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
@@ -352,11 +364,12 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         await runWithOverrides(() => builder.buildApk());
 
         verify(
-          () => shorebirdProcess.stream('flutter', [
-            'build',
-            'apk',
-            '--release',
-          ], environment: any(named: 'environment')),
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'apk', '--release'],
+            environment: any(named: 'environment'),
+            runInShell: false,
+          ),
         ).called(1);
       });
 
@@ -380,7 +393,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             '--target-platform=android-arm64',
             '--foo',
             'bar',
-          ]),
+          ], runInShell: false),
         ).called(1);
       });
 
@@ -400,6 +413,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target-platform=android-arm64',
               ],
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
+              runInShell: false,
             ),
           ).thenAnswer((_) async => ExitCode.success.code);
         });
@@ -426,6 +440,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--target-platform=android-arm64',
               ],
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
+              runInShell: false,
             ),
           ).called(1);
         });
@@ -493,7 +508,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         group('when the build is successful', () {
           setUp(() {
             when(
-              () => shorebirdProcess.stream(any(), any()),
+              () => shorebirdProcess.stream(
+                any(),
+                any(),
+                runInShell: any(named: 'runInShell'),
+              ),
             ).thenAnswer((_) async => ExitCode.success.code);
           });
 
@@ -504,7 +523,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           group('when the build fails', () {
             setUp(() {
               when(
-                () => shorebirdProcess.stream(any(), any()),
+                () => shorebirdProcess.stream(
+                  any(),
+                  any(),
+                  runInShell: any(named: 'runInShell'),
+                ),
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
@@ -528,13 +551,18 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         );
 
         verify(
-          () => shorebirdProcess.stream('flutter', [
-            'build',
-            'aar',
-            '--no-debug',
-            '--no-profile',
-            '--build-number=1.0',
-          ], environment: any(named: 'environment')),
+          () => shorebirdProcess.stream(
+            'flutter',
+            [
+              'build',
+              'aar',
+              '--no-debug',
+              '--no-profile',
+              '--build-number=1.0',
+            ],
+            environment: any(named: 'environment'),
+            runInShell: false,
+          ),
         ).called(1);
       });
 
@@ -557,7 +585,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             '--target-platform=android-arm64',
             '--foo',
             'bar',
-          ]),
+          ], runInShell: false),
         ).called(1);
       });
 
@@ -583,6 +611,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--build-number=1.0',
               ],
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
+              runInShell: false,
             ),
           ).called(1);
         });
@@ -592,7 +621,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         group('when the build is successful', () {
           setUp(() {
             when(
-              () => shorebirdProcess.stream(any(), any()),
+              () => shorebirdProcess.stream(
+                any(),
+                any(),
+                runInShell: any(named: 'runInShell'),
+              ),
             ).thenAnswer((_) async => ExitCode.success.code);
           });
 
@@ -605,7 +638,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           group('when the build fails', () {
             setUp(() {
               when(
-                () => shorebirdProcess.stream(any(), any()),
+                () => shorebirdProcess.stream(
+                  any(),
+                  any(),
+                  runInShell: any(named: 'runInShell'),
+                ),
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
@@ -644,14 +681,18 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             'build',
             'linux',
             '--release',
-          ]),
+          ], runInShell: any(named: 'runInShell')),
         ).thenAnswer((_) async => ExitCode.success.code);
       });
 
       group('when flutter build fails', () {
         setUp(() {
           when(
-            () => shorebirdProcess.stream(any(), any()),
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              runInShell: any(named: 'runInShell'),
+            ),
           ).thenAnswer((_) async => ExitCode.software.code);
         });
 
@@ -684,7 +725,7 @@ Reason: Exited with code 70.'''),
               'linux',
               '--release',
               '--target=target.dart',
-            ]),
+            ], runInShell: false),
           ).called(1);
         });
       });
@@ -692,7 +733,11 @@ Reason: Exited with code 70.'''),
       group('when flutter build succeeds', () {
         setUp(() {
           when(
-            () => shorebirdProcess.stream(any(), any()),
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              runInShell: any(named: 'runInShell'),
+            ),
           ).thenAnswer((_) async => ExitCode.success.code);
         });
 
@@ -713,6 +758,7 @@ Reason: Exited with code 70.'''),
               any(),
               any(),
               environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
             ),
           ).thenAnswer((_) async => ExitCode.success.code);
         });
@@ -727,6 +773,7 @@ Reason: Exited with code 70.'''),
               'flutter',
               ['build', 'linux', '--release'],
               environment: {'SHOREBIRD_PUBLIC_KEY': publicKey},
+              runInShell: false,
             ),
           ).called(1);
         });
@@ -741,6 +788,7 @@ Reason: Exited with code 70.'''),
             any(),
             any(),
             environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
           ),
         ).thenAnswer((_) async {
           appDill =
@@ -773,11 +821,12 @@ Reason: Exited with code 70.'''),
           final result = await runWithOverrides(builder.buildMacos);
 
           verify(
-            () => shorebirdProcess.stream('flutter', [
-              'build',
-              'macos',
-              '--release',
-            ], environment: any(named: 'environment')),
+            () => shorebirdProcess.stream(
+              'flutter',
+              ['build', 'macos', '--release'],
+              environment: any(named: 'environment'),
+              runInShell: false,
+            ),
           ).called(1);
           expect(result.kernelFile.path, equals(appDill.path));
         });
@@ -796,6 +845,7 @@ Reason: Exited with code 70.'''),
               'flutter',
               ['build', 'macos', '--release'],
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
+              runInShell: false,
             ),
           ).called(1);
         });
@@ -821,7 +871,7 @@ Reason: Exited with code 70.'''),
             '--no-codesign',
             '--foo',
             'bar',
-          ]),
+          ], runInShell: false),
         ).called(1);
       });
 
@@ -829,7 +879,11 @@ Reason: Exited with code 70.'''),
         group('with non-zero exit code', () {
           setUp(() {
             when(
-              () => shorebirdProcess.stream(any(), any()),
+              () => shorebirdProcess.stream(
+                any(),
+                any(),
+                runInShell: any(named: 'runInShell'),
+              ),
             ).thenAnswer((_) async => ExitCode.software.code);
           });
 
@@ -845,7 +899,11 @@ Reason: Exited with code 70.'''),
       group('when an app.dill file is not found in build stdout', () {
         setUp(() {
           when(
-            () => shorebirdProcess.stream(any(), any()),
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              runInShell: any(named: 'runInShell'),
+            ),
           ).thenAnswer((_) async => ExitCode.success.code);
         });
 
@@ -879,7 +937,11 @@ Reason: Exited with code 70.'''),
           group('when the build fails', () {
             setUp(() {
               when(
-                () => shorebirdProcess.stream(any(), any()),
+                () => shorebirdProcess.stream(
+                  any(),
+                  any(),
+                  runInShell: any(named: 'runInShell'),
+                ),
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
@@ -903,6 +965,7 @@ Reason: Exited with code 70.'''),
             any(),
             any(),
             environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
           ),
         ).thenAnswer((_) async {
           appDill =
@@ -935,11 +998,12 @@ Reason: Exited with code 70.'''),
           final result = await runWithOverrides(builder.buildIpa);
 
           verify(
-            () => shorebirdProcess.stream('flutter', [
-              'build',
-              'ipa',
-              '--release',
-            ], environment: any(named: 'environment')),
+            () => shorebirdProcess.stream(
+              'flutter',
+              ['build', 'ipa', '--release'],
+              environment: any(named: 'environment'),
+              runInShell: false,
+            ),
           ).called(1);
           expect(result.kernelFile.path, equals(appDill.path));
         });
@@ -958,6 +1022,7 @@ Reason: Exited with code 70.'''),
               'flutter',
               ['build', 'ipa', '--release'],
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
+              runInShell: false,
             ),
           ).called(1);
         });
@@ -983,7 +1048,7 @@ Reason: Exited with code 70.'''),
             '--no-codesign',
             '--foo',
             'bar',
-          ]),
+          ], runInShell: false),
         ).called(1);
       });
 
@@ -991,7 +1056,11 @@ Reason: Exited with code 70.'''),
         group('with non-zero exit code', () {
           setUp(() {
             when(
-              () => shorebirdProcess.stream(any(), any()),
+              () => shorebirdProcess.stream(
+                any(),
+                any(),
+                runInShell: any(named: 'runInShell'),
+              ),
             ).thenAnswer((_) async => ExitCode.software.code);
           });
 
@@ -1007,7 +1076,11 @@ Reason: Exited with code 70.'''),
       group('when an app.dill file is not found', () {
         setUp(() {
           when(
-            () => shorebirdProcess.stream(any(), any()),
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              runInShell: any(named: 'runInShell'),
+            ),
           ).thenAnswer((_) async => ExitCode.success.code);
         });
 
@@ -1041,7 +1114,11 @@ Reason: Exited with code 70.'''),
           group('when the build fails', () {
             setUp(() {
               when(
-                () => shorebirdProcess.stream(any(), any()),
+                () => shorebirdProcess.stream(
+                  any(),
+                  any(),
+                  runInShell: any(named: 'runInShell'),
+                ),
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
@@ -1065,6 +1142,7 @@ Reason: Exited with code 70.'''),
             any(),
             any(),
             environment: any(named: 'environment'),
+            runInShell: any(named: 'runInShell'),
           ),
         ).thenAnswer((_) async {
           appDill =
@@ -1096,12 +1174,12 @@ Reason: Exited with code 70.'''),
         final result = await runWithOverrides(builder.buildIosFramework);
 
         verify(
-          () => shorebirdProcess.stream('flutter', [
-            'build',
-            'ios-framework',
-            '--no-debug',
-            '--no-profile',
-          ], environment: any(named: 'environment')),
+          () => shorebirdProcess.stream(
+            'flutter',
+            ['build', 'ios-framework', '--no-debug', '--no-profile'],
+            environment: any(named: 'environment'),
+            runInShell: false,
+          ),
         ).called(1);
         expect(result.kernelFile.path, equals(appDill.path));
       });
@@ -1119,7 +1197,7 @@ Reason: Exited with code 70.'''),
             '--no-profile',
             '--foo',
             'bar',
-          ]),
+          ], runInShell: false),
         ).called(1);
       });
 
@@ -1136,6 +1214,7 @@ Reason: Exited with code 70.'''),
               'flutter',
               ['build', 'ios-framework', '--no-debug', '--no-profile'],
               environment: {'SHOREBIRD_PUBLIC_KEY': base64PublicKey},
+              runInShell: false,
             ),
           ).called(1);
         });
@@ -1150,7 +1229,11 @@ Reason: Exited with code 70.'''),
           group('when no app.dill file is found in build stdout', () {
             setUp(() {
               when(
-                () => shorebirdProcess.stream(any(), any()),
+                () => shorebirdProcess.stream(
+                  any(),
+                  any(),
+                  runInShell: any(named: 'runInShell'),
+                ),
               ).thenAnswer((_) async => ExitCode.success.code);
             });
 
@@ -1177,7 +1260,11 @@ Reason: Exited with code 70.'''),
           group('when the build fails', () {
             setUp(() {
               when(
-                () => shorebirdProcess.stream(any(), any()),
+                () => shorebirdProcess.stream(
+                  any(),
+                  any(),
+                  runInShell: any(named: 'runInShell'),
+                ),
               ).thenAnswer((_) async => ExitCode.software.code);
             });
 
@@ -1218,14 +1305,18 @@ Reason: Exited with code 70.'''),
               '--foo',
               'bar',
               '/app/dill/path',
-            ]),
+            ], runInShell: false),
           ).called(1);
         });
 
         group('when build fails', () {
           setUp(() {
             when(
-              () => shorebirdProcess.stream(any(), any()),
+              () => shorebirdProcess.stream(
+                any(),
+                any(),
+                runInShell: any(named: 'runInShell'),
+              ),
             ).thenAnswer((_) async => ExitCode.software.code);
           });
 
@@ -1281,14 +1372,18 @@ Reason: Exited with code 70.'''),
             'build',
             'windows',
             '--release',
-          ]),
+          ], runInShell: false),
         ).thenAnswer((_) async => ExitCode.success.code);
       });
 
       group('when flutter build fails', () {
         setUp(() {
           when(
-            () => shorebirdProcess.stream(any(), any()),
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              runInShell: any(named: 'runInShell'),
+            ),
           ).thenAnswer((_) async => ExitCode.software.code);
         });
 
@@ -1312,7 +1407,11 @@ Reason: Exited with code 70.'''),
       group('when flutter build succeeds', () {
         setUp(() {
           when(
-            () => shorebirdProcess.stream(any(), any()),
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              runInShell: any(named: 'runInShell'),
+            ),
           ).thenAnswer((_) async => ExitCode.success.code);
         });
 
@@ -1337,6 +1436,7 @@ Reason: Exited with code 70.'''),
               any(),
               any(),
               environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
             ),
           ).thenAnswer((_) async => ExitCode.success.code);
         });
@@ -1351,6 +1451,7 @@ Reason: Exited with code 70.'''),
               'flutter',
               ['build', 'windows', '--release'],
               environment: {'SHOREBIRD_PUBLIC_KEY': publicKey},
+              runInShell: false,
             ),
           ).called(1);
         });
