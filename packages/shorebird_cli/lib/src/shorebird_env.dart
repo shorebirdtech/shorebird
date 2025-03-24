@@ -73,12 +73,14 @@ class ShorebirdEnv {
 
   /// The Shorebird-vended Flutter binary.
   File get flutterBinaryFile {
-    return File(p.join(flutterDirectory.path, 'bin', 'flutter'));
+    final flutter = platform.isWindows ? 'flutter.bat' : 'flutter';
+    return File(p.join(flutterDirectory.path, 'bin', flutter));
   }
 
   /// The Shorebird-vended Dart binary.
   File get dartBinaryFile {
-    return File(p.join(flutterDirectory.path, 'bin', 'dart'));
+    final dart = platform.isWindows ? 'dart.bat' : 'dart';
+    return File(p.join(flutterDirectory.path, 'bin', dart));
   }
 
   /// The Cocoapods lockfile for this project's iOS app.
