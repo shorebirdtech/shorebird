@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.30 (March 24, 2025)
+
+- 🐛 Fix using older Flutter versions that do not include `flutter config`
+- 🪟 Fix build failures caused by whitespace in paths on windows
+- 🧹 Various dependency upgrades
+
 ## 1.6.29 (March 18, 2025)
 
 - 🪵 improve `gradlew` logs during `shorebird init`
