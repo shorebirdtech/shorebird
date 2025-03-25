@@ -49,9 +49,6 @@ class AarReleaser extends Releaser {
   String get artifactDisplayName => 'Android archive';
 
   @override
-  bool get requiresReleaseVersionArg => true;
-
-  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(

@@ -118,12 +118,6 @@ void main() {
       });
     });
 
-    group('requiresReleaseVersionArg', () {
-      test('is true', () {
-        expect(aarReleaser.requiresReleaseVersionArg, isTrue);
-      });
-    });
-
     group('assertPreconditions', () {
       group('when validation succeeds', () {
         setUp(() {

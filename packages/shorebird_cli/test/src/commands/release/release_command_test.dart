@@ -161,7 +161,6 @@ void main() {
       when(
         () => releaser.updatedReleaseMetadata(any()),
       ).thenAnswer((_) async => UpdateReleaseMetadata.forTest());
-      when(() => releaser.requiresReleaseVersionArg).thenReturn(false);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(
@@ -268,10 +267,6 @@ void main() {
         () => logger.info(
           '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch --platforms=android --release-version=${release.version}')}''',
         ),
-        () => logger.info('''
-
-Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --release-version option will patch the current version of the app.
-'''),
       ]);
     });
 
@@ -354,27 +349,6 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
       });
     });
 
-    group('when release version arg is required', () {
-      setUp(() {
-        when(() => releaser.requiresReleaseVersionArg).thenReturn(true);
-      });
-
-      test(
-        'does not print patch instructions for no release version',
-        () async {
-          final exitCode = await runWithOverrides(command.run);
-          expect(exitCode, equals(ExitCode.success.code));
-
-          verifyNever(
-            () => logger.info('''
-
-Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --release-version option will patch the current version of the app.
-'''),
-          );
-        },
-      );
-    });
-
     group('when flavor and target are provided', () {
       const flavor = 'test-flavor';
       const target = 'test-target';
@@ -409,10 +383,6 @@ Note: ${lightCyan.wrap('shorebird patch --platforms=android')} without the --rel
           () => logger.info(
             '''To create a patch for this release, run ${lightCyan.wrap('shorebird patch --platforms=android --flavor=$flavor --target=$target --release-version=${release.version}')}''',
           ),
-          () => logger.info('''
-
-Note: ${lightCyan.wrap('shorebird patch --platforms=android --flavor=$flavor --target=$target')} without the --release-version option will patch the current version of the app.
-'''),
         ]);
       });
     });
