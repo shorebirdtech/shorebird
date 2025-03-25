@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
@@ -110,6 +111,63 @@ Apple get apple => read(appleRef);
 
 /// A class that provides information about the iOS platform.
 class Apple {
+  // TODO(eseidel): Move this into a "linker" class rather than Apple.
+  /// Names of supplement files across all supported versions of Flutter.
+  List<String> get _supplementFileNames => [
+    'App.ct.link',
+    'App.class_table.json',
+    'App.ft.link',
+    'App.field_table.json',
+  ];
+
+  /// Extracts the supplement files from the given [supplementArtifact].
+  /// And returns a list of [File]s.
+  Future<List<File>> extractSupplementFiles({
+    required ArtifactManager artifactManager,
+    required File? supplementArtifact,
+  }) async {
+    if (supplementArtifact == null) {
+      return [];
+    }
+
+    final tempDir = Directory.systemTemp.createTempSync();
+    await artifactManager.extractZip(
+      zipFile: supplementArtifact,
+      outputDirectory: tempDir,
+    );
+
+    return _supplementFileNames
+        .map((name) => File(p.join(tempDir.path, name)))
+        .where((file) => file.existsSync())
+        .toList();
+  }
+
+  /// Copies the supplement files into the build directory.
+  void copySupplementFilesIntoBuildDir({
+    required List<File> supplementFiles,
+    required String releaseSnapshotDir,
+    required String patchSupplementDir,
+    required String patchSnapshotDir,
+  }) {
+    if (supplementFiles.isNotEmpty) {
+      // Copy the release's supplement files next to the release snapshot.
+      for (final file in supplementFiles) {
+        file.copySync(p.join(releaseSnapshotDir, p.basename(file.path)));
+      }
+
+      // Copy the patch's link info files to the build directory
+      // so that it can be used to generate a patch.
+      final patchSupplementFiles = _supplementFileNames
+          .map((name) => File(p.join(patchSupplementDir, name)))
+          .where((file) => file.existsSync());
+      for (final file in patchSupplementFiles) {
+        // Replace App.ct.link with out.ct.link when copying.
+        final newFileName = p.basename(file.path).replaceFirst('App', 'out');
+        file.copySync(p.join(patchSnapshotDir, newFileName));
+      }
+    }
+  }
+
   /// Returns the set of flavors for the Xcode project associated with
   /// [platform], if this project has that platform configured.
   Set<String>? flavors({required ApplePlatform platform}) {
@@ -155,6 +213,7 @@ class Apple {
         .toSet();
   }
 
+  // TODO(eseidel): Move this into a "linker" class rather than Apple.
   /// Runs the linking step to minimize differences between patch and release
   /// and maximize code that can be executed on the CPU.
   Future<LinkResult> runLinker({

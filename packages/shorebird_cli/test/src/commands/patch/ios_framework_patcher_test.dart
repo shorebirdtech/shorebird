@@ -124,6 +124,16 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
       xcodeBuild = MockXcodeBuild();
 
+      when(
+        () => apple.extractSupplementFiles(
+          artifactManager: artifactManager,
+          supplementArtifact: any(named: 'supplementArtifact'),
+        ),
+      ).thenAnswer((_) async => []);
+
+      when(() => argParser.addFlag(any())).thenReturn(argParser);
+      when(() => argParser.addOption(any())).thenReturn(argParser);
+
       when(() => argParser.options).thenReturn({});
 
       when(() => argResults['build-number']).thenReturn('1.0');
@@ -801,72 +811,6 @@ void main() {
                   endsWith(diffPath),
                 ),
               );
-            });
-
-            group('when class table link info is not present', () {
-              setUp(() {
-                when(
-                  () => artifactManager.extractZip(
-                    zipFile: supplementArtifactFile,
-                    outputDirectory: any(named: 'outputDirectory'),
-                  ),
-                ).thenAnswer((invocation) async {});
-              });
-
-              test('exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(
-                  () => logger.err('Unable to find class table link info file'),
-                ).called(1);
-              });
-            });
-
-            group('when debug info is missing', () {
-              setUp(() {
-                when(
-                  () => artifactManager.extractZip(
-                    zipFile: supplementArtifactFile,
-                    outputDirectory: any(named: 'outputDirectory'),
-                  ),
-                ).thenAnswer((invocation) async {
-                  final outDir =
-                      invocation.namedArguments[#outputDirectory] as Directory;
-                  File(
-                    p.join(outDir.path, 'App.ct.link'),
-                  ).createSync(recursive: true);
-                });
-              });
-
-              test('exits with code 70', () async {
-                await expectLater(
-                  () => runWithOverrides(
-                    () => patcher.createPatchArtifacts(
-                      appId: appId,
-                      releaseId: releaseId,
-                      releaseArtifact: releaseArtifactFile,
-                      supplementArtifact: supplementArtifactFile,
-                    ),
-                  ),
-                  exitsWithCode(ExitCode.software),
-                );
-
-                verify(
-                  () => logger.err(
-                    'Unable to find class table link debug info file',
-                  ),
-                ).called(1);
-              });
             });
 
             group('when class table link info & debug info are present', () {
