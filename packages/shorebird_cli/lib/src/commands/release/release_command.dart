@@ -553,12 +553,5 @@ ${summary.join('\n')}
     logger.info(
       '''To create a patch for this release, run ${lightCyan.wrap('$baseCommand --release-version=$releaseVersion')}''',
     );
-
-    if (!releaser.requiresReleaseVersionArg) {
-      logger.info('''
-
-Note: ${lightCyan.wrap(baseCommand)} without the --release-version option will patch the current version of the app.
-''');
-    }
   }
 }
