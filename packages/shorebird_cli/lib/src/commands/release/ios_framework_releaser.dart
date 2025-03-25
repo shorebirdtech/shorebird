@@ -39,9 +39,6 @@ class IosFrameworkReleaser extends Releaser {
   );
 
   @override
-  bool get requiresReleaseVersionArg => true;
-
-  @override
   String get artifactDisplayName => 'iOS framework';
 
   @override

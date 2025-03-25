@@ -161,7 +161,6 @@ void main() {
       when(
         () => releaser.updatedReleaseMetadata(any()),
       ).thenAnswer((_) async => UpdateReleaseMetadata.forTest());
-      when(() => releaser.requiresReleaseVersionArg).thenReturn(false);
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
       when(

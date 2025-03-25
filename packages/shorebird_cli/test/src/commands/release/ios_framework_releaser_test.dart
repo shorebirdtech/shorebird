@@ -115,12 +115,6 @@ void main() {
       );
     });
 
-    group('requiresReleaseVersionArg', () {
-      test('is true', () {
-        expect(iosFrameworkReleaser.requiresReleaseVersionArg, isTrue);
-      });
-    });
-
     group('releaseType', () {
       test('is xcframework', () {
         expect(iosFrameworkReleaser.releaseType, ReleaseType.iosFramework);
