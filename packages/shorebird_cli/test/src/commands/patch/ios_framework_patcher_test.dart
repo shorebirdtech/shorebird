@@ -135,6 +135,9 @@ void main() {
       when(
         () => shorebirdEnv.buildDirectory,
       ).thenReturn(Directory(p.join(projectRoot.path, 'build')));
+      when(() => shorebirdEnv.iosSupplementDirectory).thenReturn(
+        Directory(p.join(projectRoot.path, 'build', 'shorebird', 'ios')),
+      );
       when(
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);

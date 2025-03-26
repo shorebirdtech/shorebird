@@ -126,7 +126,6 @@ class Apple {
     required Directory releaseSnapshotDir,
     required Directory patchSupplementDir,
     required Directory patchSnapshotDir,
-    String patchSnapshotBaseName = 'out',
   }) {
     // All known supplement files names seen across all Flutter versions.
     final supplementFileNames = <String>[
@@ -159,6 +158,7 @@ class Apple {
     final patchSupplementFiles = supplementFileNames.map(
       (name) => File(p.join(patchSupplementDir.path, name)),
     );
+    const patchSnapshotBaseName = 'out';
     for (final file in patchSupplementFiles) {
       maybeCopy(file, patchSnapshotDir, newBaseName: patchSnapshotBaseName);
     }
