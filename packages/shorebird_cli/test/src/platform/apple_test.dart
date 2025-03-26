@@ -92,7 +92,7 @@ To add macOS, run "flutter create . --platforms macos"''');
         ).thenReturn(projectRoot);
       });
 
-      group('supplement artifact', () {
+      group('copySupplementFilesToSnapshotDirs', () {
         test('copy all files next to snapshots', () {
           final names = [
             'App.class_table.json',
