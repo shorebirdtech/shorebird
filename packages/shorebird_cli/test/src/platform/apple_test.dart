@@ -93,7 +93,7 @@ To add macOS, run "flutter create . --platforms macos"''');
       });
 
       group('copySupplementFilesToSnapshotDirs', () {
-        test('copy all files next to snapshots', () {
+        test('copies all files next to snapshots', () {
           final names = [
             'App.class_table.json',
             'App.field_table.json',
