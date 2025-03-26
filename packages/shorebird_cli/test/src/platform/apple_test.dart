@@ -124,7 +124,7 @@ To add macOS, run "flutter create . --platforms macos"''');
           expect(Directory(patchSnapshotDir.path).listSync(), hasLength(4));
         });
 
-        test('copy only some files next to snapshots', () {
+        test('copies only some files next to snapshots', () {
           final names = ['App.class_table.json', 'App.ct.link', 'ignored.txt'];
 
           void createFiles(Directory dir) {
