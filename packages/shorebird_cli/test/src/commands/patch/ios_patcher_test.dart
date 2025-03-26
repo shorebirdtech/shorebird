@@ -129,13 +129,6 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
       xcodeBuild = MockXcodeBuild();
 
-      when(
-        () => apple.extractSupplementFiles(
-          artifactManager: artifactManager,
-          supplementArtifact: any(named: 'supplementArtifact'),
-        ),
-      ).thenAnswer((_) async => []);
-
       when(() => argParser.options).thenReturn({});
 
       when(() => argResults.options).thenReturn([]);

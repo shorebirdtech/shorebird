@@ -147,10 +147,13 @@ class IosFrameworkPatcher extends Patcher {
       releaseXcframeworkPath = tempDir.path;
     }
 
-    final supplementFiles = await apple.extractSupplementFiles(
-      artifactManager: artifactManager,
-      supplementArtifact: supplementArtifact,
-    );
+    final releaseSupplementDir = Directory.systemTemp.createTempSync();
+    if (supplementArtifact != null) {
+      await artifactManager.extractZip(
+        zipFile: supplementArtifact,
+        outputDirectory: releaseSupplementDir,
+      );
+    }
 
     unzipProgress.complete(
       'Extracted release artifact to $releaseXcframeworkPath',
@@ -165,15 +168,13 @@ class IosFrameworkPatcher extends Patcher {
     // TODO(eseidel): Drop support for builds before the linker.
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
-      apple.copySupplementFilesIntoBuildDir(
-        supplementFiles: supplementFiles,
-        releaseSnapshotDir: releaseArtifactFile.parent.path,
-        patchSupplementDir: p.join(
-          shorebirdEnv.buildDirectory.path,
-          'ios',
-          'shorebird',
+      apple.copySupplementFilesToSnapshotDirs(
+        releaseSupplementDir: releaseSupplementDir,
+        releaseSnapshotDir: releaseArtifactFile.parent,
+        patchSupplementDir: Directory(
+          p.join(shorebirdEnv.buildDirectory.path, 'ios', 'shorebird'),
         ),
-        patchSnapshotDir: shorebirdEnv.buildDirectory.path,
+        patchSnapshotDir: shorebirdEnv.buildDirectory,
       );
 
       await apple.runLinker(

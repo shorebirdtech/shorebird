@@ -229,10 +229,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       releaseXcarchivePath = tempDir.path;
     }
 
-    final supplementFiles = await apple.extractSupplementFiles(
-      artifactManager: artifactManager,
-      supplementArtifact: supplementArtifact,
-    );
+    final releaseSupplementDir = Directory.systemTemp.createTempSync();
+    if (supplementArtifact != null) {
+      await artifactManager.extractZip(
+        zipFile: supplementArtifact,
+        outputDirectory: releaseSupplementDir,
+      );
+    }
 
     unzipProgress.complete();
     final appDirectory = artifactManager.getIosAppDirectory(
@@ -248,15 +251,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
     final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
-      apple.copySupplementFilesIntoBuildDir(
-        supplementFiles: supplementFiles,
-        releaseSnapshotDir: releaseArtifactFile.parent.path,
-        patchSupplementDir: p.join(
-          shorebirdEnv.buildDirectory.path,
-          'ios',
-          'shorebird',
+      apple.copySupplementFilesToSnapshotDirs(
+        releaseSupplementDir: releaseSupplementDir,
+        releaseSnapshotDir: releaseArtifactFile.parent,
+        patchSupplementDir: Directory(
+          p.join(shorebirdEnv.buildDirectory.path, 'ios', 'shorebird'),
         ),
-        patchSnapshotDir: shorebirdEnv.buildDirectory.path,
+        patchSnapshotDir: shorebirdEnv.buildDirectory,
       );
 
       final (:exitCode, :linkPercentage) = await apple.runLinker(

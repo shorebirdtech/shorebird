@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
-import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
@@ -111,60 +110,57 @@ Apple get apple => read(appleRef);
 
 /// A class that provides information about the iOS platform.
 class Apple {
-  // TODO(eseidel): Move this into a "linker" class rather than Apple.
-  /// Names of supplement files across all supported versions of Flutter.
-  List<String> get _supplementFileNames => [
-    'App.ct.link',
-    'App.class_table.json',
-    'App.ft.link',
-    'App.field_table.json',
-  ];
+  /// Copies the supplement files into the build directory.
+  /// Currently we run gen_snapshot from `flutter`, both for the release and
+  /// patch builds. Both times it produces supplement files in a directory.
+  /// In the release case, these files are zipped up and stored as an artifact
+  /// on our servers for later use. In the patch case, they were created on
+  /// disk just before this call.
+  /// In both cases we need to copy the supplement files from these directories
+  /// to right next to where the snapshot files are before calling into
+  /// `aot_tools` to link the two snapshots together.
+  // TODO(eseidel): We should pass the entire supplement directories to
+  // `aot_tools` rather than having to know the contents within `shorebird`.
+  void copySupplementFilesToSnapshotDirs({
+    required Directory releaseSupplementDir,
+    required Directory releaseSnapshotDir,
+    required Directory patchSupplementDir,
+    required Directory patchSnapshotDir,
+    String patchSnapshotBaseName = 'out',
+  }) {
+    // All known supplement files names seen across all Flutter versions.
+    final supplementFileNames = <String>[
+      'App.ct.link',
+      'App.class_table.json',
+      'App.ft.link',
+      'App.field_table.json',
+    ];
 
-  /// Extracts the supplement files from the given [supplementArtifact].
-  /// And returns a list of [File]s.
-  Future<List<File>> extractSupplementFiles({
-    required ArtifactManager artifactManager,
-    required File? supplementArtifact,
-  }) async {
-    if (supplementArtifact == null) {
-      return [];
+    // This uses maybeCopy because not all versions of gen_snapshot/aot_tools
+    // use the same supplement files. At the `shorebird` level we don't know
+    // which files should be present, so we just try to copy all.
+    void maybeCopy(File file, Directory destDir, {String? newBaseName}) {
+      if (!file.existsSync()) return;
+      final baseName = p.basename(file.path);
+      final destName =
+          newBaseName != null
+              ? baseName.replaceFirst('App', newBaseName)
+              : baseName;
+      file.copySync(p.join(destDir.path, destName));
     }
 
-    final tempDir = Directory.systemTemp.createTempSync();
-    await artifactManager.extractZip(
-      zipFile: supplementArtifact,
-      outputDirectory: tempDir,
-    );
+    final releaseSupplementFiles = supplementFileNames
+        .map((name) => File(p.join(releaseSupplementDir.path, name)))
+        .where((file) => file.existsSync());
+    for (final file in releaseSupplementFiles) {
+      maybeCopy(file, releaseSnapshotDir);
+    }
 
-    return _supplementFileNames
-        .map((name) => File(p.join(tempDir.path, name)))
-        .where((file) => file.existsSync())
-        .toList();
-  }
-
-  /// Copies the supplement files into the build directory.
-  void copySupplementFilesIntoBuildDir({
-    required List<File> supplementFiles,
-    required String releaseSnapshotDir,
-    required String patchSupplementDir,
-    required String patchSnapshotDir,
-  }) {
-    if (supplementFiles.isNotEmpty) {
-      // Copy the release's supplement files next to the release snapshot.
-      for (final file in supplementFiles) {
-        file.copySync(p.join(releaseSnapshotDir, p.basename(file.path)));
-      }
-
-      // Copy the patch's link info files to the build directory
-      // so that it can be used to generate a patch.
-      final patchSupplementFiles = _supplementFileNames
-          .map((name) => File(p.join(patchSupplementDir, name)))
-          .where((file) => file.existsSync());
-      for (final file in patchSupplementFiles) {
-        // Replace App.ct.link with out.ct.link when copying.
-        final newFileName = p.basename(file.path).replaceFirst('App', 'out');
-        file.copySync(p.join(patchSnapshotDir, newFileName));
-      }
+    final patchSupplementFiles = supplementFileNames
+        .map((name) => File(p.join(patchSupplementDir.path, name)))
+        .where((file) => file.existsSync());
+    for (final file in patchSupplementFiles) {
+      maybeCopy(file, patchSnapshotDir, newBaseName: patchSnapshotBaseName);
     }
   }
 
