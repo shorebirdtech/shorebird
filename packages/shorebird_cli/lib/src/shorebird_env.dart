@@ -98,6 +98,11 @@ class ShorebirdEnv {
     return Directory(p.join(getFlutterProjectRoot()!.path, 'build'));
   }
 
+  /// Where the link supplement files are stored.
+  // TODO(eseidel): Make this not iOS specific.
+  Directory get iosSupplementDirectory =>
+      Directory(p.join(buildDirectory.path, 'ios', 'shorebird'));
+
   /// The `shorebird.yaml` file for this project.
   File getShorebirdYamlFile({required Directory cwd}) {
     return File(p.join(cwd.path, 'shorebird.yaml'));

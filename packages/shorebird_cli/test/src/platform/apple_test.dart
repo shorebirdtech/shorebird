@@ -93,7 +93,7 @@ To add macOS, run "flutter create . --platforms macos"''');
       });
 
       group('supplement artifact', () {
-        test('copySupplementFilesNextToSnapshots', () {
+        test('copy all files next to snapshots', () {
           final names = [
             'App.class_table.json',
             'App.field_table.json',
@@ -122,6 +122,32 @@ To add macOS, run "flutter create . --platforms macos"''');
           );
           expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(4));
           expect(Directory(patchSnapshotDir.path).listSync(), hasLength(4));
+        });
+
+        test('copy only some files next to snapshots', () {
+          final names = ['App.class_table.json', 'App.ct.link', 'ignored.txt'];
+
+          void createFiles(Directory dir) {
+            for (final name in names) {
+              File(p.join(dir.path, name)).createSync();
+            }
+          }
+
+          final releaseSupplementDir = Directory.systemTemp.createTempSync();
+          final patchSupplementDir = Directory.systemTemp.createTempSync();
+          createFiles(releaseSupplementDir);
+          createFiles(patchSupplementDir);
+
+          final releaseSnapshotDir = Directory.systemTemp.createTempSync();
+          final patchSnapshotDir = Directory.systemTemp.createTempSync();
+          apple.copySupplementFilesToSnapshotDirs(
+            releaseSupplementDir: releaseSupplementDir,
+            releaseSnapshotDir: releaseSnapshotDir,
+            patchSupplementDir: patchSupplementDir,
+            patchSnapshotDir: patchSnapshotDir,
+          );
+          expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(2));
+          expect(Directory(patchSnapshotDir.path).listSync(), hasLength(2));
         });
       });
 

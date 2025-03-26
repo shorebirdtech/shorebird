@@ -254,9 +254,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       apple.copySupplementFilesToSnapshotDirs(
         releaseSupplementDir: releaseSupplementDir,
         releaseSnapshotDir: releaseArtifactFile.parent,
-        patchSupplementDir: Directory(
-          p.join(shorebirdEnv.buildDirectory.path, 'ios', 'shorebird'),
-        ),
+        patchSupplementDir: shorebirdEnv.iosSupplementDirectory,
         patchSnapshotDir: shorebirdEnv.buildDirectory,
       );
 

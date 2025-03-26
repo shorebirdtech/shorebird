@@ -171,9 +171,7 @@ class IosFrameworkPatcher extends Patcher {
       apple.copySupplementFilesToSnapshotDirs(
         releaseSupplementDir: releaseSupplementDir,
         releaseSnapshotDir: releaseArtifactFile.parent,
-        patchSupplementDir: Directory(
-          p.join(shorebirdEnv.buildDirectory.path, 'ios', 'shorebird'),
-        ),
+        patchSupplementDir: shorebirdEnv.iosSupplementDirectory,
         patchSnapshotDir: shorebirdEnv.buildDirectory,
       );
 

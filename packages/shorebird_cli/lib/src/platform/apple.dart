@@ -149,16 +149,16 @@ class Apple {
       file.copySync(p.join(destDir.path, destName));
     }
 
-    final releaseSupplementFiles = supplementFileNames
-        .map((name) => File(p.join(releaseSupplementDir.path, name)))
-        .where((file) => file.existsSync());
+    final releaseSupplementFiles = supplementFileNames.map(
+      (name) => File(p.join(releaseSupplementDir.path, name)),
+    );
     for (final file in releaseSupplementFiles) {
       maybeCopy(file, releaseSnapshotDir);
     }
 
-    final patchSupplementFiles = supplementFileNames
-        .map((name) => File(p.join(patchSupplementDir.path, name)))
-        .where((file) => file.existsSync());
+    final patchSupplementFiles = supplementFileNames.map(
+      (name) => File(p.join(patchSupplementDir.path, name)),
+    );
     for (final file in patchSupplementFiles) {
       maybeCopy(file, patchSnapshotDir, newBaseName: patchSnapshotBaseName);
     }
