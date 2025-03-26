@@ -110,6 +110,60 @@ Apple get apple => read(appleRef);
 
 /// A class that provides information about the iOS platform.
 class Apple {
+  /// Copies the supplement files into the build directory.
+  /// Currently we run gen_snapshot from `flutter`, both for the release and
+  /// patch builds. Both times it produces supplement files in a directory.
+  /// In the release case, these files are zipped up and stored as an artifact
+  /// on our servers for later use. In the patch case, they were created on
+  /// disk just before this call.
+  /// In both cases we need to copy the supplement files from these directories
+  /// to right next to where the snapshot files are before calling into
+  /// `aot_tools` to link the two snapshots together.
+  // TODO(eseidel): We should pass the entire supplement directories to
+  // `aot_tools` rather than having to know the contents within `shorebird`.
+  void copySupplementFilesToSnapshotDirs({
+    required Directory releaseSupplementDir,
+    required Directory releaseSnapshotDir,
+    required Directory patchSupplementDir,
+    required Directory patchSnapshotDir,
+  }) {
+    // All known supplement files names seen across all Flutter versions.
+    final supplementFileNames = <String>[
+      'App.ct.link',
+      'App.class_table.json',
+      'App.ft.link',
+      'App.field_table.json',
+    ];
+
+    // This uses maybeCopy because not all versions of gen_snapshot/aot_tools
+    // use the same supplement files. At the `shorebird` level we don't know
+    // which files should be present, so we just try to copy all.
+    void maybeCopy(File file, Directory destDir, {String? newBaseName}) {
+      if (!file.existsSync()) return;
+      final baseName = p.basename(file.path);
+      final destName =
+          newBaseName != null
+              ? baseName.replaceFirst('App', newBaseName)
+              : baseName;
+      file.copySync(p.join(destDir.path, destName));
+    }
+
+    final releaseSupplementFiles = supplementFileNames.map(
+      (name) => File(p.join(releaseSupplementDir.path, name)),
+    );
+    for (final file in releaseSupplementFiles) {
+      maybeCopy(file, releaseSnapshotDir);
+    }
+
+    final patchSupplementFiles = supplementFileNames.map(
+      (name) => File(p.join(patchSupplementDir.path, name)),
+    );
+    const patchSnapshotBaseName = 'out';
+    for (final file in patchSupplementFiles) {
+      maybeCopy(file, patchSnapshotDir, newBaseName: patchSnapshotBaseName);
+    }
+  }
+
   /// Returns the set of flavors for the Xcode project associated with
   /// [platform], if this project has that platform configured.
   Set<String>? flavors({required ApplePlatform platform}) {
@@ -155,6 +209,7 @@ class Apple {
         .toSet();
   }
 
+  // TODO(eseidel): Move this into a "linker" class rather than Apple.
   /// Runs the linking step to minimize differences between patch and release
   /// and maximize code that can be executed on the CPU.
   Future<LinkResult> runLinker({
