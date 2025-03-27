@@ -43,7 +43,13 @@ class PatchExecutable {
     );
     final diffArguments = [releaseArtifactPath, patchArtifactPath, diffPath];
 
-    final result = await process.run(diffExecutable, diffArguments);
+    final result = await process.run(
+      diffExecutable,
+      diffArguments,
+      // Never run in shell because we always have a fully resolved
+      // executable path.
+      runInShell: false,
+    );
 
     var messageDetails = '';
 

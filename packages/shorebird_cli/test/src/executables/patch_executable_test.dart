@@ -40,7 +40,11 @@ void main() {
       platform = MockPlatform();
 
       when(
-        () => shorebirdProcess.run(any(that: endsWith('patch')), any()),
+        () => shorebirdProcess.run(
+          any(that: endsWith('patch')),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
       ).thenAnswer((invocation) async {
         final args = invocation.positionalArguments[1] as List<String>;
         final diffPath = args[2];
@@ -85,6 +89,7 @@ void main() {
               endsWith('diff.patch'),
             ]),
           ),
+          runInShell: false,
         ),
       ).called(1);
     });
@@ -97,7 +102,11 @@ void main() {
       when(() => patchProcessResult.stdout).thenReturn(stdout);
 
       when(
-        () => shorebirdProcess.run(any(that: endsWith('patch')), any()),
+        () => shorebirdProcess.run(
+          any(that: endsWith('patch')),
+          any(),
+          runInShell: any(named: 'runInShell'),
+        ),
       ).thenAnswer((_) async => patchProcessResult);
 
       await expectLater(
@@ -129,7 +138,11 @@ void main() {
         when(() => patchProcessResult.stdout).thenReturn(stdout);
 
         when(
-          () => shorebirdProcess.run(any(that: endsWith('patch')), any()),
+          () => shorebirdProcess.run(
+            any(that: endsWith('patch')),
+            any(),
+            runInShell: any(named: 'runInShell'),
+          ),
         ).thenAnswer((_) async => patchProcessResult);
       });
 
