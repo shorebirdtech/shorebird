@@ -259,6 +259,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           () => artifactBuilder.buildLinuxApp(
             target: any(named: 'target'),
             args: any(named: 'args'),
+            base64PublicKey: any(named: 'base64PublicKey'),
           ),
         ).thenAnswer((_) async => projectRoot);
       });
@@ -269,37 +270,62 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         );
         expect(releaseDir, releaseDirectory);
       });
-    });
 
-    group('when public key is passed as an arg', () {
-      setUp(() {
-        when(
-          () => artifactBuilder.buildLinuxApp(
-            target: any(named: 'target'),
-            args: any(named: 'args'),
-            base64PublicKey: any(named: 'base64PublicKey'),
-          ),
-        ).thenAnswer((_) async => projectRoot);
-        when(
-          () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
-        ).thenReturn(true);
-        when(
-          () => argResults[CommonArguments.publicKeyArg.name],
-        ).thenReturn('public_key');
-        when(
-          () => codeSigner.base64PublicKey(any()),
-        ).thenReturn('encoded_public_key');
+      group('when target and flavor are specified', () {
+        const flavor = 'my-flavor';
+        const target = 'my-target';
+
+        setUp(() {
+          releaser = LinuxReleaser(
+            argResults: argResults,
+            flavor: flavor,
+            target: target,
+          );
+        });
+
+        test('builds artifacts with flavor and target', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+          verify(
+            () => artifactBuilder.buildLinuxApp(target: target, args: []),
+          ).called(1);
+        });
       });
 
-      test('passes public key to buildLinuxApp', () async {
-        await runWithOverrides(releaser.buildReleaseArtifacts);
-        verify(
-          () => artifactBuilder.buildLinuxApp(
-            base64PublicKey: 'encoded_public_key',
-            target: any(named: 'target'),
-            args: any(named: 'args'),
-          ),
-        ).called(1);
+      group('when additional args are specified', () {
+        final args = ['--build-number=0 --build-name=1.0.0+1'];
+        setUp(() {
+          when(() => argResults.rest).thenReturn(args);
+        });
+
+        test('forwards args to artifact builder', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+          verify(() => artifactBuilder.buildLinuxApp(args: args)).called(1);
+        });
+      });
+
+      group('when public key is passed as an arg', () {
+        setUp(() {
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
+          when(
+            () => argResults[CommonArguments.publicKeyArg.name],
+          ).thenReturn('public_key');
+          when(
+            () => codeSigner.base64PublicKey(any()),
+          ).thenReturn('encoded_public_key');
+        });
+
+        test('passes public key to buildLinuxApp', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+          verify(
+            () => artifactBuilder.buildLinuxApp(
+              base64PublicKey: 'encoded_public_key',
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+            ),
+          ).called(1);
+        });
       });
     });
 

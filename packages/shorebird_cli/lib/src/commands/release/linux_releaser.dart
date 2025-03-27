@@ -76,6 +76,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     await artifactBuilder.buildLinuxApp(
+      target: target,
+      args: argResults.forwardedArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 
