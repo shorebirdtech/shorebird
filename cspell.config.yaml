@@ -61,6 +61,7 @@ words:
   - logcat
   - longpaths
   - lproj
+  - mget # From ./packages/redis_client
   - metadatas
   - mktemp
   - mocktail

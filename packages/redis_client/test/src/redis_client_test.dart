@@ -253,6 +253,45 @@ void main() {
       });
     });
 
+    group('MGET', () {
+      final kvPairs = [
+        for (var i = 0; i < 10; i++) (key: 'key_$i', value: 'value_$i'),
+      ];
+
+      setUp(() async {
+        await client.connect();
+        for (final pair in kvPairs) {
+          await expectLater(
+            client.set(key: pair.key, value: pair.value),
+            completes,
+          );
+        }
+      });
+
+      tearDown(() async {
+        try {
+          for (final pair in kvPairs) {
+            await expectLater(client.delete(key: pair.key), completes);
+          }
+          await client.execute(['RESET']);
+          await client.execute(['FLUSHALL']);
+        } on Exception {
+          // ignore
+        }
+      });
+
+      test('completes', () async {
+        await expectLater(
+          client.mget(keys: kvPairs.map((pair) => pair.key).toList()),
+          completion(equals(kvPairs.map((pair) => pair.value).toList())),
+        );
+        await expectLater(
+          client.mget(keys: ['foo', 'key_0', 'baz']),
+          completion(equals([null, 'value_0', null])),
+        );
+      });
+    });
+
     group('JSON', () {
       group('GET/SET/DEL/MERGE', () {
         setUp(() async {
