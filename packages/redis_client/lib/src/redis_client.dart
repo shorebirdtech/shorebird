@@ -182,6 +182,17 @@ class RedisClient {
     ]);
   }
 
+  /// Sets the given keys to their respective values. MSET replaces existing
+  /// values with new values, just as regular SET.
+  /// Equivalent to the `MSET` command.
+  /// https://redis.io/commands/mset
+  Future<void> mset({required List<({String key, String value})> pairs}) async {
+    return execute([
+      'MSET',
+      for (final pair in pairs) ...[pair.key, pair.value],
+    ]);
+  }
+
   /// Gets the value of a key.
   /// Returns null if the key does not exist.
   /// Equivalent to the `GET` command.

@@ -252,19 +252,13 @@ void main() {
       });
     });
 
-    group('MGET', () {
+    group('MGET/MSET', () {
       final kvPairs = [
         for (var i = 0; i < 10; i++) (key: 'key_$i', value: 'value_$i'),
       ];
 
       setUp(() async {
         await client.connect();
-        for (final pair in kvPairs) {
-          await expectLater(
-            client.set(key: pair.key, value: pair.value),
-            completes,
-          );
-        }
       });
 
       tearDown(() async {
@@ -280,6 +274,7 @@ void main() {
       });
 
       test('completes', () async {
+        await expectLater(client.mset(pairs: kvPairs), completes);
         await expectLater(
           client.mget(keys: kvPairs.map((pair) => pair.key).toList()),
           completion(equals(kvPairs.map((pair) => pair.value).toList())),
