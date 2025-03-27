@@ -144,6 +144,25 @@ class GetApksCommand extends ShorebirdCommand {
 
     await extractFileToDisk(apksZipFile.path, outputDirectory.path);
 
+    final apks =
+        outputDirectory
+            .listSync()
+            .whereType<File>()
+            .where((file) => file.path.endsWith('.apk'))
+            .toList();
+    if (apks.isNotEmpty) {
+      logger.info('Generated ${apks.length} apk(s):');
+      for (final file in apks) {
+        logger.info('  - ${lightCyan.wrap(file.path)}');
+      }
+    } else {
+      logger.err(
+        'Failed to extract apks from ${apksZipFile.path} '
+        'to ${outputDirectory.path}',
+      );
+      return ExitCode.software.code;
+    }
+
     logger.info('apk(s) generated at ${lightCyan.wrap(outputDirectory.path)}');
     return ExitCode.success.code;
   }
