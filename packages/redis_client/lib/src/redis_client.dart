@@ -1,3 +1,4 @@
+// cspell:words INCRBYFLOAT
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -199,6 +200,23 @@ class RedisClient {
   /// Equivalent to the `UNLINK` command.
   /// https://redis.io/commands/unlink
   Future<void> unlink({required String key}) => execute(['UNLINK', key]);
+
+  /// Increment the floating point number stored at key by one.
+  /// Returns the newly incremented value.
+  /// Equivalent to the `INCR` command.
+  /// https://redis.io/commands/incr
+  Future<num> increment({required String key}) async {
+    return await execute(['INCR', key]) as num;
+  }
+
+  /// Increment the floating point number stored at key by the specified value.
+  /// Returns the newly incremented value.
+  /// Equivalent to the `INCRBYFLOAT` command.
+  /// https://redis.io/commands/incrbyfloat
+  Future<num> incrementBy({required String key, required num value}) async {
+    final result = await execute(['INCRBYFLOAT', key, value]) as String;
+    return num.parse(result);
+  }
 
   /// Send a command to the Redis server.
   Future<dynamic> execute(List<Object?> command) async {
