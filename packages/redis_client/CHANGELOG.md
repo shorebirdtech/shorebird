@@ -1,3 +1,9 @@
+# 0.0.5
+
+- feat: add new commands:
+  - [INCR](https://redis.io/commands/incr)
+  - [INCRBYFLOAT](https://redis.io/commands/incrbyfloat)
+
 # 0.0.4
 
 - feat: add `ttl` (time to live) on `set` API
