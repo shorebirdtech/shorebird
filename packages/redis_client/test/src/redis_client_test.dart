@@ -243,10 +243,10 @@ void main() {
         await expectLater(client.set(key: key, value: value), completes);
         await expectLater(
           client.incrementBy(key: key, value: 42.2),
-          completion(equals(53.2)),
+          completion(equals(52.2)),
         );
         await expectLater(
-          client.incrementBy(key: key, value: -53.2),
+          client.incrementBy(key: key, value: -52.2),
           completion(equals(0.0)),
         );
       });
