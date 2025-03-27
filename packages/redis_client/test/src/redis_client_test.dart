@@ -249,6 +249,7 @@ void main() {
           client.incrementBy(key: key, value: -52.2),
           completion(equals(0.0)),
         );
+        await expectLater(client.delete(key: key), completes);
       });
     });
 
