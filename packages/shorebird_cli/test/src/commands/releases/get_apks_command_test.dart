@@ -417,5 +417,54 @@ void main() {
         ).called(1);
       });
     });
+
+    group('when apks extraction fails', () {
+      late Directory outDirectory;
+      late String apksFilePath;
+
+      setUp(() {
+        outDirectory = Directory.systemTemp.createTempSync();
+        // Delete to ensure the command creates the directory if needed
+        // ignore: cascade_invocations
+        outDirectory.deleteSync();
+        when(() => argResults['out']).thenReturn(outDirectory.path);
+        when(() => argResults.wasParsed('out')).thenReturn(true);
+
+        Future<File> createEmptyTempApksFile() async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final apksDir = Directory(p.join(tempDir.path, 'temp.apks'))
+            ..createSync(recursive: true);
+          final apksFile = File(p.join(tempDir.path, 'test.apks'));
+          await ZipFileEncoder().zipDirectory(apksDir, filename: apksFile.path);
+          return apksFile;
+        }
+
+        when(
+          () => bundletool.buildApks(
+            bundle: any(named: 'bundle'),
+            output: any(named: 'output'),
+            universal: any(named: 'universal'),
+          ),
+        ).thenAnswer((invocation) async {
+          final apksFile = await createEmptyTempApksFile();
+          final outputPath = invocation.namedArguments[#output] as String;
+          apksFilePath = outputPath;
+          apksFile.renameSync(outputPath);
+        });
+      });
+
+      // Working around a package:archive bug where it silently fails when
+      // extracting the apks zip, leaving an empty directory.
+      test('apks zip is empty', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(ExitCode.software.code),
+        );
+        final expectedMessage =
+            'Failed to extract apks from $apksFilePath.zip '
+            'to ${outDirectory.path}';
+        verify(() => logger.err(expectedMessage)).called(1);
+      });
+    });
   });
 }
