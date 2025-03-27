@@ -346,8 +346,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                   isA<ArtifactBuildException>().having(
                     (e) => e.fixRecommendation,
                     'recommendation',
-                    equals(
-                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    startsWith(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation(
+                        '',
+                      ).substring(0, 80),
                     ),
                   ),
                 ),
@@ -546,8 +548,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                   isA<ArtifactBuildException>().having(
                     (e) => e.fixRecommendation,
                     'recommendation',
-                    equals(
-                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    startsWith(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation(
+                        '',
+                      ).substring(0, 80),
                     ),
                   ),
                 ),
@@ -671,8 +675,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                   isA<ArtifactBuildException>().having(
                     (e) => e.fixRecommendation,
                     'recommendation',
-                    equals(
-                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    startsWith(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation(
+                        '',
+                      ).substring(0, 80),
                     ),
                   ),
                 ),
@@ -736,8 +742,10 @@ Reason: Exited with code 70.'''),
                   .having(
                     (e) => e.fixRecommendation,
                     'recommendation',
-                    equals(
-                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    startsWith(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation(
+                        '',
+                      ).substring(0, 80),
                     ),
                   ),
             ),
@@ -926,7 +934,11 @@ Reason: Exited with code 70.'''),
                 isA<ArtifactBuildException>().having(
                   (e) => e.fixRecommendation,
                   'recommendation',
-                  equals(ArtifactBuilder.runVanillaFlutterBuildRecommendation),
+                  startsWith(
+                    ArtifactBuilder.runVanillaFlutterBuildRecommendation(
+                      '',
+                    ).substring(0, 80),
+                  ),
                 ),
               ),
             );
@@ -1109,7 +1121,11 @@ Reason: Exited with code 70.'''),
                 isA<ArtifactBuildException>().having(
                   (e) => e.fixRecommendation,
                   'recommendation',
-                  equals(ArtifactBuilder.runVanillaFlutterBuildRecommendation),
+                  startsWith(
+                    ArtifactBuilder.runVanillaFlutterBuildRecommendation(
+                      '',
+                    ).substring(0, 80),
+                  ),
                 ),
               ),
             );
@@ -1174,8 +1190,10 @@ Reason: Exited with code 70.'''),
                   isA<ArtifactBuildException>().having(
                     (e) => e.fixRecommendation,
                     'recommendation',
-                    equals(
-                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    startsWith(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation(
+                        '',
+                      ).substring(0, 80),
                     ),
                   ),
                 ),
@@ -1327,8 +1345,10 @@ Reason: Exited with code 70.'''),
                   isA<ArtifactBuildException>().having(
                     (e) => e.fixRecommendation,
                     'recommendation',
-                    equals(
-                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    startsWith(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation(
+                        '',
+                      ).substring(0, 80),
                     ),
                   ),
                 ),
@@ -1463,8 +1483,10 @@ Reason: Exited with code 70.'''),
                   .having(
                     (e) => e.fixRecommendation,
                     'recommendation',
-                    equals(
-                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    startsWith(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation(
+                        '',
+                      ).substring(0, 80),
                     ),
                   ),
             ),

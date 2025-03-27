@@ -68,26 +68,29 @@ extension on String {
 /// @{endtemplate}
 class ArtifactBuilder {
   /// A general recommendation when building artifacts fails.
-  static const runVanillaFlutterBuildRecommendation = '''
-*-----------------------------------------------------------------------------*
-|  Recommendations                                                            |
-*-----------------------------------------------------------------------------*
-| • Check that running `flutter build` with the same command-line arguments   |
-| completes successfully. If `flutter build` fails, then this is NOT a        |
-| Shorebird issue and the underlying `flutter build` failure must be resolved |
-| in order for Shorebird to build a release.                                  |
-|                                                                             |
-| • If `flutter build` completes successfully, please ensure that you are     |
-| providing the desired flutter version to the release command via            |
-| the `--flutter-version` option. If you do not specify a `--flutter-version` |
-| Shorebird will default to the latest stable version of Flutter.             |
-| We strongly encourage always specifying an explicit Flutter version.        |
-| Example: `shorebird release <platform> --flutter-version=3.29.0`            |
-|                                                                             |
-| • If `flutter build` completes successfully and `shorebird release`         |
-| fails when using the same flutter version, please file an issue:            |
-| https://github.com/shorebirdtech/shorebird/issues/new                       |
-*-----------------------------------------------------------------------------*
+  static String runVanillaFlutterBuildRecommendation(String buildCommand) => '''
+
+${styleBold.wrap('💡 Fix Recommendations')}
+
+• Check that running `flutter build` with the same command-line arguments
+completes successfully by running the following command:
+
+${lightCyan.wrap(buildCommand)}
+
+If the above command fails, then this is *NOT* a Shorebird issue and the
+the underlying `flutter build` failure must be resolved for Shorebird to
+build a release.
+
+• If `flutter build` completes successfully, please ensure that you are
+providing the desired flutter version to the release command via 
+the `--flutter-version` option. If you do not specify a `--flutter-version`
+Shorebird will default to the latest stable version of Flutter.
+We strongly encourage always specifying an explicit Flutter version.
+Example: `shorebird release <platform> --flutter-version=3.29.0`
+
+• If `flutter build` completes successfully and `shorebird release`
+fails when using the same flutter version, please file an issue:
+${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
 ''';
 
   /// Builds an aab using `flutter build appbundle`. Runs `flutter pub get` with
@@ -128,7 +131,9 @@ class ArtifactBuilder {
 Failed to build AAB.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation,
+          fixRecommendation: runVanillaFlutterBuildRecommendation(
+            [executable, ...arguments].join(' '),
+          ),
         );
       }
     });
@@ -196,7 +201,9 @@ Reason: Exited with code $exitCode.''',
 Failed to build APK.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation,
+          fixRecommendation: runVanillaFlutterBuildRecommendation(
+            [executable, ...arguments].join(' '),
+          ),
         );
       }
     });
@@ -256,7 +263,9 @@ Reason: Exited with code $exitCode.''',
 Failed to build AAR.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation,
+          fixRecommendation: runVanillaFlutterBuildRecommendation(
+            [executable, ...arguments].join(' '),
+          ),
         );
       }
     });
@@ -294,7 +303,9 @@ Reason: Exited with code $exitCode.''',
 Failed to build linux app.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation,
+          fixRecommendation: runVanillaFlutterBuildRecommendation(
+            [executable, ...arguments].join(' '),
+          ),
         );
       }
     });
@@ -345,7 +356,9 @@ Reason: Exited with code $exitCode.''',
 Failed to build macOS app.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation,
+          fixRecommendation: runVanillaFlutterBuildRecommendation(
+            [executable, ...arguments].join(' '),
+          ),
         );
       }
 
@@ -409,7 +422,9 @@ Reason: Exited with code $exitCode.''',
 Failed to build IPA.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation,
+          fixRecommendation: runVanillaFlutterBuildRecommendation(
+            [executable, ...arguments].join(' '),
+          ),
         );
       }
 
@@ -466,7 +481,9 @@ Reason: Exited with code $exitCode.''',
 Failed to build iOS framework.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation,
+          fixRecommendation: runVanillaFlutterBuildRecommendation(
+            [executable, ...arguments].join(' '),
+          ),
         );
       }
 
@@ -583,7 +600,9 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 Failed to build windows app.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation,
+          fixRecommendation: runVanillaFlutterBuildRecommendation(
+            [executable, ...arguments].join(' '),
+          ),
         );
       }
     });
