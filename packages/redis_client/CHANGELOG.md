@@ -1,3 +1,8 @@
+# 0.0.6
+
+- feat: add new commands:
+  - [MSET](https://redis.io/commands/mset)
+
 # 0.0.5
 
 - feat: add new commands:
