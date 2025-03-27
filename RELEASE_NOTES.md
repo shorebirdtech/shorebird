@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.32 (March 27, 2025)
+
+- 🪧 Add `shorebird release` failure recommendations
+- 🐧 Fix `shorebird release linux` not forwarding all build args
+- 🐛 Fix diff generation due to whitespace in paths on windows
+
 ## 1.6.31 (March 26, 2025)
 
 - 🚀 iOS patch performance improvements (sorted field table)
