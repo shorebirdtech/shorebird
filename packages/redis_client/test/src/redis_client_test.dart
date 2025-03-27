@@ -221,6 +221,36 @@ void main() {
       });
     });
 
+    group('INCR/INCRBYFLOAT', () {
+      setUp(() async {
+        await client.connect();
+      });
+
+      tearDown(() async {
+        try {
+          await client.execute(['RESET']);
+          await client.execute(['FLUSHALL']);
+        } on Exception {
+          // ignore
+        }
+      });
+
+      test('completes', () async {
+        const key = 'key';
+        const value = '10';
+        await expectLater(client.increment(key: key), completion(equals(1)));
+        await expectLater(client.set(key: key, value: value), completes);
+        await expectLater(
+          client.incrementBy(key: key, value: 42.2),
+          completion(equals(53.2)),
+        );
+        await expectLater(
+          client.incrementBy(key: key, value: -53.2),
+          completion(equals(0.0)),
+        );
+      });
+    });
+
     group('JSON', () {
       group('GET/SET/DEL/MERGE', () {
         setUp(() async {
