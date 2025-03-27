@@ -45,6 +45,7 @@ words:
   - gradlew
   - hotreload
   - idevicesyslog
+  - incrbyfloat # From redis_client
   - iokit
   - iphoneos
   - keyalg # From .github/workflows/e2e.yaml
