@@ -45,7 +45,7 @@ words:
   - gradlew
   - hotreload
   - idevicesyslog
-  - incrbyfloat # From redis_client
+  - incrbyfloat # From ./packages/redis_client
   - iokit
   - iphoneos
   - keyalg # From .github/workflows/e2e.yaml
@@ -66,6 +66,7 @@ words:
   - metadatas
   - mktemp
   - mocktail
+  - mset # From ./packages/redis_client
   - multioption
   - noaudio # From .github dir, doesn't show up in "**" check?
   - NOAUTH
