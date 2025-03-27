@@ -85,8 +85,9 @@ build a release.
 providing the desired flutter version to the release command via 
 the `--flutter-version` option. If you do not specify a `--flutter-version`
 Shorebird will default to the latest stable version of Flutter.
-We strongly encourage always specifying an explicit Flutter version.
-Example: `shorebird release <platform> --flutter-version=3.29.0`
+We strongly encourage always specifying an explicit Flutter version:
+
+${lightCyan.wrap('shorebird release <platform> --flutter-version=3.29.0')}
 
 • If `flutter build` completes successfully and `shorebird release`
 fails when using the same flutter version, please file an issue:
