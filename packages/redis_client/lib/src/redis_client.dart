@@ -182,12 +182,33 @@ class RedisClient {
     ]);
   }
 
+  /// Sets the given keys to their respective values. MSET replaces existing
+  /// values with new values, just as regular SET.
+  /// Equivalent to the `MSET` command.
+  /// https://redis.io/commands/mset
+  Future<void> mset({required List<({String key, String value})> pairs}) async {
+    return execute([
+      'MSET',
+      for (final pair in pairs) ...[pair.key, pair.value],
+    ]);
+  }
+
   /// Gets the value of a key.
   /// Returns null if the key does not exist.
   /// Equivalent to the `GET` command.
   /// https://redis.io/commands/get
   Future<String?> get({required String key}) async {
     return await execute(['GET', key]) as String?;
+  }
+
+  /// Returns the values of all specified keys.
+  /// For every key that does not hold a string value or does not exist, `null`
+  /// is returned.
+  /// Equivalent to the `MGET` command.
+  /// https://redis.io/commands/mget
+  Future<List<dynamic>> mget({required List<String> keys}) async {
+    final results = await execute(['MGET', ...keys]) as List<RespType>;
+    return results.map((result) => result.payload).toList();
   }
 
   /// Deletes the specified key.
@@ -199,6 +220,23 @@ class RedisClient {
   /// Equivalent to the `UNLINK` command.
   /// https://redis.io/commands/unlink
   Future<void> unlink({required String key}) => execute(['UNLINK', key]);
+
+  /// Increment the floating point number stored at key by one.
+  /// Returns the newly incremented value.
+  /// Equivalent to the `INCR` command.
+  /// https://redis.io/commands/incr
+  Future<num> increment({required String key}) async {
+    return await execute(['INCR', key]) as num;
+  }
+
+  /// Increment the floating point number stored at key by the specified value.
+  /// Returns the newly incremented value.
+  /// Equivalent to the `INCRBYFLOAT` command.
+  /// https://redis.io/commands/incrbyfloat
+  Future<num> incrementBy({required String key, required num value}) async {
+    final result = await execute(['INCRBYFLOAT', key, value]) as String;
+    return num.parse(result);
+  }
 
   /// Send a command to the Redis server.
   Future<dynamic> execute(List<Object?> command) async {

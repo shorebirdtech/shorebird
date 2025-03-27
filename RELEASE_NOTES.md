@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.31 (March 26, 2025)
+
+- 🚀 iOS patch performance improvements (sorted field table)
+- 🧹 Remove outdated note from `shorebird release` output
+
 ## 1.6.30 (March 24, 2025)
 
 - 🐛 Fix using older Flutter versions that do not include `flutter config`
