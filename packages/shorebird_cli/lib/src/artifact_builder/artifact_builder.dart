@@ -77,7 +77,7 @@ completes successfully by running the following command:
 
 ${lightCyan.wrap(buildCommand)}
 
-If the above command fails, then this is *NOT* a Shorebird issue and the
+If the above command fails, then this is likely not a Shorebird issue and
 the underlying `flutter build` failure must be resolved for Shorebird to
 build a release.
 
