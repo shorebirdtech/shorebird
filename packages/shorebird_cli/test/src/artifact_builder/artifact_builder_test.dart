@@ -342,7 +342,15 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             verifyCorrectFlutterPubGet(
               () => expectLater(
                 () => runWithOverrides(() => builder.buildAppBundle()),
-                throwsA(isA<ArtifactBuildException>()),
+                throwsA(
+                  isA<ArtifactBuildException>().having(
+                    (e) => e.fixRecommendation,
+                    'recommendation',
+                    equals(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    ),
+                  ),
+                ),
               ),
             );
           });
@@ -534,7 +542,15 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             verifyCorrectFlutterPubGet(
               () => expectLater(
                 () => runWithOverrides(() => builder.buildApk()),
-                throwsA(isA<ArtifactBuildException>()),
+                throwsA(
+                  isA<ArtifactBuildException>().having(
+                    (e) => e.fixRecommendation,
+                    'recommendation',
+                    equals(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    ),
+                  ),
+                ),
               ),
             );
           });
@@ -651,7 +667,15 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 () async => runWithOverrides(
                   () => builder.buildAar(buildNumber: buildNumber),
                 ),
-                throwsA(isA<ArtifactBuildException>()),
+                throwsA(
+                  isA<ArtifactBuildException>().having(
+                    (e) => e.fixRecommendation,
+                    'recommendation',
+                    equals(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    ),
+                  ),
+                ),
               ),
             );
           });
@@ -700,14 +724,22 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           expect(
             () => runWithOverrides(() => builder.buildLinuxApp()),
             throwsA(
-              isA<ArtifactBuildException>().having(
-                (e) => e.message,
-                'message',
-                equals('''
+              isA<ArtifactBuildException>()
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    equals('''
 Failed to build linux app.
 Command: flutter build linux --release
 Reason: Exited with code 70.'''),
-              ),
+                  )
+                  .having(
+                    (e) => e.fixRecommendation,
+                    'recommendation',
+                    equals(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    ),
+                  ),
             ),
           );
         });
@@ -890,7 +922,13 @@ Reason: Exited with code 70.'''),
           test('throws ArtifactBuildException', () {
             expect(
               () => runWithOverrides(() => builder.buildMacos(codesign: false)),
-              throwsA(isA<ArtifactBuildException>()),
+              throwsA(
+                isA<ArtifactBuildException>().having(
+                  (e) => e.fixRecommendation,
+                  'recommendation',
+                  equals(ArtifactBuilder.runVanillaFlutterBuildRecommendation),
+                ),
+              ),
             );
           });
         });
@@ -1067,7 +1105,13 @@ Reason: Exited with code 70.'''),
           test('throws ArtifactBuildException', () {
             expect(
               () => runWithOverrides(() => builder.buildIpa(codesign: false)),
-              throwsA(isA<ArtifactBuildException>()),
+              throwsA(
+                isA<ArtifactBuildException>().having(
+                  (e) => e.fixRecommendation,
+                  'recommendation',
+                  equals(ArtifactBuilder.runVanillaFlutterBuildRecommendation),
+                ),
+              ),
             );
           });
         });
@@ -1126,7 +1170,15 @@ Reason: Exited with code 70.'''),
               () async => expectLater(
                 () async =>
                     runWithOverrides(() => builder.buildIpa(codesign: false)),
-                throwsA(isA<ArtifactBuildException>()),
+                throwsA(
+                  isA<ArtifactBuildException>().having(
+                    (e) => e.fixRecommendation,
+                    'recommendation',
+                    equals(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    ),
+                  ),
+                ),
               ),
             );
           });
@@ -1271,7 +1323,15 @@ Reason: Exited with code 70.'''),
             verifyCorrectFlutterPubGet(
               () => expectLater(
                 () => runWithOverrides(builder.buildIosFramework),
-                throwsA(isA<ArtifactBuildException>()),
+                throwsA(
+                  isA<ArtifactBuildException>().having(
+                    (e) => e.fixRecommendation,
+                    'recommendation',
+                    equals(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    ),
+                  ),
+                ),
               ),
             );
           });
@@ -1391,14 +1451,22 @@ Reason: Exited with code 70.'''),
           expect(
             () => runWithOverrides(() => builder.buildWindowsApp()),
             throwsA(
-              isA<ArtifactBuildException>().having(
-                (e) => e.message,
-                'message',
-                equals('''
+              isA<ArtifactBuildException>()
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    equals('''
 Failed to build windows app.
 Command: flutter build windows --release
 Reason: Exited with code 70.'''),
-              ),
+                  )
+                  .having(
+                    (e) => e.fixRecommendation,
+                    'recommendation',
+                    equals(
+                      ArtifactBuilder.runVanillaFlutterBuildRecommendation,
+                    ),
+                  ),
             ),
           );
         });

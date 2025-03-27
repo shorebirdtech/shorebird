@@ -67,6 +67,29 @@ extension on String {
 /// Builds aabs, ipas, and other artifacts produced by `flutter build`.
 /// @{endtemplate}
 class ArtifactBuilder {
+  /// A general recommendation when building artifacts fails.
+  static const runVanillaFlutterBuildRecommendation = '''
+*-----------------------------------------------------------------------------*
+|  Recommendations                                                            |
+*-----------------------------------------------------------------------------*
+| • Check that running `flutter build` with the same command-line arguments   |
+| completes successfully. If `flutter build` fails, then this is NOT a        |
+| Shorebird issue and the underlying `flutter build` failure must be resolved |
+| in order for Shorebird to build a release.                                  |
+|                                                                             |
+| • If `flutter build` completes successfully, please ensure that you are     |
+| providing the desired flutter version to the release command via            |
+| the `--flutter-version` option. If you do not specify a `--flutter-version` |
+| Shorebird will default to the latest stable version of Flutter.             |
+| We strongly encourage always specifying an explicit Flutter version.        |
+| Example: `shorebird release <platform> --flutter-version=3.29.0`            |
+|                                                                             |
+| • If `flutter build` completes successfully and `shorebird release`         |
+| fails when using the same flutter version, please file an issue:            |
+| https://github.com/shorebirdtech/shorebird/issues/new                       |
+*-----------------------------------------------------------------------------*
+''';
+
   /// Builds an aab using `flutter build appbundle`. Runs `flutter pub get` with
   /// the system installation of Flutter to reset
   /// `.dart_tool/package_config.json` after the build completes or fails.
@@ -100,10 +123,13 @@ class ArtifactBuilder {
       );
 
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('''
+        throw ArtifactBuildException(
+          '''
 Failed to build AAB.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''');
+Reason: Exited with code $exitCode.''',
+          fixRecommendation: runVanillaFlutterBuildRecommendation,
+        );
       }
     });
 
@@ -165,10 +191,13 @@ Reason: Exited with code $exitCode.''');
       );
 
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('''
+        throw ArtifactBuildException(
+          '''
 Failed to build APK.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''');
+Reason: Exited with code $exitCode.''',
+          fixRecommendation: runVanillaFlutterBuildRecommendation,
+        );
       }
     });
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
@@ -222,10 +251,13 @@ Reason: Exited with code $exitCode.''');
       );
 
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('''
+        throw ArtifactBuildException(
+          '''
 Failed to build AAR.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''');
+Reason: Exited with code $exitCode.''',
+          fixRecommendation: runVanillaFlutterBuildRecommendation,
+        );
       }
     });
   }
@@ -257,10 +289,13 @@ Reason: Exited with code $exitCode.''');
       );
 
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('''
+        throw ArtifactBuildException(
+          '''
 Failed to build linux app.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''');
+Reason: Exited with code $exitCode.''',
+          fixRecommendation: runVanillaFlutterBuildRecommendation,
+        );
       }
     });
   }
@@ -305,10 +340,13 @@ Reason: Exited with code $exitCode.''');
       );
 
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('''
+        throw ArtifactBuildException(
+          '''
 Failed to build macOS app.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''');
+Reason: Exited with code $exitCode.''',
+          fixRecommendation: runVanillaFlutterBuildRecommendation,
+        );
       }
 
       appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
@@ -366,10 +404,13 @@ Reason: Exited with code $exitCode.''');
       );
 
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('''
+        throw ArtifactBuildException(
+          '''
 Failed to build IPA.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''');
+Reason: Exited with code $exitCode.''',
+          fixRecommendation: runVanillaFlutterBuildRecommendation,
+        );
       }
 
       appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
@@ -420,11 +461,13 @@ Reason: Exited with code $exitCode.''');
       );
 
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('''
+        throw ArtifactBuildException(
+          '''
 Failed to build iOS framework.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.
-''');
+Reason: Exited with code $exitCode.''',
+          fixRecommendation: runVanillaFlutterBuildRecommendation,
+        );
       }
 
       appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
@@ -535,10 +578,13 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       );
 
       if (exitCode != ExitCode.success.code) {
-        throw ArtifactBuildException('''
+        throw ArtifactBuildException(
+          '''
 Failed to build windows app.
 Command: $executable ${arguments.join(' ')}
-Reason: Exited with code $exitCode.''');
+Reason: Exited with code $exitCode.''',
+          fixRecommendation: runVanillaFlutterBuildRecommendation,
+        );
       }
     });
 
