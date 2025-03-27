@@ -1,6 +1,7 @@
 # 0.0.5
 
 - feat: add new commands:
+  - [MGET](https://redis.io/commands/mget)
   - [INCR](https://redis.io/commands/incr)
   - [INCRBYFLOAT](https://redis.io/commands/incrbyfloat)
 
