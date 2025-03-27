@@ -8,7 +8,7 @@ This section contains past updates we've sent to customers.
 
 ## 1.6.32 (March 27, 2025)
 
-- 🪧 Add `shorebird release` failure recommendations
+- 🪧 Add `shorebird release` build failure recommendations
 - 🐧 Fix `shorebird release linux` not forwarding all build args
 - 🐛 Fix diff generation due to whitespace in paths on windows
 
