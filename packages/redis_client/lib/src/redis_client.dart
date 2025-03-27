@@ -190,6 +190,16 @@ class RedisClient {
     return await execute(['GET', key]) as String?;
   }
 
+  /// Returns the values of all specified keys.
+  /// For every key that does not hold a string value or does not exist, `null`
+  /// is returned.
+  /// Equivalent to the `MGET` command.
+  /// https://redis.io/commands/mget
+  Future<List<dynamic>> mget({required List<String> keys}) async {
+    final results = await execute(['MGET', ...keys]) as List<RespType>;
+    return results.map((result) => result.payload).toList();
+  }
+
   /// Deletes the specified key.
   /// Equivalent to the `DEL` command.
   /// https://redis.io/commands/del
