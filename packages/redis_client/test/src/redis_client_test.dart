@@ -10,7 +10,7 @@ void main() {
 
     setUp(() async {
       client = RedisClient(
-        socket: const RedisSocketOptions(port: 8080, password: 'password'),
+        socket: const RedisSocketOptions(password: 'password'),
       );
     });
 
