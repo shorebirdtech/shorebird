@@ -62,6 +62,7 @@ words:
   - logcat
   - longpaths
   - lproj
+  - madd # From ./packages/redis_client
   - mget # From ./packages/redis_client
   - metadatas
   - mktemp
