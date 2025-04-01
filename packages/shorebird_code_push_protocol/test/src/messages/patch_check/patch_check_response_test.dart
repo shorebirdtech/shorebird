@@ -3,6 +3,14 @@ import 'package:test/test.dart';
 
 void main() {
   group(PatchCheckResponse, () {
+    test('can be (de)serialized', () {
+      const response = PatchCheckResponse(patchAvailable: true);
+      expect(
+        PatchCheckResponse.fromJson(response.toJson()).toJson(),
+        equals(response.toJson()),
+      );
+    });
+
     test('can be serialized to json without patch metadata', () {
       const response = PatchCheckResponse(patchAvailable: true);
       expect(response.toJson(), {
