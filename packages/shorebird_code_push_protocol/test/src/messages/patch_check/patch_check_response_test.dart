@@ -3,6 +3,17 @@ import 'package:test/test.dart';
 
 void main() {
   group(PatchCheckResponse, () {
+    test('uses value equality', () {
+      expect(
+        // Ignoring for value quality testing.
+        // ignore: prefer_const_constructors
+        PatchCheckResponse(patchAvailable: true),
+        // Ignoring for value quality testing.
+        // ignore: prefer_const_constructors
+        equals(PatchCheckResponse(patchAvailable: true)),
+      );
+    });
+
     test('can be (de)serialized', () {
       const response = PatchCheckResponse(patchAvailable: true);
       expect(
@@ -18,6 +29,42 @@ void main() {
         'patch': null,
         'rolled_back_patch_numbers': null,
       });
+    });
+
+    test('PatchCheckMetadata uses value equality', () {
+      expect(
+        // Ignoring for value quality testing.
+        // ignore: prefer_const_constructors
+        PatchCheckMetadata(
+          number: 1,
+          downloadUrl: 'https://download.com',
+          hash: '1234',
+          hashSignature: null,
+        ),
+        equals(
+          // Ignoring for value quality testing.
+          // ignore: prefer_const_constructors
+          PatchCheckMetadata(
+            number: 1,
+            downloadUrl: 'https://download.com',
+            hash: '1234',
+            hashSignature: null,
+          ),
+        ),
+      );
+    });
+
+    test('PatchCheckMetadata can be (de)serialized', () {
+      const metadata = PatchCheckMetadata(
+        number: 1,
+        downloadUrl: 'https://download.com',
+        hash: '1234',
+        hashSignature: null,
+      );
+      expect(
+        PatchCheckMetadata.fromJson(metadata.toJson()).toJson(),
+        equals(metadata.toJson()),
+      );
     });
 
     test('can be serialized to json with patch metadata', () {
