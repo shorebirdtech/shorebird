@@ -417,13 +417,16 @@ void main() {
         });
 
         test('completes', () async {
-          await client.timeSeries.create(
-            key: 'sensor',
-            chunkSize: 128,
-            duplicatePolicy: RedisTimeSeriesDuplicatePolicy.sum,
-            encoding: RedisTimeSeriesEncoding.compressed,
-            retention: const Duration(days: 30),
-            labels: [(label: 'city', value: 'chicago')],
+          await expectLater(
+            client.timeSeries.create(
+              key: 'sensor',
+              chunkSize: 128,
+              duplicatePolicy: RedisTimeSeriesDuplicatePolicy.sum,
+              encoding: RedisTimeSeriesEncoding.compressed,
+              retention: const Duration(days: 30),
+              labels: [(label: 'city', value: 'chicago')],
+            ),
+            completes,
           );
         });
       });
