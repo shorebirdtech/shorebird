@@ -13,6 +13,7 @@ export 'get_organizations/get_organizations.dart';
 export 'get_release_artifacts/get_release_artifacts.dart';
 export 'get_release_patches/get_release_patches.dart';
 export 'get_releases/get_releases.dart';
+export 'patch_check/patch_check.dart';
 export 'promote_patch/promote_patch.dart';
 export 'update_app_collaborator/update_app_collaborator.dart';
 export 'update_patch/update_patch.dart';
