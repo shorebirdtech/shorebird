@@ -417,7 +417,7 @@ class RedisClient {
 /// https://redis.io/docs/data-types/json/
 /// {@endtemplate}
 class RedisJson {
-  RedisJson._({required RedisClient client}) : _client = client;
+  const RedisJson._({required RedisClient client}) : _client = client;
 
   final RedisClient _client;
 
@@ -522,7 +522,7 @@ enum RedisTimeSeriesDuplicatePolicy {
 /// https://redis.io/docs/latest/develop/data-types/timeseries/
 /// {@endtemplate}
 class RedisTimeSeries {
-  RedisTimeSeries._({required RedisClient client}) : _client = client;
+  const RedisTimeSeries._({required RedisClient client}) : _client = client;
 
   final RedisClient _client;
 
