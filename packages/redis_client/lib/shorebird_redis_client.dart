@@ -5,4 +5,7 @@ export 'src/redis_client.dart'
         RedisException,
         RedisJson,
         RedisLogger,
-        RedisSocketOptions;
+        RedisSocketOptions,
+        RedisTimeSeries,
+        RedisTimeSeriesDuplicatePolicy,
+        RedisTimeSeriesEncoding;

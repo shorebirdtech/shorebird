@@ -400,5 +400,36 @@ void main() {
         });
       });
     });
+
+    group('TimeSeries', () {
+      group('CREATE', () {
+        setUp(() async {
+          await client.connect();
+        });
+
+        tearDown(() async {
+          try {
+            await client.execute(['RESET']);
+            await client.execute(['FLUSHALL']);
+          } on Exception {
+            // ignore
+          }
+        });
+
+        test('completes', () async {
+          await expectLater(
+            client.timeSeries.create(
+              key: 'sensor',
+              chunkSize: 128,
+              duplicatePolicy: RedisTimeSeriesDuplicatePolicy.sum,
+              encoding: RedisTimeSeriesEncoding.compressed,
+              retention: const Duration(days: 30),
+              labels: [(label: 'city', value: 'chicago')],
+            ),
+            completes,
+          );
+        });
+      });
+    });
   });
 }
