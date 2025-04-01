@@ -157,6 +157,9 @@ class RedisClient {
   /// The Redis JSON commands.
   RedisJson get json => RedisJson._(client: this);
 
+  /// The Redis Time Series commands.
+  RedisTimeSeries get timeSeries => RedisTimeSeries._(client: this);
+
   /// Authenticate to the Redis server.
   /// Equivalent to the `AUTH` command.
   /// https://redis.io/commands/auth
@@ -461,6 +464,93 @@ class RedisJson {
     String path = r'$',
   }) {
     return _client.execute(['JSON.MERGE', key, path, json.encode(value)]);
+  }
+}
+
+/// Specifies the series samples encoding format as one of the following values:
+/// `compressed` is almost always the right choice. Compression not only saves
+/// memory but usually improves performance due to a lower number of memory
+/// accesses. It can result in about 90% memory reduction. The exception are
+/// highly irregular timestamps or values, which occur rarely.
+/// When not specified, the encoding is set to `compressed`.
+enum RedisTimeSeriesEncoding {
+  /// Applies compression to the series samples
+  compressed,
+
+  /// Keeps the raw samples in memory. Adding this flag keeps data in an
+  /// uncompressed form
+  uncompressed;
+
+  /// Converts the enum to an argument that can be passed directly to
+  /// `execute`.
+  String toArgument() => name.toUpperCase();
+}
+
+/// The policy for handling insertion (TS.ADD and TS.MADD) of multiple samples
+/// with identical timestamps.
+/// Defaults to `block` when not specified.
+enum RedisTimeSeriesDuplicatePolicy {
+  /// Ignore any newly reported value and reply with an error
+  block,
+
+  /// Ignore any newly reported value
+  first,
+
+  /// Override with the newly reported value
+  last,
+
+  /// Only override if the value is lower than the existing value
+  min,
+
+  /// Only override if the value is higher than the existing value
+  max,
+
+  /// If a previous sample exists, add the new sample to it so that the updated
+  /// value is equal to (previous + new). If no previous sample exists, set the
+  /// updated value equal to the new value.
+  sum;
+
+  /// Converts the enum to an argument that can be passed directly to
+  /// `execute`.
+  String toArgument() => name.toUpperCase();
+}
+
+/// {@template redis_time_series}
+/// An object that adds support for storing and querying timestamped data
+/// points.
+/// Backed by the RedisTimeSeries module.
+/// https://redis.io/docs/latest/develop/data-types/timeseries/
+/// {@endtemplate}
+class RedisTimeSeries {
+  RedisTimeSeries._({required RedisClient client}) : _client = client;
+
+  final RedisClient _client;
+
+  /// Create a new time series.
+  /// Equivalent to the `TS.CREATE` command.
+  Future<void> create({
+    required String key,
+    Duration? retention,
+    RedisTimeSeriesEncoding? encoding,
+    int? chunkSize,
+    RedisTimeSeriesDuplicatePolicy? duplicatePolicy,
+    List<({String label, String value})>? labels,
+  }) async {
+    return _client.execute([
+      'TS.CREATE',
+      key,
+      if (retention != null) ...['RETENTION', retention.inMilliseconds],
+      if (encoding != null) ...['ENCODING', encoding.toArgument()],
+      if (chunkSize != null) ...['CHUNK_SIZE', chunkSize],
+      if (duplicatePolicy != null) ...[
+        'DUPLICATE_POLICY',
+        duplicatePolicy.toArgument(),
+      ],
+      if (labels != null) ...[
+        'LABELS',
+        for (final label in labels) ...[label.label, label.value],
+      ],
+    ]);
   }
 }
 

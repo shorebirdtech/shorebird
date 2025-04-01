@@ -10,7 +10,7 @@ void main() {
 
     setUp(() async {
       client = RedisClient(
-        socket: const RedisSocketOptions(password: 'password'),
+        socket: const RedisSocketOptions(port: 8080, password: 'password'),
       );
     });
 
@@ -397,6 +397,34 @@ void main() {
           );
           await expectLater(client.json.delete(key: key), completes);
           await expectLater(client.json.get(key: key), completion(isNull));
+        });
+      });
+    });
+
+    group('TimeSeries', () {
+      group('CREATE', () {
+        setUp(() async {
+          await client.connect();
+        });
+
+        tearDown(() async {
+          try {
+            await client.execute(['RESET']);
+            await client.execute(['FLUSHALL']);
+          } on Exception {
+            // ignore
+          }
+        });
+
+        test('completes', () async {
+          await client.timeSeries.create(
+            key: 'sensor',
+            chunkSize: 128,
+            duplicatePolicy: RedisTimeSeriesDuplicatePolicy.sum,
+            encoding: RedisTimeSeriesEncoding.compressed,
+            retention: const Duration(days: 30),
+            labels: [(label: 'city', value: 'chicago')],
+          );
         });
       });
     });
