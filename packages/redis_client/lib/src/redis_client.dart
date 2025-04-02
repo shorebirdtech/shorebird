@@ -515,41 +515,6 @@ enum RedisTimeSeriesDuplicatePolicy {
   String toArgument() => name.toUpperCase();
 }
 
-/// {@template redis_time_series_clock}
-/// An abstract class which represents the clock
-/// in the context of a redis time series instance.
-/// {@endtemplate}
-// ignore: one_member_abstracts
-abstract class RedisTimeSeriesClock {
-  /// {@macro redis_time_series_clock}
-  const RedisTimeSeriesClock();
-
-  /// Returns a timestamp representing the current moment.
-  RedisTimeSeriesTimestamp now();
-}
-
-/// {@template redis_time_series_server_clock}
-/// A [RedisTimeSeriesClock] that represents time on the server.
-/// {@endtemplate}
-class RedisTimeSeriesServerClock extends RedisTimeSeriesClock {
-  /// {@macro redis_time_series_server_clock}
-  const RedisTimeSeriesServerClock();
-  @override
-  RedisTimeSeriesTimestamp now() => const RedisTimeSeriesTimestamp._('*');
-}
-
-/// {@template redis_time_series_client_clock}
-/// A [RedisTimeSeriesClock] that represents time on the client.
-/// {@endtemplate}
-class RedisTimeSeriesClientClock extends RedisTimeSeriesClock {
-  /// {@macro redis_time_series_client_clock}
-  const RedisTimeSeriesClientClock();
-  @override
-  RedisTimeSeriesTimestamp now() {
-    return RedisTimeSeriesTimestamp(DateTime.timestamp());
-  }
-}
-
 /// {@template redis_time_series_timestamp}
 /// is Unix time (integer, in milliseconds) specifying the sample timestamp or *
 /// to set the sample timestamp to the Unix time of the server's clock.
@@ -594,6 +559,181 @@ class RedisTimeSeriesTimestamp {
 
   /// The underlying value of the timestamp.
   final String value;
+}
+
+/// {@template redis_time_series_clock}
+/// An abstract class which represents the clock
+/// in the context of a redis time series instance.
+/// {@endtemplate}
+// ignore: one_member_abstracts
+abstract class RedisTimeSeriesClock {
+  /// {@macro redis_time_series_clock}
+  const RedisTimeSeriesClock();
+
+  /// Returns a timestamp representing the current moment.
+  RedisTimeSeriesTimestamp now();
+}
+
+/// {@template redis_time_series_server_clock}
+/// A [RedisTimeSeriesClock] that represents time on the server.
+/// {@endtemplate}
+class RedisTimeSeriesServerClock extends RedisTimeSeriesClock {
+  /// {@macro redis_time_series_server_clock}
+  const RedisTimeSeriesServerClock();
+  @override
+  RedisTimeSeriesTimestamp now() => const RedisTimeSeriesTimestamp._('*');
+}
+
+/// {@template redis_time_series_client_clock}
+/// A [RedisTimeSeriesClock] that represents time on the client.
+/// {@endtemplate}
+class RedisTimeSeriesClientClock extends RedisTimeSeriesClock {
+  /// {@macro redis_time_series_client_clock}
+  const RedisTimeSeriesClientClock();
+  @override
+  RedisTimeSeriesTimestamp now() {
+    return RedisTimeSeriesTimestamp(DateTime.timestamp());
+  }
+}
+
+/// {@template redis_time_series_from_timestamp}
+/// The start timestamp for the range query (integer Unix timestamp in
+/// milliseconds).
+/// {@endtemplate}
+class RedisTimeSeriesFromTimestamp {
+  /// {@macro redis_time_series_from_timestamp}
+  RedisTimeSeriesFromTimestamp(DateTime dateTime)
+    : this._('${dateTime.millisecondsSinceEpoch}');
+
+  /// The timestamp of the earliest sample among all the time series
+  /// that passes the provided filter.
+  const RedisTimeSeriesFromTimestamp.start() : value = '-';
+
+  const RedisTimeSeriesFromTimestamp._(this.value);
+
+  /// The underlying value of the timestamp.
+  final String value;
+}
+
+/// {@template redis_time_series_to_timestamp}
+/// The end timestamp for the range query (integer Unix timestamp in
+/// milliseconds).
+/// {@endtemplate}
+class RedisTimeSeriesToTimestamp {
+  /// {@macro redis_time_series_to_timestamp}
+  RedisTimeSeriesToTimestamp(DateTime dateTime)
+    : this._('${dateTime.millisecondsSinceEpoch}');
+
+  /// The timestamp of the latest sample among all the time series that passes
+  /// the provided filter.
+  const RedisTimeSeriesToTimestamp.end() : value = '+';
+
+  const RedisTimeSeriesToTimestamp._(this.value);
+
+  /// The underlying value of the timestamp.
+  final String value;
+}
+
+/// {@template redis_time_series_align}
+/// The time bucket alignment control for AGGREGATION. It controls the time
+/// bucket timestamps by changing the reference timestamp on which a bucket is
+/// defined.
+/// {@endtemplate}
+class RedisTimeSeriesAlign {
+  /// A specific timestamp: align the reference timestamp to a specific time.
+  RedisTimeSeriesAlign(DateTime date)
+    : this._('${date.millisecondsSinceEpoch}');
+
+  /// The reference timestamp will be the query start interval time
+  /// (fromTimestamp) which can't be -.
+  RedisTimeSeriesAlign.start() : this._('-');
+
+  /// The reference timestamp will be the query end interval time (toTimestamp)
+  /// which can't be +.
+  RedisTimeSeriesAlign.end() : this._('+');
+
+  RedisTimeSeriesAlign._(this.value);
+
+  /// The underlying value of the alignment.
+  final String value;
+}
+
+enum RedisTimeSeriesAggregator {
+  /// Arithmetic mean of all values
+  average,
+
+  /// Sum of all values
+  sum,
+
+  /// Minimum value
+  min,
+
+  /// Maximum value
+  max,
+
+  /// Difference between the maximum and the minimum value
+  range,
+
+  /// Number of values
+  count,
+
+  /// Value with lowest timestamp in the bucket
+  first,
+
+  /// Value with highest timestamp in the bucket
+  last,
+
+  /// Population standard deviation of the values
+  populationStandardDeviation,
+
+  /// Sample standard deviation of the values
+  sampleStandardDeviation,
+
+  /// Population variance of the values
+  populationVariance,
+
+  /// Sample variance of the values
+  sampleVariance,
+
+  /// Time-weighted average over the bucket's timeframe
+  timeWeightedAverage;
+
+  /// Converts the enum to an argument that can be passed directly to
+  /// `execute`.
+  String toArgument() {
+    return switch (this) {
+      RedisTimeSeriesAggregator.average => 'avg',
+      RedisTimeSeriesAggregator.sum => 'sum',
+      RedisTimeSeriesAggregator.min => 'min',
+      RedisTimeSeriesAggregator.max => 'max',
+      RedisTimeSeriesAggregator.range => 'range',
+      RedisTimeSeriesAggregator.count => 'count',
+      RedisTimeSeriesAggregator.first => 'first',
+      RedisTimeSeriesAggregator.last => 'last',
+      RedisTimeSeriesAggregator.populationStandardDeviation => 'std.p',
+      RedisTimeSeriesAggregator.sampleStandardDeviation => 'std.s',
+      RedisTimeSeriesAggregator.populationVariance => 'var.p',
+      RedisTimeSeriesAggregator.sampleVariance => 'var.s',
+      RedisTimeSeriesAggregator.timeWeightedAverage => 'twa',
+    };
+  }
+}
+
+/// {@template redis_time_series_aggregation}
+/// Aggregates time series samples into time buckets.
+/// {@endtemplate}
+class RedisTimeSeriesAggregation {
+  /// {@macro redis_time_series_aggregation}
+  const RedisTimeSeriesAggregation({
+    required this.aggregator,
+    required this.bucketDuration,
+  });
+
+  /// The aggregation type.
+  final RedisTimeSeriesAggregator aggregator;
+
+  /// The duration of each bucket.
+  final Duration bucketDuration;
 }
 
 /// {@template redis_time_series}
@@ -691,6 +831,57 @@ class RedisTimeSeries {
       ),
       value: double.parse(value.payload),
     );
+  }
+
+  /// Query a range in forward direction.
+  /// Equivalent to the `TS.RANGE` command.
+  /// https://redis.io/commands/ts.range
+  Future<List<({DateTime timestamp, double value})>> range({
+    required String key,
+    required RedisTimeSeriesFromTimestamp from,
+    required RedisTimeSeriesToTimestamp to,
+    List<RedisTimeSeriesTimestamp>? filterByTimestamp,
+    ({double min, double max})? filterByValue,
+    int? count,
+    RedisTimeSeriesAlign? align,
+    RedisTimeSeriesAggregation? aggregation,
+  }) async {
+    final results =
+        await _client.execute([
+              'TS.RANGE',
+              key,
+              from.value,
+              to.value,
+              if (filterByTimestamp != null) ...[
+                'FILTER_BY_TS',
+                ...filterByTimestamp.map((t) => t.value),
+              ],
+              if (filterByValue != null) ...[
+                'FILTER_BY_VALUE',
+                filterByValue.min,
+                filterByValue.max,
+              ],
+              if (count != null) ...['COUNT', count],
+              if (align != null) ...['ALIGN', align.value],
+              if (aggregation != null) ...[
+                'AGGREGATION',
+                aggregation.aggregator.toArgument(),
+                aggregation.bucketDuration.inMilliseconds,
+              ],
+            ])
+            as List<RespType>;
+    return results.map((result) {
+      final payload = result.payload as List<RespType>;
+      final timestamp = payload[0] as RespInteger;
+      final value = payload[1] as RespSimpleString;
+      return (
+        timestamp: DateTime.fromMillisecondsSinceEpoch(
+          timestamp.payload,
+          isUtc: true,
+        ),
+        value: double.parse(value.payload),
+      );
+    }).toList();
   }
 }
 
