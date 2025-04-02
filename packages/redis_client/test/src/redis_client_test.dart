@@ -588,6 +588,28 @@ void main() {
               from: RedisTimeSeriesFromTimestamp(data.first.timestamp),
               to: const RedisTimeSeriesToTimestamp.end(),
               aggregation: const RedisTimeSeriesAggregation(
+                aggregator: RedisTimeSeriesAggregator.timeWeightedAverage,
+                bucketDuration: Duration(days: 365 * 3),
+              ),
+              align: RedisTimeSeriesAlign.start(),
+            ),
+            completion(
+              containsAllInOrder([
+                (timestamp: DateTime(2020).toUtc(), value: 2.4977181459936197),
+                (
+                  timestamp: DateTime(2022, 12, 31).toUtc(),
+                  value: 3.998630136986301,
+                ),
+              ]),
+            ),
+          );
+
+          await expectLater(
+            client.timeSeries.range(
+              key: key,
+              from: RedisTimeSeriesFromTimestamp(data.first.timestamp),
+              to: const RedisTimeSeriesToTimestamp.end(),
+              aggregation: const RedisTimeSeriesAggregation(
                 aggregator: RedisTimeSeriesAggregator.count,
                 bucketDuration: Duration(days: 365 * 3),
               ),
@@ -597,6 +619,45 @@ void main() {
               containsAllInOrder([
                 (timestamp: DateTime(2020).toUtc(), value: 3.0),
                 (timestamp: DateTime(2022, 12, 31).toUtc(), value: 1.0),
+              ]),
+            ),
+          );
+
+          await expectLater(
+            client.timeSeries.range(
+              key: key,
+              from: const RedisTimeSeriesFromTimestamp.start(),
+              to: RedisTimeSeriesToTimestamp(data.last.timestamp),
+              aggregation: const RedisTimeSeriesAggregation(
+                aggregator: RedisTimeSeriesAggregator.count,
+                bucketDuration: Duration(days: 365 * 3),
+              ),
+              align: RedisTimeSeriesAlign.end(),
+            ),
+            completion(
+              containsAllInOrder([
+                (timestamp: DateTime(2017, 1, 2).toUtc(), value: 1.0),
+                (timestamp: DateTime(2020, 1, 2).toUtc(), value: 2.0),
+                (timestamp: DateTime(2023).toUtc(), value: 1.0),
+              ]),
+            ),
+          );
+
+          await expectLater(
+            client.timeSeries.range(
+              key: key,
+              from: const RedisTimeSeriesFromTimestamp.start(),
+              to: RedisTimeSeriesToTimestamp(data.last.timestamp),
+              aggregation: const RedisTimeSeriesAggregation(
+                aggregator: RedisTimeSeriesAggregator.count,
+                bucketDuration: Duration(days: 365 * 3),
+              ),
+              align: RedisTimeSeriesAlign(DateTime(2022).toUtc()),
+            ),
+            completion(
+              containsAllInOrder([
+                (timestamp: DateTime(2019, 1, 2).toUtc(), value: 2.0),
+                (timestamp: DateTime(2022).toUtc(), value: 2.0),
               ]),
             ),
           );
