@@ -515,6 +515,87 @@ enum RedisTimeSeriesDuplicatePolicy {
   String toArgument() => name.toUpperCase();
 }
 
+/// {@template redis_time_series_clock}
+/// An abstract class which represents the clock
+/// in the context of a redis time series instance.
+/// {@endtemplate}
+// ignore: one_member_abstracts
+abstract class RedisTimeSeriesClock {
+  /// {@macro redis_time_series_clock}
+  const RedisTimeSeriesClock();
+
+  /// Returns a timestamp representing the current moment.
+  RedisTimeSeriesTimestamp now();
+}
+
+/// {@template redis_time_series_server_clock}
+/// A [RedisTimeSeriesClock] that represents time on the server.
+/// {@endtemplate}
+class RedisTimeSeriesServerClock extends RedisTimeSeriesClock {
+  /// {@macro redis_time_series_server_clock}
+  const RedisTimeSeriesServerClock();
+  @override
+  RedisTimeSeriesTimestamp now() => const RedisTimeSeriesTimestamp._('*');
+}
+
+/// {@template redis_time_series_client_clock}
+/// A [RedisTimeSeriesClock] that represents time on the client.
+/// {@endtemplate}
+class RedisTimeSeriesClientClock extends RedisTimeSeriesClock {
+  /// {@macro redis_time_series_client_clock}
+  const RedisTimeSeriesClientClock();
+  @override
+  RedisTimeSeriesTimestamp now() {
+    return RedisTimeSeriesTimestamp(DateTime.timestamp());
+  }
+}
+
+/// {@template redis_time_series_timestamp}
+/// is Unix time (integer, in milliseconds) specifying the sample timestamp or *
+/// to set the sample timestamp to the Unix time of the server's clock.
+///
+/// Unix time is the number of milliseconds that have elapsed since 00:00:00 UTC
+/// on 1 January 1970, the Unix epoch, without adjustments made due to leap
+/// seconds.
+/// {@endtemplate}
+class RedisTimeSeriesTimestamp {
+  /// Create a timestamp from a specific [dateTime].
+  ///
+  /// See also:
+  /// * [client] for creating timestamps using the client clock.
+  /// * [server] for creating timestamps using the server clock.
+  /// {@macro redis_time_series_timestamp}
+  RedisTimeSeriesTimestamp(DateTime dateTime)
+    : this._('${dateTime.millisecondsSinceEpoch}');
+
+  const RedisTimeSeriesTimestamp._(this.value);
+
+  /// The client clock.
+  /// Useful for creating a timestamp using the client clock.
+  /// ```dart
+  /// await redis.timeSeries.add(
+  ///   key: 'sensor',
+  ///   timestamp: RedisTimeSeriesTimestamp.client.now(),
+  ///   value: 42,
+  /// );
+  /// ```
+  static const RedisTimeSeriesClock client = RedisTimeSeriesClientClock();
+
+  /// The server clock.
+  /// Useful for creating a timestamp using the server clock.
+  /// ```dart
+  /// await redis.timeSeries.add(
+  ///   key: 'sensor',
+  ///   timestamp: RedisTimeSeriesTimestamp.server.now(),
+  ///   value: 42,
+  /// );
+  /// ```
+  static const RedisTimeSeriesClock server = RedisTimeSeriesServerClock();
+
+  /// The underlying value of the timestamp.
+  final String value;
+}
+
 /// {@template redis_time_series}
 /// An object that adds support for storing and querying timestamped data
 /// points.
@@ -528,6 +609,7 @@ class RedisTimeSeries {
 
   /// Create a new time series.
   /// Equivalent to the `TS.CREATE` command.
+  /// https://redis.io/commands/ts.create
   Future<void> create({
     required String key,
     Duration? retention,
@@ -535,7 +617,7 @@ class RedisTimeSeries {
     int? chunkSize,
     RedisTimeSeriesDuplicatePolicy? duplicatePolicy,
     List<({String label, String value})>? labels,
-  }) async {
+  }) {
     return _client.execute([
       'TS.CREATE',
       key,
@@ -551,6 +633,63 @@ class RedisTimeSeries {
         for (final label in labels) ...[label.label, label.value],
       ],
     ]);
+  }
+
+  /// Append a sample to a time series.
+  /// Equivalent to the `TS.ADD` command.
+  /// Note: When the specified key does not exist, a new time series is created.
+  /// https://redis.io/commands/ts.add
+  Future<void> add({
+    required String key,
+    required RedisTimeSeriesTimestamp timestamp,
+    required double value,
+    Duration? retention,
+    RedisTimeSeriesEncoding? encoding,
+    int? chunkSize,
+    RedisTimeSeriesDuplicatePolicy? duplicatePolicy,
+    RedisTimeSeriesDuplicatePolicy? onDuplicate,
+    List<({String label, String value})>? labels,
+  }) {
+    return _client.execute([
+      'TS.ADD',
+      key,
+      timestamp.value,
+      value,
+      if (retention != null) ...['RETENTION', retention.inMilliseconds],
+      if (encoding != null) ...['ENCODING', encoding.toArgument()],
+      if (chunkSize != null) ...['CHUNK_SIZE', chunkSize],
+      if (duplicatePolicy != null) ...[
+        'DUPLICATE_POLICY',
+        duplicatePolicy.toArgument(),
+      ],
+      if (onDuplicate != null) ...['ON_DUPLICATE', onDuplicate.toArgument()],
+      if (labels != null) ...[
+        'LABELS',
+        for (final label in labels) ...[label.label, label.value],
+      ],
+    ]);
+  }
+
+  /// Get the sample with the highest timestamp from a given time series.
+  /// Equivalent to the `TS.GET` command.
+  /// Returns a timestamp, value pair of the sample with the highest timestamp.
+  /// Returns null if the time series does not exist.
+  /// The returned timestamp will always be UTC.
+  /// https://redis.io/commands/ts.get
+  Future<({DateTime timestamp, double value})?> get({
+    required String key,
+  }) async {
+    final result = await _client.execute(['TS.GET', key]) as List<RespType>;
+    if (result.isEmpty) return null;
+    final timestamp = result[0] as RespInteger;
+    final value = result[1] as RespSimpleString;
+    return (
+      timestamp: DateTime.fromMillisecondsSinceEpoch(
+        timestamp.payload,
+        isUtc: true,
+      ),
+      value: double.parse(value.payload),
+    );
   }
 }
 

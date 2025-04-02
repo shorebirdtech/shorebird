@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:shorebird_redis_client/shorebird_redis_client.dart';
+import 'package:shorebird_redis_client/src/redis_client.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -10,7 +10,7 @@ void main() {
 
     setUp(() async {
       client = RedisClient(
-        socket: const RedisSocketOptions(password: 'password'),
+        socket: const RedisSocketOptions(port: 8080, password: 'password'),
       );
     });
 
@@ -177,8 +177,7 @@ void main() {
 
       tearDown(() async {
         try {
-          await client.execute(['RESET']);
-          await client.execute(['FLUSHALL']);
+          await client.execute(['FLUSHALL SYNC']);
         } on Exception {
           // ignore
         }
@@ -228,8 +227,7 @@ void main() {
 
       tearDown(() async {
         try {
-          await client.execute(['RESET']);
-          await client.execute(['FLUSHALL']);
+          await client.execute(['FLUSHALL SYNC']);
         } on Exception {
           // ignore
         }
@@ -266,8 +264,7 @@ void main() {
           for (final pair in kvPairs) {
             await expectLater(client.delete(key: pair.key), completes);
           }
-          await client.execute(['RESET']);
-          await client.execute(['FLUSHALL']);
+          await client.execute(['FLUSHALL SYNC']);
         } on Exception {
           // ignore
         }
@@ -294,8 +291,7 @@ void main() {
 
         tearDown(() async {
           try {
-            await client.execute(['RESET']);
-            await client.execute(['FLUSHALL']);
+            await client.execute(['FLUSHALL SYNC']);
           } on Exception {
             // ignore
           }
@@ -402,21 +398,22 @@ void main() {
     });
 
     group('TimeSeries', () {
-      group('CREATE', () {
+      group('CREATE/ADD/GET', () {
         setUp(() async {
           await client.connect();
+          await expectLater(client.delete(key: 'sensor'), completes);
         });
 
         tearDown(() async {
           try {
-            await client.execute(['RESET']);
-            await client.execute(['FLUSHALL']);
+            await client.execute(['FLUSHALL SYNC']);
           } on Exception {
             // ignore
           }
         });
 
         test('completes', () async {
+          final date = DateTime(2025).toUtc();
           await expectLater(
             client.timeSeries.create(
               key: 'sensor',
@@ -427,6 +424,91 @@ void main() {
               labels: [(label: 'city', value: 'chicago')],
             ),
             completes,
+          );
+          await expectLater(
+            client.timeSeries.get(key: 'sensor'),
+            completion(isNull), // Empty series
+          );
+          await expectLater(
+            client.timeSeries.add(
+              key: 'sensor',
+              timestamp: RedisTimeSeriesTimestamp(date),
+              value: 42,
+              chunkSize: 128,
+              duplicatePolicy: RedisTimeSeriesDuplicatePolicy.sum,
+              encoding: RedisTimeSeriesEncoding.compressed,
+              retention: const Duration(days: 30),
+              labels: [(label: 'city', value: 'chicago')],
+            ),
+            completes,
+          );
+          await expectLater(
+            client.timeSeries.get(key: 'sensor'),
+            completion(equals((timestamp: date, value: 42))),
+          );
+          await expectLater(
+            client.timeSeries.add(
+              key: 'sensor',
+              timestamp: RedisTimeSeriesTimestamp(date),
+              value: 42,
+              chunkSize: 128,
+              duplicatePolicy: RedisTimeSeriesDuplicatePolicy.sum,
+              encoding: RedisTimeSeriesEncoding.compressed,
+              retention: const Duration(days: 30),
+              labels: [(label: 'city', value: 'chicago')],
+            ),
+            completes,
+          );
+          await expectLater(
+            client.timeSeries.get(key: 'sensor'),
+            completion(equals((timestamp: date, value: 84))),
+          );
+          await expectLater(
+            client.timeSeries.add(
+              key: 'sensor',
+              timestamp:
+                  RedisTimeSeriesTimestamp.client.now(), // Use client clock
+              value: 56,
+            ),
+            completes,
+          );
+          await expectLater(
+            client.timeSeries.get(key: 'sensor'),
+            completion(
+              isA<({DateTime timestamp, double value})>()
+                  .having(
+                    (r) => r.timestamp.millisecondsSinceEpoch,
+                    'timestamp',
+                    closeTo(DateTime.timestamp().millisecondsSinceEpoch, 1000),
+                  )
+                  .having((r) => r.value, 'value', equals(56)),
+            ),
+          );
+          await expectLater(
+            client.timeSeries.add(
+              key: 'sensor',
+              timestamp:
+                  RedisTimeSeriesTimestamp.server.now(), // Use server clock
+              value: 99,
+            ),
+            completes,
+          );
+          await expectLater(
+            client.timeSeries.get(key: 'sensor'),
+            completion(
+              isA<({DateTime timestamp, double value})>()
+                  .having(
+                    (r) => r.timestamp.millisecondsSinceEpoch,
+                    'timestamp',
+                    closeTo(DateTime.timestamp().millisecondsSinceEpoch, 1000),
+                  )
+                  .having((r) => r.value, 'value', equals(99)),
+            ),
+          );
+          await expectLater(client.delete(key: 'sensor'), completes);
+          await expectLater(
+            client.timeSeries.get(key: 'sensor'),
+            throwsA(isA<RedisException>()), // No key exists
           );
         });
       });
