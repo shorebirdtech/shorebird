@@ -673,7 +673,8 @@ class RedisTimeSeries {
   /// Get the sample with the highest timestamp from a given time series.
   /// Equivalent to the `TS.GET` command.
   /// Returns a timestamp, value pair of the sample with the highest timestamp.
-  /// Returns null if the time series does not exist.
+  /// Throws a [RedisException] if the key does not exist.
+  /// Returns null if the time series is empty.
   /// The returned timestamp will always be UTC.
   /// https://redis.io/commands/ts.get
   Future<({DateTime timestamp, double value})?> get({
