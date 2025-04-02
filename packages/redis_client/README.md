@@ -37,6 +37,12 @@ Future<void> main() async {
 }
 ```
 
+## Supported Data Types
+
+✅ [Strings](https://redis.io/docs/data-types/strings)
+✅ [JSON](https://redis.io/docs/data-types/json)
+✅ [TimeSeries](https://redis.io/docs/data-types/timeseries)
+
 ## Join us on Discord! 💬
 
 We have an active [Discord server][discord_link] where you can
