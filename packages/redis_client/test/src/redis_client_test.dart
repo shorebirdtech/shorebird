@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:shorebird_redis_client/shorebird_redis_client.dart';
+import 'package:shorebird_redis_client/src/redis_client.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -10,7 +11,7 @@ void main() {
 
     setUp(() async {
       client = RedisClient(
-        socket: const RedisSocketOptions(password: 'password'),
+        socket: const RedisSocketOptions(port: 8080, password: 'password'),
       );
     });
 
@@ -512,6 +513,93 @@ void main() {
           await expectLater(
             client.timeSeries.get(key: key),
             throwsA(isA<RedisException>()), // No key exists
+          );
+        });
+      });
+
+      group('RANGE', () {
+        const key = 'sensor';
+        final data = [
+          (timestamp: DateTime(2020).toUtc(), value: 1.0),
+          (timestamp: DateTime(2021).toUtc(), value: 2.0),
+          (timestamp: DateTime(2022).toUtc(), value: 3.0),
+          (timestamp: DateTime(2023).toUtc(), value: 4.0),
+        ];
+
+        setUp(() async {
+          await client.connect();
+          await expectLater(client.delete(key: key), completes);
+          for (final tuple in data) {
+            await expectLater(
+              client.timeSeries.add(
+                key: key,
+                timestamp: RedisTimeSeriesTimestamp(tuple.timestamp),
+                value: tuple.value,
+              ),
+              completes,
+            );
+          }
+        });
+
+        test('completes', () async {
+          await expectLater(
+            client.timeSeries.range(
+              key: key,
+              from: const RedisTimeSeriesFromTimestamp.start(),
+              to: const RedisTimeSeriesToTimestamp.end(),
+            ),
+            completion(containsAllInOrder(data)),
+          );
+
+          await expectLater(
+            client.timeSeries.range(
+              key: key,
+              from: const RedisTimeSeriesFromTimestamp.start(),
+              to: const RedisTimeSeriesToTimestamp.end(),
+              count: 3,
+            ),
+            completion(containsAllInOrder(data.sublist(0, 2))),
+          );
+
+          await expectLater(
+            client.timeSeries.range(
+              key: key,
+              from: const RedisTimeSeriesFromTimestamp.start(),
+              to: const RedisTimeSeriesToTimestamp.end(),
+              filterByTimestamp: [
+                RedisTimeSeriesTimestamp(DateTime(2023).toUtc()),
+              ],
+            ),
+            completion(containsAllInOrder([data.last])),
+          );
+
+          await expectLater(
+            client.timeSeries.range(
+              key: key,
+              from: const RedisTimeSeriesFromTimestamp.start(),
+              to: const RedisTimeSeriesToTimestamp.end(),
+              filterByValue: (min: 0, max: 1),
+            ),
+            completion(containsAllInOrder(data.sublist(0, 1))),
+          );
+
+          await expectLater(
+            client.timeSeries.range(
+              key: key,
+              from: RedisTimeSeriesFromTimestamp(data.first.timestamp),
+              to: const RedisTimeSeriesToTimestamp.end(),
+              aggregation: const RedisTimeSeriesAggregation(
+                aggregator: RedisTimeSeriesAggregator.count,
+                bucketDuration: Duration(days: 365 * 3),
+              ),
+              align: RedisTimeSeriesAlign.start(),
+            ),
+            completion(
+              containsAllInOrder([
+                (timestamp: DateTime(2020).toUtc(), value: 3.0),
+                (timestamp: DateTime(2022, 12, 31).toUtc(), value: 1.0),
+              ]),
+            ),
           );
         });
       });

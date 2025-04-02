@@ -11,5 +11,7 @@ export 'src/redis_client.dart'
         RedisTimeSeriesClock,
         RedisTimeSeriesDuplicatePolicy,
         RedisTimeSeriesEncoding,
+        RedisTimeSeriesFromTimestamp,
         RedisTimeSeriesServerClock,
-        RedisTimeSeriesTimestamp;
+        RedisTimeSeriesTimestamp,
+        RedisTimeSeriesToTimestamp;
