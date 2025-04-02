@@ -438,6 +438,7 @@ void main() {
               value: 42,
               chunkSize: 128,
               duplicatePolicy: RedisTimeSeriesDuplicatePolicy.sum,
+              onDuplicate: RedisTimeSeriesDuplicatePolicy.sum,
               encoding: RedisTimeSeriesEncoding.compressed,
               retention: const Duration(days: 30),
               labels: [(label: 'city', value: 'chicago')],
