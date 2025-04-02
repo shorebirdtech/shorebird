@@ -399,9 +399,11 @@ void main() {
 
     group('TimeSeries', () {
       group('CREATE/ADD/GET', () {
+        const key = 'sensor';
+
         setUp(() async {
           await client.connect();
-          await expectLater(client.delete(key: 'sensor'), completes);
+          await expectLater(client.delete(key: key), completes);
         });
 
         tearDown(() async {
@@ -416,7 +418,7 @@ void main() {
           final date = DateTime(2025).toUtc();
           await expectLater(
             client.timeSeries.create(
-              key: 'sensor',
+              key: key,
               chunkSize: 128,
               duplicatePolicy: RedisTimeSeriesDuplicatePolicy.sum,
               encoding: RedisTimeSeriesEncoding.compressed,
@@ -426,12 +428,12 @@ void main() {
             completes,
           );
           await expectLater(
-            client.timeSeries.get(key: 'sensor'),
+            client.timeSeries.get(key: key),
             completion(isNull), // Empty series
           );
           await expectLater(
             client.timeSeries.add(
-              key: 'sensor',
+              key: key,
               timestamp: RedisTimeSeriesTimestamp(date),
               value: 42,
               chunkSize: 128,
@@ -443,12 +445,12 @@ void main() {
             completes,
           );
           await expectLater(
-            client.timeSeries.get(key: 'sensor'),
+            client.timeSeries.get(key: key),
             completion(equals((timestamp: date, value: 42))),
           );
           await expectLater(
             client.timeSeries.add(
-              key: 'sensor',
+              key: key,
               timestamp: RedisTimeSeriesTimestamp(date),
               value: 42,
               chunkSize: 128,
@@ -460,12 +462,12 @@ void main() {
             completes,
           );
           await expectLater(
-            client.timeSeries.get(key: 'sensor'),
+            client.timeSeries.get(key: key),
             completion(equals((timestamp: date, value: 84))),
           );
           await expectLater(
             client.timeSeries.add(
-              key: 'sensor',
+              key: key,
               timestamp:
                   RedisTimeSeriesTimestamp.client.now(), // Use client clock
               value: 56,
@@ -473,7 +475,7 @@ void main() {
             completes,
           );
           await expectLater(
-            client.timeSeries.get(key: 'sensor'),
+            client.timeSeries.get(key: key),
             completion(
               isA<({DateTime timestamp, double value})>()
                   .having(
@@ -486,7 +488,7 @@ void main() {
           );
           await expectLater(
             client.timeSeries.add(
-              key: 'sensor',
+              key: key,
               timestamp:
                   RedisTimeSeriesTimestamp.server.now(), // Use server clock
               value: 99,
@@ -494,7 +496,7 @@ void main() {
             completes,
           );
           await expectLater(
-            client.timeSeries.get(key: 'sensor'),
+            client.timeSeries.get(key: key),
             completion(
               isA<({DateTime timestamp, double value})>()
                   .having(
@@ -505,9 +507,9 @@ void main() {
                   .having((r) => r.value, 'value', equals(99)),
             ),
           );
-          await expectLater(client.delete(key: 'sensor'), completes);
+          await expectLater(client.delete(key: key), completes);
           await expectLater(
-            client.timeSeries.get(key: 'sensor'),
+            client.timeSeries.get(key: key),
             throwsA(isA<RedisException>()), // No key exists
           );
         });
