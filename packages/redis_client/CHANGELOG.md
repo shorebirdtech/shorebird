@@ -1,3 +1,11 @@
+# 0.0.7
+
+- feat: add new commands:
+  - [TS.CREATE](https://redis.io/commands/ts.create)
+  - [TS.ADD](https://redis.io/commands/ts.add)
+  - [TS.GET](https://redis.io/commands/ts.get)
+  - [TS.RANGE](https://redis.io/commands/ts.range)
+
 # 0.0.6
 
 - feat: add new commands:

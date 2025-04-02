@@ -658,6 +658,7 @@ class RedisTimeSeriesAlign {
   final String value;
 }
 
+/// The supported aggregation types.
 enum RedisTimeSeriesAggregator {
   /// Arithmetic mean of all values
   average,
