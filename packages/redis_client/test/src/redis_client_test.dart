@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:shorebird_redis_client/shorebird_redis_client.dart';
-import 'package:shorebird_redis_client/src/redis_client.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -11,7 +10,7 @@ void main() {
 
     setUp(() async {
       client = RedisClient(
-        socket: const RedisSocketOptions(port: 8080, password: 'password'),
+        socket: const RedisSocketOptions(password: 'password'),
       );
     });
 
