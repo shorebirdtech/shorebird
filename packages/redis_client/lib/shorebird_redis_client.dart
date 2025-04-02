@@ -7,5 +7,9 @@ export 'src/redis_client.dart'
         RedisLogger,
         RedisSocketOptions,
         RedisTimeSeries,
+        RedisTimeSeriesClientClock,
+        RedisTimeSeriesClock,
         RedisTimeSeriesDuplicatePolicy,
-        RedisTimeSeriesEncoding;
+        RedisTimeSeriesEncoding,
+        RedisTimeSeriesServerClock,
+        RedisTimeSeriesTimestamp;
