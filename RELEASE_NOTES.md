@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.33 (April 15, 2025)
+
+- 🐦 Support for Flutter 3.29.3
+- 🍧 Fix `shorebird init` flavor case sensitivity
+- 🧹 Various dependency upgrades
+
 ## 1.6.32 (March 27, 2025)
 
 - 🪧 Add `shorebird release` build failure recommendations
