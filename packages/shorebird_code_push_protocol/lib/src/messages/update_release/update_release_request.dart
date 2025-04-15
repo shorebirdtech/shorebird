@@ -31,7 +31,7 @@ class UpdateReleaseRequest {
   final ReleasePlatform? platform;
 
   /// Additional information about the command that was run to update the
-  /// Release and then environment in which it was run.
+  /// release and the environment in which it was run.
   final Json? metadata;
 
   /// Notes about the release. This is a free-form field that can be used to
