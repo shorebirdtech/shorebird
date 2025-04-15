@@ -20,7 +20,7 @@ class UpdatePatchRequest {
   Json toJson() => _$UpdatePatchRequestToJson(this);
 
   /// Notes about the patch. This is a free-form field that can be used to
-  /// store additional information about the release. If null, the notes will
+  /// store additional information about the patch. If null, the notes will
   /// not be updated.
   final String? notes;
 }
