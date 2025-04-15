@@ -205,7 +205,7 @@ class Apple {
         .where((e) => p.extension(e.path) == '.xcscheme')
         .where((e) => p.basenameWithoutExtension(e.path) != 'Runner')
         .whereNot((e) => _isExtensionScheme(schemeFile: e))
-        .map((file) => p.basenameWithoutExtension(file.path))
+        .map((file) => p.basenameWithoutExtension(file.path).toLowerCase())
         .toSet();
   }
 
