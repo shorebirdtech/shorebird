@@ -245,7 +245,7 @@ To add macOS, run "flutter create . --platforms macos"''');
               runWithOverrides(
                 () => apple.flavors(platform: ApplePlatform.ios),
               ),
-              {'internal', 'beta', 'stable'},
+              {'internal', 'beta', 'stable', 'dev'},
             );
           });
         });
@@ -264,7 +264,7 @@ To add macOS, run "flutter create . --platforms macos"''');
               runWithOverrides(
                 () => apple.flavors(platform: ApplePlatform.ios),
               ),
-              {'internal', 'beta', 'stable'},
+              {'internal', 'beta', 'stable', 'dev'},
             );
           });
         });
@@ -344,7 +344,7 @@ To add macOS, run "flutter create . --platforms macos"''');
               runWithOverrides(
                 () => apple.flavors(platform: ApplePlatform.macos),
               ),
-              {'internal', 'beta', 'stable'},
+              {'internal', 'beta', 'stable', 'dev'},
             );
           });
         });
