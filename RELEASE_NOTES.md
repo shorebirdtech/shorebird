@@ -6,6 +6,10 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.34 (April 16, 2025)
+
+- 📚 Fix several broken docs links
+
 ## 1.6.33 (April 15, 2025)
 
 - 🐦 Support for Flutter 3.29.3
