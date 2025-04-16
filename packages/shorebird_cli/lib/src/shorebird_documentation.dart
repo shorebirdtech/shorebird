@@ -4,7 +4,7 @@ import 'package:mason_logger/mason_logger.dart';
 const docsUrl = 'https://docs.shorebird.dev';
 
 /// Link to the Flutter version page on the Shorebird documentation.
-const flutterVersionUrl = '$docsUrl/flutter-version';
+const flutterVersionUrl = '$docsUrl/getting-started/flutter-version';
 
 /// Link to the supported Flutter versions section on the Shorebird
 /// documentation.
@@ -12,7 +12,7 @@ const supportedFlutterVersionsUrl =
     '$flutterVersionUrl#supported-flutter-versions';
 
 /// Link to the troubleshooting page on the Shorebird documentation.
-const troubleshootingUrl = '$docsUrl/troubleshooting';
+const troubleshootingUrl = '$docsUrl/faq';
 
 /// Link to the troubleshooting section which covers the
 /// Unsupported class file major version
