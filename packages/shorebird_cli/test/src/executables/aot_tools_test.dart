@@ -996,7 +996,7 @@ Run "aot_tools help <command>" for more information about a command.
           });
         });
 
-        test('returns link metadata', () async {
+        test('returns link metadata when aot_tools executes successfully', () async {
           stdout = '{}';
           final result = await runWithOverrides(
             () => aotTools.getLinkMetadata(debugDir: '/debug'),
