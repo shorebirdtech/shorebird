@@ -955,6 +955,7 @@ Run "aot_tools help <command>" for more information about a command.
         late int exitCode;
         late String stdout;
         late String stderr;
+
         setUp(() {
           stdout = '';
           stderr = '';
