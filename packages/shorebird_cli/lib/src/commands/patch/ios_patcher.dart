@@ -362,6 +362,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     CreatePatchMetadata metadata,
   ) async => metadata.copyWith(
     linkPercentage: lastBuildLinkPercentage,
+    linkMetadata: lastBuildLinkMetadata,
     environment: metadata.environment.copyWith(
       xcodeVersion: await xcodeBuild.version(),
     ),

@@ -58,6 +58,10 @@ class IosFrameworkPatcher extends Patcher {
   @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
 
+  /// The last build's link metadata.
+  @visibleForTesting
+  Map<String, dynamic>? lastBuildLinkMetadata;
+
   @override
   double? get linkPercentage => lastBuildLinkPercentage;
 
@@ -175,13 +179,22 @@ class IosFrameworkPatcher extends Patcher {
         patchSnapshotDir: shorebirdEnv.buildDirectory,
       );
 
-      await apple.runLinker(
+      final result = await apple.runLinker(
         kernelFile: File(_appDillCopyPath),
         releaseArtifact: releaseArtifactFile,
         splitDebugInfoArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
         aotOutputFile: File(_aotOutputPath),
         vmCodeFile: File(_vmcodeOutputPath),
       );
+      final linkPercentage = result.linkPercentage;
+      final exitCode = result.exitCode;
+      if (exitCode != ExitCode.success.code) throw ProcessExit(exitCode);
+      if (linkPercentage != null &&
+          linkPercentage < Patcher.linkPercentageWarningThreshold) {
+        logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
+      }
+      lastBuildLinkPercentage = linkPercentage;
+      lastBuildLinkMetadata = result.linkMetadata;
     }
 
     final patchBuildFile =
@@ -249,6 +262,7 @@ class IosFrameworkPatcher extends Patcher {
     CreatePatchMetadata metadata,
   ) async => metadata.copyWith(
     linkPercentage: lastBuildLinkPercentage,
+    linkMetadata: lastBuildLinkMetadata,
     environment: metadata.environment.copyWith(
       xcodeVersion: await xcodeBuild.version(),
     ),
