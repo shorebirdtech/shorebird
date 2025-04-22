@@ -996,23 +996,29 @@ Run "aot_tools help <command>" for more information about a command.
           });
         });
 
-        test('returns link metadata when aot_tools executes successfully', () async {
-          stdout = '{}';
-          final result = await runWithOverrides(
-            () => aotTools.getLinkMetadata(debugDir: '/debug'),
-          );
-          expect(result, isA<Map<String, dynamic>>());
-        });
-
-        test('throws FormatException when aot_tools outputs invalid json', () async {
-          stdout = 'invalid';
-          await expectLater(
-            () => runWithOverrides(
+        test(
+          'returns link metadata when aot_tools executes successfully',
+          () async {
+            stdout = '{}';
+            final result = await runWithOverrides(
               () => aotTools.getLinkMetadata(debugDir: '/debug'),
-            ),
-            throwsFormatException,
-          );
-        });
+            );
+            expect(result, isA<Map<String, dynamic>>());
+          },
+        );
+
+        test(
+          'throws FormatException when aot_tools outputs invalid json',
+          () async {
+            stdout = 'invalid';
+            await expectLater(
+              () => runWithOverrides(
+                () => aotTools.getLinkMetadata(debugDir: '/debug'),
+              ),
+              throwsFormatException,
+            );
+          },
+        );
       });
     });
   });
