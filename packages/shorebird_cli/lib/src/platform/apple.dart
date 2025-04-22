@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
-import 'package:io/io.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
@@ -31,19 +30,16 @@ enum ApplePlatform {
 class LinkResult {
   /// Creates a new [LinkResult] representing failure.
   const LinkResult.failure()
-    : _exitCodeObject = ExitCode.software,
+    : exitCode = 70,
       linkPercentage = null,
       linkMetadata = null;
 
   /// Creates a new [LinkResult] representing success.
   const LinkResult.success({required this.linkPercentage, this.linkMetadata})
-    : _exitCodeObject = ExitCode.success;
-
-  /// ExitCode.code isn't const, so store the actual object.
-  final ExitCode _exitCodeObject;
+    : exitCode = 0;
 
   /// The exit code of the linker process.
-  int get exitCode => _exitCodeObject.code;
+  final int exitCode;
 
   /// The percentage of code that was linked in the patch.
   final double? linkPercentage;
