@@ -266,10 +266,10 @@ packages:
     dependency: "direct dev"
     description:
       name: json_serializable
-      sha256: "81f04dee10969f89f604e1249382d46b97a1ccad53872875369622b5bfc9e58a"
+      sha256: c50ef5fc083d5b5e12eef489503ba3bf5ccc899e487d691584699b4bdefeea8c
       url: "https://pub.dev"
     source: hosted
-    version: "6.9.4"
+    version: "6.9.5"
   logging:
     dependency: transitive
     description:
