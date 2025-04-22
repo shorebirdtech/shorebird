@@ -41,6 +41,10 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(
         'link_percentage',
         (v) => (v as num?)?.toDouble(),
       ),
+      linkMetadata: $checkedConvert(
+        'link_metadata',
+        (v) => v as Map<String, dynamic>?,
+      ),
     );
     return val;
   },
@@ -52,6 +56,7 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(
     'hasNativeChanges': 'has_native_changes',
     'inferredReleaseVersion': 'inferred_release_version',
     'linkPercentage': 'link_percentage',
+    'linkMetadata': 'link_metadata',
   },
 );
 
@@ -65,6 +70,7 @@ Map<String, dynamic> _$CreatePatchMetadataToJson(
   'has_native_changes': instance.hasNativeChanges,
   'inferred_release_version': instance.inferredReleaseVersion,
   'link_percentage': instance.linkPercentage,
+  'link_metadata': instance.linkMetadata,
   'environment': instance.environment.toJson(),
 };
 

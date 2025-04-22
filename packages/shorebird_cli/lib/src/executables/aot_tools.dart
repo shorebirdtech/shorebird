@@ -233,6 +233,19 @@ class AotTools {
     return result.stdout.toString().contains('dump-debug-info');
   }
 
+  /// Dump json metadata from a link debug result.
+  // Added in Flutter 3.29.3
+  Future<Map<String, dynamic>> getLinkMetadata({
+    required String debugDir,
+    String? workingDirectory,
+  }) async {
+    final result = await _exec([
+      'link_metadata',
+      debugDir,
+    ], workingDirectory: workingDirectory);
+    return jsonDecode(result.stdout.toString()) as Map<String, dynamic>;
+  }
+
   /// Generate a link vmcode file from two AOT snapshots.
   Future<double?> link({
     required String base,

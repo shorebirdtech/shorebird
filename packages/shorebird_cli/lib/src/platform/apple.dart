@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:io/io.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -26,7 +27,30 @@ enum ApplePlatform {
 
 /// A record containing the exit code and optionally link percentage
 /// returned by `runLinker`.
-typedef LinkResult = ({int exitCode, double? linkPercentage});
+@immutable
+class LinkResult {
+  /// Creates a new [LinkResult] representing failure.
+  const LinkResult.failure()
+    : _exitCodeObject = ExitCode.software,
+      linkPercentage = null,
+      linkMetadata = null;
+
+  /// Creates a new [LinkResult] representing success.
+  const LinkResult.success({required this.linkPercentage, this.linkMetadata})
+    : _exitCodeObject = ExitCode.success;
+
+  /// ExitCode.code isn't const, so store the actual object.
+  final ExitCode _exitCodeObject;
+
+  /// The exit code of the linker process.
+  int get exitCode => _exitCodeObject.code;
+
+  /// The percentage of code that was linked in the patch.
+  final double? linkPercentage;
+
+  /// Metadata from the linker, if available.
+  final Map<String, dynamic>? linkMetadata;
+}
 
 /// {@template missing_xcode_project_exception}
 /// Thrown when the Flutter project does not have iOS configured as a platform.
@@ -224,7 +248,7 @@ class Apple {
 
     if (!patch.existsSync()) {
       logger.err('Unable to find patch AOT file at ${patch.path}');
-      return (exitCode: ExitCode.software.code, linkPercentage: null);
+      return const LinkResult.failure();
     }
 
     final analyzeSnapshot = File(
@@ -235,7 +259,7 @@ class Apple {
 
     if (!analyzeSnapshot.existsSync()) {
       logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      return (exitCode: ExitCode.software.code, linkPercentage: null);
+      return const LinkResult.failure();
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
@@ -289,12 +313,27 @@ $error''');
       );
     } on Exception catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
-      return (exitCode: ExitCode.software.code, linkPercentage: null);
+      return const LinkResult.failure();
     } finally {
       await dumpDebugInfo();
     }
+    Map<String, dynamic>? linkMetadata;
+    try {
+      if (dumpDebugInfoDir != null) {
+        linkMetadata = await aotTools.getLinkMetadata(
+          debugDir: dumpDebugInfoDir.path,
+          workingDirectory: buildDirectory.path,
+        );
+      }
+    } on Exception catch (error) {
+      logger.detail('[aot_tools] Failed to get link metadata: $error');
+    }
+
     linkProgress.complete();
-    return (exitCode: ExitCode.success.code, linkPercentage: linkPercentage);
+    return LinkResult.success(
+      linkPercentage: linkPercentage,
+      linkMetadata: linkMetadata,
+    );
   }
 
   /// Parses the .xcscheme file to determine if it was created for an app

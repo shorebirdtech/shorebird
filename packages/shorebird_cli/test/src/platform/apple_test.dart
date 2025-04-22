@@ -56,6 +56,13 @@ void main() {
 
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.environment).thenReturn({});
+
+      when(
+        () => aotTools.getLinkMetadata(
+          debugDir: any(named: 'debugDir'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => {'key': 'value'});
     });
 
     group(MissingXcodeProjectException, () {
@@ -630,6 +637,39 @@ To add macOS, run "flutter create . --platforms macos"''');
           );
           expect(result.exitCode, equals(ExitCode.success.code));
           expect(result.linkPercentage, equals(linkPercentage));
+        });
+      });
+
+      group('when call to aotTools.getLinkMetadata fails', () {
+        setUp(() {
+          when(
+            () => aotTools.isLinkDebugInfoSupported(),
+          ).thenAnswer((_) async => true);
+          when(
+            () => aotTools.getLinkMetadata(
+              debugDir: any(named: 'debugDir'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenThrow(Exception('oops'));
+        });
+
+        test('logs error and exits with code 70', () async {
+          await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: File('missing'),
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+            ),
+          );
+
+          verify(
+            () => logger.detail(
+              '[aot_tools] Failed to get link metadata: Exception: oops',
+            ),
+          ).called(1);
+          verify(() => progress.complete()).called(1);
         });
       });
     });

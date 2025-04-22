@@ -968,10 +968,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               vmCodeFile: any(named: 'vmCodeFile'),
             ),
           ).thenAnswer(
-            (_) async => (
-              exitCode: ExitCode.success.code,
-              linkPercentage: linkPercentage,
-            ),
+            (_) async =>
+                const LinkResult.success(linkPercentage: linkPercentage),
           );
           when(
             aotTools.isGeneratePatchDiffBaseSupported,
@@ -1167,6 +1165,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                     endsWith(diffPath),
                   ),
                 );
+              });
+
+              test('sets link percentage', () async {
+                expect(patcher.linkPercentage, isNull);
+                await runWithOverrides(
+                  () => patcher.createPatchArtifacts(
+                    appId: appId,
+                    releaseId: releaseId,
+                    releaseArtifact: releaseArtifactFile,
+                    supplementArtifact: supplementArtifactFile,
+                  ),
+                );
+                expect(patcher.linkPercentage, isNotNull);
               });
             });
 
@@ -1499,9 +1510,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
 
       group('when linker is enabled', () {
         const linkPercentage = 100.0;
+        const linkMetadata = {'link': 'metadata'};
 
         setUp(() {
-          patcher.lastBuildLinkPercentage = linkPercentage;
+          patcher
+            ..lastBuildLinkPercentage = linkPercentage
+            ..lastBuildLinkMetadata = linkMetadata;
         });
 
         test('returns correct metadata', () async {
@@ -1534,6 +1548,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 hasNativeChanges: false,
                 inferredReleaseVersion: false,
                 linkPercentage: linkPercentage,
+                linkMetadata: linkMetadata,
                 environment: BuildEnvironmentMetadata(
                   flutterRevision: flutterRevision,
                   operatingSystem: operatingSystem,
