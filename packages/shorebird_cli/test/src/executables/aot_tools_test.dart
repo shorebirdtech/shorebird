@@ -950,6 +950,69 @@ Run "aot_tools help <command>" for more information about a command.
           expect(result.existsSync(), isTrue);
         });
       });
+
+      group('getLinkMetadata', () {
+        late int exitCode;
+        late String stdout;
+        late String stderr;
+        setUp(() {
+          stdout = '';
+          stderr = '';
+          exitCode = 0;
+          when(
+            () => process.start(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((_) async {
+            final mockProcess = MockProcess();
+            when(() => mockProcess.exitCode).thenAnswer((_) async => exitCode);
+            when(
+              () => mockProcess.stdout,
+            ).thenAnswer((_) => Stream.value(utf8.encode(stdout)));
+            when(
+              () => mockProcess.stderr,
+            ).thenAnswer((_) => Stream.value(utf8.encode(stderr)));
+            return mockProcess;
+          });
+          when(
+            () => process.start(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((invocation) async {
+            final mockProcess = MockProcess();
+            when(() => mockProcess.exitCode).thenAnswer((_) async => exitCode);
+            when(
+              () => mockProcess.stdout,
+            ).thenAnswer((_) => Stream.value(utf8.encode(stdout)));
+            when(
+              () => mockProcess.stderr,
+            ).thenAnswer((_) => Stream.value(utf8.encode(stderr)));
+            return mockProcess;
+          });
+        });
+
+        test('returns link metadata', () async {
+          stdout = '{}';
+          final result = await runWithOverrides(
+            () => aotTools.getLinkMetadata(debugDir: '/debug'),
+          );
+          expect(result, isA<Map<String, dynamic>>());
+        });
+
+        test('returns invalid json', () async {
+          stdout = 'invalid';
+          await expectLater(
+            () => runWithOverrides(
+              () => aotTools.getLinkMetadata(debugDir: '/debug'),
+            ),
+            throwsFormatException,
+          );
+        });
+      });
     });
   });
 }

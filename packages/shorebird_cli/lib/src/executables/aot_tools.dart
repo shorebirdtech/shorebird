@@ -234,6 +234,7 @@ class AotTools {
   }
 
   /// Dump json metadata from a link debug result.
+  // Added in Flutter 3.29.3
   Future<Map<String, dynamic>> getLinkMetadata({
     required String debugDir,
     String? workingDirectory,
