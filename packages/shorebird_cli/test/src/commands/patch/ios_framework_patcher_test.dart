@@ -661,10 +661,7 @@ void main() {
               vmCodeFile: any(named: 'vmCodeFile'),
             ),
           ).thenAnswer(
-            (_) async => (
-              exitCode: ExitCode.success.code,
-              linkPercentage: linkPercentage,
-            ),
+            (_) async => LinkResult.success(linkPercentage: linkPercentage),
           );
           when(
             aotTools.isGeneratePatchDiffBaseSupported,

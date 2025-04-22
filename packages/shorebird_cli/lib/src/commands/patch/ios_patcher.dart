@@ -76,6 +76,10 @@ class IosPatcher extends Patcher {
   @visibleForTesting
   double? lastBuildLinkPercentage;
 
+  /// The last build's link metadata.
+  @visibleForTesting
+  Json? lastBuildLinkMetadata;
+
   @override
   double? get linkPercentage => lastBuildLinkPercentage;
 
@@ -258,19 +262,22 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         patchSnapshotDir: shorebirdEnv.buildDirectory,
       );
 
-      final (:exitCode, :linkPercentage) = await apple.runLinker(
+      final result = await apple.runLinker(
         kernelFile: File(_appDillCopyPath),
         releaseArtifact: releaseArtifactFile,
         splitDebugInfoArgs: splitDebugInfoArgs(splitDebugInfoPath),
         aotOutputFile: File(_aotOutputPath),
         vmCodeFile: File(_vmcodeOutputPath),
       );
+      final linkPercentage = result.linkPercentage;
+      final exitCode = result.exitCode;
       if (exitCode != ExitCode.success.code) throw ProcessExit(exitCode);
       if (linkPercentage != null &&
           linkPercentage < Patcher.linkPercentageWarningThreshold) {
         logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
       }
       lastBuildLinkPercentage = linkPercentage;
+      lastBuildLinkMetadata = result.linkMetadata;
     }
 
     final patchBuildFile = File(useLinker ? _vmcodeOutputPath : _aotOutputPath);

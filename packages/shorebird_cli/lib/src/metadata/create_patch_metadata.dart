@@ -27,6 +27,7 @@ class CreatePatchMetadata extends Equatable {
     required this.inferredReleaseVersion,
     required this.environment,
     this.linkPercentage,
+    this.linkMetadata,
   });
 
   // coverage:ignore-start
@@ -40,6 +41,7 @@ class CreatePatchMetadata extends Equatable {
     bool hasNativeChanges = false,
     bool inferredReleaseVersion = false,
     double? linkPercentage,
+    Json? linkMetadata,
     BuildEnvironmentMetadata? environment,
   }) => CreatePatchMetadata(
     releasePlatform: releasePlatform,
@@ -49,6 +51,7 @@ class CreatePatchMetadata extends Equatable {
     hasNativeChanges: hasNativeChanges,
     inferredReleaseVersion: inferredReleaseVersion,
     linkPercentage: linkPercentage,
+    linkMetadata: linkMetadata,
     environment: environment ?? BuildEnvironmentMetadata.forTest(),
   );
   // coverage:ignore-end
@@ -70,6 +73,7 @@ class CreatePatchMetadata extends Equatable {
     bool? hasNativeChanges,
     bool? inferredReleaseVersion,
     double? linkPercentage,
+    Json? linkMetadata,
     BuildEnvironmentMetadata? environment,
   }) => CreatePatchMetadata(
     releasePlatform: releasePlatform ?? this.releasePlatform,
@@ -82,6 +86,7 @@ class CreatePatchMetadata extends Equatable {
     inferredReleaseVersion:
         inferredReleaseVersion ?? this.inferredReleaseVersion,
     linkPercentage: linkPercentage ?? this.linkPercentage,
+    linkMetadata: linkMetadata ?? this.linkMetadata,
     environment: environment ?? this.environment,
   );
 
@@ -124,6 +129,9 @@ class CreatePatchMetadata extends Equatable {
   /// Note: link percentage is currently only available for iOS patches.
   final double? linkPercentage;
 
+  /// Metadata from the linker, if available.
+  final Json? linkMetadata;
+
   /// Properties about the environment in which the patch was created.
   ///
   /// Reason: see [BuildEnvironmentMetadata].
@@ -137,6 +145,7 @@ class CreatePatchMetadata extends Equatable {
     usedIgnoreNativeChangesFlag,
     hasNativeChanges,
     linkPercentage,
+    linkMetadata,
     inferredReleaseVersion,
     environment,
   ];
