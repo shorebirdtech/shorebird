@@ -1004,7 +1004,7 @@ Run "aot_tools help <command>" for more information about a command.
           expect(result, isA<Map<String, dynamic>>());
         });
 
-        test('returns invalid json', () async {
+        test('throws FormatException when aot_tools outputs invalid json', () async {
           stdout = 'invalid';
           await expectLater(
             () => runWithOverrides(
