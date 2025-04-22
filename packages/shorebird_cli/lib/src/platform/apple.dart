@@ -319,9 +319,7 @@ $error''');
     }
     Map<String, dynamic>? linkMetadata;
     try {
-      if (dumpDebugInfoDir == null) {
-        linkMetadata = null;
-      } else {
+      if (dumpDebugInfoDir != null) {
         linkMetadata = await aotTools.getLinkMetadata(
           debugDir: dumpDebugInfoDir.path,
           workingDirectory: buildDirectory.path,
