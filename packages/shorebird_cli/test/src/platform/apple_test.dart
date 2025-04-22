@@ -56,6 +56,13 @@ void main() {
 
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.environment).thenReturn({});
+
+      when(
+        () => aotTools.getLinkMetadata(
+          debugDir: any(named: 'debugDir'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async => {'key': 'value'});
     });
 
     group(MissingXcodeProjectException, () {
