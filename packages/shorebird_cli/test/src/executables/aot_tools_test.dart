@@ -982,7 +982,7 @@ Run "aot_tools help <command>" for more information about a command.
               any(),
               workingDirectory: any(named: 'workingDirectory'),
             ),
-          ).thenAnswer((invocation) async {
+          ).thenAnswer((_) async {
             final mockProcess = MockProcess();
             when(() => mockProcess.exitCode).thenAnswer((_) async => exitCode);
             when(
