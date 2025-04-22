@@ -661,7 +661,8 @@ void main() {
               vmCodeFile: any(named: 'vmCodeFile'),
             ),
           ).thenAnswer(
-            (_) async => LinkResult.success(linkPercentage: linkPercentage),
+            (_) async =>
+                const LinkResult.success(linkPercentage: linkPercentage),
           );
           when(
             aotTools.isGeneratePatchDiffBaseSupported,
@@ -856,6 +857,19 @@ void main() {
               });
             });
 
+            test('sets link percentage', () async {
+              expect(patcher.linkPercentage, isNull);
+              await runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                  supplementArtifact: supplementArtifactFile,
+                ),
+              );
+              expect(patcher.linkPercentage, isNotNull);
+            });
+
             group('when code signing the patch', () {
               setUp(() {
                 final privateKey = File(
@@ -1040,9 +1054,12 @@ void main() {
 
       group('when linker is enabled', () {
         const linkPercentage = 100.0;
+        const linkMetadata = {'link': 'metadata'};
 
         setUp(() {
-          patcher.lastBuildLinkPercentage = linkPercentage;
+          patcher
+            ..lastBuildLinkPercentage = linkPercentage
+            ..lastBuildLinkMetadata = linkMetadata;
         });
 
         test('returns correct metadata', () async {
@@ -1075,6 +1092,7 @@ void main() {
                 hasNativeChanges: false,
                 inferredReleaseVersion: false,
                 linkPercentage: linkPercentage,
+                linkMetadata: linkMetadata,
                 environment: BuildEnvironmentMetadata(
                   flutterRevision: flutterRevision,
                   operatingSystem: operatingSystem,
