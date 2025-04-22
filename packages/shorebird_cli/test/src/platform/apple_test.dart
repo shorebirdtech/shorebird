@@ -665,7 +665,9 @@ To add macOS, run "flutter create . --platforms macos"''');
           );
 
           verify(
-            () => logger.detail('Failed to get link metadata: Exception: oops'),
+            () => logger.detail(
+              '[aot_tools] Failed to get link metadata: Exception: oops',
+            ),
           ).called(1);
           verify(() => progress.complete()).called(1);
         });
