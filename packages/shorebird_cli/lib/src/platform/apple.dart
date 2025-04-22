@@ -328,7 +328,7 @@ $error''');
         );
       }
     } on Exception catch (error) {
-      logger.detail('Failed to get link metadata: $error');
+      logger.detail('[aot_tools] Failed to get link metadata: $error');
       linkMetadata = null;
     }
 
