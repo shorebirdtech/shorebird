@@ -153,6 +153,8 @@ class Apple {
       'App.class_table.json',
       'App.ft.link',
       'App.field_table.json',
+      'App.dt.link',
+      'App.dispatch_table.json',
     ];
 
     // This uses maybeCopy because not all versions of gen_snapshot/aot_tools
