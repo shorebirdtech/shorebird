@@ -357,8 +357,9 @@ This is only applicable when previewing Android releases.''',
           appDirectory.createSync(recursive: true);
         }
 
-        final archiveFile = await artifactManager.downloadFile(
+        final archiveFile = await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseArtifact.url),
+          message: 'Downloading ${releaseArtifact.arch}',
         );
         await artifactManager.extractZip(
           zipFile: archiveFile,
@@ -434,8 +435,9 @@ This is only applicable when previewing Android releases.''',
           appDirectory.createSync(recursive: true);
         }
 
-        final archiveFile = await artifactManager.downloadFile(
+        final archiveFile = await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseExeArtifact.url),
+          message: 'Downloading ${releaseExeArtifact.arch}',
         );
         await artifactManager.extractZip(
           zipFile: archiveFile,
@@ -504,8 +506,9 @@ This is only applicable when previewing Android releases.''',
           appDirectory.createSync(recursive: true);
         }
 
-        final archiveFile = await artifactManager.downloadFile(
+        final archiveFile = await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseRunnerArtifact.url),
+          message: 'Downloading ${releaseRunnerArtifact.arch}',
         );
         await ditto.extract(
           source: archiveFile.path,
@@ -628,8 +631,9 @@ This is only applicable when previewing Android releases.''',
       if (!aabFile.existsSync()) {
         aabFile.createSync(recursive: true);
 
-        await artifactManager.downloadFile(
+        await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseAabArtifact.url),
+          message: 'Downloading ${releaseAabArtifact.arch}',
           outputPath: aabFile.path,
         );
       }
@@ -759,8 +763,9 @@ This is only applicable when previewing Android releases.''',
           runnerDirectory.createSync(recursive: true);
         }
 
-        final archiveFile = await artifactManager.downloadFile(
+        final archiveFile = await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseRunnerArtifact.url),
+          message: 'Downloading ${releaseRunnerArtifact.arch}',
         );
         await artifactManager.extractZip(
           zipFile: archiveFile,
