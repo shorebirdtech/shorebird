@@ -64,7 +64,8 @@ jobs:
 
       - name: Test Connectivity
         run: |
-          curl https://cdn-dev.shorebird.cloud/api/v1/patches/f5835765-37a7-4472-98b5-06d7cd55d849/android/x86_64/5900/dlc.vmcode --output dlc.vmcode
+          curl -I https://cdn-dev.shorebird.cloud/api/v1/patches/3ec72377-80b7-4dca-ae1c-b063800f6629/android/x86_64/6051/dlc.vmcode
+          curl https://cdn-dev.shorebird.cloud/api/v1/patches/3ec72377-80b7-4dca-ae1c-b063800f6629/android/x86_64/6051/dlc.vmcode --output dlc.vmcode
           ls -la dlc.vmcode
 
       # - name: ☕ Set up Java
