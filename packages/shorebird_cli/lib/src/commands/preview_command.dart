@@ -351,7 +351,6 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (!appDirectory.existsSync()) {
-      final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         if (!appDirectory.existsSync()) {
           appDirectory.createSync(recursive: true);
@@ -365,9 +364,8 @@ This is only applicable when previewing Android releases.''',
           zipFile: archiveFile,
           outputDirectory: appDirectory,
         );
-        downloadArtifactProgress.complete();
       } on Exception catch (error) {
-        downloadArtifactProgress.fail('$error');
+        logger.err('$error');
         return ExitCode.software.code;
       }
     }
