@@ -103,8 +103,10 @@ To add macOS, run "flutter create . --platforms macos"''');
         test('copies all files next to snapshots', () {
           final names = [
             'App.class_table.json',
+            'App.dispatch_table.json',
             'App.field_table.json',
             'App.ct.link',
+            'App.dt.link',
             'App.ft.link',
           ];
 
@@ -121,14 +123,16 @@ To add macOS, run "flutter create . --platforms macos"''');
 
           final releaseSnapshotDir = Directory.systemTemp.createTempSync();
           final patchSnapshotDir = Directory.systemTemp.createTempSync();
-          apple.copySupplementFilesToSnapshotDirs(
-            releaseSupplementDir: releaseSupplementDir,
-            releaseSnapshotDir: releaseSnapshotDir,
-            patchSupplementDir: patchSupplementDir,
-            patchSnapshotDir: patchSnapshotDir,
+          runWithOverrides(
+            () => apple.copySupplementFilesToSnapshotDirs(
+              releaseSupplementDir: releaseSupplementDir,
+              releaseSnapshotDir: releaseSnapshotDir,
+              patchSupplementDir: patchSupplementDir,
+              patchSnapshotDir: patchSnapshotDir,
+            ),
           );
-          expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(4));
-          expect(Directory(patchSnapshotDir.path).listSync(), hasLength(4));
+          expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(6));
+          expect(Directory(patchSnapshotDir.path).listSync(), hasLength(6));
         });
 
         test('copies only some files next to snapshots', () {
@@ -147,14 +151,37 @@ To add macOS, run "flutter create . --platforms macos"''');
 
           final releaseSnapshotDir = Directory.systemTemp.createTempSync();
           final patchSnapshotDir = Directory.systemTemp.createTempSync();
-          apple.copySupplementFilesToSnapshotDirs(
-            releaseSupplementDir: releaseSupplementDir,
-            releaseSnapshotDir: releaseSnapshotDir,
-            patchSupplementDir: patchSupplementDir,
-            patchSnapshotDir: patchSnapshotDir,
+          runWithOverrides(
+            () => apple.copySupplementFilesToSnapshotDirs(
+              releaseSupplementDir: releaseSupplementDir,
+              releaseSnapshotDir: releaseSnapshotDir,
+              patchSupplementDir: patchSupplementDir,
+              patchSnapshotDir: patchSnapshotDir,
+            ),
           );
           expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(2));
           expect(Directory(patchSnapshotDir.path).listSync(), hasLength(2));
+
+          // Logs when copying files.
+          final classTableFilePath = p.join(
+            releaseSupplementDir.path,
+            'App.class_table.json',
+          );
+          verify(
+            () => logger.detail(
+              'Copying supplement file $classTableFilePath to ${releaseSnapshotDir.path}',
+            ),
+          ).called(1);
+          // Logs about missing files
+          final dispatchTableFilePath = p.join(
+            releaseSupplementDir.path,
+            'App.dispatch_table.json',
+          );
+          verify(
+            () => logger.detail(
+              'Unable to find supplement file at $dispatchTableFilePath',
+            ),
+          ).called(1);
         });
       });
 
