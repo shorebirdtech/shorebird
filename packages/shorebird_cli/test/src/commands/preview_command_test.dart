@@ -421,8 +421,9 @@ void main() {
         when(() => releaseArtifact.id).thenReturn(androidArtifactId);
         when(() => argResults['platform']).thenReturn(releasePlatform.name);
         when(
-          () => artifactManager.downloadFile(
+          () => artifactManager.downloadWithProgressUpdates(
             any(),
+            message: any(named: 'message'),
             outputPath: any(named: 'outputPath'),
           ),
         ).thenAnswer((_) async => File(''));
@@ -475,6 +476,7 @@ void main() {
         when(() => process.stdout).thenAnswer((_) => const Stream.empty());
         when(() => process.stderr).thenAnswer((_) => const Stream.empty());
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
+        when(() => releaseArtifact.arch).thenReturn('app');
         when(() => release.platformStatuses).thenReturn({
           ReleasePlatform.android: ReleaseStatus.active,
           ReleasePlatform.ios: ReleaseStatus.active,
@@ -808,8 +810,9 @@ channel: ${track.channel}
         final exception = Exception('oops');
         setUp(() {
           when(
-            () => artifactManager.downloadFile(
+            () => artifactManager.downloadWithProgressUpdates(
               any(),
+              message: any(named: 'message'),
               outputPath: any(named: 'outputPath'),
             ),
           ).thenThrow(exception);
@@ -818,24 +821,7 @@ channel: ${track.channel}
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => logger.progress('Downloading release')).called(1);
-          verify(() => progress.fail('$exception')).called(1);
-        });
-      });
-
-      group('when download completes', () {
-        late Progress mockDownloadingProgress;
-        setUp(() {
-          mockDownloadingProgress = MockProgress();
-          when(
-            () => logger.progress('Downloading release'),
-          ).thenReturn(mockDownloadingProgress);
-        });
-
-        test('downloading release progress completes', () async {
-          await runWithOverrides(command.run);
-          verify(() => logger.progress('Downloading release')).called(1);
-          verify(mockDownloadingProgress.complete).called(1);
+          verify(() => logger.err('$exception')).called(1);
         });
       });
 
@@ -1381,7 +1367,11 @@ channel: ${track.channel}
         when(() => appleDevice.udid).thenReturn('12345678-1234567890ABCDEF');
         when(() => argResults['platform']).thenReturn(releasePlatform.name);
         when(
-          () => artifactManager.downloadFile(any()),
+          () => artifactManager.downloadWithProgressUpdates(
+            any(),
+            message: any(named: 'message'),
+            outputPath: any(named: 'outputPath'),
+          ),
         ).thenAnswer((_) async => File(''));
         when(
           () => artifactManager.extractZip(
@@ -1411,6 +1401,7 @@ channel: ${track.channel}
           ReleasePlatform.ios: ReleaseStatus.active,
         });
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
+        when(() => releaseArtifact.arch).thenReturn('app');
         when(() => platform.isMacOS).thenReturn(true);
       });
 
@@ -1449,13 +1440,19 @@ channel: ${track.channel}
       group('when downloading release artifact fails', () {
         final exception = Exception('oops');
         setUp(() {
-          when(() => artifactManager.downloadFile(any())).thenThrow(exception);
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenThrow(exception);
         });
 
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => progress.fail('$exception')).called(1);
+          verify(() => logger.err('$exception')).called(1);
         });
       });
 
@@ -1473,7 +1470,7 @@ channel: ${track.channel}
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => progress.fail('$exception')).called(1);
+          verify(() => logger.err('$exception')).called(1);
         });
       });
 
@@ -1830,6 +1827,7 @@ channel: ${DeploymentTrack.staging.channel}
 
         when(() => linuxReleaseArtifact.id).thenReturn(releaseArtifactId);
         when(() => linuxReleaseArtifact.url).thenReturn(releaseArtifactUrl);
+        when(() => linuxReleaseArtifact.arch).thenReturn('app');
 
         when(
           () => release.platformStatuses,
@@ -1874,7 +1872,11 @@ channel: ${DeploymentTrack.staging.channel}
       group('when downloading release artifact fails', () {
         setUp(() {
           when(
-            () => artifactManager.downloadFile(any()),
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
           ).thenThrow(Exception('oops'));
         });
 
@@ -1882,7 +1884,10 @@ channel: ${DeploymentTrack.staging.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
           verify(
-            () => artifactManager.downloadFile(Uri.parse(releaseArtifactUrl)),
+            () => artifactManager.downloadWithProgressUpdates(
+              Uri.parse(releaseArtifactUrl),
+              message: 'Downloading app',
+            ),
           ).called(1);
         });
       });
@@ -1890,7 +1895,11 @@ channel: ${DeploymentTrack.staging.channel}
       group('when setting channel on app fails', () {
         setUp(() {
           when(
-            () => artifactManager.downloadFile(any()),
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
           ).thenAnswer((_) async => releaseArtifactFile);
           when(
             () => artifactManager.extractZip(
@@ -1912,7 +1921,11 @@ channel: ${DeploymentTrack.staging.channel}
       group('when preview artifact is not cached', () {
         setUp(() {
           when(
-            () => artifactManager.downloadFile(any()),
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
           ).thenAnswer((_) async => releaseArtifactFile);
           when(
             () => artifactManager.extractZip(
@@ -1931,7 +1944,10 @@ channel: ${DeploymentTrack.staging.channel}
           expect(result, equals(ExitCode.success.code));
 
           verify(
-            () => artifactManager.downloadFile(Uri.parse(releaseArtifactUrl)),
+            () => artifactManager.downloadWithProgressUpdates(
+              Uri.parse(releaseArtifactUrl),
+              message: 'Downloading app',
+            ),
           ).called(1);
           verify(
             () =>
@@ -1958,7 +1974,13 @@ channel: ${DeploymentTrack.staging.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
 
-          verifyNever(() => artifactManager.downloadFile(any()));
+          verifyNever(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          );
           verify(() => shorebirdProcess.run('chmod', any())).called(1);
           verify(
             () =>
@@ -2024,7 +2046,11 @@ channel: ${DeploymentTrack.staging.channel}
         when(() => releaseArtifact.id).thenReturn(macosArtifactId);
         when(() => argResults['platform']).thenReturn(releasePlatform.name);
         when(
-          () => artifactManager.downloadFile(any()),
+          () => artifactManager.downloadWithProgressUpdates(
+            any(),
+            message: any(named: 'message'),
+            outputPath: any(named: 'outputPath'),
+          ),
         ).thenAnswer((_) async => File(''));
         when(
           () => artifactManager.extractZip(
@@ -2042,6 +2068,7 @@ channel: ${DeploymentTrack.staging.channel}
           () => release.platformStatuses,
         ).thenReturn({ReleasePlatform.macos: ReleaseStatus.active});
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
+        when(() => releaseArtifact.arch).thenReturn('app');
         when(() => platform.isMacOS).thenReturn(true);
         when(
           () => open.newApplication(path: any(named: 'path')),
@@ -2078,13 +2105,19 @@ channel: ${DeploymentTrack.staging.channel}
       group('when downloading release artifact fails', () {
         final exception = Exception('oops');
         setUp(() {
-          when(() => artifactManager.downloadFile(any())).thenThrow(exception);
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenThrow(exception);
         });
 
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => progress.fail('$exception')).called(1);
+          verify(() => logger.err('$exception')).called(1);
         });
       });
 
@@ -2102,31 +2135,7 @@ channel: ${DeploymentTrack.staging.channel}
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => progress.fail('$exception')).called(1);
-        });
-      });
-
-      group('when extracting release artifact succeeds', () {
-        setUp(() {
-          when(
-            () => ditto.extract(
-              source: any(named: 'source'),
-              destination: any(named: 'destination'),
-            ),
-          ).thenAnswer((invocation) async {
-            final appDirectoryPath =
-                invocation.namedArguments[#destination] as String;
-            Directory(appDirectoryPath).createSync(recursive: true);
-          });
-        });
-
-        test('completes progress successfully', () async {
-          try {
-            await runWithOverrides(command.run);
-          } on Exception catch (_) {
-            // swallow exception
-          }
-          verify(() => progress.complete()).called(1);
+          verify(() => logger.err('$exception')).called(1);
         });
       });
 
@@ -2284,6 +2293,7 @@ channel: ${DeploymentTrack.staging.channel}
 
         when(() => windowsReleaseArtifact.id).thenReturn(releaseArtifactId);
         when(() => windowsReleaseArtifact.url).thenReturn(releaseArtifactUrl);
+        when(() => windowsReleaseArtifact.arch).thenReturn('app');
 
         when(
           () => release.platformStatuses,
@@ -2328,7 +2338,11 @@ channel: ${DeploymentTrack.staging.channel}
       group('when downloading release artifact fails', () {
         setUp(() {
           when(
-            () => artifactManager.downloadFile(any()),
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
           ).thenThrow(Exception('oops'));
         });
 
@@ -2336,7 +2350,10 @@ channel: ${DeploymentTrack.staging.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
           verify(
-            () => artifactManager.downloadFile(Uri.parse(releaseArtifactUrl)),
+            () => artifactManager.downloadWithProgressUpdates(
+              Uri.parse(releaseArtifactUrl),
+              message: 'Downloading app',
+            ),
           ).called(1);
         });
       });
@@ -2344,7 +2361,11 @@ channel: ${DeploymentTrack.staging.channel}
       group('when preview artifact is not cached', () {
         setUp(() {
           when(
-            () => artifactManager.downloadFile(any()),
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
           ).thenAnswer((_) async => releaseArtifactFile);
           when(
             () => artifactManager.extractZip(
@@ -2366,7 +2387,10 @@ channel: ${DeploymentTrack.staging.channel}
           expect(result, equals(ExitCode.success.code));
 
           verify(
-            () => artifactManager.downloadFile(Uri.parse(releaseArtifactUrl)),
+            () => artifactManager.downloadWithProgressUpdates(
+              Uri.parse(releaseArtifactUrl),
+              message: 'Downloading app',
+            ),
           ).called(1);
           verify(
             () => shorebirdProcess.start(any(that: endsWith('runner.exe')), []),
@@ -2388,7 +2412,13 @@ channel: ${DeploymentTrack.staging.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
 
-          verifyNever(() => artifactManager.downloadFile(any()));
+          verifyNever(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          );
           verify(
             () => shorebirdProcess.start(any(that: endsWith('runner.exe')), []),
           ).called(1);
@@ -2453,7 +2483,11 @@ channel: ${DeploymentTrack.staging.channel}
         when(() => appleDevice.name).thenReturn('iPhone 12');
         when(() => appleDevice.udid).thenReturn('12345678-1234567890ABCDEF');
         when(
-          () => artifactManager.downloadFile(any()),
+          () => artifactManager.downloadWithProgressUpdates(
+            any(),
+            message: any(named: 'message'),
+            outputPath: any(named: 'outputPath'),
+          ),
         ).thenAnswer((_) async => File(''));
         when(
           () => artifactManager.extractZip(
