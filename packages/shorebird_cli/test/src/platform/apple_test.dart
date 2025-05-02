@@ -123,11 +123,13 @@ To add macOS, run "flutter create . --platforms macos"''');
 
           final releaseSnapshotDir = Directory.systemTemp.createTempSync();
           final patchSnapshotDir = Directory.systemTemp.createTempSync();
-          apple.copySupplementFilesToSnapshotDirs(
-            releaseSupplementDir: releaseSupplementDir,
-            releaseSnapshotDir: releaseSnapshotDir,
-            patchSupplementDir: patchSupplementDir,
-            patchSnapshotDir: patchSnapshotDir,
+          runWithOverrides(
+            () => apple.copySupplementFilesToSnapshotDirs(
+              releaseSupplementDir: releaseSupplementDir,
+              releaseSnapshotDir: releaseSnapshotDir,
+              patchSupplementDir: patchSupplementDir,
+              patchSnapshotDir: patchSnapshotDir,
+            ),
           );
           expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(6));
           expect(Directory(patchSnapshotDir.path).listSync(), hasLength(6));
@@ -149,14 +151,28 @@ To add macOS, run "flutter create . --platforms macos"''');
 
           final releaseSnapshotDir = Directory.systemTemp.createTempSync();
           final patchSnapshotDir = Directory.systemTemp.createTempSync();
-          apple.copySupplementFilesToSnapshotDirs(
-            releaseSupplementDir: releaseSupplementDir,
-            releaseSnapshotDir: releaseSnapshotDir,
-            patchSupplementDir: patchSupplementDir,
-            patchSnapshotDir: patchSnapshotDir,
+          runWithOverrides(
+            () => apple.copySupplementFilesToSnapshotDirs(
+              releaseSupplementDir: releaseSupplementDir,
+              releaseSnapshotDir: releaseSnapshotDir,
+              patchSupplementDir: patchSupplementDir,
+              patchSnapshotDir: patchSnapshotDir,
+            ),
           );
           expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(2));
           expect(Directory(patchSnapshotDir.path).listSync(), hasLength(2));
+          // Logs when copying files.
+          verify(
+            () => logger.detail(
+              'Copying supplement file ${releaseSupplementDir.path}/App.class_table.json to ${releaseSnapshotDir.path}',
+            ),
+          ).called(1);
+          // Logs about missing files
+          verify(
+            () => logger.detail(
+              'Unable to find supplement file at ${releaseSupplementDir.path}/App.dispatch_table.json',
+            ),
+          ).called(1);
         });
       });
 
