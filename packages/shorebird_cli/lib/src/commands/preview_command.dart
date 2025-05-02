@@ -351,22 +351,21 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (!appDirectory.existsSync()) {
-      final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         if (!appDirectory.existsSync()) {
           appDirectory.createSync(recursive: true);
         }
 
-        final archiveFile = await artifactManager.downloadFile(
+        final archiveFile = await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseArtifact.url),
+          message: 'Downloading ${releaseArtifact.arch}',
         );
         await artifactManager.extractZip(
           zipFile: archiveFile,
           outputDirectory: appDirectory,
         );
-        downloadArtifactProgress.complete();
       } on Exception catch (error) {
-        downloadArtifactProgress.fail('$error');
+        logger.err('$error');
         return ExitCode.software.code;
       }
     }
@@ -428,22 +427,21 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (!appDirectory.existsSync()) {
-      final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         if (!appDirectory.existsSync()) {
           appDirectory.createSync(recursive: true);
         }
 
-        final archiveFile = await artifactManager.downloadFile(
+        final archiveFile = await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseExeArtifact.url),
+          message: 'Downloading ${releaseExeArtifact.arch}',
         );
         await artifactManager.extractZip(
           zipFile: archiveFile,
           outputDirectory: appDirectory,
         );
-        downloadArtifactProgress.complete();
       } on Exception catch (error) {
-        downloadArtifactProgress.fail('$error');
+        logger.err('$error');
         return ExitCode.software.code;
       }
     }
@@ -498,22 +496,21 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (!appDirectory.existsSync()) {
-      final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         if (!appDirectory.existsSync()) {
           appDirectory.createSync(recursive: true);
         }
 
-        final archiveFile = await artifactManager.downloadFile(
+        final archiveFile = await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseRunnerArtifact.url),
+          message: 'Downloading ${releaseRunnerArtifact.arch}',
         );
         await ditto.extract(
           source: archiveFile.path,
           destination: appDirectory.path,
         );
-        downloadArtifactProgress.complete();
       } on Exception catch (error) {
-        downloadArtifactProgress.fail('$error');
+        logger.err('$error');
         return ExitCode.software.code;
       }
     }
@@ -596,7 +593,6 @@ This is only applicable when previewing Android releases.''',
       }
     }
 
-    final downloadArtifactProgress = logger.progress('Downloading release');
     late File aabFile;
     late ReleaseArtifact releaseAabArtifact;
 
@@ -628,15 +624,14 @@ This is only applicable when previewing Android releases.''',
       if (!aabFile.existsSync()) {
         aabFile.createSync(recursive: true);
 
-        await artifactManager.downloadFile(
+        await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseAabArtifact.url),
+          message: 'Downloading ${releaseAabArtifact.arch}',
           outputPath: aabFile.path,
         );
       }
-
-      downloadArtifactProgress.complete();
     } on Exception catch (error) {
-      downloadArtifactProgress.fail('$error');
+      logger.err('$error');
       return ExitCode.software.code;
     }
 
@@ -753,22 +748,21 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (!runnerDirectory.existsSync()) {
-      final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         if (!runnerDirectory.existsSync()) {
           runnerDirectory.createSync(recursive: true);
         }
 
-        final archiveFile = await artifactManager.downloadFile(
+        final archiveFile = await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseRunnerArtifact.url),
+          message: 'Downloading ${releaseRunnerArtifact.arch}',
         );
         await artifactManager.extractZip(
           zipFile: archiveFile,
           outputDirectory: runnerDirectory,
         );
-        downloadArtifactProgress.complete();
       } on Exception catch (error) {
-        downloadArtifactProgress.fail('$error');
+        logger.err('$error');
         return ExitCode.software.code;
       }
     }

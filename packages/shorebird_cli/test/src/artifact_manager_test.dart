@@ -378,6 +378,29 @@ void main() {
         },
         onPlatform: {'windows': const Skip('Flaky on Windows')},
       );
+
+      test('uses outputPath when specified', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.fromIterable([
+              [1],
+            ]),
+            HttpStatus.ok,
+            contentLength: 1,
+          ),
+        );
+        final tempDir = Directory.systemTemp.createTempSync();
+        final outputPath = p.join(tempDir.path, 'output-file.txt');
+        final file = await runWithOverrides(
+          () => artifactManager.downloadWithProgressUpdates(
+            Uri.parse('https://example.com'),
+            message: 'Downloading',
+            outputPath: outputPath,
+          ),
+        );
+        expect(file.path, equals(outputPath));
+        expect(file.lengthSync(), equals(1));
+      });
     });
 
     group('extractZip', () {
