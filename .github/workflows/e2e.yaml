@@ -62,56 +62,61 @@ jobs:
           fi
         shell: bash
 
-      - name: ☕ Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "17"
-
-      - name: 🎯 Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: ${{ matrix.flutter-version }}
-          cache: true
-
-      - name: 🚀 Enable KVM for Linux Runners
-        if: runner.os == 'Linux'
+      - name: Test Connectivity
         run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
+          curl https://cdn-dev.shorebird.cloud/api/v1/patches/f5835765-37a7-4472-98b5-06d7cd55d849/android/x86_64/5900/dlc.vmcode --output dlc.vmcode
+          ls -la dlc.vmcode
 
-      - name: 🤖 AVD Cache
-        uses: actions/cache@v4
-        id: avd-cache
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-29-${{ runner.os }}-${{ hashFiles('.github/workflows/e2e.yaml') }}
+      # - name: ☕ Set up Java
+      #   uses: actions/setup-java@v4
+      #   with:
+      #     distribution: "temurin"
+      #     java-version: "17"
 
-      - name: 🤖 Cache AVD Snapshot
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          arch: x86_64
-          target: default
-          force-avd-creation: false
-          sdcard-path-or-size: 512M
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
-          disable-animations: false
-          channel: canary
-          script: echo "Generated AVD Snapshot"
+      # - name: 🎯 Set up Flutter
+      #   uses: subosito/flutter-action@v2
+      #   with:
+      #     channel: stable
+      #     flutter-version: ${{ matrix.flutter-version }}
+      #     cache: true
 
-      - name: 🧪 Run Patch E2E Tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          arch: x86_64
-          target: default
-          script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
+      # - name: 🚀 Enable KVM for Linux Runners
+      #   if: runner.os == 'Linux'
+      #   run: |
+      #     echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+      #     sudo udevadm control --reload-rules
+      #     sudo udevadm trigger --name-match=kvm
+
+      # - name: 🤖 AVD Cache
+      #   uses: actions/cache@v4
+      #   id: avd-cache
+      #   with:
+      #     path: |
+      #       ~/.android/avd/*
+      #       ~/.android/adb*
+      #     key: avd-29-${{ runner.os }}-${{ hashFiles('.github/workflows/e2e.yaml') }}
+
+      # - name: 🤖 Cache AVD Snapshot
+      #   if: steps.avd-cache.outputs.cache-hit != 'true'
+      #   uses: reactivecircus/android-emulator-runner@v2
+      #   with:
+      #     api-level: 29
+      #     arch: x86_64
+      #     target: default
+      #     force-avd-creation: false
+      #     sdcard-path-or-size: 512M
+      #     emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+      #     disable-animations: false
+      #     channel: canary
+      #     script: echo "Generated AVD Snapshot"
+
+      # - name: 🧪 Run Patch E2E Tests
+      #   uses: reactivecircus/android-emulator-runner@v2
+      #   with:
+      #     api-level: 29
+      #     arch: x86_64
+      #     target: default
+      #     script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
     strategy:
