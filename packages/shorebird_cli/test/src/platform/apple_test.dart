@@ -161,16 +161,25 @@ To add macOS, run "flutter create . --platforms macos"''');
           );
           expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(2));
           expect(Directory(patchSnapshotDir.path).listSync(), hasLength(2));
+
           // Logs when copying files.
+          final classTableFilePath = p.join(
+            releaseSupplementDir.path,
+            'App.class_table.json',
+          );
           verify(
             () => logger.detail(
-              'Copying supplement file ${releaseSupplementDir.path}/App.class_table.json to ${releaseSnapshotDir.path}',
+              'Copying supplement file $classTableFilePath to ${releaseSnapshotDir.path}',
             ),
           ).called(1);
           // Logs about missing files
+          final dispatchTableFilePath = p.join(
+            releaseSupplementDir.path,
+            'App.dispatch_table.json',
+          );
           verify(
             () => logger.detail(
-              'Unable to find supplement file at ${releaseSupplementDir.path}/App.dispatch_table.json',
+              'Unable to find supplement file at $dispatchTableFilePath',
             ),
           ).called(1);
         });
