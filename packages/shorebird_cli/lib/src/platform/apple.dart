@@ -135,7 +135,7 @@ class Apple {
   /// patch builds. Both times it produces supplement files in a directory.
   /// In the release case, these files are zipped up and stored as an artifact
   /// on our servers for later use. In the patch case, they were created on
-  /// disk just before this call.
+  /// disk just before this call by XCode calling flutter calling gen_snapshot.
   /// In both cases we need to copy the supplement files from these directories
   /// to right next to where the snapshot files are before calling into
   /// `aot_tools` to link the two snapshots together.
@@ -153,13 +153,19 @@ class Apple {
       'App.class_table.json',
       'App.ft.link',
       'App.field_table.json',
+      'App.dt.link',
+      'App.dispatch_table.json',
     ];
 
     // This uses maybeCopy because not all versions of gen_snapshot/aot_tools
     // use the same supplement files. At the `shorebird` level we don't know
     // which files should be present, so we just try to copy all.
     void maybeCopy(File file, Directory destDir, {String? newBaseName}) {
-      if (!file.existsSync()) return;
+      logger.detail('Copying supplement file ${file.path} to ${destDir.path}');
+      if (!file.existsSync()) {
+        logger.detail('Unable to find supplement file at ${file.path}');
+        return;
+      }
       final baseName = p.basename(file.path);
       final destName =
           newBaseName != null

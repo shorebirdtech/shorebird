@@ -150,11 +150,12 @@ class ArtifactManager {
     Uri uri, {
     required String message,
     Duration throttleDuration = const Duration(milliseconds: 250),
+    String? outputPath,
   }) async {
     final downloadProgress = logger.progress(message);
     final File artifactFile;
     try {
-      final download = await startFileDownload(uri);
+      final download = await startFileDownload(uri, outputPath: outputPath);
       final subscription = download.progress
           .throttle(throttleDuration, trailing: true)
           .listen((progress) {
