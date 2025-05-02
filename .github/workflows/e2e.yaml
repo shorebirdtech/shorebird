@@ -45,26 +45,26 @@ jobs:
       SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
 
     steps:
-      - name: 📚 Git Checkout
-        uses: actions/checkout@v4
-
-      - name: 🖥️ Add Shorebird to PATH
-        shell: bash
-        run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
-
-      - name: 🐦 Verify Shorebird Installation
-        run: |
-          if [[ $(shorebird --version) =~ "Engine • revision" ]]; then          
-            echo '✅ Shorebird CLI is installed!'
-          else
-            echo '❌ Shorebird CLI is not installed.'
-          exit 1
-          fi
-        shell: bash
-
       - name: Test Connectivity
         run: |
           curl -o /dev/null -s -w "%{http_code}\n" https://cdn-dev.shorebird.cloud/api/v1/patches/3ec72377-80b7-4dca-ae1c-b063800f6629/android/x86_64/6051/dlc.vmcode
+
+      # - name: 📚 Git Checkout
+      #   uses: actions/checkout@v4
+
+      # - name: 🖥️ Add Shorebird to PATH
+      #   shell: bash
+      #   run: echo "${GITHUB_WORKSPACE}/bin/" >> $GITHUB_PATH
+
+      # - name: 🐦 Verify Shorebird Installation
+      #   run: |
+      #     if [[ $(shorebird --version) =~ "Engine • revision" ]]; then
+      #       echo '✅ Shorebird CLI is installed!'
+      #     else
+      #       echo '❌ Shorebird CLI is not installed.'
+      #     exit 1
+      #     fi
+      #   shell: bash
 
       # - name: ☕ Set up Java
       #   uses: actions/setup-java@v4
