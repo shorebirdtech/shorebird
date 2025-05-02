@@ -821,24 +821,7 @@ channel: ${track.channel}
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => logger.progress('Downloading release')).called(1);
-          verify(() => progress.fail('$exception')).called(1);
-        });
-      });
-
-      group('when download completes', () {
-        late Progress mockDownloadingProgress;
-        setUp(() {
-          mockDownloadingProgress = MockProgress();
-          when(
-            () => logger.progress('Downloading release'),
-          ).thenReturn(mockDownloadingProgress);
-        });
-
-        test('downloading release progress completes', () async {
-          await runWithOverrides(command.run);
-          verify(() => logger.progress('Downloading release')).called(1);
-          verify(mockDownloadingProgress.complete).called(1);
+          verify(() => logger.err('$exception')).called(1);
         });
       });
 
@@ -1469,7 +1452,7 @@ channel: ${track.channel}
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => progress.fail('$exception')).called(1);
+          verify(() => logger.err('$exception')).called(1);
         });
       });
 
@@ -1487,7 +1470,7 @@ channel: ${track.channel}
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => progress.fail('$exception')).called(1);
+          verify(() => logger.err('$exception')).called(1);
         });
       });
 
@@ -2134,7 +2117,7 @@ channel: ${DeploymentTrack.staging.channel}
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => progress.fail('$exception')).called(1);
+          verify(() => logger.err('$exception')).called(1);
         });
       });
 
@@ -2152,31 +2135,7 @@ channel: ${DeploymentTrack.staging.channel}
         test('exits with code 70', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.software.code));
-          verify(() => progress.fail('$exception')).called(1);
-        });
-      });
-
-      group('when extracting release artifact succeeds', () {
-        setUp(() {
-          when(
-            () => ditto.extract(
-              source: any(named: 'source'),
-              destination: any(named: 'destination'),
-            ),
-          ).thenAnswer((invocation) async {
-            final appDirectoryPath =
-                invocation.namedArguments[#destination] as String;
-            Directory(appDirectoryPath).createSync(recursive: true);
-          });
-        });
-
-        test('completes progress successfully', () async {
-          try {
-            await runWithOverrides(command.run);
-          } on Exception catch (_) {
-            // swallow exception
-          }
-          verify(() => progress.complete()).called(1);
+          verify(() => logger.err('$exception')).called(1);
         });
       });
 

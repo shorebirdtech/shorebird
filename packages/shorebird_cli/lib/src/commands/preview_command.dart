@@ -427,7 +427,6 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (!appDirectory.existsSync()) {
-      final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         if (!appDirectory.existsSync()) {
           appDirectory.createSync(recursive: true);
@@ -441,9 +440,8 @@ This is only applicable when previewing Android releases.''',
           zipFile: archiveFile,
           outputDirectory: appDirectory,
         );
-        downloadArtifactProgress.complete();
       } on Exception catch (error) {
-        downloadArtifactProgress.fail('$error');
+        logger.err('$error');
         return ExitCode.software.code;
       }
     }
@@ -498,7 +496,6 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (!appDirectory.existsSync()) {
-      final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         if (!appDirectory.existsSync()) {
           appDirectory.createSync(recursive: true);
@@ -512,9 +509,8 @@ This is only applicable when previewing Android releases.''',
           source: archiveFile.path,
           destination: appDirectory.path,
         );
-        downloadArtifactProgress.complete();
       } on Exception catch (error) {
-        downloadArtifactProgress.fail('$error');
+        logger.err('$error');
         return ExitCode.software.code;
       }
     }
@@ -597,7 +593,6 @@ This is only applicable when previewing Android releases.''',
       }
     }
 
-    final downloadArtifactProgress = logger.progress('Downloading release');
     late File aabFile;
     late ReleaseArtifact releaseAabArtifact;
 
@@ -635,10 +630,8 @@ This is only applicable when previewing Android releases.''',
           outputPath: aabFile.path,
         );
       }
-
-      downloadArtifactProgress.complete();
     } on Exception catch (error) {
-      downloadArtifactProgress.fail('$error');
+      logger.err('$error');
       return ExitCode.software.code;
     }
 
@@ -755,7 +748,6 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (!runnerDirectory.existsSync()) {
-      final downloadArtifactProgress = logger.progress('Downloading release');
       try {
         if (!runnerDirectory.existsSync()) {
           runnerDirectory.createSync(recursive: true);
@@ -769,9 +761,8 @@ This is only applicable when previewing Android releases.''',
           zipFile: archiveFile,
           outputDirectory: runnerDirectory,
         );
-        downloadArtifactProgress.complete();
       } on Exception catch (error) {
-        downloadArtifactProgress.fail('$error');
+        logger.err('$error');
         return ExitCode.software.code;
       }
     }
