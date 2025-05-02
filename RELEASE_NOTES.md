@@ -6,6 +6,12 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.36 (April 23, 2025)
+
+- 💯 show release download progress in `shorebird preview`
+- 🪵 diagnostic improvements for low linking edge cases on iOS
+- 🧹 Various dependency upgrades
+
 ## 1.6.35 (April 23, 2025)
 
 - 🪵 improve debug logs in cases where patches have low link percentages
