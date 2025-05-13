@@ -6,6 +6,11 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 This section contains past updates we've sent to customers.
 
+## 1.6.37 (May 13, 2025)
+
+- 👀 `shorebird preview` deprecate `--staging` in favor of `--track=staging`
+- 🧹 Various dependency upgrades
+
 ## 1.6.36 (April 23, 2025)
 
 - 💯 show release download progress in `shorebird preview`
