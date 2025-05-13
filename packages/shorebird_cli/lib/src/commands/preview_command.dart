@@ -89,7 +89,14 @@ This is only applicable when previewing Android releases.''',
       ..addFlag(
         'staging',
         negatable: false,
-        help: 'Preview the release on the staging environment.',
+        help: '[DEPRECATED] Preview the release on the staging environment.',
+        hide: true,
+      )
+      ..addOption(
+        'track',
+        allowed: DeploymentTrack.values.map((v) => v.channel),
+        help: 'The track to preview.',
+        defaultsTo: DeploymentTrack.stable.channel,
       );
   }
 
@@ -110,6 +117,12 @@ This is only applicable when previewing Android releases.''',
   @override
   String get description => 'Preview a specific release on a device.';
 
+  /// The deployment track to publish the patch to.
+  DeploymentTrack get track {
+    final channel = results['track'] as String;
+    return DeploymentTrack.values.firstWhere((t) => t.channel == channel);
+  }
+
   @override
   Future<int> run() async {
     // TODO(bryanoltman): check preview target and run either
@@ -120,6 +133,13 @@ This is only applicable when previewing Android releases.''',
       );
     } on PreconditionFailedException catch (error) {
       return error.exitCode.code;
+    }
+
+    if (results.wasParsed('staging')) {
+      logger.err(
+        '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
+      );
+      return ExitCode.usage.code;
     }
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
@@ -249,8 +269,6 @@ This is only applicable when previewing Android releases.''',
     }
 
     final deviceId = results['device-id'] as String?;
-    final isStaging = results['staging'] == true;
-    final track = isStaging ? DeploymentTrack.staging : DeploymentTrack.stable;
 
     return switch (releasePlatform) {
       ReleasePlatform.android => installAndLaunchAndroid(

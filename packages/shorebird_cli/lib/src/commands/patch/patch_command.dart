@@ -75,7 +75,7 @@ class PatchCommand extends ShorebirdCommand {
         help: 'The product flavor to use when building the app.',
       )
       ..addOption(
-        'release-version',
+        CommonArguments.releaseVersionArg.name,
         help: '''
 The version of the associated release (e.g. "1.0.0").
 If you are building an xcframework or aar, this number needs to match the host app's release version.
