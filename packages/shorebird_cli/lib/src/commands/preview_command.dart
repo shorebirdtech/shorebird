@@ -89,7 +89,8 @@ This is only applicable when previewing Android releases.''',
       ..addFlag(
         'staging',
         negatable: false,
-        help: '[DEPRECATED] Preview the release on the staging environment.',
+        help:
+            '[DEPRECATED] Preview the release on the staging environment. Use --track=staging instead.',
         hide: true,
       )
       ..addOption(
