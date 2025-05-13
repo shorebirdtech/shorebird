@@ -228,6 +228,11 @@ void main() {
       when(() => argResults['app-id']).thenReturn(appId);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(() => argResults['staging']).thenReturn(false);
+      when(
+        () => argResults['track'],
+      ).thenReturn(DeploymentTrack.stable.channel);
+      when(() => argResults.wasParsed(any())).thenReturn(true);
+      when(() => argResults.wasParsed('staging')).thenReturn(false);
       when(() => auth.isAuthenticated).thenReturn(true);
       when(() => cache.getPreviewDirectory(any())).thenReturn(previewDirectory);
       when(
@@ -270,6 +275,27 @@ void main() {
       when(() => platform.isLinux).thenReturn(false);
       when(() => platform.isMacOS).thenReturn(false);
       when(() => platform.isWindows).thenReturn(false);
+    });
+
+    group('when --staging is passed', () {
+      setUp(() {
+        when(() => argResults.wasParsed('staging')).thenReturn(true);
+      });
+
+      test(
+        '''warns that staging flag will be deprecated and exits with usage code''',
+        () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            completion(equals(ExitCode.usage.code)),
+          );
+          verify(
+            () => logger.err(
+              '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
+            ),
+          ).called(1);
+        },
+      );
     });
 
     group('when validation fails', () {
@@ -1606,7 +1632,9 @@ channel: ${track.channel}
       group('when install/launch succeeds (staging)', () {
         late File shorebirdYaml;
         setUp(() {
-          when(() => argResults['staging']).thenReturn(true);
+          when(
+            () => argResults['track'],
+          ).thenReturn(DeploymentTrack.staging.channel);
           shorebirdYaml =
               File(
                   p.join(
@@ -2142,7 +2170,9 @@ channel: ${DeploymentTrack.staging.channel}
       group('staging', () {
         late File shorebirdYaml;
         setUp(() {
-          when(() => argResults['staging']).thenReturn(true);
+          when(
+            () => argResults['track'],
+          ).thenReturn(DeploymentTrack.staging.channel);
           shorebirdYaml = setupMacosShorebirdYaml();
         });
 
