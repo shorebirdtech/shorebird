@@ -112,6 +112,14 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('is null', () {
+        // Shorebird has always had aar support, so we don't need to
+        // specify a minimum Flutter version.
+        expect(aarReleaser.minimumFlutterVersion, isNull);
+      });
+    });
+
     group('artifactDisplayName', () {
       test('has expected value', () {
         expect(aarReleaser.artifactDisplayName, 'Android archive');

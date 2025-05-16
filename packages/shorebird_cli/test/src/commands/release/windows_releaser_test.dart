@@ -127,6 +127,12 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('is 3.27.2', () {
+        expect(releaser.minimumFlutterVersion, Version(3, 27, 2));
+      });
+    });
+
     group('artifactDisplayName', () {
       test('has expected value', () {
         expect(releaser.artifactDisplayName, 'Windows app');
