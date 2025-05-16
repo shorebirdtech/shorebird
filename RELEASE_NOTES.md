@@ -4,7 +4,9 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
-This section contains past updates we've sent to customers.
+## 1.6.38 (May 16, 2025)
+
+- ✅ No intended changes. Last expected release before Flutter 3.32.0.
 
 ## 1.6.37 (May 13, 2025)
 
