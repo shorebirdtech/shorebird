@@ -28,7 +28,8 @@ void main() {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
-    const flutterVersion = '3.22.0';
+    const flutterVersionString = '3.22.0';
+    final flutterVersion = Version(3, 22, 0);
     const releaseVersion = '1.2.3+1';
     const postReleaseInstructions = 'Make a patch!';
     const artifactDisplayName = 'Amiga app';
@@ -44,7 +45,7 @@ void main() {
       appId: appId,
       version: releaseVersion,
       flutterRevision: flutterRevision,
-      flutterVersion: flutterVersion,
+      flutterVersion: flutterVersionString,
       displayName: '1.2.3+1',
       platformStatuses: {},
       createdAt: DateTime(2023),
@@ -187,6 +188,9 @@ void main() {
         () =>
             shorebirdFlutter.installRevision(revision: any(named: 'revision')),
       ).thenAnswer((_) async => {});
+      when(
+        () => shorebirdFlutter.resolveFlutterVersion(any()),
+      ).thenAnswer((_) async => flutterVersion);
 
       when(
         () => shorebirdValidator.validateFlavors(
@@ -417,12 +421,12 @@ void main() {
             () => shorebirdFlutter.getVersionForRevision(
               flutterRevision: flutterRevision,
             ),
-          ).thenAnswer((_) async => flutterVersion);
+          ).thenAnswer((_) async => flutterVersionString);
 
           when(
             () => shorebirdFlutter.formatVersion(
               revision: flutterRevision,
-              version: flutterVersion,
+              version: flutterVersionString,
             ),
           ).thenReturn('3.12.1');
           when(

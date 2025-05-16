@@ -14,9 +14,7 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -52,6 +50,9 @@ To change the version of this release, change your app's version in your pubspec
   }
 
   @override
+  Version? get minimumFlutterVersion => minimumSupportedWindowsFlutterVersion;
+
+  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
@@ -62,19 +63,6 @@ To change the version of this release, change your app's version in your pubspec
       );
     } on PreconditionFailedException catch (e) {
       throw ProcessExit(e.exitCode.code);
-    }
-
-    final flutterVersionArg = argResults['flutter-version'] as String;
-    if (flutterVersionArg != 'latest') {
-      final version = await shorebirdFlutter.resolveFlutterVersion(
-        flutterVersionArg,
-      );
-      if (version != null && version < minimumSupportedWindowsFlutterVersion) {
-        logger.err('''
-Windows releases are not supported with Flutter versions older than $minimumSupportedWindowsFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
-        throw ProcessExit(ExitCode.usage.code);
-      }
     }
   }
 

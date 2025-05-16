@@ -15,9 +15,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -53,6 +51,9 @@ class IosFrameworkReleaser extends Releaser {
   }
 
   @override
+  Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
+
+  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
@@ -63,19 +64,6 @@ class IosFrameworkReleaser extends Releaser {
       );
     } on PreconditionFailedException catch (e) {
       throw ProcessExit(e.exitCode.code);
-    }
-
-    final flutterVersionArg = argResults['flutter-version'] as String;
-    if (flutterVersionArg != 'latest') {
-      final version = await shorebirdFlutter.resolveFlutterVersion(
-        flutterVersionArg,
-      );
-      if (version != null && version < minimumSupportedIosFlutterVersion) {
-        logger.err('''
-iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
-        throw ProcessExit(ExitCode.usage.code);
-      }
     }
   }
 

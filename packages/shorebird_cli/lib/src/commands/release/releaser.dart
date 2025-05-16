@@ -1,11 +1,14 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
+
+export 'package:pub_semver/pub_semver.dart';
 
 /// {@template releaser}
 /// Executes platform-specific functionality to create a release.
@@ -28,6 +31,9 @@ abstract class Releaser {
   /// The target script to run, if any. This is the --target argument passed to
   /// the release command.
   final String? target;
+
+  /// The minimum Flutter version required to create a release of this type.
+  Version? get minimumFlutterVersion => null;
 
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;

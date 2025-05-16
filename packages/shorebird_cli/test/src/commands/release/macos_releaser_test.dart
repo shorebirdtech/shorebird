@@ -7,7 +7,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -18,9 +17,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
-import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -191,19 +188,6 @@ void main() {
             ),
           ).thenAnswer((_) async {});
           when(() => argResults['flutter-version']).thenReturn('3.0.0');
-        });
-
-        test('logs error and exits with code 64', () async {
-          await expectLater(
-            () => runWithOverrides(releaser.assertPreconditions),
-            exitsWithCode(ExitCode.usage),
-          );
-
-          verify(
-            () => logger.err('''
-macOS releases are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
-          ).called(1);
         });
       });
     });
