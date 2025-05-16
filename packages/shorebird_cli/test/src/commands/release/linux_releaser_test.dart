@@ -120,6 +120,12 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('is 3.27.4', () {
+        expect(releaser.minimumFlutterVersion, Version(3, 27, 4));
+      });
+    });
+
     group('artifactDisplayName', () {
       test('has expected value', () {
         expect(releaser.artifactDisplayName, 'Linux app');
