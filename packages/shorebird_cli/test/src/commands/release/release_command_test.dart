@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -600,6 +601,36 @@ $exception'''),
           () => logger.err(
             '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
           ),
+        ).called(1);
+      });
+    });
+
+    group('assertArgsAreValid', () {
+      test('calls releaser.assertArgsAreValid', () async {
+        final releaser = MockReleaser();
+        when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+        await runWithOverrides(() => command.assertArgsAreValid(releaser));
+        verify(releaser.assertArgsAreValid).called(1);
+      });
+
+      test('exits with code 64 if flutter version is not supported', () async {
+        final releaser = MockReleaser();
+        const releaseType = ReleaseType.android;
+        when(() => releaser.releaseType).thenReturn(releaseType);
+        when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+        final laterFlutterVersion = Version(3, 23, 0);
+        expect(laterFlutterVersion, greaterThan(flutterVersion));
+        when(
+          () => releaser.minimumFlutterVersion,
+        ).thenReturn(laterFlutterVersion);
+        await expectLater(
+          () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+          exitsWithCode(ExitCode.usage),
+        );
+        verify(
+          () => logger.err('''
+At least Flutter $laterFlutterVersion is required to release with `${releaseType.name}`.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         ).called(1);
       });
     });

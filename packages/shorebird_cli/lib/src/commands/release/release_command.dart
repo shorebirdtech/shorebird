@@ -351,7 +351,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         version != null &&
         version < minimumFlutterVersion) {
       logger.err('''
-${releaser.releaseType.name} releases are not supported with Flutter versions older than $minimumFlutterVersion.
+At least Flutter $minimumFlutterVersion is required to release with `${releaser.releaseType.name}`.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       throw ProcessExit(ExitCode.usage.code);
     }
