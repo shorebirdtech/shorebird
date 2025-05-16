@@ -19,9 +19,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
-import 'package:shorebird_cli/src/platform/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -118,6 +116,12 @@ void main() {
     group('releaseType', () {
       test('is xcframework', () {
         expect(iosFrameworkReleaser.releaseType, ReleaseType.iosFramework);
+      });
+    });
+
+    group('minimumFlutterVersion', () {
+      test('is 3.22.2', () {
+        expect(iosFrameworkReleaser.minimumFlutterVersion, Version(3, 22, 2));
       });
     });
 
@@ -239,19 +243,6 @@ void main() {
             ),
           ).thenAnswer((_) async {});
           when(() => argResults['flutter-version']).thenReturn('3.0.0');
-        });
-
-        test('logs error and exits with code 64', () async {
-          await expectLater(
-            () => runWithOverrides(iosFrameworkReleaser.assertPreconditions),
-            exitsWithCode(ExitCode.usage),
-          );
-
-          verify(
-            () => logger.err('''
-iOS releases are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
-          ).called(1);
         });
       });
     });

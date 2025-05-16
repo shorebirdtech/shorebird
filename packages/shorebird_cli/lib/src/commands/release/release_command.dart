@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -246,8 +247,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   @visibleForTesting
   Future<void> createRelease(Releaser releaser) async {
     await releaser.assertPreconditions();
-    await assertArgsAreValid();
-    await releaser.assertArgsAreValid();
+    await assertArgsAreValid(releaser);
 
     await shorebirdValidator.validateFlavors(flavorArg: flavor);
 
@@ -340,8 +340,24 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   }
 
   /// Validates arguments that are common to all release types.
-  Future<void> assertArgsAreValid() async {
+  Future<void> assertArgsAreValid(Releaser releaser) async {
     results.assertAbsentOrValidPublicKey();
+
+    final version = await shorebirdFlutter.resolveFlutterVersion(
+      flutterVersionArg,
+    );
+    final minimumFlutterVersion = releaser.minimumFlutterVersion;
+    if (minimumFlutterVersion != null &&
+        version != null &&
+        version < minimumFlutterVersion) {
+      logger.err('''
+At least Flutter $minimumFlutterVersion is required to release with `${releaser.releaseType.name}`.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    // Ask the releaser to assert its own args are valid.
+    await releaser.assertArgsAreValid();
   }
 
   /// Determines which Flutter version to use for the release. This will be
@@ -517,7 +533,7 @@ ${summary.join('\n')}
   }) async {
     final baseMetadata = UpdateReleaseMetadata(
       releasePlatform: releaser.releaseType.releasePlatform,
-      flutterVersionOverride: results['flutter-version'] as String,
+      flutterVersionOverride: flutterVersionArg,
       environment: BuildEnvironmentMetadata(
         flutterRevision: shorebirdEnv.flutterRevision,
         operatingSystem: platform.operatingSystem,

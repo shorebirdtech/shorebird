@@ -116,6 +116,14 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('is null', () {
+        // Shorebird has always had Android support, so we don't need to
+        // specify a minimum Flutter version.
+        expect(androidReleaser.minimumFlutterVersion, isNull);
+      });
+    });
+
     group('artifactDisplayName', () {
       test('has expected value', () {
         expect(androidReleaser.artifactDisplayName, 'Android app bundle');

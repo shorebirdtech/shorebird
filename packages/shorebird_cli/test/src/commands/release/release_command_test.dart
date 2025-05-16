@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -28,7 +29,8 @@ void main() {
     const appId = 'test-app-id';
     const appDisplayName = 'Test App';
     const flutterRevision = '83305b5088e6fe327fb3334a73ff190828d85713';
-    const flutterVersion = '3.22.0';
+    const flutterVersionString = '3.22.0';
+    final flutterVersion = Version(3, 22, 0);
     const releaseVersion = '1.2.3+1';
     const postReleaseInstructions = 'Make a patch!';
     const artifactDisplayName = 'Amiga app';
@@ -44,7 +46,7 @@ void main() {
       appId: appId,
       version: releaseVersion,
       flutterRevision: flutterRevision,
-      flutterVersion: flutterVersion,
+      flutterVersion: flutterVersionString,
       displayName: '1.2.3+1',
       platformStatuses: {},
       createdAt: DateTime(2023),
@@ -187,6 +189,9 @@ void main() {
         () =>
             shorebirdFlutter.installRevision(revision: any(named: 'revision')),
       ).thenAnswer((_) async => {});
+      when(
+        () => shorebirdFlutter.resolveFlutterVersion(any()),
+      ).thenAnswer((_) async => flutterVersion);
 
       when(
         () => shorebirdValidator.validateFlavors(
@@ -417,12 +422,12 @@ void main() {
             () => shorebirdFlutter.getVersionForRevision(
               flutterRevision: flutterRevision,
             ),
-          ).thenAnswer((_) async => flutterVersion);
+          ).thenAnswer((_) async => flutterVersionString);
 
           when(
             () => shorebirdFlutter.formatVersion(
               revision: flutterRevision,
-              version: flutterVersion,
+              version: flutterVersionString,
             ),
           ).thenReturn('3.12.1');
           when(
@@ -596,6 +601,36 @@ $exception'''),
           () => logger.err(
             '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
           ),
+        ).called(1);
+      });
+    });
+
+    group('assertArgsAreValid', () {
+      test('calls releaser.assertArgsAreValid', () async {
+        final releaser = MockReleaser();
+        when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+        await runWithOverrides(() => command.assertArgsAreValid(releaser));
+        verify(releaser.assertArgsAreValid).called(1);
+      });
+
+      test('exits with code 64 if flutter version is not supported', () async {
+        final releaser = MockReleaser();
+        const releaseType = ReleaseType.android;
+        when(() => releaser.releaseType).thenReturn(releaseType);
+        when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+        final laterFlutterVersion = Version(3, 23, 0);
+        expect(laterFlutterVersion, greaterThan(flutterVersion));
+        when(
+          () => releaser.minimumFlutterVersion,
+        ).thenReturn(laterFlutterVersion);
+        await expectLater(
+          () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+          exitsWithCode(ExitCode.usage),
+        );
+        verify(
+          () => logger.err('''
+At least Flutter $laterFlutterVersion is required to release with `${releaseType.name}`.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         ).called(1);
       });
     });

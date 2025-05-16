@@ -5,7 +5,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -16,9 +15,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -127,6 +124,12 @@ void main() {
     group('releaseType', () {
       test('is windows', () {
         expect(releaser.releaseType, ReleaseType.windows);
+      });
+    });
+
+    group('minimumFlutterVersion', () {
+      test('is 3.27.2', () {
+        expect(releaser.minimumFlutterVersion, Version(3, 27, 2));
       });
     });
 
@@ -246,19 +249,6 @@ To change the version of this release, change your app's version in your pubspec
           when(
             () => shorebirdFlutter.resolveFlutterVersion('3.27.1'),
           ).thenAnswer((_) async => Version(3, 27, 1));
-        });
-
-        test('logs error and exits with usage err', () async {
-          await expectLater(
-            () => runWithOverrides(releaser.assertPreconditions),
-            exitsWithCode(ExitCode.usage),
-          );
-
-          verify(
-            () => logger.err('''
-Windows releases are not supported with Flutter versions older than $minimumSupportedWindowsFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
-          ).called(1);
         });
       });
     });
