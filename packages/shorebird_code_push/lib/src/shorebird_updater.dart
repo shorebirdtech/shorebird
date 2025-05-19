@@ -64,7 +64,7 @@ The Shorebird Updater is unavailable in the current environment.
 This occurs when using pkg:shorebird_code_push in an app that does not
 contain the Shorebird Engine. Most commonly this is due to building with
 `flutter build` or `flutter run` instead of `shorebird release` or `shorebird preview`.
-It can also occur when running on an unsupported platform (e.g. web or desktop).
+It can also occur when running on an unsupported platform (e.g. web).
 ''');
 }
 
