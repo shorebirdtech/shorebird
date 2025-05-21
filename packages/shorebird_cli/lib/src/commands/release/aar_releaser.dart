@@ -33,14 +33,13 @@ class AarReleaser extends Releaser {
   String get buildNumber => argResults['build-number'] as String;
 
   /// The architectures to build the aar for.
-  Set<Arch> get architectures =>
-      (argResults['target-platform'] as List<String>)
-          .map(
-            (platform) => AndroidArch.availableAndroidArchs.firstWhere(
-              (arch) => arch.targetPlatformCliArg == platform,
-            ),
-          )
-          .toSet();
+  Set<Arch> get architectures => (argResults['target-platform'] as List<String>)
+      .map(
+        (platform) => AndroidArch.availableAndroidArchs.firstWhere(
+          (arch) => arch.targetPlatformCliArg == platform,
+        ),
+      )
+      .toSet();
 
   @override
   ReleaseType get releaseType => ReleaseType.aar;

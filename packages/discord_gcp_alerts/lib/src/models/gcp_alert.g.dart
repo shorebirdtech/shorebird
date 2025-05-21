@@ -8,19 +8,17 @@ part of 'gcp_alert.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-GCPAlert _$GCPAlertFromJson(Map<String, dynamic> json) => $checkedCreate(
-  'GCPAlert',
-  json,
-  ($checkedConvert) {
-    final val = GCPAlert(
-      incident: $checkedConvert(
-        'incident',
-        (v) => v == null ? null : Incident.fromJson(v as Map<String, dynamic>),
-      ),
-    );
-    return val;
-  },
-);
+GCPAlert _$GCPAlertFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('GCPAlert', json, ($checkedConvert) {
+      final val = GCPAlert(
+        incident: $checkedConvert(
+          'incident',
+          (v) =>
+              v == null ? null : Incident.fromJson(v as Map<String, dynamic>),
+        ),
+      );
+      return val;
+    });
 
 Incident _$IncidentFromJson(Map<String, dynamic> json) => $checkedCreate(
   'Incident',

@@ -547,8 +547,9 @@ aab artifact already exists, continuing...''');
         artifactPath: releaseZipPath,
         arch: primaryWindowsReleaseArtifactArch,
         platform: ReleasePlatform.windows,
-        hash:
-            sha256.convert(await File(releaseZipPath).readAsBytes()).toString(),
+        hash: sha256
+            .convert(await File(releaseZipPath).readAsBytes())
+            .toString(),
         canSideload: true,
         podfileLockHash: null,
       );
@@ -825,10 +826,9 @@ aar artifact already exists, continuing...''');
         artifactPath: zippedAppFrameworkFile.path,
         arch: 'xcframework',
         platform: ReleasePlatform.ios,
-        hash:
-            sha256
-                .convert(await zippedAppFrameworkFile.readAsBytes())
-                .toString(),
+        hash: sha256
+            .convert(await zippedAppFrameworkFile.readAsBytes())
+            .toString(),
         canSideload: false,
         podfileLockHash: null,
       );

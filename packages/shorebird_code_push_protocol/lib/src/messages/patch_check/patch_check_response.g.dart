@@ -17,10 +17,9 @@ PatchCheckResponse _$PatchCheckResponseFromJson(Map<String, dynamic> json) =>
           patchAvailable: $checkedConvert('patch_available', (v) => v as bool),
           patch: $checkedConvert(
             'patch',
-            (v) =>
-                v == null
-                    ? null
-                    : PatchCheckMetadata.fromJson(v as Map<String, dynamic>),
+            (v) => v == null
+                ? null
+                : PatchCheckMetadata.fromJson(v as Map<String, dynamic>),
           ),
           rolledBackPatchNumbers: $checkedConvert(
             'rolled_back_patch_numbers',

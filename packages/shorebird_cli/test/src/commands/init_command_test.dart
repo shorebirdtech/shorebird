@@ -30,7 +30,8 @@ void main() {
     const appId = 'test_app_id';
     const appName = 'test_app_name';
     const app = App(id: appId, displayName: appName);
-    const pubspecYamlContent = '''
+    const pubspecYamlContent =
+        '''
 name: $appName
 version: $version
 environment:

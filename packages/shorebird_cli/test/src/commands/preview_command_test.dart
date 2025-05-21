@@ -123,11 +123,10 @@ void main() {
       final tempDir = Directory.systemTemp.createTempSync();
       final aabDirectory = Directory(p.join(tempDir.path, 'app-release'))
         ..createSync(recursive: true);
-      final yamlContents =
-          [
-            'app_id: $appId\n',
-            if (channel != null) 'channel: $channel\n',
-          ].join();
+      final yamlContents = [
+        'app_id: $appId\n',
+        if (channel != null) 'channel: $channel\n',
+      ].join();
       File(
           p.join(
             aabDirectory.path,
@@ -1323,11 +1322,16 @@ channel: ${track.channel}
           ),
         ).called(1);
         verify(
-          () =>
-              adb.startApp(package: any(named: 'package'), deviceId: deviceId),
+          () => adb.startApp(
+            package: any(named: 'package'),
+            deviceId: deviceId,
+          ),
         ).called(1);
         verify(
-          () => adb.logcat(filter: any(named: 'filter'), deviceId: deviceId),
+          () => adb.logcat(
+            filter: any(named: 'filter'),
+            deviceId: deviceId,
+          ),
         ).called(1);
       });
 
@@ -2201,14 +2205,16 @@ channel: ${DeploymentTrack.staging.channel}
       });
 
       group('log output', () {
-        final rawLogOutput = '''
+        final rawLogOutput =
+            '''
 2025-01-31 10:15:29.807 Df macos_sandbox[33557:2cc3d] [com.apple.network:] networkd_settings_read_from_file initialized networkd settings by reading plist directly
 
 2025-01-31 10:15:29.807 Df macos_sandbox[33557:2cc3d] [com.apple.network:path] nw_path_libinfo_path_check [5E11C960-BB0A-456A-8024-620DAB6CCF17 Hostname#941210b4:0 tcp, legacy-socket, attribution: developer]
         libinfo check path: satisfied (Path is satisfied), interface: en0, ipv4, dns
 
 2025-01-31 10:15:29.808 Df macos_sandbox[33557:2cc12] [dev.shorebird:updater::updater] [shorebird] Reporting successful launch.
-'''.split('\n');
+'''
+                .split('\n');
 
         setUp(() {
           setupMacosShorebirdYaml();

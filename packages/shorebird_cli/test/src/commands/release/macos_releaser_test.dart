@@ -429,10 +429,9 @@ To change the version of this release, change your app's version in your pubspec
       group('when plist does not contain version number', () {
         late File plist;
         setUp(() {
-          plist =
-              File(p.join(appDirectory.path, 'Contents', 'Info.plist'))
-                ..createSync()
-                ..writeAsStringSync('''
+          plist = File(p.join(appDirectory.path, 'Contents', 'Info.plist'))
+            ..createSync()
+            ..writeAsStringSync('''
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

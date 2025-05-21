@@ -586,20 +586,17 @@ void main() {
 
               // Hash the patch artifacts and append '-signature' to get the
               // expected signatures, per the mock of [codeSigner.sign] above.
-              final expectedSignatures =
-                  Arch.values
-                      .map(
-                        (arch) =>
-                            patchArtifactForArch(extractedAarDirectory, arch),
-                      )
-                      .map(
-                        (f) => sha256.convert(f.readAsBytesSync()).toString(),
-                      )
-                      .map((hash) => '$hash-signature')
-                      .toList();
+              final expectedSignatures = Arch.values
+                  .map(
+                    (arch) => patchArtifactForArch(extractedAarDirectory, arch),
+                  )
+                  .map((f) => sha256.convert(f.readAsBytesSync()).toString())
+                  .map((hash) => '$hash-signature')
+                  .toList();
 
-              final signatures =
-                  result.values.map((bundle) => bundle.hashSignature).toList();
+              final signatures = result.values
+                  .map((bundle) => bundle.hashSignature)
+                  .toList();
               expect(signatures, equals(expectedSignatures));
             },
           );

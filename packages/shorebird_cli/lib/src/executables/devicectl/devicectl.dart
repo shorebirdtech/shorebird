@@ -31,7 +31,8 @@ class DevicectlException implements Exception {
   final Object? underlyingException;
 
   @override
-  String toString() => '''
+  String toString() =>
+      '''
 DevicectlException: $message
 Underlying exception: ${underlyingException ?? '(none)'}
 ''';
@@ -228,8 +229,9 @@ class Devicectl {
       );
     }
 
-    final devicesMatchValue =
-        JsonPath(r'$.result.devices').read(jsonResult).firstOrNull?.value;
+    final devicesMatchValue = JsonPath(
+      r'$.result.devices',
+    ).read(jsonResult).firstOrNull?.value;
     if (devicesMatchValue == null) {
       throw DevicectlException(message: failureErrorMessage);
     }

@@ -64,8 +64,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       return ExitCode.software.code;
     }
 
-    final organizationMemberships =
-        await codePushClientWrapper.getOrganizationMemberships();
+    final organizationMemberships = await codePushClientWrapper
+        .getOrganizationMemberships();
     if (organizationMemberships.isEmpty) {
       logger.err(
         '''You do not have any organizations. This should never happen. Please contact us on Discord or send us an email at contact@shorebird.dev.''',
@@ -185,8 +185,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         return ExitCode.software.code;
       }
 
-      final deflavoredAppName =
-          existingApp.displayName.replaceAll(RegExp(r'\(.*\)'), '').trim();
+      final deflavoredAppName = existingApp.displayName
+          .replaceAll(RegExp(r'\(.*\)'), '')
+          .trim();
       final flavorsToAppIds = shorebirdYaml.flavors!;
       for (final flavor in newFlavors) {
         final app = await codePushClientWrapper.createApp(
@@ -219,13 +220,12 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final needsConfirmation = !force && shorebirdEnv.canAcceptUserInput;
       final pubspecName = shorebirdEnv.getPubspecYaml()!.name;
       var displayName = results['display-name'] as String?;
-      displayName ??=
-          needsConfirmation
-              ? logger.prompt(
-                '${lightGreen.wrap('?')} How should we refer to this app?',
-                defaultValue: pubspecName,
-              )
-              : pubspecName;
+      displayName ??= needsConfirmation
+          ? logger.prompt(
+              '${lightGreen.wrap('?')} How should we refer to this app?',
+              defaultValue: pubspecName,
+            )
+          : pubspecName;
       final hasNoFlavors = productFlavors.isEmpty;
       final hasSomeFlavors =
           productFlavors.isNotEmpty &&
@@ -331,7 +331,8 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     required Directory projectRoot,
     Map<String, String>? flavors,
   }) {
-    const content = '''
+    const content =
+        '''
 # This file is used to configure the Shorebird updater used by your app.
 # Learn more at $docsUrl
 # This file does not contain any sensitive information and should be checked into version control.

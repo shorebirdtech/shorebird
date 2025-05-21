@@ -584,10 +584,9 @@ test-revision
           ..writeAsStringSync(revision, flush: true);
         expect(
           runWithOverrides(
-            () =>
-                const ShorebirdEnv(
-                  flutterRevisionOverride: override,
-                ).flutterRevision,
+            () => const ShorebirdEnv(
+              flutterRevisionOverride: override,
+            ).flutterRevision,
           ),
           equals(override),
         );

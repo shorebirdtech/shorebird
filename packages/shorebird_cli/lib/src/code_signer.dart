@@ -45,11 +45,10 @@ class CodeSigner {
       _pemBytes(pemFile: publicKeyPemFile, type: PemLabel.publicKey),
     );
 
-    final publicKeySeq =
-        ASN1Sequence()
-          ..add(ASN1Integer(publicKey.modulus))
-          ..add(ASN1Integer(publicKey.exponent))
-          ..encode();
+    final publicKeySeq = ASN1Sequence()
+      ..add(ASN1Integer(publicKey.modulus))
+      ..add(ASN1Integer(publicKey.exponent))
+      ..encode();
     return base64.encode(publicKeySeq.encodedBytes!);
   }
 

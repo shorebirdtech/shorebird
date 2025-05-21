@@ -346,8 +346,9 @@ void main() {
             ),
           );
 
-          final expectedHash =
-              sha256.convert(await patchArtifact.readAsBytes()).toString();
+          final expectedHash = sha256
+              .convert(await patchArtifact.readAsBytes())
+              .toString();
 
           expect(
             patchArtifacts,

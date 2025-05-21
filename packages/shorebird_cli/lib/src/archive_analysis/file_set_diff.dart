@@ -23,11 +23,10 @@ class FileSetDiff extends Equatable {
     return FileSetDiff(
       addedPaths: newPaths.difference(oldPaths),
       removedPaths: oldPaths.difference(newPaths),
-      changedPaths:
-          oldPaths
-              .intersection(newPaths)
-              .where((name) => oldPathHashes[name] != newPathHashes[name])
-              .toSet(),
+      changedPaths: oldPaths
+          .intersection(newPaths)
+          .where((name) => oldPathHashes[name] != newPathHashes[name])
+          .toSet(),
     );
   }
 

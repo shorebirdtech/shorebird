@@ -326,8 +326,9 @@ void main() {
           ).thenAnswer((_) async => nativeChangeDiffStatus);
 
           const podfileLockContents = 'lock file';
-          podfileLockHash =
-              sha256.convert(utf8.encode(podfileLockContents)).toString();
+          podfileLockHash = sha256
+              .convert(utf8.encode(podfileLockContents))
+              .toString();
           final podfileLockFile =
               File(
                   p.join(

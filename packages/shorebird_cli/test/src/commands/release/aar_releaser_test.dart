@@ -464,8 +464,7 @@ void main() {
       test('returns expected instructions', () {
         expect(
           runWithOverrides(() => aarReleaser.postReleaseInstructions),
-          equals(
-            '''
+          equals('''
 
 Your next steps:
 
@@ -497,8 +496,7 @@ dependencies {
   releaseImplementation '${shorebirdEnv.androidPackageName}:flutter_release:$buildNumber'
   // ...
 }''')}
-''',
-          ),
+'''),
         );
       });
     });

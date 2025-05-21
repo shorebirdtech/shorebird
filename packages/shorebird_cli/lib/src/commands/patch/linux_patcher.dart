@@ -86,10 +86,9 @@ class LinuxPatcher extends Patcher {
     final appSoPath = p.join(tempDir.path, 'lib', 'libapp.so');
 
     final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
-    final hashSignature =
-        privateKeyFile != null
-            ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-            : null;
+    final hashSignature = privateKeyFile != null
+        ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
+        : null;
 
     final String diffPath;
     try {

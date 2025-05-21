@@ -21,12 +21,12 @@ void main() {
       'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
   const jwkPublicKeysUrl =
       'https://login.microsoftonline.com/common/discovery/v2.0/keys';
-  final jwkKeyStoreJsonString =
-      File(p.join('test', 'fixtures', 'jwk_key_store.json')).readAsStringSync();
-  final keyValueKeyStoreString =
-      File(
-        p.join('test', 'fixtures', 'key_value_key_store.json'),
-      ).readAsStringSync();
+  final jwkKeyStoreJsonString = File(
+    p.join('test', 'fixtures', 'jwk_key_store.json'),
+  ).readAsStringSync();
+  final keyValueKeyStoreString = File(
+    p.join('test', 'fixtures', 'key_value_key_store.json'),
+  ).readAsStringSync();
   final expiresAt = DateTime.fromMillisecondsSinceEpoch(1643687866 * 1000);
   final validTime = expiresAt.subtract(const Duration(minutes: 15));
 

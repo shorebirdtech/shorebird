@@ -322,11 +322,13 @@ class RedisClient {
 
       final retryInterval = _socketOptions.retryInterval;
       final totalAttempts = _socketOptions.retryAttempts;
-      final remainingAttempts =
-          wasConnected ? totalAttempts : retryAttempts - 1;
+      final remainingAttempts = wasConnected
+          ? totalAttempts
+          : retryAttempts - 1;
       final attemptsMade = totalAttempts - remainingAttempts;
-      final attemptInfo =
-          attemptsMade > 0 ? ' ($attemptsMade/$totalAttempts attempts)' : '';
+      final attemptInfo = attemptsMade > 0
+          ? ' ($attemptsMade/$totalAttempts attempts)'
+          : '';
 
       if (wasConnected) _reset();
 
@@ -375,8 +377,9 @@ class RedisClient {
     final totalAttempts = _commandOptions.retryAttempts;
     remainingAttempts ??= _commandOptions.retryAttempts;
     final attemptsMade = totalAttempts - remainingAttempts;
-    final attemptInfo =
-        attemptsMade > 0 ? ' ($attemptsMade/$totalAttempts attempts)' : '';
+    final attemptInfo = attemptsMade > 0
+        ? ' ($attemptsMade/$totalAttempts attempts)'
+        : '';
 
     _logger.debug('Executing "$command"$attemptInfo.');
 

@@ -34,8 +34,9 @@ class MacosEntitlementsValidator extends Validator {
   /// project_root/macos/Runner/Release.entitlements, where "Runner" may have
   /// been renamed.
   File? get _releaseEntitlementsPlist {
-    final entitlementParentCandidateDirectories =
-        _macosDirectory!.listSync().whereType<Directory>();
+    final entitlementParentCandidateDirectories = _macosDirectory!
+        .listSync()
+        .whereType<Directory>();
 
     for (final appDir in entitlementParentCandidateDirectories) {
       final entitlementsPlist = File(
@@ -57,7 +58,8 @@ class MacosEntitlementsValidator extends Validator {
   bool canRunInCurrentContext() => _macosDirectory?.existsSync() ?? false;
 
   @override
-  String? get incorrectContextMessage => '''
+  String? get incorrectContextMessage =>
+      '''
 The ${_macosDirectory?.path ?? 'macos'} directory does not exist.
 
 The command you are running must be run within a Flutter app project that supports the macOS platform.''';
@@ -93,10 +95,9 @@ The command you are running must be run within a Flutter app project that suppor
           severity: ValidationIssueSeverity.error,
           message:
               '''${_releaseEntitlementsPlist!.path} is missing the Allow Unsigned Executable Memory ($allowUnsignedExecutableMemoryKey) entitlement.''',
-          fix:
-              () => addAllowUnsignedExecutableMemoryEntitlementToPlist(
-                _releaseEntitlementsPlist!,
-              ),
+          fix: () => addAllowUnsignedExecutableMemoryEntitlementToPlist(
+            _releaseEntitlementsPlist!,
+          ),
         ),
       );
     }

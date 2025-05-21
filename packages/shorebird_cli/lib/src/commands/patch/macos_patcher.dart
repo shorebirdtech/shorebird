@@ -102,10 +102,9 @@ class MacosPatcher extends Patcher {
 
     final String? podfileLockHash;
     if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
-      podfileLockHash =
-          sha256
-              .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
-              .toString();
+      podfileLockHash = sha256
+          .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
+          .toString();
     } else {
       podfileLockHash = null;
     }
@@ -134,11 +133,10 @@ This may indicate that the patch contains native changes, which cannot be applie
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final (flutterVersionAndRevision, flutterVersion) =
-        await (
-          shorebirdFlutter.getVersionAndRevision(),
-          shorebirdFlutter.getVersion(),
-        ).wait;
+    final (flutterVersionAndRevision, flutterVersion) = await (
+      shorebirdFlutter.getVersionAndRevision(),
+      shorebirdFlutter.getVersion(),
+    ).wait;
 
     if ((flutterVersion ?? minimumSupportedMacosFlutterVersion) <
         minimumSupportedMacosFlutterVersion) {
@@ -214,10 +212,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     final patchFileSize = patchFile.statSync().size;
     final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
     final hash = sha256.convert(patchArtifact.readAsBytesSync()).toString();
-    final hashSignature =
-        privateKeyFile != null
-            ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-            : null;
+    final hashSignature = privateKeyFile != null
+        ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
+        : null;
 
     return PatchArtifactBundle(
       arch: arch.arch,

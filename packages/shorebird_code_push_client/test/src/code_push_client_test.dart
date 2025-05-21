@@ -436,10 +436,9 @@ void main() {
       group('when podfileLockHash is provided', () {
         test('makes the correct request', () async {
           final tempDir = Directory.systemTemp.createTempSync();
-          final fixture =
-              File(path.join(tempDir.path, 'release.txt'))
-                ..createSync()
-                ..writeAsStringSync('hello');
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync()
+            ..writeAsStringSync('hello');
           const expectedRequest = CreateReleaseArtifactRequest(
             arch: arch,
             platform: platform,
@@ -487,10 +486,9 @@ void main() {
       group('when podfileLockHash is null', () {
         test('makes the correct request', () async {
           final tempDir = Directory.systemTemp.createTempSync();
-          final fixture =
-              File(path.join(tempDir.path, 'release.txt'))
-                ..createSync()
-                ..writeAsStringSync('hello');
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync()
+            ..writeAsStringSync('hello');
           const expectedRequest = CreateReleaseArtifactRequest(
             arch: arch,
             platform: platform,

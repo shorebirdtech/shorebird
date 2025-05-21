@@ -22,10 +22,9 @@ extension OptionFinder on ArgResults {
     // We would ideally check for abbreviations here as well, but ArgResults
     // doesn't expose its parser (which we could use to get the list of
     // [Options] being parsed) or an abbreviations map.
-    final abbr =
-        argParser.options.values
-            .firstWhereOrNull((option) => option.name == name)
-            ?.abbr;
+    final abbr = argParser.options.values
+        .firstWhereOrNull((option) => option.name == name)
+        ?.abbr;
 
     final flagsToCheck = ['--$name', if (abbr != null) '-$abbr'];
 

@@ -13,10 +13,9 @@ JwkKeyStore _$JwkKeyStoreFromJson(Map<String, dynamic> json) =>
       final val = JwkKeyStore(
         keys: $checkedConvert(
           'keys',
-          (v) =>
-              (v as List<dynamic>)
-                  .map((e) => Jwk.fromJson(e as Map<String, dynamic>))
-                  .toList(),
+          (v) => (v as List<dynamic>)
+              .map((e) => Jwk.fromJson(e as Map<String, dynamic>))
+              .toList(),
         ),
       );
       return val;

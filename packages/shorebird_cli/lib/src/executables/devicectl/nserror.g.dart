@@ -34,31 +34,27 @@ UserInfo _$UserInfoFromJson(Map<String, dynamic> json) => $checkedCreate(
     final val = UserInfo(
       description: $checkedConvert(
         'NSDescription',
-        (v) =>
-            v == null
-                ? null
-                : StringContainer.fromJson(v as Map<String, dynamic>),
+        (v) => v == null
+            ? null
+            : StringContainer.fromJson(v as Map<String, dynamic>),
       ),
       localizedDescription: $checkedConvert(
         'NSLocalizedDescription',
-        (v) =>
-            v == null
-                ? null
-                : StringContainer.fromJson(v as Map<String, dynamic>),
+        (v) => v == null
+            ? null
+            : StringContainer.fromJson(v as Map<String, dynamic>),
       ),
       localizedFailureReason: $checkedConvert(
         'NSLocalizedFailureReason',
-        (v) =>
-            v == null
-                ? null
-                : StringContainer.fromJson(v as Map<String, dynamic>),
+        (v) => v == null
+            ? null
+            : StringContainer.fromJson(v as Map<String, dynamic>),
       ),
       underlyingError: $checkedConvert(
         'NSUnderlyingError',
-        (v) =>
-            v == null
-                ? null
-                : NSUnderlyingError.fromJson(v as Map<String, dynamic>),
+        (v) => v == null
+            ? null
+            : NSUnderlyingError.fromJson(v as Map<String, dynamic>),
       ),
     );
     return val;
