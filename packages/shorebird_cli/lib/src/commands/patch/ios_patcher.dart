@@ -60,10 +60,10 @@ class IosPatcher extends Patcher {
   static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) {
     return splitDebugInfoPath != null
         ? [
-          '--dwarf-stack-traces',
-          '--resolve-dwarf-paths',
-          '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
-        ]
+            '--dwarf-stack-traces',
+            '--resolve-dwarf-paths',
+            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
+          ]
         : <String>[];
   }
 
@@ -132,10 +132,9 @@ class IosPatcher extends Patcher {
 
     final String? podfileLockHash;
     if (shorebirdEnv.iosPodfileLockFile.existsSync()) {
-      podfileLockHash =
-          sha256
-              .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
-              .toString();
+      podfileLockHash = sha256
+          .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
+          .toString();
     } else {
       podfileLockHash = null;
     }
@@ -165,11 +164,10 @@ This may indicate that the patch contains native changes, which cannot be applie
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final shouldCodesign = argResults['codesign'] == true;
-    final (flutterVersionAndRevision, flutterVersion) =
-        await (
-          shorebirdFlutter.getVersionAndRevision(),
-          shorebirdFlutter.getVersion(),
-        ).wait;
+    final (flutterVersionAndRevision, flutterVersion) = await (
+      shorebirdFlutter.getVersionAndRevision(),
+      shorebirdFlutter.getVersion(),
+    ).wait;
 
     if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
         minimumSupportedIosFlutterVersion) {
@@ -316,10 +314,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     final patchFileSize = patchFile.statSync().size;
     final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
     final hash = sha256.convert(patchBuildFile.readAsBytesSync()).toString();
-    final hashSignature =
-        privateKeyFile != null
-            ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-            : null;
+    final hashSignature = privateKeyFile != null
+        ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
+        : null;
 
     return {
       Arch.arm64: PatchArtifactBundle(

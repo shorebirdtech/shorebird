@@ -14,13 +14,11 @@ GetOrganizationsResponse _$GetOrganizationsResponseFromJson(
   final val = GetOrganizationsResponse(
     organizations: $checkedConvert(
       'organizations',
-      (v) =>
-          (v as List<dynamic>)
-              .map(
-                (e) =>
-                    OrganizationMembership.fromJson(e as Map<String, dynamic>),
-              )
-              .toList(),
+      (v) => (v as List<dynamic>)
+          .map(
+            (e) => OrganizationMembership.fromJson(e as Map<String, dynamic>),
+          )
+          .toList(),
     ),
   );
   return val;

@@ -125,10 +125,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
 
       final process = ShorebirdProcess();
-      final shorebirdArtifacts =
-          engineConfig.localEngineSrcPath != null
-              ? const ShorebirdLocalEngineArtifacts()
-              : const ShorebirdCachedArtifacts();
+      final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
+          ? const ShorebirdLocalEngineArtifacts()
+          : const ShorebirdCachedArtifacts();
       return await runScoped<Future<int?>>(
             () => runCommand(topLevelResults),
             values: {

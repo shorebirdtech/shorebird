@@ -269,8 +269,8 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     return await runScoped(() async {
       await cache.updateAll();
 
-      final flutterVersionString =
-          await shorebirdFlutter.getVersionAndRevision();
+      final flutterVersionString = await shorebirdFlutter
+          .getVersionAndRevision();
       logger.info(
         'Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString',
       );

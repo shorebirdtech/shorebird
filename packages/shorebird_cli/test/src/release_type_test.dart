@@ -24,11 +24,11 @@ void main() {
     group('releaseTypes', () {
       late ArgParser parser;
       setUp(() {
-        parser =
-            ArgParser()..addMultiOption(
-              'platforms',
-              allowed: ReleaseType.values.map((e) => e.cliName),
-            );
+        parser = ArgParser()
+          ..addMultiOption(
+            'platforms',
+            allowed: ReleaseType.values.map((e) => e.cliName),
+          );
       });
 
       group('when nothing is provided', () {

@@ -117,18 +117,17 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials == null) {
       final token = _token!;
-      credentials =
-          _credentials = await _tryRefreshCredentials(
-            token.authProvider.clientId,
-            oauth2.AccessCredentials(
-              // This isn't relevant for a refresh operation.
-              AccessToken('Bearer', '', DateTime.timestamp()),
-              token.refreshToken,
-              token.authProvider.scopes,
-            ),
-            _baseClient,
-            authEndpoints: token.authProvider.authEndpoints,
-          );
+      credentials = _credentials = await _tryRefreshCredentials(
+        token.authProvider.clientId,
+        oauth2.AccessCredentials(
+          // This isn't relevant for a refresh operation.
+          AccessToken('Bearer', '', DateTime.timestamp()),
+          token.refreshToken,
+          token.authProvider.scopes,
+        ),
+        _baseClient,
+        authEndpoints: token.authProvider.authEndpoints,
+      );
       _onRefreshCredentials?.call(credentials);
     }
 
@@ -136,13 +135,12 @@ class AuthenticatedClient extends http.BaseClient {
       final jwt = Jwt.parse(credentials.idToken!);
       final authProvider = jwt.authProvider;
 
-      credentials =
-          _credentials = await _tryRefreshCredentials(
-            authProvider.clientId,
-            credentials,
-            _baseClient,
-            authEndpoints: authProvider.authEndpoints,
-          );
+      credentials = _credentials = await _tryRefreshCredentials(
+        authProvider.clientId,
+        credentials,
+        _baseClient,
+        authEndpoints: authProvider.authEndpoints,
+      );
       _onRefreshCredentials?.call(credentials);
     }
 

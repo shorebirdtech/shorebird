@@ -43,8 +43,8 @@ class Plist {
   String get versionNumber {
     final applicationProperties =
         properties.containsKey(applicationPropertiesKey)
-            ? properties[applicationPropertiesKey]! as Map<String, Object>
-            : properties;
+        ? properties[applicationPropertiesKey]! as Map<String, Object>
+        : properties;
     final releaseVersion = applicationProperties[releaseVersionKey] as String?;
     final buildNumber = applicationProperties[buildNumberKey] as String?;
     if (releaseVersion == null) {

@@ -147,13 +147,9 @@ class AarPatcher extends Patcher {
       final privateKeyFile = argResults.file(
         CommonArguments.privateKeyArg.name,
       );
-      final hashSignature =
-          privateKeyFile != null
-              ? codeSigner.sign(
-                message: hash,
-                privateKeyPemFile: privateKeyFile,
-              )
-              : null;
+      final hashSignature = privateKeyFile != null
+          ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
+          : null;
 
       try {
         final diffPath = await artifactManager.createDiff(

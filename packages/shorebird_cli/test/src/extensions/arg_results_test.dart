@@ -10,10 +10,9 @@ void main() {
     late ArgParser argParser;
 
     setUp(() {
-      argParser =
-          ArgParser()
-            ..addOption('foo', abbr: 'f')
-            ..addOption('bar');
+      argParser = ArgParser()
+        ..addOption('foo', abbr: 'f')
+        ..addOption('bar');
     });
 
     group('findOption', () {
@@ -88,41 +87,40 @@ void main() {
     late ArgParser parser;
 
     setUp(() {
-      parser =
-          ArgParser()
-            ..addMultiOption(
-              CommonArguments.dartDefineArg.name,
-              help: CommonArguments.dartDefineArg.description,
-            )
-            ..addMultiOption(
-              CommonArguments.dartDefineFromFileArg.name,
-              help: CommonArguments.dartDefineFromFileArg.description,
-            )
-            ..addOption(
-              CommonArguments.buildNameArg.name,
-              help: CommonArguments.buildNameArg.description,
-            )
-            ..addOption(
-              CommonArguments.buildNumberArg.name,
-              help: CommonArguments.buildNumberArg.description,
-            )
-            ..addOption(
-              CommonArguments.splitDebugInfoArg.name,
-              help: CommonArguments.splitDebugInfoArg.description,
-            )
-            ..addOption(
-              CommonArguments.exportMethodArg.name,
-              help: CommonArguments.exportMethodArg.description,
-            )
-            ..addOption(
-              CommonArguments.exportOptionsPlistArg.name,
-              help: CommonArguments.exportOptionsPlistArg.description,
-            )
-            ..addMultiOption(
-              'platforms',
-              allowed: ReleaseType.values.map((e) => e.cliName),
-            )
-            ..addFlag('verbose', abbr: 'v');
+      parser = ArgParser()
+        ..addMultiOption(
+          CommonArguments.dartDefineArg.name,
+          help: CommonArguments.dartDefineArg.description,
+        )
+        ..addMultiOption(
+          CommonArguments.dartDefineFromFileArg.name,
+          help: CommonArguments.dartDefineFromFileArg.description,
+        )
+        ..addOption(
+          CommonArguments.buildNameArg.name,
+          help: CommonArguments.buildNameArg.description,
+        )
+        ..addOption(
+          CommonArguments.buildNumberArg.name,
+          help: CommonArguments.buildNumberArg.description,
+        )
+        ..addOption(
+          CommonArguments.splitDebugInfoArg.name,
+          help: CommonArguments.splitDebugInfoArg.description,
+        )
+        ..addOption(
+          CommonArguments.exportMethodArg.name,
+          help: CommonArguments.exportMethodArg.description,
+        )
+        ..addOption(
+          CommonArguments.exportOptionsPlistArg.name,
+          help: CommonArguments.exportOptionsPlistArg.description,
+        )
+        ..addMultiOption(
+          'platforms',
+          allowed: ReleaseType.values.map((e) => e.cliName),
+        )
+        ..addFlag('verbose', abbr: 'v');
     });
 
     test('returns an empty list when rest is empty', () {

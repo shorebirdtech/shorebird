@@ -34,7 +34,8 @@ class NSError extends Equatable {
   Json toJson() => _$NSErrorToJson(this);
 
   @override
-  String toString() => '''
+  String toString() =>
+      '''
 NSError(
   code: $code,
   domain: $domain,
@@ -84,7 +85,8 @@ class UserInfo extends Equatable {
   Json toJson() => _$UserInfoToJson(this);
 
   @override
-  String toString() => '''
+  String toString() =>
+      '''
 UserInfo(
   description: $description,
   localizedDescription: $localizedDescription,
@@ -144,7 +146,8 @@ class NSUnderlyingError extends Equatable {
   Json toJson() => _$NSUnderlyingErrorToJson(this);
 
   @override
-  String toString() => '''
+  String toString() =>
+      '''
 NSUnderlyingError(
   $error
 )''';

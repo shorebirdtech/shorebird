@@ -14,10 +14,9 @@ GetOrganizationUsersResponse _$GetOrganizationUsersResponseFromJson(
   final val = GetOrganizationUsersResponse(
     users: $checkedConvert(
       'users',
-      (v) =>
-          (v as List<dynamic>)
-              .map((e) => OrganizationUser.fromJson(e as Map<String, dynamic>))
-              .toList(),
+      (v) => (v as List<dynamic>)
+          .map((e) => OrganizationUser.fromJson(e as Map<String, dynamic>))
+          .toList(),
     ),
   );
   return val;

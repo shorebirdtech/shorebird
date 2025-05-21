@@ -6,7 +6,7 @@ repository: https://github.com/shorebirdtech/shorebird/tree/main/packages/redis_
 topics: [redis, cache, shorebird]
 
 environment:
-  sdk: ">=3.7.0 <4.0.0"
+  sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
   resp_client: ^1.2.0

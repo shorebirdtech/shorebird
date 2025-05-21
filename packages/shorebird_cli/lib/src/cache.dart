@@ -377,11 +377,11 @@ class BundleToolArtifact extends CachedArtifact {
 
   @override
   String? get checksum =>
-  // SHA-256 checksum of the bundletool.jar file.
-  // When updating the bundletool version, be sure to update this checksum.
-  // This can be done by running the following command:
-  // ```shell
-  // shasum --algorithm 256 /path/to/file
-  // ```
-  '''45881ead13388872d82c4255b195488b7fc33f2cac5a9a977b0afc5e92367592''';
+      // SHA-256 checksum of the bundletool.jar file.
+      // When updating the bundletool version, be sure to update this checksum.
+      // This can be done by running the following command:
+      // ```shell
+      // shasum --algorithm 256 /path/to/file
+      // ```
+      '''45881ead13388872d82c4255b195488b7fc33f2cac5a9a977b0afc5e92367592''';
 }

@@ -96,8 +96,9 @@ void main() {
         'returns null if no CoreDevice with the given deviceID can be found',
         () async {
           exitCode = ExitCode.success;
-          jsonOutput =
-              File('$fixturesPath/device_list_success.json').readAsStringSync();
+          jsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
           expect(
             await runWithOverrides(
               () => devicectl.deviceForLaunch(deviceId: 'fake device id'),
@@ -109,10 +110,9 @@ void main() {
 
       test('returns null if no CoreDevice can be found', () async {
         exitCode = ExitCode.success;
-        jsonOutput =
-            File(
-              '$fixturesPath/device_list_success_empty.json',
-            ).readAsStringSync();
+        jsonOutput = File(
+          '$fixturesPath/device_list_success_empty.json',
+        ).readAsStringSync();
         expect(
           await runWithOverrides(() => devicectl.deviceForLaunch()),
           isNull,
@@ -123,8 +123,9 @@ void main() {
         "returns a device if device's OS version is 17 or greater",
         () async {
           exitCode = ExitCode.success;
-          jsonOutput =
-              File('$fixturesPath/device_list_success.json').readAsStringSync();
+          jsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
           expect(
             await runWithOverrides(() => devicectl.deviceForLaunch()),
             isNotNull,
@@ -230,16 +231,16 @@ void main() {
       group('when install succeeds', () {
         setUp(() {
           exitCode = ExitCode.success;
-          jsonOutput =
-              File('$fixturesPath/install_success.json').readAsStringSync();
+          jsonOutput = File(
+            '$fixturesPath/install_success.json',
+          ).readAsStringSync();
         });
 
         group('when output json does not contain app bundleId', () {
           setUp(() {
-            jsonOutput =
-                File(
-                  '$fixturesPath/install_success_no_bundle_id.json',
-                ).readAsStringSync();
+            jsonOutput = File(
+              '$fixturesPath/install_success_no_bundle_id.json',
+            ).readAsStringSync();
           });
 
           test('throws DevicectlException', () {
@@ -281,8 +282,9 @@ void main() {
       group('when json contains error', () {
         setUp(() {
           exitCode = ExitCode.success;
-          jsonOutput =
-              File('$fixturesPath/launch_failure.json').readAsStringSync();
+          jsonOutput = File(
+            '$fixturesPath/launch_failure.json',
+          ).readAsStringSync();
         });
 
         test(
@@ -308,8 +310,9 @@ void main() {
       group('when launch succeeds', () {
         setUp(() {
           exitCode = ExitCode.success;
-          jsonOutput =
-              File('$fixturesPath/launch_success.json').readAsStringSync();
+          jsonOutput = File(
+            '$fixturesPath/launch_success.json',
+          ).readAsStringSync();
         });
 
         test('completes successfully', () async {
@@ -395,10 +398,9 @@ void main() {
 
       group('when no device is found', () {
         setUp(() {
-          deviceListJsonOutput =
-              File(
-                '$fixturesPath/device_list_success_empty.json',
-              ).readAsStringSync();
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success_empty.json',
+          ).readAsStringSync();
         });
 
         test('returns exit code 70', () async {
@@ -416,10 +418,12 @@ void main() {
 
       group('when install fails', () {
         setUp(() {
-          deviceListJsonOutput =
-              File('$fixturesPath/device_list_success.json').readAsStringSync();
-          installJsonOutput =
-              File('$fixturesPath/install_failure.json').readAsStringSync();
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
+          installJsonOutput = File(
+            '$fixturesPath/install_failure.json',
+          ).readAsStringSync();
         });
 
         test('returns exit code 70 ', () async {
@@ -441,12 +445,15 @@ void main() {
 
       group('when launch fails', () {
         setUp(() {
-          deviceListJsonOutput =
-              File('$fixturesPath/device_list_success.json').readAsStringSync();
-          installJsonOutput =
-              File('$fixturesPath/install_success.json').readAsStringSync();
-          launchJsonOutput =
-              File('$fixturesPath/launch_failure.json').readAsStringSync();
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
+          installJsonOutput = File(
+            '$fixturesPath/install_success.json',
+          ).readAsStringSync();
+          launchJsonOutput = File(
+            '$fixturesPath/launch_failure.json',
+          ).readAsStringSync();
         });
 
         test('returns exit code 70 ', () async {
@@ -474,12 +481,15 @@ void main() {
 
       group('when install and launch succeed', () {
         setUp(() {
-          deviceListJsonOutput =
-              File('$fixturesPath/device_list_success.json').readAsStringSync();
-          installJsonOutput =
-              File('$fixturesPath/install_success.json').readAsStringSync();
-          launchJsonOutput =
-              File('$fixturesPath/launch_success.json').readAsStringSync();
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
+          installJsonOutput = File(
+            '$fixturesPath/install_success.json',
+          ).readAsStringSync();
+          launchJsonOutput = File(
+            '$fixturesPath/launch_success.json',
+          ).readAsStringSync();
         });
 
         test('returns exit code 0', () async {
@@ -505,8 +515,9 @@ void main() {
         setUp(() {
           // This fixture is synthetic, as I was not able to get this command
           // to fail.
-          jsonOutput =
-              File('$fixturesPath/device_list_failure.json').readAsStringSync();
+          jsonOutput = File(
+            '$fixturesPath/device_list_failure.json',
+          ).readAsStringSync();
         });
 
         test('throws a DevicectlException', () {
@@ -527,10 +538,9 @@ void main() {
         setUp(() {
           // This fixture is synthetic, as I was not able to get this command
           // to fail.
-          jsonOutput =
-              File(
-                '$fixturesPath/device_list_success_no_devices.json',
-              ).readAsStringSync();
+          jsonOutput = File(
+            '$fixturesPath/device_list_success_no_devices.json',
+          ).readAsStringSync();
         });
 
         test('throws a DevicectlException', () {
@@ -549,8 +559,9 @@ void main() {
 
       group('when command succeeds', () {
         setUp(() {
-          jsonOutput =
-              File('$fixturesPath/device_list_success.json').readAsStringSync();
+          jsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
         });
 
         test('returns a list of iOS devices', () async {

@@ -39,7 +39,8 @@ class AndroidPatcher extends Patcher {
   /// Android versions prior to 3.24.2 have a bug that can cause patches to
   /// be erroneously uninstalled.
   /// https://github.com/shorebirdtech/updater/issues/211 was fixed in 3.24.2
-  static final updaterPatchErrorWarning = '''
+  static final updaterPatchErrorWarning =
+      '''
 Your version of flutter contains a known issue that can cause patches to be erroneously uninstalled in apps that use package:flutter_foreground_task or other plugins that start their own Flutter engines.
 This issue was fixed in Flutter 3.24.2. Please upgrade to a newer version of Flutter to avoid this issue.
 
@@ -192,13 +193,9 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
       final privateKeyFile = argResults.file(
         CommonArguments.privateKeyArg.name,
       );
-      final hashSignature =
-          privateKeyFile != null
-              ? codeSigner.sign(
-                message: hash,
-                privateKeyPemFile: privateKeyFile,
-              )
-              : null;
+      final hashSignature = privateKeyFile != null
+          ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
+          : null;
 
       try {
         final diffPath = await artifactManager.createDiff(

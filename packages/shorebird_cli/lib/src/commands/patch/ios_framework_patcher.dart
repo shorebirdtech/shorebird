@@ -197,8 +197,9 @@ class IosFrameworkPatcher extends Patcher {
       lastBuildLinkMetadata = result.linkMetadata;
     }
 
-    final patchBuildFile =
-        useLinker ? File(_vmcodeOutputPath) : aotSnapshotFile;
+    final patchBuildFile = useLinker
+        ? File(_vmcodeOutputPath)
+        : aotSnapshotFile;
     final File patchFile;
     if (await aotTools.isGeneratePatchDiffBaseSupported()) {
       final patchBaseProgress = logger.progress('Generating patch diff base');
@@ -233,10 +234,9 @@ class IosFrameworkPatcher extends Patcher {
     final patchFileSize = patchFile.statSync().size;
     final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
     final hash = sha256.convert(patchBuildFile.readAsBytesSync()).toString();
-    final hashSignature =
-        privateKeyFile != null
-            ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-            : null;
+    final hashSignature = privateKeyFile != null
+        ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
+        : null;
 
     return {
       Arch.arm64: PatchArtifactBundle(
