@@ -49,6 +49,8 @@ artifact_overrides:
   - flutter_infra_release/flutter/\$engine/android-x64-release/windows-x64.zip
 
   # Dart SDK
+  - flutter_infra_release/flutter/\$engine/darwin-arm64/artifacts.zip
+  - flutter_infra_release/flutter/\$engine/darwin-arm64/font-subset.zip
   - flutter_infra_release/flutter/\$engine/dart-sdk-darwin-arm64.zip
   - flutter_infra_release/flutter/\$engine/dart-sdk-darwin-x64.zip
   - flutter_infra_release/flutter/\$engine/dart-sdk-linux-x64.zip
