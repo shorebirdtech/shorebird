@@ -77,10 +77,10 @@ class JwtExtractionFailure implements Exception {
 /// [JwtExtractionFailure] if the header is missing or the token is malformed.
 /// Does NOT verify the JWT.
 Jwt extractFromRequestHeaders(Map<String, String> headers) {
-  final caseInsensitveHeaders = headers.map(
+  final caseInsensitiveHeaders = headers.map(
     (key, value) => MapEntry(key.toLowerCase(), value),
   );
-  final authorization = caseInsensitveHeaders[HttpHeaders.authorizationHeader];
+  final authorization = caseInsensitiveHeaders[HttpHeaders.authorizationHeader];
   if (authorization == null) {
     throw const JwtExtractionFailure('Missing authorization header');
   }
