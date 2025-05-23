@@ -104,7 +104,7 @@ void main() {
     });
 
     group('when authorization header contains a valid jwt', () {
-      test('returns a Jwt', () {
+      test('returns a jwt', () {
         final jwt = extractFromRequestHeaders({
           HttpHeaders.authorizationHeader: 'Bearer $token',
         });
