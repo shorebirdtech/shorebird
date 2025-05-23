@@ -43,6 +43,80 @@ void main() {
     };
   });
 
+  group(JwtExtractionFailure, () {
+    group('toString', () {
+      test('returns the reason', () {
+        const reason = 'reason';
+        const failure = JwtExtractionFailure(reason);
+        expect(failure.toString(), equals('JwtExtractionFailure: $reason'));
+      });
+    });
+  });
+
+  group('extractFromRequestHeaders', () {
+    group('when no authorization header is provided', () {
+      test('throws JwtExtractionFailure', () {
+        expect(
+          () => extractFromRequestHeaders({}),
+          throwsA(
+            isA<JwtExtractionFailure>().having(
+              (e) => e.reason,
+              'reason',
+              'Missing authorization header',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('when authorization header is malformed', () {
+      test('throws JwtExtractionFailure', () {
+        expect(
+          () => extractFromRequestHeaders({
+            HttpHeaders.authorizationHeader: 'not-a-jwt',
+          }),
+          throwsA(
+            isA<JwtExtractionFailure>().having(
+              (e) => e.reason,
+              'reason',
+              'Malformed authorization header',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('when authorization header cannot be parsed into jwt', () {
+      test('throws JwtExtractionFailure', () {
+        expect(
+          () => extractFromRequestHeaders({
+            HttpHeaders.authorizationHeader: 'Bearer not-a-jwt',
+          }),
+          throwsA(
+            isA<JwtExtractionFailure>().having(
+              (e) => e.reason,
+              'reason',
+              'Malformed JWT',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('when authorization header contains a valid jwt', () {
+      test('returns a jwt', () {
+        final jwt = extractFromRequestHeaders({
+          HttpHeaders.authorizationHeader: 'Bearer $token',
+        });
+        expect(jwt.payload.aud, equals('my-app'));
+        expect(
+          jwt.payload.iss,
+          equals('https://securetoken.google.com/my-app'),
+        );
+      });
+    });
+  });
+
   group('verify', () {
     group('when key store is key-value', () {
       const issuer = 'https://securetoken.google.com/my-app';
