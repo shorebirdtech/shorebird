@@ -23,10 +23,9 @@ void main() {
       'https://login.microsoftonline.com/common/discovery/v2.0/keys';
   final jwkKeyStoreJsonString =
       File(p.join('test', 'fixtures', 'jwk_key_store.json')).readAsStringSync();
-  final keyValueKeyStoreString =
-      File(
-        p.join('test', 'fixtures', 'key_value_key_store.json'),
-      ).readAsStringSync();
+  final keyValueKeyStoreString = File(
+    p.join('test', 'fixtures', 'key_value_key_store.json'),
+  ).readAsStringSync();
   final expiresAt = DateTime.fromMillisecondsSinceEpoch(1643687866 * 1000);
   final validTime = expiresAt.subtract(const Duration(minutes: 15));
 
@@ -226,7 +225,8 @@ void main() {
         });
       });
 
-      test('throws exception if invalid keys are provided '
+      test(
+          'throws exception if invalid keys are provided '
           'by the publicKeysUrl (KeyValueKeyStore)', () async {
         getOverride = (Uri uri) async {
           return Response(
@@ -255,7 +255,8 @@ void main() {
         });
       });
 
-      test('throws exception if invalid keys are provided '
+      test(
+          'throws exception if invalid keys are provided '
           'by the publicKeysUrl (JwkKeyStore)', () async {
         getOverride = (Uri uri) async {
           return Response(
