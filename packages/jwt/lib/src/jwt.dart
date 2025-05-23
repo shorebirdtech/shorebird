@@ -59,6 +59,48 @@ class JwtVerificationFailure implements Exception {
   String toString() => 'JwtVerificationFailure: $reason';
 }
 
+/// {@template jwt_extraction_failure}
+/// An exception thrown during JWT extraction.
+/// {@endtemplate}
+class JwtExtractionFailure implements Exception {
+  /// {@macro jwt_extraction_failure}
+  const JwtExtractionFailure(this.reason);
+
+  /// The reason for the extraction failure.
+  final String reason;
+
+  @override
+  String toString() => 'JwtExtractionFailure: $reason';
+}
+
+/// Extracts a JWT from the Authorization header of the request. Throws a
+/// [JwtExtractionFailure] if the header is missing or the token is malformed.
+/// Does NOT verify the JWT.
+Jwt extractFromRequestHeaders(Map<String, String> headers) {
+  final caseInsensitveHeaders = headers.map(
+    (key, value) => MapEntry(key.toLowerCase(), value),
+  );
+  final authorization = caseInsensitveHeaders[HttpHeaders.authorizationHeader];
+  if (authorization == null) {
+    throw const JwtExtractionFailure('Missing authorization header');
+  }
+
+  final tokenRegExp = RegExp('^Bearer (.*)');
+  final token = tokenRegExp.firstMatch(authorization)?.group(1);
+  if (token == null) {
+    throw const JwtExtractionFailure('Malformed authorization header');
+  }
+
+  final Jwt jwt;
+  try {
+    jwt = Jwt.parse(token);
+  } on Exception {
+    throw const JwtExtractionFailure('Malformed JWT');
+  }
+
+  return jwt;
+}
+
 /// Verify the encoded [encodedJwt].
 Future<Jwt> verify(
   String encodedJwt, {
