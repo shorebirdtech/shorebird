@@ -68,7 +68,8 @@ extension on String {
 /// @{endtemplate}
 class ArtifactBuilder {
   /// A general recommendation when building artifacts fails.
-  static String runVanillaFlutterBuildRecommendation(String buildCommand) => '''
+  static String runVanillaFlutterBuildRecommendation(String buildCommand) =>
+      '''
 
 ${styleBold.wrap('💡 Fix Recommendations')}
 

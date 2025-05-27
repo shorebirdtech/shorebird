@@ -107,11 +107,10 @@ class ShorebirdAndroidArtifacts {
     }
 
     final allFiles = directory.listSync();
-    final artifactCandidates =
-        allFiles.whereType<File>().where((file) {
-          final fileName = p.basename(file.path);
-          return fileName.artifactId == artifactId;
-        }).toList();
+    final artifactCandidates = allFiles.whereType<File>().where((file) {
+      final fileName = p.basename(file.path);
+      return fileName.artifactId == artifactId;
+    }).toList();
 
     if (artifactCandidates.isEmpty) {
       throw ArtifactNotFoundException(
@@ -141,8 +140,9 @@ class ShorebirdAndroidArtifacts {
       flavor != null ? '${flavor}Release' : 'release',
     );
 
-    final artifactName =
-        flavor == null ? 'app-release.aab' : 'app-$flavor-release.aab';
+    final artifactName = flavor == null
+        ? 'app-release.aab'
+        : 'app-$flavor-release.aab';
 
     return _findArtifact(
       directory: Directory(buildDir),
@@ -160,8 +160,9 @@ class ShorebirdAndroidArtifacts {
       'flutter-apk',
     );
 
-    final artifactName =
-        flavor == null ? 'app-release.apk' : 'app-$flavor-release.apk';
+    final artifactName = flavor == null
+        ? 'app-release.apk'
+        : 'app-$flavor-release.apk';
 
     return _findArtifact(
       directory: Directory(buildDir),

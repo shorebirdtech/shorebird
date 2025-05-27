@@ -72,8 +72,8 @@ class IosFrameworkReleaser extends Releaser {
     // Delete the Shorebird supplement directory if it exists.
     // This is to ensure that we don't accidentally upload stale artifacts
     // when building with older versions of Flutter.
-    final shorebirdSupplementDir =
-        artifactManager.getIosReleaseSupplementDirectory();
+    final shorebirdSupplementDir = artifactManager
+        .getIosReleaseSupplementDirectory();
     if (shorebirdSupplementDir?.existsSync() ?? false) {
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }

@@ -163,15 +163,16 @@ void main() {
           buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
-          obtainAccessCredentials: (
-            clientId,
-            scopes,
-            client,
-            userPrompt, {
-            AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-          }) async {
-            return accessCredentials;
-          },
+          obtainAccessCredentials:
+              (
+                clientId,
+                scopes,
+                client,
+                userPrompt, {
+                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+              }) async {
+                return accessCredentials;
+              },
         ),
       );
     }
@@ -272,8 +273,9 @@ void main() {
                 ),
               ]),
             );
-            final captured =
-                verify(() => httpClient.send(captureAny())).captured;
+            final captured = verify(
+              () => httpClient.send(captureAny()),
+            ).captured;
             expect(captured, hasLength(1));
             final request = captured.first as http.BaseRequest;
             expect(request.headers['Authorization'], equals('Bearer $idToken'));
@@ -409,8 +411,9 @@ void main() {
                 ),
               ]),
             );
-            final captured =
-                verify(() => httpClient.send(captureAny())).captured;
+            final captured = verify(
+              () => httpClient.send(captureAny()),
+            ).captured;
             expect(captured, hasLength(1));
             final request = captured.first as http.BaseRequest;
             expect(request.headers['Authorization'], equals('Bearer $idToken'));
@@ -553,7 +556,8 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
       group('when token has leading or trailing spaces and newlines', () {
         setUp(() {
           when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: '''
+            shorebirdTokenEnvVar:
+                '''
     ${ciToken.toBase64()}  
               
 ''',

@@ -167,10 +167,9 @@ class Apple {
         return;
       }
       final baseName = p.basename(file.path);
-      final destName =
-          newBaseName != null
-              ? baseName.replaceFirst('App', newBaseName)
-              : baseName;
+      final destName = newBaseName != null
+          ? baseName.replaceFirst('App', newBaseName)
+          : baseName;
       file.copySync(p.join(destDir.path, destName));
     }
 
@@ -270,10 +269,9 @@ class Apple {
 
     final linkProgress = logger.progress('Linking AOT files');
     double? linkPercentage;
-    final dumpDebugInfoDir =
-        await aotTools.isLinkDebugInfoSupported()
-            ? Directory.systemTemp.createTempSync()
-            : null;
+    final dumpDebugInfoDir = await aotTools.isLinkDebugInfoSupported()
+        ? Directory.systemTemp.createTempSync()
+        : null;
 
     Future<void> dumpDebugInfo() async {
       if (dumpDebugInfoDir == null) return;

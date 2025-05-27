@@ -114,7 +114,8 @@ To change the version of this release, change your app's version in your pubspec
   }
 
   @override
-  String get postReleaseInstructions => '''
+  String get postReleaseInstructions =>
+      '''
 
 Windows executable created at ${artifactManager.getWindowsReleaseDirectory().path}.
 ''';

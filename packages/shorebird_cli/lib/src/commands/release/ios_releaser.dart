@@ -97,8 +97,8 @@ To change the version of this release, change your app's version in your pubspec
     // Delete the Shorebird supplement directory if it exists.
     // This is to ensure that we don't accidentally upload stale artifacts
     // when building with older versions of Flutter.
-    final shorebirdSupplementDir =
-        artifactManager.getIosReleaseSupplementDirectory();
+    final shorebirdSupplementDir = artifactManager
+        .getIosReleaseSupplementDirectory();
     if (shorebirdSupplementDir?.existsSync() ?? false) {
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }
@@ -157,10 +157,9 @@ To change the version of this release, change your app's version in your pubspec
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory()!;
     final String? podfileLockHash;
     if (shorebirdEnv.iosPodfileLockFile.existsSync()) {
-      podfileLockHash =
-          sha256
-              .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
-              .toString();
+      podfileLockHash = sha256
+          .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
+          .toString();
     } else {
       podfileLockHash = null;
     }
@@ -168,10 +167,9 @@ To change the version of this release, change your app's version in your pubspec
       appId: appId,
       releaseId: release.id,
       xcarchivePath: xcarchiveDirectory.path,
-      runnerPath:
-          artifactManager
-              .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
-              .path,
+      runnerPath: artifactManager
+          .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
+          .path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
       supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,

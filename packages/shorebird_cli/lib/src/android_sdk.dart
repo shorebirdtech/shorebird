@@ -69,10 +69,9 @@ class AndroidSdk {
   /// Returns the default path to the Android SDK if a home directory is defined
   /// and we're on a recognized platform, or null otherwise.
   String? _defaultAndroidSdkPath() {
-    final home =
-        platform.isWindows
-            ? platform.environment['USERPROFILE']
-            : platform.environment['HOME'];
+    final home = platform.isWindows
+        ? platform.environment['USERPROFILE']
+        : platform.environment['HOME'];
     if (home == null) {
       return null;
     }

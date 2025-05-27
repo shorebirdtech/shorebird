@@ -831,12 +831,11 @@ Reason: Exited with code 70.'''),
             runInShell: any(named: 'runInShell'),
           ),
         ).thenAnswer((_) async {
-          appDill =
-              File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
-                ..createSync(recursive: true)
-                ..setLastModifiedSync(
-                  DateTime.now().add(const Duration(seconds: 10)),
-                );
+          appDill = File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
+            ..createSync(recursive: true)
+            ..setLastModifiedSync(
+              DateTime.now().add(const Duration(seconds: 10)),
+            );
 
           return ExitCode.success.code;
         });
@@ -1018,12 +1017,11 @@ Reason: Exited with code 70.'''),
             runInShell: any(named: 'runInShell'),
           ),
         ).thenAnswer((_) async {
-          appDill =
-              File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
-                ..createSync(recursive: true)
-                ..setLastModifiedSync(
-                  DateTime.now().add(const Duration(seconds: 10)),
-                );
+          appDill = File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
+            ..createSync(recursive: true)
+            ..setLastModifiedSync(
+              DateTime.now().add(const Duration(seconds: 10)),
+            );
 
           return ExitCode.success.code;
         });
@@ -1215,12 +1213,11 @@ Reason: Exited with code 70.'''),
             runInShell: any(named: 'runInShell'),
           ),
         ).thenAnswer((_) async {
-          appDill =
-              File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
-                ..createSync(recursive: true)
-                ..setLastModifiedSync(
-                  DateTime.now().add(const Duration(seconds: 10)),
-                );
+          appDill = File(p.join(projectRoot.path, '.dart_tool', 'app.dill'))
+            ..createSync(recursive: true)
+            ..setLastModifiedSync(
+              DateTime.now().add(const Duration(seconds: 10)),
+            );
 
           return ExitCode.success.code;
         });

@@ -469,8 +469,8 @@ void main() {
           await expectLater(
             client.timeSeries.add(
               key: key,
-              timestamp:
-                  RedisTimeSeriesTimestamp.client.now(), // Use client clock
+              timestamp: RedisTimeSeriesTimestamp.client
+                  .now(), // Use client clock
               value: 56,
             ),
             completes,
@@ -490,8 +490,8 @@ void main() {
           await expectLater(
             client.timeSeries.add(
               key: key,
-              timestamp:
-                  RedisTimeSeriesTimestamp.server.now(), // Use server clock
+              timestamp: RedisTimeSeriesTimestamp.server
+                  .now(), // Use server clock
               value: 99,
             ),
             completes,

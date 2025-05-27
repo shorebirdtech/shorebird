@@ -17,19 +17,18 @@ const _logFileName = 'shorebird.log';
 /// Where logs are written for the current Shorebird CLI run. A new file will
 /// be created for every run of the Shorebird CLI, and will have the name
 /// `timestamp_shorebird.log`.
-final File currentRunLogFile =
-    (() {
-      final timestamp = clock.now().millisecondsSinceEpoch;
-      final file = File(
-        p.join(shorebirdEnv.logsDirectory.path, '${timestamp}_$_logFileName'),
-      );
+final File currentRunLogFile = (() {
+  final timestamp = clock.now().millisecondsSinceEpoch;
+  final file = File(
+    p.join(shorebirdEnv.logsDirectory.path, '${timestamp}_$_logFileName'),
+  );
 
-      if (!file.existsSync()) {
-        file.createSync(recursive: true);
-      }
+  if (!file.existsSync()) {
+    file.createSync(recursive: true);
+  }
 
-      return file;
-    })();
+  return file;
+})();
 
 /// {@template shorebird_logger}
 /// A [Logger] that

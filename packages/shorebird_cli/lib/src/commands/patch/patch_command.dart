@@ -329,8 +329,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     } else if (shorebirdEnv.canAcceptUserInput) {
       release = await promptForRelease(releasePlatform);
     } else {
-      final flutterVersionString =
-          await shorebirdFlutter.getVersionAndRevision();
+      final flutterVersionString = await shorebirdFlutter
+          .getVersionAndRevision();
       logger.warn('''
 The release version to patch was not specified.
 Building with Flutter $flutterVersionString to determine the release version...
@@ -372,24 +372,21 @@ Building with Flutter $flutterVersionString to determine the release version...
 
     final supplementalArtifact =
         patcher.supplementaryReleaseArtifactArch != null
-            ? await codePushClientWrapper.maybeGetReleaseArtifact(
-              appId: appId,
-              releaseId: release.id,
-              arch: patcher.supplementaryReleaseArtifactArch!,
-              platform: releasePlatform,
-            )
-            : null;
+        ? await codePushClientWrapper.maybeGetReleaseArtifact(
+            appId: appId,
+            releaseId: release.id,
+            arch: patcher.supplementaryReleaseArtifactArch!,
+            platform: releasePlatform,
+          )
+        : null;
 
     final releaseArchive = await downloadReleaseArtifact(
       releaseArtifact: releaseArtifact,
     );
 
-    final supplementArchive =
-        supplementalArtifact != null
-            ? await downloadReleaseArtifact(
-              releaseArtifact: supplementalArtifact,
-            )
-            : null;
+    final supplementArchive = supplementalArtifact != null
+        ? await downloadReleaseArtifact(releaseArtifact: supplementalArtifact)
+        : null;
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
@@ -401,8 +398,8 @@ Building with Flutter $flutterVersionString to determine the release version...
 
         // Don't built the patch artifact twice with the same Flutter revision.
         if (lastBuiltFlutterRevision != release.flutterRevision) {
-          final flutterVersionString =
-              await shorebirdFlutter.getVersionAndRevision();
+          final flutterVersionString = await shorebirdFlutter
+              .getVersionAndRevision();
           logger.info('''
 Building patch with Flutter $flutterVersionString
 ''');
@@ -555,14 +552,13 @@ Please re-run the release command for this version or create a new release.''');
       final size = formatBytes(patchArtifactBundles[arch]!.size);
       return '${arch.name} ($size)';
     });
-    final trackSummary =
-        (() {
-          return switch (track) {
-            DeploymentTrack.staging => '🟠 Track: ${lightCyan.wrap('Staging')}',
-            DeploymentTrack.beta => '🔵 Track: ${lightCyan.wrap('Beta')}',
-            DeploymentTrack.stable => '🟢 Track: ${lightCyan.wrap('Stable')}',
-          };
-        })();
+    final trackSummary = (() {
+      return switch (track) {
+        DeploymentTrack.staging => '🟠 Track: ${lightCyan.wrap('Staging')}',
+        DeploymentTrack.beta => '🔵 Track: ${lightCyan.wrap('Beta')}',
+        DeploymentTrack.stable => '🟢 Track: ${lightCyan.wrap('Stable')}',
+      };
+    })();
 
     final linkPercentage = patcher.linkPercentage;
     final minLinkPercentage = int.parse(

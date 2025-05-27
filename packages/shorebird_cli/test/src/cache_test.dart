@@ -346,20 +346,18 @@ void main() {
             completes,
           );
 
-          final requests =
-              verify(
-                () => httpClient.send(captureAny()),
-              ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
               '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
 
-          final expected =
-              [
-                perEngine('patch-darwin-x64.zip'),
-                'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
-                perEngine('aot-tools.dill'),
-              ].map(Uri.parse).toList();
+          final expected = [
+            perEngine('patch-darwin-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
+            perEngine('aot-tools.dill'),
+          ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
         });
@@ -372,20 +370,18 @@ void main() {
             completes,
           );
 
-          final requests =
-              verify(
-                () => httpClient.send(captureAny()),
-              ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
               '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
 
-          final expected =
-              [
-                perEngine('patch-windows-x64.zip'),
-                'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
-                perEngine('aot-tools.dill'),
-              ].map(Uri.parse).toList();
+          final expected = [
+            perEngine('patch-windows-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
+            perEngine('aot-tools.dill'),
+          ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
         });
@@ -398,20 +394,18 @@ void main() {
             completes,
           );
 
-          final requests =
-              verify(
-                () => httpClient.send(captureAny()),
-              ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
+          final requests = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
 
           String perEngine(String name) =>
               '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
 
-          final expected =
-              [
-                perEngine('patch-linux-x64.zip'),
-                'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
-                perEngine('aot-tools.dill'),
-              ].map(Uri.parse).toList();
+          final expected = [
+            perEngine('patch-linux-x64.zip'),
+            'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar',
+            perEngine('aot-tools.dill'),
+          ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));
         });

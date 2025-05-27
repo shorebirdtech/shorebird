@@ -63,7 +63,10 @@ void main() {
           isTrue,
         );
         verify(
-          () => git.fetch(directory: any(named: 'directory'), args: ['--tags']),
+          () => git.fetch(
+            directory: any(named: 'directory'),
+            args: ['--tags'],
+          ),
         ).called(1);
         verify(
           () => git.revParse(
@@ -100,7 +103,10 @@ void main() {
           isFalse,
         );
         verify(
-          () => git.fetch(directory: any(named: 'directory'), args: ['--tags']),
+          () => git.fetch(
+            directory: any(named: 'directory'),
+            args: ['--tags'],
+          ),
         ).called(1);
         verify(
           () => git.revParse(

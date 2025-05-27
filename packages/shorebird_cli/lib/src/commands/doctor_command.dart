@@ -115,8 +115,8 @@ Android Toolchain
       final downloadProgress = logger.progress('Measuring GCP download speed');
 
       try {
-        final downloadSpeed =
-            await networkChecker.performGCPDownloadSpeedTest();
+        final downloadSpeed = await networkChecker
+            .performGCPDownloadSpeedTest();
         downloadProgress.complete(
           'GCP Download Speed: ${downloadSpeed.toStringAsFixed(2)} MB/s',
         );

@@ -14,10 +14,9 @@ GetReleaseArtifactsResponse _$GetReleaseArtifactsResponseFromJson(
   final val = GetReleaseArtifactsResponse(
     artifacts: $checkedConvert(
       'artifacts',
-      (v) =>
-          (v as List<dynamic>)
-              .map((e) => ReleaseArtifact.fromJson(e as Map<String, dynamic>))
-              .toList(),
+      (v) => (v as List<dynamic>)
+          .map((e) => ReleaseArtifact.fromJson(e as Map<String, dynamic>))
+          .toList(),
     ),
   );
   return val;

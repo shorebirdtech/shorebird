@@ -124,7 +124,8 @@ Your device is locked. Unlock your device first before running.
   4- Build or run your project again''';
 
   /// Message when there is no provisioning profile.
-  static const noProvisioningProfileInstructions = '''
+  static const noProvisioningProfileInstructions =
+      '''
 ════════════════════════════════════════════════════════════════════════════════
 No Provisioning Profile was found for your project's Bundle Identifier or your\u0020
 device. You can create a new Provisioning Profile for your project in Xcode for\u0020
@@ -218,8 +219,9 @@ Or run on an iOS simulator without code signing
         if (debuggerState == _DebuggerState.launching) {
           logger.detail(line);
           final attachSuccess = line == 'success';
-          debuggerState =
-              attachSuccess ? _DebuggerState.attached : _DebuggerState.detached;
+          debuggerState = attachSuccess
+              ? _DebuggerState.attached
+              : _DebuggerState.detached;
           launchProgress.complete(
             attachSuccess ? 'Started app' : 'Failed to start app',
           );

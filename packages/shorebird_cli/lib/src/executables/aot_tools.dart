@@ -286,12 +286,11 @@ class AotTools {
 
   double? _extractLinkPercentage(File file) {
     if (!file.existsSync()) return null;
-    final status =
-        const LineSplitter()
-            .convert(file.readAsStringSync())
-            .map(json.decode)
-            .cast<Map<String, dynamic>>()
-            .toList();
+    final status = const LineSplitter()
+        .convert(file.readAsStringSync())
+        .map(json.decode)
+        .cast<Map<String, dynamic>>()
+        .toList();
 
     final linkSuccess = status.firstWhereOrNull(
       (line) => line['type'] == 'link_success',

@@ -186,27 +186,21 @@ This is only applicable when previewing Android releases.''',
     //
     // With these two lists, we can now determine if a platform is previewable
     // or not, by making a difference between the two lists.
-    final (allReleases, sideloadableReleases) =
-        await (
-          codePushClientWrapper.getReleases(appId: appId),
-          codePushClientWrapper.getReleases(
-            appId: appId,
-            sideloadableOnly: true,
-          ),
-        ).wait;
+    final (allReleases, sideloadableReleases) = await (
+      codePushClientWrapper.getReleases(appId: appId),
+      codePushClientWrapper.getReleases(appId: appId, sideloadableOnly: true),
+    ).wait;
 
-    final maybePlatform =
-        results['platform'] != null
-            ? ReleasePlatform.values.byName(results['platform'] as String)
-            : null;
-    final platformReleases =
-        sideloadableReleases
-            .where(
-              (r) =>
-                  maybePlatform == null ||
-                  r.activePlatforms.contains(maybePlatform),
-            )
-            .toList();
+    final maybePlatform = results['platform'] != null
+        ? ReleasePlatform.values.byName(results['platform'] as String)
+        : null;
+    final platformReleases = sideloadableReleases
+        .where(
+          (r) =>
+              maybePlatform == null ||
+              r.activePlatforms.contains(maybePlatform),
+        )
+        .toList();
 
     if (platformReleases.isEmpty) {
       if (maybePlatform != null) {
@@ -232,10 +226,9 @@ This is only applicable when previewing Android releases.''',
       return ExitCode.usage.code;
     }
 
-    final availablePlatforms =
-        release.activePlatforms
-            .where((p) => supportedReleasePlatforms.contains(p))
-            .toList();
+    final availablePlatforms = release.activePlatforms
+        .where((p) => supportedReleasePlatforms.contains(p))
+        .toList();
 
     if (availablePlatforms.isEmpty) {
       final activePlatformsString = release.activePlatforms
@@ -813,10 +806,9 @@ This is only applicable when previewing Android releases.''',
       }
 
       final shouldUseDeviceCtl = deviceForLaunch != null;
-      final progressCompleteMessage =
-          deviceForLaunch != null
-              ? 'Using device ${deviceForLaunch.name}'
-              : '''No iOS 17+ device found, looking for devices running iOS 16 or lower''';
+      final progressCompleteMessage = deviceForLaunch != null
+          ? 'Using device ${deviceForLaunch.name}'
+          : '''No iOS 17+ device found, looking for devices running iOS 16 or lower''';
       deviceLocateProgress.complete(progressCompleteMessage);
 
       final int installExitCode;
@@ -1033,11 +1025,10 @@ This is only applicable when previewing Android releases.''',
 /// that can be previewed).
 extension Previewable on Release {
   /// Returns the platforms that can be previewed.
-  List<ReleasePlatform> get activePlatforms =>
-      platformStatuses.entries
-          .where((e) => e.value == ReleaseStatus.active)
-          .map((e) => e.key)
-          .toList();
+  List<ReleasePlatform> get activePlatforms => platformStatuses.entries
+      .where((e) => e.value == ReleaseStatus.active)
+      .map((e) => e.key)
+      .toList();
 }
 
 /// Given two [Release]s, one with all the platforms, previewable or not,

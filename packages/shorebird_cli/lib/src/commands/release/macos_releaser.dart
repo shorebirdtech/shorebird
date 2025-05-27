@@ -146,10 +146,9 @@ To change the version of this release, change your app's version in your pubspec
 
     final String? podfileLockHash;
     if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
-      podfileLockHash =
-          sha256
-              .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
-              .toString();
+      podfileLockHash = sha256
+          .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
+          .toString();
     } else {
       podfileLockHash = null;
     }
@@ -173,7 +172,8 @@ To change the version of this release, change your app's version in your pubspec
   );
 
   @override
-  String get postReleaseInstructions => '''
+  String get postReleaseInstructions =>
+      '''
 
 macOS app created at ${artifactManager.getMacOSAppDirectory(flavor: flavor)!.path}.
 ''';

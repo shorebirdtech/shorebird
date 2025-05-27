@@ -516,7 +516,8 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
               directory: any(named: 'directory'),
             ),
           ).thenAnswer(
-            (_) async => '''
+            (_) async =>
+                '''
 $revision
         ''',
           );
