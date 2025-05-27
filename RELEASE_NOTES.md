@@ -4,7 +4,7 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
-## 1.6.39 (May 21, 2025)
+## 1.6.39 (May 27, 2025)
 
 - 🐦 Support for Flutter 3.32.0
 
