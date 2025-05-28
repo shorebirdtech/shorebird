@@ -13,10 +13,9 @@ GetReleasesResponse _$GetReleasesResponseFromJson(Map<String, dynamic> json) =>
       final val = GetReleasesResponse(
         releases: $checkedConvert(
           'releases',
-          (v) =>
-              (v as List<dynamic>)
-                  .map((e) => Release.fromJson(e as Map<String, dynamic>))
-                  .toList(),
+          (v) => (v as List<dynamic>)
+              .map((e) => Release.fromJson(e as Map<String, dynamic>))
+              .toList(),
         ),
       );
       return val;
