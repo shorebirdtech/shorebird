@@ -14,9 +14,10 @@ GetReleasePatchesResponse _$GetReleasePatchesResponseFromJson(
   final val = GetReleasePatchesResponse(
     patches: $checkedConvert(
       'patches',
-      (v) => (v as List<dynamic>)
-          .map((e) => ReleasePatch.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      (v) =>
+          (v as List<dynamic>)
+              .map((e) => ReleasePatch.fromJson(e as Map<String, dynamic>))
+              .toList(),
     ),
   );
   return val;

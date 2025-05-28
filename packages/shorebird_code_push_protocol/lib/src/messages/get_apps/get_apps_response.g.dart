@@ -13,9 +13,10 @@ GetAppsResponse _$GetAppsResponseFromJson(Map<String, dynamic> json) =>
       final val = GetAppsResponse(
         apps: $checkedConvert(
           'apps',
-          (v) => (v as List<dynamic>)
-              .map((e) => AppMetadata.fromJson(e as Map<String, dynamic>))
-              .toList(),
+          (v) =>
+              (v as List<dynamic>)
+                  .map((e) => AppMetadata.fromJson(e as Map<String, dynamic>))
+                  .toList(),
         ),
       );
       return val;

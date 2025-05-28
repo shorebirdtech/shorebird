@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'release.g.dart';
@@ -9,6 +10,7 @@ part 'release.g.dart';
 /// A release can have zero or more patches applied to it.
 /// {@endtemplate}
 @JsonSerializable()
+@immutable
 class Release extends Equatable {
   /// {@macro release}
   const Release({

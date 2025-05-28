@@ -14,9 +14,10 @@ GetOrganizationAppsResponse _$GetOrganizationAppsResponseFromJson(
   final val = GetOrganizationAppsResponse(
     apps: $checkedConvert(
       'apps',
-      (v) => (v as List<dynamic>)
-          .map((e) => AppMetadata.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      (v) =>
+          (v as List<dynamic>)
+              .map((e) => AppMetadata.fromJson(e as Map<String, dynamic>))
+              .toList(),
     ),
   );
   return val;

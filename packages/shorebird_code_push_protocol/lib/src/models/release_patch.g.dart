@@ -16,9 +16,10 @@ ReleasePatch _$ReleasePatchFromJson(Map<String, dynamic> json) =>
         channel: $checkedConvert('channel', (v) => v as String?),
         artifacts: $checkedConvert(
           'artifacts',
-          (v) => (v as List<dynamic>)
-              .map((e) => PatchArtifact.fromJson(e as Map<String, dynamic>))
-              .toList(),
+          (v) =>
+              (v as List<dynamic>)
+                  .map((e) => PatchArtifact.fromJson(e as Map<String, dynamic>))
+                  .toList(),
         ),
         isRolledBack: $checkedConvert('is_rolled_back', (v) => v as bool),
         notes: $checkedConvert('notes', (v) => v as String?),

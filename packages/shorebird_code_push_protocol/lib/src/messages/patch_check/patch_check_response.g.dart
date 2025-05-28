@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-// ignore_for_file: implicit_dynamic_parameter, require_trailing_commas, cast_nullable_to_non_nullable, lines_longer_than_80_chars, unnecessary_lambdas
+// ignore_for_file: implicit_dynamic_parameter, require_trailing_commas, cast_nullable_to_non_nullable, lines_longer_than_80_chars
 
 part of 'patch_check_response.dart';
 
@@ -17,9 +17,10 @@ PatchCheckResponse _$PatchCheckResponseFromJson(Map<String, dynamic> json) =>
           patchAvailable: $checkedConvert('patch_available', (v) => v as bool),
           patch: $checkedConvert(
             'patch',
-            (v) => v == null
-                ? null
-                : PatchCheckMetadata.fromJson(v as Map<String, dynamic>),
+            (v) =>
+                v == null
+                    ? null
+                    : PatchCheckMetadata.fromJson(v as Map<String, dynamic>),
           ),
           rolledBackPatchNumbers: $checkedConvert(
             'rolled_back_patch_numbers',
