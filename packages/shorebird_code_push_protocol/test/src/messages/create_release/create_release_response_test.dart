@@ -12,7 +12,7 @@ void main() {
           displayName: 'v1.0.0',
           flutterRevision: 'flutter-revision',
           flutterVersion: '3.22.0',
-          platformStatuses: {},
+          platformStatuses: const {},
           createdAt: DateTime(2023),
           updatedAt: DateTime(2023),
         ),
