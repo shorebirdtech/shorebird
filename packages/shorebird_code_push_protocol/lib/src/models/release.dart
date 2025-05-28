@@ -1,4 +1,6 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'release.g.dart';
@@ -8,7 +10,8 @@ part 'release.g.dart';
 /// A release can have zero or more patches applied to it.
 /// {@endtemplate}
 @JsonSerializable()
-class Release {
+@immutable
+class Release extends Equatable {
   /// {@macro release}
   const Release({
     required this.id,
@@ -64,4 +67,18 @@ class Release {
   ///
   /// This value is freeform text with no assumptions about content or format.
   final String? notes;
+
+  @override
+  List<Object?> get props => [
+    id,
+    appId,
+    version,
+    flutterRevision,
+    flutterVersion,
+    displayName,
+    platformStatuses,
+    createdAt,
+    updatedAt,
+    notes,
+  ];
 }

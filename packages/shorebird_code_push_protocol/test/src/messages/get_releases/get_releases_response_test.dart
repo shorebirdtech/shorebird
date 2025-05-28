@@ -13,7 +13,7 @@ void main() {
             flutterRevision: 'flutter-revision',
             flutterVersion: '3.22.0',
             version: '1.0.0',
-            platformStatuses: {
+            platformStatuses: const {
               ReleasePlatform.ios: ReleaseStatus.draft,
               ReleasePlatform.android: ReleaseStatus.active,
             },

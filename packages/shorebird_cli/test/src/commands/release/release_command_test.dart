@@ -48,7 +48,7 @@ void main() {
       flutterRevision: flutterRevision,
       flutterVersion: flutterVersionString,
       displayName: '1.2.3+1',
-      platformStatuses: {},
+      platformStatuses: const {},
       createdAt: DateTime(2023),
       updatedAt: DateTime(2023),
     );
@@ -413,7 +413,7 @@ void main() {
             flutterRevision: 'different',
             flutterVersion: '3.12.1',
             displayName: '1.2.3+1',
-            platformStatuses: {},
+            platformStatuses: const {},
             createdAt: DateTime(2023),
             updatedAt: DateTime(2023),
           );
