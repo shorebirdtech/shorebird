@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.40 (May 29, 2025)
+
+- 📈 iOS linking improvements (especially when using `--split-debug-info`)
+
 ## 1.6.39 (May 27, 2025)
 
 - 🐦 Support for Flutter 3.32.0
