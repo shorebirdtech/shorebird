@@ -84,6 +84,60 @@ class _MyHomePageState extends State<MyHomePage> {
 
 See the example for a complete working app.
 
+### Tracks
+
+Shorebird also supports publishing patches to different tracks, which can be
+used to target different segments of your user base. See
+https://docs.shorebird.dev/code-push/guides/percentage-based-rollouts/ for a
+guide on using this functionality to implement percentage-based rollouts.
+
+You must first publish a patch to a specific track (patches are published to the
+`stable` track by default). To publish a patch to a different track, update your
+patch command to use the `--track` argument:
+
+```sh
+shorebird patch android --track beta
+```
+
+(We're just using Android for this example. Tracks are supported on all
+platforms).
+
+To check for updates on a given track, simply pass an `UpdateTrack` to
+`checkForUpdate` and `update`. For example, this:
+
+```dart
+final status = await updater.checkForUpdate();
+if (status == UpdateStatus.outdated) {
+  await updater.update();
+}
+```
+
+Becomes this:
+
+```dart
+final status = await updater.checkForUpdate(track: UpdateTrack.beta);
+if (status == UpdateStatus.outdated) {
+  await updater.update(track: UpdateTrack.beta);
+}
+```
+
+You can also use custom track names. When creating a patch, specify a track name
+like this:
+
+```sh
+shorebird patch android --track my-custom-track
+```
+
+And:
+
+```dart
+const track = UpdateTrack('my-custom-track');
+final status = await updater.checkForUpdate(track: track);
+if (status == UpdateStatus.outdated) {
+  await updater.update(track: track);
+}
+```
+
 ## Join us on Discord!
 
 We have an active [Discord server](https://discord.gg/shorebird) where you can
