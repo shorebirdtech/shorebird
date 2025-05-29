@@ -559,6 +559,35 @@ void main() {
     });
 
     group('confirmCreatePatch', () {
+      group('when using a custom deployment track', () {
+        setUp(() {
+          when(() => argResults['track']).thenReturn('custom-track');
+        });
+
+        test('logs correct summary', () async {
+          final expectedSummary = [
+            '''📱 App: ${lightCyan.wrap(appDisplayName)} ${lightCyan.wrap('($appId)')}''',
+            '📦 Release Version: ${lightCyan.wrap(releaseVersion)}',
+            '''🕹️  Platform: ${lightCyan.wrap(patcher.releaseType.releasePlatform.displayName)} ${lightCyan.wrap('[arm32 (42 B)]')}''',
+            '⚪️ Track: ${lightCyan.wrap('custom-track')}',
+          ];
+          await expectLater(
+            runWithOverrides(
+              () => command.confirmCreatePatch(
+                app: appMetadata,
+                releaseVersion: releaseVersion,
+                patcher: patcher,
+                patchArtifactBundles: patchArtifactBundles,
+              ),
+            ),
+            completes,
+          );
+          verify(
+            () => logger.info(any(that: contains(expectedSummary.join('\n')))),
+          ).called(1);
+        });
+      });
+
       group('when has flavors', () {
         const flavor = 'development';
         setUp(() {
