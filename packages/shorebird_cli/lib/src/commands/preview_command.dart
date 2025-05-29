@@ -95,7 +95,6 @@ This is only applicable when previewing Android releases.''',
       )
       ..addOption(
         'track',
-        allowed: DeploymentTrack.values.map((v) => v.channel),
         help: 'The track to preview.',
         defaultsTo: DeploymentTrack.stable.channel,
       );
@@ -119,10 +118,7 @@ This is only applicable when previewing Android releases.''',
   String get description => 'Preview a specific release on a device.';
 
   /// The deployment track to publish the patch to.
-  DeploymentTrack get track {
-    final channel = results['track'] as String;
-    return DeploymentTrack.values.firstWhere((t) => t.channel == channel);
-  }
+  DeploymentTrack get track => DeploymentTrack(results['track'] as String);
 
   @override
   Future<int> run() async {
@@ -382,10 +378,10 @@ This is only applicable when previewing Android releases.''',
       }
     }
 
-    final progress = logger.progress('Using ${track.name} track');
+    final progress = logger.progress('Using $track track');
     try {
       await setChannelOnLinuxApp(
-        channel: track.name,
+        channel: track.channel,
         bundleDirectory: appDirectory,
       );
       progress.complete();
@@ -460,7 +456,7 @@ This is only applicable when previewing Android releases.''',
 
     await setChannelOnWindowsApp(
       appDirectory: appDirectory,
-      channel: track.name,
+      channel: track.channel,
     );
 
     final exeFile = appDirectory.listSync().whereType<File>().firstWhere(
@@ -527,7 +523,10 @@ This is only applicable when previewing Android releases.''',
       }
     }
 
-    await setChannelOnMacosApp(appDirectory: appDirectory, channel: track.name);
+    await setChannelOnMacosApp(
+      appDirectory: appDirectory,
+      channel: track.channel,
+    );
 
     final logs = await open.newApplication(path: appDirectory.path);
     final completer = Completer<void>();
@@ -656,7 +655,7 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (File(apksPath).existsSync()) File(apksPath).deleteSync();
-    final progress = logger.progress('Using ${track.name} track');
+    final progress = logger.progress('Using $track track');
     try {
       await setChannelOnAab(aabFile: aabFile, channel: track.channel);
       progress.complete();
@@ -779,7 +778,7 @@ This is only applicable when previewing Android releases.''',
       }
     }
 
-    final progress = logger.progress('Using ${track.name} track');
+    final progress = logger.progress('Using $track track');
     try {
       await setChannelOnRunner(
         runnerDirectory: runnerDirectory,
