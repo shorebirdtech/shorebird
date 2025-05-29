@@ -1,16 +1,14 @@
 /// The deployment track to use when deploying to Shorebird's servers
-enum DeploymentTrack {
+extension type const DeploymentTrack(String value) {
   /// An internal track for validating changes.
-  staging('staging'),
+  static const staging = DeploymentTrack('staging');
 
   /// A public track for publishing changes to a limited audience.
-  beta('beta'),
+  static const beta = DeploymentTrack('beta');
 
   /// A public track for publishing changes to production.
-  stable('stable');
-
-  const DeploymentTrack(this.channel);
+  static const stable = DeploymentTrack('stable');
 
   /// The name of the channel associated with the track.
-  final String channel;
+  String get channel => value;
 }

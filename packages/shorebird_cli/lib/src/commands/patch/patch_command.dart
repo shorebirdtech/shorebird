@@ -93,7 +93,6 @@ To target the latest release (e.g. the release that was most recently updated) u
       )
       ..addOption(
         'track',
-        allowed: DeploymentTrack.values.map((v) => v.channel),
         help: 'The track to publish the patch to.',
         defaultsTo: DeploymentTrack.stable.channel,
       )
@@ -198,10 +197,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   bool get useLatestRelease => results['release-version'] == 'latest';
 
   /// The deployment track to publish the patch to.
-  DeploymentTrack get track {
-    final channel = results['track'] as String;
-    return DeploymentTrack.values.firstWhere((t) => t.channel == channel);
-  }
+  DeploymentTrack get track => DeploymentTrack(results['track'] as String);
 
   @override
   Future<int> run() async {
@@ -557,6 +553,7 @@ Please re-run the release command for this version or create a new release.''');
         DeploymentTrack.staging => '🟠 Track: ${lightCyan.wrap('Staging')}',
         DeploymentTrack.beta => '🔵 Track: ${lightCyan.wrap('Beta')}',
         DeploymentTrack.stable => '🟢 Track: ${lightCyan.wrap('Stable')}',
+        final String trackName => '⚪️ Track: ${lightCyan.wrap(trackName)}',
       };
     })();
 
