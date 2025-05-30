@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -146,6 +144,7 @@ void main() {
       when(() => shorebirdEnv.iosSupplementDirectory).thenReturn(
         Directory(p.join(projectRoot.path, 'build', 'shorebird', 'ios')),
       );
+      when(() => shorebirdEnv.iosPodfileLockHash).thenReturn(null);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => false);
 
@@ -311,7 +310,7 @@ void main() {
           hasNativeChanges: true,
         );
 
-        late String podfileLockHash;
+        const podfileLockHash = 'podfile-lock-hash';
 
         setUp(() {
           when(
@@ -325,28 +324,14 @@ void main() {
             ),
           ).thenAnswer((_) async => nativeChangeDiffStatus);
 
-          const podfileLockContents = 'lock file';
-          podfileLockHash = sha256
-              .convert(utf8.encode(podfileLockContents))
-              .toString();
-          final podfileLockFile =
-              File(
-                  p.join(
-                    Directory.systemTemp.createTempSync().path,
-                    'Podfile.lock',
-                  ),
-                )
-                ..createSync(recursive: true)
-                ..writeAsStringSync(podfileLockContents);
-
           when(
-            () => shorebirdEnv.iosPodfileLockFile,
-          ).thenReturn(podfileLockFile);
+            () => shorebirdEnv.iosPodfileLockHash,
+          ).thenReturn(podfileLockHash);
         });
 
         group('when release has podspec lock hash', () {
           group('when release podspec lock hash matches patch', () {
-            late final releaseArtifact = ReleaseArtifact(
+            const releaseArtifact = ReleaseArtifact(
               id: 0,
               releaseId: 0,
               arch: 'aarch64',
@@ -384,7 +369,7 @@ void main() {
               hash: '#',
               size: 42,
               url: 'https://example.com',
-              podfileLockHash: 'podfile-lock-hash',
+              podfileLockHash: 'non-matching podfile-lock-hash',
               canSideload: true,
             );
 
@@ -1296,6 +1281,81 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             ),
           );
         });
+      });
+
+      group('when podfile lock hash is not null', () {
+        setUp(() {
+          when(
+            () => shorebirdEnv.iosPodfileLockHash,
+          ).thenReturn('podfile-lock-hash');
+
+          when(
+            () => shorebirdEnv.flutterRevision,
+          ).thenReturn(preLinkerFlutterRevision);
+          when(
+            () => aotTools.isGeneratePatchDiffBaseSupported(),
+          ).thenAnswer((_) async => false);
+
+          setUpProjectRootArtifacts();
+        });
+
+        test('returns patch artifact bundle with podfile lock hash', () async {
+          final patchBundle = await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          expect(patchBundle, hasLength(1));
+          expect(
+            patchBundle[Arch.arm64],
+            isA<PatchArtifactBundle>().having(
+              (b) => b.podfileLockHash,
+              'podfileLockHash',
+              equals('podfile-lock-hash'),
+            ),
+          );
+        });
+      });
+
+      group('when podfile lock hash is null', () {
+        setUp(() {
+          when(() => shorebirdEnv.iosPodfileLockHash).thenReturn(null);
+
+          when(
+            () => shorebirdEnv.flutterRevision,
+          ).thenReturn(preLinkerFlutterRevision);
+          when(
+            () => aotTools.isGeneratePatchDiffBaseSupported(),
+          ).thenAnswer((_) async => false);
+
+          setUpProjectRootArtifacts();
+        });
+
+        test(
+          'returns patch artifact bundle without podfile lock hash',
+          () async {
+            final patchBundle = await runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
+              ),
+            );
+
+            expect(patchBundle, hasLength(1));
+            expect(
+              patchBundle[Arch.arm64],
+              isA<PatchArtifactBundle>().having(
+                (b) => b.podfileLockHash,
+                'podfileLockHash',
+                isNull,
+              ),
+            );
+          },
+        );
       });
     });
 

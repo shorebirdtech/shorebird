@@ -100,15 +100,7 @@ class MacosPatcher extends Patcher {
       return diffStatus;
     }
 
-    final String? podfileLockHash;
-    if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
-      podfileLockHash = sha256
-          .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
-          .toString();
-    } else {
-      podfileLockHash = null;
-    }
-
+    final podfileLockHash = shorebirdEnv.macosPodfileLockHash;
     if (releaseArtifact.podfileLockHash != null &&
         podfileLockHash != releaseArtifact.podfileLockHash) {
       logger.warn(
@@ -222,6 +214,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       hash: hash,
       size: patchFileSize,
       hashSignature: hashSignature,
+      podfileLockHash: shorebirdEnv.macosPodfileLockHash,
     );
   }
 

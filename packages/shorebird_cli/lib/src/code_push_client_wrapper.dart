@@ -36,6 +36,7 @@ class PatchArtifactBundle extends Equatable {
     required this.hash,
     required this.size,
     this.hashSignature,
+    this.podfileLockHash,
   });
 
   /// The corresponding architecture.
@@ -53,8 +54,18 @@ class PatchArtifactBundle extends Equatable {
   /// The signature of the artifact hash.
   final String? hashSignature;
 
+  /// The hash of the Podfile.lock file, if present and relevant.
+  final String? podfileLockHash;
+
   @override
-  List<Object?> get props => [arch, path, hash, size, hashSignature];
+  List<Object?> get props => [
+    arch,
+    path,
+    hash,
+    size,
+    hashSignature,
+    podfileLockHash,
+  ];
 }
 
 /// A reference to a [CodePushClientWrapper] instance.
@@ -907,6 +918,7 @@ aar artifact already exists, continuing...''');
           platform: platform,
           hash: artifact.hash,
           hashSignature: artifact.hashSignature,
+          podfileLockHash: artifact.podfileLockHash,
         );
       } catch (error) {
         _handleErrorAndExit(error, progress: createArtifactProgress);
