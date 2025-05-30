@@ -325,7 +325,7 @@ void main() {
         });
 
         group('when release has podspec lock hash', () {
-          group('when release podspec lock hash matches patch', () {
+          group('when release podspec lock hash does not match patch', () {
             const releaseArtifact = ReleaseArtifact(
               id: 0,
               releaseId: 0,
