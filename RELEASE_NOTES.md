@@ -7,6 +7,7 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 ## 1.6.41 (May 30, 2025)
 
 - 🐦 Support for Flutter 3.32.1
+- 🍎 Upload podfile lock hashes for iOS and macOS
 
 ## 1.6.40 (May 29, 2025)
 
