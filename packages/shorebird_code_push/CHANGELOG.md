@@ -1,3 +1,8 @@
+# 2.0.4
+
+- feat: allow for custom UpdateTrack names in addition to stable, staging, and
+  beta
+
 # 2.0.3
 
 - feat: override `toString` in `ReadPatchException` and `UpdateException`
