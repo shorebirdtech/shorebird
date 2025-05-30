@@ -246,6 +246,41 @@ void main() {
         });
       });
 
+      group('when a podfile lock hash is provided', () {
+        const podfileLockHash = 'podfile-lock-hash';
+
+        test('makes the correct request', () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync();
+
+          try {
+            await codePushClient.createPatchArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              patchId: patchId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+              podfileLockHash: podfileLockHash,
+            );
+          } on Exception {
+            // ignore
+          }
+
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.MultipartRequest;
+          expect(request.method, equals('POST'));
+          expect(
+            request.url,
+            equals(v1('apps/$appId/patches/$patchId/artifacts')),
+          );
+          expect(request.hasHeaders(expectedHeaders), isTrue);
+          expect(request.fields['podfile_lock_hash'], equals(podfileLockHash));
+        });
+      });
+
       test('throws an exception if the http request fails (unknown)', () async {
         when(() => httpClient.send(any())).thenAnswer((_) async {
           return http.StreamedResponse(
