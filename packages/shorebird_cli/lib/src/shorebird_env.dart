@@ -2,6 +2,7 @@ import 'dart:io' hide Platform;
 
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:cli_util/cli_util.dart';
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -88,9 +89,23 @@ class ShorebirdEnv {
     return File(p.join(getFlutterProjectRoot()!.path, 'ios', 'Podfile.lock'));
   }
 
+  /// The hash of the Podfile.lock file for this project's iOS app. Will be null
+  /// if the file does not exist.
+  String? get iosPodfileLockHash {
+    if (!iosPodfileLockFile.existsSync()) return null;
+    return sha256.convert(iosPodfileLockFile.readAsBytesSync()).toString();
+  }
+
   /// The Cocoapods lockfile for this project's macOS app.
   File get macosPodfileLockFile {
     return File(p.join(getFlutterProjectRoot()!.path, 'macos', 'Podfile.lock'));
+  }
+
+  /// The hash of the Podfile.lock file for this project's macOS app. Will be
+  /// null if the file does not exist.
+  String? get macosPodfileLockHash {
+    if (!macosPodfileLockFile.existsSync()) return null;
+    return sha256.convert(macosPodfileLockFile.readAsBytesSync()).toString();
   }
 
   /// The build directory of the current shorebird project.

@@ -134,6 +134,7 @@ class CodePushClient {
     required ReleasePlatform platform,
     required String hash,
     String? hashSignature,
+    String? podfileLockHash,
   }) async {
     final request = http.MultipartRequest(
       'POST',
@@ -146,6 +147,7 @@ class CodePushClient {
       'hash': hash,
       'size': '${file.length}',
       if (hashSignature != null) 'hash_signature': hashSignature,
+      if (podfileLockHash != null) 'podfile_lock_hash': podfileLockHash,
     });
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();

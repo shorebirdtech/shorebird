@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -154,6 +152,7 @@ void main() {
       when(
         () => shorebirdEnv.flutterRevision,
       ).thenReturn('5c1dcc19ebcee3565c65262dd95970186e4d81cc');
+      when(() => shorebirdEnv.macosPodfileLockHash).thenReturn(null);
 
       appDirectory = Directory(
         p.join(
@@ -306,7 +305,7 @@ void main() {
           hasNativeChanges: true,
         );
 
-        late String podfileLockHash;
+        const podfileLockHash = 'podfile-lock-hash';
 
         setUp(() {
           when(
@@ -320,28 +319,14 @@ void main() {
             ),
           ).thenAnswer((_) async => nativeChangeDiffStatus);
 
-          const podfileLockContents = 'lock file';
-          podfileLockHash = sha256
-              .convert(utf8.encode(podfileLockContents))
-              .toString();
-          final podfileLockFile =
-              File(
-                  p.join(
-                    Directory.systemTemp.createTempSync().path,
-                    'Podfile.lock',
-                  ),
-                )
-                ..createSync(recursive: true)
-                ..writeAsStringSync(podfileLockContents);
-
           when(
-            () => shorebirdEnv.macosPodfileLockFile,
-          ).thenReturn(podfileLockFile);
+            () => shorebirdEnv.macosPodfileLockHash,
+          ).thenReturn(podfileLockHash);
         });
 
         group('when release has podspec lock hash', () {
           group('when release podspec lock hash matches patch', () {
-            late final releaseArtifact = ReleaseArtifact(
+            const releaseArtifact = ReleaseArtifact(
               id: 0,
               releaseId: 0,
               arch: 'aarch64',
@@ -379,7 +364,7 @@ void main() {
               hash: '#',
               size: 42,
               url: 'https://example.com',
-              podfileLockHash: 'podfile-lock-hash',
+              podfileLockHash: 'non-matching podfile-lock-hash',
               canSideload: true,
             );
 
@@ -480,8 +465,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             });
           });
         });
-
-        group('when release does not have podspec lock hash', () {});
       });
     });
 
@@ -990,6 +973,50 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           expect(artifacts, hasLength(2));
           expect(artifacts.keys, containsAll([Arch.x86_64, Arch.arm64]));
           expect(artifacts[Arch.x86_64]!.hashSignature, 'my-signature');
+        });
+      });
+
+      group('when podfile lock hash is not null', () {
+        setUp(() {
+          when(
+            () => shorebirdEnv.macosPodfileLockHash,
+          ).thenReturn('podfile-lock-hash');
+        });
+
+        test('returns artifact bundles with podfile lock hash', () async {
+          final artifacts = await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          expect(artifacts, hasLength(2));
+          expect(artifacts.keys, containsAll([Arch.x86_64, Arch.arm64]));
+          expect(artifacts[Arch.x86_64]!.podfileLockHash, 'podfile-lock-hash');
+          expect(artifacts[Arch.arm64]!.podfileLockHash, 'podfile-lock-hash');
+        });
+      });
+
+      group('when podfile lock hash is null', () {
+        setUp(() {
+          when(() => shorebirdEnv.macosPodfileLockHash).thenReturn(null);
+        });
+
+        test('returns artifact bundles without podfile lock hash', () async {
+          final artifacts = await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          expect(artifacts, hasLength(2));
+          expect(artifacts.keys, containsAll([Arch.x86_64, Arch.arm64]));
+          expect(artifacts[Arch.x86_64]!.podfileLockHash, isNull);
+          expect(artifacts[Arch.arm64]!.podfileLockHash, isNull);
         });
       });
     });
