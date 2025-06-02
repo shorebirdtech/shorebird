@@ -71,6 +71,7 @@ words:
   - multioption
   - noaudio # From .github dir, doesn't show up in "**" check?
   - NOAUTH
+  - nonobvious # From analysis_options.yaml
   - nserror
   - Oltman
   - orri # Arm64 instruction, Or Register with Immediate
@@ -96,6 +97,7 @@ words:
   - Retryable
   - RSAPKCS
   - sdcard # From .github/workflows/e2e.yaml
+  - sgit # From .github/license_check/action.yaml
   - shorebirdtech
   - sideload
   - sideloadable

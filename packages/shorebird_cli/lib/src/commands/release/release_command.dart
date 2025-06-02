@@ -266,77 +266,80 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: targetFlutterRevision,
     );
-    return await runScoped(() async {
-      await cache.updateAll();
+    return await runScoped(
+      () async {
+        await cache.updateAll();
 
-      final flutterVersionString = await shorebirdFlutter
-          .getVersionAndRevision();
-      logger.info(
-        'Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString',
-      );
-      final FileSystemEntity releaseArtifact;
-      try {
-        releaseArtifact = await releaser.buildReleaseArtifacts();
-      } on ArtifactBuildException catch (e) {
-        logger.err(e.message);
-        if (!e.fixRecommendation.isNullOrEmpty) {
-          logger.info(e.fixRecommendation);
+        final flutterVersionString = await shorebirdFlutter
+            .getVersionAndRevision();
+        logger.info(
+          '''Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString''',
+        );
+        final FileSystemEntity releaseArtifact;
+        try {
+          releaseArtifact = await releaser.buildReleaseArtifacts();
+        } on ArtifactBuildException catch (e) {
+          logger.err(e.message);
+          if (!e.fixRecommendation.isNullOrEmpty) {
+            logger.info(e.fixRecommendation);
+          }
+          throw ProcessExit(ExitCode.software.code);
+        } on Exception catch (e) {
+          logger.err('Failed to build release artifacts: $e');
+          throw ProcessExit(ExitCode.software.code);
         }
-        throw ProcessExit(ExitCode.software.code);
-      } on Exception catch (e) {
-        logger.err('Failed to build release artifacts: $e');
-        throw ProcessExit(ExitCode.software.code);
-      }
 
-      final releaseVersion = await releaser.getReleaseVersion(
-        releaseArtifactRoot: releaseArtifact,
-      );
+        final releaseVersion = await releaser.getReleaseVersion(
+          releaseArtifactRoot: releaseArtifact,
+        );
 
-      // Ensure we can create a release from what we've built.
-      await ensureVersionIsReleasable(
-        version: releaseVersion,
-        flutterRevision: targetFlutterRevision,
-        releasePlatform: releaser.releaseType.releasePlatform,
-      );
+        // Ensure we can create a release from what we've built.
+        await ensureVersionIsReleasable(
+          version: releaseVersion,
+          flutterRevision: targetFlutterRevision,
+          releasePlatform: releaser.releaseType.releasePlatform,
+        );
 
-      final dryRun = results['dry-run'] == true;
-      if (dryRun) {
+        final dryRun = results['dry-run'] == true;
+        if (dryRun) {
+          logger
+            ..info('No issues detected.')
+            ..info('The server may enforce additional checks.');
+          throw ProcessExit(ExitCode.success.code);
+        }
+
+        // Ask the user to proceed (this is skipped when running via CI).
+        await confirmCreateRelease(
+          app: app,
+          releaseVersion: releaseVersion,
+          flutterVersion: targetFlutterRevision,
+          releasePlatform: releaser.releaseType.releasePlatform,
+        );
+
+        final release = await getOrCreateRelease(
+          version: releaseVersion,
+          releasePlatform: releaser.releaseType.releasePlatform,
+        );
+        await prepareRelease(release: release, releaser: releaser);
+        await releaser.uploadReleaseArtifacts(release: release, appId: appId);
+        await finalizeRelease(release: release, releaser: releaser);
+
         logger
-          ..info('No issues detected.')
-          ..info('The server may enforce additional checks.');
-        throw ProcessExit(ExitCode.success.code);
-      }
-
-      // Ask the user to proceed (this is skipped when running via CI).
-      await confirmCreateRelease(
-        app: app,
-        releaseVersion: releaseVersion,
-        flutterVersion: targetFlutterRevision,
-        releasePlatform: releaser.releaseType.releasePlatform,
-      );
-
-      final release = await getOrCreateRelease(
-        version: releaseVersion,
-        releasePlatform: releaser.releaseType.releasePlatform,
-      );
-      await prepareRelease(release: release, releaser: releaser);
-      await releaser.uploadReleaseArtifacts(release: release, appId: appId);
-      await finalizeRelease(release: release, releaser: releaser);
-
-      logger
-        ..success('''
+          ..success('''
 
 ✅ Published Release ${release.version}!''')
-        ..info(releaser.postReleaseInstructions);
+          ..info(releaser.postReleaseInstructions);
 
-      printPatchInstructions(
-        releaser: releaser,
-        releaseVersion: releaseVersion,
-        releaseType: releaser.releaseType,
-        flavor: flavor,
-        target: target,
-      );
-    }, values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)});
+        printPatchInstructions(
+          releaser: releaser,
+          releaseVersion: releaseVersion,
+          releaseType: releaser.releaseType,
+          flavor: flavor,
+          target: target,
+        );
+      },
+      values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
+    );
   }
 
   /// Validates arguments that are common to all release types.

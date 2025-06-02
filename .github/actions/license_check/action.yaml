@@ -1,0 +1,33 @@
+name: License Check Workflow
+description: Check licenses.
+
+inputs:
+  dart_sdk:
+    required: false
+    default: "stable"
+    description: "The dart sdk version to use"
+  working_directory:
+    required: false
+    default: "."
+    description: The working directory for this workflow
+
+runs:
+  using: "composite"
+  steps:
+    - name: 🎯 Setup Dart
+      uses: dart-lang/setup-dart@v1
+      with:
+        sdk: ${{ inputs.dart_sdk }}
+
+    - name: 📦 Install Dependencies
+      working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: dart pub get
+
+    - name: 📄 License Check
+      working-directory: ${{ inputs.working_directory }}
+      shell: ${{ inputs.shell }}
+      run: |
+        # https://github.com/VeryGoodOpenSource/very_good_cli/issues/1260
+        dart pub global activate -sgit https://github.com/VeryGoodOpenSource/very_good_cli.git --git-ref 5acb9d2cb35085d007be7dbd97499db444eb3d56
+        very_good packages check licenses --allowed="MIT,BSD-3-Clause,BSD-2-Clause,Apache-2.0" --dependency-type="direct-main,transitive"
