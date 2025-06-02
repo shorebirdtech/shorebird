@@ -23,7 +23,7 @@ dependencies:
   intl: ^0.20.2
   io: ^1.0.5
   json_annotation: ^4.9.0
-  json_path: ^0.7.5
+  json_path: ^0.7.6
   jwt:
     path: ../jwt
   mason_logger: ^0.3.3
@@ -54,7 +54,7 @@ dev_dependencies:
   json_serializable: ^6.9.5
   mocktail: ^1.0.3
   test: ^1.26.0
-  very_good_analysis: ^7.0.0
+  very_good_analysis: ^8.0.0
 
 executables:
   shorebird:
