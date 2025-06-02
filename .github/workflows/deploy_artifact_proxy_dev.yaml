@@ -55,6 +55,9 @@ jobs:
 
       - name: 🐳 Build and Push Container
         run: |-
+          # Copy pubspec.lock from workspace root into package to retain resolve package versions
+          # https://github.com/dart-lang/pub/issues/4357
+          cp ${{ github.workspace }}/pubspec.lock .
           docker build -t ${{ env.CONTAINER_REGISTRY }}/${{ env.PROJECT_ID }}/us.gcr.io/${{ env.SERVICE }}:${{ github.sha }} .
           docker push ${{ env.CONTAINER_REGISTRY }}/${{ env.PROJECT_ID }}/us.gcr.io/${{ env.SERVICE }}:${{ github.sha }}
 
