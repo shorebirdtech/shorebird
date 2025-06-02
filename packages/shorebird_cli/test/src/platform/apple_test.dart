@@ -169,7 +169,7 @@ To add macOS, run "flutter create . --platforms macos"''');
           );
           verify(
             () => logger.detail(
-              'Copying supplement file $classTableFilePath to ${releaseSnapshotDir.path}',
+              '''Copying supplement file $classTableFilePath to ${releaseSnapshotDir.path}''',
             ),
           ).called(1);
           // Logs about missing files

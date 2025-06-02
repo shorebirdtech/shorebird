@@ -37,6 +37,10 @@ inputs:
     required: false
     default: "vm"
     description: Platform to use when running tests
+  workspace_root:
+    required: false
+    default: "."
+    description: The root of the project workspace (if using Dart workspaces)
 
 runs:
   using: "composite"
@@ -61,19 +65,12 @@ runs:
       shell: ${{ inputs.shell }}
       run: dart analyze --fatal-warnings ${{inputs.analyze_directories}}
 
-    - name: 📄 License Check
-      working-directory: ${{ inputs.working_directory }}
-      shell: ${{ inputs.shell }}
-      run: |
-        dart pub global activate very_good_cli
-        very_good packages check licenses --allowed="MIT,BSD-3-Clause,BSD-2-Clause,Apache-2.0"
-
     - name: 🧪 Test
       working-directory: ${{ inputs.working_directory }}
       shell: ${{ inputs.shell }}
       run: |
         dart pub global activate coverage
-        dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}} && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.dart_tool/package_config.json --report-on=${{inputs.report_on}} --check-ignore
+        dart test -j ${{inputs.concurrency}} --coverage=coverage --platform=${{inputs.platform}} && dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=${{inputs.workspace_root}}/.dart_tool/package_config.json --report-on=${{inputs.report_on}} --check-ignore
 
     # Per https://stackoverflow.com/questions/73402042/github-action-expressions-split-string
     - name: 🔗 Split package name

@@ -175,6 +175,8 @@ void main() {
             );
             expect(unsignedMemoryIssue.fix, isNotNull);
             expect(
+              // This is just a very long method name.
+              // ignore: lines_longer_than_80_chars
               MacosEntitlementsValidator.hasAllowUnsignedExecutableMemoryEntitlement(
                 plistFile: releaseEntitlementsFile(),
               ),
@@ -182,6 +184,8 @@ void main() {
             );
             runWithOverrides(() => unsignedMemoryIssue.fix!());
             expect(
+              // This is just a very long method name.
+              // ignore: lines_longer_than_80_chars
               MacosEntitlementsValidator.hasAllowUnsignedExecutableMemoryEntitlement(
                 plistFile: releaseEntitlementsFile(),
               ),

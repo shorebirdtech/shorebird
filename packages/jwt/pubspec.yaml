@@ -2,6 +2,7 @@ name: jwt
 description: A Dart Json Web Token Library
 version: 1.0.0+1
 publish_to: none
+resolution: workspace
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
@@ -21,4 +22,3 @@ dev_dependencies:
   json_serializable: ^6.1.4
   path: ^1.9.0
   test: ^1.19.2
-  very_good_analysis: ^7.0.0

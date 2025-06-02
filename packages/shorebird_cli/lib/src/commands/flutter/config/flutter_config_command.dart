@@ -10,7 +10,7 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 class FlutterConfigCommand extends ShorebirdProxyCommand {
   @override
   String get description =>
-      'Configure Flutter settings. This proxies to the underlying `flutter config` command.';
+      '''Configure Flutter settings. This proxies to the underlying `flutter config` command.''';
 
   @override
   String get name => 'config';

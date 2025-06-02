@@ -309,7 +309,8 @@ void main() {
         });
 
         test(
-          'encodes the patch signing public key and forward it to buildIosFramework',
+          'encodes the patch signing public key and '
+          'forward it to buildIosFramework',
           () async {
             await runWithOverrides(
               () => iosFrameworkReleaser.buildReleaseArtifacts(),

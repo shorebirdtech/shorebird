@@ -11,6 +11,18 @@ on:
       - main
 
 jobs:
+  license_check:
+    name: 📄 License Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v4
+
+      - name: 👀 Check Licenses
+        uses: ./.github/actions/license_check
+        with:
+          working_directory: ${{ github.workspace }}
+
   semantic_pull_request:
     name: ✅ Semantic Pull Request
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
@@ -134,6 +146,7 @@ jobs:
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
+          workspace_root: ${{ github.workspace }}
 
   build_cross_platform_dart_packages:
     needs: changes
@@ -157,6 +170,7 @@ jobs:
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
+          workspace_root: ${{ github.workspace }}
 
   build_redis:
     needs: changes
@@ -186,6 +200,7 @@ jobs:
         with:
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
+          workspace_root: ${{ github.workspace }}
 
   verify_packages:
     needs: changes
@@ -211,6 +226,7 @@ jobs:
   ci:
     needs:
       [
+        license_check,
         semantic_pull_request,
         build_cross_platform_dart_packages,
         build_dart_packages,

@@ -1,0 +1,16 @@
+name: _
+publish_to: none
+environment:
+  sdk: ^3.8.0
+workspace:
+  - packages/artifact_proxy
+  - packages/discord_gcp_alerts
+  - packages/jwt
+  - packages/redis_client
+  - packages/scoped_deps
+  - packages/shorebird_cli
+  - packages/shorebird_code_push_client
+  - packages/shorebird_code_push_protocol
+
+dev_dependencies:
+  very_good_analysis: ^8.0.0

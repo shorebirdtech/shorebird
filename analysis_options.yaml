@@ -1,2 +1,12 @@
+include: package:very_good_analysis/analysis_options.8.0.0.yaml
 analyzer:
-  exclude: [bin/cache/**]
+  exclude:
+    - bin/cache/**
+    - lib/**.g.dart
+linter:
+  rules:
+    # Experimental and there are lots of false positives
+    specify_nonobvious_property_types: false
+formatter:
+  page_width: 80
+  trailing_commas: preserve

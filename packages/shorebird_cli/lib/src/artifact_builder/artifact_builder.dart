@@ -36,7 +36,8 @@ class ArtifactBuildException implements Exception {
 typedef ShorebirdBuildCommand = Future<void> Function();
 
 /// {@template apple_build_result}
-/// Metadata about the result of a `flutter build` invocation for an apple target.
+/// Metadata about the result of a `flutter build` invocation for an apple
+/// target.
 /// {@endtemplate}
 class AppleBuildResult {
   /// {@macro apple_build_result}
@@ -324,8 +325,8 @@ Reason: Exited with code $exitCode.''',
     String? base64PublicKey,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // Delete the .dart_tool directory to ensure that the app is rebuilt.
-    // This is necessary because we always look for a recently modified app.dill.
+    // Delete the .dart_tool directory to ensure that the app is rebuilt. This
+    // is necessary because we always look for a recently modified app.dill.
     final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
     if (dartToolDir.existsSync()) {
       dartToolDir.deleteSync(recursive: true);
@@ -388,8 +389,8 @@ Reason: Exited with code $exitCode.''',
     String? base64PublicKey,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // Delete the .dart_tool directory to ensure that the app is rebuilt.
-    // This is necessary because we always look for a recently modified app.dill.
+    // Delete the .dart_tool directory to ensure that the app is rebuilt. This
+    // is necessary because we always look for a recently modified app.dill.
     final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
     if (dartToolDir.existsSync()) {
       dartToolDir.deleteSync(recursive: true);
@@ -450,8 +451,8 @@ Reason: Exited with code $exitCode.''',
     String? base64PublicKey,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
-    // Delete the .dart_tool directory to ensure that the app is rebuilt.
-    // This is necessary because we always look for a recently modified app.dill.
+    // Delete the .dart_tool directory to ensure that the app is rebuilt. This
+    // is necessary because we always look for a recently modified app.dill.
     final dartToolDir = Directory(p.join(projectRoot.path, '.dart_tool'));
     if (dartToolDir.existsSync()) {
       dartToolDir.deleteSync(recursive: true);

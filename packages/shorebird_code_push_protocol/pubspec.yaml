@@ -2,6 +2,7 @@ name: shorebird_code_push_protocol
 description: Library which contains common interfaces used by Shorebird CodePush
 version: 0.1.0+1
 repository: https://github.com/shorebirdtech/shorebird
+resolution: workspace
 
 publish_to: none
 
@@ -19,4 +20,3 @@ dev_dependencies:
   json_serializable: ^6.6.1
   mocktail: ^1.0.0
   test: ^1.19.2
-  very_good_analysis: ^7.0.0

@@ -3,6 +3,7 @@ description: Intercept and proxy Flutter artifact requests.
 version: 1.0.0
 repository: https://github.com/shorebirdtech/shorebird/
 publish_to: "none"
+resolution: workspace
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
@@ -21,4 +22,3 @@ dev_dependencies:
   json_serializable: ^6.9.5
   mocktail: ^1.0.4
   test: ^1.25.15
-  very_good_analysis: ^7.0.0

@@ -28,7 +28,8 @@ class ShorebirdProcess {
   /// The underlying process wrapper.
   final ProcessWrapper processWrapper;
 
-  /// Starts a process, streams the output in real-time, and returns the exit code.
+  /// Starts a process, streams the output in real-time, and returns the exit
+  /// code.
   Future<int> stream(
     String executable,
     List<String> arguments, {
@@ -193,8 +194,8 @@ class ShorebirdProcess {
     if (executable.isEmpty) return executable;
     if (!platform.isWindows) return executable;
     if (executable.contains(' ') && !executable.contains('"')) {
-      // Use quoted strings to indicate where the file name ends and the arguments begin;
-      // otherwise, the file name is ambiguous.
+      // Use quoted strings to indicate where the file name ends and the
+      // arguments begin; otherwise, the file name is ambiguous.
       return '"$executable"';
     }
     return executable;

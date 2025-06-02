@@ -948,9 +948,9 @@ aar artifact already exists, continuing...''');
     }
   }
 
-  /// Publishes a patch to the Shorebird server.
-  /// This consists of creating a patch, uploading patch artifacts, and promoting
-  /// the patch to a specific channel based on the provided [track].
+  /// Publishes a patch to the Shorebird server. This consists of creating a
+  /// patch, uploading patch artifacts, and promoting the patch to a specific
+  /// channel based on the provided [track].
   Future<void> publishPatch({
     required String appId,
     required int releaseId,

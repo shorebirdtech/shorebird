@@ -30,7 +30,7 @@ void main() {
       expect(
         command.description,
         equals(
-          'Configure Flutter settings. This proxies to the underlying `flutter config` command.',
+          '''Configure Flutter settings. This proxies to the underlying `flutter config` command.''',
         ),
       );
     });
