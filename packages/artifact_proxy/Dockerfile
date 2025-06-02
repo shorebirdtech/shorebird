@@ -4,6 +4,11 @@ FROM dart:stable AS build
 
 WORKDIR /app
 
+# We explicitly disable workspace resolution and manually copy the pubspec.lock
+# to retain the resolved dependency versions.
+# See https://github.com/dart-lang/pub/issues/4357
+RUN echo "resolution: null" > 'pubspec_overrides.yaml'
+
 # Resolve app dependencies.
 COPY pubspec.* ./
 RUN dart pub get

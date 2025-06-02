@@ -3,7 +3,6 @@
 .dart_tool/
 .packages
 build/
-pubspec.lock
 
 # Test related files
 # Coverage directories used by Flutter & Dart tests
