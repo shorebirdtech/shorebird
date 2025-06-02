@@ -6,7 +6,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Open] instance.
-final openRef = create(Open.new);
+final ScopedRef<Open> openRef = create(Open.new);
 
 /// The [Open] instance available in the current zone.
 Open get open => read(openRef);

@@ -5,7 +5,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Git] instance.
-final gitRef = create(Git.new);
+final ScopedRef<Git> gitRef = create(Git.new);
 
 /// The [Git] instance available in the current zone.
 Git get git => read(gitRef);

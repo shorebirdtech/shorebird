@@ -47,7 +47,9 @@ class AppleBuildResult {
 }
 
 /// A reference to a [ArtifactBuilder] instance.
-final artifactBuilderRef = create(ArtifactBuilder.new);
+final ScopedRef<ArtifactBuilder> artifactBuilderRef = create(
+  ArtifactBuilder.new,
+);
 
 /// The [ArtifactBuilder] instance available in the current zone.
 ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);

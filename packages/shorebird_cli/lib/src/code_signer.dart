@@ -8,7 +8,7 @@ import 'package:pointycastle/pointycastle.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 
 /// A reference to a [CodeSigner] instance.
-final codeSignerRef = create(CodeSigner.new);
+final ScopedRef<CodeSigner> codeSignerRef = create(CodeSigner.new);
 
 /// The [CodeSigner] instance available in the current zone.
 CodeSigner get codeSigner => read(codeSignerRef);

@@ -4,7 +4,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Ditto] instance.
-final dittoRef = create(Ditto.new);
+final ScopedRef<Ditto> dittoRef = create(Ditto.new);
 
 /// The [Ditto] instance available in the current zone.
 Ditto get ditto => read(dittoRef);

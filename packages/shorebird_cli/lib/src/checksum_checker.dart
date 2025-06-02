@@ -4,7 +4,9 @@ import 'package:crypto/crypto.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 
 /// A reference to a [ChecksumChecker] instance.
-final checksumCheckerRef = create(ChecksumChecker.new);
+final ScopedRef<ChecksumChecker> checksumCheckerRef = create(
+  ChecksumChecker.new,
+);
 
 /// The [ChecksumChecker] instance available in the current zone.
 ChecksumChecker get checksumChecker => read(checksumCheckerRef);

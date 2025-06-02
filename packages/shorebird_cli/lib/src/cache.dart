@@ -31,7 +31,7 @@ class CacheUpdateFailure implements Exception {
 }
 
 /// A reference to a [Cache] instance.
-final cacheRef = create(Cache.new);
+final ScopedRef<Cache> cacheRef = create(Cache.new);
 
 /// The [Cache] instance available in the current zone.
 Cache get cache => read(cacheRef);

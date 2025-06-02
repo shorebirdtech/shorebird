@@ -6,7 +6,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// A reference to a [Doctor] instance.
-final doctorRef = create(Doctor.new);
+final ScopedRef<Doctor> doctorRef = create(Doctor.new);
 
 /// The [Doctor] instance available in the current zone.
 Doctor get doctor => read(doctorRef);

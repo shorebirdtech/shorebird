@@ -10,7 +10,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [ShorebirdProcess] instance.
-final processRef = create(ShorebirdProcess.new);
+final ScopedRef<ShorebirdProcess> processRef = create(ShorebirdProcess.new);
 
 /// The [ShorebirdProcess] instance available in the current zone.
 ShorebirdProcess get process => read(processRef);

@@ -8,7 +8,7 @@ import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Bundletool] instance.
-final bundletoolRef = create(Bundletool.new);
+final ScopedRef<Bundletool> bundletoolRef = create(Bundletool.new);
 
 /// The [Bundletool] instance available in the current zone.
 Bundletool get bundletool => read(bundletoolRef);

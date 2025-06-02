@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// A reference to a [ShorebirdEnv] instance.
-final shorebirdEnvRef = create(ShorebirdEnv.new);
+final ScopedRef<ShorebirdEnv> shorebirdEnvRef = create(ShorebirdEnv.new);
 
 /// The [ShorebirdEnv] instance available in the current zone.
 ShorebirdEnv get shorebirdEnv => read(shorebirdEnvRef);

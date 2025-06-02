@@ -15,7 +15,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [AotTools] instance.
-final aotToolsRef = create(AotTools.new);
+final ScopedRef<AotTools> aotToolsRef = create(AotTools.new);
 
 /// The [AotTools] instance available in the current zone.
 AotTools get aotTools => read(aotToolsRef);

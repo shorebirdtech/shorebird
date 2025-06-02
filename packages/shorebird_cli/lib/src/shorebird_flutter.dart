@@ -13,7 +13,9 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [ShorebirdFlutter] instance.
-final shorebirdFlutterRef = create(ShorebirdFlutter.new);
+final ScopedRef<ShorebirdFlutter> shorebirdFlutterRef = create(
+  ShorebirdFlutter.new,
+);
 
 /// The [ShorebirdFlutter] instance available in the current zone.
 ShorebirdFlutter get shorebirdFlutter => read(shorebirdFlutterRef);

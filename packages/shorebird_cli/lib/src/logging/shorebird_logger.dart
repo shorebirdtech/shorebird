@@ -7,7 +7,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [Logger] instance.
-final loggerRef = create(ShorebirdLogger.new);
+final ScopedRef<ShorebirdLogger> loggerRef = create(ShorebirdLogger.new);
 
 /// The [Logger] instance available in the current zone.
 ShorebirdLogger get logger => read(loggerRef);

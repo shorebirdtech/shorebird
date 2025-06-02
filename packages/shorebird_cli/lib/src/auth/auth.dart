@@ -24,7 +24,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 export 'ci_token.dart';
 
 /// A reference to an [Auth] instance.
-final authRef = create(Auth.new);
+final ScopedRef<Auth> authRef = create(Auth.new);
 
 /// The [Auth] instance available in the current zone.
 Auth get auth => read(authRef);

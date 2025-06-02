@@ -1,7 +1,9 @@
 import 'package:scoped_deps/scoped_deps.dart';
 
 /// A reference to an [EngineConfig] instance.
-final engineConfigRef = create(() => const EngineConfig.empty());
+final ScopedRef<EngineConfig> engineConfigRef = create(
+  () => const EngineConfig.empty(),
+);
 
 /// The [EngineConfig] instance available in the current zone.
 EngineConfig get engineConfig => read(engineConfigRef);

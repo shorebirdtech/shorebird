@@ -31,9 +31,8 @@ enum ShorebirdArtifact {
 }
 
 /// A reference to a [ShorebirdArtifacts] instance.
-final shorebirdArtifactsRef = create<ShorebirdArtifacts>(
-  ShorebirdCachedArtifacts.new,
-);
+final ScopedRef<ShorebirdArtifacts> shorebirdArtifactsRef =
+    create<ShorebirdArtifacts>(ShorebirdCachedArtifacts.new);
 
 /// The [ShorebirdArtifacts] instance available in the current zone.
 ShorebirdArtifacts get shorebirdArtifacts => read(shorebirdArtifactsRef);

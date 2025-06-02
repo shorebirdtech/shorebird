@@ -6,7 +6,7 @@ import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Adb] instance.
-final adbRef = create(Adb.new);
+final ScopedRef<Adb> adbRef = create(Adb.new);
 
 /// The [Adb] instance available in the current zone.
 Adb get adb => read(adbRef);

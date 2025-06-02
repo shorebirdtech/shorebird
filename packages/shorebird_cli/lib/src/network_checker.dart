@@ -13,7 +13,7 @@ import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 
 /// A reference to a [NetworkChecker] instance.
-final networkCheckerRef = create(NetworkChecker.new);
+final ScopedRef<NetworkChecker> networkCheckerRef = create(NetworkChecker.new);
 
 /// The [NetworkChecker] instance available in the current zone.
 NetworkChecker get networkChecker => read(networkCheckerRef);
@@ -35,7 +35,7 @@ class NetworkCheckerException implements Exception {
 /// {@endtemplate}
 class NetworkChecker {
   /// The URLs to check for network reachability.
-  static final urlsToCheck = [
+  static final List<Uri> urlsToCheck = [
     'https://api.shorebird.dev',
     'https://console.shorebird.dev',
     'https://oauth2.googleapis.com',

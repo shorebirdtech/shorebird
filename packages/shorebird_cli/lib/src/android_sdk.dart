@@ -16,7 +16,7 @@ const kAndroidHome = 'ANDROID_HOME';
 const kAndroidSdkRoot = 'ANDROID_SDK_ROOT';
 
 /// A reference to a [AndroidSdk] instance.
-final androidSdkRef = create(AndroidSdk.new);
+final ScopedRef<AndroidSdk> androidSdkRef = create(AndroidSdk.new);
 
 /// The [AndroidSdk] instance available in the current zone.
 AndroidSdk get androidSdk => read(androidSdkRef);
@@ -116,7 +116,7 @@ class AndroidSdk {
   }
 
   /// The path to the `adb` executable.
-  late final adbPath = getPlatformToolsPath(
+  late final String? adbPath = getPlatformToolsPath(
     platform.isWindows ? 'adb.exe' : 'adb',
   );
 

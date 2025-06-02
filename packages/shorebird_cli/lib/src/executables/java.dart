@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Java] instance.
-final javaRef = create(Java.new);
+final ScopedRef<Java> javaRef = create(Java.new);
 
 /// The [Java] instance available in the current zone.
 Java get java => read(javaRef);

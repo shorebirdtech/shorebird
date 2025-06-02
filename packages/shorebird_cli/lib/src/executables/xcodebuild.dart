@@ -6,7 +6,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [XcodeBuild] instance.
-final xcodeBuildRef = create(XcodeBuild.new);
+final ScopedRef<XcodeBuild> xcodeBuildRef = create(XcodeBuild.new);
 
 /// The [XcodeBuild] instance available in the current zone.
 XcodeBuild get xcodeBuild => read(xcodeBuildRef);

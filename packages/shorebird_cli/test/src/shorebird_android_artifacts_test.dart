@@ -510,7 +510,7 @@ void main() {
           () => shorebirdAndroidArtifacts.extractAar(
             packageName: packageName,
             buildNumber: buildNumber,
-            unzipFn: (_, __) async {},
+            unzipFn: (_, _) async {},
           ),
         );
 

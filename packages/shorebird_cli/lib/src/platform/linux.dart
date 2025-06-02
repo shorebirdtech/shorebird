@@ -18,7 +18,7 @@ const primaryLinuxReleaseArtifactArch = 'bundle';
 final minimumSupportedLinuxFlutterVersion = Version(3, 27, 4);
 
 /// A reference to a [Linux] instance.
-final linuxRef = create(Linux.new);
+final ScopedRef<Linux> linuxRef = create(Linux.new);
 
 /// The [Linux] instance available in the current zone.
 Linux get linux => read(linuxRef);

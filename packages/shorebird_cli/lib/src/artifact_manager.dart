@@ -16,7 +16,9 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:stream_transform/stream_transform.dart';
 
 /// A reference to a [ArtifactManager] instance.
-final artifactManagerRef = create(ArtifactManager.new);
+final ScopedRef<ArtifactManager> artifactManagerRef = create(
+  ArtifactManager.new,
+);
 
 /// The [ArtifactManager] instance available in the current zone.
 ArtifactManager get artifactManager => read(artifactManagerRef);

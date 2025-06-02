@@ -7,7 +7,7 @@ export 'logging_client.dart';
 export 'retrying_client.dart';
 
 /// A reference to a [http.Client] instance.
-final httpClientRef = create(
+final ScopedRef<http.Client> httpClientRef = create(
   () => retryingHttpClient(LoggingClient(httpClient: http.Client())),
 );
 

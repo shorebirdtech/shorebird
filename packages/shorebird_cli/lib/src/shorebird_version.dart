@@ -5,7 +5,9 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 
 /// A reference to a [ShorebirdVersion] instance.
-final shorebirdVersionRef = create(ShorebirdVersion.new);
+final ScopedRef<ShorebirdVersion> shorebirdVersionRef = create(
+  ShorebirdVersion.new,
+);
 
 /// The [ShorebirdVersion] instance available in the current zone.
 ShorebirdVersion get shorebirdVersion => read(shorebirdVersionRef);

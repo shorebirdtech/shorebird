@@ -4,7 +4,7 @@ import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 /// A reference to a [PubspecEditor] instance.
-final pubspecEditorRef = create(PubspecEditor.new);
+final ScopedRef<PubspecEditor> pubspecEditorRef = create(PubspecEditor.new);
 
 /// The [PubspecEditor] instance available in the current zone.
 PubspecEditor get pubspecEditor => read(pubspecEditorRef);

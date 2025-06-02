@@ -123,7 +123,7 @@ final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
 final minimumSupportedMacosFlutterVersion = Version(3, 27, 4);
 
 /// A reference to a [Apple] instance.
-final appleRef = create(Apple.new);
+final ScopedRef<Apple> appleRef = create(Apple.new);
 
 /// The [Apple] instance available in the current zone.
 Apple get apple => read(appleRef);

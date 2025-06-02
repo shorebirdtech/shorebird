@@ -6,7 +6,9 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [OperatingSystemInterface] instance.
-final osInterfaceRef = create(OperatingSystemInterface.new);
+final ScopedRef<OperatingSystemInterface> osInterfaceRef = create(
+  OperatingSystemInterface.new,
+);
 
 /// The [OperatingSystemInterface] instance available in the current zone.
 OperatingSystemInterface get osInterface => read(osInterfaceRef);

@@ -10,7 +10,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [IDeviceSysLog] instance.
-final idevicesyslogRef = create(IDeviceSysLog.new);
+final ScopedRef<IDeviceSysLog> idevicesyslogRef = create(IDeviceSysLog.new);
 
 /// The [IDeviceSysLog] instance available in the current zone.
 IDeviceSysLog get idevicesyslog => read(idevicesyslogRef);

@@ -47,7 +47,9 @@ class UnsupportedOperatingSystemException
 }
 
 /// A reference to a [ShorebirdValidator] instance.
-final shorebirdValidatorRef = create(ShorebirdValidator.new);
+final ScopedRef<ShorebirdValidator> shorebirdValidatorRef = create(
+  ShorebirdValidator.new,
+);
 
 /// The [ShorebirdValidator] instance available in the current zone.
 ShorebirdValidator get shorebirdValidator => read(shorebirdValidatorRef);

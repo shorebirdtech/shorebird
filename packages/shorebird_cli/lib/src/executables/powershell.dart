@@ -5,7 +5,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Powershell] instance.
-final powershellRef = create(Powershell.new);
+final ScopedRef<Powershell> powershellRef = create(Powershell.new);
 
 /// The [Powershell] instance available in the current zone.
 Powershell get powershell => read(powershellRef);

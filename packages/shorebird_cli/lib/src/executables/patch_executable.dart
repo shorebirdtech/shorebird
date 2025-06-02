@@ -6,7 +6,9 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [PatchExecutable] instance.
-final patchExecutableRef = create(PatchExecutable.new);
+final ScopedRef<PatchExecutable> patchExecutableRef = create(
+  PatchExecutable.new,
+);
 
 /// The [PatchExecutable] instance available in the current zone.
 PatchExecutable get patchExecutable => read(patchExecutableRef);

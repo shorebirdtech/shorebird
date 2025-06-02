@@ -39,7 +39,7 @@ Underlying exception: ${underlyingException ?? '(none)'}
 }
 
 /// A reference to a [Devicectl] instance.
-final devicectlRef = create(Devicectl.new);
+final ScopedRef<Devicectl> devicectlRef = create(Devicectl.new);
 
 /// The [Devicectl] instance available in the current zone.
 Devicectl get devicectl => read(devicectlRef);

@@ -10,7 +10,7 @@ import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/platform.dart';
 
 /// A reference to a [AndroidStudio] instance.
-final androidStudioRef = create(AndroidStudio.new);
+final ScopedRef<AndroidStudio> androidStudioRef = create(AndroidStudio.new);
 
 /// The [AndroidStudio] instance available in the current zone.
 AndroidStudio get androidStudio => read(androidStudioRef);

@@ -82,7 +82,8 @@ extension on String {
 }
 
 /// The reference to the [ShorebirdAndroidArtifacts] instance.
-final shorebirdAndroidArtifactsRef = create(ShorebirdAndroidArtifacts.new);
+final ScopedRef<ShorebirdAndroidArtifacts> shorebirdAndroidArtifactsRef =
+    create(ShorebirdAndroidArtifacts.new);
 
 /// The [ShorebirdAndroidArtifacts] instance available in the current zone.
 ShorebirdAndroidArtifacts get shorebirdAndroidArtifacts =>

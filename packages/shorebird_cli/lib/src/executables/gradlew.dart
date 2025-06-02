@@ -74,7 +74,7 @@ Make sure you have run "flutter build apk" at least once.''';
 }
 
 /// A reference to a [Gradlew] instance.
-final gradlewRef = create(Gradlew.new);
+final ScopedRef<Gradlew> gradlewRef = create(Gradlew.new);
 
 /// The [Gradlew] instance available in the current zone.
 Gradlew get gradlew => read(gradlewRef);
