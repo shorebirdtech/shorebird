@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'patch.g.dart';
@@ -8,7 +9,7 @@ part 'patch.g.dart';
 /// multiple patches can be published for a given app release version.
 /// {@endtemplate}
 @JsonSerializable()
-class Patch {
+class Patch extends Equatable {
   /// {@macro patch}
   const Patch({required this.id, required this.number, this.notes});
 
@@ -29,4 +30,7 @@ class Patch {
   ///
   /// This value is freeform text with no assumptions about content or format.
   final String? notes;
+
+  @override
+  List<Object?> get props => [id, number, notes];
 }
