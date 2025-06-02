@@ -3,7 +3,7 @@ FROM dart:stable AS build
 
 # Resolve app dependencies.
 WORKDIR /app
-RUN echo "workspace: null" > 'pubspec_overrides.yaml'
+RUN echo "resolution: null" > 'pubspec_overrides.yaml'
 COPY pubspec.* ./
 RUN dart pub get
 
