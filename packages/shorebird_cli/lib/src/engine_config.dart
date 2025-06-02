@@ -1,4 +1,3 @@
-import 'package:equatable/equatable.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 
 /// A reference to an [EngineConfig] instance.
@@ -12,7 +11,7 @@ EngineConfig get engineConfig => read(engineConfigRef);
 /// {@template engine_config}
 /// An object that contains a local engine configuration.
 /// {@endtemplate}
-class EngineConfig extends Equatable {
+class EngineConfig {
   /// {@macro engine_config}
   const EngineConfig({
     required this.localEngineSrcPath,
@@ -39,7 +38,4 @@ class EngineConfig extends Equatable {
   String toString() {
     return '''EngineConfig(localEngineSrcPath: $localEngineSrcPath, localEngine: $localEngine, localEngineHost: $localEngineHost)''';
   }
-
-  @override
-  List<Object?> get props => [localEngineSrcPath, localEngine, localEngineHost];
 }
