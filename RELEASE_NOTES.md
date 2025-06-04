@@ -4,6 +4,11 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.42 (June 4, 2025)
+
+- 📈 iOS linking improvements
+- 🩹 Fix crashes on x64 macs
+
 ## 1.6.41 (May 30, 2025)
 
 - 🐦 Support for Flutter 3.32.1
