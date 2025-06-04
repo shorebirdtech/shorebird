@@ -129,7 +129,7 @@ function upgrade_shorebird () (
   #  * STAMP_PATH is an empty file, or
   #  * Contents of STAMP_PATH is not what we are going to compile, or
   #  * pubspec.yaml last modified after pubspec.lock
-  if [[ ! -f "$SNAPSHOT_PATH" || ! -s "$STAMP_PATH" || "$(cat "$STAMP_PATH")" != "$compilekey" || "$SHOREBIRD_CLI_DIR/pubspec.yaml" -nt "$SHOREBIRD_CLI_DIR/pubspec.lock" ]]; then
+  if [[ ! -f "$SNAPSHOT_PATH" || ! -s "$STAMP_PATH" || "$(cat "$STAMP_PATH")" != "$compilekey" || "$SHOREBIRD_CLI_DIR/pubspec.yaml" -nt "$SHOREBIRD_ROOT/pubspec.lock" ]]; then
     # Waits for the update lock to be acquired. Placing this check inside the
     # conditional allows the majority of flutter/dart installations to bypass
     # the lock entirely, but as a result this required a second verification that
@@ -137,7 +137,7 @@ function upgrade_shorebird () (
     _wait_for_lock
 
     # A different shell process might have updated the tool/SDK.
-    if [[ -f "$SNAPSHOT_PATH" && -s "$STAMP_PATH" && "$(cat "$STAMP_PATH")" == "$compilekey" && "$SHOREBIRD_CLI_DIR/pubspec.yaml" -ot "$SHOREBIRD_CLI_DIR/pubspec.lock" ]]; then
+    if [[ -f "$SNAPSHOT_PATH" && -s "$STAMP_PATH" && "$(cat "$STAMP_PATH")" == "$compilekey" && "$SHOREBIRD_CLI_DIR/pubspec.yaml" -ot "$SHOREBIRD_ROOT/pubspec.lock" ]]; then
       exit $?
     fi
 
@@ -165,7 +165,7 @@ function upgrade_shorebird () (
     fi
 
     # Compile...
-    $DART_PATH --verbosity=error --disable-dart-dev --snapshot="$SNAPSHOT_PATH" --snapshot-kind="app-jit" --packages="$SHOREBIRD_CLI_DIR/.dart_tool/package_config.json" --no-enable-mirrors "$SCRIPT_PATH" > /dev/null
+    $DART_PATH --verbosity=error --disable-dart-dev --snapshot="$SNAPSHOT_PATH" --snapshot-kind="app-jit" --packages="$SHOREBIRD_ROOT/.dart_tool/package_config.json" --no-enable-mirrors "$SCRIPT_PATH" > /dev/null
     echo "$compilekey" > "$STAMP_PATH"
 
     # Delete any temporary snapshot path.
