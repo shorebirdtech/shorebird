@@ -67,7 +67,7 @@ function Test-ShorebirdNeedsUpdate {
     $snapshotFile = [System.IO.FileInfo] $snapshotPath
     $stampFile = [System.IO.FileInfo] $stampPath
     $pubspecFile = [System.IO.FileInfo] "$shorebirdCliDir\pubspec.yaml"
-    $pubspecLockFile = [System.IO.FileInfo] "$shorebirdCliDir\pubspec.lock"
+    $pubspecLockFile = [System.IO.FileInfo] "$shorebirdRootDir\pubspec.lock"
 
     Push-Location $shorebirdRootDir
     $compileKey = & { git rev-parse HEAD } -split
@@ -150,7 +150,7 @@ function Update-Shorebird {
     # the script here (instead of from the compiled snapshot) invalidates a lot of
     # assumptions we make about the cwd in the shorebird_cli tool.
     & $dart --verbosity=error --disable-dart-dev --snapshot="$snapshotPath" `
-        --snapshot-kind="app-jit" --packages="$shorebirdCliDir/.dart_tool/package_config.json" `
+        --snapshot-kind="app-jit" --packages="$shorebirdRootDir/.dart_tool/package_config.json" `
         --no-enable-mirrors "$shorebirdScript" completion > $null
 
     Write-Debug "writing $compileKey to $stampPath"
@@ -165,4 +165,4 @@ if (Test-ShorebirdNeedsUpdate) {
     Update-Shorebird
 }
 
-& $dart --disable-dart-dev --packages="$shorebirdCliDir\.dart_tool\package_config.json" "$snapshotPath" $args
+& $dart --disable-dart-dev --packages="$shorebirdRootDir\.dart_tool\package_config.json" "$snapshotPath" $args
