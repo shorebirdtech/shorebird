@@ -7,7 +7,7 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 ## 1.6.42 (June 4, 2025)
 
 - 📈 iOS linking improvements
-- 🩹 Fix crashes on x64 macs
+- 🩹 Fix crashes on non-arm64 platforms
 
 ## 1.6.41 (May 30, 2025)
 
