@@ -160,6 +160,9 @@ class RedisClient {
   /// The Redis Time Series commands.
   RedisTimeSeries get timeSeries => RedisTimeSeries._(client: this);
 
+  /// The Redis T-Digest commands.
+  RedisTDigest get tdigest => RedisTDigest._(client: this);
+
   /// Authenticate to the Redis server.
   /// Equivalent to the `AUTH` command.
   /// https://redis.io/commands/auth
@@ -885,6 +888,70 @@ class RedisTimeSeries {
         ),
         value: double.parse(value.payload),
       );
+    }).toList();
+  }
+}
+
+/// {@template redis_t_digest}
+/// A client for interacting with the Redis T-Digest data type.
+/// See https://redis.io/docs/latest/develop/data-types/probabilistic/t-digest
+/// {@endtemplate}
+class RedisTDigest {
+  /// {@macro redis_t_digest}
+  const RedisTDigest._({required RedisClient client}) : _client = client;
+
+  final RedisClient _client;
+
+  /// Create a new T-Digest.
+  /// Equivalent to the `TDIGEST.CREATE` command.
+  /// https://redis.io/commands/tdigest.create
+  Future<void> create({required String key, required int compression}) {
+    return _client.execute(['TDIGEST.CREATE', key, 'COMPRESSION', compression]);
+  }
+
+  /// Add one or more [observations] to the T-Digest specified by [key].
+  /// Equivalent to the `TDIGEST.ADD` command.
+  /// https://redis.io/commands/tdigest.add
+  Future<void> add({
+    required String key,
+    required List<double> observations,
+  }) {
+    return _client.execute([
+      'TDIGEST.ADD',
+      key,
+      ...observations.map((observation) => observation.toString()),
+    ]);
+  }
+
+  /// Reset the T-Digest specified by [key].
+  /// Equivalent to the `TDIGEST.RESET` command.
+  /// https://redis.io/commands/tdigest.reset
+  Future<void> reset({required String key}) {
+    return _client.execute(['TDIGEST.RESET', key]);
+  }
+
+  /// Compute the [quantiles] of the T-Digest specified by [key].
+  /// Returns a list of [quantiles] in the same order as the [quantiles] list.
+  /// If the T-Digest is empty, the returned list will contain `null` values.
+  /// Equivalent to the `TDIGEST.QUANTILE` command.
+  /// https://redis.io/commands/tdigest.quantile
+  Future<List<double?>> quantile({
+    required String key,
+    required List<double> quantiles,
+  }) async {
+    final results =
+        await _client.execute([
+              'TDIGEST.QUANTILE',
+              key,
+              ...quantiles.map((quantile) => quantile.toString()),
+            ])
+            as List<RespType>;
+
+    return results.map((result) {
+      if (result is RespBulkString && result.payload != null) {
+        return double.tryParse(result.payload!);
+      }
+      return null;
     }).toList();
   }
 }

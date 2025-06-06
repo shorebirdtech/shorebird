@@ -664,5 +664,43 @@ void main() {
         });
       });
     });
+
+    group('TDIGEST', () {
+      setUp(() async {
+        await client.connect();
+      });
+
+      tearDown(() async {
+        try {
+          await client.execute(['FLUSHALL SYNC']);
+        } on Exception {
+          // ignore
+        }
+      });
+
+      group('CREATE/ADD/RESET/QUANTILE', () {
+        const key = 't-digest';
+
+        test('computes quantiles', () async {
+          await expectLater(
+            client.tdigest.create(key: key, compression: 100),
+            completes,
+          );
+          await expectLater(
+            client.tdigest.add(key: key, observations: [1, 2, 3]),
+            completes,
+          );
+          await expectLater(
+            client.tdigest.quantile(key: key, quantiles: [0.5, 0.9]),
+            completion(equals([2.0, 3.0])),
+          );
+          await expectLater(client.tdigest.reset(key: key), completes);
+          await expectLater(
+            client.tdigest.quantile(key: key, quantiles: [0.5, 0.9]),
+            completion(equals([null, null])),
+          );
+        });
+      });
+    });
   });
 }
