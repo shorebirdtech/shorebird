@@ -89,6 +89,7 @@ words:
   - propertylistserialization
   - pubspec
   - pwsh
+  - quantiles
   - rdata
   - reactivecircus # From .github dir, doesn't show up in "**" check?
   - readlink
@@ -110,6 +111,7 @@ words:
   - subosito # From .github dir, doesn't show up in "**" check?
   - swiftshader # From .github dir, doesn't show up in "**" check?
   - sysroot
+  - tdigest
   - temurin # From .github dir, doesn't show up in "**" check?
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
