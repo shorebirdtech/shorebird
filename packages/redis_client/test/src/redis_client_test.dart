@@ -146,7 +146,10 @@ void main() {
       group('when keys match the pattern', () {
         setUp(() async {
           await client.set(key: 'foo', value: 'bar');
-          await client.set(key: 'foofoo', value: 'barbar');
+          await client.set(
+            key: 'foofoo', // cspell:disable-line
+            value: 'barbar', // cspell:disable-line
+          );
           await client.set(key: 'bar', value: 'baz');
         });
 
