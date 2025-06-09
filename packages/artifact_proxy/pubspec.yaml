@@ -9,7 +9,7 @@ environment:
   sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
-  checked_yaml: ^2.0.2
+  checked_yaml: ^2.0.4
   collection: ^1.19.1
   http: ^1.4.0
   json_annotation: ^4.9.0
