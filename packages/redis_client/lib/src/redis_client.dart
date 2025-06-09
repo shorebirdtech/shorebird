@@ -906,25 +906,6 @@ class RedisTimeSeries {
   }
 }
 
-// 1) "Compression"
-// 2) "1000"
-// 3) "Capacity"
-// 4) "6010"
-// 5) "Merged nodes"
-// 6) "0"
-// 7) "Unmerged nodes"
-// 8) "1"
-// 9) "Merged weight"
-// 10) "0"
-// 11) "Unmerged weight"
-// 12) "1"
-// 13) "Observations"
-// 14) "1"
-// 15) "Total compressions"
-// 16) "0"
-// 17) "Memory usage"
-// 18) "96168"
-
 /// {@template redis_t_digest_info}
 /// Information about a T-Digest.
 /// {@endtemplate}
