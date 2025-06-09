@@ -198,6 +198,9 @@ jobs:
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
         with:
+          # Tests all interact with the same Redis instance, so we need to
+          # run them sequentially to avoid conflicts.
+          concurrency: 1
           codecov_token: ${{ secrets.CODECOV_TOKEN }}
           working_directory: packages/${{ matrix.package }}
           workspace_root: ${{ github.workspace }}
