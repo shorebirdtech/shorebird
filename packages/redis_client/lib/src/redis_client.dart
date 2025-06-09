@@ -906,6 +906,53 @@ class RedisTimeSeries {
   }
 }
 
+// 1) "Compression"
+// 2) "1000"
+// 3) "Capacity"
+// 4) "6010"
+// 5) "Merged nodes"
+// 6) "0"
+// 7) "Unmerged nodes"
+// 8) "1"
+// 9) "Merged weight"
+// 10) "0"
+// 11) "Unmerged weight"
+// 12) "1"
+// 13) "Observations"
+// 14) "1"
+// 15) "Total compressions"
+// 16) "0"
+// 17) "Memory usage"
+// 18) "96168"
+
+/// {@template redis_t_digest_info}
+/// Information about a T-Digest.
+/// {@endtemplate}
+class RedisTDigestInfo {
+  /// {@macro redis_t_digest_info}
+  const RedisTDigestInfo({
+    required this.compression,
+    required this.capacity,
+    required this.mergedNodes,
+    required this.unmergedNodes,
+    required this.mergedWeight,
+    required this.unmergedWeight,
+    required this.observations,
+    required this.totalCompressions,
+    required this.memoryUsage,
+  });
+
+  final int compression;
+  final int capacity;
+  final int mergedNodes;
+  final int unmergedNodes;
+  final int mergedWeight;
+  final int unmergedWeight;
+  final int observations;
+  final int totalCompressions;
+  final int memoryUsage;
+}
+
 /// {@template redis_t_digest}
 /// A client for interacting with the Redis T-Digest data type.
 /// See https://redis.io/docs/latest/develop/data-types/probabilistic/t-digest
@@ -967,6 +1014,25 @@ class RedisTDigest {
       }
       return null;
     }).toList();
+  }
+
+  /// Get the info for the T-Digest specified by [key].
+  /// Equivalent to the `TDIGEST.INFO` command.
+  /// https://redis.io/commands/tdigest.info
+  Future<RedisTDigestInfo> info({required String key}) async {
+    final results =
+        await _client.execute(['TDIGEST.INFO', key]) as List<RespType>;
+    return RedisTDigestInfo(
+      compression: results[1].payload as int,
+      capacity: results[3].payload as int,
+      mergedNodes: results[5].payload as int,
+      unmergedNodes: results[7].payload as int,
+      mergedWeight: results[9].payload as int,
+      unmergedWeight: results[11].payload as int,
+      observations: results[13].payload as int,
+      totalCompressions: results[15].payload as int,
+      memoryUsage: results[17].payload as int,
+    );
   }
 }
 

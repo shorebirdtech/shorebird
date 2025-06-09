@@ -736,6 +736,31 @@ void main() {
           );
         });
       });
+
+      group('INFO', () {
+        const key = 't-digest';
+        const compression = 100;
+        const observations = [1.0, 2.0, 3.0];
+
+        setUp(() async {
+          await client.connect();
+          await client.tdigest.create(key: key, compression: compression);
+          await client.tdigest.add(key: key, observations: observations);
+        });
+
+        test('parses the t-digest info', () async {
+          final info = await client.tdigest.info(key: key);
+          expect(info.compression, equals(compression));
+          expect(info.capacity, greaterThan(0));
+          expect(info.mergedNodes, equals(0));
+          expect(info.unmergedNodes, equals(observations.length));
+          expect(info.mergedWeight, equals(0));
+          expect(info.unmergedWeight, equals(observations.length));
+          expect(info.observations, equals(observations.length));
+          expect(info.totalCompressions, equals(0));
+          expect(info.memoryUsage, greaterThan(0));
+        });
+      });
     });
   });
 }
