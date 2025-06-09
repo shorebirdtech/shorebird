@@ -125,7 +125,7 @@ void main() {
 
       tearDown(() async {
         try {
-          await client.execute(['FLUSHALL SYNC']);
+          await client.execute(['FLUSHALL', 'SYNC']);
         } on Exception {
           // ignore
         }
@@ -215,7 +215,7 @@ void main() {
 
       tearDown(() async {
         try {
-          await client.execute(['FLUSHALL SYNC']);
+          await client.execute(['FLUSHALL', 'SYNC']);
         } on Exception {
           // ignore
         }
@@ -265,7 +265,7 @@ void main() {
 
       tearDown(() async {
         try {
-          await client.execute(['FLUSHALL SYNC']);
+          await client.execute(['FLUSHALL', 'SYNC']);
         } on Exception {
           // ignore
         }
@@ -299,10 +299,7 @@ void main() {
 
       tearDown(() async {
         try {
-          for (final pair in kvPairs) {
-            await expectLater(client.delete(key: pair.key), completes);
-          }
-          await client.execute(['FLUSHALL SYNC']);
+          await client.execute(['FLUSHALL', 'SYNC']);
         } on Exception {
           // ignore
         }
@@ -329,7 +326,7 @@ void main() {
 
         tearDown(() async {
           try {
-            await client.execute(['FLUSHALL SYNC']);
+            await client.execute(['FLUSHALL', 'SYNC']);
           } on Exception {
             // ignore
           }
@@ -446,7 +443,7 @@ void main() {
 
         tearDown(() async {
           try {
-            await client.execute(['FLUSHALL SYNC']);
+            await client.execute(['FLUSHALL', 'SYNC']);
           } on Exception {
             // ignore
           }
@@ -710,7 +707,7 @@ void main() {
 
       tearDown(() async {
         try {
-          await client.execute(['FLUSHALL SYNC']);
+          await client.execute(['FLUSHALL', 'SYNC']);
         } on Exception {
           // ignore
         }
