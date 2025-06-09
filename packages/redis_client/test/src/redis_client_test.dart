@@ -133,11 +133,11 @@ void main() {
 
       group('when no keys match the pattern', () {
         test('returns an empty list', () async {
-          try {
-            await client.delete(key: 'foo');
-          } on Exception {
-            // ignore
-          }
+          // try {
+          //   await client.delete(key: 'foo');
+          // } on Exception {
+          //   // ignore
+          // }
           final keys = await client.keys(pattern: 'foo');
           expect(keys, isEmpty);
         });
