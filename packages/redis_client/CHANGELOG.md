@@ -1,3 +1,7 @@
+# 0.0.10
+
+- feat: add support for KEYS
+
 # 0.0.9
 
 - fix: expose RedisTDigest type
