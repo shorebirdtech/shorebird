@@ -1,3 +1,7 @@
+# 0.0.8
+
+- feat: add limited support for tdigest data structure
+
 # 0.0.7
 
 - feat: add new commands:
