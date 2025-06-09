@@ -118,6 +118,45 @@ void main() {
       });
     });
 
+    group('KEYS', () {
+      setUp(() async {
+        await client.connect();
+      });
+
+      tearDown(() async {
+        try {
+          await client.execute(['FLUSHALL SYNC']);
+        } on Exception {
+          // ignore
+        }
+      });
+
+      group('when no keys match the pattern', () {
+        test('returns an empty list', () async {
+          try {
+            await client.delete(key: 'foo');
+          } on Exception {
+            // ignore
+          }
+          final keys = await client.keys(pattern: 'foo');
+          expect(keys, isEmpty);
+        });
+      });
+
+      group('when keys match the pattern', () {
+        setUp(() async {
+          await client.set(key: 'foo', value: 'bar');
+          await client.set(key: 'foofoo', value: 'barbar');
+          await client.set(key: 'bar', value: 'baz');
+        });
+
+        test('returns the keys', () async {
+          final keys = await client.keys(pattern: 'foo*');
+          expect(keys, ['foo', 'foofoo']);
+        });
+      });
+    });
+
     group('AUTH', () {
       setUp(() async {
         await client.connect();

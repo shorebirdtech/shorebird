@@ -170,6 +170,20 @@ class RedisClient {
     return execute(['AUTH', username, password]);
   }
 
+  /// Returns all keys matching the given pattern.
+  /// Equivalent to the `KEYS` command.
+  /// https://redis.io/commands/keys
+  Future<List<String>> keys({required String pattern}) async {
+    final rawResult = await execute(['KEYS', pattern]) as List<RespType>;
+    return rawResult
+        .whereType<RespBulkString>()
+        .map(
+          (result) => result.payload,
+        )
+        .whereType<String>()
+        .toList();
+  }
+
   /// Set the value of a key.
   /// Equivalent to the `SET` command.
   /// https://redis.io/commands/set
