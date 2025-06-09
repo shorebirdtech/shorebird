@@ -118,6 +118,44 @@ void main() {
       });
     });
 
+    group('KEYS', () {
+      setUp(() async {
+        await client.connect();
+      });
+
+      tearDown(() async {
+        try {
+          await client.execute(['FLUSHALL', 'SYNC']);
+        } on Exception {
+          // ignore
+        }
+      });
+
+      group('when no keys match the pattern', () {
+        test('returns an empty list', () async {
+          final keys = await client.keys(pattern: 'foo');
+          expect(keys, isEmpty);
+        });
+      });
+
+      group('when keys match the pattern', () {
+        setUp(() async {
+          await client.set(key: 'foo', value: 'bar');
+          await client.set(
+            key: 'foofoo', // cspell:disable-line
+            value: 'barbar', // cspell:disable-line
+          );
+          await client.set(key: 'bar', value: 'baz');
+        });
+
+        test('returns the keys', () async {
+          final keys = await client.keys(pattern: 'foo*');
+          expect(keys.length, equals(2));
+          expect(keys, containsAll(['foo', 'foofoo'])); // cspell:disable-line
+        });
+      });
+    });
+
     group('AUTH', () {
       setUp(() async {
         await client.connect();
@@ -177,7 +215,7 @@ void main() {
 
       tearDown(() async {
         try {
-          await client.execute(['FLUSHALL SYNC']);
+          await client.execute(['FLUSHALL', 'SYNC']);
         } on Exception {
           // ignore
         }
@@ -227,7 +265,7 @@ void main() {
 
       tearDown(() async {
         try {
-          await client.execute(['FLUSHALL SYNC']);
+          await client.execute(['FLUSHALL', 'SYNC']);
         } on Exception {
           // ignore
         }
@@ -261,10 +299,7 @@ void main() {
 
       tearDown(() async {
         try {
-          for (final pair in kvPairs) {
-            await expectLater(client.delete(key: pair.key), completes);
-          }
-          await client.execute(['FLUSHALL SYNC']);
+          await client.execute(['FLUSHALL', 'SYNC']);
         } on Exception {
           // ignore
         }
@@ -291,7 +326,7 @@ void main() {
 
         tearDown(() async {
           try {
-            await client.execute(['FLUSHALL SYNC']);
+            await client.execute(['FLUSHALL', 'SYNC']);
           } on Exception {
             // ignore
           }
@@ -408,7 +443,7 @@ void main() {
 
         tearDown(() async {
           try {
-            await client.execute(['FLUSHALL SYNC']);
+            await client.execute(['FLUSHALL', 'SYNC']);
           } on Exception {
             // ignore
           }
@@ -672,7 +707,7 @@ void main() {
 
       tearDown(() async {
         try {
-          await client.execute(['FLUSHALL SYNC']);
+          await client.execute(['FLUSHALL', 'SYNC']);
         } on Exception {
           // ignore
         }
