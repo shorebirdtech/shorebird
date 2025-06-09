@@ -6,6 +6,7 @@ export 'src/redis_client.dart'
         RedisJson,
         RedisLogger,
         RedisSocketOptions,
+        RedisTDigest,
         RedisTimeSeries,
         RedisTimeSeriesAggregation,
         RedisTimeSeriesAggregator,
