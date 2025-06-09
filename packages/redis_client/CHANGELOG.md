@@ -1,3 +1,7 @@
+# 0.0.9
+
+- fix: expose RedisTDigest type
+
 # 0.0.8
 
 - feat: add limited support for tdigest data structure
