@@ -155,7 +155,8 @@ void main() {
 
         test('returns the keys', () async {
           final keys = await client.keys(pattern: 'foo*');
-          expect(keys, ['foo', 'foofoo']); // cspell:disable-line
+          expect(keys.length, equals(2));
+          expect(keys, containsAll(['foo', 'foofoo'])); // cspell:disable-line
         });
       });
     });
