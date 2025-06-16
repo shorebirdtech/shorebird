@@ -5,10 +5,11 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  workflow_dispatch:
-  schedule:
-    # At the end of every day
-    - cron: "0 0 * * *"
+  pull_request
+  # workflow_dispatch:
+  # schedule:
+  #   # At the end of every day
+  #   - cron: "0 0 * * *"
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
@@ -16,6 +17,7 @@ env:
 
 jobs:
   patch:
+    if: false
     strategy:
       fail-fast: false
       matrix:
