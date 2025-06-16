@@ -94,6 +94,23 @@ void main() {
     });
 
     group('getFlutterProjectRoot', () {
+      test('uses override when provided', () {
+        final tempDir = Directory.systemTemp.createTempSync();
+        final overridePubspec = File(
+          p.join(tempDir.path, 'override', 'pubspec.yaml'),
+        );
+        final override = overridePubspec.parent.path;
+        File(p.join(tempDir.path, 'pubspec.yaml')).createSync(recursive: true);
+        expect(
+          runWithOverrides(
+            () => ShorebirdEnv(
+              flutterProjectRootOverride: override,
+            ).getFlutterProjectRoot(),
+          ),
+          isA<Directory>().having((d) => d.path, 'absolute', override),
+        );
+      });
+
       test('returns null when no Flutter project exists', () {
         final tempDir = Directory.systemTemp.createTempSync();
         expect(

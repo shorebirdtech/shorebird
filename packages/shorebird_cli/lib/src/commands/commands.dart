@@ -1,4 +1,5 @@
 export 'cache/cache.dart';
+export 'create.dart';
 export 'doctor_command.dart';
 export 'flutter/flutter.dart';
 export 'init_command.dart';
