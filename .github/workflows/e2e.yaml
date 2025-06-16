@@ -12,7 +12,7 @@ on:
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
-  FLUTTER_VERSION: 3.32.3
+  FLUTTER_VERSION: 3.32.4
 
 jobs:
   patch:
@@ -21,6 +21,7 @@ jobs:
       matrix:
         flutter-version:
           [
+            3.32.4
             3.32.3,
             3.32.2,
             3.32.1,
