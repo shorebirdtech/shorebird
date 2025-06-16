@@ -10,7 +10,7 @@ environment:
   sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
-  decimal: ^3.0.2
+  decimal: ^3.2.2
   equatable: ^2.0.5
   json_annotation: ^4.8.1
   meta: ^1.16.0
