@@ -34,12 +34,16 @@ abstract class ShorebirdCommand extends Command<int> {
   // coverage:ignore-start
   @override
   ShorebirdCliCommandRunner? get runner =>
-      super.runner as ShorebirdCliCommandRunner?;
+      testRunner ?? super.runner as ShorebirdCliCommandRunner?;
   // coverage:ignore-end
 
   /// [ArgResults] used for testing purposes only.
   @visibleForTesting
   ArgResults? testArgResults;
+
+  /// The parent command runner used for testing purposes only.
+  @visibleForTesting
+  ShorebirdCliCommandRunner? testRunner;
 
   /// [ArgResults] for the current command.
   ArgResults get results => testArgResults ?? argResults!;

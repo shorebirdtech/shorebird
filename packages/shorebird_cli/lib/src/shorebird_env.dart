@@ -22,8 +22,11 @@ ShorebirdEnv get shorebirdEnv => read(shorebirdEnvRef);
 /// {@endtemplate}
 class ShorebirdEnv {
   /// {@macro shorebird_env}
-  const ShorebirdEnv({String? flutterRevisionOverride})
-    : _flutterRevisionOverride = flutterRevisionOverride;
+  const ShorebirdEnv({
+    String? flutterRevisionOverride,
+    String? flutterProjectRootOverride,
+  }) : _flutterRevisionOverride = flutterRevisionOverride,
+       _flutterProjectRootOverride = flutterProjectRootOverride;
 
   /// Copy the [ShorebirdEnv] and optionally override the flutter revision.
   ShorebirdEnv copyWith({String? flutterRevisionOverride}) => ShorebirdEnv(
@@ -32,6 +35,7 @@ class ShorebirdEnv {
   );
 
   final String? _flutterRevisionOverride;
+  final String? _flutterProjectRootOverride;
 
   /// The application config directory for the Shorebird CLI.
   Directory get configDirectory {
@@ -156,6 +160,9 @@ class ShorebirdEnv {
 
   /// Returns the root directory of the nearest Flutter project.
   Directory? getFlutterProjectRoot() {
+    if (_flutterProjectRootOverride != null) {
+      return Directory(_flutterProjectRootOverride);
+    }
     final file = findNearestAncestor(
       where: (path) => getPubspecYamlFile(cwd: Directory(path)),
     );
