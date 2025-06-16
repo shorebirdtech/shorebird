@@ -94,21 +94,14 @@ void main() {
       var cwd = subDirWithSpace.path;
 
       // Create the default flutter counter app
-      logger.info('running `flutter create $testAppName` in $cwd');
+      logger.info('running `shorebird create $testAppName` in $cwd');
       final createAppResult = runCommand(
-        'flutter create $testAppName',
+        'shorebird create $testAppName',
         workingDirectory: cwd,
       );
       expect(createAppResult.exitCode, equals(0));
 
       cwd = p.join(cwd, testAppName);
-
-      // Initialize Shorebird
-      final initShorebirdResult = runCommand(
-        'shorebird init --verbose',
-        workingDirectory: cwd,
-      );
-      expect(initShorebirdResult.exitCode, equals(0));
 
       final shorebirdYamlPath = p.join(cwd, 'shorebird.yaml');
       final shorebirdYamlText = File(shorebirdYamlPath).readAsStringSync();
