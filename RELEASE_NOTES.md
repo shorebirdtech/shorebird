@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.46 (June 17, 2025)
+
+- ✨ Add new `shorebird create` command
+
 ## 1.6.45 (June 16, 2025)
 
 - 🐦 Support for Flutter 3.32.4

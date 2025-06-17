@@ -76,6 +76,25 @@ void main() {
       verify(() => runner.run(['init'])).called(1);
     });
 
+    group('when passing --help', () {
+      setUp(() {
+        when(() => argResults.rest).thenReturn(['--help']);
+        when(
+          () => process.stream('flutter', ['create', '--help']),
+        ).thenAnswer((_) async => ExitCode.success.code);
+      });
+
+      test('only runs flutter create', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(equals(ExitCode.success.code)),
+        );
+
+        verify(() => process.stream('flutter', ['create', '--help'])).called(1);
+        verifyNever(() => runner.run(any()));
+      });
+    });
+
     group('when flutter create fails', () {
       setUp(() {
         when(

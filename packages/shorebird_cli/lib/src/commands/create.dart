@@ -25,6 +25,9 @@ class CreateCommand extends ShorebirdProxyCommand {
       ...results.rest,
     ]);
     if (createExitCode != ExitCode.success.code) return createExitCode;
+    if (results.rest.contains('-h') || results.rest.contains('--help')) {
+      return createExitCode;
+    }
     return runScoped(
       () => runner!.run(['init']),
       values: {
