@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.47 (June 17, 2025)
+
+- 🐦 Add app_id to patch path on desktop targets
+
 ## 1.6.46 (June 17, 2025)
 
 - ✨ Add new `shorebird create` command
