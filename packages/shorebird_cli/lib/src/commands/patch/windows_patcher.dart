@@ -73,6 +73,9 @@ class WindowsPatcher extends Patcher {
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final releaseDir = await artifactBuilder.buildWindowsApp(
+      flavor: flavor,
+      target: target,
+      args: argResults.forwardedArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
     return releaseDir.zipToTempFile();
