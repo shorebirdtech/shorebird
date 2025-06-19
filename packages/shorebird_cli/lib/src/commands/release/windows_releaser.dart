@@ -69,7 +69,6 @@ To change the version of this release, change your app's version in your pubspec
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() {
     return artifactBuilder.buildWindowsApp(
-      flavor: flavor,
       target: target,
       args: argResults.forwardedArgs,
       base64PublicKey: argResults.encodedPublicKey,

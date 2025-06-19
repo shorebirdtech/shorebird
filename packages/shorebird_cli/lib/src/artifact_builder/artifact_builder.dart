@@ -579,14 +579,19 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
   /// Builds a windows app and returns the x64 Release directory
   Future<Directory> buildWindowsApp({
-    String? flavor,
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final arguments = ['build', 'windows', '--release', ...args];
+      final arguments = [
+        'build',
+        'windows',
+        '--release',
+        if (target != null) '--target=$target',
+        ...args,
+      ];
 
       final exitCode = await process.stream(
         executable,

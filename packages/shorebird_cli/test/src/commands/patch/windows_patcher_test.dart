@@ -289,7 +289,6 @@ void main() {
         setUp(() {
           when(
             () => artifactBuilder.buildWindowsApp(
-              flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
@@ -319,7 +318,6 @@ void main() {
           )..createSync(recursive: true);
           when(
             () => artifactBuilder.buildWindowsApp(
-              flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
