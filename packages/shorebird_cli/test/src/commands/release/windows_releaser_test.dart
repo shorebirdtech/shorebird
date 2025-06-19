@@ -257,7 +257,6 @@ To change the version of this release, change your app's version in your pubspec
       setUp(() {
         when(
           () => artifactBuilder.buildWindowsApp(
-            flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             args: any(named: 'args'),
           ),
@@ -271,11 +270,30 @@ To change the version of this release, change your app's version in your pubspec
         expect(releaseDir, projectRoot);
       });
 
+      group('when target and flavor are specified', () {
+        const flavor = 'my-flavor';
+        const target = 'my-target';
+
+        setUp(() {
+          releaser = WindowsReleaser(
+            argResults: argResults,
+            flavor: flavor,
+            target: target,
+          );
+        });
+
+        test('builds correct artifacts', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+          verify(
+            () => artifactBuilder.buildWindowsApp(target: target, args: []),
+          ).called(1);
+        });
+      });
+
       group('when public key is passed as an arg', () {
         setUp(() {
           when(
             () => artifactBuilder.buildWindowsApp(
-              flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
@@ -297,7 +315,6 @@ To change the version of this release, change your app's version in your pubspec
           verify(
             () => artifactBuilder.buildWindowsApp(
               base64PublicKey: 'encoded_public_key',
-              flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               args: any(named: 'args'),
             ),

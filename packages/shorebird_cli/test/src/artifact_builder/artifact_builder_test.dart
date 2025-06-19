@@ -1453,6 +1453,23 @@ Reason: Exited with code 70.'''),
         ).thenAnswer((_) async => ExitCode.success.code);
       });
 
+      group('when target is provided', () {
+        test('forwards target to flutter command', () async {
+          await runWithOverrides(
+            () => builder.buildWindowsApp(target: 'target.dart'),
+          );
+
+          verify(
+            () => shorebirdProcess.stream('flutter', [
+              'build',
+              'windows',
+              '--release',
+              '--target=target.dart',
+            ], runInShell: false),
+          ).called(1);
+        });
+      });
+
       group('when flutter build fails', () {
         setUp(() {
           when(

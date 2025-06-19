@@ -286,7 +286,13 @@ void main() {
       group('when build fails', () {
         final exception = Exception('Failed to build Windows app');
         setUp(() {
-          when(() => artifactBuilder.buildWindowsApp()).thenThrow(exception);
+          when(
+            () => artifactBuilder.buildWindowsApp(
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).thenThrow(exception);
         });
 
         test('throws exception', () async {
@@ -310,7 +316,11 @@ void main() {
             ),
           )..createSync(recursive: true);
           when(
-            () => artifactBuilder.buildWindowsApp(),
+            () => artifactBuilder.buildWindowsApp(
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
           ).thenAnswer((_) async => releaseDir);
         });
 
@@ -321,6 +331,22 @@ void main() {
               isA<File>().having((f) => f.path, 'path', endsWith('.zip')),
             ),
           );
+        });
+
+        test('forwards additional args', () async {
+          when(
+            () => argResults.rest,
+          ).thenReturn(['--build-name=1.2.3', '--build-number=4']);
+          await runWithOverrides(() => patcher.buildPatchArtifact());
+          verify(
+            () => artifactBuilder.buildWindowsApp(
+              target: any(named: 'target'),
+              args: any(
+                named: 'args',
+                that: containsAll(['--build-name=1.2.3', '--build-number=4']),
+              ),
+            ),
+          ).called(1);
         });
       });
     });
