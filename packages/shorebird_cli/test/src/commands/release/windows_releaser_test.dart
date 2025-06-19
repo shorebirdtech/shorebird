@@ -282,7 +282,7 @@ To change the version of this release, change your app's version in your pubspec
           );
         });
 
-        test('builds artifacts with flavor and target', () async {
+        test('builds correct artifacts', () async {
           await runWithOverrides(releaser.buildReleaseArtifacts);
           verify(
             () => artifactBuilder.buildWindowsApp(target: target, args: []),
