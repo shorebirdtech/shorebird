@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.48 (June 19, 2025)
+
+- 🪟 Forward `--target` and additional args to build step on Windows
+
 ## 1.6.47 (June 17, 2025)
 
 - 🐦 Add app_id to patch path on desktop targets
