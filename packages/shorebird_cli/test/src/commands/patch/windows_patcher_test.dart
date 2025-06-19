@@ -86,7 +86,6 @@ void main() {
       registerFallbackValue(ShorebirdArtifact.genSnapshotMacosArm64);
       registerFallbackValue(Uri.parse('https://example.com'));
       registerFallbackValue(const WindowsArchiveDiffer());
-      registerFallbackValue(<String>[]);
     });
 
     setUp(() {
