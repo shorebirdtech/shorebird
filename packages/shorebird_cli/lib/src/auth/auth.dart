@@ -427,40 +427,45 @@ extension OauthAuthProvider on Jwt {
 extension OauthValues on AuthProvider {
   /// The OAuth 2.0 endpoints for the provider.
   oauth2.AuthEndpoints get authEndpoints => switch (this) {
+    (AuthProvider.github) => const GithubAuthEndpoints(),
     (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
     (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
   };
 
   /// The OAuth 2.0 client ID for the provider.
   oauth2.ClientId get clientId {
-    switch (this) {
-      case AuthProvider.google:
-        return oauth2.ClientId(
-          /// Shorebird CLI's OAuth 2.0 identifier for GCP,
-          '''523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com''',
+    return switch (this) {
+      (AuthProvider.github) => oauth2.ClientId(
+        'Iv23liH7s0t4UBiDQsn4',
+      ),
+      (AuthProvider.google) => oauth2.ClientId(
+        /// Shorebird CLI's OAuth 2.0 identifier for GCP,
+        '''523302233293-eia5antm0tgvek240t46orctktiabrek.apps.googleusercontent.com''',
 
-          /// Shorebird CLI's OAuth 2.0 secret for GCP.
-          ///
-          /// This isn't actually meant to be kept secret.
-          /// There is no way to properly secure a secret for installed/console applications.
-          /// Fortunately the OAuth2 flow used in this case assumes that the app
-          /// cannot keep secrets so this particular secret DOES NOT need to be
-          /// kept secret. You should however make sure not to re-use the same
-          /// secret anywhere secrecy is required.
-          ///
-          /// For more info see: https://developers.google.com/identity/protocols/oauth2/native-app
-          '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',
-        );
-      case AuthProvider.microsoft:
-        return oauth2.ClientId(
-          /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
-          '4fc38981-4ec4-4bd9-a755-e6ad9a413054',
-        );
-    }
+        /// Shorebird CLI's OAuth 2.0 secret for GCP.
+        ///
+        /// This isn't actually meant to be kept secret.
+        /// There is no way to properly secure a secret for installed/console applications.
+        /// Fortunately the OAuth2 flow used in this case assumes that the app
+        /// cannot keep secrets so this particular secret DOES NOT need to be
+        /// kept secret. You should however make sure not to re-use the same
+        /// secret anywhere secrecy is required.
+        ///
+        /// For more info see: https://developers.google.com/identity/protocols/oauth2/native-app
+        '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',
+      ),
+      (AuthProvider.microsoft) => oauth2.ClientId(
+        /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
+        '4fc38981-4ec4-4bd9-a755-e6ad9a413054',
+      ),
+    };
   }
 
   /// The OAuth 2.0 scopes for the provider.
   List<String> get scopes => switch (this) {
+    (AuthProvider.github) => [
+      'user:email',
+    ],
     (AuthProvider.google) => [
       'openid',
       'https://www.googleapis.com/auth/userinfo.email',
