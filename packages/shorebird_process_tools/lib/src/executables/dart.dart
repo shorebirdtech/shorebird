@@ -14,7 +14,7 @@ Dart get dart => read(dartRef);
 /// {@endtemplate}
 class DartFormatResult {
   /// {@macro dart_format_result}
-  DartFormatResult({
+  const DartFormatResult({
     required this.isFormattedCorrectly,
     required this.output,
   });
