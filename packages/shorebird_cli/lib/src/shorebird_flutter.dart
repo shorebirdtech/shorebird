@@ -5,12 +5,12 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 /// A reference to a [ShorebirdFlutter] instance.
 final shorebirdFlutterRef = create(ShorebirdFlutter.new);
@@ -75,7 +75,7 @@ class ShorebirdFlutter {
     );
 
     try {
-      await process.run(executable, [
+      await shorebirdProcess.run(executable, [
         'precache',
         ...precacheArgs,
       ], workingDirectory: targetDirectory.path);
@@ -103,7 +103,11 @@ class ShorebirdFlutter {
   /// parsed.
   Future<String?> getSystemVersion() async {
     const args = ['--version'];
-    final result = await process.run(executable, args, useVendedFlutter: false);
+    final result = await shorebirdProcess.run(
+      executable,
+      args,
+      useVendedFlutter: false,
+    );
 
     if (result.exitCode != 0) {
       throw ProcessException(
@@ -124,7 +128,7 @@ class ShorebirdFlutter {
   /// Executes `flutter config --list` and returns the output as a map.
   Map<String, dynamic> getConfig() {
     final args = ['config', '--list'];
-    final result = process.runSync(executable, args);
+    final result = shorebirdProcess.runSync(executable, args);
     // Gracefully handle errors (e.g. older Flutter versions that don't support
     // `flutter config --list`).
     if (result.exitCode != ExitCode.success.code) return <String, dynamic>{};

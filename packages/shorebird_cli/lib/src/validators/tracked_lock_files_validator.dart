@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/executables/git.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 /// Checks that .lock files (pubspec.lock, Podfile.lock) are tracked in source
 /// control if they exist and if the project is part of a git repository.

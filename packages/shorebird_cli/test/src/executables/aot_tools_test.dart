@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -30,7 +31,7 @@ void main() {
         body,
         values: {
           cacheRef.overrideWith(() => cache),
-          processRef.overrideWith(() => process),
+          shorebirdProcessRef.overrideWith(() => process),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           loggerRef.overrideWith(() => logger),

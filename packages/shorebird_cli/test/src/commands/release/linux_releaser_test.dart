@@ -58,7 +58,7 @@ void main() {
           doctorRef.overrideWith(() => doctor),
           linuxRef.overrideWith(() => linux),
           loggerRef.overrideWith(() => logger),
-          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdProcessRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),

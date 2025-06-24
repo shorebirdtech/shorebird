@@ -29,6 +29,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 Future<void> main(List<String> args) async {
   final loggingStdout = runScoped(
@@ -75,8 +76,8 @@ Command: shorebird ${args.join(' ')}
           networkCheckerRef,
           openRef,
           osInterfaceRef,
-          patchExecutableRef,
           patchDiffCheckerRef,
+          patchExecutableRef,
           platformRef,
           powershellRef,
           processRef,
@@ -85,6 +86,7 @@ Command: shorebird ${args.join(' ')}
           shorebirdArtifactsRef,
           shorebirdEnvRef,
           shorebirdFlutterRef,
+          shorebirdProcessRef,
           shorebirdToolsRef,
           shorebirdValidatorRef,
           shorebirdVersionRef,

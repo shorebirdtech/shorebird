@@ -7,12 +7,12 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 import 'package:test/test.dart';
 
 import 'mocks.dart';
@@ -39,7 +39,7 @@ void main() {
           gitRef.overrideWith(() => git),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
-          processRef.overrideWith(() => process),
+          shorebirdProcessRef.overrideWith(() => process),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );

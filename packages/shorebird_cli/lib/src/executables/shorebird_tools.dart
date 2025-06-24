@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 /// A reference to a [ShorebirdTools] instance.
 final shorebirdToolsRef = create(ShorebirdTools.new);
@@ -47,7 +48,7 @@ class ShorebirdTools {
   }
 
   Future<ShorebirdProcessResult> _run(List<String> args) {
-    return process.run(
+    return shorebirdProcess.run(
       shorebirdEnv.dartBinaryFile.path,
       ['run', 'shorebird_tools', 'package', ...args],
       workingDirectory: shorebirdToolsDirectory.path,

@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -31,7 +32,7 @@ void main() {
           androidSdkRef.overrideWith(() => androidSdk),
           cacheRef.overrideWith(() => cache),
           javaRef.overrideWith(() => java),
-          processRef.overrideWith(() => process),
+          shorebirdProcessRef.overrideWith(() => process),
         },
       );
     }

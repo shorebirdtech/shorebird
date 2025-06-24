@@ -70,7 +70,7 @@ void main() {
           loggerRef.overrideWith(() => logger),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
           powershellRef.overrideWith(() => powershell),
-          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdProcessRef.overrideWith(() => shorebirdProcess),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),

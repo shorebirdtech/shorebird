@@ -33,7 +33,7 @@ void main() {
         body,
         values: {
           loggerRef.overrideWith(() => logger),
-          processRef.overrideWith(() => process),
+          shorebirdProcessRef.overrideWith(() => process),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );

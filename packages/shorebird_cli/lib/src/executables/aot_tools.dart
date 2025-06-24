@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 /// A reference to a [AotTools] instance.
 final aotToolsRef = create(AotTools.new);
@@ -143,7 +144,7 @@ class AotTools {
       List<String> args, {
       String? workingDirectory,
     }) async {
-      final subprocess = await process.start(
+      final subprocess = await shorebirdProcess.start(
         exe,
         args,
         workingDirectory: workingDirectory,

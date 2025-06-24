@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 /// Exception thrown when the Gradle version is incompatible.
 class IncompatibleGradleException implements Exception {
@@ -102,7 +103,7 @@ class Gradlew {
     }
 
     final executablePath = executableFile.path;
-    final result = await process.run(
+    final result = await shorebirdProcess.run(
       executablePath,
       args,
       // Never run in shell because we always have a fully resolved
@@ -138,7 +139,7 @@ class Gradlew {
     }
 
     final executablePath = executableFile.path;
-    return process.stream(
+    return shorebirdProcess.stream(
       executablePath,
       args,
       // Never run in shell because we always have a fully resolved

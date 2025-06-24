@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/executables/devicectl/apple_device.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 import 'package:test/test.dart';
 
 import '../../mocks.dart';
@@ -31,7 +32,7 @@ void main() {
         body,
         values: {
           idevicesyslogRef.overrideWith(() => idevicesyslog),
-          processRef.overrideWith(() => process),
+          shorebirdProcessRef.overrideWith(() => process),
         },
       );
     }
@@ -341,7 +342,7 @@ void main() {
           values: {
             idevicesyslogRef.overrideWith(() => idevicesyslog),
             loggerRef.overrideWith(() => logger),
-            processRef.overrideWith(() => process),
+            shorebirdProcessRef.overrideWith(() => process),
           },
         );
       }

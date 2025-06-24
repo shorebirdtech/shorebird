@@ -2,6 +2,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -12,7 +13,10 @@ void main() {
     late Ditto ditto;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {processRef.overrideWith(() => process)});
+      return runScoped(
+        body,
+        values: {shorebirdProcessRef.overrideWith(() => process)},
+      );
     }
 
     setUp(() {

@@ -70,7 +70,7 @@ Please use "shorebird preview" instead.''');
     final flavor = results['flavor'] as String?;
     final target = results['target'] as String?;
     final dartDefines = results['dart-define'] as List<String>?;
-    final flutter = await process.start('flutter', [
+    final flutter = await shorebirdProcess.start('flutter', [
       'run',
       // Eventually we should support running in both debug and release mode.
       '--release',

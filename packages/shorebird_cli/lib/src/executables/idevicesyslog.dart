@@ -76,7 +76,7 @@ class IDeviceSysLog {
       'launching idevicesyslog with DYLD_LIBRARY_PATH=$_dyldPathEntry',
     );
 
-    final loggerProcess = await process.start(
+    final loggerProcess = await shorebirdProcess.start(
       idevicesyslogExecutable.path,
       [
         '-u',

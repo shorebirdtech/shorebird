@@ -61,7 +61,9 @@ class Java {
   String? get version {
     final javaExe = executable;
     if (javaExe == null) return null;
-    final javaVersionProcessResult = process.runSync(javaExe, ['-version']);
+    final javaVersionProcessResult = shorebirdProcess.runSync(javaExe, [
+      '-version',
+    ]);
     if (javaVersionProcessResult.exitCode == ExitCode.success.code) {
       // The version string is printed to stderr for some reason.
       return javaVersionProcessResult.stderr.toString();

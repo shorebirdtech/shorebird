@@ -28,6 +28,7 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -1820,7 +1821,7 @@ channel: ${DeploymentTrack.staging.channel}
               httpClientRef.overrideWith(() => httpClient),
               loggerRef.overrideWith(() => logger),
               platformRef.overrideWith(() => platform),
-              processRef.overrideWith(() => shorebirdProcess),
+              shorebirdProcessRef.overrideWith(() => shorebirdProcess),
               shorebirdEnvRef.overrideWith(() => shorebirdEnv),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
@@ -2269,7 +2270,7 @@ channel: ${DeploymentTrack.staging.channel}
               httpClientRef.overrideWith(() => httpClient),
               loggerRef.overrideWith(() => logger),
               platformRef.overrideWith(() => platform),
-              processRef.overrideWith(() => shorebirdProcess),
+              shorebirdProcessRef.overrideWith(() => shorebirdProcess),
               shorebirdEnvRef.overrideWith(() => shorebirdEnv),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },

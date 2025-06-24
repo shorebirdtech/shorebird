@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -25,7 +26,7 @@ void main() {
       return runScoped(
         () => body(),
         values: {
-          processRef.overrideWith(() => process),
+          shorebirdProcessRef.overrideWith(() => process),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           loggerRef.overrideWith(() => logger),
           shorebirdToolsRef,

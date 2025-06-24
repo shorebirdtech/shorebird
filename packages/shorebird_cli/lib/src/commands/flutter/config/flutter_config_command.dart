@@ -16,5 +16,6 @@ class FlutterConfigCommand extends ShorebirdProxyCommand {
   String get name => 'config';
 
   @override
-  FutureOr<int> run() => process.stream('flutter', ['config', ...results.rest]);
+  FutureOr<int> run() =>
+      shorebirdProcess.stream('flutter', ['config', ...results.rest]);
 }

@@ -18,7 +18,7 @@ class XcodeBuild {
 
   /// Get the current Xcode version.
   Future<String> version() async {
-    final result = await process.run(executable, ['-version']);
+    final result = await shorebirdProcess.run(executable, ['-version']);
     if (result.exitCode != ExitCode.success.code) {
       throw ProcessException(executable, ['-version'], '${result.stderr}');
     }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 /// A reference to a [Ditto] instance.
 final dittoRef = create(Ditto.new);
@@ -13,7 +14,7 @@ Ditto get ditto => read(dittoRef);
 /// https://ss64.com/mac/ditto.html
 class Ditto {
   Future<ShorebirdProcessResult> _exec(List<String> args) =>
-      process.run('ditto', args);
+      shorebirdProcess.run('ditto', args);
 
   /// Extracts the contents of a compressed archive at [source] to
   /// [destination].

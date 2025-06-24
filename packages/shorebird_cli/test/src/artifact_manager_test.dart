@@ -38,7 +38,7 @@ void main() {
           httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
           patchExecutableRef.overrideWith(() => patchExecutable),
-          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdProcessRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );
