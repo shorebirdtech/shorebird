@@ -116,3 +116,5 @@ class ProcessWrapper {
     return process.exitCode;
   }
 }
+
+// coverage:ignore-end
