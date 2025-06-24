@@ -4,13 +4,11 @@ import 'dart:io';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_process_tools/src/process.dart';
 
-// coverage:ignore-start
 /// A reference to a [Git] instance.
 final gitRef = create(Git.new);
 
 /// The [Git] instance available in the current zone.
 Git get git => read(gitRef);
-// coverage:ignore-end
 
 /// A wrapper around all git related functionality.
 class Git {

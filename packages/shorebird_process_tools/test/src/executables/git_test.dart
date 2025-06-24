@@ -36,6 +36,15 @@ void main() {
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
     });
 
+    group('scoped', () {
+      test('has access to git reference', () {
+        expect(
+          runScoped(() => git, values: {gitRef}),
+          isA<Git>(),
+        );
+      });
+    });
+
     group('clone', () {
       const url = 'https://github.com/shorebirdtech/shorebird';
       const outputDirectory = './output';
