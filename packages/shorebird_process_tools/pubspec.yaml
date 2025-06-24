@@ -11,14 +11,6 @@ environment:
 
 dependencies:
   scoped_deps: ^0.1.0
-  mason_logger: ^0.3.3
-  platform: ^3.1.6
-  path: ^1.9.1
-  collection: ^1.19.1
-  pub_semver: ^2.2.0
-  io: ^1.0.5
-  json_path: ^0.7.6
-  json_annotation: ^4.9.0
 
 dev_dependencies:
   mocktail: ^1.0.0
