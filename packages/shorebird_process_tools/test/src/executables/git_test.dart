@@ -9,6 +9,15 @@ import 'package:test/test.dart';
 import '../mocks.dart';
 
 void main() {
+  group('scoped', () {
+    test('has access to git reference', () {
+      expect(
+        runScoped(() => git, values: {gitRef}),
+        isA<Git>(),
+      );
+    });
+  });
+
   group(Git, () {
     late ShorebirdProcessResult processResult;
     late ProcessWrapper process;
@@ -34,15 +43,6 @@ void main() {
         ),
       ).thenAnswer((_) async => processResult);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
-    });
-
-    group('scoped', () {
-      test('has access to git reference', () {
-        expect(
-          runScoped(() => git, values: {gitRef}),
-          isA<Git>(),
-        );
-      });
     });
 
     group('clone', () {
