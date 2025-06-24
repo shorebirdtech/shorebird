@@ -1,0 +1,25 @@
+name: shorebird_process_tools
+description: Helpers for interacting with system utilities (e.g., git)
+version: 0.1.0
+repository: https://github.com/shorebirdtech/shorebird
+resolution: workspace
+
+publish_to: none
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  scoped_deps: ^0.1.0
+  mason_logger: ^0.3.3
+  platform: ^3.1.6
+  path: ^1.9.1
+  collection: ^1.19.1
+  pub_semver: ^2.2.0
+  io: ^1.0.5
+  json_path: ^0.7.6
+  json_annotation: ^4.9.0
+
+dev_dependencies:
+  mocktail: ^1.0.0
+  test: ^1.19.2
