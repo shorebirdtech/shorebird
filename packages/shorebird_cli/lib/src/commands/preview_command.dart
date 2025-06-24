@@ -392,9 +392,9 @@ This is only applicable when previewing Android releases.''',
 
     final executableFile = appDirectory.listSync().whereType<File>().first;
 
-    await process.run('chmod', ['+x', executableFile.path]);
+    await shorebirdProcess.run('chmod', ['+x', executableFile.path]);
 
-    final proc = await process.start(executableFile.path, []);
+    final proc = await shorebirdProcess.start(executableFile.path, []);
     proc.stdout.listen((log) => logger.info(utf8.decode(log)));
     proc.stderr.listen((log) => logger.err(utf8.decode(log)));
     return proc.exitCode;
@@ -463,7 +463,7 @@ This is only applicable when previewing Android releases.''',
       (file) => file.path.endsWith('.exe'),
     );
 
-    final proc = await process.start(exeFile.path, []);
+    final proc = await shorebirdProcess.start(exeFile.path, []);
     proc.stdout.listen((log) => logger.info(utf8.decode(log)));
     proc.stderr.listen((log) => logger.err(utf8.decode(log)));
     return proc.exitCode;

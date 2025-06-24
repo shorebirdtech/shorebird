@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 /// A reference to a [Powershell] instance.
 final powershellRef = create(Powershell.new);
@@ -20,7 +21,7 @@ class Powershell {
     List<String> arguments, {
     String? workingDirectory,
   }) async {
-    final result = await process.run(executable, arguments);
+    final result = await shorebirdProcess.run(executable, arguments);
     if (result.exitCode != ExitCode.success.code) {
       throw ProcessException(
         executable,

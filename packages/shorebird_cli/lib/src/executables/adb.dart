@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 /// A reference to a [Adb] instance.
 final adbRef = create(Adb.new);
@@ -17,14 +18,14 @@ class Adb {
     final adbPath = androidSdk.adbPath;
     if (adbPath == null) throw Exception('Unable to locate adb.');
 
-    return process.run(adbPath, command.split(' '));
+    return shorebirdProcess.run(adbPath, command.split(' '));
   }
 
   Future<Process> _stream(String command) async {
     final adbPath = androidSdk.adbPath;
     if (adbPath == null) throw Exception('Unable to locate adb.');
 
-    return process.start(adbPath, command.split(' '));
+    return shorebirdProcess.start(adbPath, command.split(' '));
   }
 
   /// Clears the app data for the given [package] name.

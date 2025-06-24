@@ -21,9 +21,9 @@ class Open {
       p.join(path, 'Contents', 'MacOS'),
     ).listSync().firstWhere((f) => f is File);
 
-    await process.start('open', ['-n', path]);
+    await shorebirdProcess.start('open', ['-n', path]);
 
-    final logStreamProcess = await process.start('log', [
+    final logStreamProcess = await shorebirdProcess.start('log', [
       'stream',
       '--style=compact',
       '--process',

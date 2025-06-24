@@ -5,6 +5,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -21,7 +22,7 @@ void main() {
         () => body(),
         values: {
           platformRef.overrideWith(() => platform),
-          processRef.overrideWith(() => process),
+          shorebirdProcessRef.overrideWith(() => process),
         },
       );
     }

@@ -112,7 +112,7 @@ abstract class Validator {
   /// Checks for [ValidationIssue]s.
   ///
   /// Returns an empty list if no issues are found.
-  /// Not all validators use [process].
+  /// Not all validators use [shorebirdProcess].
   Future<List<ValidationIssue>> validate();
 
   /// Whether it makes sense to run the validator in the current working

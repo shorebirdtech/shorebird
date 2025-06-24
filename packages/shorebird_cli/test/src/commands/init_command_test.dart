@@ -65,7 +65,7 @@ environment:
           appleRef.overrideWith(() => apple),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
-          processRef.overrideWith(() => process),
+          shorebirdProcessRef.overrideWith(() => shorebirdProcess),
           pubspecEditorRef.overrideWith(() => pubspecEditor),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),

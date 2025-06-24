@@ -133,7 +133,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
             () => runCommand(topLevelResults),
             values: {
               engineConfigRef.overrideWith(() => engineConfig),
-              processRef.overrideWith(() => process),
+              shorebirdProcessRef.overrideWith(() => process),
               shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
             },
           ) ??

@@ -41,6 +41,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 class MockAccessCredentials extends Mock implements AccessCredentials {}
 

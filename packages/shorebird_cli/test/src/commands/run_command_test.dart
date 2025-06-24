@@ -34,7 +34,7 @@ void main() {
         values: {
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
-          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdProcessRef.overrideWith(() => shorebirdProcess),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );

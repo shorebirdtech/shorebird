@@ -251,7 +251,7 @@ allowed to access $storageUrl.''');
     }
 
     if (!platform.isWindows && isExecutable) {
-      final result = await process.start('chmod', ['+x', file.path]);
+      final result = await shorebirdProcess.start('chmod', ['+x', file.path]);
       await result.exitCode;
     }
 

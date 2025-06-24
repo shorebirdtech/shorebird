@@ -119,7 +119,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         ...args,
       ];
 
-      final exitCode = await process.stream(
+      final exitCode = await shorebirdProcess.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
@@ -189,7 +189,7 @@ Reason: Exited with code $exitCode.''',
         ...args,
       ];
 
-      final exitCode = await process.stream(
+      final exitCode = await shorebirdProcess.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
@@ -251,7 +251,7 @@ Reason: Exited with code $exitCode.''',
         ...args,
       ];
 
-      final exitCode = await process.stream(
+      final exitCode = await shorebirdProcess.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
@@ -291,7 +291,7 @@ Reason: Exited with code $exitCode.''',
         ...args,
       ];
 
-      final exitCode = await process.stream(
+      final exitCode = await shorebirdProcess.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
@@ -344,7 +344,7 @@ Reason: Exited with code $exitCode.''',
         ...args,
       ];
       final buildStart = clock.now();
-      final exitCode = await process.stream(
+      final exitCode = await shorebirdProcess.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
@@ -410,7 +410,7 @@ Reason: Exited with code $exitCode.''',
       ];
 
       final buildStart = clock.now();
-      final exitCode = await process.stream(
+      final exitCode = await shorebirdProcess.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
@@ -469,7 +469,7 @@ Reason: Exited with code $exitCode.''',
       ];
 
       final buildStart = clock.now();
-      final exitCode = await process.stream(
+      final exitCode = await shorebirdProcess.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),
@@ -531,7 +531,7 @@ Reason: Exited with code $exitCode.''',
 
     final arguments = ['--no-version-check', 'pub', 'get', '--offline'];
 
-    final result = await process.run(
+    final result = await shorebirdProcess.run(
       executable,
       arguments,
       useVendedFlutter: false,
@@ -562,7 +562,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       appDillPath,
     ];
 
-    final exitCode = await process.stream(
+    final exitCode = await shorebirdProcess.stream(
       shorebirdArtifacts.getArtifactPath(artifact: genSnapshotArtifact),
       arguments,
       // Never run in shell because we always have a fully resolved
@@ -593,7 +593,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         ...args,
       ];
 
-      final exitCode = await process.stream(
+      final exitCode = await shorebirdProcess.stream(
         executable,
         arguments,
         environment: base64PublicKey?.toPublicKeyEnv(),

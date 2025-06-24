@@ -20,7 +20,7 @@ class CreateCommand extends ShorebirdProxyCommand {
 
   @override
   Future<int> run() async {
-    final createExitCode = await process.stream('flutter', [
+    final createExitCode = await shorebirdProcess.stream('flutter', [
       'create',
       ...results.rest,
     ]);

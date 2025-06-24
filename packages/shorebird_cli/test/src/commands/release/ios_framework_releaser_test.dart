@@ -63,7 +63,7 @@ void main() {
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
-          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdProcessRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),

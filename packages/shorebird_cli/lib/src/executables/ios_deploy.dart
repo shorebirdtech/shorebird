@@ -170,7 +170,7 @@ Or run on an iOS simulator without code signing
     });
 
     try {
-      launchProcess = await process.start(iosDeployExecutable.path, [
+      launchProcess = await shorebirdProcess.start(iosDeployExecutable.path, [
         '--debug',
         if (deviceId != null) ...['--id', deviceId],
         '-r', // uninstall the app before reinstalling and clear app data
@@ -320,7 +320,7 @@ Or run on an iOS simulator without code signing
     const arguments = ['precache', '--ios'];
     final progress = logger.progress('Installing ios-deploy');
 
-    final result = await process.run(executable, arguments);
+    final result = await shorebirdProcess.run(executable, arguments);
 
     if (result.exitCode != ExitCode.success.code) {
       progress.fail();

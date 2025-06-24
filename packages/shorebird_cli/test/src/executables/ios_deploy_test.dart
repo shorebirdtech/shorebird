@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -33,7 +34,7 @@ void main() {
         values: {
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
-          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdProcessRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
         },
       );

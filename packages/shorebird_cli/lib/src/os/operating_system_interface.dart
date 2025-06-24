@@ -39,7 +39,7 @@ abstract class OperatingSystemInterface {
 class _PosixOperatingSystemInterface implements OperatingSystemInterface {
   @override
   String? which(String executableName) {
-    final result = process.runSync('which', [executableName]);
+    final result = shorebirdProcess.runSync('which', [executableName]);
     if (result.exitCode != ExitCode.success.code) {
       return null;
     }
@@ -51,7 +51,7 @@ class _PosixOperatingSystemInterface implements OperatingSystemInterface {
 class _WindowsOperatingSystemInterface implements OperatingSystemInterface {
   @override
   String? which(String executableName) {
-    final result = process.runSync('where.exe', [executableName]);
+    final result = shorebirdProcess.runSync('where.exe', [executableName]);
     if (result.exitCode != ExitCode.success.code) {
       return null;
     }

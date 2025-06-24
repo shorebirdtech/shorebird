@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/java.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_process_tools/shorebird_process_tools.dart';
 
 /// A reference to a [Bundletool] instance.
 final bundletoolRef = create(Bundletool.new);
@@ -25,7 +26,7 @@ class Bundletool {
     final javaExecutable = java.executable ?? 'java';
     final androidSdkPath = androidSdk.path;
 
-    return process.run(
+    return shorebirdProcess.run(
       javaExecutable,
       ['-jar', bundletool, ...command],
       // Never run in shell because we always have a fully resolved

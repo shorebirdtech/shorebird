@@ -55,7 +55,7 @@ class Devicectl {
   /// Whether the `devicectl` command is available.
   Future<bool> _isAvailable() async {
     try {
-      final result = await process.run(executableName, [
+      final result = await shorebirdProcess.run(executableName, [
         ...baseArgs,
         '--version',
       ]);
@@ -249,7 +249,7 @@ class Devicectl {
     final tempDir = Directory.systemTemp.createTempSync();
     final jsonOutputFile = File(p.join(tempDir.path, 'devicectl.out.json'));
 
-    final result = await process.run(executableName, [
+    final result = await shorebirdProcess.run(executableName, [
       ...args,
       '--json-output',
       jsonOutputFile.path,

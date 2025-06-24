@@ -29,7 +29,7 @@ void main() {
         values: {
           androidStudioRef.overrideWith(() => androidStudio),
           osInterfaceRef.overrideWith(() => osInterface),
-          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdProcessRef.overrideWith(() => shorebirdProcess),
           platformRef.overrideWith(() => platform),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },

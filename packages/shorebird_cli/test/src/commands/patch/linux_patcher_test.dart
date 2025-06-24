@@ -66,7 +66,7 @@ void main() {
           linuxRef.overrideWith(() => linux),
           loggerRef.overrideWith(() => logger),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
-          processRef.overrideWith(() => shorebirdProcess),
+          shorebirdProcessRef.overrideWith(() => shorebirdProcess),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),

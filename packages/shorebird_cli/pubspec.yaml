@@ -42,6 +42,8 @@ dependencies:
     path: ../shorebird_code_push_client
   shorebird_code_push_protocol:
     path: ../shorebird_code_push_protocol
+  shorebird_process_tools:
+    path: ../shorebird_process_tools
   stream_transform: ^2.1.1
   uuid: ^4.5.1
   xml: ^6.5.0

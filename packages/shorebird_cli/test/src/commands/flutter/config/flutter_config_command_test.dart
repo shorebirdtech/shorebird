@@ -15,7 +15,10 @@ void main() {
     late FlutterConfigCommand command;
 
     R runWithOverrides<R>(R Function() body) {
-      return runScoped(body, values: {processRef.overrideWith(() => process)});
+      return runScoped(
+        body,
+        values: {shorebirdProcessRef.overrideWith(() => process)},
+      );
     }
 
     setUp(() {
