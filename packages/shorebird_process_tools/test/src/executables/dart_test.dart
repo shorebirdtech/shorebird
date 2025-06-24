@@ -8,6 +8,15 @@ import 'package:test/test.dart';
 import '../mocks.dart';
 
 void main() {
+  group('scoped', () {
+    test('has access to dart reference', () {
+      expect(
+        runScoped(() => dart, values: {dartRef}),
+        isA<Dart>(),
+      );
+    });
+  });
+
   group(Dart, () {
     late ProcessWrapper processWrapper;
     late ShorebirdProcessResult processResult;
@@ -38,13 +47,6 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => processResult);
-    });
-
-    test('has access to dart reference', () {
-      expect(
-        runScoped(() => dart, values: {dartRef}),
-        isA<Dart>(),
-      );
     });
 
     test('has correct executable name', () {
