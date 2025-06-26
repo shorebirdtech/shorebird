@@ -4,6 +4,11 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.49 (June 26, 2025)
+
+- 🐦 Support for Flutter 3.32.5
+- 🧹 Various dependency upgrades
+
 ## 1.6.48 (June 19, 2025)
 
 - 🪟 Forward `--target` and additional args to build step on Windows
