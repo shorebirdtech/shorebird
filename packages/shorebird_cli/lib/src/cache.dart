@@ -372,7 +372,7 @@ class BundleToolArtifact extends CachedArtifact {
 
   @override
   String get storageUrl {
-    return 'https://github.com/google/bundletool/releases/download/1.17.1/bundletool-all-1.17.1.jar';
+    return 'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar';
   }
 
   @override
@@ -383,5 +383,5 @@ class BundleToolArtifact extends CachedArtifact {
       // ```shell
       // shasum --algorithm 256 /path/to/file
       // ```
-      '''45881ead13388872d82c4255b195488b7fc33f2cac5a9a977b0afc5e92367592''';
+      '''675786493983787ffa11550bdb7c0715679a44e1643f3ff980a529e9c822595c''';
 }
