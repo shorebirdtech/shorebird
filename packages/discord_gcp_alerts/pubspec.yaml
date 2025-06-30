@@ -14,7 +14,7 @@ dependencies:
   shelf_router: ^1.1.0
 
 dev_dependencies:
-  build_runner: ^2.5.3
+  build_runner: ^2.5.4
   json_serializable: ^6.9.5
   mocktail: ^1.0.4
   test: ^1.25.15

@@ -18,7 +18,7 @@ dependencies:
   ttl_cache: ^0.3.0
 
 dev_dependencies:
-  build_runner: ^2.5.3
+  build_runner: ^2.5.4
   json_serializable: ^6.1.4
   path: ^1.9.0
   test: ^1.19.2
