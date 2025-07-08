@@ -36,6 +36,7 @@ abstract class Releaser {
   Version? get minimumFlutterVersion => null;
 
   /// The type of artifact we are creating a release for.
+  /// Just adding this comment to trigger a ci build
   ReleaseType get releaseType;
 
   /// The root directory of the current project.
