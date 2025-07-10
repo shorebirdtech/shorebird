@@ -4,6 +4,12 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.50 (July 10, 2025)
+
+- 🐦 Support for Flutter 3.32.6
+- 📦 Update bundletool from 1.17.1 to 1.18.1
+- 🧹 Remove legacy, deprecated `shorebird run` command
+
 ## 1.6.49 (June 26, 2025)
 
 - 🐦 Support for Flutter 3.32.5
