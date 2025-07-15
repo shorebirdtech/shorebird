@@ -4,6 +4,12 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.51 (July 15, 2025)
+
+- 🪟 Fixes a Windows bug where large build identifiers (the `4` in `1.2.3+4`)
+  would be misreported due to overflow. You are only affected if you publish
+  Windows desktop apps and use build identifers greater than 65,525 (2^16 - 1).
+
 ## 1.6.50 (July 10, 2025)
 
 - 🐦 Support for Flutter 3.32.6
