@@ -128,8 +128,8 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is 3.27.2', () {
-        expect(releaser.minimumFlutterVersion, Version(3, 27, 2));
+      test('is 3.32.6', () {
+        expect(releaser.minimumFlutterVersion, Version(3, 32, 6));
       });
     });
 
