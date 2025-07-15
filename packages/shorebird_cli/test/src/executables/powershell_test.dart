@@ -93,12 +93,12 @@ void main() {
           });
 
           test(
-            'returns the version string with build number 0 added',
+            'returns the version string without a build number',
             () async {
               final version = await runWithOverrides(
                 () => powershell.getExeVersionString(File('')),
               );
-              expect(version, '1.0.0+0');
+              expect(version, '1.0.0');
             },
           );
         });
