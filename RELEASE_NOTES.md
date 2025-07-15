@@ -8,7 +8,7 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 - 🪟 Fixes a Windows bug where large build identifiers (the `4` in `1.2.3+4`)
   would be misreported due to overflow. You are only affected if you publish
-  Windows desktop apps and use build identifers greater than 65,525 (2^16 - 1).
+  Windows desktop apps and use build identifiers greater than 65,525 (2^16 - 1).
 
 ## 1.6.50 (July 10, 2025)
 
