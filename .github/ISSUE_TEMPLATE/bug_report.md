@@ -5,7 +5,7 @@ title: "fix: "
 labels: bug
 ---
 
-App ID: (insert the app ID from your shorebird.yaml here)
+App ID: (insert the app_id from your shorebird.yaml here)
 
 **Description**
 
