@@ -10,4 +10,4 @@ import 'package:pub_semver/pub_semver.dart';
 const primaryWindowsReleaseArtifactArch = 'win_archive';
 
 /// The minimum allowed Flutter version for creating Windows releases.
-final minimumSupportedWindowsFlutterVersion = Version(3, 27, 2);
+final minimumSupportedWindowsFlutterVersion = Version(3, 32, 6);
