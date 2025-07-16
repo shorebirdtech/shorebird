@@ -23,6 +23,6 @@ class CreateAppRequest {
   /// The display name of the app.
   final String displayName;
 
-  /// The id of organization that this app will belong to. asdf
+  /// The id of organization that this app will belong to.
   final int organizationId;
 }
