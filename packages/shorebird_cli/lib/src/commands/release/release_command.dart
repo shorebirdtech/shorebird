@@ -263,7 +263,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     // This command handles logging, we don't need to provide our own
     // progress, error logs, etc.
     final app = await codePushClientWrapper.getApp(appId: appId);
-    final targetFlutterRevision = await resolveTargetFlutterRevision();
+    final targetFlutterRevision = await resolveTargetFlutterRevision(
+      flutterVersionArg,
+    );
     try {
       await shorebirdFlutter.installRevision(revision: targetFlutterRevision);
     } on Exception {
@@ -368,48 +370,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
     // Ask the releaser to assert its own args are valid.
     await releaser.assertArgsAreValid();
-  }
-
-  /// Determines which Flutter version to use for the release. This will be
-  /// either the version specified by the user or the version provided by
-  /// [shorebirdEnv]. Will exit with [ExitCode.software] if the version
-  /// specified by the user is not found/supported.
-  Future<String> resolveTargetFlutterRevision() async {
-    if (flutterVersionArg == 'latest') return shorebirdEnv.flutterRevision;
-    if (flutterVersionArg == 'system') {
-      return flutterVersionFromSystemFlutter(process);
-    }
-    if (flutterVersionArg == 'fvm') {
-      return flutterVersionFromFVMFlutter(process);
-    }
-
-    final String? revision;
-    try {
-      revision = await shorebirdFlutter.resolveFlutterRevision(
-        flutterVersionArg,
-      );
-    } on Exception catch (error) {
-      logger.err('''
-Unable to determine revision for Flutter version: $flutterVersionArg.
-$error''');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    if (revision == null) {
-      final openIssueLink = link(
-        uri: Uri.parse(
-          'https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=feat%3A+',
-        ),
-        message: 'open an issue',
-      );
-      logger.err('''
-Version $flutterVersionArg not found. Please $openIssueLink to request a new version.
-Use `shorebird flutter versions list` to list available versions.
-''');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
-    return revision;
   }
 
   /// Asserts that a release with version [version] can be released using
@@ -586,4 +546,46 @@ ${summary.join('\n')}
       '''To create a patch for this release, run ${lightCyan.wrap('$baseCommand --release-version=$releaseVersion')}''',
     );
   }
+}
+
+/// Determines which Flutter version to use for the release. This will be
+/// either the version specified by the user or the version provided by
+/// [shorebirdEnv]. Will exit with [ExitCode.software] if the version
+/// specified by the user is not found/supported.
+Future<String> resolveTargetFlutterRevision(String versionArg) async {
+  if (versionArg == 'latest') return shorebirdEnv.flutterRevision;
+  if (versionArg == 'system') {
+    return flutterVersionFromSystemFlutter(process);
+  }
+  if (versionArg == 'fvm') {
+    return flutterVersionFromFVMFlutter(process);
+  }
+
+  final String? revision;
+  try {
+    revision = await shorebirdFlutter.resolveFlutterRevision(
+      versionArg,
+    );
+  } on Exception catch (error) {
+    logger.err('''
+Unable to determine revision for Flutter version: $versionArg.
+$error''');
+    throw ProcessExit(ExitCode.software.code);
+  }
+
+  if (revision == null) {
+    final openIssueLink = link(
+      uri: Uri.parse(
+        'https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=feature&projects=&template=feature_request.md&title=feat%3A+',
+      ),
+      message: 'open an issue',
+    );
+    logger.err('''
+Version $versionArg not found. Please $openIssueLink to request a new version.
+Use `shorebird flutter versions list` to list available versions.
+''');
+    throw ProcessExit(ExitCode.software.code);
+  }
+
+  return revision;
 }
