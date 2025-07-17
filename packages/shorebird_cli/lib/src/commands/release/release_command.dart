@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/executables/flutter_version.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -21,6 +22,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
@@ -95,7 +97,12 @@ class ReleaseCommand extends ShorebirdCommand {
         help: '''
 The Flutter version to use when building the app (e.g: 3.16.3).
 This option also accepts Flutter commit hashes (e.g. 611a4066f1).
-Defaults to "latest" which builds using the latest stable Flutter version.''',
+Note that the commit hash is for Shorebird's fork of Flutter, not upstream.
+Also accepts special values:
+  * "system" calls `flutter --version` to get the version.
+  * "fvm" calls `fvm flutter --version` to get the version.
+  * "latest" builds using the latest stable Flutter version.
+''',
       )
       ..addOption(
         'artifact',
@@ -369,6 +376,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
   /// specified by the user is not found/supported.
   Future<String> resolveTargetFlutterRevision() async {
     if (flutterVersionArg == 'latest') return shorebirdEnv.flutterRevision;
+    if (flutterVersionArg == 'system') {
+      return flutterVersionFromSystemFlutter(process);
+    }
+    if (flutterVersionArg == 'fvm') {
+      return flutterVersionFromFVMFlutter(process);
+    }
 
     final String? revision;
     try {
