@@ -10,14 +10,21 @@ import 'package:shorebird_cli/src/shorebird_process.dart';
 /// Engine • revision 8cd19e509d (5 weeks ago) • 2025-06-12 16:30:12 -0700
 /// Tools • Dart 3.8.1 • DevTools 2.45.1
 /// ```
+String? maybeParseFlutterVersionFromOutput(String output) {
+  final flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
+  final match = flutterVersionRegex.firstMatch(output);
+  return match?.group(1);
+}
+
+/// Parses the output of `flutter --version` to get the version number.
+/// Unlike [maybeParseFlutterVersionFromOutput], this method throws an exception
+/// if the version cannot be parsed.
 String parseFlutterVersionFromOutput(String output) {
-  final lines = output.split('\n');
-  for (final line in lines) {
-    if (line.contains('Flutter')) {
-      return line.split(' ')[1].trim();
-    }
+  final version = maybeParseFlutterVersionFromOutput(output);
+  if (version == null) {
+    throw Exception('Failed to parse Flutter version from output: $output');
   }
-  throw Exception('Failed to parse Flutter version from output: $output');
+  return version;
 }
 
 /// Returns the Flutter version from a system-installed Flutter if available.
