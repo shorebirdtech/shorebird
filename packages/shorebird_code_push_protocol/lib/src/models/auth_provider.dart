@@ -1,5 +1,8 @@
 /// The authentication provider used to sign in the user.
 enum AuthProvider {
+  /// GitHub OAuth.
+  github('GitHub'),
+
   /// The user authenticated using their Google account with our GCP project.
   google('Google'),
 
