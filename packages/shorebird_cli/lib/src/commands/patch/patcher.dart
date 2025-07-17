@@ -30,7 +30,7 @@ abstract class Patcher {
   });
 
   /// Link percentage below which a warning is issued.
-  static const double linkPercentageWarningThreshold = 75;
+  static const double linkPercentageWarningThreshold = 90;
 
   /// The standard link percentage warning.
   static String lowLinkPercentageWarning(double linkPercentage) {
