@@ -4,6 +4,11 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.52 (July 17, 2025)
+
+- 🐦 Support for Flutter 3.32.7
+- 📈 Increase minimum link percentage threshold to 90%
+
 ## 1.6.51 (July 15, 2025)
 
 - 🪟 Fixes a Windows bug where large build identifiers (the `4` in `1.2.3+4`)
