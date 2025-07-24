@@ -272,7 +272,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     }
 
     // If a user explicitly specified --build-name (and optionally
-    // --build-number) We ensure that the version is releasable to avoid
+    // --build-number), we ensure that the version is releasable to avoid
     // unnecessarily waiting for a build.
     if (buildName != null) {
       final version = buildName!;
