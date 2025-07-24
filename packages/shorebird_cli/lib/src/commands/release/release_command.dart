@@ -236,6 +236,14 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   /// The flutter version specified.
   String get flutterVersionArg => results['flutter-version'] as String;
 
+  /// The build name specified via `--build-name`.
+  String? get buildName =>
+      results[CommonArguments.buildNameArg.name] as String?;
+
+  /// The build number specified via `--build-number.
+  String? get buildNumber =>
+      results[CommonArguments.buildNumberArg.name] as String?;
+
   /// The workflow to create a new release for a Shorebird app.
   ///
   /// Expectations for methods invoked by this command:
@@ -261,6 +269,18 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       await shorebirdFlutter.installRevision(revision: targetFlutterRevision);
     } on Exception {
       throw ProcessExit(ExitCode.software.code);
+    }
+
+    // If a user explicitly specified --build-name (and optionally
+    // --build-number) We ensure that the version is releasable to avoid
+    // unnecessarily waiting for a build.
+    if (buildName != null) {
+      final version = buildName!;
+      await ensureVersionIsReleasable(
+        version: buildNumber != null ? '$version+$buildNumber' : version,
+        flutterRevision: targetFlutterRevision,
+        releasePlatform: releaser.releaseType.releasePlatform,
+      );
     }
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
