@@ -4,6 +4,11 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.53 (July 24, 2025)
+
+- ⚡️ fail fast if existing release already exists
+  - only applies when specifying `--build-name` (and optionally `--build-number`)
+
 ## 1.6.52 (July 17, 2025)
 
 - 🐦 Support for Flutter 3.32.7
