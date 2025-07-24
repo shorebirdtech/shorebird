@@ -18,6 +18,7 @@ import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -244,6 +245,58 @@ void main() {
         verifyNever(
           () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
         );
+      });
+    });
+
+    group('when --build-name is provided and existing release exists', () {
+      final existingRelease = Release(
+        id: 0,
+        appId: appId,
+        version: releaseVersion,
+        flutterRevision: flutterRevision,
+        flutterVersion: flutterVersionString,
+        displayName: '1.2.3+1',
+        platformStatuses: const {
+          ReleasePlatform.android: ReleaseStatus.active,
+        },
+        createdAt: DateTime(2023),
+        updatedAt: DateTime(2023),
+      );
+      setUp(() {
+        when(
+          () => argResults[CommonArguments.buildNameArg.name],
+        ).thenReturn('1.2.3');
+        when(
+          () => argResults[CommonArguments.buildNumberArg.name],
+        ).thenReturn('1');
+
+        when(
+          () => codePushClientWrapper.maybeGetRelease(
+            appId: appId,
+            releaseVersion: releaseVersion,
+          ),
+        ).thenAnswer((_) async => existingRelease);
+
+        when(
+          () => codePushClientWrapper.ensureReleaseIsNotActive(
+            release: existingRelease,
+            platform: ReleasePlatform.android,
+          ),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('fails fast instead of building', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          exitsWithCode(ExitCode.software),
+        );
+        verify(
+          () => codePushClientWrapper.ensureReleaseIsNotActive(
+            release: existingRelease,
+            platform: ReleasePlatform.android,
+          ),
+        ).called(1);
+        verifyNever(() => releaser.buildReleaseArtifacts());
       });
     });
 
