@@ -139,7 +139,7 @@ void main() {
             ),
           );
 
-          verify(() => logger.confirm('continue anyway?')).called(1);
+          verify(() => logger.confirm('Continue anyway?')).called(1);
         });
 
         test('does not prompt user if allowNativeChanges is true', () async {
@@ -153,7 +153,7 @@ void main() {
             ),
           );
 
-          verifyNever(() => logger.confirm('continue anyway?'));
+          verifyNever(() => logger.confirm('Continue anyway?'));
         });
 
         test(
@@ -174,7 +174,7 @@ void main() {
               throwsA(isA<UserCancelledException>()),
             );
 
-            verify(() => logger.confirm('continue anyway?')).called(1);
+            verify(() => logger.confirm('Continue anyway?')).called(1);
           },
         );
 
@@ -237,7 +237,7 @@ void main() {
             ),
           );
 
-          verify(() => logger.confirm('continue anyway?')).called(1);
+          verify(() => logger.confirm('Continue anyway?')).called(1);
         });
 
         test('does not prompt user if allowAssetChanges is true', () async {
@@ -251,7 +251,7 @@ void main() {
             ),
           );
 
-          verifyNever(() => logger.confirm('continue anyway?'));
+          verifyNever(() => logger.confirm('Continue anyway?'));
         });
 
         test(
@@ -272,7 +272,7 @@ void main() {
               throwsA(isA<UserCancelledException>()),
             );
 
-            verify(() => logger.confirm('continue anyway?')).called(1);
+            verify(() => logger.confirm('Continue anyway?')).called(1);
           },
         );
 
