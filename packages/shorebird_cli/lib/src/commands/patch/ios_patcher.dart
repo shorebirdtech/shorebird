@@ -144,7 +144,7 @@ This may indicate that the patch contains native changes, which cannot be applie
           throw UnpatchableChangeException();
         }
 
-        if (!logger.confirm('continue anyway?')) {
+        if (!logger.confirm('Continue anyway?')) {
           throw UserCancelledException();
         }
       }
