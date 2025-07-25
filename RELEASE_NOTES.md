@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.55 (July 25, 2025)
+
+- 🐦 Support for Flutter 3.32.8
+
 ## 1.6.54 (July 25, 2025)
 
 - Performance improvements for very large (50k+ function) applications
