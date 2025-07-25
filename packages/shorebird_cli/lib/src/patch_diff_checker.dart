@@ -94,7 +94,7 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
           throw UnpatchableChangeException();
         }
 
-        if (!logger.confirm('Continue anyways?')) {
+        if (!logger.confirm('continue anyway?')) {
           throw UserCancelledException();
         }
       }
@@ -116,7 +116,7 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
           throw UnpatchableChangeException();
         }
 
-        if (!logger.confirm('Continue anyways?')) {
+        if (!logger.confirm('continue anyway?')) {
           throw UserCancelledException();
         }
       }
