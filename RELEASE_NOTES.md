@@ -4,6 +4,20 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.55 (July 25, 2025)
+
+- 🐦 Support for Flutter 3.32.8
+
+## 1.6.54 (July 25, 2025)
+
+- Performance improvements for very large (50k+ function) applications
+  - Multi-second reduction in patch load time (startup speed)
+  - Multi-minute reduction in patch compile time.
+  - Small reduction in patch memory use and disk space requirements.
+
+Apps need to make a new release with Flutter 3.32.7 or later to benefit from
+these improvements.
+
 ## 1.6.53 (July 24, 2025)
 
 - ⚡️ fail fast if existing release already exists
