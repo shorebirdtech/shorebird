@@ -21,7 +21,7 @@ It certainly could be expanded to support more of the Stripe API.
 Currently hand-rolled, but we could consider generating it from
 Stripe's OpenAPI spec in the future.
 
-This is not currently published on pub, just developed in the open in hopes of
+This is not currently published on [pub.dev](https://pub.dev), just developed in the open in hopes of
 saving someone else time.
 
 ## Join us on Discord! 💬
