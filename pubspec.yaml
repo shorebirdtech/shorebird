@@ -11,6 +11,7 @@ workspace:
   - packages/shorebird_cli
   - packages/shorebird_code_push_client
   - packages/shorebird_code_push_protocol
+  - packages/stripe_api
 
 dev_dependencies:
   very_good_analysis: ^9.0.0

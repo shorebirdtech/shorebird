@@ -22,7 +22,7 @@ class StripeMeterEventSummary {
       _$StripeMeterEventSummaryFromJson(json);
 
   /// Converts a [StripeMeterEventSummary] to a `Map<String, dynamic>`.
-  Map<String, dynamic> tojson() => _$StripeMeterEventSummaryToJson(this);
+  Map<String, dynamic> toJson() => _$StripeMeterEventSummaryToJson(this);
 
   /// The unique identifier for this object.
   final String id;
@@ -30,11 +30,11 @@ class StripeMeterEventSummary {
   /// The value of all events reported in this time window.
   final double aggregatedValue;
 
-  /// The start of this summmarized time window.
+  /// The start of this summarized time window.
   @TimestampConverter()
   final DateTime startTime;
 
-  /// The end of this summmarized time window.
+  /// The end of this summarized time window.
   @TimestampConverter()
   final DateTime endTime;
 

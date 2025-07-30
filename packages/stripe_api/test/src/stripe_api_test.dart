@@ -204,11 +204,11 @@ void main() {
 
           expect(subscription, isNotNull);
           expect(subscription.id, 'sub_1NzOsBHSA9cXarIchHmEjlmc');
-          final tiers = subscription.items.first.price.tiers!;
+          final tiers = subscription.items.first.price.tiers;
           expect(tiers, hasLength(7));
-          expect(tiers.first.flatAmount, 2000);
-          expect(tiers.first.upTo, 50000);
-          expect(tiers.last.upTo, isNull);
+          expect(tiers?.first.flatAmount, 2000);
+          expect(tiers?.first.upTo, 50000);
+          expect(tiers?.last.upTo, isNull);
         },
       );
     });
@@ -332,8 +332,8 @@ void main() {
         );
 
         expect(result, hasLength(2));
-        expect(result[0].tojson(), equals(meterEventSummary1.tojson()));
-        expect(result[1].tojson(), equals(meterEventSummary2.tojson()));
+        expect(result[0].toJson(), equals(meterEventSummary1.toJson()));
+        expect(result[1].toJson(), equals(meterEventSummary2.toJson()));
       });
 
       group('when response has non-success status code', () {
