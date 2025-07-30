@@ -1,0 +1,16 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "mtrusg_test_6041HSA9cXarIc6U76ce6L359f4ft60m5Xl3ox5sv7bt6bJ5bx5Y459D4Xt2E17ko6M86kt7kV3bl5QJ3U87PA60g6kp3Dn3kL7Gu3HU5Xl3ox5sv7bt6bY4p52Dr7od3Hc71E6go4od4LJ6cC6UM4t17Lc3Ta6ky3fx2D33fu3LI3oD3bk3Cy3Cy",
+      "object": "billing.meter_event_summary",
+      "aggregated_value": 610000.0,
+      "end_time": 1722499200,
+      "livemode": false,
+      "meter": "mtr_test_61Qs4Xo4ZBeo0c8Em41HSA9cXarIc0Ho",
+      "start_time": 1722495600
+    }
+  ],
+  "has_more": true,
+  "url": "/v1/billing/meters/:id/event_summaries"
+}

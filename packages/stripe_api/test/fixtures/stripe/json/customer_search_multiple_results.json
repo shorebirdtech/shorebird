@@ -1,0 +1,69 @@
+{
+  "object": "search_result",
+  "url": "/v1/customers/search",
+  "has_more": false,
+  "data": [
+    {
+      "id": "cus_NgnmZaVgPxXxBP",
+      "object": "customer",
+      "address": null,
+      "balance": 0,
+      "created": 1681154091,
+      "currency": "usd",
+      "default_source": "card_1MvQAxHSA9cXarIcB4B6BS4D",
+      "delinquent": false,
+      "description": "(created by Stripe CLI)",
+      "discount": null,
+      "email": "test@shorebird.dev",
+      "invoice_prefix": "28F708F6",
+      "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null,
+        "rendering_options": null
+      },
+      "livemode": false,
+      "metadata": {
+        "foo": "bar"
+      },
+      "name": "fakename",
+      "next_invoice_sequence": 1,
+      "phone": null,
+      "preferred_locales": [],
+      "shipping": null,
+      "tax_exempt": "none",
+      "test_clock": null
+    },
+    {
+      "id": "cus_NgnmZaVgPxXxBA",
+      "object": "customer",
+      "address": null,
+      "balance": 0,
+      "created": 1681154091,
+      "currency": "usd",
+      "default_source": "card_1MvQAxHSA9cXarIcB4B6BS4C",
+      "delinquent": false,
+      "description": "(created by Stripe CLI)",
+      "discount": null,
+      "email": "test@shorebird.dev",
+      "invoice_prefix": "28F708F6",
+      "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null,
+        "rendering_options": null
+      },
+      "livemode": false,
+      "metadata": {
+        "foo": "bar"
+      },
+      "name": "fakename",
+      "next_invoice_sequence": 1,
+      "phone": null,
+      "preferred_locales": [],
+      "shipping": null,
+      "tax_exempt": "none",
+      "test_clock": null
+    }
+  ]
+}
