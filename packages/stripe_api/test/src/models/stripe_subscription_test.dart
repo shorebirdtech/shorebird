@@ -1,3 +1,4 @@
+// cspell:words sub_1MvjPuHSA9cXarIcaWYNaezR cus_Nh7fUR7HHhO8xT
 import 'package:stripe_api/stripe_api.dart';
 import 'package:test/test.dart';
 
@@ -47,10 +48,12 @@ void main() {
           trialingSubscriptionJson,
         );
 
+        // cspell:disable-next-line
         expect(subscription.id, 'sub_1OL84vHSA9cXarIcNIxi0Xho');
         expect(subscription.cancelAtPeriodEnd, false);
         expect(subscription.currentPeriodEnd, isNotNull);
         expect(subscription.currentPeriodStart, isNotNull);
+        // cspell:disable-next-line
         expect(subscription.customer, 'cus_NnCoUcv8aBXCA2');
         expect(subscription.endedAt, null);
         expect(subscription.startDate, isNotNull);

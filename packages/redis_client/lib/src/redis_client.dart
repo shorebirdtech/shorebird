@@ -716,7 +716,7 @@ enum RedisTimeSeriesAggregator {
   /// Sample variance of the values
   sampleVariance,
 
-  /// Time-weighted average over the bucket's timeframe
+  /// Time-weighted average over the bucket's time frame
   timeWeightedAverage;
 
   /// Converts the enum to an argument that can be passed directly to

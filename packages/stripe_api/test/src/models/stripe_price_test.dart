@@ -11,7 +11,9 @@ void main() {
         final subscription = StripeSubscription.fromJson(subscriptionJson);
         final price = subscription.items.first.price;
 
+        // cspell:disable-next-line
         expect(price.id, 'price_1MvjPuHSA9cXarIcfmWAQo72');
+        // cspell:disable-next-line
         expect(price.productId, 'prod_Nh7fDKPeoghLht');
         expect(price.currency, 'usd');
         expect(price.billingScheme, BillingScheme.perUnit);
@@ -22,13 +24,15 @@ void main() {
         expect(price.meterId, isNull);
       });
 
-      test('can be deserialized from json (payg)', () {
+      test('can be deserialized from json (pay as you go)', () {
         final subscriptionItem = StripeSubscriptionItem.fromJson(
           payAsYouGoSubscriptionItemJson,
         );
 
         final price = subscriptionItem.price;
+        // cspell:disable-next-line
         expect(price.id, 'price_1Pm4YJHSA9cXarIcpDllPtvw');
+        // cspell:disable-next-line
         expect(price.productId, 'prod_QdLE0bb1qFBFMv');
         expect(price.currency, 'usd');
         expect(price.billingScheme, BillingScheme.perUnit);

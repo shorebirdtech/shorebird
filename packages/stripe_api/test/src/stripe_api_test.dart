@@ -182,6 +182,7 @@ void main() {
         );
 
         expect(subscription, isNotNull);
+        // cspell:disable-next-line
         expect(subscription.id, 'sub_1MvjPuHSA9cXarIcaWYNaezR');
         expect(subscription.items.first.price.tiers, isNull);
       });
@@ -203,6 +204,7 @@ void main() {
           );
 
           expect(subscription, isNotNull);
+          // cspell:disable-next-line
           expect(subscription.id, 'sub_1NzOsBHSA9cXarIchHmEjlmc');
           final tiers = subscription.items.first.price.tiers;
           expect(tiers, hasLength(7));
