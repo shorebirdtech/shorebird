@@ -1,4 +1,4 @@
-# 🐦 Shorebird Stripe Client
+# 🐦 💳 Shorebird Stripe Client
 
 [![Discord][discord_badge]][discord_link]
 
