@@ -27,6 +27,7 @@ This repository is a monorepo containing the following packages:
 | [jwt](packages/jwt/README.md)                                                   | Dart library for verifying JSON Web Tokens                                              |
 | [redis_client](packages/redis_client/README.md)                                 | Dart library for interacting with Redis                                                 |
 | [scoped_deps](packages/scoped_deps/README.md)                                   | A simple dependency injection library built on Zones                                    |
+| [stripe_api](packages/stripe_api/README.md)                                     | Dart library for interacting with Stripe                                                |
 
 For more information, please refer to the documentation for each package.
 

@@ -1,0 +1,29 @@
+{
+    "id": "cus_123",
+    "object": "customer",
+    "address": null,
+    "balance": 0,
+    "created": 1681227926,
+    "currency": "usd",
+    "default_source": null,
+    "delinquent": false,
+    "description": "(created by Stripe CLI)",
+    "discount": null,
+    "email": "test@shorebird.dev",
+    "invoice_prefix": "C97CE2FD",
+    "invoice_settings": {
+      "custom_fields": null,
+      "default_payment_method": "pm_1MvjNqHSA9cXarIcD9cZP6XJ",
+      "footer": null,
+      "rendering_options": null
+    },
+    "livemode": false,
+    "metadata": {},
+    "name": "Jane Doe",
+    "next_invoice_sequence": 2,
+    "phone": null,
+    "preferred_locales": [],
+    "shipping": null,
+    "tax_exempt": "none",
+    "test_clock": null
+  }

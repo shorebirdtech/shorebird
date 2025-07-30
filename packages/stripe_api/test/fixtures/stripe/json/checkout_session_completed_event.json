@@ -1,0 +1,95 @@
+{
+  "id": "evt_1MxtSfHSA9cXarIcNYdaeJq0",
+  "object": "event",
+  "api_version": "2022-11-15",
+  "created": 1681743321,
+  "data": {
+    "object": {
+      "id": "cs_test_a1owXzmNpczllTlcPSVKUAQw5I9baSNnqsn8FgFaGZ8g0Vj98nJ1C56Pjq",
+      "object": "checkout.session",
+      "after_expiration": null,
+      "allow_promotion_codes": false,
+      "amount_subtotal": 2000,
+      "amount_total": 2000,
+      "automatic_tax": {
+        "enabled": false,
+        "status": null
+      },
+      "billing_address_collection": "auto",
+      "cancel_url": "https://stripe.com",
+      "client_reference_id": null,
+      "consent": null,
+      "consent_collection": null,
+      "created": 1681743304,
+      "currency": "usd",
+      "currency_conversion": null,
+      "custom_fields": [],
+      "custom_text": {
+        "shipping_address": null,
+        "submit": null
+      },
+      "customer": "cus_123",
+      "customer_creation": "if_required",
+      "customer_details": {
+        "address": {
+          "city": null,
+          "country": "US",
+          "line1": null,
+          "line2": null,
+          "postal_code": "11205",
+          "state": null
+        },
+        "email": "tester@shorebird.dev",
+        "name": "asfd asdf",
+        "phone": null,
+        "tax_exempt": "none",
+        "tax_ids": []
+      },
+      "customer_email": null,
+      "expires_at": 1681829704,
+      "invoice": "in_1MxtScHSA9cXarIcR4Zj5qWB",
+      "invoice_creation": null,
+      "livemode": false,
+      "locale": "auto",
+      "metadata": {
+        "shorebird_email": "tester@shorebird.dev"
+      },
+      "mode": "subscription",
+      "payment_intent": null,
+      "payment_link": "plink_1MxtSFHSA9cXarIcDGq40FNC",
+      "payment_method_collection": "always",
+      "payment_method_options": null,
+      "payment_method_types": [
+        "card",
+        "cashapp"
+      ],
+      "payment_status": "paid",
+      "phone_number_collection": {
+        "enabled": false
+      },
+      "recovered_from": null,
+      "setup_intent": null,
+      "shipping_address_collection": null,
+      "shipping_cost": null,
+      "shipping_details": null,
+      "shipping_options": [],
+      "status": "complete",
+      "submit_type": "auto",
+      "subscription": "sub_1MxtScHSA9cXarIcZeVodbUq",
+      "success_url": "https://stripe.com",
+      "total_details": {
+        "amount_discount": 0,
+        "amount_shipping": 0,
+        "amount_tax": 0
+      },
+      "url": null
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 4,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "checkout.session.completed"
+}

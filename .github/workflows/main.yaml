@@ -97,6 +97,11 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/scoped_deps/**
+            stripe_api:
+              - ./.github/codecov.yml
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package/action.yaml
+              - packages/stripe_api/**
 
       - uses: dorny/paths-filter@v3
         name: Redis Detection
