@@ -6,7 +6,7 @@
 [![codecov][codecov_badge]][codecov_link]
 [![License: MIT][license_badge]][license_link]
 
-A Dart library for interacting with Stripe.
+A Dart library for interacting with [Stripe](https://stripe.com).
 
 Built with 💙 by [Shorebird][shorebird_link].
 
