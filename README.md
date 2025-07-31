@@ -13,6 +13,8 @@
 
 Visit https://docs.shorebird.dev to get started.
 
+This line contians a misspelled word.
+
 ## Packages
 
 This repository is a monorepo containing the following packages:
