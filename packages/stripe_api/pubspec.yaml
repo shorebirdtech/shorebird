@@ -1,0 +1,20 @@
+name: stripe_api
+description: A Dart library for interacting with the Stripe API.
+version: 0.1.0+1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  collection: ^1.17.1
+  decimal: ^3.0.2
+  http: ^1.0.0
+  json_annotation: ^4.8.1
+
+dev_dependencies:
+  build_runner: ^2.0.0
+  json_serializable: ^6.6.1
+  mocktail: ^1.0.0
+  test: ^1.19.2
