@@ -5,6 +5,7 @@ environment:
 workspace:
   - packages/artifact_proxy
   - packages/discord_gcp_alerts
+  - packages/flutter_version_resolver
   - packages/jwt
   - packages/redis_client
   - packages/scoped_deps
