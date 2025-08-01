@@ -1,5 +1,5 @@
 name: flutter_version_resolver
-description: A CLI app that determines whether 
+description: A Dart tool that resolves a Flutter version for a given Flutter application
 version: 1.0.0
 publish_to: none
 resolution: workspace
