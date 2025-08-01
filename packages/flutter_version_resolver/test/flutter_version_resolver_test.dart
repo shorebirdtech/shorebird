@@ -64,9 +64,33 @@ environment:
         });
       });
     });
+
+    group('when a version constraint is specified in the pubspec.yaml file', () {
+      setUp(() {
+        pubspecFile.writeAsStringSync('''
+environment:
+  sdk: ^3.8.1
+  flutter: "^3.8.0"
+''');
+      });
+
+      test('prints an error message and returns the stable version', () {
+        runWithOverrides(() {
+          expect(
+            resolveFlutterVersion(packagePath: packageDirectory.path),
+            equals('stable'),
+          );
+        });
+        verify(
+          () => logger.err(
+            '''Found version constraint: ^3.8.0. Version constraints are not supported in pubspec.yaml. Please specify a specific version.''',
+          ),
+        ).called(1);
+      });
+    });
   });
 
-  group('flutterVersionFromPubspec', () {
+  group('flutterVersionFromPubspecEnvironment', () {
     group('when no pubspec.yaml is found', () {
       test('throws an exception', () {
         expect(
@@ -98,12 +122,31 @@ environment:
 ''');
       });
 
-      test('throws an exception', () {
+      test('throws a VersionConstraintException', () {
         expect(
           () => flutterVersionFromPubspecEnvironment(
             packagePath: packageDirectory.path,
           ),
-          throwsA(isA<FormatException>()),
+          throwsA(isA<VersionConstraintException>()),
+        );
+      });
+    });
+
+    group('when a minimum version is specified', () {
+      setUp(() {
+        pubspecFile.writeAsStringSync('''
+environment:
+  sdk: ^3.8.1
+  flutter: "^3.8.0"
+''');
+      });
+
+      test('throws a VersionConstraintException', () {
+        expect(
+          () => flutterVersionFromPubspecEnvironment(
+            packagePath: packageDirectory.path,
+          ),
+          throwsA(isA<VersionConstraintException>()),
         );
       });
     });
