@@ -1,12 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_version_resolver/flutter_version_resolver.dart';
-import 'package:flutter_version_resolver/src/logger.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
-import 'package:scoped_deps/scoped_deps.dart';
 import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements Logger {}
@@ -15,13 +13,6 @@ void main() {
   late Logger logger;
   late Directory packageDirectory;
   late File pubspecFile;
-
-  R runWithOverrides<R>(R Function() body) {
-    return runScoped(
-      body,
-      values: {loggerRef.overrideWith(() => logger)},
-    );
-  }
 
   setUp(() {
     logger = _MockLogger();
@@ -37,12 +28,13 @@ void main() {
   group('resolveFlutterVersion', () {
     group('when no flutter version is specified in the pubspec.yaml file', () {
       test('returns the stable version', () {
-        runWithOverrides(() {
-          expect(
-            resolveFlutterVersion(packagePath: packageDirectory.path),
-            equals('stable'),
-          );
-        });
+        expect(
+          resolveFlutterVersion(
+            packagePath: packageDirectory.path,
+            log: logger.info,
+          ),
+          equals('stable'),
+        );
       });
     });
 
@@ -56,12 +48,13 @@ environment:
       });
 
       test('returns the version', () {
-        runWithOverrides(() {
-          expect(
-            resolveFlutterVersion(packagePath: packageDirectory.path),
-            equals('3.20.0'),
-          );
-        });
+        expect(
+          resolveFlutterVersion(
+            packagePath: packageDirectory.path,
+            log: logger.info,
+          ),
+          equals('3.20.0'),
+        );
       });
     });
 
@@ -75,14 +68,15 @@ environment:
       });
 
       test('prints an error message and returns the stable version', () {
-        runWithOverrides(() {
-          expect(
-            resolveFlutterVersion(packagePath: packageDirectory.path),
-            equals('stable'),
-          );
-        });
+        expect(
+          resolveFlutterVersion(
+            packagePath: packageDirectory.path,
+            log: logger.info,
+          ),
+          equals('stable'),
+        );
         verify(
-          () => logger.err(
+          () => logger.info(
             '''Found version constraint: ^3.8.0. Version constraints are not supported in pubspec.yaml. Please specify a specific version.''',
           ),
         ).called(1);
