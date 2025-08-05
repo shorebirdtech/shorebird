@@ -1,9 +1,11 @@
 import 'dart:io';
 
-import 'package:flutter_version_resolver/src/logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:yaml/yaml.dart';
+
+/// A function that handles log output (e.g. [print]).
+typedef LogFn = void Function(String message);
 
 /// {@template version_constraint_exception}
 /// Thrown when a version constraint is found unexpectedly.
@@ -27,32 +29,31 @@ class VersionConstraintException implements Exception {
 /// If no version is found, this returns the `stable` version.
 String resolveFlutterVersion({
   required String packagePath,
+  required LogFn log,
 }) {
-  logger
-    ..info('Resolving Flutter version for $packagePath')
-    ..info('Checking pubspec.yaml environment section for flutter version');
+  log('Resolving Flutter version for $packagePath');
+  log('Checking pubspec.yaml environment section for flutter version');
 
   try {
     final flutterVersion = flutterVersionFromPubspecEnvironment(
       packagePath: packagePath,
     );
     if (flutterVersion != null) {
-      logger.info('Found flutter version in pubspec.yaml: $flutterVersion');
+      log('Found flutter version in pubspec.yaml: $flutterVersion');
       return flutterVersion.toString();
     }
   } on VersionConstraintException catch (e) {
-    logger.err(
+    log(
       '''Found version constraint: ${e.versionConstraint}. Version constraints are not supported in pubspec.yaml. Please specify a specific version.''',
     );
     return 'stable';
   } on Exception catch (e) {
-    logger
-      ..err('Error resolving Flutter version: $e')
-      ..info('Falling back to "stable" branch');
+    log('Error resolving Flutter version: $e');
+    log('Falling back to "stable" branch');
     return 'stable';
   }
 
-  logger.info('No flutter version found in pubspec.yaml, using stable');
+  log('No flutter version found in pubspec.yaml, using stable');
   return 'stable';
 }
 
