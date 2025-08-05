@@ -13,9 +13,9 @@ import 'package:mason_logger/mason_logger.dart';
 Future<int> main(List<String> arguments) async {
   final logger = Logger();
 
-  if (arguments.isEmpty || arguments.length > 2) {
+  if (arguments.isEmpty) {
     logger.err(
-      'Usage: dart run bin/flutter_version_resolver.dart <path-to-package> [<output-file>]',
+      'Usage: dart run bin/flutter_version_resolver.dart <path-to-package>',
     );
     return ExitCode.usage.code;
   }
@@ -33,13 +33,6 @@ Future<int> main(List<String> arguments) async {
     log: logger.info,
   );
   logger.info('Resolved Flutter version: $flutterVersion');
-
-  if (arguments.length > 1) {
-    final outputFile = File(arguments[1])
-      ..createSync(recursive: true)
-      ..writeAsStringSync(flutterVersion);
-    logger.info('Wrote flutter version to ${outputFile.path}');
-  }
 
   return ExitCode.success.code;
 }
