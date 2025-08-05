@@ -576,6 +576,32 @@ void main() {
           expect(outputDevice.platform, equals('iOS'));
         });
       });
+
+      group('when command succeeds with some unavailable devices', () {
+        setUp(() {
+          jsonOutput = File(
+            '$fixturesPath/device_list_partial_success.json',
+          ).readAsStringSync();
+        });
+
+        test('returns a list of iOS devices', () async {
+          final devices = await runWithOverrides(
+            devicectl.listAvailableIosDevices,
+          );
+          expect(devices, hasLength(2));
+          final firstDevice = devices[0];
+          expect(firstDevice.name, equals('Test'));
+          expect(firstDevice.udid, equals('11111111-1111111111111111'));
+          expect(firstDevice.osVersionString, equals('18.5'));
+          expect(firstDevice.platform, equals('iOS'));
+
+          final secondDevice = devices[1];
+          expect(secondDevice.name, equals('Test iPhone XS'));
+          expect(secondDevice.udid, equals('22222222-2222222222222222'));
+          expect(secondDevice.osVersionString, equals('18.5'));
+          expect(secondDevice.platform, equals('iOS'));
+        });
+      });
     });
   });
 }
