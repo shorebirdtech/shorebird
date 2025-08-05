@@ -22,6 +22,15 @@ class AppleDevice {
   /// Creates an [AppleDevice] from JSON.
   static AppleDevice fromJson(Json json) => _$AppleDeviceFromJson(json);
 
+  /// Creates an [AppleDevice] from JSON.
+  static AppleDevice? tryParse(Json json) {
+    try {
+      return _$AppleDeviceFromJson(json);
+    } on CheckedFromJsonException {
+      return null;
+    }
+  }
+
   /// Information about the device itself.
   final DeviceProperties deviceProperties;
 
