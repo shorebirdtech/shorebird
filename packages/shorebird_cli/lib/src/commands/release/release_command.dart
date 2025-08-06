@@ -148,6 +148,13 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       ..addOption(
         CommonArguments.splitDebugInfoArg.name,
         help: CommonArguments.splitDebugInfoArg.description,
+      )
+      ..addOption(
+        'pkg-sign',
+        help:
+            'The Developer ID Installer identity to sign the macOS PKG '
+            'installer with (macOS only). For example: '
+            '"3rd Party Mac Developer Installer: <Team Name> (<Team ID>)"',
       );
   }
 
