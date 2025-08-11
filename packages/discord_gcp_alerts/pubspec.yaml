@@ -8,13 +8,13 @@ environment:
   sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
-  http: ^1.4.0
+  http: ^1.5.0
   json_annotation: ^4.9.0
   shelf: ^1.4.2
   shelf_router: ^1.1.0
 
 dev_dependencies:
-  build_runner: ^2.6.0
+  build_runner: ^2.6.1
   json_serializable: ^6.9.5
   mocktail: ^1.0.4
   test: ^1.26.3
