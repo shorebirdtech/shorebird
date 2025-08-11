@@ -42,7 +42,7 @@ jobs:
           export_environment_variables: true
 
       - name: ☁️ Setup GCloud SDK
-        uses: google-github-actions/setup-gcloud@v2.1.5
+        uses: google-github-actions/setup-gcloud@v2.2.0
         with:
           project_id: ${{ env.PROJECT_ID }}
 
