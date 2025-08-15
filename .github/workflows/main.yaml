@@ -69,6 +69,11 @@ jobs:
         id: needs_cross_platform_dart_build
         with:
           filters: |
+            flutter_version_resolver:
+              - ./.github/codecov.yml
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package/action.yaml
+              - packages/flutter_version_resolver/**
             shorebird_cli:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
