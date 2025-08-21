@@ -54,6 +54,7 @@ final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/dart-sdk-linux-arm64\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/dart-sdk-darwin-x64\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/dart-sdk-darwin-arm64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/engine_stamp\.json',
   r'flutter_infra_release\/flutter\/(.*)\/android-x86\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/android-x86-jit-release\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/android-x64\/artifacts\.zip',
