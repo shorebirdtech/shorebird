@@ -56,6 +56,7 @@ words:
   - libapp
   - libflutter
   - libimobiledevice
+  - libimobiledeviceglue
   - libplist
   - libusbmuxd
   - lldb
