@@ -57,6 +57,7 @@ words:
   - libflutter
   - libimobiledevice
   - libplist
+  - libusbmuxd
   - lldb
   - LOCALAPPDATA
   - logcat

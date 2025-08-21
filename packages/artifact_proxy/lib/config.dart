@@ -121,6 +121,7 @@ final engineArtifactPatterns = {
 /// Patterns for Flutter artifacts which don't depend on an engine revision.
 final flutterArtifactPatterns = {
   r'flutter_infra_release\/ios-usb-dependencies\/usbmuxd\/(.*)\/usbmuxd\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/libusbmuxd\/(.*)\/libusbmuxd\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/openssl\/(.*)\/openssl\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/libplist\/(.*)\/libplist\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/libimobiledevice\/(.*)\/libimobiledevice\.zip',
