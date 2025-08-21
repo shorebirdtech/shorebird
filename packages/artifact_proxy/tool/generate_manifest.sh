@@ -48,6 +48,9 @@ artifact_overrides:
   - flutter_infra_release/flutter/\$engine/android-x64-release/symbols.zip
   - flutter_infra_release/flutter/\$engine/android-x64-release/windows-x64.zip
 
+  # engine_stamp.json
+  - flutter_infra_release/flutter/\$engine/engine_stamp.json
+
   # Dart SDK
   - flutter_infra_release/flutter/\$engine/dart-sdk-darwin-arm64.zip
   - flutter_infra_release/flutter/\$engine/dart-sdk-darwin-x64.zip
