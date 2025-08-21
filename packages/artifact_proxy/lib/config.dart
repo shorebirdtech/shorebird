@@ -125,6 +125,7 @@ final flutterArtifactPatterns = {
   r'flutter_infra_release\/ios-usb-dependencies\/openssl\/(.*)\/openssl\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/libplist\/(.*)\/libplist\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/libimobiledevice\/(.*)\/libimobiledevice\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/libimobiledevice-glue\/(.*)\/libimobiledevice-glue\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/ios-deploy\/(.*)\/ios-deploy\.zip',
   r'flutter_infra_release\/gradle-wrapper\/(.*)\/gradle-wrapper\.tgz',
   r'flutter_infra_release\/flutter\/fonts\/(.*)\/fonts\.zip',
