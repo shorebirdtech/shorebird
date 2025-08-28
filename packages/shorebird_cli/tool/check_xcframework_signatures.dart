@@ -126,7 +126,7 @@ Future<bool> checkSignature(String xcFrameworkPath) async {
     ['-v', xcFrameworkPath],
   );
   if (result.exitCode != 0) {
-    print(result.stderr);
+    logger.info(result.stderr.toString());
   }
   return result.exitCode == 0;
 }
@@ -157,9 +157,10 @@ Future<void> logic(List<String> args) async {
   );
 
   if (versions.isEmpty) {
-    print('No versions to check.');
-    print('Use --all to check all versions.');
-    print('Or specify versions to check.');
+    logger
+      ..info('No versions to check.')
+      ..info('Use --all to check all versions.')
+      ..info('Or specify versions to check.');
     return;
   }
 
@@ -179,10 +180,11 @@ Future<void> logic(List<String> args) async {
       );
       final isSignatureOK = await checkSignature(xcFramework.path);
       final emoji = isSignatureOK ? '✅' : '❌';
-      print('$emoji $flutterVersion (eng $shortEngHash)');
+      logger.info('$emoji $flutterVersion (eng $shortEngHash)');
     } on Exception catch (e) {
-      print('❓ $flutterVersion (eng $shortEngHash)');
-      print(e);
+      logger
+        ..info('❓ $flutterVersion (eng $shortEngHash)')
+        ..info(e.toString());
     }
   }
 }
