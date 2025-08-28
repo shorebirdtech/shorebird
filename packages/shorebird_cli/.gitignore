@@ -12,3 +12,6 @@ coverage/
 
 # Android studio and IntelliJ
 .idea
+
+# Used by tool/check_xcframework_signatures.dart to store artifact downloads
+cache

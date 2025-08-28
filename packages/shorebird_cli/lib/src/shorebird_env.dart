@@ -51,7 +51,18 @@ class ShorebirdEnv {
   ///
   /// Assumes we are running from $ROOT/bin/cache.
   Directory get shorebirdRoot {
-    return File(platform.script.toFilePath()).parent.parent.parent;
+    final script = platform.script.toFilePath();
+    final lastPathComponent = p.basename(p.dirname(script));
+    // We're being run directly (e.g. `dart run shorebird_cli`)
+    if (lastPathComponent == 'bin' || lastPathComponent == 'tool') {
+      return File(script).parent.parent.parent.parent;
+    }
+    if (lastPathComponent != 'cache') {
+      throw StateError('Unexpected script path: $script');
+    }
+    // We're being run from within the `shorebird` shell script.
+    // and we're in $ROOT/bin/cache.
+    return File(script).parent.parent.parent;
   }
 
   /// The Shorebird engine revision.
