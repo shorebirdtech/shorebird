@@ -49,21 +49,28 @@ class LinkResult {
 }
 
 /// {@template missing_xcode_project_exception}
-/// Thrown when the Flutter project does not have iOS configured as a platform.
+/// Thrown when the Flutter project has an ios or macos folder that is missing
+/// an Xcode project.
 /// {@endtemplate}
 class MissingXcodeProjectException implements Exception {
   /// {@macro missing_xcode_project_exception}
-  const MissingXcodeProjectException(this.projectPath);
+  const MissingXcodeProjectException({
+    required this.platformFolderPath,
+    required this.platform,
+  });
 
-  /// Expected path of the XCode project.
-  final String projectPath;
+  /// Expected path of the Xcode project.
+  final String platformFolderPath;
+
+  /// The platform that is missing an Xcode project.
+  final ApplePlatform platform;
 
   @override
   String toString() {
     return '''
-Could not find an Xcode project in $projectPath.
-To add iOS, run "flutter create . --platforms ios"
-To add macOS, run "flutter create . --platforms macos"''';
+Could not find an Xcode project in $platformFolderPath.
+If your project does not support ${platform.name}, you can safely remove $platformFolderPath.
+Otherwise, to repair ${platform.name}, run "flutter create . --platforms ${platform.name}"''';
   }
 }
 
@@ -214,7 +221,10 @@ class Apple {
         .whereType<Directory>()
         .firstWhereOrNull((d) => p.extension(d.path) == '.xcodeproj');
     if (xcodeProjDirectory == null) {
-      throw MissingXcodeProjectException(projectRoot.path);
+      throw MissingXcodeProjectException(
+        platformFolderPath: platformDir.path,
+        platform: platform,
+      );
     }
 
     final xcschemesDir = Directory(

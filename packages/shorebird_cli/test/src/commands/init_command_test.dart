@@ -493,7 +493,12 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         setUp(() {
           when(
             () => apple.flavors(platform: any(named: 'platform')),
-          ).thenThrow(MissingXcodeProjectException(projectRoot.path));
+          ).thenThrow(
+            MissingXcodeProjectException(
+              platformFolderPath: projectRoot.path,
+              platform: ApplePlatform.ios,
+            ),
+          );
         });
 
         test('exits with software error code', () async {
