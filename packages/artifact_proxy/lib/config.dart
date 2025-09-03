@@ -54,6 +54,7 @@ final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/dart-sdk-linux-arm64\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/dart-sdk-darwin-x64\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/dart-sdk-darwin-arm64\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/engine_stamp\.json',
   r'flutter_infra_release\/flutter\/(.*)\/android-x86\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/android-x86-jit-release\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/android-x64\/artifacts\.zip',
@@ -120,9 +121,11 @@ final engineArtifactPatterns = {
 /// Patterns for Flutter artifacts which don't depend on an engine revision.
 final flutterArtifactPatterns = {
   r'flutter_infra_release\/ios-usb-dependencies\/usbmuxd\/(.*)\/usbmuxd\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/libusbmuxd\/(.*)\/libusbmuxd\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/openssl\/(.*)\/openssl\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/libplist\/(.*)\/libplist\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/libimobiledevice\/(.*)\/libimobiledevice\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/libimobiledeviceglue\/(.*)\/libimobiledeviceglue\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/ios-deploy\/(.*)\/ios-deploy\.zip',
   r'flutter_infra_release\/gradle-wrapper\/(.*)\/gradle-wrapper\.tgz',
   r'flutter_infra_release\/flutter\/fonts\/(.*)\/fonts\.zip',

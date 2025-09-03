@@ -4,6 +4,14 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.57 (August 26, 2025)
+
+- 🐦 Support for Flutter 3.35.2
+
+## 1.6.56 (August 6, 2025)
+
+- 🐛 Fixes a bug where `shorebird preview` fails due to unavailable iOS devices
+
 ## 1.6.55 (July 25, 2025)
 
 - 🐦 Support for Flutter 3.32.8

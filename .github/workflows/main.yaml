@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 👀 Check Licenses
         uses: ./.github/actions/license_check
@@ -46,7 +46,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: dorny/paths-filter@v3
         name: Build Detection
@@ -69,6 +69,11 @@ jobs:
         id: needs_cross_platform_dart_build
         with:
           filters: |
+            flutter_version_resolver:
+              - ./.github/codecov.yml
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package/action.yaml
+              - packages/flutter_version_resolver/**
             shorebird_cli:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
@@ -144,7 +149,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
@@ -168,7 +173,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
@@ -193,7 +198,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 🐳 Run Redis
         run: |
@@ -221,7 +226,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 🔎 Verify ${{ matrix.package }}
         uses: ./.github/actions/verify_version

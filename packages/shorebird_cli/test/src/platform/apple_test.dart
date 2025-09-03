@@ -66,12 +66,36 @@ void main() {
     });
 
     group(MissingXcodeProjectException, () {
-      test('toString', () {
-        const exception = MissingXcodeProjectException('test_project_path');
-        expect(exception.toString(), '''
+      group('ios', () {
+        test('toString', () {
+          const exception = MissingXcodeProjectException(
+            platformFolderPath: 'test_project_path',
+            platform: ApplePlatform.ios,
+          );
+          expect(
+            exception.toString(),
+            '''
 Could not find an Xcode project in test_project_path.
-To add iOS, run "flutter create . --platforms ios"
-To add macOS, run "flutter create . --platforms macos"''');
+If your project does not support ios, you can safely remove test_project_path.
+Otherwise, to repair ios, run "flutter create . --platforms ios"''',
+          );
+        });
+      });
+
+      group('macos', () {
+        test('toString', () {
+          const exception = MissingXcodeProjectException(
+            platformFolderPath: 'test_project_path',
+            platform: ApplePlatform.macos,
+          );
+          expect(
+            exception.toString(),
+            '''
+Could not find an Xcode project in test_project_path.
+If your project does not support macos, you can safely remove test_project_path.
+Otherwise, to repair macos, run "flutter create . --platforms macos"''',
+          );
+        });
       });
     });
 
