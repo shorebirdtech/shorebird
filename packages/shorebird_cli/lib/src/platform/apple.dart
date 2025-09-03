@@ -70,7 +70,7 @@ class MissingXcodeProjectException implements Exception {
     return '''
 Could not find an Xcode project in $platformFolderPath.
 If your project does not support ${platform.name}, you can safely remove $platformFolderPath.
-Otherwise, to add ${platform.name}, run "flutter create . --platforms ${platform.name}"''';
+Otherwise, to repair ${platform.name}, run "flutter create . --platforms ${platform.name}"''';
   }
 }
 

@@ -77,7 +77,7 @@ void main() {
             '''
 Could not find an Xcode project in test_project_path.
 If your project does not support ios, you can safely remove test_project_path.
-Otherwise, to add ios, run "flutter create . --platforms ios"''',
+Otherwise, to repair ios, run "flutter create . --platforms ios"''',
           );
         });
       });
@@ -93,7 +93,7 @@ Otherwise, to add ios, run "flutter create . --platforms ios"''',
             '''
 Could not find an Xcode project in test_project_path.
 If your project does not support macos, you can safely remove test_project_path.
-Otherwise, to add macos, run "flutter create . --platforms macos"''',
+Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           );
         });
       });
