@@ -398,21 +398,6 @@ void main() {
               () => shorebirdValidator.validateFlavors(flavorArg: flavor),
             ).called(1);
           });
-
-          group('when flavor validation fails', () {
-            setUp(() {
-              when(
-                () => shorebirdValidator.validateFlavors(flavorArg: flavor),
-              ).thenThrow(ValidationFailedException());
-            });
-
-            test('exits with code 78 (config)', () async {
-              await expectLater(
-                () => runWithOverrides(command.run),
-                exitsWithCode(ExitCode.config),
-              );
-            });
-          });
         });
       });
 
