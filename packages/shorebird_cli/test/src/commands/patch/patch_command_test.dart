@@ -399,6 +399,23 @@ void main() {
             ).called(1);
           });
         });
+
+        group('when flavor validation fails', () {
+          setUp(() {
+            when(
+              () => shorebirdValidator.validateFlavors(
+                flavorArg: any(named: 'flavorArg'),
+              ),
+            ).thenThrow(ValidationFailedException());
+          });
+
+          test('exits with code 78 (config)', () async {
+            await expectLater(
+              runWithOverrides(() => command.createPatch(patcher)),
+              exitsWithCode(ExitCode.config),
+            );
+          });
+        });
       });
 
       group('correctly validates key pair', () {

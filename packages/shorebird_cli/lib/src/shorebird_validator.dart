@@ -148,6 +148,21 @@ To fix, update your pubspec.yaml to include the following:
   /// Runs [FlavorValidator] and throws a [ValidationFailedException] if any
   /// issues are found.
   Future<void> validateFlavors({required String? flavorArg}) async {
+    final platformSupportsFlavors = !platform.isWindows && !platform.isLinux;
+    if (!platformSupportsFlavors) {
+      if (flavorArg != null) {
+        logger
+          ..err('Flavors are not supported on this platform.')
+          ..info(
+            '''Please re-run this command without the --flavor argument. The app id ${lightCyan.wrap(shorebirdEnv.getShorebirdYaml()!.appId)} will be used.''',
+          );
+
+        throw ValidationFailedException();
+      }
+
+      return;
+    }
+
     final flavorValidator = FlavorValidator(flavorArg: flavorArg);
     final issues = await flavorValidator.validate();
     if (validationIssuesContainsError(issues)) {

@@ -443,6 +443,23 @@ void main() {
           ),
         ]);
       });
+
+      group('when flavor validation fails', () {
+        setUp(() {
+          when(
+            () => shorebirdValidator.validateFlavors(
+              flavorArg: any(named: 'flavorArg'),
+            ),
+          ).thenThrow(ValidationFailedException());
+        });
+
+        test('exits with code 78 (config)', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.config),
+          );
+        });
+      });
     });
 
     group('when there is an existing release with the same version', () {
