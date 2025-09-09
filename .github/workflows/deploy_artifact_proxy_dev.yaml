@@ -35,14 +35,14 @@ jobs:
         uses: dart-lang/setup-dart@v1
 
       - name: 🔐 GCloud Auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           project_id: ${{ env.PROJECT_ID }}
           credentials_json: ${{ secrets.CLOUD_RUN_SA_DEV }}
           export_environment_variables: true
 
       - name: ☁️ Setup GCloud SDK
-        uses: google-github-actions/setup-gcloud@v3.0.0
+        uses: google-github-actions/setup-gcloud@v3.0.1
         with:
           project_id: ${{ env.PROJECT_ID }}
 
@@ -63,7 +63,7 @@ jobs:
 
       - name: 🚀 Deploy to Cloud Run
         id: deploy
-        uses: google-github-actions/deploy-cloudrun@v2.7.4
+        uses: google-github-actions/deploy-cloudrun@v3.0.1
         with:
           service: ${{ env.SERVICE }}
           image: ${{ env.CONTAINER_REGISTRY }}/${{ env.PROJECT_ID }}/us.gcr.io/${{ env.SERVICE }}:${{ github.sha }}

@@ -26,7 +26,7 @@ void main() {
   });
 
   group('resolveFlutterVersion', () {
-    group('when no flutter version is specified in the pubspec.yaml file', () {
+    group('when no flutter version is specified in the pubspec.yaml', () {
       test('returns the stable version', () {
         expect(
           resolveFlutterVersion(
@@ -38,7 +38,7 @@ void main() {
       });
     });
 
-    group('when a flutter version is specified in the pubspec.yaml file', () {
+    group('when a flutter version is specified in the pubspec.yaml', () {
       setUp(() {
         pubspecFile.writeAsStringSync('''
 environment:
@@ -58,7 +58,7 @@ environment:
       });
     });
 
-    group('when a version constraint is specified in the pubspec.yaml file', () {
+    group('when a version constraint is specified in the pubspec.yaml', () {
       setUp(() {
         pubspecFile.writeAsStringSync('''
 environment:

@@ -291,7 +291,12 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
     results.assertAbsentOrValidKeyPair();
-    await shorebirdValidator.validateFlavors(flavorArg: flavor);
+
+    try {
+      await shorebirdValidator.validateFlavors(flavorArg: flavor);
+    } on ValidationFailedException {
+      throw ProcessExit(ExitCode.config.code);
+    }
 
     await cache.updateAll();
 

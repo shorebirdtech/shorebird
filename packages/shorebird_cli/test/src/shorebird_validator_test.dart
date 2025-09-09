@@ -218,34 +218,116 @@ To fix, update your pubspec.yaml to include the following:
     });
 
     group('validateFlavors', () {
-      const shorebirdYaml = ShorebirdYaml(
-        appId: 'test',
-        flavors: {'flavorA': 'flavorA'},
-      );
+      late ShorebirdYaml shorebirdYaml;
 
       setUp(() {
-        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+        when(
+          () => shorebirdEnv.getShorebirdYaml(),
+        ).thenAnswer((_) => shorebirdYaml);
+
+        when(() => platform.isWindows).thenReturn(false);
+        when(() => platform.isLinux).thenReturn(false);
       });
 
-      group('when validation fails', () {
-        test('throws ValidationException', () async {
-          await expectLater(
-            runWithOverrides(
-              () => shorebirdValidator.validateFlavors(flavorArg: null),
-            ),
-            throwsA(isA<ValidationFailedException>()),
+      group('when shorebird.yaml has flavors', () {
+        setUp(() {
+          shorebirdYaml = const ShorebirdYaml(
+            appId: 'test',
+            flavors: {'flavorA': 'flavorA'},
           );
+        });
+
+        setUp(() {
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+        });
+
+        group('when platform does not support flavors', () {
+          setUp(() {
+            when(() => platform.isWindows).thenReturn(true);
+          });
+
+          group('when a flavor arg is provided', () {
+            test('validation fails', () async {
+              await expectLater(
+                runWithOverrides(
+                  () =>
+                      shorebirdValidator.validateFlavors(flavorArg: 'flavorA'),
+                ),
+                throwsA(isA<ValidationFailedException>()),
+              );
+
+              verify(
+                () => logger.err('Flavors are not supported on this platform.'),
+              ).called(1);
+              verify(
+                () => logger.info(
+                  '''Please re-run this command without the --flavor argument. The app id ${lightCyan.wrap('test')} will be used.''',
+                ),
+              ).called(1);
+            });
+          });
+
+          group('when no flavor arg is provided', () {
+            test('passes validation', () async {
+              await expectLater(
+                runWithOverrides(
+                  () => shorebirdValidator.validateFlavors(flavorArg: null),
+                ),
+                completes,
+              );
+            });
+          });
+        });
+
+        group('when no flavor is specified', () {
+          test('fails validation', () async {
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdValidator.validateFlavors(flavorArg: null),
+              ),
+              throwsA(isA<ValidationFailedException>()),
+            );
+          });
+        });
+
+        group('when a flavor arg is provided that exists in the project', () {
+          test('passes validation', () async {
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdValidator.validateFlavors(flavorArg: 'flavorA'),
+              ),
+              completes,
+            );
+          });
         });
       });
 
-      group('when validation succeeds', () {
-        test('completes normally', () async {
-          await expectLater(
-            runWithOverrides(
-              () => shorebirdValidator.validateFlavors(flavorArg: 'flavorA'),
-            ),
-            completes,
-          );
+      group('when shorebird.yaml does not have flavors', () {
+        setUp(() {
+          shorebirdYaml = const ShorebirdYaml(appId: 'test');
+        });
+
+        group('when no flavor arg is provided', () {
+          test('passes validation', () async {
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdValidator.validateFlavors(flavorArg: null),
+              ),
+              completes,
+            );
+          });
+
+          group('when a flavor arg is provided', () {
+            test('fails validation', () async {
+              await expectLater(
+                runWithOverrides(
+                  () =>
+                      shorebirdValidator.validateFlavors(flavorArg: 'flavorA'),
+                ),
+                throwsA(isA<ValidationFailedException>()),
+              );
+            });
+          });
         });
       });
     });
