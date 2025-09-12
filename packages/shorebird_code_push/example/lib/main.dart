@@ -69,7 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
         // Do nothing, there is already a warning displayed at the top of the
         // screen.
       }
-    } catch (error) {
+    } on Exception catch (error) {
       // If an error occurs, we log it for now.
       debugPrint('Error checking for update: $error');
     } finally {
