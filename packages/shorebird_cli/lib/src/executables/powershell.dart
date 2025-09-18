@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Powershell] instance.
@@ -34,9 +35,14 @@ class Powershell {
 
   /// Returns the version string of the given executable file.
   Future<String> getExeVersionString(File exeFile) async {
+    // Reads the Windows ProductVersion for the provided executable using
+    // PowerShell's Get-Item cmdlet.
     final exePath = exeFile.path;
     final pwshCommand =
         "(Get-Item -Path '$exePath').VersionInfo.ProductVersion";
+    logger
+      ..detail('[powershell] Inspecting EXE for ProductVersion: \\$exePath')
+      ..detail('[powershell] Command: powershell.exe -Command \\$pwshCommand');
 
     final result = await pwsh(['-Command', pwshCommand]);
 

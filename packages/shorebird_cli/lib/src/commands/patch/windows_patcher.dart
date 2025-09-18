@@ -19,8 +19,10 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/windows/windows_exe_selector.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template windows_patcher}
@@ -139,14 +141,32 @@ class WindowsPatcher extends Patcher {
 
   @override
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
+    // Extracts the Windows app version from a zipped release directory by
+    // selecting the application executable and reading its ProductVersion via
+    // PowerShell. Excludes helper binaries (e.g. crashpad handlers) and uses
+    // the pubspec name to break ties when multiple candidates exist.
     final outputDirectory = Directory.systemTemp.createTempSync();
     await artifactManager.extractZip(
       zipFile: artifact,
       outputDirectory: outputDirectory,
     );
-    final exeFile = outputDirectory.listSync().whereType<File>().firstWhere(
-      (file) => p.extension(file.path) == '.exe',
+    final projectName = shorebirdEnv.getPubspecYaml()?.name;
+    final exesFound = outputDirectory
+        .listSync()
+        .whereType<File>()
+        .where((f) => p.extension(f.path).toLowerCase() == '.exe')
+        .map((f) => p.basename(f.path))
+        .toList();
+    logger
+      ..detail(
+        '[windows_patcher] EXEs found in archive root: \\${exesFound.join(', ')}',
+      )
+      ..detail('[windows_patcher] projectName: \\$projectName');
+    final exeFile = selectWindowsAppExe(
+      outputDirectory,
+      projectNameHint: projectName,
     );
+    logger.detail('[windows_patcher] Selected exe: \\${exeFile.path}');
     return powershell.getExeVersionString(exeFile);
   }
 }
