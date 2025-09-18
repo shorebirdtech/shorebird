@@ -293,7 +293,10 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     results.assertAbsentOrValidKeyPair();
 
     try {
-      await shorebirdValidator.validateFlavors(flavorArg: flavor);
+      await shorebirdValidator.validateFlavors(
+        flavorArg: flavor,
+        releasePlatform: patcher.releaseType.releasePlatform,
+      );
     } on ValidationFailedException {
       throw ProcessExit(ExitCode.config.code);
     }

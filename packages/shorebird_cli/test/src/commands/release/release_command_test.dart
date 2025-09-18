@@ -197,6 +197,7 @@ void main() {
       when(
         () => shorebirdValidator.validateFlavors(
           flavorArg: any(named: 'flavorArg'),
+          releasePlatform: any(named: 'releasePlatform'),
         ),
       ).thenAnswer((_) async => {});
 
@@ -307,7 +308,10 @@ void main() {
       verifyInOrder([
         releaser.assertPreconditions,
         releaser.assertArgsAreValid,
-        () => shorebirdValidator.validateFlavors(flavorArg: null),
+        () => shorebirdValidator.validateFlavors(
+          flavorArg: null,
+          releasePlatform: ReleasePlatform.android,
+        ),
         cache.updateAll,
         () => codePushClientWrapper.getApp(appId: appId),
         () => logger.info(
@@ -423,7 +427,10 @@ void main() {
         verifyInOrder([
           releaser.assertPreconditions,
           releaser.assertArgsAreValid,
-          () => shorebirdValidator.validateFlavors(flavorArg: flavor),
+          () => shorebirdValidator.validateFlavors(
+            flavorArg: flavor,
+            releasePlatform: ReleasePlatform.android,
+          ),
           cache.updateAll,
           () => codePushClientWrapper.getApp(appId: appId),
           () => logger.info(
@@ -449,6 +456,7 @@ void main() {
           when(
             () => shorebirdValidator.validateFlavors(
               flavorArg: any(named: 'flavorArg'),
+              releasePlatform: any(named: 'releasePlatform'),
             ),
           ).thenThrow(ValidationFailedException());
         });

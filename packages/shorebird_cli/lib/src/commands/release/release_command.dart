@@ -258,7 +258,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     await assertArgsAreValid(releaser);
 
     try {
-      await shorebirdValidator.validateFlavors(flavorArg: flavor);
+      await shorebirdValidator.validateFlavors(
+        flavorArg: flavor,
+        releasePlatform: releaser.releaseType.releasePlatform,
+      );
     } on ValidationFailedException {
       throw ProcessExit(ExitCode.config.code);
     }
