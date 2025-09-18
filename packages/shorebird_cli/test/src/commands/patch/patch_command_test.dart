@@ -325,6 +325,7 @@ void main() {
       when(
         () => shorebirdValidator.validateFlavors(
           flavorArg: any(named: 'flavorArg'),
+          releasePlatform: any(named: 'releasePlatform'),
         ),
       ).thenAnswer((_) async => {});
 
@@ -380,7 +381,10 @@ void main() {
             await runWithOverrides(() => command.createPatch(patcher));
 
             verify(
-              () => shorebirdValidator.validateFlavors(flavorArg: null),
+              () => shorebirdValidator.validateFlavors(
+                flavorArg: null,
+                releasePlatform: ReleasePlatform.android,
+              ),
             ).called(1);
           });
         });
@@ -395,7 +399,10 @@ void main() {
             await runWithOverrides(() => command.createPatch(patcher));
 
             verify(
-              () => shorebirdValidator.validateFlavors(flavorArg: flavor),
+              () => shorebirdValidator.validateFlavors(
+                flavorArg: flavor,
+                releasePlatform: ReleasePlatform.android,
+              ),
             ).called(1);
           });
         });
@@ -405,6 +412,7 @@ void main() {
             when(
               () => shorebirdValidator.validateFlavors(
                 flavorArg: any(named: 'flavorArg'),
+                releasePlatform: any(named: 'releasePlatform'),
               ),
             ).thenThrow(ValidationFailedException());
           });
@@ -834,7 +842,10 @@ void main() {
         verifyInOrder([
           () => patcher.assertPreconditions(),
           () => patcher.assertArgsAreValid(),
-          () => shorebirdValidator.validateFlavors(flavorArg: null),
+          () => shorebirdValidator.validateFlavors(
+            flavorArg: null,
+            releasePlatform: ReleasePlatform.android,
+          ),
           () => cache.updateAll(),
           () => codePushClientWrapper.getApp(appId: appId),
           () => codePushClientWrapper.getRelease(
@@ -1029,7 +1040,10 @@ void main() {
           final verificationResult = verifyInOrder([
             () => patcher.assertPreconditions(),
             () => patcher.assertArgsAreValid(),
-            () => shorebirdValidator.validateFlavors(flavorArg: null),
+            () => shorebirdValidator.validateFlavors(
+              flavorArg: null,
+              releasePlatform: ReleasePlatform.android,
+            ),
             () => cache.updateAll(),
             () => codePushClientWrapper.getApp(appId: appId),
             () => codePushClientWrapper.getReleases(appId: appId),

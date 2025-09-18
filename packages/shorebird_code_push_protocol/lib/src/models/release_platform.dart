@@ -19,4 +19,11 @@ enum ReleasePlatform {
 
   /// The display name of the platform.
   final String displayName;
+
+  /// Whether the platform supports flavors.
+  bool get supportsFlavors => {
+    ReleasePlatform.android,
+    ReleasePlatform.ios,
+    ReleasePlatform.macos,
+  }.contains(this);
 }
