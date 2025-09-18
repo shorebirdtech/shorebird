@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -9,7 +8,6 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -17,7 +15,7 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
-import 'package:shorebird_cli/src/windows/windows_exe_selector.dart';
+import 'package:shorebird_cli/src/windows/windows_app_version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template windows_releaser}
@@ -82,24 +80,15 @@ To change the version of this release, change your app's version in your pubspec
   }) {
     // Determines the Windows app version by selecting the application
     // executable from the release directory and reading its ProductVersion via
-    // PowerShell. Excludes helper binaries (e.g. crashpad handlers) and uses
-    // the pubspec name to break ties when multiple candidates exist.
+    // PowerShell. Prefers a match on the pubspec name; falls back to the first
+    // .exe when no match is found.
     final dir = releaseArtifactRoot as Directory;
     final projectName = shorebirdEnv.getPubspecYaml()?.name;
-    final exesFound = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => p.extension(f.path).toLowerCase() == '.exe')
-        .map((f) => p.basename(f.path))
-        .toList();
-    logger
-      ..detail(
-        '[windows_releaser] EXEs found in release dir: \\${exesFound.join(', ')}',
-      )
-      ..detail('[windows_releaser] projectName: \\$projectName');
-    final exe = selectWindowsAppExe(dir, projectNameHint: projectName);
-    logger.detail('[windows_releaser] Selected exe: \\${exe.path}');
-    return powershell.getExeVersionString(exe);
+    return getWindowsAppVersionFromDir(
+      dir,
+      projectNameHint: projectName,
+      logTag: 'windows_releaser',
+    );
   }
 
   @override
@@ -111,7 +100,7 @@ To change the version of this release, change your app's version in your pubspec
     final releaseDir = artifactManager.getWindowsReleaseDirectory();
 
     if (!releaseDir.existsSync()) {
-      logger.err('No release directory found at \\${releaseDir.path}');
+      logger.err('No release directory found at ${releaseDir.path}');
       throw ProcessExit(ExitCode.software.code);
     }
 
@@ -129,6 +118,6 @@ To change the version of this release, change your app's version in your pubspec
   String get postReleaseInstructions =>
       '''
 
-Windows executable created at \\${artifactManager.getWindowsReleaseDirectory().path}.
+Windows executable created at ${artifactManager.getWindowsReleaseDirectory().path}.
 ''';
 }

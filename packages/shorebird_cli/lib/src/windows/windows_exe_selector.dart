@@ -4,10 +4,9 @@ import 'package:path/path.dart' as p;
 /// Selects the most likely application executable from a Windows release
 /// directory.
 ///
-/// Excludes known helper binaries (e.g. crashpad handlers) and selects the
-/// application executable. When multiple candidates remain, uses
-/// [projectNameHint] to break ties; otherwise falls back to the first `.exe`
-/// to preserve legacy behavior.
+/// Selects the application executable by preferring matches based on
+/// [projectNameHint]. Falls back to the first `.exe` to preserve legacy
+/// behavior when no hint match is found.
 File selectWindowsAppExe(
   Directory releaseDir, {
   String? projectNameHint,
@@ -22,21 +21,7 @@ File selectWindowsAppExe(
     throw Exception('No .exe found in release artifact');
   }
 
-  const excludedNames = <String>{
-    'crashpad_handler.exe',
-    'crashpad_wer.exe',
-    'dump_syms.exe',
-    'symupload.exe',
-    'flutter_tester.exe',
-  };
-
-  var candidates = exes
-      .where((f) => !excludedNames.contains(p.basename(f.path).toLowerCase()))
-      .toList();
-
-  if (candidates.isEmpty) {
-    candidates = exes;
-  }
+  final candidates = exes;
 
   if (projectNameHint != null && projectNameHint.trim().isNotEmpty) {
     final hint = projectNameHint.toLowerCase();

@@ -41,8 +41,8 @@ class Powershell {
     final pwshCommand =
         "(Get-Item -Path '$exePath').VersionInfo.ProductVersion";
     logger
-      ..detail('[powershell] Inspecting EXE for ProductVersion: \\$exePath')
-      ..detail('[powershell] Command: powershell.exe -Command \\$pwshCommand');
+      ..detail('[powershell] Inspecting EXE for ProductVersion: $exePath')
+      ..detail('[powershell] Command: powershell.exe -Command $pwshCommand');
 
     final result = await pwsh(['-Command', pwshCommand]);
 
