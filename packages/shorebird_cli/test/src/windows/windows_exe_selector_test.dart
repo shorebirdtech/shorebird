@@ -31,7 +31,7 @@ void main() {
       final selected = selectWindowsAppExe(tempDir, projectNameHint: 'myapp');
       expect(selected.path, equals(app.path));
 
-      // Ensure excluded helper exists but is not chosen.
+      // Ensure helper executable exists but is not chosen due to hint.
       expect(crashpad.existsSync(), isTrue);
     });
 
@@ -54,13 +54,13 @@ void main() {
       expect(selected.path == a.path || selected.path == b.path, isTrue);
     });
 
-    test('falls back to all exes when exclusions filter out all', () {
+    test('falls back when only these exes are present', () {
       final cp1 = File(p.join(tempDir.path, 'crashpad_handler.exe'))
         ..createSync();
       final cp2 = File(p.join(tempDir.path, 'crashpad_wer.exe'))..createSync();
 
       final selected = selectWindowsAppExe(tempDir);
-      // When only excluded names exist, we fall back to the original list.
+      // When only these executables exist, returns one of them (fallback).
       expect(
         selected.path == cp1.path || selected.path == cp2.path,
         isTrue,
