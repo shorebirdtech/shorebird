@@ -35,8 +35,6 @@ class Powershell {
 
   /// Returns the version string of the given executable file.
   Future<String> getExeVersionString(File exeFile) async {
-    // Reads the Windows ProductVersion for the provided executable using
-    // PowerShell's Get-Item cmdlet.
     final exePath = exeFile.path;
     final pwshCommand =
         "(Get-Item -Path '$exePath').VersionInfo.ProductVersion";
