@@ -23,15 +23,15 @@ void main() {
       );
     });
 
-    test('prefers exact match with projectNameHint', () {
+    test('prefers exact match with projectName', () {
       final crashpad = File(p.join(tempDir.path, 'crashpad_handler.exe'))
         ..createSync();
       final app = File(p.join(tempDir.path, 'myapp.exe'))..createSync();
 
-      final selected = selectWindowsAppExe(tempDir, projectNameHint: 'myapp');
+      final selected = selectWindowsAppExe(tempDir, projectName: 'myapp');
       expect(selected.path, equals(app.path));
 
-      // Ensure helper executable exists but is not chosen due to hint.
+      // Ensure another executable exists but is not chosen due to projectName.
       expect(crashpad.existsSync(), isTrue);
     });
 
@@ -39,12 +39,12 @@ void main() {
       final app = File(p.join(tempDir.path, 'cool_game.exe'))..createSync();
       final other = File(p.join(tempDir.path, 'runner.exe'))..createSync();
 
-      final selected = selectWindowsAppExe(tempDir, projectNameHint: 'cool');
+      final selected = selectWindowsAppExe(tempDir, projectName: 'cool');
       expect(selected.path, equals(app.path));
       expect(other.existsSync(), isTrue);
     });
 
-    test('falls back to first candidate when no hint provided', () {
+    test('falls back to first candidate when no projectName provided', () {
       final a = File(p.join(tempDir.path, 'a.exe'))..createSync();
       final b = File(p.join(tempDir.path, 'b.exe'))..createSync();
 

@@ -21,6 +21,7 @@ class Powershell {
     List<String> arguments, {
     String? workingDirectory,
   }) async {
+    logger.detail('[powershell] Command: $executable ${arguments.join(' ')}');
     final result = await process.run(executable, arguments);
     if (result.exitCode != ExitCode.success.code) {
       throw ProcessException(
@@ -38,9 +39,7 @@ class Powershell {
     final exePath = exeFile.path;
     final pwshCommand =
         "(Get-Item -Path '$exePath').VersionInfo.ProductVersion";
-    logger
-      ..detail('[powershell] Inspecting EXE for ProductVersion: $exePath')
-      ..detail('[powershell] Command: powershell.exe -Command $pwshCommand');
+    logger.detail('[powershell] Inspecting EXE for ProductVersion: $exePath');
 
     final result = await pwsh(['-Command', pwshCommand]);
 

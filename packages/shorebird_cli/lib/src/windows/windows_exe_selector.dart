@@ -5,11 +5,11 @@ import 'package:path/path.dart' as p;
 /// directory.
 ///
 /// Selects the application executable by preferring matches based on
-/// [projectNameHint]. Falls back to the first `.exe` to preserve legacy
-/// behavior when no hint match is found.
+/// [projectName]. Falls back to the first `.exe` to preserve legacy
+/// behavior when no projectName match is found.
 File selectWindowsAppExe(
   Directory releaseDir, {
-  String? projectNameHint,
+  String? projectName,
 }) {
   final exes = releaseDir
       .listSync()
@@ -23,19 +23,19 @@ File selectWindowsAppExe(
 
   final candidates = exes;
 
-  if (projectNameHint != null && projectNameHint.trim().isNotEmpty) {
-    final hint = projectNameHint.toLowerCase();
+  if (projectName != null && projectName.trim().isNotEmpty) {
+    final name = projectName.toLowerCase();
 
     File? exact;
     File? contains;
 
     for (final f in candidates) {
       final base = p.basename(f.path).toLowerCase();
-      if (base == '$hint.exe' || base == '${hint}_win64.exe') {
+      if (base == '$name.exe') {
         exact = f;
         break;
       }
-      if (base.contains(hint)) {
+      if (base.contains(name)) {
         contains ??= f;
       }
     }

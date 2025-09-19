@@ -5,12 +5,17 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/windows/windows_exe_selector.dart';
 
-/// Returns the Windows application ProductVersion for the app executable in
-/// [releaseDir]. Uses [projectNameHint] to disambiguate if multiple `.exe`
-/// files are present. Logs helpful details with the provided [logTag].
+/// Returns the Windows application ProductVersion for the .exe in [releaseDir].
+/// Uses [projectName] (the pubspec name) to select the exe: prefers an exact
+/// match on '[projectName].exe', then a filename containing '[projectName]',
+/// otherwise falls back to the first .exe. Logs details with [logTag].
+/// [releaseDir] is the directory containing the release artifacts. In the
+/// release flow, [WindowsReleaser.getReleaseVersion()] passes the [Directory]
+/// returned by [artifactBuilder.buildWindowsApp()] directly here.
+/// Only top-level .exe files in [releaseDir] are considered (non-recursive).
 Future<String> getWindowsAppVersionFromDir(
   Directory releaseDir, {
-  String? projectNameHint,
+  String? projectName,
   String logTag = 'windows',
 }) async {
   final exesFound = releaseDir
@@ -22,11 +27,11 @@ Future<String> getWindowsAppVersionFromDir(
 
   logger
     ..detail('[$logTag] EXEs found in directory: ${exesFound.join(', ')}')
-    ..detail('[$logTag] projectName: ${projectNameHint ?? '(unknown)'}');
+    ..detail('[$logTag] projectName: ${projectName ?? '(unknown)'}');
 
   final exeFile = selectWindowsAppExe(
     releaseDir,
-    projectNameHint: projectNameHint,
+    projectName: projectName,
   );
   logger.detail('[$logTag] Selected exe: ${exeFile.path}');
 

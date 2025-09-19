@@ -152,7 +152,7 @@ class WindowsPatcher extends Patcher {
     final projectName = shorebirdEnv.getPubspecYaml()?.name;
     return getWindowsAppVersionFromDir(
       outputDirectory,
-      projectNameHint: projectName,
+      projectName: projectName,
       logTag: 'windows_patcher',
     );
   }

@@ -86,7 +86,7 @@ To change the version of this release, change your app's version in your pubspec
     final projectName = shorebirdEnv.getPubspecYaml()?.name;
     return getWindowsAppVersionFromDir(
       dir,
-      projectNameHint: projectName,
+      projectName: projectName,
       logTag: 'windows_releaser',
     );
   }
