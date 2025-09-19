@@ -13,14 +13,15 @@ import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/windows/windows_app_version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template windows_patcher}
@@ -139,14 +140,20 @@ class WindowsPatcher extends Patcher {
 
   @override
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
+    // Extracts the Windows app version from a zipped release directory by
+    // selecting the application executable and reading its ProductVersion via
+    // PowerShell. Prefers a match on the pubspec name; falls back to the first
+    // .exe when no match is found.
     final outputDirectory = Directory.systemTemp.createTempSync();
     await artifactManager.extractZip(
       zipFile: artifact,
       outputDirectory: outputDirectory,
     );
-    final exeFile = outputDirectory.listSync().whereType<File>().firstWhere(
-      (file) => p.extension(file.path) == '.exe',
+    final projectName = shorebirdEnv.getPubspecYaml()?.name;
+    return getWindowsAppVersionFromDir(
+      outputDirectory,
+      projectName: projectName,
+      logTag: 'windows_patcher',
     );
-    return powershell.getExeVersionString(exeFile);
   }
 }
