@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/windows/windows_exe_selector.dart';
+import 'package:shorebird_cli/src/platform/windows.dart';
 
 /// Returns the Windows application ProductVersion for the .exe in [releaseDir].
 /// Uses [projectName] (the pubspec name) to select the exe: prefers an exact
@@ -29,7 +29,7 @@ Future<String> getWindowsAppVersionFromDir(
     ..detail('[$logTag] EXEs found in directory: ${exesFound.join(', ')}')
     ..detail('[$logTag] projectName: ${projectName ?? '(unknown)'}');
 
-  final exeFile = windowsAppExe(
+  final exeFile = windows.windowsAppExe(
     releaseDir,
     projectName: projectName,
   );
