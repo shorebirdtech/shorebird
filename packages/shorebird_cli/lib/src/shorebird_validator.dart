@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// An exception thrown when a precondition for running a command is not met.
 abstract interface class PreconditionFailedException implements Exception {
@@ -147,9 +148,11 @@ To fix, update your pubspec.yaml to include the following:
 
   /// Runs [FlavorValidator] and throws a [ValidationFailedException] if any
   /// issues are found.
-  Future<void> validateFlavors({required String? flavorArg}) async {
-    final platformSupportsFlavors = !platform.isWindows && !platform.isLinux;
-    if (!platformSupportsFlavors) {
+  Future<void> validateFlavors({
+    required String? flavorArg,
+    required ReleasePlatform releasePlatform,
+  }) async {
+    if (!releasePlatform.supportsFlavors) {
       if (flavorArg != null) {
         logger
           ..err('Flavors are not supported on this platform.')

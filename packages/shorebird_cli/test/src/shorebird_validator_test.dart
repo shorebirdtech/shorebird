@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import 'mocks.dart';
@@ -242,16 +243,14 @@ To fix, update your pubspec.yaml to include the following:
         });
 
         group('when platform does not support flavors', () {
-          setUp(() {
-            when(() => platform.isWindows).thenReturn(true);
-          });
-
           group('when a flavor arg is provided', () {
             test('validation fails', () async {
               await expectLater(
                 runWithOverrides(
-                  () =>
-                      shorebirdValidator.validateFlavors(flavorArg: 'flavorA'),
+                  () => shorebirdValidator.validateFlavors(
+                    flavorArg: 'flavorA',
+                    releasePlatform: ReleasePlatform.windows,
+                  ),
                 ),
                 throwsA(isA<ValidationFailedException>()),
               );
@@ -271,7 +270,10 @@ To fix, update your pubspec.yaml to include the following:
             test('passes validation', () async {
               await expectLater(
                 runWithOverrides(
-                  () => shorebirdValidator.validateFlavors(flavorArg: null),
+                  () => shorebirdValidator.validateFlavors(
+                    flavorArg: null,
+                    releasePlatform: ReleasePlatform.windows,
+                  ),
                 ),
                 completes,
               );
@@ -279,25 +281,33 @@ To fix, update your pubspec.yaml to include the following:
           });
         });
 
-        group('when no flavor is specified', () {
-          test('fails validation', () async {
-            await expectLater(
-              runWithOverrides(
-                () => shorebirdValidator.validateFlavors(flavorArg: null),
-              ),
-              throwsA(isA<ValidationFailedException>()),
-            );
+        group('when platform supports flavors', () {
+          group('when no flavor is specified', () {
+            test('fails validation', () async {
+              await expectLater(
+                runWithOverrides(
+                  () => shorebirdValidator.validateFlavors(
+                    flavorArg: null,
+                    releasePlatform: ReleasePlatform.android,
+                  ),
+                ),
+                throwsA(isA<ValidationFailedException>()),
+              );
+            });
           });
-        });
 
-        group('when a flavor arg is provided that exists in the project', () {
-          test('passes validation', () async {
-            await expectLater(
-              runWithOverrides(
-                () => shorebirdValidator.validateFlavors(flavorArg: 'flavorA'),
-              ),
-              completes,
-            );
+          group('when a flavor arg is provided that exists in the project', () {
+            test('passes validation', () async {
+              await expectLater(
+                runWithOverrides(
+                  () => shorebirdValidator.validateFlavors(
+                    flavorArg: 'flavorA',
+                    releasePlatform: ReleasePlatform.android,
+                  ),
+                ),
+                completes,
+              );
+            });
           });
         });
       });
@@ -311,7 +321,10 @@ To fix, update your pubspec.yaml to include the following:
           test('passes validation', () async {
             await expectLater(
               runWithOverrides(
-                () => shorebirdValidator.validateFlavors(flavorArg: null),
+                () => shorebirdValidator.validateFlavors(
+                  flavorArg: null,
+                  releasePlatform: ReleasePlatform.android,
+                ),
               ),
               completes,
             );
@@ -321,8 +334,10 @@ To fix, update your pubspec.yaml to include the following:
             test('fails validation', () async {
               await expectLater(
                 runWithOverrides(
-                  () =>
-                      shorebirdValidator.validateFlavors(flavorArg: 'flavorA'),
+                  () => shorebirdValidator.validateFlavors(
+                    flavorArg: 'flavorA',
+                    releasePlatform: ReleasePlatform.android,
+                  ),
                 ),
                 throwsA(isA<ValidationFailedException>()),
               );
