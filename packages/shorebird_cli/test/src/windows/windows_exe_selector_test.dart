@@ -18,7 +18,7 @@ void main() {
 
     test('throws when no .exe files exist', () {
       expect(
-        () => selectWindowsAppExe(tempDir),
+        () => windowsAppExe(tempDir),
         throwsA(isA<Exception>()),
       );
     });
@@ -28,7 +28,7 @@ void main() {
         ..createSync();
       final app = File(p.join(tempDir.path, 'myapp.exe'))..createSync();
 
-      final selected = selectWindowsAppExe(tempDir, projectName: 'myapp');
+      final selected = windowsAppExe(tempDir, projectName: 'myapp');
       expect(selected.path, equals(app.path));
 
       // Ensure another executable exists but is not chosen due to projectName.
@@ -39,7 +39,7 @@ void main() {
       final app = File(p.join(tempDir.path, 'cool_game.exe'))..createSync();
       final other = File(p.join(tempDir.path, 'runner.exe'))..createSync();
 
-      final selected = selectWindowsAppExe(tempDir, projectName: 'cool');
+      final selected = windowsAppExe(tempDir, projectName: 'cool');
       expect(selected.path, equals(app.path));
       expect(other.existsSync(), isTrue);
     });
@@ -48,7 +48,7 @@ void main() {
       final a = File(p.join(tempDir.path, 'a.exe'))..createSync();
       final b = File(p.join(tempDir.path, 'b.exe'))..createSync();
 
-      final selected = selectWindowsAppExe(tempDir);
+      final selected = windowsAppExe(tempDir);
       // Order of listSync is platform dependent but typically creation order.
       // This assertion captures the legacy behavior of returning the first.
       expect(selected.path == a.path || selected.path == b.path, isTrue);
@@ -59,7 +59,7 @@ void main() {
         ..createSync();
       final cp2 = File(p.join(tempDir.path, 'crashpad_wer.exe'))..createSync();
 
-      final selected = selectWindowsAppExe(tempDir);
+      final selected = windowsAppExe(tempDir);
       // When only these executables exist, returns one of them (fallback).
       expect(
         selected.path == cp1.path || selected.path == cp2.path,

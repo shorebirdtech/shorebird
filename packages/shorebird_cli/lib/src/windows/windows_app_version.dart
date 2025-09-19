@@ -29,7 +29,7 @@ Future<String> getWindowsAppVersionFromDir(
     ..detail('[$logTag] EXEs found in directory: ${exesFound.join(', ')}')
     ..detail('[$logTag] projectName: ${projectName ?? '(unknown)'}');
 
-  final exeFile = selectWindowsAppExe(
+  final exeFile = windowsAppExe(
     releaseDir,
     projectName: projectName,
   );
