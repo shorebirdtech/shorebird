@@ -146,8 +146,8 @@ class CodePushClient {
       'platform': platform.name,
       'hash': hash,
       'size': '${file.length}',
-      if (hashSignature != null) 'hash_signature': hashSignature,
-      if (podfileLockHash != null) 'podfile_lock_hash': podfileLockHash,
+      'hash_signature': ?hashSignature,
+      'podfile_lock_hash': ?podfileLockHash,
     });
     final response = await _httpClient.send(request);
     final body = await response.stream.bytesToString();
@@ -301,8 +301,8 @@ class CodePushClient {
       body: json.encode({
         'version': version,
         'flutter_revision': flutterRevision,
-        if (flutterVersion != null) 'flutter_version': flutterVersion,
-        if (displayName != null) 'display_name': displayName,
+        'flutter_version': ?flutterVersion,
+        'display_name': ?displayName,
       }),
     );
 
@@ -445,7 +445,7 @@ class CodePushClient {
     final response = await _httpClient.get(
       Uri.parse('$_v1/apps/$appId/releases/$releaseId/artifacts').replace(
         queryParameters: {
-          if (arch != null) 'arch': arch,
+          'arch': ?arch,
           if (platform != null) 'platform': platform.name,
         },
       ),

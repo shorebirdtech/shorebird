@@ -2728,7 +2728,7 @@ channel: ${DeploymentTrack.staging.channel}
             () => process.exitCode,
           ).thenAnswer((_) async => ExitCode.success.code);
 
-          createAabFile(channel: null);
+          unawaited(createAabFile(channel: null));
         });
 
         test('exits with success and calls install and launch app', () async {
