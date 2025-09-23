@@ -119,8 +119,8 @@ void main() {
         when(() => argResults['patch-number']).thenReturn('5');
       });
 
-      test('should log an error', () {
-        runWithOverrides(() async {
+      test('should log an error', () async {
+        await runWithOverrides(() async {
           final result = await command.run();
 
           expect(result, equals(ExitCode.usage.code));
