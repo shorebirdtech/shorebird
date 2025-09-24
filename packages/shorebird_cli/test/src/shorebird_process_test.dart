@@ -118,11 +118,13 @@ void main() {
         ).called(1);
       });
 
-      test('sanitizes executable on windows', () {
+      test('sanitizes executable on windows', () async {
         when(() => platform.isWindows).thenReturn(true);
         const executable =
             r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
-        runWithOverrides(() => shorebirdProcess.run(executable, ['--version']));
+        await runWithOverrides(
+          () => shorebirdProcess.run(executable, ['--version']),
+        );
         verify(
           () => processWrapper.run(
             '"$executable"',
@@ -490,11 +492,11 @@ void main() {
         ).called(1);
       });
 
-      test('sanitizes executable on windows', () {
+      test('sanitizes executable on windows', () async {
         when(() => platform.isWindows).thenReturn(true);
         const executable =
             r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
-        runWithOverrides(
+        await runWithOverrides(
           () => shorebirdProcess.start(executable, ['--version']),
         );
         verify(

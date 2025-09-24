@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv
  -->
 
+## 1.6.61 (September 23, 2025)
+
+- 🐞 Fix bug where Flutter 3.35.4 would incorrectly use Dart 3.9.0
+
 ## 1.6.60 (September 17, 2025)
 
 - 🐛 Fix platform flavor support check

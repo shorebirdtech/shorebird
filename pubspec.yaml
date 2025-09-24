@@ -1,7 +1,7 @@
 name: _
 publish_to: none
 environment:
-  sdk: ^3.8.0
+  sdk: ^3.9.0
 workspace:
   - packages/artifact_proxy
   - packages/discord_gcp_alerts
@@ -15,4 +15,4 @@ workspace:
   - packages/stripe_api
 
 dev_dependencies:
-  very_good_analysis: ^9.0.0
+  very_good_analysis: ^10.0.0
