@@ -7,7 +7,7 @@ topics: [redis, cache, shorebird]
 resolution: workspace
 
 environment:
-  sdk: ">=3.8.0 <4.0.0"
+  sdk: ">=3.9.0 <4.0.0"
 
 dependencies:
   resp_client: ^1.2.0
