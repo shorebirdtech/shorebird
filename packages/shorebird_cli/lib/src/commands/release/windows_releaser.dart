@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -9,7 +8,6 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -17,6 +15,7 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/windows/windows_app_version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template windows_releaser}
@@ -79,14 +78,17 @@ To change the version of this release, change your app's version in your pubspec
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) {
-    final exe = (releaseArtifactRoot as Directory)
-        .listSync()
-        .whereType<File>()
-        .firstWhere(
-          (entity) => p.extension(entity.path) == '.exe',
-          orElse: () => throw Exception('No .exe found in release artifact'),
-        );
-    return powershell.getExeVersionString(exe);
+    // Determines the Windows app version by selecting the application
+    // executable from the release directory and reading its ProductVersion via
+    // PowerShell. Prefers a match on the pubspec name; falls back to the first
+    // .exe when no match is found.
+    final dir = releaseArtifactRoot as Directory;
+    final projectName = shorebirdEnv.getPubspecYaml()?.name;
+    return getWindowsAppVersionFromDir(
+      dir,
+      projectName: projectName,
+      logTag: 'windows_releaser',
+    );
   }
 
   @override
