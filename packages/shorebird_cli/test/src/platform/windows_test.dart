@@ -1,3 +1,4 @@
+// cspell:words myapp crashpad
 import 'dart:io';
 
 import 'package:path/path.dart' as p;

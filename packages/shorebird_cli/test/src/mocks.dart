@@ -187,4 +187,6 @@ class MockStdout extends Mock implements Stdout {}
 
 class MockValidator extends Mock implements Validator {}
 
+class MockWindows extends Mock implements Windows {}
+
 class MockXcodeBuild extends Mock implements XcodeBuild {}

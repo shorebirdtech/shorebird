@@ -55,6 +55,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
+    late Windows windows;
     late WindowsPatcher patcher;
 
     R runWithOverrides<R>(R Function() body) {
@@ -75,6 +76,7 @@ void main() {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          windowsRef.overrideWith(() => windows),
         },
       );
     }
@@ -108,6 +110,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      windows = MockWindows();
 
       when(() => argParser.options).thenReturn({});
 
@@ -524,6 +527,9 @@ void main() {
             p.join(outPath, 'hello_windows.exe'),
           ).createSync(recursive: true);
         });
+        when(
+          () => windows.windowsAppExe(any()),
+        ).thenReturn(File(p.join(projectRoot.path, 'app.exe')));
         when(
           () => powershell.getExeVersionString(any()),
         ).thenAnswer((_) async => '1.2.3');
