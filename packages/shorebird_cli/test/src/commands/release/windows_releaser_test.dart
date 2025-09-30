@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -15,6 +16,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
@@ -45,6 +47,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
+    late Windows windows;
     late WindowsReleaser releaser;
 
     R runWithOverrides<R>(R Function() body) {
@@ -62,6 +65,7 @@ void main() {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          windowsRef.overrideWith(() => windows),
         },
       );
     }
@@ -88,6 +92,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      windows = MockWindows();
 
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults.wasParsed(any())).thenReturn(false);
@@ -324,7 +329,24 @@ To change the version of this release, change your app's version in your pubspec
     });
 
     group('getReleaseVersion', () {
-      group('when exe does not exist', () {
+      const projectName = 'my_app';
+
+      late Pubspec pubspec;
+
+      setUp(() {
+        pubspec = MockPubspec();
+
+        when(
+          () => windows.findExecutable(
+            releaseDirectory: any(named: 'releaseDirectory'),
+            projectName: any(named: 'projectName'),
+          ),
+        ).thenThrow(Exception('No .exe found in release artifact'));
+        when(() => shorebirdEnv.getPubspecYaml()).thenReturn(pubspec);
+        when(() => pubspec.name).thenReturn(projectName);
+      });
+
+      group('when an executable does not exist', () {
         test('throws exception', () {
           expect(
             () => runWithOverrides(
@@ -336,22 +358,39 @@ To change the version of this release, change your app's version in your pubspec
         });
       });
 
-      group('when exe exists', () {
+      group('when an executable exists', () {
+        const productVersion = '1.2.3';
+        late File executable;
+
         setUp(() {
-          File(p.join(projectRoot.path, 'app.exe')).createSync();
+          executable = File(p.join(projectRoot.path, 'app.exe'));
           when(
-            () => powershell.getExeVersionString(any()),
-          ).thenAnswer((_) async => '1.2.3');
+            () => windows.findExecutable(
+              releaseDirectory: any(named: 'releaseDirectory'),
+              projectName: any(named: 'projectName'),
+            ),
+          ).thenReturn(executable);
+          when(
+            () => powershell.getProductVersion(any()),
+          ).thenAnswer((_) async => productVersion);
         });
 
-        test('returns result of getExeVersionString', () async {
+        test('returns result of powershell.getProductVersion', () async {
           await expectLater(
             runWithOverrides(
-              () =>
-                  releaser.getReleaseVersion(releaseArtifactRoot: projectRoot),
+              () => releaser.getReleaseVersion(
+                releaseArtifactRoot: projectRoot,
+              ),
             ),
-            completion(equals('1.2.3')),
+            completion(equals(productVersion)),
           );
+          verify(
+            () => windows.findExecutable(
+              releaseDirectory: projectRoot,
+              projectName: projectName,
+            ),
+          ).called(1);
+          verify(() => powershell.getProductVersion(executable)).called(1);
         });
       });
     });

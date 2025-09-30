@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -10,6 +11,7 @@ import '../mocks.dart';
 
 void main() {
   group(Powershell, () {
+    late ShorebirdLogger logger;
     late ShorebirdProcessResult processResult;
     late ShorebirdProcess process;
     late Powershell powershell;
@@ -17,11 +19,15 @@ void main() {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         () => body(),
-        values: {processRef.overrideWith(() => process)},
+        values: {
+          loggerRef.overrideWith(() => logger),
+          processRef.overrideWith(() => process),
+        },
       );
     }
 
     setUp(() {
+      logger = MockShorebirdLogger();
       processResult = MockShorebirdProcessResult();
       process = MockShorebirdProcess();
 
@@ -36,7 +42,7 @@ void main() {
       powershell = runWithOverrides(Powershell.new);
     });
 
-    group('getExeVersionString', () {
+    group('getProductVersion', () {
       group('when exit code is not success', () {
         setUp(() {
           when(() => processResult.exitCode).thenReturn(1);
@@ -44,7 +50,7 @@ void main() {
 
         test('throws an exception', () async {
           await expectLater(
-            runWithOverrides(() => powershell.getExeVersionString(File(''))),
+            runWithOverrides(() => powershell.getProductVersion(File(''))),
             throwsA(isA<Exception>()),
           );
         });
@@ -59,7 +65,7 @@ void main() {
 
           test('returns unaltered version string', () async {
             final version = await runWithOverrides(
-              () => powershell.getExeVersionString(File('')),
+              () => powershell.getProductVersion(File('')),
             );
             expect(version, '1.0.0+1');
           });
@@ -76,7 +82,7 @@ void main() {
               'directory with spaces',
             );
             final file = File('${directory.path}/file.exe');
-            await runWithOverrides(() => powershell.getExeVersionString(file));
+            await runWithOverrides(() => powershell.getProductVersion(file));
             verify(
               () => process.run('powershell.exe', [
                 '-Command',
@@ -96,7 +102,7 @@ void main() {
             'returns the version string without a build number',
             () async {
               final version = await runWithOverrides(
-                () => powershell.getExeVersionString(File('')),
+                () => powershell.getProductVersion(File('')),
               );
               expect(version, '1.0.0');
             },

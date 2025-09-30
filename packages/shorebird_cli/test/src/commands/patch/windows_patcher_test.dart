@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -55,6 +56,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
+    late Windows windows;
     late WindowsPatcher patcher;
 
     R runWithOverrides<R>(R Function() body) {
@@ -75,6 +77,7 @@ void main() {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          windowsRef.overrideWith(() => windows),
         },
       );
     }
@@ -108,6 +111,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      windows = MockWindows();
 
       when(() => argParser.options).thenReturn({});
 
@@ -511,7 +515,18 @@ void main() {
     });
 
     group('extractReleaseVersionFromArtifact', () {
+      const projectName = 'my_app';
+      const productVersion = '1.2.3';
+
+      late File executable;
+      late Pubspec pubspec;
+
       setUp(() async {
+        executable = File(p.join(projectRoot.path, 'my_app.exe'));
+        pubspec = MockPubspec();
+
+        when(() => shorebirdEnv.getPubspecYaml()).thenReturn(pubspec);
+        when(() => pubspec.name).thenReturn(projectName);
         when(
           () => artifactManager.extractZip(
             zipFile: any(named: 'zipFile'),
@@ -525,16 +540,29 @@ void main() {
           ).createSync(recursive: true);
         });
         when(
-          () => powershell.getExeVersionString(any()),
-        ).thenAnswer((_) async => '1.2.3');
+          () => windows.findExecutable(
+            releaseDirectory: any(named: 'releaseDirectory'),
+            projectName: any(named: 'projectName'),
+          ),
+        ).thenReturn(executable);
+        when(
+          () => powershell.getProductVersion(any()),
+        ).thenAnswer((_) async => productVersion);
       });
 
-      test('returns version from archived exe', () async {
+      test('returns correct version from archived executable', () async {
         final version = await runWithOverrides(
-          () => patcher.extractReleaseVersionFromArtifact(File('')),
+          () => patcher.extractReleaseVersionFromArtifact(executable),
         );
 
-        expect(version, '1.2.3');
+        expect(version, equals(productVersion));
+        verify(
+          () => windows.findExecutable(
+            releaseDirectory: any(named: 'releaseDirectory'),
+            projectName: projectName,
+          ),
+        ).called(1);
+        verify(() => powershell.getProductVersion(executable)).called(1);
       });
     });
   });

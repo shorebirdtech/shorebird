@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -144,9 +145,10 @@ class WindowsPatcher extends Patcher {
       zipFile: artifact,
       outputDirectory: outputDirectory,
     );
-    final exeFile = outputDirectory.listSync().whereType<File>().firstWhere(
-      (file) => p.extension(file.path) == '.exe',
+    final executable = windows.findExecutable(
+      releaseDirectory: outputDirectory,
+      projectName: shorebirdEnv.getPubspecYaml()!.name,
     );
-    return powershell.getExeVersionString(exeFile);
+    return powershell.getProductVersion(executable);
   }
 }

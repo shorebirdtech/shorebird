@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [Powershell] instance.
@@ -20,6 +21,7 @@ class Powershell {
     List<String> arguments, {
     String? workingDirectory,
   }) async {
+    logger.detail('[powershell] Command: $executable ${arguments.join(' ')}');
     final result = await process.run(executable, arguments);
     if (result.exitCode != ExitCode.success.code) {
       throw ProcessException(
@@ -33,12 +35,11 @@ class Powershell {
   }
 
   /// Returns the version string of the given executable file.
-  Future<String> getExeVersionString(File exeFile) async {
-    final exePath = exeFile.path;
-    final pwshCommand =
-        "(Get-Item -Path '$exePath').VersionInfo.ProductVersion";
-
-    final result = await pwsh(['-Command', pwshCommand]);
+  Future<String> getProductVersion(File executable) async {
+    final result = await pwsh([
+      '-Command',
+      "(Get-Item -Path '${executable.path}').VersionInfo.ProductVersion",
+    ]);
 
     return (result.stdout as String).trim();
   }

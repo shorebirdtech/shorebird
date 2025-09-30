@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -79,14 +78,11 @@ To change the version of this release, change your app's version in your pubspec
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) {
-    final exe = (releaseArtifactRoot as Directory)
-        .listSync()
-        .whereType<File>()
-        .firstWhere(
-          (entity) => p.extension(entity.path) == '.exe',
-          orElse: () => throw Exception('No .exe found in release artifact'),
-        );
-    return powershell.getExeVersionString(exe);
+    final executable = windows.findExecutable(
+      releaseDirectory: releaseArtifactRoot as Directory,
+      projectName: shorebirdEnv.getPubspecYaml()!.name,
+    );
+    return powershell.getProductVersion(executable);
   }
 
   @override
