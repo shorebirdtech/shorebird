@@ -88,6 +88,7 @@ Command: shorebird ${args.join(' ')}
           shorebirdToolsRef,
           shorebirdValidatorRef,
           shorebirdVersionRef,
+          windowsRef,
           xcodeBuildRef,
         },
       ),
