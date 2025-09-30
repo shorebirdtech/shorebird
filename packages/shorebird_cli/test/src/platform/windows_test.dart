@@ -59,13 +59,12 @@ void main() {
       expect(other.existsSync(), isTrue);
     });
 
-    test('falls back to first candidate when no projectName provided', () {
+    test('returns first exe when projectName is null', () {
       final a = File(p.join(tempDir.path, 'a.exe'))..createSync();
       final b = File(p.join(tempDir.path, 'b.exe'))..createSync();
 
       final selected = runWithOverrides(() => windows.windowsAppExe(tempDir));
-      // Order of listSync is platform dependent but typically creation order.
-      // This assertion captures the legacy behavior of returning the first.
+      // No projectName provided, returns first exe without matching logic.
       expect(selected.path == a.path || selected.path == b.path, isTrue);
     });
 
@@ -81,6 +80,21 @@ void main() {
       // When only these executables exist, returns one of them (fallback).
       expect(
         selected.path == cp1.path || selected.path == cp2.path,
+        isTrue,
+      );
+    });
+
+    test('falls back to first exe when projectName does not match', () {
+      final crashpad = File(p.join(tempDir.path, 'crashpad_handler.exe'))
+        ..createSync();
+      final runner = File(p.join(tempDir.path, 'runner.exe'))..createSync();
+
+      final selected = runWithOverrides(
+        () => windows.windowsAppExe(tempDir, projectName: 'myapp'),
+      );
+      // projectName provided but no exe matches, falls back to first exe.
+      expect(
+        selected.path == crashpad.path || selected.path == runner.path,
         isTrue,
       );
     });
