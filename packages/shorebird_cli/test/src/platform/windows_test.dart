@@ -2,19 +2,17 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/platform/windows.dart';
 import 'package:test/test.dart';
 
 void main() {
-  R runWithOverrides<R>(R Function() body) {
-    return runScoped(
-      body,
-      values: {windowsRef.overrideWith(Windows.new)},
-    );
-  }
-
   group(Windows, () {
+    late Windows windows;
+
+    setUp(() {
+      windows = Windows();
+    });
+
     group('findExecutable', () {
       late Directory tempDir;
 
@@ -26,45 +24,55 @@ void main() {
         tempDir.deleteSync(recursive: true);
       });
 
-      test('throws when no .exe files exist', () {
-        expect(
-          () => runWithOverrides(
+      group('when no .exe files exist', () {
+        test('throws an exception', () {
+          expect(
             () => windows.findExecutable(
               releaseDirectory: tempDir,
               projectName: 'myapp',
             ),
-          ),
-          throwsA(isA<Exception>()),
-        );
+            throwsA(
+              isA<Exception>().having(
+                (e) => e.toString(),
+                'message',
+                startsWith('Exception: No executables found in'),
+              ),
+            ),
+          );
+        });
       });
 
-      test('returns exact match when found', () {
-        final app = File(p.join(tempDir.path, 'myapp.exe'))..createSync();
-        final crashpad = File(p.join(tempDir.path, 'crashpad_handler.exe'))
-          ..createSync();
+      group('when an exe with the same name as the project exists', () {
+        test('returns that exe', () {
+          final app = File(p.join(tempDir.path, 'myapp.exe'))..createSync();
+          final crashpad = File(p.join(tempDir.path, 'crashpad_handler.exe'))
+            ..createSync();
 
-        final selected = runWithOverrides(
-          () => windows.findExecutable(
+          final selected = windows.findExecutable(
             releaseDirectory: tempDir,
             projectName: 'myapp',
-          ),
-        );
-        expect(selected.path, equals(app.path));
-        expect(crashpad.existsSync(), isTrue);
+          );
+          expect(selected.path, equals(app.path));
+          expect(crashpad.existsSync(), isTrue);
+        });
       });
 
-      test('returns most recently modified if exact match is not found', () {
-        final other = File(p.join(tempDir.path, 'runner.exe'))..createSync();
-        final app = File(p.join(tempDir.path, 'cool_game.exe'))..createSync();
+      group('when no exact match is found', () {
+        test('returns most recently modified exe', () {
+          final app = File(p.join(tempDir.path, 'runner.exe'))..createSync();
+          final otherExe = File(p.join(tempDir.path, 'cool_game.exe'))
+            ..createSync()
+            ..setLastModifiedSync(
+              DateTime.now().subtract(const Duration(seconds: 1)),
+            );
 
-        final selected = runWithOverrides(
-          () => windows.findExecutable(
+          final selected = windows.findExecutable(
             releaseDirectory: tempDir,
-            projectName: 'cool',
-          ),
-        );
-        expect(selected.path, equals(app.path));
-        expect(other.existsSync(), isTrue);
+            projectName: 'some project',
+          );
+          expect(selected.path, equals(app.path));
+          expect(otherExe.existsSync(), isTrue);
+        });
       });
     });
   });
