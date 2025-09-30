@@ -36,7 +36,7 @@ class Windows {
         .listSync()
         .whereType<File>()
         .where((f) => p.extension(f.path).toLowerCase() == '.exe')
-        .sorted((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()))
+        .sorted((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()))
         .reversed;
 
     if (executables.isEmpty) {
