@@ -4,7 +4,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -15,7 +14,6 @@ void main() {
     late ShorebirdLogger logger;
     late ShorebirdProcessResult processResult;
     late ShorebirdProcess process;
-    late Windows windows;
     late Powershell powershell;
 
     R runWithOverrides<R>(R Function() body) {
@@ -24,7 +22,6 @@ void main() {
         values: {
           loggerRef.overrideWith(() => logger),
           processRef.overrideWith(() => process),
-          windowsRef.overrideWith(() => windows),
         },
       );
     }
@@ -33,7 +30,6 @@ void main() {
       logger = MockShorebirdLogger();
       processResult = MockShorebirdProcessResult();
       process = MockShorebirdProcess();
-      windows = MockWindows();
 
       when(
         () => process.run(
