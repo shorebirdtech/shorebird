@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -15,7 +16,6 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
-import 'package:shorebird_cli/src/windows/windows_app_version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template windows_releaser}
@@ -78,17 +78,11 @@ To change the version of this release, change your app's version in your pubspec
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) {
-    // Determines the Windows app version by selecting the application
-    // executable from the release directory and reading its ProductVersion via
-    // PowerShell. Prefers a match on the pubspec name; falls back to the first
-    // .exe when no match is found.
-    final dir = releaseArtifactRoot as Directory;
-    final projectName = shorebirdEnv.getPubspecYaml()?.name;
-    return getWindowsAppVersionFromDir(
-      dir,
-      projectName: projectName,
-      logTag: 'windows_releaser',
+    final executable = windows.findExecutable(
+      releaseDirectory: releaseArtifactRoot as Directory,
+      projectName: shorebirdEnv.getPubspecYaml()!.name,
     );
+    return powershell.getProductVersion(executable);
   }
 
   @override

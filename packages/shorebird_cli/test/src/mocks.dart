@@ -7,6 +7,7 @@ import 'package:jwt/jwt.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:platform/platform.dart';
+import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
@@ -147,6 +148,8 @@ class MockProcessWrapper extends Mock implements ProcessWrapper {}
 class MockProcess extends Mock implements Process {}
 
 class MockProgress extends Mock implements Progress {}
+
+class MockPubspec extends Mock implements Pubspec {}
 
 class MockPubspecEditor extends Mock implements PubspecEditor {}
 

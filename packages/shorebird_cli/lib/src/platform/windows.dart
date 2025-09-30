@@ -25,46 +25,29 @@ Windows get windows => read(windowsRef);
 
 /// A class that provides Windows-specific functionality.
 class Windows {
-  /// Returns the selected application `.exe` from [releaseDir].
-  ///
-  /// Selection order when [projectName] is provided:
-  /// 1) exact match on `<projectName>.exe`
-  /// 2) first basename containing `<projectName>`
-  /// 3) first `.exe`
-  ///
-  /// When [projectName] is null, returns the first `.exe`.
-  /// Only top-level files in [releaseDir] are considered (non-recursive).
-  File windowsAppExe(Directory releaseDir, {String? projectName}) {
-    final exes = releaseDir
+  /// Returns the selected application `.exe` from [releaseDirectory].
+  /// Searched for an exact match for [projectName] and if none is found,
+  /// falls back to returning the most recently modified executable.
+  File findExecutable({
+    required Directory releaseDirectory,
+    required String projectName,
+  }) {
+    final exes = releaseDirectory
         .listSync()
         .whereType<File>()
         .where((f) => p.extension(f.path).toLowerCase() == '.exe')
-        .toList();
+        .sorted((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()));
+
     if (exes.isEmpty) {
-      throw Exception('No .exe found in release artifact');
+      throw Exception(
+        'No executables found in ${releaseDirectory.path}',
+      );
     }
 
-    if (projectName == null) {
-      return exes.first;
-    }
-
-    final exactMatch = exes.firstWhereOrNull(
-      (f) => _pathMatchesName(f.path, projectName),
+    return exes.firstWhere(
+      (exe) => _pathMatchesName(exe.path, projectName),
+      orElse: () => exes.first,
     );
-
-    if (exactMatch != null) {
-      return exactMatch;
-    }
-
-    final fuzzyMatch = exes.firstWhereOrNull(
-      (f) => p.basename(f.path).contains(projectName),
-    );
-
-    if (fuzzyMatch != null) {
-      return fuzzyMatch;
-    }
-
-    return exes.first;
   }
 
   /// Returns true if the basename of [path] is exactly `<projectName>.exe`.

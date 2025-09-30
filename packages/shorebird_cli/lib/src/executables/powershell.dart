@@ -35,13 +35,11 @@ class Powershell {
   }
 
   /// Returns the version string of the given executable file.
-  Future<String> getExeVersionString(File exeFile) async {
-    final exePath = exeFile.path;
-    final pwshCommand =
-        "(Get-Item -Path '$exePath').VersionInfo.ProductVersion";
-    logger.detail('[powershell] Inspecting EXE for ProductVersion: $exePath');
-
-    final result = await pwsh(['-Command', pwshCommand]);
+  Future<String> getProductVersion(File executable) async {
+    final result = await pwsh([
+      '-Command',
+      "(Get-Item -Path '${executable.path}').VersionInfo.ProductVersion",
+    ]);
 
     return (result.stdout as String).trim();
   }
