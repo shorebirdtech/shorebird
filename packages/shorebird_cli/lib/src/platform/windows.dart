@@ -26,31 +26,27 @@ Windows get windows => read(windowsRef);
 /// A class that provides Windows-specific functionality.
 class Windows {
   /// Returns the selected application `.exe` from [releaseDirectory].
-  /// Searched for an exact match for [projectName] and if none is found,
+  /// Searches for an exact match for [projectName] and if none is found,
   /// falls back to returning the most recently modified executable.
   File findExecutable({
     required Directory releaseDirectory,
     required String projectName,
   }) {
-    final exes = releaseDirectory
+    final executables = releaseDirectory
         .listSync()
         .whereType<File>()
         .where((f) => p.extension(f.path).toLowerCase() == '.exe')
         .sorted((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()));
 
-    if (exes.isEmpty) {
+    if (executables.isEmpty) {
       throw Exception(
         'No executables found in ${releaseDirectory.path}',
       );
     }
 
-    return exes.firstWhere(
-      (exe) => _pathMatchesName(exe.path, projectName),
-      orElse: () => exes.first,
+    return executables.firstWhere(
+      (e) => p.basenameWithoutExtension(e.path) == projectName,
+      orElse: () => executables.first,
     );
   }
-
-  /// Returns true if the basename of [path] is exactly `<projectName>.exe`.
-  bool _pathMatchesName(String path, String projectName) =>
-      p.basename(path) == '$projectName.exe';
 }
