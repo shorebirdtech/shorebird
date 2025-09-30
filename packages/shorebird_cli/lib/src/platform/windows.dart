@@ -40,9 +40,7 @@ class Windows {
         .reversed;
 
     if (executables.isEmpty) {
-      throw Exception(
-        'No executables found in ${releaseDirectory.path}',
-      );
+      throw Exception('No executables found in ${releaseDirectory.path}');
     }
 
     return executables.firstWhere(
