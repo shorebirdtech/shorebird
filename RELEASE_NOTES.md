@@ -6,7 +6,7 @@ cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkisha
 
 ## 1.6.63 (September 30, 2025)
 
-- 🪟 fix: use correct executable on windows when multiple executables are generated (thanks @kingdomseed)
+- 🪟 fix: use correct executable on windows when multiple executables are generated (thanks @kingdomseed!)
 
 ## 1.6.62 (September 29, 2025)
 
