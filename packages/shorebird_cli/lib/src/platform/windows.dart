@@ -36,8 +36,7 @@ class Windows {
         .listSync()
         .whereType<File>()
         .where((f) => p.extension(f.path).toLowerCase() == '.exe')
-        .sorted((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()))
-        .reversed;
+        .sorted((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
 
     if (executables.isEmpty) {
       throw Exception('No executables found in ${releaseDirectory.path}');
