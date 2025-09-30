@@ -1,7 +1,7 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks Cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed
  -->
 
 ## 1.6.63 (September 30, 2025)
