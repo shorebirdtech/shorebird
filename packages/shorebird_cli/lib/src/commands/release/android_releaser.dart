@@ -92,14 +92,6 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final architectures = (argResults['target-platform'] as List<String>)
-        .map(
-          (platform) => AndroidArch.availableAndroidArchs.firstWhere(
-            (arch) => arch.targetPlatformCliArg == platform,
-          ),
-        )
-        .toSet();
-
     final base64PublicKey = argResults.encodedPublicKey;
     final aab = await artifactBuilder.buildAppBundle(
       flavor: flavor,
