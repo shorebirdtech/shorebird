@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -65,6 +66,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
+    late ShorebirdProcess process; // Only used by resolveTargetFlutterRevision.
 
     late ReleaseCommand command;
 
@@ -78,6 +80,7 @@ void main() {
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+          processRef.overrideWith(() => process),
         },
       );
     }
@@ -102,6 +105,7 @@ void main() {
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
+      process = MockShorebirdProcess();
 
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
@@ -710,6 +714,74 @@ $exception'''),
 At least Flutter $laterFlutterVersion is required to release with `${releaseType.name}`.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         ).called(1);
+      });
+    });
+
+    group('resolveTargetFlutterRevision', () {
+      test('flutter-version=latest', () async {
+        const flutterRevision = '1.2.3';
+        when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+        const flutterVersionArg = 'latest';
+        final resolvedFlutterRevision = await runWithOverrides(
+          () => resolveTargetFlutterRevision(flutterVersionArg),
+        );
+        verify(
+          () => shorebirdEnv.flutterRevision,
+        ).called(1);
+        expect(resolvedFlutterRevision, equals(flutterRevision));
+      });
+
+      test('flutter-version=system', () async {
+        const flutterRevision = '3.32.4';
+        const flutterVersionArg = 'system';
+        when(() => process.runSync('flutter', ['--version'])).thenReturn(
+          const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout: '''
+Flutter 3.32.4 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision 6fba2447e9 (5 weeks ago) • 2025-06-12 19:03:56 -0700
+Engine • revision 8cd19e509d (5 weeks ago) • 2025-06-12 16:30:12 -0700
+Tools • Dart 3.8.1 • DevTools 2.45.1
+''',
+            stderr: '',
+          ),
+        );
+        final resolvedFlutterRevision = await runWithOverrides(
+          () => resolveTargetFlutterRevision(flutterVersionArg),
+        );
+        expect(resolvedFlutterRevision, equals(flutterRevision));
+      });
+
+      test('flutter-version=fvm', () async {
+        const flutterRevision = '3.32.4';
+        const flutterVersionArg = 'fvm';
+        when(() => process.runSync('fvm', ['flutter', '--version'])).thenReturn(
+          const ShorebirdProcessResult(
+            exitCode: 0,
+            stdout: '''
+Flutter 3.32.4 • channel stable • https://github.com/flutter/flutter.git
+Framework • revision 6fba2447e9 (5 weeks ago) • 2025-06-12 19:03:56 -0700
+Engine • revision 8cd19e509d (5 weeks ago) • 2025-06-12 16:30:12 -0700
+Tools • Dart 3.8.1 • DevTools 2.45.1
+''',
+            stderr: '',
+          ),
+        );
+        final resolvedFlutterRevision = await runWithOverrides(
+          () => resolveTargetFlutterRevision(flutterVersionArg),
+        );
+        expect(resolvedFlutterRevision, equals(flutterRevision));
+      });
+
+      test('flutter-version=3.16.3', () async {
+        const flutterVersionArg = '3.16.3';
+        when(
+          () => shorebirdFlutter.resolveFlutterRevision(any()),
+        ).thenAnswer((_) async => flutterVersionArg);
+        final resolvedFlutterRevision = await runWithOverrides(
+          () => resolveTargetFlutterRevision(flutterVersionArg),
+        );
+        expect(resolvedFlutterRevision, equals(flutterVersionArg));
       });
     });
   });
