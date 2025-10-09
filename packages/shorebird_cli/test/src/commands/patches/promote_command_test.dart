@@ -114,6 +114,22 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    group('when shorebird.yaml is missing', () {
+      setUp(() {
+        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(null);
+      });
+
+      test('logs helpful message and exits with unavailable', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.unavailable.code));
+        verify(
+          () => logger.err(
+            '''Unable to find shorebird.yaml. Are you in a shorebird app directory?''',
+          ),
+        ).called(1);
+      });
+    });
+
     group('when an invalid patch number is provided', () {
       setUp(() {
         when(() => argResults['patch-number']).thenReturn('5');

@@ -42,7 +42,14 @@ class PromoteCommand extends ShorebirdCommand {
     final releaseVersion = results['release-version'] as String;
     final patchNumber = int.parse(results['patch-number'] as String);
     final flavor = results.findOption('flavor', argParser: argParser);
-    final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
+    if (shorebirdYaml == null) {
+      logger.err(
+        '''Unable to find shorebird.yaml. Are you in a shorebird app directory?''',
+      );
+      return ExitCode.unavailable.code;
+    }
+    final appId = shorebirdYaml.getAppId(flavor: flavor);
 
     final release = await codePushClientWrapper.getRelease(
       appId: appId,
@@ -80,7 +87,6 @@ class PromoteCommand extends ShorebirdCommand {
       logger.err(
         '''
 No production channel found for app $appId.
-      
 This is a bug and should never happen. Please file an issue at https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=fix%3A+''',
       );
       return ExitCode.software.code;
