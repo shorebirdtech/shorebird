@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed
  -->
 
+## 1.6.64 (September 30, 2025)
+
+- 🪟 fix: only validate patches on boot
+
 ## 1.6.63 (September 30, 2025)
 
 - 🪟 fix: use correct executable on windows when multiple executables are generated (thanks @kingdomseed!)
