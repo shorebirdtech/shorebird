@@ -4,9 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed
  -->
 
-## 1.6.64 (September 30, 2025)
+## 1.6.64 (October 30, 2025)
 
-- 🪟 fix: only validate patches on boot
+- 🐞 fix: only validate patches on boot. This improves startup time and
+  performance for apps that use patch signing.
 
 ## 1.6.63 (September 30, 2025)
 
