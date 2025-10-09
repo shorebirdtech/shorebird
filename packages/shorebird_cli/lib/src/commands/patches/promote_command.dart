@@ -87,6 +87,7 @@ class PromoteCommand extends ShorebirdCommand {
       logger.err(
         '''
 No production channel found for app $appId.
+      
 This is a bug and should never happen. Please file an issue at https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=fix%3A+''',
       );
       return ExitCode.software.code;
