@@ -126,15 +126,16 @@ void main() {
     });
 
     group('when validation fails', () {
-      test('exits with exit code from validation error', () async {
-        final exception = ShorebirdNotInitializedException();
+      final exception = ShorebirdNotInitializedException();
+      setUp(() {
         when(
           () => shorebirdValidator.validatePreconditions(
             checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
             checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
           ),
         ).thenThrow(exception);
-
+      });
+      test('exits with exit code from validation error', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(exception.exitCode.code));
         verify(
