@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
@@ -49,6 +50,7 @@ void main() {
     late ArgResults argResults;
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdValidator shorebirdValidator;
     late ShorebirdLogger logger;
 
     late PromoteCommand command;
@@ -60,6 +62,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
         },
       );
     }
@@ -73,6 +76,7 @@ void main() {
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
       shorebirdEnv = MockShorebirdEnv();
+      shorebirdValidator = MockShorebirdValidator();
 
       when(() => argResults.wasParsed(any())).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
@@ -107,11 +111,40 @@ void main() {
 
       when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
 
+      when(
+        () => shorebirdValidator.validatePreconditions(
+          checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+          checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+        ),
+      ).thenAnswer((_) async {});
+
       command = PromoteCommand()..testArgResults = argResults;
     });
 
     test('has a description', () {
       expect(command.description, isNotEmpty);
+    });
+
+    group('when validation fails', () {
+      final exception = ShorebirdNotInitializedException();
+      setUp(() {
+        when(
+          () => shorebirdValidator.validatePreconditions(
+            checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+            checkShorebirdInitialized: any(named: 'checkShorebirdInitialized'),
+          ),
+        ).thenThrow(exception);
+      });
+      test('exits with exit code from validation error', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(exception.exitCode.code));
+        verify(
+          () => shorebirdValidator.validatePreconditions(
+            checkUserIsAuthenticated: true,
+            checkShorebirdInitialized: true,
+          ),
+        ).called(1);
+      });
     });
 
     group('when an invalid patch number is provided', () {

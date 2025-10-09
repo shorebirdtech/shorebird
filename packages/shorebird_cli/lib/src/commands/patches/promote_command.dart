@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template promote_command}
 /// Promotes a patch to the production channel.
@@ -39,6 +40,15 @@ class PromoteCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
+    try {
+      await shorebirdValidator.validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: true,
+      );
+    } on PreconditionFailedException catch (error) {
+      return error.exitCode.code;
+    }
+
     final releaseVersion = results['release-version'] as String;
     final patchNumber = int.parse(results['patch-number'] as String);
     final flavor = results.findOption('flavor', argParser: argParser);
