@@ -23,7 +23,8 @@ class FlavorValidator extends Validator {
 
   @override
   Future<List<ValidationIssue>> validate() async {
-    final projectFlavors = shorebirdEnv.getShorebirdYaml()!.flavors;
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
+    final projectFlavors = shorebirdYaml.flavors;
     if (projectFlavors == null && flavorArg != null) {
       return [
         ValidationIssue.error(
@@ -35,9 +36,11 @@ class FlavorValidator extends Validator {
 
     if (projectFlavors != null && flavorArg == null) {
       return [
-        ValidationIssue.error(
+        ValidationIssue.warning(
           message:
-              '''The project has flavors ${projectFlavors.keys}, but no --flavor argument was provided''',
+              '''
+The project has flavors ${projectFlavors.keys}, but no --flavor argument was provided.
+The default app id ${shorebirdYaml.appId} will be used.''',
         ),
       ];
     }

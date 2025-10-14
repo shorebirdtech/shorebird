@@ -119,14 +119,15 @@ void main() {
             validator = FlavorValidator(flavorArg: null);
           });
 
-          test('returns validation error', () async {
+          test('returns validation warning', () async {
             final issues = await runWithOverrides(validator.validate);
             expect(
               issues,
               equals([
-                ValidationIssue.error(
-                  message:
-                      '''The project has flavors (flavorA, flavorB), but no --flavor argument was provided''',
+                ValidationIssue.warning(
+                  message: '''
+The project has flavors (flavorA, flavorB), but no --flavor argument was provided.
+The default app id $appId will be used.''',
                 ),
               ]),
             );

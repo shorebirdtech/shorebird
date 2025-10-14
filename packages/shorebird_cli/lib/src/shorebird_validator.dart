@@ -175,12 +175,23 @@ To fix, update your pubspec.yaml to include the following:
 
       throw ValidationFailedException();
     }
+
+    if (validationIssuesContainsWarning(issues)) {
+      for (final issue in issues) {
+        logger.warn(issue.message);
+      }
+    }
   }
 
   /// Whether any [ValidationIssue]s have a severity of
   /// [ValidationIssueSeverity.error].
   bool validationIssuesContainsError(List<ValidationIssue> issues) =>
       issues.any((issue) => issue.severity == ValidationIssueSeverity.error);
+
+  /// Whether any [ValidationIssue]s have a severity of
+  /// [ValidationIssueSeverity.warning].
+  bool validationIssuesContainsWarning(List<ValidationIssue> issues) =>
+      issues.any((issue) => issue.severity == ValidationIssueSeverity.warning);
 
   /// Logs a message indicating that validation failed. If any of the issues
   /// can be automatically fixed, this also prompts the user to run
