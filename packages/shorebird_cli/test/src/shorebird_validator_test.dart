@@ -283,7 +283,7 @@ To fix, update your pubspec.yaml to include the following:
 
         group('when platform supports flavors', () {
           group('when no flavor is specified', () {
-            test('fails validation', () async {
+            test('logs warning and fails validation', () async {
               await expectLater(
                 runWithOverrides(
                   () => shorebirdValidator.validateFlavors(
@@ -291,8 +291,15 @@ To fix, update your pubspec.yaml to include the following:
                     releasePlatform: ReleasePlatform.android,
                   ),
                 ),
-                throwsA(isA<ValidationFailedException>()),
+                completes,
               );
+              verify(
+                () => logger.warn(
+                  '''
+The project has flavors (flavorA), but no --flavor argument was provided.
+The default app id test will be used.''',
+                ),
+              ).called(1);
             });
           });
 
