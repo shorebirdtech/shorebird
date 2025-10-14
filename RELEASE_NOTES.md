@@ -1,10 +1,18 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee
  -->
 
-## 1.6.64 (October 30, 2025)
+## 1.6.65 (October 14, 2025)
+
+- 🐦 Support for Flutter 3.35.6
+- 🍧 Enable flavor support for single platforms by warning instead of erroring
+  when no flavor is provided to an app that supports flavors.
+- 🔎 Handle missing shorebird.yaml file gracefully when promoting a patch
+  (thanks @Peetee06!)
+
+## 1.6.64 (October 9, 2025)
 
 - 🐞 fix: only validate patches on boot. This improves startup time and
   performance for apps that use patch signing.
