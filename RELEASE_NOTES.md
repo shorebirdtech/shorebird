@@ -7,6 +7,7 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 ## 1.6.66 (October 27, 2025)
 
 - 🐦 Support for Flutter 3.35.7
+- 🩹 Fix broken troubleshooting links
 - 🧹 Various dependency upgrades
 
 ## 1.6.65 (October 14, 2025)
