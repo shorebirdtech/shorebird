@@ -1,3 +1,4 @@
+// cspell:words swiftobjective ckotlinjava havent
 import 'package:mason_logger/mason_logger.dart';
 
 /// Link to the Shorebird documentation page.
