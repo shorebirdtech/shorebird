@@ -85,7 +85,7 @@ class PatchDiffChecker {
           yellow.wrap(
             '''
 
-If you don't know why you're seeing this error, visit our troubleshooting page at ${troubleshootingUrl.toLink()}''',
+If you don't know why you're seeing this error, visit our troubleshooting page at ${nativeChangesTroubleshootingUrl.toLink()}''',
           ),
         );
 
@@ -108,6 +108,13 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
         ..info(
           yellow.wrap(
             archiveDiffer.assetsFileSetDiff(contentDiffs).prettyString,
+          ),
+        )
+        ..info(
+          yellow.wrap(
+            '''
+
+If you don't know why you're seeing this error, visit our troubleshooting page at ${assetChangesTroubleshootingUrl.toLink()}''',
           ),
         );
 

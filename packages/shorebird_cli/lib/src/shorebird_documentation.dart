@@ -12,7 +12,7 @@ const supportedFlutterVersionsUrl =
     '$flutterVersionUrl#supported-flutter-versions';
 
 /// Link to the troubleshooting page on the Shorebird documentation.
-const troubleshootingUrl = '$docsUrl/faq';
+const troubleshootingUrl = '$docsUrl/code-push/troubleshooting';
 
 /// Link to the troubleshooting section which covers the
 /// Unsupported class file major version
@@ -22,7 +22,17 @@ const unsupportedClassFileVersionUrl =
 /// Link to the troubleshooting section which covers the
 /// not being able to run the app in VS Code after installing Shorebird.
 const cannotRunInVSCodeUrl =
-    '''$troubleshootingUrl#i-installed-shorebird-and-now-i-cant-run-my-app-in-vs-code''';
+    '''$troubleshootingUrl#cant-run-my-app-in-vs-code''';
+
+/// Link to the troubleshooting section which provides more information about
+/// what causes the asset changes warning and what to do about it.
+const assetChangesTroubleshootingUrl =
+    '''$troubleshootingUrl#your-app-contains-asset-changes-warning-when-creating-a-patch''';
+
+/// Link to the troubleshooting section which provides more information about
+/// what causes the native code changes warning and what to do about it.
+const nativeChangesTroubleshootingUrl =
+    '''$troubleshootingUrl#your-app-contains-native-changes-warning-when-creating-a-patch-even-though-you-havent-changed-swiftobjective-ckotlinjava-code''';
 
 /// Extension to convert a string to a CLI link.
 extension ToLink on String {
