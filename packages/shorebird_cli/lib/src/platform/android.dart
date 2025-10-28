@@ -35,7 +35,7 @@ extension AndroidArch on Arch {
       case Arch.arm32:
         return 'android_release';
       case Arch.arm64:
-        return 'android_release_arm64';
+        return 'android_release_arm64_arm64';
       case Arch.x86_64:
         return 'android_release_x64';
     }
