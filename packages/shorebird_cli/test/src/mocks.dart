@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:platform/platform.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
@@ -42,6 +43,8 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+
+class MockAbi extends Mock implements LocalAbi {}
 
 class MockAccessCredentials extends Mock implements AccessCredentials {}
 

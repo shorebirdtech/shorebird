@@ -1,4 +1,7 @@
+import 'dart:ffi';
+
 import 'package:collection/collection.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 
@@ -31,13 +34,19 @@ extension AndroidArch on Arch {
   /// The subdirectory used for local engine builds
   /// (i.e., engine/src/out/[androidEnginePath]).
   String get androidEnginePath {
-    switch (this) {
-      case Arch.arm32:
-        return 'android_release';
-      case Arch.arm64:
-        return 'android_release_arm64';
-      case Arch.x86_64:
-        return 'android_release_x64';
+    final baseArch = switch (this) {
+      Arch.arm32 => 'android_release',
+      Arch.arm64 => 'android_release_arm64',
+      Arch.x86_64 => 'android_release_x64',
+    };
+    // arm64 host architectures (i.e., Apple Silicon Macs) append _arm64 to the
+    // base arch.
+    // This check ignores linux and windows arm64 architectures, as this has
+    // only been verified on Apple Silicon Macs.
+    if (abi.current == Abi.macosArm64) {
+      return '${baseArch}_arm64';
+    } else {
+      return baseArch;
     }
   }
 
