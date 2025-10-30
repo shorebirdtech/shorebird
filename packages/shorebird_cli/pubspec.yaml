@@ -24,7 +24,7 @@ dependencies:
   intl: ^0.20.2
   io: ^1.0.5
   json_annotation: ^4.9.0
-  json_path: ^0.7.5
+  json_path: ^0.8.0
   jwt:
     path: ../jwt
   mason_logger: ^0.3.0
