@@ -10,6 +10,7 @@ export 'get_apps/get_apps.dart';
 export 'get_organization_apps/get_organization_apps.dart';
 export 'get_organization_users/get_organization_users.dart';
 export 'get_organizations/get_organizations.dart';
+export 'get_release/get_release.dart';
 export 'get_release_artifacts/get_release_artifacts.dart';
 export 'get_release_patches/get_release_patches.dart';
 export 'get_releases/get_releases.dart';
