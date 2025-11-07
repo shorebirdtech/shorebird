@@ -215,26 +215,26 @@ void main() {
       );
     });
 
-    group('fetchBillingMeter', () {
-      const meterId = 'mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144';
+    group('fetchBillingMeters', () {
       final uri = Uri.parse(
-        'https://api.stripe.com/v1/billing/meters/$meterId',
-      );
+        'https://api.stripe.com/v1/billing/meters',
+      ).replace(queryParameters: {'status': 'active', 'limit': '100'});
 
       setUp(() {
         when(
           () => httpClient.get(uri, headers: any(named: 'headers')),
         ).thenAnswer(
-          (_) async => http.Response(billingMeterJsonString, HttpStatus.ok),
+          (_) async =>
+              http.Response(billingMetersPageJsonString, HttpStatus.ok),
         );
       });
 
       test('returns a billing meter on successful request', () async {
-        final billingMeter = await stripeApi.fetchBillingMeter(
-          meterId: meterId,
-        );
-        expect(billingMeter, isNotNull);
-        expect(billingMeter.id, meterId);
+        final billingMeters = await stripeApi.fetchActiveBillingMeters();
+        expect(billingMeters, hasLength(1));
+
+        final billingMeter = billingMeters.first;
+        expect(billingMeter.id, 'mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144');
         expect(billingMeter.displayName, 'Patch Installs');
         expect(billingMeter.eventName, 'patch_installs');
       });

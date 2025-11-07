@@ -3,12 +3,12 @@ import 'dart:io';
 
 const stripeJsonPath = 'test/fixtures/stripe/json';
 
-String get billingMeterJsonString => File(
-  '$stripeJsonPath/billing_meter.json',
+String get billingMetersPageJsonString => File(
+  '$stripeJsonPath/billing_meters_page.json',
 ).readAsStringSync();
 
-Map<String, dynamic> get billingMeterJson =>
-    jsonDecode(billingMeterJsonString) as Map<String, dynamic>;
+Map<String, dynamic> get billingMetersPageJson =>
+    jsonDecode(billingMetersPageJsonString) as Map<String, dynamic>;
 
 String get checkoutSessionCompletedEventJsonString => File(
   '$stripeJsonPath/checkout_session_completed_event.json',

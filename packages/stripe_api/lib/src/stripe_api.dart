@@ -65,17 +65,13 @@ class StripeApi {
     );
   }
 
-  /// Retrieves a [StripeBillingMeter] with the given [meterId].
-  Future<StripeBillingMeter> fetchBillingMeter({
-    required String meterId,
-  }) async {
-    final uri = _stripeUri(path: 'billing/meters/$meterId');
-    final response = await _client.get(uri, headers: _authHeaders);
-    if (response.statusCode != HttpStatus.ok) {
-      throw Exception('Failed to retrieve meter with id $meterId');
-    }
-    return StripeBillingMeter.fromJson(
-      jsonDecode(response.body) as Map<String, dynamic>,
+  /// Retrieves all [StripeBillingMeter]s associated with the Stripe account.
+  Future<List<StripeBillingMeter>> fetchActiveBillingMeters() async {
+    return _fetchAllPages(
+      path: 'billing/meters',
+      queryParameters: {'status': 'active'},
+      fromJson: StripeBillingMeter.fromJson,
+      getId: (e) => e.id,
     );
   }
 
