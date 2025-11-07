@@ -26,6 +26,6 @@
       }
     }
   ],
-  "has_more": false,
+  "has_more": true,
   "url": "/v1/billing/meters"
 }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -216,16 +217,37 @@ void main() {
     });
 
     group('fetchBillingMeters', () {
-      final uri = Uri.parse(
-        'https://api.stripe.com/v1/billing/meters',
-      ).replace(queryParameters: {'status': 'active', 'limit': '100'});
-
       setUp(() {
         when(
-          () => httpClient.get(uri, headers: any(named: 'headers')),
+          () => httpClient.get(
+            Uri.parse(
+              'https://api.stripe.com/v1/billing/meters?status=active&limit=100',
+            ),
+            headers: any(named: 'headers'),
+          ),
         ).thenAnswer(
-          (_) async =>
-              http.Response(billingMetersPageJsonString, HttpStatus.ok),
+          (_) async => http.Response(
+            billingMetersPageJsonString,
+            HttpStatus.ok,
+          ),
+        );
+
+        when(
+          () => httpClient.get(
+            Uri.parse(
+              'https://api.stripe.com/v1/billing/meters?status=active&limit=100&starting_after=mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144',
+            ),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'object': 'list',
+              'data': <Map<String, dynamic>>[],
+              'has_more': false,
+            }),
+            HttpStatus.ok,
+          ),
         );
       });
 
