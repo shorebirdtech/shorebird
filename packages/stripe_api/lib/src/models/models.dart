@@ -1,3 +1,4 @@
+export 'stripe_billing_meter.dart';
 export 'stripe_checkout_session.dart';
 export 'stripe_customer.dart';
 export 'stripe_event.dart';

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -213,6 +214,53 @@ void main() {
           expect(tiers?.last.upTo, isNull);
         },
       );
+    });
+
+    group('fetchBillingMeters', () {
+      const meterId = 'mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144';
+      setUp(() {
+        when(
+          () => httpClient.get(
+            Uri.parse(
+              'https://api.stripe.com/v1/billing/meters?status=active&limit=100',
+            ),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            billingMetersPageJsonString,
+            HttpStatus.ok,
+          ),
+        );
+
+        when(
+          () => httpClient.get(
+            Uri.parse(
+              'https://api.stripe.com/v1/billing/meters?status=active&limit=100&starting_after=$meterId',
+            ),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'object': 'list',
+              'data': <Map<String, dynamic>>[],
+              'has_more': false,
+            }),
+            HttpStatus.ok,
+          ),
+        );
+      });
+
+      test('returns a billing meter on successful request', () async {
+        final billingMeters = await stripeApi.fetchActiveBillingMeters();
+        expect(billingMeters, hasLength(1));
+
+        final billingMeter = billingMeters.first;
+        expect(billingMeter.id, meterId);
+        expect(billingMeter.displayName, 'Patch Installs');
+        expect(billingMeter.eventName, 'patch_installs');
+      });
     });
 
     group('createMeterEvent', () {

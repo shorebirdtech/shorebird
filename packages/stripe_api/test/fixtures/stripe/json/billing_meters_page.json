@@ -1,0 +1,31 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144",
+      "object": "billing.meter",
+      "created": 1723254937,
+      "customer_mapping": {
+        "event_payload_key": "stripe_customer_id",
+        "type": "by_id"
+      },
+      "default_aggregation": {
+        "formula": "sum"
+      },
+      "display_name": "Patch Installs",
+      "event_name": "patch_installs",
+      "event_time_window": null,
+      "livemode": false,
+      "status": "active",
+      "status_transitions": {
+        "deactivated_at": null
+      },
+      "updated": 1723254937,
+      "value_settings": {
+        "event_payload_key": "value"
+      }
+    }
+  ],
+  "has_more": true,
+  "url": "/v1/billing/meters"
+}

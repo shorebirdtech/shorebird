@@ -65,6 +65,16 @@ class StripeApi {
     );
   }
 
+  /// Retrieves all [StripeBillingMeter]s associated with the Stripe account.
+  Future<List<StripeBillingMeter>> fetchActiveBillingMeters() async {
+    return _fetchAllPages(
+      path: 'billing/meters',
+      queryParameters: {'status': 'active'},
+      fromJson: StripeBillingMeter.fromJson,
+      getId: (e) => e.id,
+    );
+  }
+
   /// Creates a new meter event for the given [customerId].
   /// See https://docs.stripe.com/api/billing/meter-event
   Future<void> createMeterEvent({
