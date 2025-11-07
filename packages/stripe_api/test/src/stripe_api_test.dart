@@ -215,6 +215,31 @@ void main() {
       );
     });
 
+    group('fetchBillingMeter', () {
+      const meterId = 'mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144';
+      final uri = Uri.parse(
+        'https://api.stripe.com/v1/billing/meters/$meterId',
+      );
+
+      setUp(() {
+        when(
+          () => httpClient.get(uri, headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(billingMeterJsonString, HttpStatus.ok),
+        );
+      });
+
+      test('returns a billing meter on successful request', () async {
+        final billingMeter = await stripeApi.fetchBillingMeter(
+          meterId: meterId,
+        );
+        expect(billingMeter, isNotNull);
+        expect(billingMeter.id, meterId);
+        expect(billingMeter.displayName, 'Patch Installs');
+        expect(billingMeter.eventName, 'patch_installs');
+      });
+    });
+
     group('createMeterEvent', () {
       final uri = Uri.parse('https://api.stripe.com/v1/billing/meter_events');
 

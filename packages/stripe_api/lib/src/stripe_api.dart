@@ -65,6 +65,20 @@ class StripeApi {
     );
   }
 
+  /// Retrieves a [StripeBillingMeter] with the given [meterId].
+  Future<StripeBillingMeter> fetchBillingMeter({
+    required String meterId,
+  }) async {
+    final uri = _stripeUri(path: 'billing/meters/$meterId');
+    final response = await _client.get(uri, headers: _authHeaders);
+    if (response.statusCode != HttpStatus.ok) {
+      throw Exception('Failed to retrieve meter with id $meterId');
+    }
+    return StripeBillingMeter.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   /// Creates a new meter event for the given [customerId].
   /// See https://docs.stripe.com/api/billing/meter-event
   Future<void> createMeterEvent({
