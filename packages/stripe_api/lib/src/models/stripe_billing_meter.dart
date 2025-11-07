@@ -10,7 +10,7 @@ part 'stripe_billing_meter.g.dart';
 @JsonSerializable(createToJson: false)
 class StripeBillingMeter {
   /// {@macro stripe_billing_meter}
-  StripeBillingMeter({
+  const StripeBillingMeter({
     required this.id,
     required this.displayName,
     required this.eventName,
