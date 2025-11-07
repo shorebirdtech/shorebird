@@ -217,6 +217,7 @@ void main() {
     });
 
     group('fetchBillingMeters', () {
+      const meterId = 'mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144';
       setUp(() {
         when(
           () => httpClient.get(
@@ -235,7 +236,7 @@ void main() {
         when(
           () => httpClient.get(
             Uri.parse(
-              'https://api.stripe.com/v1/billing/meters?status=active&limit=100&starting_after=mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144',
+              'https://api.stripe.com/v1/billing/meters?status=active&limit=100&starting_after=$meterId',
             ),
             headers: any(named: 'headers'),
           ),
@@ -256,7 +257,7 @@ void main() {
         expect(billingMeters, hasLength(1));
 
         final billingMeter = billingMeters.first;
-        expect(billingMeter.id, 'mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144');
+        expect(billingMeter.id, meterId);
         expect(billingMeter.displayName, 'Patch Installs');
         expect(billingMeter.eventName, 'patch_installs');
       });
