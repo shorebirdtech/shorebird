@@ -17,7 +17,7 @@ dependencies:
   cli_util: ^0.4.2
   clock: ^1.1.2
   collection: ^1.19.1
-  crypto: ^3.0.6
+  crypto: ^3.0.7
   equatable: ^2.0.7
   googleapis_auth: ^2.0.0
   http: ^1.5.0
@@ -43,7 +43,7 @@ dependencies:
   shorebird_code_push_protocol:
     path: ../shorebird_code_push_protocol
   stream_transform: ^2.1.1
-  uuid: ^4.5.1
+  uuid: ^4.5.2
   xml: ^6.5.0
   yaml: ^3.1.3
   yaml_edit: ^2.2.2
