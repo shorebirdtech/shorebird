@@ -69,8 +69,7 @@ extension on String {
 /// @{endtemplate}
 class ArtifactBuilder {
   /// A general recommendation when building artifacts fails.
-  static String runVanillaFlutterBuildRecommendation(String buildCommand) =>
-      '''
+  static String runVanillaFlutterBuildRecommendation(String buildCommand) => '''
 
 ${styleBold.wrap('💡 Fix Recommendations')}
 
@@ -561,20 +560,56 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       ...additionalArgs,
       appDillPath,
     ];
+    // Prepare candidate gen_snapshot binaries. For iOS, if the primary
+    // gen_snapshot fails (ios-release), try macOS host variants as fallbacks.
+    final candidates = <ShorebirdArtifact>[
+      genSnapshotArtifact,
+      if (genSnapshotArtifact == ShorebirdArtifact.genSnapshotIos &&
+          Platform.isMacOS) ...[
+        ShorebirdArtifact.genSnapshotMacosArm64,
+        ShorebirdArtifact.genSnapshotMacosX64,
+      ],
+    ];
 
-    final exitCode = await process.stream(
-      shorebirdArtifacts.getArtifactPath(artifact: genSnapshotArtifact),
-      arguments,
-      // Never run in shell because we always have a fully resolved
-      // executable path.
-      runInShell: false,
-    );
+    final attemptErrors = StringBuffer();
+    for (final artifact in candidates) {
+      final exe = shorebirdArtifacts.getArtifactPath(artifact: artifact);
+      logger.detail('[gen_snapshot] attempting: $exe ${arguments.join(' ')}');
 
-    if (exitCode != ExitCode.success.code) {
-      throw ArtifactBuildException('Failed to create snapshot');
+      final result = await process.run(
+        exe,
+        arguments,
+        // Never run in shell because we always have a fully resolved path.
+        runInShell: false,
+      );
+
+      if (result.exitCode == ExitCode.success.code) {
+        return File(outFilePath);
+      }
+
+      // Accumulate detailed error context for troubleshooting.
+      attemptErrors.writeln('--- gen_snapshot attempt failed ---');
+      attemptErrors.writeln('executable: $exe');
+      attemptErrors.writeln('args     : ${arguments.join(' ')}');
+      attemptErrors.writeln('exitCode : ${result.exitCode}');
+      final stderrStr = (result.stderr as String?)?.trim();
+      final stdoutStr = (result.stdout as String?)?.trim();
+      if (stderrStr != null && stderrStr.isNotEmpty) {
+        attemptErrors.writeln('stderr:\n$stderrStr');
+      }
+      if (stdoutStr != null && stdoutStr.isNotEmpty) {
+        attemptErrors.writeln('stdout:\n$stdoutStr');
+      }
+
+      // If this wasn't the last candidate, try the next.
+      logger.detail(
+          '[gen_snapshot] attempt failed (exit ${result.exitCode}), trying next candidate if available.');
     }
 
-    return File(outFilePath);
+    // If all candidates failed, throw with combined diagnostics.
+    throw ArtifactBuildException(
+      'Failed to create snapshot. All gen_snapshot attempts failed.\n$attemptErrors',
+    );
   }
 
   /// Builds a windows app and returns the x64 Release directory
