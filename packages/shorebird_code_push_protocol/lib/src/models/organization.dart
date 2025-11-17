@@ -4,24 +4,6 @@ import 'package:meta/meta.dart';
 
 part 'organization.g.dart';
 
-/// {@template organization_role}
-/// A role that a user can have in an organization.
-/// {@endtemplate}
-enum OrganizationRole {
-  /// User that created the organization.
-  owner,
-
-  /// Users who have permissions to manage the organization.
-  admin,
-
-  /// Users who are part of the organization but have limited permissions.
-  member,
-
-  /// Users who are not part of the organization but have visibility into it via
-  /// app collaborator permissions.
-  none,
-}
-
 /// {@template organization_type}
 /// Distinguishes between automatically created organizations that are limited
 /// to a single user and organizations that support multiple users.

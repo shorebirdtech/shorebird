@@ -98,7 +98,7 @@ environment:
       when(() => codePushClientWrapper.getOrganizationMemberships()).thenAnswer(
         (_) async => [
           OrganizationMembership(
-            role: OrganizationRole.owner,
+            role: Role.owner,
             organization: Organization.forTest(id: organizationId),
           ),
         ],
@@ -398,7 +398,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         ).thenAnswer(
           (_) async => [
             OrganizationMembership(
-              role: OrganizationRole.owner,
+              role: Role.owner,
               organization: Organization.forTest(id: organizationId),
             ),
           ],
@@ -440,11 +440,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         ).thenAnswer(
           (_) async => [
             OrganizationMembership(
-              role: OrganizationRole.owner,
+              role: Role.owner,
               organization: org1,
             ),
             OrganizationMembership(
-              role: OrganizationRole.owner,
+              role: Role.owner,
               organization: org2,
             ),
           ],

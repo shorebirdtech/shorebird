@@ -66,5 +66,5 @@ Map<String, dynamic> _$PatchCheckMetadataToJson(PatchCheckMetadata instance) =>
       'number': instance.number,
       'download_url': instance.downloadUrl,
       'hash': instance.hash,
-      if (instance.hashSignature case final value?) 'hash_signature': value,
+      'hash_signature': ?instance.hashSignature,
     };
