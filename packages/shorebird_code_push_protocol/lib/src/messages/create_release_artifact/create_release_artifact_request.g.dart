@@ -54,7 +54,7 @@ Map<String, dynamic> _$CreateReleaseArtifactRequestToJson(
     instance.canSideload,
   ),
   'size': CreateReleaseArtifactRequest._parseIntToString(instance.size),
-  if (instance.podfileLockHash case final value?) 'podfile_lock_hash': value,
+  'podfile_lock_hash': ?instance.podfileLockHash,
 };
 
 const _$ReleasePlatformEnumMap = {

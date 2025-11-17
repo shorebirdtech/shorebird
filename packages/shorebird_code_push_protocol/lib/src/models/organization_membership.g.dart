@@ -16,10 +16,7 @@ OrganizationMembership _$OrganizationMembershipFromJson(
       'organization',
       (v) => Organization.fromJson(v as Map<String, dynamic>),
     ),
-    role: $checkedConvert(
-      'role',
-      (v) => $enumDecode(_$OrganizationRoleEnumMap, v),
-    ),
+    role: $checkedConvert('role', (v) => $enumDecode(_$RoleEnumMap, v)),
   );
   return val;
 });
@@ -28,12 +25,12 @@ Map<String, dynamic> _$OrganizationMembershipToJson(
   OrganizationMembership instance,
 ) => <String, dynamic>{
   'organization': instance.organization.toJson(),
-  'role': _$OrganizationRoleEnumMap[instance.role]!,
+  'role': _$RoleEnumMap[instance.role]!,
 };
 
-const _$OrganizationRoleEnumMap = {
-  OrganizationRole.owner: 'owner',
-  OrganizationRole.admin: 'admin',
-  OrganizationRole.member: 'member',
-  OrganizationRole.none: 'none',
+const _$RoleEnumMap = {
+  Role.owner: 'owner',
+  Role.admin: 'admin',
+  Role.member: 'member',
+  Role.none: 'none',
 };

@@ -17,3 +17,4 @@ export 'release_artifact.dart';
 export 'release_patch.dart';
 export 'release_platform.dart';
 export 'release_status.dart';
+export 'role.dart';

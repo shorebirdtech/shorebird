@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/src/models/organization.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 part 'organization_membership.g.dart';
 
@@ -26,7 +26,7 @@ class OrganizationMembership extends Equatable {
   final Organization organization;
 
   /// The user's role in the organization.
-  final OrganizationRole role;
+  final Role role;
 
   @override
   List<Object?> get props => [organization, role];
