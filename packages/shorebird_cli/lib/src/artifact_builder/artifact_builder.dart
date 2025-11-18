@@ -10,6 +10,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/platform.dart' as shorebird_platform;
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -69,7 +70,8 @@ extension on String {
 /// @{endtemplate}
 class ArtifactBuilder {
   /// A general recommendation when building artifacts fails.
-  static String runVanillaFlutterBuildRecommendation(String buildCommand) => '''
+  static String runVanillaFlutterBuildRecommendation(String buildCommand) =>
+      '''
 
 ${styleBold.wrap('💡 Fix Recommendations')}
 
@@ -565,7 +567,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     final candidates = <ShorebirdArtifact>[
       genSnapshotArtifact,
       if (genSnapshotArtifact == ShorebirdArtifact.genSnapshotIos &&
-          Platform.isMacOS) ...[
+          shorebird_platform.platform.isMacOS) ...[
         ShorebirdArtifact.genSnapshotMacosArm64,
         ShorebirdArtifact.genSnapshotMacosX64,
       ],
@@ -603,7 +605,8 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
 
       // If this wasn't the last candidate, try the next.
       logger.detail(
-          '[gen_snapshot] attempt failed (exit ${result.exitCode}), trying next candidate if available.');
+        '[gen_snapshot] attempt failed (exit ${result.exitCode}), trying next candidate if available.',
+      );
     }
 
     // If all candidates failed, throw with combined diagnostics.

@@ -127,46 +127,102 @@ void main() {
       });
 
       test('returns correct path for macOS arm64 gen_snapshot', () {
+        final genSnapshotFile = File(
+          p.join(
+            flutterDirectory.path,
+            'bin',
+            'cache',
+            'artifacts',
+            'engine',
+            'darwin-arm64',
+            'gen_snapshot',
+          ),
+        )..createSync(recursive: true);
+
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
               artifact: ShorebirdArtifact.genSnapshotMacosArm64,
             ),
           ),
-          equals(
+          equals(genSnapshotFile.path),
+        );
+      });
+
+      test(
+        'returns macOS arm64 fallback path when arm artifacts are missing',
+        () {
+          final fallbackFile = File(
             p.join(
               flutterDirectory.path,
               'bin',
               'cache',
               'artifacts',
               'engine',
-              'darwin-x64-release',
-              'gen_snapshot_arm64',
+              'darwin-x64',
+              'gen_snapshot',
             ),
-          ),
-        );
-      });
+          )..createSync(recursive: true);
+
+          expect(
+            runWithOverrides(
+              () => artifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.genSnapshotMacosArm64,
+              ),
+            ),
+            equals(fallbackFile.path),
+          );
+        },
+      );
 
       test('returns correct path for macOS x64 gen_snapshot', () {
+        final genSnapshotFile = File(
+          p.join(
+            flutterDirectory.path,
+            'bin',
+            'cache',
+            'artifacts',
+            'engine',
+            'darwin-x64',
+            'gen_snapshot',
+          ),
+        )..createSync(recursive: true);
+
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
               artifact: ShorebirdArtifact.genSnapshotMacosX64,
             ),
           ),
-          equals(
+          equals(genSnapshotFile.path),
+        );
+      });
+
+      test(
+        'returns macOS x64 fallback path when x64 artifacts are missing',
+        () {
+          final fallbackFile = File(
             p.join(
               flutterDirectory.path,
               'bin',
               'cache',
               'artifacts',
               'engine',
-              'darwin-x64-release',
-              'gen_snapshot_x64',
+              'darwin-arm64',
+              'gen_snapshot',
             ),
-          ),
-        );
-      });
+          )..createSync(recursive: true);
+
+          expect(
+            runWithOverrides(
+              () => artifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.genSnapshotMacosX64,
+              ),
+            ),
+            equals(fallbackFile.path),
+          );
+        },
+      );
 
       test('returns correct path for analyze_snapshot on iOS', () {
         expect(

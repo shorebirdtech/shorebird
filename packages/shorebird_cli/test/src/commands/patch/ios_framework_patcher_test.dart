@@ -661,8 +661,7 @@ void main() {
               vmCodeFile: any(named: 'vmCodeFile'),
             ),
           ).thenAnswer(
-            (_) async =>
-                const LinkResult.success(linkPercentage: linkPercentage),
+            (_) async => LinkResult.success(linkPercentage: linkPercentage),
           );
           when(
             aotTools.isGeneratePatchDiffBaseSupported,
@@ -918,6 +917,56 @@ void main() {
                 },
               );
             });
+          });
+        });
+
+        group('when linker reports snapshot version mismatch', () {
+          setUp(() {
+            when(
+              () => apple.runLinker(
+                kernelFile: any(named: 'kernelFile'),
+                aotOutputFile: any(named: 'aotOutputFile'),
+                releaseArtifact: any(named: 'releaseArtifact'),
+                splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+                vmCodeFile: any(named: 'vmCodeFile'),
+              ),
+            ).thenAnswer(
+              (_) async => LinkResult.failure(
+                error: AotToolsExecutionFailure(
+                  exitCode: ExitCode.software.code,
+                  stdout: '',
+                  stderr: 'Wrong full snapshot version, expected foo found bar',
+                  command: 'aot_tools link',
+                ),
+              ),
+            );
+            when(
+              () => aotTools.isGeneratePatchDiffBaseSupported(),
+            ).thenAnswer((_) async => true);
+            setUpProjectRootArtifacts();
+          });
+
+          test('falls back to an unlinked patch', () async {
+            await expectLater(
+              runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                  supplementArtifact: supplementArtifactFile,
+                ),
+              ),
+              completes,
+            );
+
+            verifyNever(() => aotTools.isGeneratePatchDiffBaseSupported());
+            verifyNever(
+              () => aotTools.generatePatchDiffBase(
+                analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+                releaseSnapshot: any(named: 'releaseSnapshot'),
+              ),
+            );
+            expect(patcher.linkPercentage, isNull);
           });
         });
 

@@ -137,21 +137,49 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
     );
   }
 
-  File get _genSnapshotMacOsArm64File {
-    return File(
-      p.join(
-        shorebirdEnv.flutterDirectory.path,
-        'bin',
-        'cache',
-        'artifacts',
-        'engine',
-        'darwin-x64-release',
-        'gen_snapshot_arm64',
-      ),
-    );
-  }
+  File get _genSnapshotMacOsArm64File => _resolveMacOsGenSnapshot(
+    preferredDirs: const [
+      'darwin-arm64',
+      'darwin-arm64-release',
+      'darwin-x64',
+      'darwin-x64-release',
+    ],
+    candidateNames: const ['gen_snapshot_arm64', 'gen_snapshot'],
+  );
 
-  File get _genSnapshotMacOsX64File {
+  File get _genSnapshotMacOsX64File => _resolveMacOsGenSnapshot(
+    preferredDirs: const [
+      'darwin-x64',
+      'darwin-x64-release',
+      'darwin-arm64',
+      'darwin-arm64-release',
+    ],
+    candidateNames: const ['gen_snapshot_x64', 'gen_snapshot'],
+  );
+
+  File _resolveMacOsGenSnapshot({
+    required List<String> preferredDirs,
+    required List<String> candidateNames,
+  }) {
+    for (final dir in preferredDirs) {
+      for (final fileName in candidateNames) {
+        final file = File(
+          p.join(
+            shorebirdEnv.flutterDirectory.path,
+            'bin',
+            'cache',
+            'artifacts',
+            'engine',
+            dir,
+            fileName,
+          ),
+        );
+        if (file.existsSync()) {
+          return file;
+        }
+      }
+    }
+
     return File(
       p.join(
         shorebirdEnv.flutterDirectory.path,
@@ -159,8 +187,8 @@ class ShorebirdCachedArtifacts implements ShorebirdArtifacts {
         'cache',
         'artifacts',
         'engine',
-        'darwin-x64-release',
-        'gen_snapshot_x64',
+        preferredDirs.first,
+        candidateNames.first,
       ),
     );
   }

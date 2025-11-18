@@ -170,7 +170,7 @@ class IosFrameworkPatcher extends Patcher {
       p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'build', 'out.aot'),
     );
     // TODO(eseidel): Drop support for builds before the linker.
-    final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
+    var useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
       apple.copySupplementFilesToSnapshotDirs(
         releaseSupplementDir: releaseSupplementDir,
@@ -188,20 +188,32 @@ class IosFrameworkPatcher extends Patcher {
       );
       final linkPercentage = result.linkPercentage;
       final exitCode = result.exitCode;
-      if (exitCode != ExitCode.success.code) throw ProcessExit(exitCode);
-      if (linkPercentage != null &&
-          linkPercentage < Patcher.linkPercentageWarningThreshold) {
-        logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
+      if (exitCode != ExitCode.success.code) {
+        if (_isSnapshotVersionMismatch(result.error)) {
+          useLinker = false;
+          logger.warn(
+            '''
+Failed to link AOT files because the release snapshot was produced by a different Flutter version.
+Continuing without linking; patch size and CPU warmup time may increase.''',
+          );
+        } else {
+          throw ProcessExit(exitCode);
+        }
+      } else {
+        if (linkPercentage != null &&
+            linkPercentage < Patcher.linkPercentageWarningThreshold) {
+          logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
+        }
+        lastBuildLinkPercentage = linkPercentage;
+        lastBuildLinkMetadata = result.linkMetadata;
       }
-      lastBuildLinkPercentage = linkPercentage;
-      lastBuildLinkMetadata = result.linkMetadata;
     }
 
     final patchBuildFile = useLinker
         ? File(_vmcodeOutputPath)
         : aotSnapshotFile;
     final File patchFile;
-    if (await aotTools.isGeneratePatchDiffBaseSupported()) {
+    if (useLinker && await aotTools.isGeneratePatchDiffBaseSupported()) {
       final patchBaseProgress = logger.progress('Generating patch diff base');
       final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
         artifact: ShorebirdArtifact.analyzeSnapshotIos,
@@ -267,4 +279,9 @@ class IosFrameworkPatcher extends Patcher {
       xcodeVersion: await xcodeBuild.version(),
     ),
   );
+}
+
+bool _isSnapshotVersionMismatch(Object? error) {
+  return error is AotToolsExecutionFailure &&
+      error.stderr.contains('Wrong full snapshot version');
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:io/io.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
@@ -29,14 +30,17 @@ enum ApplePlatform {
 @immutable
 class LinkResult {
   /// Creates a new [LinkResult] representing failure.
-  const LinkResult.failure()
-    : exitCode = 70,
-      linkPercentage = null,
-      linkMetadata = null;
+  LinkResult.failure({
+    this.error,
+    int? exitCode,
+  }) : exitCode = exitCode ?? ExitCode.software.code,
+       linkPercentage = null,
+       linkMetadata = null;
 
   /// Creates a new [LinkResult] representing success.
-  const LinkResult.success({required this.linkPercentage, this.linkMetadata})
-    : exitCode = 0;
+  LinkResult.success({required this.linkPercentage, this.linkMetadata})
+    : exitCode = ExitCode.success.code,
+      error = null;
 
   /// The exit code of the linker process.
   final int exitCode;
@@ -46,6 +50,9 @@ class LinkResult {
 
   /// Metadata from the linker, if available.
   final Map<String, dynamic>? linkMetadata;
+
+  /// The underlying error, if any.
+  final Object? error;
 }
 
 /// {@template missing_xcode_project_exception}
@@ -259,7 +266,7 @@ class Apple {
 
     if (!patch.existsSync()) {
       logger.err('Unable to find patch AOT file at ${patch.path}');
-      return const LinkResult.failure();
+      return LinkResult.failure();
     }
 
     final analyzeSnapshot = File(
@@ -270,7 +277,7 @@ class Apple {
 
     if (!analyzeSnapshot.existsSync()) {
       logger.err('Unable to find analyze_snapshot at ${analyzeSnapshot.path}');
-      return const LinkResult.failure();
+      return LinkResult.failure();
     }
 
     final genSnapshot = shorebirdArtifacts.getArtifactPath(
@@ -323,7 +330,7 @@ $error''');
       );
     } on Exception catch (error) {
       linkProgress.fail('Failed to link AOT files: $error');
-      return const LinkResult.failure();
+      return LinkResult.failure(error: error);
     } finally {
       await dumpDebugInfo();
     }

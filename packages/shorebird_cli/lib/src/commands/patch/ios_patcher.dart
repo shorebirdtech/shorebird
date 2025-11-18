@@ -243,7 +243,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       p.join(appDirectory.path, 'Frameworks', 'App.framework', 'App'),
     );
 
-    final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
+    var useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
     if (useLinker) {
       apple.copySupplementFilesToSnapshotDirs(
         releaseSupplementDir: releaseSupplementDir,
@@ -261,13 +261,25 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       );
       final linkPercentage = result.linkPercentage;
       final exitCode = result.exitCode;
-      if (exitCode != ExitCode.success.code) throw ProcessExit(exitCode);
-      if (linkPercentage != null &&
-          linkPercentage < Patcher.linkPercentageWarningThreshold) {
-        logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
+      if (exitCode != ExitCode.success.code) {
+        if (_isSnapshotVersionMismatch(result.error)) {
+          useLinker = false;
+          logger.warn(
+            '''
+Failed to link AOT files because the release snapshot was produced by a different Flutter version.
+Continuing without linking; patch size and CPU warmup time may increase.''',
+          );
+        } else {
+          throw ProcessExit(exitCode);
+        }
+      } else {
+        if (linkPercentage != null &&
+            linkPercentage < Patcher.linkPercentageWarningThreshold) {
+          logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
+        }
+        lastBuildLinkPercentage = linkPercentage;
+        lastBuildLinkMetadata = result.linkMetadata;
       }
-      lastBuildLinkPercentage = linkPercentage;
-      lastBuildLinkMetadata = result.linkMetadata;
     }
 
     final patchBuildFile = File(useLinker ? _vmcodeOutputPath : _aotOutputPath);
@@ -357,4 +369,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       xcodeVersion: await xcodeBuild.version(),
     ),
   );
+}
+
+bool _isSnapshotVersionMismatch(Object? error) {
+  return error is AotToolsExecutionFailure &&
+      error.stderr.contains('Wrong full snapshot version');
 }

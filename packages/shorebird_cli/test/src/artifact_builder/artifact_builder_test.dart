@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart' as platform_pkg;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/platform.dart' as shorebird_platform;
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -30,6 +32,7 @@ void main() {
     late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdProcess shorebirdProcess;
+    late platform_pkg.Platform platform;
     late ShorebirdProcessResult pubGetProcessResult;
     late ArtifactBuilder builder;
 
@@ -47,6 +50,7 @@ void main() {
           shorebirdAndroidArtifactsRef.overrideWith(
             () => shorebirdAndroidArtifacts,
           ),
+          shorebird_platform.platformRef.overrideWith(() => platform),
         },
       );
     }
@@ -67,6 +71,7 @@ void main() {
       shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
+      platform = platform_pkg.FakePlatform(operatingSystem: 'macos');
 
       when(
         () => shorebirdProcess.run('flutter', [
@@ -1362,6 +1367,22 @@ Reason: Exited with code 70.'''),
               artifact: ShorebirdArtifact.genSnapshotIos,
             ),
           ).thenReturn('gen_snapshot');
+          when(
+            () => shorebirdProcess.run(
+              'gen_snapshot',
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: false,
+              useVendedFlutter: any(named: 'useVendedFlutter'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer(
+            (_) async => ShorebirdProcessResult(
+              exitCode: ExitCode.success.code,
+              stdout: '',
+              stderr: '',
+            ),
+          );
         });
 
         test('passes additional args to gen_snapshot', () async {
@@ -1375,26 +1396,43 @@ Reason: Exited with code 70.'''),
           );
 
           verify(
-            () => shorebirdProcess.stream('gen_snapshot', [
-              '--deterministic',
-              '--snapshot-kind=app-aot-elf',
-              '--elf=/path/to/out',
-              '--foo',
-              'bar',
-              '/app/dill/path',
-            ], runInShell: false),
+            () => shorebirdProcess.run(
+              'gen_snapshot',
+              [
+                '--deterministic',
+                '--snapshot-kind=app-aot-elf',
+                '--elf=/path/to/out',
+                '--foo',
+                'bar',
+                '/app/dill/path',
+              ],
+              runInShell: false,
+              environment: any(named: 'environment'),
+              useVendedFlutter: any(named: 'useVendedFlutter'),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
           ).called(1);
         });
 
         group('when build fails', () {
           setUp(() {
+            platform = platform_pkg.FakePlatform(operatingSystem: 'linux');
             when(
-              () => shorebirdProcess.stream(
+              () => shorebirdProcess.run(
+                'gen_snapshot',
                 any(),
-                any(),
-                runInShell: any(named: 'runInShell'),
+                environment: any(named: 'environment'),
+                runInShell: false,
+                useVendedFlutter: any(named: 'useVendedFlutter'),
+                workingDirectory: any(named: 'workingDirectory'),
               ),
-            ).thenAnswer((_) async => ExitCode.software.code);
+            ).thenAnswer(
+              (_) async => ShorebirdProcessResult(
+                exitCode: ExitCode.software.code,
+                stdout: '',
+                stderr: 'boom',
+              ),
+            );
           });
 
           test('throws ArtifactBuildException', () {
@@ -1424,6 +1462,141 @@ Reason: Exited with code 70.'''),
             expect(outFile.path, '/path/to/out');
           });
         });
+
+        test(
+          'retries mac gen_snapshot when ios attempt fails on macOS',
+          () async {
+            when(
+              () => shorebirdArtifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.genSnapshotMacosArm64,
+              ),
+            ).thenReturn('mac_arm_gen_snapshot');
+            when(
+              () => shorebirdArtifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.genSnapshotMacosX64,
+              ),
+            ).thenReturn('mac_x64_gen_snapshot');
+
+            when(
+              () => shorebirdProcess.run(
+                'gen_snapshot',
+                any(),
+                environment: any(named: 'environment'),
+                runInShell: false,
+                useVendedFlutter: any(named: 'useVendedFlutter'),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer(
+              (_) async => ShorebirdProcessResult(
+                exitCode: ExitCode.software.code,
+                stdout: '',
+                stderr: 'ios failed',
+              ),
+            );
+
+            final macAttemptResult = ShorebirdProcessResult(
+              exitCode: ExitCode.success.code,
+              stdout: '',
+              stderr: '',
+            );
+            when(
+              () => shorebirdProcess.run(
+                'mac_arm_gen_snapshot',
+                any(),
+                environment: any(named: 'environment'),
+                runInShell: false,
+                useVendedFlutter: any(named: 'useVendedFlutter'),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer((_) async => macAttemptResult);
+
+            final outFile = await runWithOverrides(
+              () => builder.buildElfAotSnapshot(
+                appDillPath: '/app/dill/path',
+                outFilePath: '/path/to/out',
+                genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+              ),
+            );
+
+            expect(outFile.path, '/path/to/out');
+            verify(
+              () => shorebirdProcess.run(
+                'mac_arm_gen_snapshot',
+                any(),
+                environment: any(named: 'environment'),
+                runInShell: false,
+                useVendedFlutter: any(named: 'useVendedFlutter'),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).called(1);
+            verifyNever(
+              () => shorebirdProcess.run(
+                'mac_x64_gen_snapshot',
+                any(),
+                environment: any(named: 'environment'),
+                runInShell: any(named: 'runInShell'),
+                useVendedFlutter: any(named: 'useVendedFlutter'),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            );
+          },
+        );
+
+        test(
+          'throws ArtifactBuildException with attempt details when all fail',
+          () async {
+            when(
+              () => shorebirdArtifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.genSnapshotMacosArm64,
+              ),
+            ).thenReturn('mac_arm_gen_snapshot');
+            when(
+              () => shorebirdArtifacts.getArtifactPath(
+                artifact: ShorebirdArtifact.genSnapshotMacosX64,
+              ),
+            ).thenReturn('mac_x64_gen_snapshot');
+
+            when(
+              () => shorebirdProcess.run(
+                any(),
+                any(),
+                environment: any(named: 'environment'),
+                runInShell: false,
+                useVendedFlutter: any(named: 'useVendedFlutter'),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer(
+              (invocation) async => ShorebirdProcessResult(
+                exitCode: ExitCode.software.code,
+                stdout: 'stdout for ${invocation.positionalArguments.first}',
+                stderr: 'stderr for ${invocation.positionalArguments.first}',
+              ),
+            );
+
+            expect(
+              () => runWithOverrides(
+                () => builder.buildElfAotSnapshot(
+                  appDillPath: '/app/dill/path',
+                  outFilePath: '/path/to/out',
+                  genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
+                ),
+              ),
+              throwsA(
+                isA<ArtifactBuildException>().having(
+                  (e) => e.message,
+                  'message',
+                  allOf(
+                    contains('All gen_snapshot attempts failed'),
+                    contains('gen_snapshot'),
+                    contains('mac_arm_gen_snapshot'),
+                    contains('mac_x64_gen_snapshot'),
+                    contains('stderr for mac_x64_gen_snapshot'),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
       });
     });
 
