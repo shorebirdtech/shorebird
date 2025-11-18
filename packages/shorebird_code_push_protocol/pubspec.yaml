@@ -16,7 +16,7 @@ dependencies:
   meta: ^1.16.0
 
 dev_dependencies:
-  build_runner: ^2.10.1
+  build_runner: ^2.10.3
   json_serializable: ^6.11.0
   mocktail: ^1.0.0
-  test: ^1.26.3
+  test: ^1.27.0
