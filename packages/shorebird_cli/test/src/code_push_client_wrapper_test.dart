@@ -298,11 +298,11 @@ void main() {
           final expectedMemberships = [
             OrganizationMembership(
               organization: Organization.forTest(),
-              role: OrganizationRole.admin,
+              role: Role.admin,
             ),
             OrganizationMembership(
               organization: Organization.forTest(),
-              role: OrganizationRole.member,
+              role: Role.member,
             ),
           ];
           when(

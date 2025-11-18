@@ -8,7 +8,7 @@ void main() {
         users: [
           OrganizationUser(
             user: PublicUser.fromPrivateUser(PrivateUser.forTest()),
-            role: OrganizationRole.owner,
+            role: Role.owner,
           ),
         ],
       );

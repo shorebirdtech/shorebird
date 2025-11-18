@@ -22,5 +22,5 @@ class OrganizationUser {
   final PublicUser user;
 
   /// The role [user] has in the organization.
-  final OrganizationRole role;
+  final Role role;
 }

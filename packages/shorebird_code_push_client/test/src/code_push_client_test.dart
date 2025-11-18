@@ -2046,7 +2046,7 @@ void main() {
 
         setUp(() {
           membership = OrganizationMembership(
-            role: OrganizationRole.admin,
+            role: Role.admin,
             organization: Organization.forTest(),
           );
           response = GetOrganizationsResponse(organizations: [membership]);
