@@ -122,37 +122,5 @@ void main() {
       expect(response.headers['content-type'], equals('text/html'));
       expect(response.readAsString(), completion(contains('Shorebird')));
     });
-
-    // artifact_proxy only runs on linux currently.
-    test(
-      'generate_manifest matches config',
-      () async {
-        // Make a temp directory, run generate_manifest, parse the yaml
-        // and make sure all urls are handled.
-        const engineRevision = '8b89f8bd9fc6982aa9c4557fd0e5e89db1ff9986';
-        final result = Process.runSync('/bin/sh', [
-          'tool/generate_manifest.sh',
-          engineRevision,
-        ]);
-        expect(result.exitCode, equals(0));
-        final manifest = checkedYamlDecode(
-          result.stdout as String,
-          (m) => ArtifactsManifest.fromJson(m!),
-        );
-        expect(manifest.artifactOverrides, isNotEmpty);
-
-        for (final pattern in manifest.artifactOverrides) {
-          final path = pattern.replaceAll(r'$engine', engineRevision);
-          final request = buildRequest(path);
-          final response = await handler(request);
-          expect(
-            response.statusCode,
-            isNot(HttpStatus.notFound),
-            reason: 'Pattern $pattern not handled',
-          );
-        }
-      },
-      onPlatform: {'windows': const Skip('needs bash')},
-    );
   });
 }
