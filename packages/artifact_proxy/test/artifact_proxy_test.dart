@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:artifact_proxy/artifact_proxy.dart';
-import 'package:checked_yaml/checked_yaml.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
