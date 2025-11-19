@@ -5,8 +5,6 @@
 # Usage:
 #  ./generate_manifest.sh <flutter_engine_revision> > artifact_manifest.yaml
 
-# TODO(bryanoltman): This script is deprecated. Use the versioned scripts instead.
-
 set -e
 
 # NOTE: If you edit this file you also may need to edit the global list

@@ -1,11 +1,9 @@
 #!/bin/bash
 
-# This script outputs an artifact_manifest.yaml mapping 
+# This script outputs an artifact_manifest.yaml mapping
 # a shorebird engine revision to a flutter engine revision.
 # Usage:
 #  ./generate_manifest.sh <flutter_engine_revision> > artifact_manifest.yaml
-
-# TODO(bryanoltman): This script is deprecated. Use the versioned scripts instead.
 
 set -e
 
@@ -50,9 +48,6 @@ artifact_overrides:
   - flutter_infra_release/flutter/\$engine/android-x64-release/symbols.zip
   - flutter_infra_release/flutter/\$engine/android-x64-release/windows-x64.zip
 
-  # engine_stamp.json
-  - flutter_infra_release/flutter/\$engine/engine_stamp.json
-
   # Dart SDK
   - flutter_infra_release/flutter/\$engine/dart-sdk-darwin-arm64.zip
   - flutter_infra_release/flutter/\$engine/dart-sdk-darwin-x64.zip
@@ -71,9 +66,6 @@ artifact_overrides:
   # x86_64 release
   - download.flutter.io/io/flutter/x86_64_release/1.0.0-\$engine/x86_64_release-1.0.0-\$engine.pom
   - download.flutter.io/io/flutter/x86_64_release/1.0.0-\$engine/x86_64_release-1.0.0-\$engine.jar
-
-  # Common release artifacts
-  - flutter_infra_release/flutter/\$engine/flutter_patched_sdk_product.zip
 
   # iOS release artifacts
   # Includes unified Flutter.framework for device and simulator (debug)
