@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/executables/flutter_version.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -115,10 +116,7 @@ class ShorebirdFlutter {
     }
 
     final output = result.stdout.toString();
-    final flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
-    final match = flutterVersionRegex.firstMatch(output);
-
-    return match?.group(1);
+    return maybeParseFlutterVersionFromOutput(output);
   }
 
   /// Executes `flutter config --list` and returns the output as a map.
