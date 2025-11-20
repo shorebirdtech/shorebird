@@ -730,6 +730,7 @@ Looked in:
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: false,
           inferredReleaseVersion: false,
+          isSigned: true,
           environment: BuildEnvironmentMetadata(
             flutterRevision: flutterRevision,
             operatingSystem: operatingSystem,

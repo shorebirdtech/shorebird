@@ -13,6 +13,7 @@ void main() {
         usedIgnoreNativeChangesFlag: false,
         hasNativeChanges: false,
         inferredReleaseVersion: false,
+        isSigned: false,
         linkPercentage: 99.9,
         environment: BuildEnvironmentMetadata(
           flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
@@ -39,6 +40,7 @@ void main() {
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
           inferredReleaseVersion: false,
+          isSigned: false,
           linkPercentage: 99.9,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
@@ -62,6 +64,7 @@ void main() {
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
           inferredReleaseVersion: false,
+          isSigned: true,
           linkPercentage: 99.9,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
@@ -102,6 +105,7 @@ void main() {
               usedIgnoreNativeChangesFlag: true,
               hasNativeChanges: true,
               inferredReleaseVersion: false,
+              isSigned: true,
               linkPercentage: 99.8,
               environment: BuildEnvironmentMetadata(
                 flutterRevision: 'asdf',
@@ -128,6 +132,7 @@ void main() {
           hasNativeChanges: false,
           inferredReleaseVersion: false,
           linkPercentage: 99.9,
+          isSigned: true,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -145,6 +150,7 @@ void main() {
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
           inferredReleaseVersion: false,
+          isSigned: true,
           linkPercentage: 99.9,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
@@ -166,6 +172,7 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
+          isSigned: true,
           inferredReleaseVersion: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
@@ -183,6 +190,7 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
+          isSigned: false,
           inferredReleaseVersion: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',

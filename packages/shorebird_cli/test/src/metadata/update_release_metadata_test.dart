@@ -10,6 +10,7 @@ void main() {
         releasePlatform: ReleasePlatform.android,
         flutterVersionOverride: '1.2.3',
         generatedApks: false,
+        includesPublicKey: false,
         environment: BuildEnvironmentMetadata(
           flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
@@ -32,6 +33,7 @@ void main() {
           releasePlatform: ReleasePlatform.android,
           flutterVersionOverride: '1.2.3',
           generatedApks: false,
+          includesPublicKey: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -50,6 +52,7 @@ void main() {
         const metadata = UpdateReleaseMetadata(
           releasePlatform: ReleasePlatform.android,
           flutterVersionOverride: '1.2.3',
+          includesPublicKey: false,
           generatedApks: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
@@ -66,6 +69,7 @@ void main() {
           releasePlatform: ReleasePlatform.ios,
           flutterVersionOverride: '1.2.4',
           generatedApks: true,
+          includesPublicKey: true,
           environment: const BuildEnvironmentMetadata(
             flutterRevision: 'asdf',
             operatingSystem: 'windows',
@@ -84,6 +88,7 @@ void main() {
               releasePlatform: ReleasePlatform.ios,
               flutterVersionOverride: '1.2.4',
               generatedApks: true,
+              includesPublicKey: true,
               environment: BuildEnvironmentMetadata(
                 flutterRevision: 'asdf',
                 operatingSystem: 'windows',
@@ -105,6 +110,7 @@ void main() {
           releasePlatform: ReleasePlatform.android,
           flutterVersionOverride: '1.2.3',
           generatedApks: false,
+          includesPublicKey: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -119,6 +125,7 @@ void main() {
           releasePlatform: ReleasePlatform.android,
           flutterVersionOverride: '1.2.3',
           generatedApks: false,
+          includesPublicKey: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -137,6 +144,7 @@ void main() {
           releasePlatform: ReleasePlatform.android,
           flutterVersionOverride: '1.2.3',
           generatedApks: false,
+          includesPublicKey: true,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
@@ -151,6 +159,7 @@ void main() {
           releasePlatform: ReleasePlatform.android,
           flutterVersionOverride: '1.2.4',
           generatedApks: false,
+          includesPublicKey: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',

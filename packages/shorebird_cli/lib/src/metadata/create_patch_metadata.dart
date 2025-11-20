@@ -26,6 +26,7 @@ class CreatePatchMetadata extends Equatable {
     required this.hasNativeChanges,
     required this.inferredReleaseVersion,
     required this.environment,
+    required this.isSigned,
     this.linkPercentage,
     this.linkMetadata,
   });
@@ -40,6 +41,7 @@ class CreatePatchMetadata extends Equatable {
     bool usedIgnoreNativeChangesFlag = false,
     bool hasNativeChanges = false,
     bool inferredReleaseVersion = false,
+    bool isSigned = false,
     double? linkPercentage,
     Json? linkMetadata,
     BuildEnvironmentMetadata? environment,
@@ -49,6 +51,7 @@ class CreatePatchMetadata extends Equatable {
     hasAssetChanges: hasAssetChanges,
     usedIgnoreNativeChangesFlag: usedIgnoreNativeChangesFlag,
     hasNativeChanges: hasNativeChanges,
+    isSigned: isSigned,
     inferredReleaseVersion: inferredReleaseVersion,
     linkPercentage: linkPercentage,
     linkMetadata: linkMetadata,
@@ -72,6 +75,7 @@ class CreatePatchMetadata extends Equatable {
     bool? usedIgnoreNativeChangesFlag,
     bool? hasNativeChanges,
     bool? inferredReleaseVersion,
+    bool? isSigned,
     double? linkPercentage,
     Json? linkMetadata,
     BuildEnvironmentMetadata? environment,
@@ -85,6 +89,7 @@ class CreatePatchMetadata extends Equatable {
     hasNativeChanges: hasNativeChanges ?? this.hasNativeChanges,
     inferredReleaseVersion:
         inferredReleaseVersion ?? this.inferredReleaseVersion,
+    isSigned: isSigned ?? this.isSigned,
     linkPercentage: linkPercentage ?? this.linkPercentage,
     linkMetadata: linkMetadata ?? this.linkMetadata,
     environment: environment ?? this.environment,
@@ -132,6 +137,13 @@ class CreatePatchMetadata extends Equatable {
   /// Metadata from the linker, if available.
   final Json? linkMetadata;
 
+  /// Whether the patch was signed.
+  ///
+  /// Reason: this helps us understand how often users are signing their
+  /// patches, and helps us provide better support for users who encounter
+  /// issues.
+  final bool isSigned;
+
   /// Properties about the environment in which the patch was created.
   ///
   /// Reason: see [BuildEnvironmentMetadata].
@@ -147,6 +159,7 @@ class CreatePatchMetadata extends Equatable {
     linkPercentage,
     linkMetadata,
     inferredReleaseVersion,
+    isSigned,
     environment,
   ];
 }

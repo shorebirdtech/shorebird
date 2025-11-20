@@ -22,6 +22,7 @@ class UpdateReleaseMetadata extends Equatable {
     required this.releasePlatform,
     required this.flutterVersionOverride,
     required this.environment,
+    required this.includesPublicKey,
     this.generatedApks,
   });
 
@@ -32,12 +33,14 @@ class UpdateReleaseMetadata extends Equatable {
     ReleasePlatform releasePlatform = ReleasePlatform.android,
     String? flutterVersionOverride = '1.2.3',
     bool? generatedApks = false,
+    bool includesPublicKey = false,
     BuildEnvironmentMetadata? environment,
   }) => UpdateReleaseMetadata(
     releasePlatform: releasePlatform,
     flutterVersionOverride: flutterVersionOverride,
     generatedApks: generatedApks,
     environment: environment ?? BuildEnvironmentMetadata.forTest(),
+    includesPublicKey: includesPublicKey,
   );
   // coverage:ignore-end
 
@@ -55,12 +58,14 @@ class UpdateReleaseMetadata extends Equatable {
     String? flutterVersionOverride,
     bool? generatedApks,
     BuildEnvironmentMetadata? environment,
+    bool? includesPublicKey,
   }) => UpdateReleaseMetadata(
     releasePlatform: releasePlatform ?? this.releasePlatform,
     flutterVersionOverride:
         flutterVersionOverride ?? this.flutterVersionOverride,
     generatedApks: generatedApks ?? this.generatedApks,
     environment: environment ?? this.environment,
+    includesPublicKey: includesPublicKey ?? this.includesPublicKey,
   );
 
   /// The platform for which the patch was created.
@@ -79,6 +84,13 @@ class UpdateReleaseMetadata extends Equatable {
   /// which may affect the build process.
   final bool? generatedApks;
 
+  /// Whether the user included a public key for the release.
+  ///
+  /// Reason: this helps us understand how often users are signing their
+  /// patches, and helps us provide better support for users who encounter
+  /// issues.
+  final bool? includesPublicKey;
+
   /// Properties about the environment in which the update to the release was
   /// performed.
   ///
@@ -90,6 +102,7 @@ class UpdateReleaseMetadata extends Equatable {
     releasePlatform,
     flutterVersionOverride,
     generatedApks,
+    includesPublicKey,
     environment,
   ];
 }

@@ -448,6 +448,7 @@ void main() {
       const metadata = UpdateReleaseMetadata(
         releasePlatform: ReleasePlatform.ios,
         flutterVersionOverride: null,
+        includesPublicKey: false,
         environment: BuildEnvironmentMetadata(
           flutterRevision: flutterRevision,
           operatingSystem: operatingSystem,
@@ -471,6 +472,7 @@ void main() {
             const UpdateReleaseMetadata(
               releasePlatform: ReleasePlatform.ios,
               flutterVersionOverride: null,
+              includesPublicKey: false,
               environment: BuildEnvironmentMetadata(
                 flutterRevision: flutterRevision,
                 operatingSystem: operatingSystem,
