@@ -11,7 +11,7 @@ enum Role {
   admin,
 
   /// Users who are part of the organization but have limited permissions.
-  member,
+  developer,
 
   /// Users who are not part of the organization but have visibility into it via
   /// app collaborator permissions.

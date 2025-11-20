@@ -6,7 +6,7 @@ void main() {
     test('can be (de)serialized', () {
       final membership = OrganizationMembership(
         organization: Organization.forTest(),
-        role: Role.member,
+        role: Role.developer,
       );
       expect(
         OrganizationMembership.fromJson(membership.toJson()).toJson(),
@@ -24,14 +24,14 @@ void main() {
               createdAt: date,
               updatedAt: date,
             ),
-            role: Role.member,
+            role: Role.developer,
           );
           final otherMembership = OrganizationMembership(
             organization: Organization.forTest(
               createdAt: date,
               updatedAt: date,
             ),
-            role: Role.member,
+            role: Role.developer,
           );
           expect(membership, equals(otherMembership));
         });
@@ -44,7 +44,7 @@ void main() {
               createdAt: date,
               updatedAt: date,
             ),
-            role: Role.member,
+            role: Role.developer,
           );
           final otherMembership = OrganizationMembership(
             organization: Organization.forTest(

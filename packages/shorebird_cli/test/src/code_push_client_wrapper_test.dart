@@ -302,7 +302,7 @@ void main() {
             ),
             OrganizationMembership(
               organization: Organization.forTest(),
-              role: Role.member,
+              role: Role.developer,
             ),
           ];
           when(
