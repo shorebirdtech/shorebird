@@ -570,6 +570,7 @@ ${summary.join('\n')}
         operatingSystemVersion: platform.operatingSystemVersion,
         shorebirdVersion: packageVersion,
         shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
+        usesShorebirdCodePushPackage: shorebirdEnv.usesShorebirdCodePushPackage,
       ),
     );
     final updatedMetadata = await releaser.updatedReleaseMetadata(baseMetadata);

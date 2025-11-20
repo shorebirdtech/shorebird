@@ -634,6 +634,7 @@ void main() {
             operatingSystemVersion: operatingSystemVersion,
             shorebirdVersion: packageVersion,
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: true,
           ),
         );
 

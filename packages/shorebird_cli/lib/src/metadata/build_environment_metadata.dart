@@ -23,6 +23,7 @@ class BuildEnvironmentMetadata extends Equatable {
     required this.operatingSystem,
     required this.operatingSystemVersion,
     required this.shorebirdYaml,
+    required this.usesShorebirdCodePushPackage,
     this.xcodeVersion,
   });
 
@@ -35,6 +36,7 @@ class BuildEnvironmentMetadata extends Equatable {
     String operatingSystem = 'macos',
     String operatingSystemVersion = '1.2.3',
     ShorebirdYaml shorebirdYaml = const ShorebirdYaml(appId: '123'),
+    bool usesShorebirdCodePushPackage = false,
     String? xcodeVersion = '15.0',
   }) => BuildEnvironmentMetadata(
     flutterRevision: flutterRevision,
@@ -42,6 +44,7 @@ class BuildEnvironmentMetadata extends Equatable {
     operatingSystem: operatingSystem,
     operatingSystemVersion: operatingSystemVersion,
     shorebirdYaml: shorebirdYaml,
+    usesShorebirdCodePushPackage: usesShorebirdCodePushPackage,
     xcodeVersion: xcodeVersion,
   );
   // coverage:ignore-end
@@ -61,6 +64,7 @@ class BuildEnvironmentMetadata extends Equatable {
     String? operatingSystem,
     String? operatingSystemVersion,
     ShorebirdYaml? shorebirdYaml,
+    bool? usesShorebirdCodePushPackage,
     String? xcodeVersion,
   }) => BuildEnvironmentMetadata(
     flutterRevision: flutterRevision ?? this.flutterRevision,
@@ -69,6 +73,8 @@ class BuildEnvironmentMetadata extends Equatable {
     operatingSystemVersion:
         operatingSystemVersion ?? this.operatingSystemVersion,
     shorebirdYaml: shorebirdYaml ?? this.shorebirdYaml,
+    usesShorebirdCodePushPackage:
+        usesShorebirdCodePushPackage ?? this.usesShorebirdCodePushPackage,
     xcodeVersion: xcodeVersion ?? this.xcodeVersion,
   );
 
@@ -99,6 +105,12 @@ class BuildEnvironmentMetadata extends Equatable {
   /// The shorebird.yaml file for this project.
   final ShorebirdYaml shorebirdYaml;
 
+  /// Whether the project uses package:shorebird_code_push.
+  ///
+  /// Reason: this helps us understand which projects are using the Shorebird
+  /// CodePush package and better support customers who encounter issues.
+  final bool usesShorebirdCodePushPackage;
+
   /// The version of Xcode used to build the patch. Only provided for iOS
   /// patches.
   ///
@@ -113,6 +125,7 @@ class BuildEnvironmentMetadata extends Equatable {
     operatingSystem,
     operatingSystemVersion,
     shorebirdYaml,
+    usesShorebirdCodePushPackage,
     xcodeVersion,
   ];
 }

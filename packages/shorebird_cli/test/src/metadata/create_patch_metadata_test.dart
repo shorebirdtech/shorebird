@@ -19,8 +19,9 @@ void main() {
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
-          xcodeVersion: '15.0',
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: false,
+          xcodeVersion: '15.0',
         ),
       );
       expect(
@@ -44,8 +45,9 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
-            xcodeVersion: '15.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '15.0',
           ),
         );
 
@@ -66,8 +68,9 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
-            xcodeVersion: '15.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '15.0',
           ),
         );
 
@@ -83,8 +86,9 @@ void main() {
             operatingSystem: 'windows',
             operatingSystemVersion: '11',
             shorebirdVersion: '1.2.3',
-            xcodeVersion: '14.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '14.0',
           ),
         );
 
@@ -104,8 +108,9 @@ void main() {
                 operatingSystem: 'windows',
                 operatingSystemVersion: '11',
                 shorebirdVersion: '1.2.3',
-                xcodeVersion: '14.0',
                 shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+                usesShorebirdCodePushPackage: false,
+                xcodeVersion: '14.0',
               ),
             ),
           ),
@@ -129,6 +134,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             xcodeVersion: '15.0',
+            usesShorebirdCodePushPackage: false,
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           ),
         );
@@ -145,8 +151,9 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
-            xcodeVersion: '15.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '15.0',
           ),
         );
         expect(metadata, equals(otherMetadata));
@@ -165,8 +172,9 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
-            xcodeVersion: '15.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '15.0',
           ),
         );
         const otherMetadata = CreatePatchMetadata(
@@ -181,8 +189,9 @@ void main() {
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
-            xcodeVersion: '15.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '15.0',
           ),
         );
         expect(metadata, isNot(equals(otherMetadata)));

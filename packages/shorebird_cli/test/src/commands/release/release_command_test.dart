@@ -182,6 +182,7 @@ void main() {
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+      when(() => shorebirdEnv.usesShorebirdCodePushPackage).thenReturn(true);
 
       when(
         () => shorebirdFlutter.getVersionAndRevision(),

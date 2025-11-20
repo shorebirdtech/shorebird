@@ -453,6 +453,8 @@ Building patch with Flutter $flutterVersionString
             operatingSystemVersion: platform.operatingSystemVersion,
             shorebirdVersion: packageVersion,
             shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
+            usesShorebirdCodePushPackage:
+                shorebirdEnv.usesShorebirdCodePushPackage,
           ),
         );
         final updateMetadata = await patcher.updatedCreatePatchMetadata(
