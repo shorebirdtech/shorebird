@@ -10,8 +10,9 @@ void main() {
         operatingSystem: 'macos',
         operatingSystemVersion: '1.2.3',
         shorebirdVersion: '4.5.6',
-        xcodeVersion: '15.0',
         shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+        usesShorebirdCodePushPackage: false,
+        xcodeVersion: '15.0',
       );
       expect(
         BuildEnvironmentMetadata.fromJson(metadata.toJson()).toJson(),
@@ -26,8 +27,9 @@ void main() {
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
-          xcodeVersion: '15.0',
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: false,
+          xcodeVersion: '15.0',
         );
 
         expect(metadata.copyWith(), equals(metadata));
@@ -39,16 +41,18 @@ void main() {
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
-          xcodeVersion: '15.0',
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: false,
+          xcodeVersion: '15.0',
         );
         final newMetadata = metadata.copyWith(
           flutterRevision: 'asdf',
           operatingSystem: 'windows',
           operatingSystemVersion: '11',
           shorebirdVersion: '1.2.3',
-          xcodeVersion: '14.0',
           shorebirdYaml: const ShorebirdYaml(appId: 'app-id2'),
+          usesShorebirdCodePushPackage: true,
+          xcodeVersion: '14.0',
         );
         expect(
           newMetadata,
@@ -58,8 +62,9 @@ void main() {
               operatingSystem: 'windows',
               operatingSystemVersion: '11',
               shorebirdVersion: '1.2.3',
-              xcodeVersion: '14.0',
               shorebirdYaml: ShorebirdYaml(appId: 'app-id2'),
+              usesShorebirdCodePushPackage: true,
+              xcodeVersion: '14.0',
             ),
           ),
         );
@@ -73,16 +78,18 @@ void main() {
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
-          xcodeVersion: '15.0',
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: true,
+          xcodeVersion: '15.0',
         );
         const otherMetadata = BuildEnvironmentMetadata(
           flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
-          xcodeVersion: '15.0',
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: true,
+          xcodeVersion: '15.0',
         );
         expect(metadata, equals(otherMetadata));
       });
@@ -93,16 +100,18 @@ void main() {
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
-          xcodeVersion: '15.0',
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: true,
+          xcodeVersion: '15.0',
         );
         const otherMetadata = BuildEnvironmentMetadata(
           flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
-          xcodeVersion: '15.1',
           shorebirdYaml: ShorebirdYaml(appId: 'app-id2'),
+          usesShorebirdCodePushPackage: true,
+          xcodeVersion: '15.1',
         );
         expect(metadata, isNot(equals(otherMetadata)));
       });

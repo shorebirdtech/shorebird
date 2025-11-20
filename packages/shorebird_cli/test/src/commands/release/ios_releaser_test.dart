@@ -693,6 +693,7 @@ To change the version of this release, change your app's version in your pubspec
           operatingSystemVersion: operatingSystemVersion,
           shorebirdVersion: packageVersion,
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: true,
         ),
       );
 
@@ -713,6 +714,7 @@ To change the version of this release, change your app's version in your pubspec
                 operatingSystemVersion: operatingSystemVersion,
                 shorebirdVersion: packageVersion,
                 shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+                usesShorebirdCodePushPackage: true,
                 xcodeVersion: xcodeVersion,
               ),
             ),

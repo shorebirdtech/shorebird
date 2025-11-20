@@ -454,6 +454,7 @@ void main() {
           operatingSystemVersion: operatingSystemVersion,
           shorebirdVersion: packageVersion,
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: false,
         ),
       );
 
@@ -476,6 +477,7 @@ void main() {
                 operatingSystemVersion: operatingSystemVersion,
                 shorebirdVersion: packageVersion,
                 shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+                usesShorebirdCodePushPackage: false,
                 xcodeVersion: xcodeVersion,
               ),
             ),

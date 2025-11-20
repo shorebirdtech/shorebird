@@ -69,6 +69,12 @@ class ShorebirdEnv {
         ).readAsStringSync().trim();
   }
 
+  /// Whether the project uses package:shorebird_code_push.
+  bool get usesShorebirdCodePushPackage {
+    final pubspec = getPubspecYaml();
+    return pubspec?.dependencies.containsKey('shorebird_code_push') ?? false;
+  }
+
   /// The root of the Shorebird-vended Flutter git checkout.
   Directory get flutterDirectory {
     return Directory(

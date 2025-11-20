@@ -16,6 +16,7 @@ void main() {
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: false,
           xcodeVersion: '15.0',
         ),
       );
@@ -37,6 +38,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
             xcodeVersion: '15.0',
           ),
         );
@@ -55,6 +57,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
             xcodeVersion: '15.0',
           ),
         );
@@ -69,6 +72,7 @@ void main() {
             operatingSystemVersion: '11',
             shorebirdVersion: '1.2.3',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: true,
             xcodeVersion: '14.0',
           ),
         );
@@ -86,6 +90,7 @@ void main() {
                 operatingSystemVersion: '11',
                 shorebirdVersion: '1.2.3',
                 shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+                usesShorebirdCodePushPackage: true,
                 xcodeVersion: '14.0',
               ),
             ),
@@ -106,6 +111,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
             xcodeVersion: '15.0',
           ),
         );
@@ -119,6 +125,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
             xcodeVersion: '15.0',
           ),
         );
@@ -136,6 +143,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: true,
             xcodeVersion: '15.0',
           ),
         );
@@ -149,6 +157,7 @@ void main() {
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: true,
             xcodeVersion: '15.0',
           ),
         );

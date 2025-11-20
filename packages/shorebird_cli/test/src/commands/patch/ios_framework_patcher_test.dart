@@ -1023,6 +1023,7 @@ void main() {
               operatingSystemVersion: operatingSystemVersion,
               shorebirdVersion: packageVersion,
               shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+              usesShorebirdCodePushPackage: true,
             ),
           );
 
@@ -1044,6 +1045,7 @@ void main() {
                   operatingSystemVersion: operatingSystemVersion,
                   shorebirdVersion: packageVersion,
                   shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+                  usesShorebirdCodePushPackage: true,
                   xcodeVersion: xcodeVersion,
                 ),
               ),
@@ -1076,6 +1078,7 @@ void main() {
               operatingSystemVersion: operatingSystemVersion,
               shorebirdVersion: packageVersion,
               shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+              usesShorebirdCodePushPackage: true,
             ),
           );
 
@@ -1099,6 +1102,7 @@ void main() {
                   operatingSystemVersion: operatingSystemVersion,
                   shorebirdVersion: packageVersion,
                   shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+                  usesShorebirdCodePushPackage: true,
                   xcodeVersion: xcodeVersion,
                 ),
               ),

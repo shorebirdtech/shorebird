@@ -29,6 +29,10 @@ BuildEnvironmentMetadata _$BuildEnvironmentMetadataFromJson(
         'shorebird_yaml',
         (v) => ShorebirdYaml.fromJson(v as Map<String, dynamic>),
       ),
+      usesShorebirdCodePushPackage: $checkedConvert(
+        'uses_shorebird_code_push_package',
+        (v) => v as bool,
+      ),
       xcodeVersion: $checkedConvert('xcode_version', (v) => v as String?),
     );
     return val;
@@ -39,6 +43,7 @@ BuildEnvironmentMetadata _$BuildEnvironmentMetadataFromJson(
     'operatingSystem': 'operating_system',
     'operatingSystemVersion': 'operating_system_version',
     'shorebirdYaml': 'shorebird_yaml',
+    'usesShorebirdCodePushPackage': 'uses_shorebird_code_push_package',
     'xcodeVersion': 'xcode_version',
   },
 );
@@ -51,5 +56,6 @@ Map<String, dynamic> _$BuildEnvironmentMetadataToJson(
   'operating_system': instance.operatingSystem,
   'operating_system_version': instance.operatingSystemVersion,
   'shorebird_yaml': instance.shorebirdYaml.toJson(),
+  'uses_shorebird_code_push_package': instance.usesShorebirdCodePushPackage,
   'xcode_version': instance.xcodeVersion,
 };

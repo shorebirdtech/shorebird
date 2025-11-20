@@ -313,6 +313,7 @@ void main() {
         return shorebirdEnv;
       });
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+      when(() => shorebirdEnv.usesShorebirdCodePushPackage).thenReturn(false);
 
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
