@@ -1486,6 +1486,60 @@ Please re-run the release command for this version or create a new release.'''),
         ).called(1);
       });
     });
+
+    group('reported patch metadata', () {
+      group('when signing keys are provided', () {
+        setUp(() {
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
+          when(
+            () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+          ).thenReturn(true);
+        });
+
+        test('sets isSigned to true in PatchMetadata', () async {
+          await runWithOverrides(command.run);
+          verify(
+            () => patcher.updatedCreatePatchMetadata(
+              any(
+                that: isA<CreatePatchMetadata>().having(
+                  (m) => m.isSigned,
+                  'isSigned',
+                  isTrue,
+                ),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when no signing keys are provided', () {
+        setUp(() {
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(false);
+          when(
+            () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
+          ).thenReturn(false);
+        });
+
+        test('sets isSigned to false in PatchMetadata', () async {
+          await runWithOverrides(command.run);
+          verify(
+            () => patcher.updatedCreatePatchMetadata(
+              any(
+                that: isA<CreatePatchMetadata>().having(
+                  (m) => m.isSigned,
+                  'isSigned',
+                  isFalse,
+                ),
+              ),
+            ),
+          );
+        });
+      });
+    });
   });
 
   group('sortByUpdatedAt', () {
