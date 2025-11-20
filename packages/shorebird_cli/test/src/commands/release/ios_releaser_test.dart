@@ -687,6 +687,7 @@ To change the version of this release, change your app's version in your pubspec
       const metadata = UpdateReleaseMetadata(
         releasePlatform: ReleasePlatform.ios,
         flutterVersionOverride: flutterVersionOverride,
+        includesPublicKey: false,
         environment: BuildEnvironmentMetadata(
           flutterRevision: flutterRevision,
           operatingSystem: operatingSystem,
@@ -708,6 +709,7 @@ To change the version of this release, change your app's version in your pubspec
             const UpdateReleaseMetadata(
               releasePlatform: ReleasePlatform.ios,
               flutterVersionOverride: flutterVersionOverride,
+              includesPublicKey: false,
               environment: BuildEnvironmentMetadata(
                 flutterRevision: flutterRevision,
                 operatingSystem: operatingSystem,

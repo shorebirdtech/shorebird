@@ -564,6 +564,7 @@ ${summary.join('\n')}
     final baseMetadata = UpdateReleaseMetadata(
       releasePlatform: releaser.releaseType.releasePlatform,
       flutterVersionOverride: flutterVersionArg,
+      includesPublicKey: results.wasParsed(CommonArguments.publicKeyArg.name),
       environment: BuildEnvironmentMetadata(
         flutterRevision: shorebirdEnv.flutterRevision,
         operatingSystem: platform.operatingSystem,

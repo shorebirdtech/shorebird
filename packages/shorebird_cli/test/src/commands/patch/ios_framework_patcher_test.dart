@@ -1017,6 +1017,7 @@ void main() {
             usedIgnoreNativeChangesFlag: allowNativeDiffs,
             hasNativeChanges: true,
             inferredReleaseVersion: false,
+            isSigned: true,
             environment: BuildEnvironmentMetadata(
               flutterRevision: flutterRevision,
               operatingSystem: operatingSystem,
@@ -1039,6 +1040,7 @@ void main() {
                 usedIgnoreNativeChangesFlag: allowNativeDiffs,
                 hasNativeChanges: true,
                 inferredReleaseVersion: false,
+                isSigned: true,
                 environment: BuildEnvironmentMetadata(
                   flutterRevision: flutterRevision,
                   operatingSystem: operatingSystem,
@@ -1072,6 +1074,7 @@ void main() {
             usedIgnoreNativeChangesFlag: allowNativeDiffs,
             hasNativeChanges: false,
             inferredReleaseVersion: false,
+            isSigned: false,
             environment: BuildEnvironmentMetadata(
               flutterRevision: flutterRevision,
               operatingSystem: operatingSystem,
@@ -1096,6 +1099,7 @@ void main() {
                 inferredReleaseVersion: false,
                 linkPercentage: linkPercentage,
                 linkMetadata: linkMetadata,
+                isSigned: false,
                 environment: BuildEnvironmentMetadata(
                   flutterRevision: flutterRevision,
                   operatingSystem: operatingSystem,

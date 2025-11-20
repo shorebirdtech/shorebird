@@ -37,6 +37,7 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(
         'environment',
         (v) => BuildEnvironmentMetadata.fromJson(v as Map<String, dynamic>),
       ),
+      isSigned: $checkedConvert('is_signed', (v) => v as bool),
       linkPercentage: $checkedConvert(
         'link_percentage',
         (v) => (v as num?)?.toDouble(),
@@ -55,6 +56,7 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(
     'usedIgnoreNativeChangesFlag': 'used_ignore_native_changes_flag',
     'hasNativeChanges': 'has_native_changes',
     'inferredReleaseVersion': 'inferred_release_version',
+    'isSigned': 'is_signed',
     'linkPercentage': 'link_percentage',
     'linkMetadata': 'link_metadata',
   },
@@ -71,6 +73,7 @@ Map<String, dynamic> _$CreatePatchMetadataToJson(
   'inferred_release_version': instance.inferredReleaseVersion,
   'link_percentage': instance.linkPercentage,
   'link_metadata': instance.linkMetadata,
+  'is_signed': instance.isSigned,
   'environment': instance.environment.toJson(),
 };
 
