@@ -688,6 +688,59 @@ test-revision
       });
     });
 
+    group('usesShorebirdCodePushPackage', () {
+      group('when pubspec.yaml does not contain shorebird_code_push', () {
+        setUp(() {
+          final tempDir = Directory.systemTemp.createTempSync();
+          File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: test
+
+dependencies:
+  clock: ^1.1.2
+  collection: ^1.19.1
+  crypto: ^3.0.6
+  dart_frog: ^1.2.4
+''');
+          shorebirdEnv = runWithOverrides(
+            () => ShorebirdEnv(flutterProjectRootOverride: tempDir.path),
+          );
+        });
+
+        test('returns false', () {
+          expect(
+            runWithOverrides(() => shorebirdEnv.usesShorebirdCodePushPackage),
+            isFalse,
+          );
+        });
+      });
+
+      group('when pubspec.yaml contains shorebird_code_push', () {
+        setUp(() {
+          final tempDir = Directory.systemTemp.createTempSync();
+          File(p.join(tempDir.path, 'pubspec.yaml')).writeAsStringSync('''
+name: test
+
+dependencies:
+  clock: ^1.1.2
+  collection: ^1.19.1
+  crypto: ^3.0.6
+  dart_frog: ^1.2.4
+  shorebird_code_push: ^1.0.0
+''');
+          shorebirdEnv = runWithOverrides(
+            () => ShorebirdEnv(flutterProjectRootOverride: tempDir.path),
+          );
+        });
+
+        test('returns true', () {
+          expect(
+            runWithOverrides(() => shorebirdEnv.usesShorebirdCodePushPackage),
+            isTrue,
+          );
+        });
+      });
+    });
+
     group('shorebirdEngineRevision', () {
       test('returns correct revision', () {
         const engineRevision = 'test-revision';
