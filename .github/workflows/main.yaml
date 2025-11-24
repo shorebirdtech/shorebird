@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: 👀 Check Licenses
         uses: ./.github/actions/license_check
@@ -46,7 +46,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - uses: dorny/paths-filter@v3
         name: Build Detection
@@ -149,7 +149,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
@@ -173,7 +173,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: 🎯 Build ${{ matrix.package }}
         uses: ./.github/actions/dart_package
@@ -198,7 +198,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: 🐳 Run Redis
         run: |
@@ -226,7 +226,7 @@ jobs:
 
     steps:
       - name: 📚 Git Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: 🔎 Verify ${{ matrix.package }}
         uses: ./.github/actions/verify_version
