@@ -6,7 +6,7 @@ void main() {
     test('can be (de)serialized', () {
       final organizationUser = OrganizationUser(
         user: PublicUser.fromPrivateUser(PrivateUser.forTest()),
-        role: Role.member,
+        role: Role.developer,
       );
       expect(
         OrganizationUser.fromJson(organizationUser.toJson()).toJson(),

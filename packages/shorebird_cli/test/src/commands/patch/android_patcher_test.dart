@@ -730,12 +730,14 @@ Looked in:
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: false,
           inferredReleaseVersion: false,
+          isSigned: true,
           environment: BuildEnvironmentMetadata(
             flutterRevision: flutterRevision,
             operatingSystem: operatingSystem,
             operatingSystemVersion: operatingSystemVersion,
             shorebirdVersion: packageVersion,
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
           ),
         );
 

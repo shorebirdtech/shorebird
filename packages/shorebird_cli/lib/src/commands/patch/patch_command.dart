@@ -447,12 +447,15 @@ Building patch with Flutter $flutterVersionString
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: diffStatus.hasNativeChanges,
           inferredReleaseVersion: inferredReleaseVersion,
+          isSigned: results.wasParsed(CommonArguments.privateKeyArg.name),
           environment: BuildEnvironmentMetadata(
             flutterRevision: shorebirdEnv.flutterRevision,
             operatingSystem: platform.operatingSystem,
             operatingSystemVersion: platform.operatingSystemVersion,
             shorebirdVersion: packageVersion,
             shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
+            usesShorebirdCodePushPackage:
+                shorebirdEnv.usesShorebirdCodePushPackage,
           ),
         );
         final updateMetadata = await patcher.updatedCreatePatchMetadata(

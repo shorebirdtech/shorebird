@@ -27,6 +27,10 @@ UpdateReleaseMetadata _$UpdateReleaseMetadataFromJson(
         'environment',
         (v) => BuildEnvironmentMetadata.fromJson(v as Map<String, dynamic>),
       ),
+      includesPublicKey: $checkedConvert(
+        'includes_public_key',
+        (v) => v as bool?,
+      ),
       generatedApks: $checkedConvert('generated_apks', (v) => v as bool?),
     );
     return val;
@@ -34,6 +38,7 @@ UpdateReleaseMetadata _$UpdateReleaseMetadataFromJson(
   fieldKeyMap: const {
     'releasePlatform': 'release_platform',
     'flutterVersionOverride': 'flutter_version_override',
+    'includesPublicKey': 'includes_public_key',
     'generatedApks': 'generated_apks',
   },
 );
@@ -44,6 +49,7 @@ Map<String, dynamic> _$UpdateReleaseMetadataToJson(
   'release_platform': _$ReleasePlatformEnumMap[instance.releasePlatform]!,
   'flutter_version_override': instance.flutterVersionOverride,
   'generated_apks': instance.generatedApks,
+  'includes_public_key': instance.includesPublicKey,
   'environment': instance.environment.toJson(),
 };
 

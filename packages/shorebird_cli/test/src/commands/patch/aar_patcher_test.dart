@@ -628,12 +628,14 @@ void main() {
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: false,
           inferredReleaseVersion: false,
+          isSigned: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: flutterRevision,
             operatingSystem: operatingSystem,
             operatingSystemVersion: operatingSystemVersion,
             shorebirdVersion: packageVersion,
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: true,
           ),
         );
 

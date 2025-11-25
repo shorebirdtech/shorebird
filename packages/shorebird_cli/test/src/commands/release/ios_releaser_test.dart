@@ -687,12 +687,14 @@ To change the version of this release, change your app's version in your pubspec
       const metadata = UpdateReleaseMetadata(
         releasePlatform: ReleasePlatform.ios,
         flutterVersionOverride: flutterVersionOverride,
+        includesPublicKey: false,
         environment: BuildEnvironmentMetadata(
           flutterRevision: flutterRevision,
           operatingSystem: operatingSystem,
           operatingSystemVersion: operatingSystemVersion,
           shorebirdVersion: packageVersion,
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: true,
         ),
       );
 
@@ -707,12 +709,14 @@ To change the version of this release, change your app's version in your pubspec
             const UpdateReleaseMetadata(
               releasePlatform: ReleasePlatform.ios,
               flutterVersionOverride: flutterVersionOverride,
+              includesPublicKey: false,
               environment: BuildEnvironmentMetadata(
                 flutterRevision: flutterRevision,
                 operatingSystem: operatingSystem,
                 operatingSystemVersion: operatingSystemVersion,
                 shorebirdVersion: packageVersion,
                 shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+                usesShorebirdCodePushPackage: true,
                 xcodeVersion: xcodeVersion,
               ),
             ),

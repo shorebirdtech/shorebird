@@ -448,12 +448,14 @@ void main() {
       const metadata = UpdateReleaseMetadata(
         releasePlatform: ReleasePlatform.ios,
         flutterVersionOverride: null,
+        includesPublicKey: false,
         environment: BuildEnvironmentMetadata(
           flutterRevision: flutterRevision,
           operatingSystem: operatingSystem,
           operatingSystemVersion: operatingSystemVersion,
           shorebirdVersion: packageVersion,
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: false,
         ),
       );
 
@@ -470,12 +472,14 @@ void main() {
             const UpdateReleaseMetadata(
               releasePlatform: ReleasePlatform.ios,
               flutterVersionOverride: null,
+              includesPublicKey: false,
               environment: BuildEnvironmentMetadata(
                 flutterRevision: flutterRevision,
                 operatingSystem: operatingSystem,
                 operatingSystemVersion: operatingSystemVersion,
                 shorebirdVersion: packageVersion,
                 shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+                usesShorebirdCodePushPackage: false,
                 xcodeVersion: xcodeVersion,
               ),
             ),

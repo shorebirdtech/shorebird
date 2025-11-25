@@ -182,6 +182,7 @@ void main() {
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+      when(() => shorebirdEnv.usesShorebirdCodePushPackage).thenReturn(true);
 
       when(
         () => shorebirdFlutter.getVersionAndRevision(),
@@ -710,6 +711,64 @@ $exception'''),
 At least Flutter $laterFlutterVersion is required to release with `${releaseType.name}`.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         ).called(1);
+      });
+    });
+
+    group('finalizeRelease', () {
+      group('when a public key is provided', () {
+        setUp(() {
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
+        });
+
+        test('completes successfully', () async {
+          await runWithOverrides(
+            () => command.finalizeRelease(
+              release: release,
+              releaser: releaser,
+            ),
+          );
+          verify(
+            () => releaser.updatedReleaseMetadata(
+              any(
+                that: isA<UpdateReleaseMetadata>().having(
+                  (metadata) => metadata.includesPublicKey,
+                  'includesPublicKey',
+                  isTrue,
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when no public key is provided', () {
+        setUp(() {
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(false);
+        });
+
+        test('completes successfully', () async {
+          await runWithOverrides(
+            () => command.finalizeRelease(
+              release: release,
+              releaser: releaser,
+            ),
+          );
+          verify(
+            () => releaser.updatedReleaseMetadata(
+              any(
+                that: isA<UpdateReleaseMetadata>().having(
+                  (metadata) => metadata.includesPublicKey,
+                  'includesPublicKey',
+                  isFalse,
+                ),
+              ),
+            ),
+          ).called(1);
+        });
       });
     });
   });

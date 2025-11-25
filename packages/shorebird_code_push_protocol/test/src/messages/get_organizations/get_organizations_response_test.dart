@@ -8,7 +8,7 @@ void main() {
         organizations: [
           OrganizationMembership(
             organization: Organization.forTest(),
-            role: Role.member,
+            role: Role.developer,
           ),
         ],
       );

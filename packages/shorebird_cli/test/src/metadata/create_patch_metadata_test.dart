@@ -13,14 +13,16 @@ void main() {
         usedIgnoreNativeChangesFlag: false,
         hasNativeChanges: false,
         inferredReleaseVersion: false,
+        isSigned: false,
         linkPercentage: 99.9,
         environment: BuildEnvironmentMetadata(
           flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
           operatingSystem: 'macos',
           operatingSystemVersion: '1.2.3',
           shorebirdVersion: '4.5.6',
-          xcodeVersion: '15.0',
           shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+          usesShorebirdCodePushPackage: false,
+          xcodeVersion: '15.0',
         ),
       );
       expect(
@@ -38,14 +40,16 @@ void main() {
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
           inferredReleaseVersion: false,
+          isSigned: false,
           linkPercentage: 99.9,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
-            xcodeVersion: '15.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '15.0',
           ),
         );
 
@@ -60,14 +64,16 @@ void main() {
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
           inferredReleaseVersion: false,
+          isSigned: true,
           linkPercentage: 99.9,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
-            xcodeVersion: '15.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '15.0',
           ),
         );
 
@@ -83,8 +89,9 @@ void main() {
             operatingSystem: 'windows',
             operatingSystemVersion: '11',
             shorebirdVersion: '1.2.3',
-            xcodeVersion: '14.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '14.0',
           ),
         );
 
@@ -98,14 +105,16 @@ void main() {
               usedIgnoreNativeChangesFlag: true,
               hasNativeChanges: true,
               inferredReleaseVersion: false,
+              isSigned: true,
               linkPercentage: 99.8,
               environment: BuildEnvironmentMetadata(
                 flutterRevision: 'asdf',
                 operatingSystem: 'windows',
                 operatingSystemVersion: '11',
                 shorebirdVersion: '1.2.3',
-                xcodeVersion: '14.0',
                 shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+                usesShorebirdCodePushPackage: false,
+                xcodeVersion: '14.0',
               ),
             ),
           ),
@@ -123,12 +132,14 @@ void main() {
           hasNativeChanges: false,
           inferredReleaseVersion: false,
           linkPercentage: 99.9,
+          isSigned: true,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
             xcodeVersion: '15.0',
+            usesShorebirdCodePushPackage: false,
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
           ),
         );
@@ -139,14 +150,16 @@ void main() {
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
           inferredReleaseVersion: false,
+          isSigned: true,
           linkPercentage: 99.9,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
-            xcodeVersion: '15.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '15.0',
           ),
         );
         expect(metadata, equals(otherMetadata));
@@ -159,14 +172,16 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
+          isSigned: true,
           inferredReleaseVersion: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
-            xcodeVersion: '15.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '15.0',
           ),
         );
         const otherMetadata = CreatePatchMetadata(
@@ -175,14 +190,16 @@ void main() {
           hasAssetChanges: false,
           usedIgnoreNativeChangesFlag: false,
           hasNativeChanges: false,
+          isSigned: false,
           inferredReleaseVersion: false,
           environment: BuildEnvironmentMetadata(
             flutterRevision: '853d13d954df3b6e9c2f07b72062f33c52a9a64b',
             operatingSystem: 'macos',
             operatingSystemVersion: '1.2.3',
             shorebirdVersion: '4.5.6',
-            xcodeVersion: '15.0',
             shorebirdYaml: ShorebirdYaml(appId: 'app-id'),
+            usesShorebirdCodePushPackage: false,
+            xcodeVersion: '15.0',
           ),
         );
         expect(metadata, isNot(equals(otherMetadata)));
