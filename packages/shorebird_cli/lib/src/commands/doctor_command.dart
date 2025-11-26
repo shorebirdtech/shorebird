@@ -130,7 +130,10 @@ Android Toolchain
       logger.info('');
     }
 
-    await doctor.runValidators(doctor.generalValidators, applyFixes: shouldFix);
+    await doctor.runValidators(
+      doctor.initAndDoctorValidators,
+      applyFixes: shouldFix,
+    );
 
     return ExitCode.success.code;
   }
