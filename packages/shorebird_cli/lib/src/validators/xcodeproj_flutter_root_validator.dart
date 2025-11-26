@@ -39,7 +39,12 @@ The command you are running must be run within a Flutter app project that suppor
 
   @override
   Future<List<ValidationIssue>> validate() async {
-    final pbxProjFile = File(_projectPbxprojPath);
+    final root = shorebirdEnv.getFlutterProjectRoot();
+    if (root == null) {
+      return [];
+    }
+
+    final pbxProjFile = File(p.join(root.path, _projectPbxprojPath));
     if (!pbxProjFile.existsSync()) {
       return [
         ValidationIssue(
@@ -76,7 +81,12 @@ The command you are running must be run within a Flutter app project that suppor
     // - FLUTTER_ROOT = "value";
     // - FLUTTER_ROOT = $(FLUTTER_ROOT);
     // Allow for flexible spacing around the equals sign
-    final matcher = RegExp(r'FLUTTER_ROOT\s*=\s*[^;]+;', multiLine: true);
+    // Use negative lookbehind to ensure it's not in a comment line
+    // and ensure semicolon is on the same line (not matching newlines)
+    final matcher = RegExp(
+      r'^(?!\s*//).*FLUTTER_ROOT\s*=\s*[^;\n]+;',
+      multiLine: true,
+    );
     return matcher.hasMatch(contents);
   }
 }
