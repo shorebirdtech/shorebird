@@ -228,7 +228,8 @@ class AotTools {
         .toString()
         // Hack to work around https://github.com/dart-lang/sdk/issues/61996
         // Which manifests in 3.38.0, 3.38.1, and 3.38.2
-        .replaceAll(r'Running build hooks...\n', '')
+        // It typically ends in a newline, but trim() will remove it.
+        .replaceAll('Running build hooks...', '')
         .trim();
     return tryParseVersion(version) ?? noVersion;
   }
