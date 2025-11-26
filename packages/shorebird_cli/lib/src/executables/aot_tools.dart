@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -209,11 +210,12 @@ class AotTools {
   }
 
   Future<bool> _linkerUsesGenSnapshot() async {
-    final version = await _getVersion();
+    final version = await getVersion();
     return version >= Version(0, 0, 1);
   }
 
-  Future<Version> _getVersion() async {
+  @visibleForTesting
+  Future<Version> getVersion() async {
     // Use 0.0.0 to allow callers to easily compare w/o checking for null.
     // If callers need to care about null, we can change this function to
     // return Version?.
@@ -222,7 +224,13 @@ class AotTools {
     if (result.exitCode != ExitCode.success.code) {
       return noVersion;
     }
-    final version = result.stdout.toString().trim();
+    final version = result.stdout
+        .toString()
+        // Hack to work around https://github.com/dart-lang/sdk/issues/61996
+        // Which manifests in 3.38.0, 3.38.1, and 3.38.2
+        // It typically ends in a newline, but trim() will remove it.
+        .replaceAll('Running build hooks...', '')
+        .trim();
     return tryParseVersion(version) ?? noVersion;
   }
 

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -1019,6 +1020,69 @@ Run "aot_tools help <command>" for more information about a command.
             );
           },
         );
+      });
+    });
+
+    group('getVersion', () {
+      late int exitCode;
+      late String stdout;
+      late String stderr;
+
+      setUp(() {
+        exitCode = 0;
+        stdout = '';
+        stderr = '';
+        when(
+          () => process.start(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async {
+          final mockProcess = MockProcess();
+          when(() => mockProcess.exitCode).thenAnswer((_) async => exitCode);
+          when(
+            () => mockProcess.stdout,
+          ).thenAnswer((_) => Stream.value(utf8.encode(stdout)));
+          when(
+            () => mockProcess.stderr,
+          ).thenAnswer((_) => Stream.value(utf8.encode(stderr)));
+          return mockProcess;
+        });
+      });
+
+      test(
+        'returns parsed version when aot_tools outputs valid version',
+        () async {
+          stdout = '1.2.3';
+          final result = await runWithOverrides(() => aotTools.getVersion());
+          expect(result, Version(1, 2, 3));
+        },
+      );
+
+      test('returns 0.0.0 when process exits with non-zero code', () async {
+        exitCode = 1;
+        stderr = 'error';
+        final result = await runWithOverrides(() => aotTools.getVersion());
+        expect(result, Version(0, 0, 0));
+      });
+
+      test('returns 0.0.0 when version string is invalid', () async {
+        stdout = 'invalid version';
+        final result = await runWithOverrides(() => aotTools.getVersion());
+        expect(result, Version(0, 0, 0));
+      });
+
+      test('removes build hooks prefix from version output', () async {
+        stdout = 'Running build hooks...\n1.2.3';
+        final result = await runWithOverrides(() => aotTools.getVersion());
+        expect(result, Version(1, 2, 3));
+      });
+
+      test('handles version with trailing whitespace', () async {
+        stdout = '1.2.3   \n';
+        final result = await runWithOverrides(() => aotTools.getVersion());
+        expect(result, Version(1, 2, 3));
       });
     });
   });
