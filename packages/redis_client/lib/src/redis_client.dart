@@ -174,7 +174,10 @@ class RedisClient {
   /// Equivalent to the `KEYS` command.
   /// https://redis.io/commands/keys
   Future<List<String>> keys({required String pattern}) async {
-    final rawResult = await execute(['KEYS', pattern]) as List<RespType>;
+    final rawResult = await execute(['KEYS', pattern]);
+    if (rawResult is! List<RespType>) {
+      throw RedisException(rawResult.toString());
+    }
     return rawResult
         .whereType<RespBulkString>()
         .map(
@@ -227,7 +230,10 @@ class RedisClient {
   /// Equivalent to the `MGET` command.
   /// https://redis.io/commands/mget
   Future<List<dynamic>> mget({required List<String> keys}) async {
-    final results = await execute(['MGET', ...keys]) as List<RespType>;
+    final results = await execute(['MGET', ...keys]);
+    if (results is! List<RespType>) {
+      throw RedisException(results.toString());
+    }
     return results.map((result) => result.payload).toList();
   }
 
@@ -841,7 +847,11 @@ class RedisTimeSeries {
   Future<({DateTime timestamp, double value})?> get({
     required String key,
   }) async {
-    final result = await _client.execute(['TS.GET', key]) as List<RespType>;
+    final result = await _client.execute(['TS.GET', key]);
+    if (result is! List<RespType>) {
+      throw RedisException(result.toString());
+    }
+
     if (result.isEmpty) return null;
     final timestamp = result[0] as RespInteger;
     final value = result[1] as RespSimpleString;
@@ -867,32 +877,38 @@ class RedisTimeSeries {
     RedisTimeSeriesAlign? align,
     RedisTimeSeriesAggregation? aggregation,
   }) async {
-    final results =
-        await _client.execute([
-              'TS.RANGE',
-              key,
-              from.value,
-              to.value,
-              if (filterByTimestamp != null) ...[
-                'FILTER_BY_TS',
-                ...filterByTimestamp.map((t) => t.value),
-              ],
-              if (filterByValue != null) ...[
-                'FILTER_BY_VALUE',
-                filterByValue.min,
-                filterByValue.max,
-              ],
-              if (count != null) ...['COUNT', count],
-              if (align != null) ...['ALIGN', align.value],
-              if (aggregation != null) ...[
-                'AGGREGATION',
-                aggregation.aggregator.toArgument(),
-                aggregation.bucketDuration.inMilliseconds,
-              ],
-            ])
-            as List<RespType>;
+    final results = await _client.execute([
+      'TS.RANGE',
+      key,
+      from.value,
+      to.value,
+      if (filterByTimestamp != null) ...[
+        'FILTER_BY_TS',
+        ...filterByTimestamp.map((t) => t.value),
+      ],
+      if (filterByValue != null) ...[
+        'FILTER_BY_VALUE',
+        filterByValue.min,
+        filterByValue.max,
+      ],
+      if (count != null) ...['COUNT', count],
+      if (align != null) ...['ALIGN', align.value],
+      if (aggregation != null) ...[
+        'AGGREGATION',
+        aggregation.aggregator.toArgument(),
+        aggregation.bucketDuration.inMilliseconds,
+      ],
+    ]);
+
+    if (results is! List<RespType>) {
+      throw RedisException(results.toString());
+    }
+
     return results.map((result) {
-      final payload = result.payload as List<RespType>;
+      final payload = result.payload;
+      if (payload == null || payload is! List<RespType>) {
+        throw RedisException(payload.toString());
+      }
       final timestamp = payload[0] as RespInteger;
       final value = payload[1] as RespSimpleString;
       return (
@@ -953,13 +969,15 @@ class RedisTDigest {
     required String key,
     required List<double> quantiles,
   }) async {
-    final results =
-        await _client.execute([
-              'TDIGEST.QUANTILE',
-              key,
-              ...quantiles.map((quantile) => quantile.toString()),
-            ])
-            as List<RespType>;
+    final results = await _client.execute([
+      'TDIGEST.QUANTILE',
+      key,
+      ...quantiles.map((quantile) => quantile.toString()),
+    ]);
+
+    if (results is! List<RespType>) {
+      throw RedisException(results.toString());
+    }
 
     return results.map((result) {
       if (result is RespBulkString && result.payload != null) {
