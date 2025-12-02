@@ -867,30 +867,33 @@ class RedisTimeSeries {
     RedisTimeSeriesAlign? align,
     RedisTimeSeriesAggregation? aggregation,
   }) async {
-    final results =
-        await _client.execute([
-              'TS.RANGE',
-              key,
-              from.value,
-              to.value,
-              if (filterByTimestamp != null) ...[
-                'FILTER_BY_TS',
-                ...filterByTimestamp.map((t) => t.value),
-              ],
-              if (filterByValue != null) ...[
-                'FILTER_BY_VALUE',
-                filterByValue.min,
-                filterByValue.max,
-              ],
-              if (count != null) ...['COUNT', count],
-              if (align != null) ...['ALIGN', align.value],
-              if (aggregation != null) ...[
-                'AGGREGATION',
-                aggregation.aggregator.toArgument(),
-                aggregation.bucketDuration.inMilliseconds,
-              ],
-            ])
-            as List<RespType>;
+    final results = await _client.execute([
+      'TS.RANGE',
+      key,
+      from.value,
+      to.value,
+      if (filterByTimestamp != null) ...[
+        'FILTER_BY_TS',
+        ...filterByTimestamp.map((t) => t.value),
+      ],
+      if (filterByValue != null) ...[
+        'FILTER_BY_VALUE',
+        filterByValue.min,
+        filterByValue.max,
+      ],
+      if (count != null) ...['COUNT', count],
+      if (align != null) ...['ALIGN', align.value],
+      if (aggregation != null) ...[
+        'AGGREGATION',
+        aggregation.aggregator.toArgument(),
+        aggregation.bucketDuration.inMilliseconds,
+      ],
+    ]);
+
+    if (results is! List<RespType>) {
+      throw RedisException(results.toString());
+    }
+
     return results.map((result) {
       final payload = result.payload as List<RespType>;
       final timestamp = payload[0] as RespInteger;
