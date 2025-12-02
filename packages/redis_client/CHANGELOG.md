@@ -1,3 +1,7 @@
+# 0.0.11
+
+- fix: handle type errors in redis query results
+
 # 0.0.10
 
 - feat: add support for KEYS
