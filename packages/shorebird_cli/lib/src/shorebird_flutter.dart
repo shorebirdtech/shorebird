@@ -263,11 +263,15 @@ class ShorebirdFlutter {
   /// Returns the git revision for the provided [version].
   /// e.g. 3.16.3 -> b9b23902966504a9778f4c07e3a3487fa84dcb2a
   Future<String?> getRevisionForVersion(String version) async {
-    final result = await git.revParse(
-      revision: 'refs/remotes/origin/flutter_release/$version',
-      directory: _workingDirectory(),
-    );
-    return LineSplitter.split(result).toList().firstOrNull;
+    try {
+      final result = await git.revParse(
+        revision: 'refs/remotes/origin/flutter_release/$version',
+        directory: _workingDirectory(),
+      );
+      return LineSplitter.split(result).toList().firstOrNull;
+    } on ProcessException {
+      return null;
+    }
   }
 
   /// Get the list of Flutter versions for the given [revision].

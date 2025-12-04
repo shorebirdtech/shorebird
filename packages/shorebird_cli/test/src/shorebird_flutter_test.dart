@@ -465,12 +465,12 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
           ).thenThrow(exception);
         });
 
-        test('throws exception', () async {
+        test('returns null', () async {
           await expectLater(
             runWithOverrides(
               () => shorebirdFlutter.getRevisionForVersion(version),
             ),
-            throwsA(exception),
+            completion(isNull),
           );
           verify(
             () => git.revParse(
