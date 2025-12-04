@@ -12,7 +12,7 @@ runs:
 
   steps:
     - name: 📚 Git Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
 
     - name: 🎯 Setup Dart
       uses: dart-lang/setup-dart@v1
