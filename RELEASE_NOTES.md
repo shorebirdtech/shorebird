@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee
  -->
 
+## 1.6.71 (December 5, 2025)
+
+- 🐦 Support for Flutter 3.38.4
+
 ## 1.6.70 (November 26, 2025)
 
 - 🩹 Fix Shorebird builds with Dart hooks and Dart 3.10.0 and 3.10.1.
