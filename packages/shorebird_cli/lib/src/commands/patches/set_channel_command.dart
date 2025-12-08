@@ -67,6 +67,11 @@ class SetChannelCommand extends ShorebirdCommand {
       appId: appId,
       releaseId: release.id,
     );
+    if (patches.isEmpty) {
+      logger.err('No patches found for release $releaseVersion');
+      return ExitCode.usage.code;
+    }
+
     final patchToPromote = patches.firstWhereOrNull(
       (patch) => patch.number == patchNumber,
     );
@@ -86,7 +91,7 @@ class SetChannelCommand extends ShorebirdCommand {
     );
     if (channel == null) {
       final shouldCreateChannel = logger.confirm(
-        'No channel named ${lightCyan.wrap(targetChannel)} found. Do you want to create it?',
+        '''No channel named ${lightCyan.wrap(targetChannel)} found. Do you want to create it?''',
       );
       if (!shouldCreateChannel) {
         return ExitCode.success.code;
