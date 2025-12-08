@@ -13,6 +13,9 @@ enum Role {
   /// Users who are part of the organization but have limited permissions.
   developer,
 
+  /// Users who have read-only access to the organization.
+  viewer,
+
   /// Users who are not part of the organization but have visibility into it via
   /// app collaborator permissions.
   none,

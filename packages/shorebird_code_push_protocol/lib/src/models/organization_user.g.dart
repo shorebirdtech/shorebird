@@ -30,5 +30,6 @@ const _$RoleEnumMap = {
   Role.owner: 'owner',
   Role.admin: 'admin',
   Role.developer: 'developer',
+  Role.viewer: 'viewer',
   Role.none: 'none',
 };
