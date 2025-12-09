@@ -125,6 +125,18 @@ void main() {
       expect(command.description, isNotEmpty);
     });
 
+    test('logs warning about deprecation', () async {
+      await runWithOverrides(() async {
+        final result = await command.run();
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.warn(
+            'This command is deprecated and will be removed in a future release. Use `shorebird patches set-channel --channel=stable` instead.',
+          ),
+        ).called(1);
+      });
+    });
+
     group('when validation fails', () {
       final exception = ShorebirdNotInitializedException();
       setUp(() {

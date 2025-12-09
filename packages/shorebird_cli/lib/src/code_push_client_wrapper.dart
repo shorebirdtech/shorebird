@@ -180,7 +180,6 @@ This app may not exist or you may not have permission to view it.''');
   }
 
   /// Creates a channel for the provided [appId] with the given [name].
-  @visibleForTesting
   Future<Channel> createChannel({
     required String appId,
     required String name,
