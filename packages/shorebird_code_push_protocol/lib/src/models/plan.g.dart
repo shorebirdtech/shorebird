@@ -36,9 +36,12 @@ Plan _$PlanFromJson(Map<String, dynamic> json) => $checkedCreate(
       isTrial: $checkedConvert('is_trial', (v) => v as bool),
       availableRoles: $checkedConvert(
         'available_roles',
-        (v) => (v as List<dynamic>)
-            .map((e) => $enumDecode(_$RoleEnumMap, e))
-            .toList(),
+        (v) => (v as Map<String, dynamic>).map(
+          (k, e) => MapEntry(
+            $enumDecode(_$RoleEnumMap, k),
+            (e as List<dynamic>).map((e) => e as String).toList(),
+          ),
+        ),
       ),
       pricePerOverageInstall: $checkedConvert(
         'price_per_overage_install',
@@ -77,9 +80,9 @@ Map<String, dynamic> _$PlanToJson(Plan instance) => <String, dynamic>{
   'is_tiered': instance.isTiered,
   'is_trial': instance.isTrial,
   'max_team_size': instance.maxTeamSize,
-  'available_roles': instance.availableRoles
-      .map((e) => _$RoleEnumMap[e]!)
-      .toList(),
+  'available_roles': instance.availableRoles.map(
+    (k, e) => MapEntry(_$RoleEnumMap[k]!, e),
+  ),
 };
 
 const _$RoleEnumMap = {
