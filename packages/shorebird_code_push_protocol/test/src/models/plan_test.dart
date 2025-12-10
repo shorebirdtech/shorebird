@@ -17,7 +17,29 @@ void main() {
         maxTeamSize: 42,
         pricePerOverageInstall: Decimal.fromInt(10),
         isTrial: true,
-        availableRoles: [Role.admin, Role.developer],
+        availableRoles: {
+          Role.admin: [
+            'apps.view',
+            'releases.view',
+            'patches.view',
+            'channels.view',
+            'organizations.view',
+            'organizationApps.view',
+            'organizationMembers.view',
+            'appRoleGrants.view',
+            'insights.view',
+            'plans.view',
+          ],
+          Role.developer: [
+            'apps.view',
+            'releases.view',
+            'patches.view',
+            'channels.view',
+            'organizations.view',
+            'organizationApps.view',
+            'organizationMembers.view',
+          ],
+        },
       );
 
       expect(Plan.fromJson(plan.toJson()).toJson(), equals(plan.toJson()));
