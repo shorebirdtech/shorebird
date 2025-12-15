@@ -13,7 +13,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 ///
 /// Sample usage:
 /// ```sh
-/// shorebird patches set-track --release=1.0.0 --patch=1 --track=beta
+/// shorebird patches set-track --release=1.0.0+1 --patch=1 --track=beta
 /// ```
 ///
 /// {@endtemplate
