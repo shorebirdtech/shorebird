@@ -117,7 +117,7 @@ class SetChannelCommand extends ShorebirdCommand {
     );
 
     logger.success(
-      'Patch ${patchToPromote.number} is now in channel $targetChannel!',
+      '''Patch ${patchToPromote.number} on release $releaseVersion is now in channel $targetChannel!''',
     );
 
     return ExitCode.success.code;

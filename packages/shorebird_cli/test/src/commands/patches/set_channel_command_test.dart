@@ -16,8 +16,32 @@ import '../../mocks.dart';
 
 void main() {
   group(SetChannelCommand, () {
-    const shorebirdYaml = ShorebirdYaml(appId: 'app-id');
-    final release = FakeRelease();
+    const appId = 'app-id';
+    const shorebirdYaml = ShorebirdYaml(appId: appId);
+    const patchNumberArg = 1;
+    final release = Release(
+      id: 0,
+      appId: appId,
+      version: '1.0.0',
+      flutterRevision: 'flutter-revision',
+      flutterVersion: 'flutter-version',
+      displayName: '1.0.0',
+      platformStatuses: const {ReleasePlatform.android: ReleaseStatus.active},
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    const patch = ReleasePatch(
+      id: 0,
+      number: patchNumberArg,
+      channel: 'stable',
+      isRolledBack: false,
+      artifacts: [],
+    );
+    const newChannel = Channel(
+      id: 1,
+      appId: appId,
+      name: 'new-channel',
+    );
 
     late ArgResults argResults;
     late CodePushClientWrapper codePushClientWrapper;
@@ -39,6 +63,10 @@ void main() {
       );
     }
 
+    setUpAll(() {
+      registerFallbackValue(FakeChannel());
+    });
+
     setUp(() {
       argResults = MockArgResults();
       codePushClientWrapper = MockCodePushClientWrapper();
@@ -49,8 +77,10 @@ void main() {
       when(() => argResults.wasParsed(any())).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
       when(() => argResults['release-version']).thenReturn('1.0.0');
-      when(() => argResults['patch-number']).thenReturn('1');
-      when(() => argResults['channel']).thenReturn('stable');
+      when(
+        () => argResults['patch-number'],
+      ).thenReturn(patchNumberArg.toString());
+      when(() => argResults['channel']).thenReturn(newChannel.name);
 
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -66,6 +96,31 @@ void main() {
           releaseVersion: any(named: 'releaseVersion'),
         ),
       ).thenAnswer((_) async => release);
+      when(
+        () => codePushClientWrapper.getReleasePatches(
+          appId: any(named: 'appId'),
+          releaseId: any(named: 'releaseId'),
+        ),
+      ).thenAnswer((_) async => [patch]);
+      when(
+        () => codePushClientWrapper.maybeGetChannel(
+          appId: any(named: 'appId'),
+          name: any(named: 'name'),
+        ),
+      ).thenAnswer((_) async => newChannel);
+      when(
+        () => codePushClientWrapper.createChannel(
+          appId: any(named: 'appId'),
+          name: any(named: 'name'),
+        ),
+      ).thenAnswer((_) async => newChannel);
+      when(
+        () => codePushClientWrapper.promotePatch(
+          appId: any(named: 'appId'),
+          patchId: any(named: 'patchId'),
+          channel: any(named: 'channel'),
+        ),
+      ).thenAnswer((_) async => {});
 
       command = SetChannelCommand()..testArgResults = argResults;
     });
@@ -120,10 +175,136 @@ void main() {
       });
     });
 
-    group('when no patch matching arg values is found', () {});
+    group('when no patch matching arg values is found', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer(
+          (_) async => [
+            const ReleasePatch(
+              id: 1,
+              number: patchNumberArg + 1,
+              channel: 'stable',
+              isRolledBack: false,
+              artifacts: [],
+            ),
+          ],
+        );
+      });
 
-    group('when no channel with the specified name is found', () {});
+      test('exits with code 70', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err('No patch found with number 1'),
+        ).called(1);
+      });
+    });
 
-    test('updates the patch to the specified channel', () {});
+    group('when no channel with the specified name is found', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.maybeGetChannel(
+            appId: any(named: 'appId'),
+            name: any(named: 'name'),
+          ),
+        ).thenAnswer((_) async => null);
+        when(() => logger.confirm(any())).thenReturn(false);
+      });
+
+      test('prompts to create the channel', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.confirm(
+            '''No channel named ${lightCyan.wrap(newChannel.name)} found. Do you want to create it?''',
+          ),
+        ).called(1);
+      });
+
+      group('when user confirms to create the channel', () {
+        setUp(() {
+          when(() => logger.confirm(any())).thenReturn(true);
+        });
+
+        test('creates the channel', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => codePushClientWrapper.createChannel(
+              appId: any(named: 'appId'),
+              name: any(named: 'name'),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when user declines to create the channel', () {
+        setUp(() {
+          when(() => logger.confirm(any())).thenReturn(false);
+        });
+
+        test('exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verifyNever(
+            () => codePushClientWrapper.createChannel(
+              appId: any(named: 'appId'),
+              name: any(named: 'name'),
+            ),
+          );
+        });
+      });
+    });
+
+    group('when patch is already in the specified channel', () {
+      setUp(() {
+        final patch = ReleasePatch(
+          id: 0,
+          number: patchNumberArg,
+          channel: newChannel.name,
+          isRolledBack: false,
+          artifacts: const [],
+        );
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenAnswer((_) async => [patch]);
+      });
+
+      test('exits with code 70', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err(
+            'Patch ${patch.number} is already in channel ${newChannel.name}',
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when patch is not in the specified channel', () {
+      test('promotes the patch to the specified channel', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => codePushClientWrapper.promotePatch(
+            appId: appId,
+            patchId: patch.id,
+            channel: newChannel,
+          ),
+        ).called(1);
+        verify(
+          () => logger.success(
+            '''Patch ${patch.number} on release ${release.version} is now in channel ${newChannel.name}!''',
+          ),
+        ).called(1);
+      });
+    });
   });
 }
