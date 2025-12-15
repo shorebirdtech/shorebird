@@ -8,39 +8,39 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
-/// {@template set_channel_command}
+/// {@template set_track_command}
 /// Sets the channel of a patch.
 /// {@endtemplate
-class SetChannelCommand extends ShorebirdCommand {
-  /// {@macro set_channel_command}
-  SetChannelCommand() {
+class SetTrackCommand extends ShorebirdCommand {
+  /// {@macro set_track_command}
+  SetTrackCommand() {
     argParser
       ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
       )
       ..addOption(
-        'release-version',
-        help: 'The release being patched',
+        'release',
+        help: 'The release version that the patch belongs to (ex: "1.0.0")',
         mandatory: true,
       )
       ..addOption(
-        'patch-number',
-        help: 'The number of the patch to promote to the stable channel',
+        'patch',
+        help: 'The patch number to set the channel for (ex: "1")',
         mandatory: true,
       )
       ..addOption(
-        'channel',
+        'track',
         help: 'The channel to set the patch to',
         mandatory: true,
       );
   }
 
   @override
-  String get name => 'set-channel';
+  String get name => 'set-track';
 
   @override
-  String get description => 'Sets the channel of a patch';
+  String get description => 'Sets the track of a patch';
 
   @override
   Future<int> run() async {
@@ -53,11 +53,11 @@ class SetChannelCommand extends ShorebirdCommand {
       return error.exitCode.code;
     }
 
-    final releaseVersion = results['release-version'] as String;
-    final patchNumber = int.parse(results['patch-number'] as String);
+    final releaseVersion = results['release'] as String;
+    final patchNumber = int.parse(results['patch'] as String);
     final flavor = results.findOption('flavor', argParser: argParser);
     final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
-    final targetChannel = results['channel'] as String;
+    final targetChannel = results['track'] as String;
 
     final release = await codePushClientWrapper.getRelease(
       appId: appId,

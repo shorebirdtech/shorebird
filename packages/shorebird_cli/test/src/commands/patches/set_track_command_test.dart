@@ -3,7 +3,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/patches/set_channel_command.dart';
+import 'package:shorebird_cli/src/commands/patches/set_track_command.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -15,7 +15,7 @@ import '../../fakes.dart';
 import '../../mocks.dart';
 
 void main() {
-  group(SetChannelCommand, () {
+  group(SetTrackCommand, () {
     const appId = 'app-id';
     const shorebirdYaml = ShorebirdYaml(appId: appId);
     const patchNumberArg = 1;
@@ -49,7 +49,7 @@ void main() {
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdLogger logger;
 
-    late SetChannelCommand command;
+    late SetTrackCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -122,7 +122,7 @@ void main() {
         ),
       ).thenAnswer((_) async => {});
 
-      command = SetChannelCommand()..testArgResults = argResults;
+      command = SetTrackCommand()..testArgResults = argResults;
     });
 
     test('name is correct', () {
