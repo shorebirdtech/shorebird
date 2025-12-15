@@ -76,11 +76,11 @@ void main() {
 
       when(() => argResults.wasParsed(any())).thenReturn(false);
       when(() => argResults.rest).thenReturn([]);
-      when(() => argResults['release-version']).thenReturn('1.0.0');
+      when(() => argResults['release']).thenReturn('1.0.0');
       when(
-        () => argResults['patch-number'],
+        () => argResults['patch'],
       ).thenReturn(patchNumberArg.toString());
-      when(() => argResults['channel']).thenReturn(newChannel.name);
+      when(() => argResults['track']).thenReturn(newChannel.name);
 
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -126,11 +126,11 @@ void main() {
     });
 
     test('name is correct', () {
-      expect(command.name, 'set-channel');
+      expect(command.name, 'set-track');
     });
 
     test('description is correct', () {
-      expect(command.description, 'Sets the channel of a patch');
+      expect(command.description, 'Sets the track of a patch');
     });
 
     group('when validation fails', () {
