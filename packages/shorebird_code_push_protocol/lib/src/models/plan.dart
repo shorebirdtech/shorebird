@@ -22,6 +22,7 @@ class Plan {
     required this.cancelAtPeriodEnd,
     required this.isTiered,
     required this.isTrial,
+    required this.availableRoles,
     this.pricePerOverageInstall,
     this.maxTeamSize,
   });
@@ -74,4 +75,8 @@ class Plan {
   /// The maximum number of collaborators allowed per account. This will be null
   /// for accounts with unlimited collaborators.
   final int? maxTeamSize;
+
+  /// Roles assignable to users associated with this plan, mapped to the
+  /// permissions they have.
+  final Map<Role, List<String>> availableRoles;
 }

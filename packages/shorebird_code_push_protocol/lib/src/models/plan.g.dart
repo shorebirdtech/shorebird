@@ -34,6 +34,15 @@ Plan _$PlanFromJson(Map<String, dynamic> json) => $checkedCreate(
       ),
       isTiered: $checkedConvert('is_tiered', (v) => v as bool),
       isTrial: $checkedConvert('is_trial', (v) => v as bool),
+      availableRoles: $checkedConvert(
+        'available_roles',
+        (v) => (v as Map<String, dynamic>).map(
+          (k, e) => MapEntry(
+            $enumDecode(_$RoleEnumMap, k),
+            (e as List<dynamic>).map((e) => e as String).toList(),
+          ),
+        ),
+      ),
       pricePerOverageInstall: $checkedConvert(
         'price_per_overage_install',
         (v) => v == null ? null : Decimal.fromJson(v as String),
@@ -53,6 +62,7 @@ Plan _$PlanFromJson(Map<String, dynamic> json) => $checkedCreate(
     'cancelAtPeriodEnd': 'cancel_at_period_end',
     'isTiered': 'is_tiered',
     'isTrial': 'is_trial',
+    'availableRoles': 'available_roles',
     'pricePerOverageInstall': 'price_per_overage_install',
     'maxTeamSize': 'max_team_size',
   },
@@ -70,4 +80,15 @@ Map<String, dynamic> _$PlanToJson(Plan instance) => <String, dynamic>{
   'is_tiered': instance.isTiered,
   'is_trial': instance.isTrial,
   'max_team_size': instance.maxTeamSize,
+  'available_roles': instance.availableRoles.map(
+    (k, e) => MapEntry(_$RoleEnumMap[k]!, e),
+  ),
+};
+
+const _$RoleEnumMap = {
+  Role.owner: 'owner',
+  Role.admin: 'admin',
+  Role.developer: 'developer',
+  Role.viewer: 'viewer',
+  Role.none: 'none',
 };
