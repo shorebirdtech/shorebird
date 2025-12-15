@@ -10,6 +10,12 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template set_track_command}
 /// Sets the channel of a patch.
+///
+/// Sample usage:
+/// ```sh
+/// shorebird patches set-track --release=1.0.0 --patch=1 --track=beta
+/// ```
+///
 /// {@endtemplate
 class SetTrackCommand extends ShorebirdCommand {
   /// {@macro set_track_command}
