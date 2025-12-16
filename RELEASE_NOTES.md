@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.72 (December 16, 2025)
+
+- 🐦 Support for Flutter 3.38.5
+
 ## 1.6.71 (December 5, 2025)
 
 - 🐦 Support for Flutter 3.38.4
