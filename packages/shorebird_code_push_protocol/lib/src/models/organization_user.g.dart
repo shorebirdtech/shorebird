@@ -29,6 +29,7 @@ Map<String, dynamic> _$OrganizationUserToJson(OrganizationUser instance) =>
 const _$RoleEnumMap = {
   Role.owner: 'owner',
   Role.admin: 'admin',
+  Role.appManager: 'appManager',
   Role.developer: 'developer',
   Role.viewer: 'viewer',
   Role.none: 'none',
