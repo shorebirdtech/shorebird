@@ -88,6 +88,7 @@ Map<String, dynamic> _$PlanToJson(Plan instance) => <String, dynamic>{
 const _$RoleEnumMap = {
   Role.owner: 'owner',
   Role.admin: 'admin',
+  Role.appManager: 'appManager',
   Role.developer: 'developer',
   Role.viewer: 'viewer',
   Role.none: 'none',
