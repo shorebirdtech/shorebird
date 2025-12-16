@@ -10,6 +10,9 @@ enum Role {
   /// Users who have permissions to manage the organization.
   admin,
 
+  /// Users who have permissions to manage an app.
+  appManager,
+
   /// Users who are part of the organization but have limited permissions.
   developer,
 
