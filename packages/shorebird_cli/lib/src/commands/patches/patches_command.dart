@@ -8,6 +8,7 @@ class PatchesCommand extends ShorebirdCommand {
   /// {@macro patches_command}
   PatchesCommand() {
     addSubcommand(PromoteCommand());
+    addSubcommand(SetTrackCommand());
   }
 
   @override

@@ -2,48 +2,54 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/config/config.dart';
-import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 
-/// {@template promote_command}
-/// Promotes a patch to the production channel.
-/// {@endtemplate}
-class PromoteCommand extends ShorebirdCommand {
-  /// {@macro promote_command}
-  PromoteCommand() {
+/// {@template set_track_command}
+/// Sets the channel of a patch.
+///
+/// Sample usage:
+/// ```sh
+/// shorebird patches set-track --release=1.0.0+1 --patch=1 --track=beta
+/// ```
+///
+/// {@endtemplate
+class SetTrackCommand extends ShorebirdCommand {
+  /// {@macro set_track_command}
+  SetTrackCommand() {
     argParser
       ..addOption(
         'flavor',
         help: 'The product flavor to use when building the app.',
       )
       ..addOption(
-        'release-version',
-        help: 'The release being patched',
+        'release',
+        help: 'The release version that the patch belongs to (ex: "1.0.0")',
         mandatory: true,
       )
       ..addOption(
-        'patch-number',
-        help: 'The number of the patch to promote to the stable channel',
+        'patch',
+        help: 'The patch number to set the channel for (ex: "1")',
+        mandatory: true,
+      )
+      ..addOption(
+        'track',
+        help: 'The channel to set the patch to',
         mandatory: true,
       );
   }
 
   @override
-  String get name => 'promote';
+  String get name => 'set-track';
 
   @override
-  String get description => 'Promotes a patch to the "stable" channel.';
+  String get description => 'Sets the track of a patch';
 
   @override
   Future<int> run() async {
-    logger.warn(
-      '''This command is deprecated and will be removed in a future release. Use `shorebird patches set-channel --channel=stable` instead.''',
-    );
-
     try {
       await shorebirdValidator.validatePreconditions(
         checkUserIsAuthenticated: true,
@@ -53,10 +59,11 @@ class PromoteCommand extends ShorebirdCommand {
       return error.exitCode.code;
     }
 
-    final releaseVersion = results['release-version'] as String;
-    final patchNumber = int.parse(results['patch-number'] as String);
+    final releaseVersion = results['release'] as String;
+    final patchNumber = int.parse(results['patch'] as String);
     final flavor = results.findOption('flavor', argParser: argParser);
     final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
+    final targetChannel = results['track'] as String;
 
     final release = await codePushClientWrapper.getRelease(
       appId: appId,
@@ -66,6 +73,11 @@ class PromoteCommand extends ShorebirdCommand {
       appId: appId,
       releaseId: release.id,
     );
+    if (patches.isEmpty) {
+      logger.err('No patches found for release $releaseVersion');
+      return ExitCode.usage.code;
+    }
+
     final patchToPromote = patches.firstWhereOrNull(
       (patch) => patch.number == patchNumber,
     );
@@ -79,25 +91,29 @@ class PromoteCommand extends ShorebirdCommand {
       return ExitCode.usage.code;
     }
 
-    if (patchToPromote.channel == DeploymentTrack.stable.channel) {
-      logger.err('Patch ${patchToPromote.number} is already live');
-      return ExitCode.usage.code;
-    }
-
-    final channel = await codePushClientWrapper.maybeGetChannel(
+    var channel = await codePushClientWrapper.maybeGetChannel(
       appId: appId,
-      name: DeploymentTrack.stable.channel,
+      name: targetChannel,
     );
     if (channel == null) {
-      // This is a symptom that something bigger is wrong. Apps should always
-      // have a production channel.
-      logger.err(
-        '''
-No production channel found for app $appId.
-      
-This is a bug and should never happen. Please file an issue at https://github.com/shorebirdtech/shorebird/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=fix%3A+''',
+      final shouldCreateChannel = logger.confirm(
+        '''No channel named ${lightCyan.wrap(targetChannel)} found. Do you want to create it?''',
       );
-      return ExitCode.software.code;
+      if (!shouldCreateChannel) {
+        return ExitCode.success.code;
+      }
+
+      channel = await codePushClientWrapper.createChannel(
+        appId: appId,
+        name: targetChannel,
+      );
+    }
+
+    if (patchToPromote.channel == targetChannel) {
+      logger.err(
+        'Patch ${patchToPromote.number} is already in channel $targetChannel',
+      );
+      return ExitCode.usage.code;
     }
 
     await codePushClientWrapper.promotePatch(
@@ -107,7 +123,7 @@ This is a bug and should never happen. Please file an issue at https://github.co
     );
 
     logger.success(
-      'Patch ${patchToPromote.number} is now live for release $releaseVersion!',
+      '''Patch ${patchToPromote.number} on release $releaseVersion is now in channel $targetChannel!''',
     );
 
     return ExitCode.success.code;
