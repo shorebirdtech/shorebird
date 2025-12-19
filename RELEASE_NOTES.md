@@ -4,6 +4,13 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.73 (December 19, 2025)
+
+- 🐦 Hotfix for 3.38.5 to fix an issue where releases with rolled back patches
+  were not always updating properly.
+- 🛤️ Added `shorebird patches set-track` command, which lets you put a given
+  patch number on any track you'd like.
+
 ## 1.6.72 (December 16, 2025)
 
 - 🐦 Support for Flutter 3.38.5
