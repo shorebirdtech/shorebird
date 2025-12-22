@@ -365,10 +365,10 @@ packages:
     dependency: transitive
     description:
       name: json_path
-      sha256: b09da0334318399948e4b9bd6dd1404724e831ed48dce3ededb18cc845540dd2
+      sha256: "99cef94ca7b604ad85b9442bc8852e55396f559c08c0ab961d10b90b730c326f"
       url: "https://pub.dev"
     source: hosted
-    version: "0.8.0"
+    version: "0.9.0"
   json_serializable:
     dependency: transitive
     description:
@@ -405,10 +405,10 @@ packages:
     dependency: transitive
     description:
       name: maybe_just_nothing
-      sha256: "0c06326e26d08f6ed43247404376366dc4d756cef23a4f1db765f546224c35e0"
+      sha256: "57af3cacbbe57d5889a4479983755b76551db3c8862aa6335f57f50657945054"
       url: "https://pub.dev"
     source: hosted
-    version: "0.5.3"
+    version: "0.6.0"
   meta:
     dependency: transitive
     description:
@@ -837,9 +837,9 @@ packages:
     dependency: transitive
     description:
       name: yaml_edit
-      sha256: fb38626579fb345ad00e674e2af3a5c9b0cc4b9bfb8fd7f7ff322c7c9e62aef5
+      sha256: ec709065bb2c911b336853b67f3732dd13e0336bd065cc2f1061d7610ddf45e3
       url: "https://pub.dev"
     source: hosted
-    version: "2.2.2"
+    version: "2.2.3"
 sdks:
   dart: ">=3.9.0 <4.0.0"
