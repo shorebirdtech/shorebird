@@ -80,6 +80,7 @@ words:
   - parseable
   - patchability
   - pana
+  - pbxproj
   - pkcs
   - podfile
   - podspec
