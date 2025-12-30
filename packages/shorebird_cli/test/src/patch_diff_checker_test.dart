@@ -72,6 +72,13 @@ void main() {
       when(
         () => archiveDiffer.containsPotentiallyBreakingNativeDiffs(any()),
       ).thenReturn(false);
+      when(
+        () => archiveDiffer.availableAssetDiffs(
+          fileSetDiff: any(named: 'fileSetDiff'),
+          oldArchivePath: any(named: 'oldArchivePath'),
+          newArchivePath: any(named: 'newArchivePath'),
+        ),
+      ).thenAnswer((_) async => '');
 
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
@@ -219,6 +226,13 @@ void main() {
           verify(
             () => logger.warn(
               '''Your app contains asset changes, which will not be included in the patch.''',
+            ),
+          ).called(1);
+          verify(
+            () => archiveDiffer.availableAssetDiffs(
+              fileSetDiff: any(named: 'fileSetDiff'),
+              oldArchivePath: any(named: 'oldArchivePath'),
+              newArchivePath: any(named: 'newArchivePath'),
             ),
           ).called(1);
           verify(

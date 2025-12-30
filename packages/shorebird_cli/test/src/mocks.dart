@@ -91,6 +91,8 @@ class MockCodeSigner extends Mock implements CodeSigner {}
 
 class MockDevicectl extends Mock implements Devicectl {}
 
+class MockDiff extends Mock implements Diff {}
+
 class MockDitto extends Mock implements Ditto {}
 
 class MockDirectory extends Mock implements Directory {}

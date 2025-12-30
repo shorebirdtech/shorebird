@@ -9,6 +9,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/platform/apple/macho.dart';
 
 /// {@template apple_archive_differ}
@@ -85,7 +86,7 @@ class AppleArchiveDiffer extends ArchiveDiffer {
       }
 
       for (final file in _carFiles(archivePath)) {
-        pathHashes[file.name] = await _carFileHash(file);
+        pathHashes[file.name] = await _sanitizedCarFileHash(file);
       }
 
       return pathHashes;
@@ -139,10 +140,11 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     return _hash(bytes);
   }
 
-  /// Uses assetutil to write a json description of a .car file to disk and
-  /// diffs the contents of that file, less a timestamp line that changes based
-  /// on when the .car file was created.
-  Future<String> _carFileHash(ArchiveFile file) async {
+  /// Writes a json description of a .car file to a temporary location and
+  /// returns the [File].
+  ///
+  /// Equivalent of running `xcrun assetutil --info /path/to/Assets.car > outfile.json`.
+  Future<File> _carJsonFile(ArchiveFile file) async {
     final tempDir = Directory.systemTemp.createTempSync();
     final outPath = p.join(tempDir.path, file.name);
     final outputStream = OutputFileStream(outPath);
@@ -155,12 +157,49 @@ class AppleArchiveDiffer extends ArchiveDiffer {
       Process.runSync('assetutil', ['--info', outPath, '-o', assetInfoPath]);
     }
 
-    // Remove the timestamp line from the json file
-    final jsonFile = File(assetInfoPath);
+    return File(assetInfoPath);
+  }
+
+  /// Uses assetutil to write a json description of a .car file to disk and
+  /// diffs the contents of that file, less a timestamp line that changes based
+  /// on when the .car file was created.
+  Future<String> _sanitizedCarFileHash(ArchiveFile file) async {
+    final jsonFile = await _carJsonFile(file);
     final lines = jsonFile.readAsLinesSync();
     final timestampRegex = RegExp(r'^\W+"Timestamp" : \d+$');
     final linesToKeep = lines.whereNot(timestampRegex.hasMatch);
     return _hash(linesToKeep.join('\n').codeUnits);
+  }
+
+  @override
+  Future<String> availableAssetDiffs({
+    required FileSetDiff fileSetDiff,
+    required String oldArchivePath,
+    required String newArchivePath,
+  }) async {
+    final diffs = <String>[];
+    for (final changedPath in fileSetDiff.changedPaths) {
+      if (changedPath.endsWith('.car')) {
+        final oldCarFile = ZipDecoder()
+            .decodeStream(InputFileStream(oldArchivePath))
+            .files
+            .firstWhere((file) => file.name == changedPath);
+        final newCarFile = ZipDecoder()
+            .decodeStream(InputFileStream(newArchivePath))
+            .files
+            .firstWhere((file) => file.name == changedPath);
+        final oldCarJsonFile = await _carJsonFile(oldCarFile);
+        final newCarJsonFile = await _carJsonFile(newCarFile);
+        final diffResult = await diff.run(
+          oldCarJsonFile.path,
+          newCarJsonFile.path,
+          colorMode: DiffColorMode.always,
+          unified: true,
+        );
+        diffs.add(diffResult.stdout as String);
+      }
+    }
+    return diffs.join('\n');
   }
 
   @override
