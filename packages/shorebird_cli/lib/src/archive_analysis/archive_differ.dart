@@ -107,4 +107,13 @@ abstract class ArchiveDiffer {
       };
     });
   }
+
+  /// Prints the diffs of the changed files to the console.
+  Future<String> availableAssetDiffs({
+    required FileSetDiff fileSetDiff,
+    required String oldArchivePath,
+    required String newArchivePath,
+  }) async {
+    return '';
+  }
 }

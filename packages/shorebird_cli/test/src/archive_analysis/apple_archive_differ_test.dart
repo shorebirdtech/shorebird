@@ -1,8 +1,14 @@
 // cspell:words xcarchive xcarchives xcframeworks xcframework
+import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
+
+import '../mocks.dart';
 
 void main() {
   final xcarchiveFixturesBasePath = p.join('test', 'fixtures', 'xcarchives');
@@ -14,6 +20,10 @@ void main() {
   final changedAssetXcarchivePath = p.join(
     xcarchiveFixturesBasePath,
     'changed_asset.xcarchive.zip',
+  );
+  final changedCarXcarchivePath = p.join(
+    xcarchiveFixturesBasePath,
+    'changed_assets_car.xcarchive.zip',
   );
   final changedDartXcarchivePath = p.join(
     xcarchiveFixturesBasePath,
@@ -43,9 +53,22 @@ void main() {
   );
 
   group(AppleArchiveDiffer, () {
+    late Diff diff;
     late AppleArchiveDiffer differ;
 
+    R runWithOverrides<R>(R Function() body) {
+      return runScoped(
+        body,
+        values: {diffRef.overrideWith(() => diff)},
+      );
+    }
+
+    setUpAll(() {
+      registerFallbackValue(DiffColorMode.always);
+    });
+
     setUp(() {
+      diff = MockDiff();
       differ = const AppleArchiveDiffer();
     });
 
@@ -189,6 +212,65 @@ void main() {
             differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
             isFalse,
           );
+        });
+      });
+
+      group('availableAssetDiffs', () {
+        group('when a car file has changed', () {
+          const diffOutput = 'diff output';
+
+          setUp(() {
+            when(
+              () => diff.run(
+                any(),
+                any(),
+                colorMode: any(named: 'colorMode'),
+                unified: any(named: 'unified'),
+              ),
+            ).thenAnswer(
+              (_) async => const ShorebirdProcessResult(
+                exitCode: 1,
+                stdout: diffOutput,
+                stderr: '',
+              ),
+            );
+          });
+
+          test('shows asset diffs', () async {
+            final fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedCarXcarchivePath,
+            );
+            await runWithOverrides(() async {
+              expect(
+                await differ.availableAssetDiffs(
+                  fileSetDiff: fileSetDiff,
+                  oldArchivePath: baseIpaPath,
+                  newArchivePath: changedCarXcarchivePath,
+                ),
+                equals(diffOutput),
+              );
+            });
+          });
+        });
+
+        group('when no car files have changed', () {
+          test('shows no asset diffs', () async {
+            final fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedDartXcarchivePath,
+            );
+            await runWithOverrides(() async {
+              expect(
+                await differ.availableAssetDiffs(
+                  fileSetDiff: fileSetDiff,
+                  oldArchivePath: baseIpaPath,
+                  newArchivePath: changedDartXcarchivePath,
+                ),
+                isEmpty,
+              );
+            });
+          });
         });
       });
     });
