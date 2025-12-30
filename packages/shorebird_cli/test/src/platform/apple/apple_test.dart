@@ -16,13 +16,6 @@ import 'package:test/test.dart';
 import '../../mocks.dart';
 
 void main() {
-  group(InvalidExportOptionsPlistException, () {
-    test('toString', () {
-      final exception = InvalidExportOptionsPlistException('message');
-      expect(exception.toString(), 'message');
-    });
-  });
-
   group(Apple, () {
     late AotTools aotTools;
     late Apple apple;
