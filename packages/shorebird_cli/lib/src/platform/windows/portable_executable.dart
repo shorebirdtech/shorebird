@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:shorebird_cli/src/archive_analysis/byte_utils.dart';
 
+export 'portable_executable.dart';
+
 /// Utilities for interacting with Windows Portable Executable files.
 ///
 /// .exe and .dll files are examples of PE files. .dll files specifically "are

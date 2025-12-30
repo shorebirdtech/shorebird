@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/platform/windows.dart';
+import 'package:shorebird_cli/src/platform/windows/windows.dart';
 import 'package:test/test.dart';
 
 void main() {

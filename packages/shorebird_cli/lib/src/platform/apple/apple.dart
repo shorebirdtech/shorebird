@@ -14,6 +14,9 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:xml/xml.dart';
 
+export 'macho.dart';
+export 'plist.dart';
+
 /// Apple-specific platform options, corresponding to different Flutter target
 /// platforms.
 enum ApplePlatform {

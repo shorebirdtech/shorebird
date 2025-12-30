@@ -9,7 +9,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
-import 'package:shorebird_cli/src/archive_analysis/macho.dart';
+import 'package:shorebird_cli/src/platform/apple/macho.dart';
 
 /// {@template apple_archive_differ}
 /// Finds differences between two IPAs, zipped Xcframeworks, or zipped macOS

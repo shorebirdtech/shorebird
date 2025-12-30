@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/archive_analysis/portable_executable.dart';
+import 'package:shorebird_cli/src/platform/windows/portable_executable.dart';
 import 'package:test/test.dart';
 
 void main() {
