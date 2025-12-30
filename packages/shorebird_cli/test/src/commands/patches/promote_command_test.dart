@@ -131,7 +131,7 @@ void main() {
         expect(result, equals(ExitCode.success.code));
         verify(
           () => logger.warn(
-            'This command is deprecated and will be removed in a future release. Use `shorebird patches set-channel --channel=stable` instead.',
+            '''This command is deprecated and will be removed in a future release. Use `shorebird patches set-channel --channel=stable` instead.''',
           ),
         ).called(1);
       });

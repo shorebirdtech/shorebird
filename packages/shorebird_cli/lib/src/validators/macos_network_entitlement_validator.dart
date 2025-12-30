@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/archive_analysis/plist.dart';
+import 'package:shorebird_cli/src/platform/apple/plist.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 

@@ -1,7 +1,7 @@
-export 'android.dart';
-export 'apple.dart';
-export 'linux.dart';
-export 'windows.dart';
+export 'android/android.dart';
+export 'apple/apple.dart';
+export 'linux/linux.dart';
+export 'windows/windows.dart';
 
 /// {@template arch}
 /// Build architectures supported by Shorebird.
