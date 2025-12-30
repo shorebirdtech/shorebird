@@ -63,6 +63,7 @@ Command: shorebird ${args.join(' ')}
           codePushClientWrapperRef,
           codeSignerRef,
           devicectlRef,
+          diffRef,
           dittoRef,
           doctorRef,
           engineConfigRef,
