@@ -6,6 +6,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 
 /// {@template shorebird_create_command}
 /// `shorebird create`
@@ -20,14 +21,27 @@ class CreateCommand extends ShorebirdProxyCommand {
 
   @override
   Future<int> run() async {
+    try {
+      await shorebirdValidator.validatePreconditions(
+        checkUserIsAuthenticated: true,
+      );
+    } on PreconditionFailedException catch (e) {
+      return e.exitCode.code;
+    }
+
     final createExitCode = await process.stream('flutter', [
       'create',
       ...results.rest,
     ]);
-    if (createExitCode != ExitCode.success.code) return createExitCode;
+
+    if (createExitCode != ExitCode.success.code) {
+      return createExitCode;
+    }
+
     if (results.rest.contains('-h') || results.rest.contains('--help')) {
       return createExitCode;
     }
+
     return runScoped(
       () => runner!.run(['init']),
       values: {
