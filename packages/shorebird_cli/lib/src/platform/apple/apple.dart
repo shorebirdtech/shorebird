@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -10,121 +9,19 @@ import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
+import 'package:shorebird_cli/src/platform/apple/apple_platform.dart';
+import 'package:shorebird_cli/src/platform/apple/link_result.dart';
+import 'package:shorebird_cli/src/platform/apple/missing_xcode_project_exception.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:xml/xml.dart';
 
+export 'apple_platform.dart';
+export 'export_method.dart';
+export 'link_result.dart';
 export 'macho.dart';
+export 'missing_xcode_project_exception.dart';
 export 'plist.dart';
-
-/// Apple-specific platform options, corresponding to different Flutter target
-/// platforms.
-enum ApplePlatform {
-  /// iOS
-  ios,
-
-  /// macOS
-  macos,
-}
-
-/// A record containing the exit code and optionally link percentage
-/// returned by `runLinker`.
-@immutable
-class LinkResult {
-  /// Creates a new [LinkResult] representing failure.
-  const LinkResult.failure()
-    : exitCode = 70,
-      linkPercentage = null,
-      linkMetadata = null;
-
-  /// Creates a new [LinkResult] representing success.
-  const LinkResult.success({required this.linkPercentage, this.linkMetadata})
-    : exitCode = 0;
-
-  /// The exit code of the linker process.
-  final int exitCode;
-
-  /// The percentage of code that was linked in the patch.
-  final double? linkPercentage;
-
-  /// Metadata from the linker, if available.
-  final Map<String, dynamic>? linkMetadata;
-}
-
-/// {@template missing_xcode_project_exception}
-/// Thrown when the Flutter project has an ios or macos folder that is missing
-/// an Xcode project.
-/// {@endtemplate}
-class MissingXcodeProjectException implements Exception {
-  /// {@macro missing_xcode_project_exception}
-  const MissingXcodeProjectException({
-    required this.platformFolderPath,
-    required this.platform,
-  });
-
-  /// Expected path of the Xcode project.
-  final String platformFolderPath;
-
-  /// The platform that is missing an Xcode project.
-  final ApplePlatform platform;
-
-  @override
-  String toString() {
-    return '''
-Could not find an Xcode project in $platformFolderPath.
-If your project does not support ${platform.name}, you can safely remove $platformFolderPath.
-Otherwise, to repair ${platform.name}, run "flutter create . --platforms ${platform.name}"''';
-  }
-}
-
-/// {@template export_method}
-/// The method used to export the IPA. This is passed to the Flutter tool.
-/// Acceptable values can be found by running `flutter build ipa -h`.
-/// {@endtemplate}
-enum ExportMethod {
-  /// Upload to the App Store.
-  appStore('app-store', 'Upload to the App Store'),
-
-  /// Ad-hoc distribution.
-  adHoc('ad-hoc', '''
-Test on designated devices that do not need to be registered with the Apple developer account.
-    Requires a distribution certificate.'''),
-
-  /// Development distribution.
-  development(
-    'development',
-    '''Test only on development devices registered with the Apple developer account.''',
-  ),
-
-  /// Enterprise distribution.
-  enterprise(
-    'enterprise',
-    'Distribute an app registered with the Apple Developer Enterprise Program.',
-  );
-
-  /// {@macro export_method}
-  const ExportMethod(this.argName, this.description);
-
-  /// The command-line argument name for this export method.
-  final String argName;
-
-  /// A description of this method and how/when it should be used.
-  final String description;
-}
-
-/// {@template invalid_export_options_plist_exception}
-/// Thrown when an invalid export options plist is provided.
-/// {@endtemplate}
-class InvalidExportOptionsPlistException implements Exception {
-  /// {@macro invalid_export_options_plist_exception}
-  InvalidExportOptionsPlistException(this.message);
-
-  /// An explanation of this exception.
-  final String message;
-
-  @override
-  String toString() => message;
-}
 
 /// The minimum allowed Flutter version for creating iOS releases.
 final minimumSupportedIosFlutterVersion = Version(3, 22, 2);

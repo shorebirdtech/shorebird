@@ -109,14 +109,24 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
           yellow.wrap(
             archiveDiffer.assetsFileSetDiff(contentDiffs).prettyString,
           ),
-        )
-        ..info(
-          yellow.wrap(
-            '''
+        );
+
+      final diffs = await archiveDiffer.availableAssetDiffs(
+        fileSetDiff: contentDiffs,
+        oldArchivePath: releaseArchive.path,
+        newArchivePath: localArchive.path,
+      );
+      if (diffs.isNotEmpty) {
+        logger.info(diffs);
+      }
+
+      logger.info(
+        yellow.wrap(
+          '''
 
 If you don't know why you're seeing this error, visit our troubleshooting page at ${assetChangesTroubleshootingUrl.toLink()}''',
-          ),
-        );
+        ),
+      );
 
       if (!allowAssetChanges) {
         if (!shorebirdEnv.canAcceptUserInput) {

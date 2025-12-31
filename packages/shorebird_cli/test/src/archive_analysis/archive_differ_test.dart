@@ -78,4 +78,11 @@ class TestArchiveDiffer extends ArchiveDiffer {
 
   @override
   bool isNativeFilePath(String filePath) => true;
+
+  @override
+  Future<String> availableAssetDiffs({
+    required FileSetDiff fileSetDiff,
+    required String oldArchivePath,
+    required String newArchivePath,
+  }) async => '';
 }
