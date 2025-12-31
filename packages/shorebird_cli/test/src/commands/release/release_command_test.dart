@@ -138,7 +138,6 @@ void main() {
       ).thenAnswer((_) async {});
 
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => logger.confirm(any())).thenReturn(true);
 
       when(() => releaser.artifactDisplayName).thenReturn(artifactDisplayName);
       when(() => releaser.assertPreconditions()).thenAnswer((_) async => {});
@@ -181,7 +180,6 @@ void main() {
         () => shorebirdEnv.getShorebirdProjectRoot(),
       ).thenReturn(projectRoot);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
-      when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
       when(() => shorebirdEnv.usesShorebirdCodePushPackage).thenReturn(true);
 
       when(
@@ -389,7 +387,6 @@ void main() {
 
         verify(() => logger.info('No issues detected.')).called(1);
 
-        verifyNever(() => logger.confirm(any()));
         verifyNever(
           () => codePushClientWrapper.createRelease(
             appId: appId,
@@ -401,6 +398,8 @@ void main() {
       });
     });
 
+    // This isn't really needed anymore since we don't prompt for confirmation.
+    // but we do accept a --no-confirm argument for backwards compatibility.
     group('when --no-confirm is specified', () {
       setUp(() {
         when(() => argResults['no-confirm']).thenReturn(true);
@@ -538,20 +537,6 @@ void main() {
             ),
           ).called(1);
         });
-      });
-    });
-
-    group('when the user does not confirm the release', () {
-      setUp(() {
-        when(() => logger.confirm(any())).thenReturn(false);
-      });
-
-      test('exits with code 0', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          exitsWithCode(ExitCode.success),
-        );
-        verify(() => logger.info('Aborting.')).called(1);
       });
     });
 
