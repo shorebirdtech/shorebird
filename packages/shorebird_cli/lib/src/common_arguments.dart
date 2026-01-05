@@ -130,6 +130,14 @@ symbolize" command with the right program symbol file is required to obtain a hu
 ''',
   );
 
+  /// An argument that allows the user to bypass interactive confirmations.
+  static const noConfirmArg = ArgumentDescriber(
+    name: 'no-confirm',
+    description: '''
+Bypass all confirmation messages. It's generally not advised to use this unless running from a script.
+''',
+  );
+
   /// An argument that allows the user to specify a minimum link percentage
   /// threshold.
   static const minLinkPercentage = ArgumentDescriber(
