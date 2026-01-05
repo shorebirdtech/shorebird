@@ -230,9 +230,6 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   /// The target script, if provided.
   String? get target => results.findOption('target', argParser: argParser);
 
-  /// Whether --no-confirm was passed.
-  bool get noConfirm => results['no-confirm'] == true;
-
   /// The flutter version specified.
   String get flutterVersionArg => results['flutter-version'] as String;
 
