@@ -124,6 +124,11 @@ Defaults to "latest" which builds using the latest stable Flutter version.''',
         hide: true,
         negatable: false,
       )
+      ..addFlag(
+        CommonArguments.noConfirmArg.name,
+        help: CommonArguments.noConfirmArg.description,
+        negatable: false,
+      )
       ..addOption(
         'release-version',
         help: '''
