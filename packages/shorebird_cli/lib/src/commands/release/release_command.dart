@@ -230,9 +230,6 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   /// The target script, if provided.
   String? get target => results.findOption('target', argParser: argParser);
 
-  /// Whether --no-confirm was passed.
-  bool get noConfirm => results['no-confirm'] == true;
-
   /// The flutter version specified.
   String get flutterVersionArg => results['flutter-version'] as String;
 
@@ -335,8 +332,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           throw ProcessExit(ExitCode.success.code);
         }
 
-        // Ask the user to proceed (this is skipped when running via CI).
-        await confirmCreateRelease(
+        await printReleaseSummary(
           app: app,
           releaseVersion: releaseVersion,
           flutterVersion: targetFlutterRevision,
@@ -486,12 +482,8 @@ To resolve this issue, you can:
     }
   }
 
-  /// Prints a confirmation prompt with details about the release to be created.
-  /// If the user confirms, the release will be created. If the user cancels,
-  /// the command will exit with a success code. When running in a headless
-  /// or CI environment, this prompt will print but will not wait for user
-  /// confirmation.
-  Future<void> confirmCreateRelease({
+  /// Prints a summary of the release to be created.
+  Future<void> printReleaseSummary({
     required AppMetadata app,
     required String releaseVersion,
     required String flutterVersion,
@@ -514,15 +506,6 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 ${summary.join('\n')}
 ''');
-
-    if (shorebirdEnv.canAcceptUserInput && !noConfirm) {
-      final confirm = logger.confirm('Would you like to continue?');
-
-      if (!confirm) {
-        logger.info('Aborting.');
-        throw ProcessExit(ExitCode.success.code);
-      }
-    }
   }
 
   /// Fetches the release with version [version] from the server or creates a

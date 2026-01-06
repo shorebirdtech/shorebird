@@ -266,7 +266,6 @@ void main() {
           display: any(named: 'display'),
         ),
       ).thenReturn(release);
-      when(() => logger.confirm(any())).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
       when(() => patcher.assertArgsAreValid()).thenAnswer((_) async {});
@@ -599,7 +598,7 @@ void main() {
           ];
           await expectLater(
             runWithOverrides(
-              () => command.confirmCreatePatch(
+              () => command.logPatchSummary(
                 app: appMetadata,
                 releaseVersion: releaseVersion,
                 patcher: patcher,
@@ -630,7 +629,7 @@ void main() {
           ];
           await expectLater(
             runWithOverrides(
-              () => command.confirmCreatePatch(
+              () => command.logPatchSummary(
                 app: appMetadata,
                 releaseVersion: releaseVersion,
                 patcher: patcher,
@@ -665,7 +664,7 @@ void main() {
           ];
           await expectLater(
             runWithOverrides(
-              () => command.confirmCreatePatch(
+              () => command.logPatchSummary(
                 app: appMetadata,
                 releaseVersion: releaseVersion,
                 patcher: patcher,
@@ -696,7 +695,7 @@ void main() {
           ];
           await expectLater(
             runWithOverrides(
-              () => command.confirmCreatePatch(
+              () => command.logPatchSummary(
                 app: appMetadata,
                 releaseVersion: releaseVersion,
                 patcher: patcher,
@@ -734,7 +733,7 @@ void main() {
           ];
           await expectLater(
             runWithOverrides(
-              () => command.confirmCreatePatch(
+              () => command.logPatchSummary(
                 app: appMetadata,
                 releaseVersion: releaseVersion,
                 patcher: patcher,
@@ -761,7 +760,7 @@ void main() {
             test('completes, does not print error message', () async {
               await expectLater(
                 runWithOverrides(
-                  () => command.confirmCreatePatch(
+                  () => command.logPatchSummary(
                     app: appMetadata,
                     releaseVersion: releaseVersion,
                     patcher: patcher,
@@ -791,7 +790,7 @@ void main() {
             test('prints error message and exits', () async {
               await expectLater(
                 runWithOverrides(
-                  () => command.confirmCreatePatch(
+                  () => command.logPatchSummary(
                     app: appMetadata,
                     releaseVersion: releaseVersion,
                     patcher: patcher,
@@ -870,7 +869,6 @@ void main() {
             releaseId: release.id,
             releaseArtifact: any(named: 'releaseArtifact'),
           ),
-          () => logger.confirm('Would you like to continue?'),
           () => patcher.updatedCreatePatchMetadata(
             any(
               that: isA<CreatePatchMetadata>().having(
@@ -1069,7 +1067,6 @@ void main() {
               releaseId: release.id,
               releaseArtifact: any(named: 'releaseArtifact'),
             ),
-            () => logger.confirm('Would you like to continue?'),
             () => patcher.uploadPatchArtifacts(
               appId: appId,
               releaseId: release.id,
@@ -1295,20 +1292,6 @@ void main() {
         expect(exitCode, equals(ExitCode.success.code));
 
         verifyNever(() => logger.confirm(any()));
-      });
-    });
-
-    group('when user declines to continue', () {
-      setUp(() {
-        when(() => logger.confirm(any())).thenReturn(false);
-      });
-
-      test('exits with message and success code', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          exitsWithCode(ExitCode.success),
-        );
-        verify(() => logger.info('Aborting.')).called(1);
       });
     });
 

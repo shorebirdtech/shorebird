@@ -186,9 +186,6 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => results['allow-native-diffs'] == true;
 
-  /// Whether --no-confirm was passed.
-  bool get noConfirm => results['no-confirm'] == true;
-
   /// Whether the patch is for the staging environment.
   bool get isStaging => track == DeploymentTrack.staging;
 
@@ -433,7 +430,7 @@ Building patch with Flutter $flutterVersionString
           throw ProcessExit(ExitCode.success.code);
         }
 
-        await confirmCreatePatch(
+        await logPatchSummary(
           app: app,
           releaseVersion: release.version,
           patcher: patcher,
@@ -548,8 +545,14 @@ Please re-run the release command for this version or create a new release.''');
     }
   }
 
-  /// Confirms the patch creation (including a summary).
-  Future<void> confirmCreatePatch({
+  /// Logs a summary of the patch to be created, including:
+  /// - The app name and ID
+  /// - The release version
+  /// - The platform
+  /// - The track
+  /// - The link percentage (if iOS)
+  /// - The debug info file (if iOS)
+  Future<void> logPatchSummary({
     required AppMetadata app,
     required String releaseVersion,
     required Patcher patcher,
@@ -596,15 +599,6 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
 ${summary.join('\n')}
 ''');
-
-    if (shorebirdEnv.canAcceptUserInput && !noConfirm) {
-      final confirm = logger.confirm('Would you like to continue?');
-
-      if (!confirm) {
-        logger.info('Aborting.');
-        throw ProcessExit(ExitCode.success.code);
-      }
-    }
   }
 
   /// Downloads the given [releaseArtifact].
