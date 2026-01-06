@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -7,7 +8,7 @@ part 'patch_check_request.g.dart';
 /// The request body for POST /api/v1/patches/check
 /// {@endtemplate}
 @JsonSerializable()
-class PatchCheckRequest {
+class PatchCheckRequest extends Equatable {
   /// {@macro patch_check_request}
   const PatchCheckRequest({
     required this.releaseVersion,
@@ -49,4 +50,15 @@ class PatchCheckRequest {
 
   /// The channel of the app.
   final String channel;
+
+  @override
+  List<Object?> get props => [
+    releaseVersion,
+    patchNumber,
+    patchHash,
+    platform,
+    arch,
+    appId,
+    channel,
+  ];
 }
