@@ -18,6 +18,7 @@ class PatchCheckRequest extends Equatable {
     required this.arch,
     required this.appId,
     required this.channel,
+    this.clientId,
   });
 
   /// Converts a `Map<String, dynamic>` to a [PatchCheckRequest]
@@ -51,6 +52,13 @@ class PatchCheckRequest extends Equatable {
   /// The channel of the app.
   final String channel;
 
+  /// The unique ID of the device being updated. This ID is generated on the
+  /// device and is unique per app.
+  ///
+  /// This is nullable because we only started reporting this value in November
+  /// 2025. We should eventually make it non-nullable.
+  final String? clientId;
+
   @override
   List<Object?> get props => [
     releaseVersion,
@@ -60,5 +68,6 @@ class PatchCheckRequest extends Equatable {
     arch,
     appId,
     channel,
+    clientId,
   ];
 }
