@@ -6,8 +6,9 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.75 (January 6, 2026)
 
-- Re-enable Flutter 3.38.5 as default (iOS crasher fixed).
-- Remove y/N confirmation from both `shorebird patch` and `shorebird release`.
+- 🐛 Re-enable Flutter 3.38.5 as default (iOS crasher fixed).
+- ✅ Remove y/N confirmation from both `shorebird patch` and `shorebird release`.
+- 🍎 Asset changes on iOS now show a Assets.car diff.
 
 ## 1.6.74 (December 29, 2025)
 
