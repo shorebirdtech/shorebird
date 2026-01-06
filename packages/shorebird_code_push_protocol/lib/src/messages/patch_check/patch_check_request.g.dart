@@ -25,6 +25,7 @@ PatchCheckRequest _$PatchCheckRequestFromJson(
       arch: $checkedConvert('arch', (v) => v as String),
       appId: $checkedConvert('app_id', (v) => v as String),
       channel: $checkedConvert('channel', (v) => v as String),
+      clientId: $checkedConvert('client_id', (v) => v as String?),
     );
     return val;
   },
@@ -33,6 +34,7 @@ PatchCheckRequest _$PatchCheckRequestFromJson(
     'patchNumber': 'patch_number',
     'patchHash': 'patch_hash',
     'appId': 'app_id',
+    'clientId': 'client_id',
   },
 );
 
@@ -45,6 +47,7 @@ Map<String, dynamic> _$PatchCheckRequestToJson(PatchCheckRequest instance) =>
       'arch': instance.arch,
       'app_id': instance.appId,
       'channel': instance.channel,
+      'client_id': instance.clientId,
     };
 
 const _$ReleasePlatformEnumMap = {
