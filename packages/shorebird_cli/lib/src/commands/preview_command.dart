@@ -711,11 +711,12 @@ This is only applicable when previewing Android releases.''',
     }
 
     final process = await adb.logcat(filter: 'flutter', deviceId: deviceId);
+    const decoder = Utf8Decoder(allowMalformed: true);
     process.stdout.listen((event) {
-      logger.info(utf8.decode(event));
+      logger.info(decoder.convert(event));
     });
     process.stderr.listen((event) {
-      logger.err(utf8.decode(event));
+      logger.err(decoder.convert(event));
     });
 
     return process.exitCode;

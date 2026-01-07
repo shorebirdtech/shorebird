@@ -1031,6 +1031,50 @@ channel: ${track.channel}
         verify(() => logger.err(output)).called(1);
       });
 
+      test('handles non-UTF8 bytes in stdout without throwing', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(setupAndroidShorebirdYaml);
+
+        final completer = Completer<int>();
+        when(() => process.exitCode).thenAnswer((_) => completer.future);
+        // Create a byte sequence with invalid UTF-8: 0xFF is not valid in UTF-8
+        final invalidUtf8Bytes = [0x48, 0x65, 0x6C, 0x6C, 0x6F, 0xFF, 0x21];
+        when(
+          () => process.stdout,
+        ).thenAnswer((_) => Stream.value(invalidUtf8Bytes));
+        final result = runWithOverrides(command.run);
+        completer.complete(0);
+        await expectLater(await result, equals(ExitCode.success.code));
+        // The invalid byte should be replaced with the replacement character
+        verify(() => logger.info('Hello\uFFFD!')).called(1);
+      });
+
+      test('handles non-UTF8 bytes in stderr without throwing', () async {
+        when(
+          () => artifactManager.extractZip(
+            zipFile: any(named: 'zipFile'),
+            outputDirectory: any(named: 'outputDirectory'),
+          ),
+        ).thenAnswer(setupAndroidShorebirdYaml);
+
+        final completer = Completer<int>();
+        when(() => process.exitCode).thenAnswer((_) => completer.future);
+        // Create a byte sequence with invalid UTF-8: 0xFF is not valid in UTF-8
+        final invalidUtf8Bytes = [0x45, 0x72, 0x72, 0x6F, 0x72, 0xFF, 0x21];
+        when(
+          () => process.stderr,
+        ).thenAnswer((_) => Stream.value(invalidUtf8Bytes));
+        final result = runWithOverrides(command.run);
+        completer.complete(0);
+        await expectLater(await result, equals(ExitCode.success.code));
+        // The invalid byte should be replaced with the replacement character
+        verify(() => logger.err('Error\uFFFD!')).called(1);
+      });
+
       group('when in a shorebird project without flavors', () {
         setUp(() {
           when(
