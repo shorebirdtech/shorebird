@@ -1,4 +1,4 @@
-// cspell:words libinfo networkd
+// cspell:words libinfo networkd FFFD
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' hide Platform;

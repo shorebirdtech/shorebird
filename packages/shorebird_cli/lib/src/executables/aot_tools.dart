@@ -214,6 +214,7 @@ class AotTools {
     return version >= Version(0, 0, 1);
   }
 
+  /// Returns the version of the aot_tools executable.
   @visibleForTesting
   Future<Version> getVersion() async {
     // Use 0.0.0 to allow callers to easily compare w/o checking for null.
