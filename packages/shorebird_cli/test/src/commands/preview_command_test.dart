@@ -1031,7 +1031,7 @@ channel: ${track.channel}
         verify(() => logger.err(output)).called(1);
       });
 
-      test('handles non-UTF8 bytes in stdout without throwing', () async {
+      test('handles non-UTF8 bytes in output without throwing', () async {
         when(
           () => artifactManager.extractZip(
             zipFile: any(named: 'zipFile'),
@@ -1041,37 +1041,23 @@ channel: ${track.channel}
 
         final completer = Completer<int>();
         when(() => process.exitCode).thenAnswer((_) => completer.future);
-        // Create a byte sequence with invalid UTF-8: 0xFF is not valid in UTF-8
-        final invalidUtf8Bytes = [0x48, 0x65, 0x6C, 0x6C, 0x6F, 0xFF, 0x21];
+        // Create byte sequences with invalid UTF-8: 0xFF is not valid in UTF-8
+        // "Hello" + 0xFF + "!" for stdout, "Error" + 0xFF + "!" for stderr
         when(
           () => process.stdout,
-        ).thenAnswer((_) => Stream.value(invalidUtf8Bytes));
-        final result = runWithOverrides(command.run);
-        completer.complete(0);
-        await expectLater(await result, equals(ExitCode.success.code));
-        // The invalid byte should be replaced with the replacement character
-        verify(() => logger.info('Hello\uFFFD!')).called(1);
-      });
-
-      test('handles non-UTF8 bytes in stderr without throwing', () async {
-        when(
-          () => artifactManager.extractZip(
-            zipFile: any(named: 'zipFile'),
-            outputDirectory: any(named: 'outputDirectory'),
-          ),
-        ).thenAnswer(setupAndroidShorebirdYaml);
-
-        final completer = Completer<int>();
-        when(() => process.exitCode).thenAnswer((_) => completer.future);
-        // Create a byte sequence with invalid UTF-8: 0xFF is not valid in UTF-8
-        final invalidUtf8Bytes = [0x45, 0x72, 0x72, 0x6F, 0x72, 0xFF, 0x21];
+        ).thenAnswer(
+          (_) => Stream.value([0x48, 0x65, 0x6C, 0x6C, 0x6F, 0xFF, 0x21]),
+        );
         when(
           () => process.stderr,
-        ).thenAnswer((_) => Stream.value(invalidUtf8Bytes));
+        ).thenAnswer(
+          (_) => Stream.value([0x45, 0x72, 0x72, 0x6F, 0x72, 0xFF, 0x21]),
+        );
         final result = runWithOverrides(command.run);
         completer.complete(0);
         await expectLater(await result, equals(ExitCode.success.code));
-        // The invalid byte should be replaced with the replacement character
+        // The invalid bytes should be replaced with the replacement character
+        verify(() => logger.info('Hello\uFFFD!')).called(1);
         verify(() => logger.err('Error\uFFFD!')).called(1);
       });
 
@@ -2066,6 +2052,35 @@ channel: ${DeploymentTrack.staging.channel}
           verify(() => logger.err('hello error')).called(1);
         });
       });
+
+      test('handles non-UTF8 bytes in output without throwing', () async {
+        setupPreviewArtifact(
+          baseDirectory: Directory(
+            p.join(
+              previewDirectory.path,
+              'linux_${releaseVersion}_$releaseArtifactId',
+            ),
+          ),
+        );
+        // Create byte sequences with invalid UTF-8: 0xFF is not valid in UTF-8
+        // "Hello" + 0xFF + "!" for stdout, "Error" + 0xFF + "!" for stderr
+        when(
+          () => process.stdout,
+        ).thenAnswer(
+          (_) => Stream.value([0x48, 0x65, 0x6C, 0x6C, 0x6F, 0xFF, 0x21]),
+        );
+        when(
+          () => process.stderr,
+        ).thenAnswer(
+          (_) => Stream.value([0x45, 0x72, 0x72, 0x6F, 0x72, 0xFF, 0x21]),
+        );
+
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.success.code));
+        // The invalid bytes should be replaced with the replacement character
+        verify(() => logger.info('Hello\uFFFD!')).called(1);
+        verify(() => logger.err('Error\uFFFD!')).called(1);
+      });
     });
 
     group('macos', () {
@@ -2287,6 +2302,30 @@ channel: ${DeploymentTrack.staging.channel}
           );
         });
       });
+
+      group('non-UTF8 handling', () {
+        setUp(setupMacosShorebirdYaml);
+
+        test('handles non-UTF8 bytes in log stream without throwing', () async {
+          // Create bytes with invalid UTF-8: 0xFF is not valid in UTF-8
+          // Simulates a macOS log line with invalid bytes
+          final invalidUtf8Bytes = [
+            ...utf8.encode(
+              '2025-01-31 09:53:22.889 Df app[22535:1d268] [shorebird] Hello',
+            ),
+            0xFF,
+            0x0A, // newline
+          ];
+          when(() => open.newApplication(path: any(named: 'path'))).thenAnswer(
+            (_) async => Stream.value(invalidUtf8Bytes),
+          );
+
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          // The invalid byte should be replaced with the replacement character
+          verify(() => logger.info('[shorebird] Hello\uFFFD')).called(1);
+        });
+      });
     });
 
     group('windows', () {
@@ -2505,6 +2544,31 @@ channel: ${DeploymentTrack.staging.channel}
           verify(() => logger.info('hello world')).called(1);
           verify(() => logger.err('hello error')).called(1);
         });
+      });
+
+      test('handles non-UTF8 bytes in output without throwing', () async {
+        File(
+          p.join(windowsReleaseDirectory.path, 'runner.exe'),
+        ).createSync(recursive: true);
+        createShorebirdYaml();
+        // Create byte sequences with invalid UTF-8: 0xFF is not valid in UTF-8
+        // "Hello" + 0xFF + "!" for stdout, "Error" + 0xFF + "!" for stderr
+        when(
+          () => process.stdout,
+        ).thenAnswer(
+          (_) => Stream.value([0x48, 0x65, 0x6C, 0x6C, 0x6F, 0xFF, 0x21]),
+        );
+        when(
+          () => process.stderr,
+        ).thenAnswer(
+          (_) => Stream.value([0x45, 0x72, 0x72, 0x6F, 0x72, 0xFF, 0x21]),
+        );
+
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.success.code));
+        // The invalid bytes should be replaced with the replacement character
+        verify(() => logger.info('Hello\uFFFD!')).called(1);
+        verify(() => logger.err('Error\uFFFD!')).called(1);
       });
     });
 

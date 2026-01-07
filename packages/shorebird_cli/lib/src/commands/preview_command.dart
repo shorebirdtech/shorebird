@@ -394,10 +394,7 @@ This is only applicable when previewing Android releases.''',
 
     await process.run('chmod', ['+x', executableFile.path]);
 
-    final proc = await process.start(executableFile.path, []);
-    proc.stdout.listen((log) => logger.info(utf8.decode(log)));
-    proc.stderr.listen((log) => logger.err(utf8.decode(log)));
-    return proc.exitCode;
+    return startAndForwardOutput(executableFile.path);
   }
 
   /// Downloads and runs the given [release] the given [appId] on Windows.
@@ -463,10 +460,7 @@ This is only applicable when previewing Android releases.''',
       (file) => file.path.endsWith('.exe'),
     );
 
-    final proc = await process.start(exeFile.path, []);
-    proc.stdout.listen((log) => logger.info(utf8.decode(log)));
-    proc.stderr.listen((log) => logger.err(utf8.decode(log)));
-    return proc.exitCode;
+    return startAndForwardOutput(exeFile.path);
   }
 
   /// Installs and launches the release on macOS.
@@ -553,8 +547,12 @@ This is only applicable when previewing Android releases.''',
       return line.trim().replaceFirst(prefixRegex, '').trim();
     }
 
+    // TODO(eseidel): Use startAndForwardOutput instead?
+    // This doesn't seem to handle stderr, maybe it should?
+    // Use allowMalformed to handle non-UTF8 bytes in log stream output.
+    const decoder = Utf8Decoder(allowMalformed: true);
     logs.listen((log) {
-      final logLine = utf8.decode(log);
+      final logLine = decoder.convert(log);
       if (logFilters.any((filter) => filter.hasMatch(logLine))) {
         return;
       }
@@ -711,6 +709,8 @@ This is only applicable when previewing Android releases.''',
     }
 
     final process = await adb.logcat(filter: 'flutter', deviceId: deviceId);
+    // adb logcat sometimes lets non-utf8 characters through, so we need to
+    // not crash when it does.
     const decoder = Utf8Decoder(allowMalformed: true);
     process.stdout.listen((event) {
       logger.info(decoder.convert(event));
@@ -1018,6 +1018,18 @@ This is only applicable when previewing Android releases.''',
     final yamlEditor = YamlEditor(yamlText)..update(['channel'], channel);
     shorebirdYamlFile.writeAsStringSync(yamlEditor.toString(), flush: true);
     return true;
+  }
+
+  /// Starts a process and forwards its stdout/stderr to the logger.
+  ///
+  /// Returns the process exit code.
+  Future<int> startAndForwardOutput(String executable) async {
+    final proc = await process.start(executable, []);
+    // Use allowMalformed to handle non-UTF8 bytes in process output.
+    const decoder = Utf8Decoder(allowMalformed: true);
+    proc.stdout.listen((log) => logger.info(decoder.convert(log)));
+    proc.stderr.listen((log) => logger.err(decoder.convert(log)));
+    return proc.exitCode;
   }
 }
 
