@@ -1,3 +1,4 @@
+// cspell:words FFFD
 import 'dart:convert';
 import 'dart:io';
 
