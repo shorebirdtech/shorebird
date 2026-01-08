@@ -11,7 +11,7 @@ environment:
 
 dependencies:
   decimal: ^3.2.4
-  equatable: ^2.0.5
+  equatable: ^2.0.8
   json_annotation: ^4.8.1
   meta: ^1.16.0
 
