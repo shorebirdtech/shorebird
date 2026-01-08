@@ -88,12 +88,14 @@ class IDeviceSysLog {
       environment: {'DYLD_LIBRARY_PATH': _dyldPathEntry},
     );
 
+    // Use allowMalformed to handle non-UTF8 bytes in device syslog output.
+    const decoder = Utf8Decoder(allowMalformed: true);
     loggerProcess.stdout
-        .transform<String>(utf8.decoder)
+        .transform<String>(decoder)
         .transform<String>(const LineSplitter())
         .listen(_parseLogLine);
     loggerProcess.stderr
-        .transform<String>(utf8.decoder)
+        .transform<String>(decoder)
         .transform<String>(const LineSplitter())
         .listen(_parseLogLine);
     return loggerProcess.exitCode;

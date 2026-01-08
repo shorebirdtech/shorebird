@@ -1,3 +1,4 @@
+// cspell:words FFFD
 import 'dart:convert';
 import 'dart:io';
 
@@ -149,6 +150,40 @@ Nov 10 17:58:47 kernel(Sandbox)[0] <Error>: Sandbox: Runner(52662) deny(1) iokit
           verify(() => logger.info('flutter: hello from stderr')).called(1);
         },
       );
+
+      test('handles non-UTF8 bytes in output without throwing', () async {
+        // Create byte sequences with invalid UTF-8: 0xFF is not valid in UTF-8
+        // "flutter: hello" + 0xFF for stdout, "flutter: error" + 0xFF for
+        // stderr
+        final stdoutBytes = [
+          ...utf8.encode(
+            'Nov 10 14:46:57 Runner(Flutter)[1044] <Notice>: flutter: hello',
+          ),
+          0xFF,
+          0x0A, // newline
+        ];
+        final stderrBytes = [
+          ...utf8.encode(
+            'Nov 10 14:46:57 Runner(Flutter)[1044] <Notice>: flutter: error',
+          ),
+          0xFF,
+          0x0A, // newline
+        ];
+        when(
+          () => loggerProcess.stdout,
+        ).thenAnswer((_) => Stream.value(stdoutBytes));
+        when(
+          () => loggerProcess.stderr,
+        ).thenAnswer((_) => Stream.value(stderrBytes));
+
+        await runWithOverrides(
+          () => idevicesyslog.startLogger(device: device),
+        );
+
+        // The invalid bytes should be replaced with the replacement character
+        verify(() => logger.info('flutter: hello\uFFFD')).called(1);
+        verify(() => logger.info('flutter: error\uFFFD')).called(1);
+      });
     });
   });
 }

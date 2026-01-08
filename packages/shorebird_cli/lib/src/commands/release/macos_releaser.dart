@@ -13,7 +13,6 @@ import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/metadata/update_release_metadata.dart';
-import 'package:shorebird_cli/src/platform/apple/plist.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
