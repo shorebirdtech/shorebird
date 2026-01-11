@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.76 (January 11, 2026)
+
+- 🐦 Support for Flutter 3.38.6
+
 ## 1.6.75 (January 6, 2026)
 
 - 🐛 Re-enable Flutter 3.38.5 as default (iOS crasher fixed).
