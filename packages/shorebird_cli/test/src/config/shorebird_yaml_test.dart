@@ -67,6 +67,44 @@ auto_update: true
       expect(shorebirdYaml.autoUpdate, isTrue);
     });
 
+    test('can be deserialized without patch_verification', () {
+      const yaml = '''
+app_id: test_app_id
+''';
+      final shorebirdYaml = checkedYamlDecode(
+        yaml,
+        (m) => ShorebirdYaml.fromJson(m!),
+      );
+      expect(shorebirdYaml.appId, 'test_app_id');
+      expect(shorebirdYaml.patchVerification, isNull);
+    });
+
+    test('can be deserialized with patch_verification: strict', () {
+      const yaml = '''
+app_id: test_app_id
+patch_verification: strict
+''';
+      final shorebirdYaml = checkedYamlDecode(
+        yaml,
+        (m) => ShorebirdYaml.fromJson(m!),
+      );
+      expect(shorebirdYaml.appId, 'test_app_id');
+      expect(shorebirdYaml.patchVerification, PatchVerification.strict);
+    });
+
+    test('can be deserialized with patch_verification: install_only', () {
+      const yaml = '''
+app_id: test_app_id
+patch_verification: install_only
+''';
+      final shorebirdYaml = checkedYamlDecode(
+        yaml,
+        (m) => ShorebirdYaml.fromJson(m!),
+      );
+      expect(shorebirdYaml.appId, 'test_app_id');
+      expect(shorebirdYaml.patchVerification, PatchVerification.installOnly);
+    });
+
     group('AppIdExtension', () {
       test('getAppId returns base app id when no flavor is provided', () {
         const shorebirdYaml = ShorebirdYaml(appId: 'test_app_id');
