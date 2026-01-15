@@ -25,6 +25,7 @@ class BuildEnvironmentMetadata extends Equatable {
     required this.shorebirdYaml,
     required this.usesShorebirdCodePushPackage,
     this.xcodeVersion,
+    this.projectGitHash,
   });
 
   /// coverage:ignore-start
@@ -38,6 +39,7 @@ class BuildEnvironmentMetadata extends Equatable {
     ShorebirdYaml shorebirdYaml = const ShorebirdYaml(appId: '123'),
     bool usesShorebirdCodePushPackage = false,
     String? xcodeVersion = '15.0',
+    String? projectGitHash,
   }) => BuildEnvironmentMetadata(
     flutterRevision: flutterRevision,
     shorebirdVersion: shorebirdVersion,
@@ -46,6 +48,7 @@ class BuildEnvironmentMetadata extends Equatable {
     shorebirdYaml: shorebirdYaml,
     usesShorebirdCodePushPackage: usesShorebirdCodePushPackage,
     xcodeVersion: xcodeVersion,
+    projectGitHash: projectGitHash,
   );
   // coverage:ignore-end
 
@@ -66,6 +69,7 @@ class BuildEnvironmentMetadata extends Equatable {
     ShorebirdYaml? shorebirdYaml,
     bool? usesShorebirdCodePushPackage,
     String? xcodeVersion,
+    String? projectGitHash,
   }) => BuildEnvironmentMetadata(
     flutterRevision: flutterRevision ?? this.flutterRevision,
     shorebirdVersion: shorebirdVersion ?? this.shorebirdVersion,
@@ -76,6 +80,7 @@ class BuildEnvironmentMetadata extends Equatable {
     usesShorebirdCodePushPackage:
         usesShorebirdCodePushPackage ?? this.usesShorebirdCodePushPackage,
     xcodeVersion: xcodeVersion ?? this.xcodeVersion,
+    projectGitHash: projectGitHash ?? this.projectGitHash,
   );
 
   /// The revision of Flutter used to run the command.
@@ -118,6 +123,15 @@ class BuildEnvironmentMetadata extends Equatable {
   /// `shorebird preview` mechanism changed entirely between Xcode 14 and 15.
   final String? xcodeVersion;
 
+  /// The git commit hash of the project at the time of the release or patch.
+  ///
+  /// Reason: this allows users to trace a release or patch back to the exact
+  /// source code commit it was built from, enabling better debugging and
+  /// reproducibility.
+  ///
+  /// This is optional because not all projects use git.
+  final String? projectGitHash;
+
   @override
   List<Object?> get props => [
     flutterRevision,
@@ -127,5 +141,6 @@ class BuildEnvironmentMetadata extends Equatable {
     shorebirdYaml,
     usesShorebirdCodePushPackage,
     xcodeVersion,
+    projectGitHash,
   ];
 }

@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/executables/git.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -544,6 +545,7 @@ ${summary.join('\n')}
     required Release release,
     required Releaser releaser,
   }) async {
+    final projectGitHash = await _getProjectGitHash();
     final baseMetadata = UpdateReleaseMetadata(
       releasePlatform: releaser.releaseType.releasePlatform,
       flutterVersionOverride: flutterVersionArg,
@@ -555,6 +557,7 @@ ${summary.join('\n')}
         shorebirdVersion: packageVersion,
         shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
         usesShorebirdCodePushPackage: shorebirdEnv.usesShorebirdCodePushPackage,
+        projectGitHash: projectGitHash,
       ),
     );
     final updatedMetadata = await releaser.updatedReleaseMetadata(baseMetadata);
@@ -584,5 +587,21 @@ ${summary.join('\n')}
     logger.info(
       '''To create a patch for this release, run ${lightCyan.wrap('$baseCommand --release-version=$releaseVersion')}''',
     );
+  }
+
+  /// Returns the git commit hash of the project, or null if not in a git repo.
+  Future<String?> _getProjectGitHash() async {
+    final projectRoot = shorebirdEnv.getFlutterProjectRoot();
+    if (projectRoot == null) return null;
+
+    try {
+      if (!await git.isGitRepo(directory: projectRoot)) {
+        return null;
+      }
+      return await git.revParse(revision: 'HEAD', directory: projectRoot.path);
+    } on Exception {
+      // If we can't get the git hash, continue without it.
+      return null;
+    }
   }
 }

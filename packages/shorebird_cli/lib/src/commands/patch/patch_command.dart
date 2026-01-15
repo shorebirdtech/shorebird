@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/executables/git.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
@@ -437,6 +438,7 @@ Building patch with Flutter $flutterVersionString
           patchArtifactBundles: patchArtifactBundles,
         );
 
+        final projectGitHash = await _getProjectGitHash();
         final baseMetadata = CreatePatchMetadata(
           releasePlatform: patcher.releaseType.releasePlatform,
           usedIgnoreAssetChangesFlag: allowAssetDiffs,
@@ -453,6 +455,7 @@ Building patch with Flutter $flutterVersionString
             shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
             usesShorebirdCodePushPackage:
                 shorebirdEnv.usesShorebirdCodePushPackage,
+            projectGitHash: projectGitHash,
           ),
         );
         final updateMetadata = await patcher.updatedCreatePatchMetadata(
@@ -616,6 +619,22 @@ ${summary.join('\n')}
     }
 
     return artifactFile;
+  }
+
+  /// Returns the git commit hash of the project, or null if not in a git repo.
+  Future<String?> _getProjectGitHash() async {
+    final projectRoot = shorebirdEnv.getFlutterProjectRoot();
+    if (projectRoot == null) return null;
+
+    try {
+      if (!await git.isGitRepo(directory: projectRoot)) {
+        return null;
+      }
+      return await git.revParse(revision: 'HEAD', directory: projectRoot.path);
+    } on Exception {
+      // If we can't get the git hash, continue without it.
+      return null;
+    }
   }
 }
 
