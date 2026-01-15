@@ -1,7 +1,4 @@
-import 'dart:ffi';
-
 import 'package:collection/collection.dart';
-import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 
@@ -39,15 +36,7 @@ extension AndroidArch on Arch {
       Arch.arm64 => 'android_release_arm64',
       Arch.x86_64 => 'android_release_x64',
     };
-    // arm64 host architectures (i.e., Apple Silicon Macs) append _arm64 to the
-    // base arch.
-    // This check ignores linux and windows arm64 architectures, as this has
-    // only been verified on Apple Silicon Macs.
-    if (abi.current == Abi.macosArm64) {
-      return '${baseArch}_arm64';
-    } else {
-      return baseArch;
-    }
+    return baseArch;
   }
 
   /// Returns the available Android architectures.
