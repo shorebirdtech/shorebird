@@ -50,7 +50,7 @@ void main() {
         setUp(() {
           when(
             () => engineConfig.localEngine,
-          ).thenReturn('android_release_arm64_arm64');
+          ).thenReturn('android_release_arm64');
         });
 
         test('returns archs matching local engine arch', () async {
@@ -123,15 +123,15 @@ void main() {
         test('returns correct path', () {
           expect(
             runWithOverrides(() => Arch.arm32.androidEnginePath),
-            equals('android_release_arm64'),
+            equals('android_release'),
           );
           expect(
             runWithOverrides(() => Arch.arm64.androidEnginePath),
-            equals('android_release_arm64_arm64'),
+            equals('android_release_arm64'),
           );
           expect(
             runWithOverrides(() => Arch.x86_64.androidEnginePath),
-            equals('android_release_x64_arm64'),
+            equals('android_release_x64'),
           );
         });
       });
