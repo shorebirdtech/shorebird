@@ -16,8 +16,8 @@ Future<Response> onRequest(
   if (path.contains('..')) {
     return Response(statusCode: HttpStatus.forbidden);
   }
-  
-  // Since the path is encoded in the URL (e.g. patches%2Fuuid%2F...), 
+
+  // Since the path is encoded in the URL (e.g. patches%2Fuuid%2F...),
   // Dart Frog correctly passes it as a single decoded segment to the 'path' argument.
   // We can just use the arguments directly.
   final realBucket = bucket;
@@ -44,11 +44,15 @@ Future<Response> onRequest(
       body: stream,
       headers: {
         HttpHeaders.contentTypeHeader: contentType,
-        HttpHeaders.contentDisposition: 'attachment; filename="${realPath.split('/').last}"',
+        HttpHeaders.contentDisposition:
+            'attachment; filename="${realPath.split('/').last}"',
       },
     );
   } catch (e) {
     print('Failed to download artifact: $e');
-    return Response(statusCode: HttpStatus.notFound, body: 'Artifact not found');
+    return Response(
+      statusCode: HttpStatus.notFound,
+      body: 'Artifact not found',
+    );
   }
 }

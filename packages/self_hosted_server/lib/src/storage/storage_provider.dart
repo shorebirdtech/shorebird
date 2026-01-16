@@ -26,22 +26,13 @@ abstract class StorageProvider {
   });
 
   /// Delete an artifact.
-  Future<void> deleteArtifact({
-    required String bucket,
-    required String path,
-  });
+  Future<void> deleteArtifact({required String bucket, required String path});
 
   /// Check if an artifact exists.
-  Future<bool> artifactExists({
-    required String bucket,
-    required String path,
-  });
+  Future<bool> artifactExists({required String bucket, required String path});
 
   /// List artifacts in a path.
-  Future<List<String>> listArtifacts({
-    required String bucket,
-    String? prefix,
-  });
+  Future<List<String>> listArtifacts({required String bucket, String? prefix});
 
   /// Download a file as a stream.
   Future<Stream<List<int>>> downloadFile({

@@ -110,22 +110,26 @@ Future<Response> onRequest(RequestContext context) async {
     // Use the proxy download URL to avoid S3 signature issues
     var downloadUrl = artifact['url'] as String;
     if (artifact['storage_path'] != null) {
-        final storagePath = artifact['storage_path'] as String;
-        // Construct URL pointing to our own API
-        // Format: /api/v1/artifacts/{bucket}/{path}
-        final protocol = config.s3UseSSL ? 'https' : 'http';
-        final host =config.host == '0.0.0.0' ? config.s3PublicEndpoint : config.host; // Use public endpoint IP for API construction if host is binding to all interfaces
-        final port = config.port;
-        
-        // Actually, we should just use the same base URL as the current request, 
-        // but since we are behind a potential reverse proxy or docker networking, 
-        // let's construct it from known public config.
-        
-        // Using s3PublicEndpoint (which is the computer IP) and server PORT (8080)
-        // ensures the client stays on the same verified network path.
-        // We MUST encode the storagePath because it contains slashes, and we want
-        // it to be treated as a single path segment by the artifacts route.
-        downloadUrl = 'http://${config.s3PublicEndpoint}:${config.port}/api/v1/artifacts/${config.s3BucketPatches}/${Uri.encodeComponent(storagePath)}';
+      final storagePath = artifact['storage_path'] as String;
+      // Construct URL pointing to our own API
+      // Format: /api/v1/artifacts/{bucket}/{path}
+      final protocol = config.s3UseSSL ? 'https' : 'http';
+      final host = config.host == '0.0.0.0'
+          ? config.s3PublicEndpoint
+          : config
+                .host; // Use public endpoint IP for API construction if host is binding to all interfaces
+      final port = config.port;
+
+      // Actually, we should just use the same base URL as the current request,
+      // but since we are behind a potential reverse proxy or docker networking,
+      // let's construct it from known public config.
+
+      // Using s3PublicEndpoint (which is the computer IP) and server PORT (8080)
+      // ensures the client stays on the same verified network path.
+      // We MUST encode the storagePath because it contains slashes, and we want
+      // it to be treated as a single path segment by the artifacts route.
+      downloadUrl =
+          'http://${config.s3PublicEndpoint}:${config.port}/api/v1/artifacts/${config.s3BucketPatches}/${Uri.encodeComponent(storagePath)}';
     }
 
     return Response.json(
