@@ -106,13 +106,15 @@ class S3StorageProvider implements StorageProvider {
     required String bucket,
     String? prefix,
   }) async {
-    final objects = <String>[];
-    final result = await _minio.listObjects(bucket, prefix: prefix ?? '');
-    await for (final item in result) {
-      if (item.key != null) {
-        objects.add(item.key!);
+    final keys = <String>[];
+    final stream = _minio.listObjects(bucket, prefix: prefix ?? '');
+    await for (final result in stream) {
+      for (final obj in result.objects) {
+        if (obj.key != null) {
+          keys.add(obj.key!);
+        }
       }
     }
-    return objects;
+    return keys;
   }
 }
