@@ -1,464 +1,153 @@
-# Self-Hosted Shorebird Guide
+# Руководство по развертыванию Self-Hosted Shorebird
 
-This document describes how to set up a self-hosted Shorebird Code Push solution with a custom dart_frog server and S3-compatible storage.
+Это пошаговое руководство поможет вам развернуть и настроить собственный сервер обновлений Shorebird на локальной машине для разработки и тестирования с Android-эмулятором или реальным устройством в локальной сети.
 
-## Architecture Overview
+## 1. Подготовка окружения
 
-Shorebird consists of several key components:
+Вам понадобятся:
+- **Docker Desktop** (установлен и запущен).
+- **Shorebird CLI** (установлен).
+- **Flutter SDK**.
+- **Android Emulator** или реальное устройство.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CLIENT SIDE                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  shorebird_cli          - Command-line tool for developers                   │
-│  shorebird_code_push_client - Dart library to interact with CodePush API     │
-│  Flutter SDK (patched)  - Custom Flutter SDK with code push support          │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              SERVER SIDE                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  API Server             - Main backend (needs to be implemented)             │
-│  artifact_proxy         - Proxies Flutter artifact downloads                 │
-│  Storage (GCS/S3)       - Stores release and patch artifacts                 │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+## 2. Настройка IP-адреса
 
-## Key Files for Customization
+Для того чтобы и эмулятор (Android), и ваш компьютер, и Docker-контейнеры могли общаться друг с другом, необходимо использовать ваш **локальный IP-адрес** (Wi-Fi или LAN), а не `localhost` или `10.0.2.2`.
 
-### 1. Host URL Configuration
+1.  Откройте терминал и узнайте свой IP:
+    *   **Windows**: `ipconfig` (ищите IPv4 адрес адаптера Беспроводная сеть или Ethernet, например `192.168.1.139`).
+    *   **macOS/Linux**: `ifconfig` или `ip a`.
 
-The host URL can be configured in multiple ways:
+2.  Запомните этот IP. Далее в инструкции будем называть его `ВАШ_IP`.
 
-#### a) Environment Variable (CLI)
+## 3. Настройка Сервера
+
+1.  Перейдите в папку сервера:
+    ```bash
+    cd packages/self_hosted_server
+    ```
+
+2.  Откройте файл `docker-compose.yml`.
+3.  Отредактируйте переменные окружения, подставив `ВАШ_IP`:
+
+    ```yaml
+    services:
+      api:
+        environment:
+          # ... другие переменные
+          - HOST=0.0.0.0          # Важно! Слушаем все интерфейсы
+          - S3_ENDPOINT=minio     # Внутреннее имя контейнера (не меняйте)
+          - S3_PUBLIC_ENDPOINT=ВАШ_IP  # <-- СЮДА ВСТАВИТЬ IP (например 192.168.1.139)
+          - S3_PORT=9000
+
+      minio:
+        environment:
+          - MINIO_SERVER_URL=http://ВАШ_IP:9000 # <-- СЮДА ВСТАВИТЬ IP
+    ```
+
+### Запуск сервера
+
+1.  Очистите старые данные (если были эксперименты):
+    ```bash
+    docker-compose down -v
+    ```
+    *(Флаг `-v` удалит базу данных и файлы в MinIO, чтобы начать с чистого листа)*.
+
+2.  Запустите сервер:
+    ```bash
+    docker-compose up -d --build
+    ```
+
+3.  Проверьте, что контейнеры работают:
+    ```bash
+    docker ps
+    ```
+    Должны быть запущены `self_hosted_server-api` (порт 8080) и `self_hosted_server-minio` (порты 9000, 9001).
+
+## 4. Настройка Клиента (Ваше Приложение)
+
+Перейдите в папку вашего Flutter-проекта (например `examples/test`).
+
+1.  **Создайте конфигурацию**:
+    Если у вас уже есть файл `shorebird.yaml`, **удалите его**. Мы создадим новый, который зарегистрируется на вашем чистом сервере.
+
+2.  **Инициализация**:
+    Выполните команду init, указав параметры:
+    ```bash
+    shorebird init
+    ```
+    
+3.  **Редактирование `shorebird.yaml`**:
+    Сразу после создания откройте появившийся `shorebird.yaml` и измените (или добавьте) параметр `base_url`:
+
+    ```yaml
+    app_id: ... (автоматически сгенерированный ID) ...
+    
+    # Укажите адрес вашего локального сервера
+    base_url: http://ВАШ_IP:8080
+    ```
+
+## 5. Создание Релиза
+
+Теперь нужно собрать приложение, в которое "запечется" этот `shorebird.yaml` с вашим IP.
+
+1.  Создайте релиз:
+    ```bash
+    shorebird release android
+    ```
+    *Согласитесь с созданием релиза, если спросит.*
+
+2.  Установите полученный APK на устройство/эмулятор:
+    ```bash
+    # Сначала удалите старую версию во избежание конфликтов подписей
+    adb uninstall com.example.test 
+    
+    # Установите новую (путь может отличаться)
+    adb install build/app/outputs/flutter-apk/app-release.apk
+    ```
+
+3.  **Запустите приложение** на телефоне. Это будет "Версия 1.0.0" (условно).
+
+## 6. Выпуск Патча (Обновление по воздуху)
+
+1.  Внесите видимые изменения в код Dart (например, поменяйте цвет фона или текст на кнопке).
+
+2.  Выпустите патч:
+    ```bash
+    shorebird patch --platforms=android
+    ```
+    CLI скачает артефакты с вашего сервера, соберет патч и загрузит его обратно на ваш сервер.
+
+## 7. Проверка Обновления
+
+1.  **Закройте приложение** на телефоне (выгрузите из памяти/свайпните).
+2.  **Откройте приложение (1-й запуск)**.
+    *   В этот момент приложение в фоне спросит сервер `http://ВАШ_IP:8080/api/v1/patches/check`.
+    *   Сервер ответит ссылкой на скачивание.
+    *   Приложение скачает патч. Пользователь пока видит старую версию.
+3.  **Закройте приложение** снова.
+4.  **Откройте приложение (2-й запуск)**.
+    *   Патч применится. Вы должны увидеть ваши изменения.
+
+## Решение проблем
+
+### "Artifact not found" или "SignatureDoesNotMatch"
+Это значит, что сервер или клиент путаются в IP-адресах.
+*   Убедитесь, что в `docker-compose.yml` в `S3_PUBLIC_ENDPOINT` стоит именно IP компьютера, а не `localhost`.
+*   Убедитесь, что сервер Proxy (`api`) запущен и логирует запросы к `artifcats/...`. Наш сервер настроен работать как прокси, чтобы скрыть сложность MinIO.
+
+### Приложение не обновляется
+Проверьте логи Android через `adb logcat`:
 ```bash
-export SHOREBIRD_HOSTED_URL="https://your-server.com"
+adb logcat | grep flutter
 ```
+Ищите сообщения от `shorebird`. Если видите "Connection refused", значит, телефон не видит компьютер по указанному IP (проверьте фаервол или находятся ли они в одной сети).
 
-**File:** `packages/shorebird_cli/lib/src/shorebird_env.dart` (lines 231-243)
-```dart
-Uri? get hostedUri {
-  try {
-    final baseUrl =
-        platform.environment['SHOREBIRD_HOSTED_URL'] ??
-        getShorebirdYaml()?.baseUrl;
-    return baseUrl == null ? null : Uri.tryParse(baseUrl);
-  } on Exception {
-    return null;
-  }
-}
-```
-
-#### b) Project Configuration (shorebird.yaml)
-```yaml
-# shorebird.yaml
-app_id: your-app-id
-base_url: https://your-server.com  # Custom server URL
-```
-
-**File:** `packages/shorebird_cli/lib/src/config/shorebird_yaml.dart`
-```dart
-class ShorebirdYaml {
-  const ShorebirdYaml({
-    required this.appId,
-    this.flavors,
-    this.baseUrl,        // <-- Custom base URL field
-    this.autoUpdate,
-  });
-  
-  final String? baseUrl;
-  // ...
-}
-```
-
-### 2. Default API URL
-
-**File:** `packages/shorebird_code_push_client/lib/src/code_push_client.dart` (line 98)
-```dart
-CodePushClient({
-  http.Client? httpClient,
-  Uri? hostedUri,
-  Map<String, String>? customHeaders,
-}) : _httpClient = _CodePushHttpClient(httpClient ?? http.Client(), {
-       ...standardHeaders,
-       ...?customHeaders,
-     }),
-     hostedUri = hostedUri ?? Uri.https('api.shorebird.dev'); // <-- Default URL
-```
-
-### 3. Artifact Proxy Configuration
-
-**File:** `packages/artifact_proxy/lib/src/artifact_manifest_client.dart` (lines 30-34)
-```dart
-Future<ArtifactsManifest> _fetchManifest(String revision) async {
-  final url = Uri.parse(
-    'https://storage.googleapis.com/download.shorebird.dev/shorebird/$revision/artifacts_manifest.yaml',
-  );
-  // ...
-}
-```
-
-**File:** `packages/artifact_proxy/lib/src/artifact_proxy.dart` (lines 113-133)
-```dart
-/// Standard Flutter artifacts location
-String getFlutterArtifactLocation({
-  required String artifactPath,
-  String? engine,
-}) {
-  final adjustedPath = engine != null
-      ? artifactPath.replaceAll(r'$engine', engine)
-      : artifactPath;
-  return 'https://storage.googleapis.com/$adjustedPath'; // <-- GCS URL
-}
-
-/// Shorebird-specific artifacts location  
-String getShorebirdArtifactLocation({
-  required String artifactPath,
-  required String engine,
-  required String bucket,
-}) {
-  final adjustedPath = artifactPath.replaceAll(r'$engine', engine);
-  return 'https://storage.googleapis.com/$bucket/$adjustedPath'; // <-- GCS URL
-}
-```
-
-## Implementation Steps
-
-### Step 1: Create Self-Hosted Configuration
-
-Create a new configuration file for self-hosted settings:
-
-**File:** `packages/shorebird_cli/lib/src/config/self_hosted_config.dart`
-```dart
-import 'dart:io';
-import 'package:json_annotation/json_annotation.dart';
-
-part 'self_hosted_config.g.dart';
-
-@JsonSerializable()
-class SelfHostedConfig {
-  const SelfHostedConfig({
-    required this.apiUrl,
-    this.artifactStorageUrl,
-    this.artifactProxyUrl,
-  });
-  
-  /// The URL of your self-hosted API server
-  final String apiUrl;
-  
-  /// The URL of your S3-compatible storage (e.g., MinIO)
-  final String? artifactStorageUrl;
-  
-  /// The URL of your artifact proxy server
-  final String? artifactProxyUrl;
-  
-  factory SelfHostedConfig.fromJson(Map<String, dynamic> json) =>
-      _$SelfHostedConfigFromJson(json);
-  
-  Map<String, dynamic> toJson() => _$SelfHostedConfigToJson(this);
-  
-  /// Load configuration from environment or config file
-  static SelfHostedConfig? load() {
-    // Priority: Environment variables > Config file
-    final apiUrl = Platform.environment['SHOREBIRD_API_URL'];
-    if (apiUrl != null) {
-      return SelfHostedConfig(
-        apiUrl: apiUrl,
-        artifactStorageUrl: Platform.environment['SHOREBIRD_STORAGE_URL'],
-        artifactProxyUrl: Platform.environment['SHOREBIRD_PROXY_URL'],
-      );
-    }
-    return null;
-  }
-}
-```
-
-### Step 2: Modify the CodePush Client
-
-Update the client to support custom storage URLs:
-
-**File:** `packages/shorebird_code_push_client/lib/src/code_push_client.dart`
-```dart
-class CodePushClient {
-  CodePushClient({
-    http.Client? httpClient,
-    Uri? hostedUri,
-    Uri? storageUri,  // <-- Add storage URL parameter
-    Map<String, String>? customHeaders,
-  }) : _httpClient = _CodePushHttpClient(httpClient ?? http.Client(), {
-         ...standardHeaders,
-         ...?customHeaders,
-       }),
-       hostedUri = hostedUri ?? Uri.https('api.shorebird.dev'),
-       storageUri = storageUri ?? Uri.https('storage.googleapis.com');
-  
-  final Uri storageUri;  // <-- Add storage URL field
-  // ...
-}
-```
-
-### Step 3: Create dart_frog Server Template
-
-Create a template for the self-hosted API server:
-
-**Directory:** `packages/self_hosted_server/`
-
-The server needs to implement these API endpoints (from `shorebird_code_push_protocol`):
-
-```
-GET  /api/v1/users/me                              - Get current user
-POST /api/v1/users                                 - Create user
-GET  /api/v1/apps                                  - List apps
-POST /api/v1/apps                                  - Create app
-DELETE /api/v1/apps/:appId                         - Delete app
-GET  /api/v1/apps/:appId/channels                  - List channels
-POST /api/v1/apps/:appId/channels                  - Create channel
-GET  /api/v1/apps/:appId/releases                  - List releases
-POST /api/v1/apps/:appId/releases                  - Create release
-PATCH /api/v1/apps/:appId/releases/:releaseId      - Update release status
-GET  /api/v1/apps/:appId/releases/:releaseId/artifacts - Get release artifacts
-POST /api/v1/apps/:appId/releases/:releaseId/artifacts - Create release artifact
-GET  /api/v1/apps/:appId/releases/:releaseId/patches   - Get patches
-POST /api/v1/apps/:appId/patches                   - Create patch
-POST /api/v1/apps/:appId/patches/:patchId/artifacts    - Create patch artifact
-POST /api/v1/apps/:appId/patches/promote           - Promote patch
-GET  /api/v1/organizations                         - List organizations
-GET  /api/v1/diagnostics/gcp_upload                - Get upload test URL
-GET  /api/v1/diagnostics/gcp_download              - Get download test URL
-```
-
-### Step 4: S3 Storage Abstraction
-
-Create storage abstraction for artifact uploads:
-
-**File:** `packages/self_hosted_server/lib/src/storage/storage_provider.dart`
-```dart
-abstract class StorageProvider {
-  /// Upload a file and return the public URL
-  Future<String> uploadArtifact({
-    required String bucket,
-    required String path,
-    required List<int> bytes,
-    String? contentType,
-  });
-  
-  /// Generate a signed upload URL for direct client uploads
-  Future<String> getSignedUploadUrl({
-    required String bucket,
-    required String path,
-    Duration expiry = const Duration(hours: 1),
-  });
-  
-  /// Generate a signed download URL
-  Future<String> getSignedDownloadUrl({
-    required String bucket,
-    required String path,
-    Duration expiry = const Duration(hours: 1),
-  });
-  
-  /// Delete an artifact
-  Future<void> deleteArtifact({
-    required String bucket,
-    required String path,
-  });
-}
-```
-
-**File:** `packages/self_hosted_server/lib/src/storage/s3_storage_provider.dart`
-```dart
-import 'package:minio/minio.dart';
-
-class S3StorageProvider implements StorageProvider {
-  S3StorageProvider({
-    required String endpoint,
-    required String accessKey,
-    required String secretKey,
-    this.useSSL = true,
-    this.region = 'us-east-1',
-  }) : _minio = Minio(
-         endPoint: endpoint,
-         accessKey: accessKey,
-         secretKey: secretKey,
-         useSSL: useSSL,
-         region: region,
-       );
-  
-  final Minio _minio;
-  final bool useSSL;
-  final String region;
-  
-  @override
-  Future<String> uploadArtifact({
-    required String bucket,
-    required String path,
-    required List<int> bytes,
-    String? contentType,
-  }) async {
-    await _minio.putObject(
-      bucket,
-      path,
-      Stream.value(bytes),
-      size: bytes.length,
-    );
-    return getPublicUrl(bucket, path);
-  }
-  
-  @override
-  Future<String> getSignedUploadUrl({
-    required String bucket,
-    required String path,
-    Duration expiry = const Duration(hours: 1),
-  }) async {
-    return await _minio.presignedPutObject(bucket, path, expires: expiry.inSeconds);
-  }
-  
-  @override
-  Future<String> getSignedDownloadUrl({
-    required String bucket,
-    required String path,
-    Duration expiry = const Duration(hours: 1),
-  }) async {
-    return await _minio.presignedGetObject(bucket, path, expires: expiry.inSeconds);
-  }
-  
-  String getPublicUrl(String bucket, String path) {
-    final protocol = useSSL ? 'https' : 'http';
-    return '$protocol://${_minio.endPoint}/$bucket/$path';
-  }
-  
-  @override
-  Future<void> deleteArtifact({
-    required String bucket,
-    required String path,
-  }) async {
-    await _minio.removeObject(bucket, path);
-  }
-}
-```
-
-### Step 5: Modify Artifact Proxy for Self-Hosted
-
-Update the artifact proxy to support custom storage URLs:
-
-**File:** `packages/artifact_proxy/lib/config.dart` (add at the end)
-```dart
-/// Configuration for self-hosted artifact storage
-class ArtifactProxyConfig {
-  const ArtifactProxyConfig({
-    this.manifestBaseUrl = 'https://storage.googleapis.com/download.shorebird.dev',
-    this.flutterStorageBaseUrl = 'https://storage.googleapis.com',
-    this.shorebirdStorageBaseUrl = 'https://storage.googleapis.com',
-  });
-  
-  final String manifestBaseUrl;
-  final String flutterStorageBaseUrl;
-  final String shorebirdStorageBaseUrl;
-  
-  factory ArtifactProxyConfig.fromEnvironment() {
-    return ArtifactProxyConfig(
-      manifestBaseUrl: Platform.environment['ARTIFACT_MANIFEST_BASE_URL'] 
-          ?? 'https://storage.googleapis.com/download.shorebird.dev',
-      flutterStorageBaseUrl: Platform.environment['FLUTTER_STORAGE_BASE_URL']
-          ?? 'https://storage.googleapis.com',
-      shorebirdStorageBaseUrl: Platform.environment['SHOREBIRD_STORAGE_BASE_URL']
-          ?? 'https://storage.googleapis.com',
-    );
-  }
-}
-```
-
-## Environment Variables Summary
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SHOREBIRD_HOSTED_URL` | Main API server URL | `https://api.shorebird.dev` |
-| `SHOREBIRD_API_URL` | Alternative API URL config | - |
-| `SHOREBIRD_STORAGE_URL` | S3-compatible storage URL | - |
-| `SHOREBIRD_PROXY_URL` | Artifact proxy URL | - |
-| `ARTIFACT_MANIFEST_BASE_URL` | Manifest download URL | GCS URL |
-| `FLUTTER_STORAGE_BASE_URL` | Flutter artifacts storage | GCS URL |
-| `SHOREBIRD_STORAGE_BASE_URL` | Shorebird artifacts storage | GCS URL |
-
-## Quick Start for Self-Hosted Setup
-
-### 1. Configure the CLI
-
-```bash
-# Set environment variables
-export SHOREBIRD_HOSTED_URL="https://your-api-server.com"
-
-# Or add to shorebird.yaml in your project
-echo "base_url: https://your-api-server.com" >> shorebird.yaml
-```
-
-### 2. Deploy the Server
-
-```bash
-# Clone the repository
-cd packages/self_hosted_server
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your settings
-
-# Run with dart_frog
-dart_frog dev
-```
-
-### 3. Configure S3 Storage (MinIO example)
-
-```bash
-# Run MinIO
-docker run -p 9000:9000 -p 9001:9001 \
-  -e MINIO_ROOT_USER=admin \
-  -e MINIO_ROOT_PASSWORD=password \
-  minio/minio server /data --console-address ":9001"
-
-# Create buckets
-mc alias set local http://localhost:9000 admin password
-mc mb local/shorebird-releases
-mc mb local/shorebird-patches
-```
-
-### 4. Configure Artifact Proxy
-
-```bash
-export SHOREBIRD_STORAGE_BASE_URL="http://localhost:9000"
-cd packages/artifact_proxy
-dart run bin/main.dart
-```
-
-## Authentication
-
-The original Shorebird uses Google OAuth for authentication. For self-hosted, you have options:
-
-1. **Use existing OAuth providers** - Keep Google/Microsoft OAuth
-2. **Custom authentication** - Implement your own auth in the dart_frog server
-3. **API tokens** - Use simple API key authentication
-
-Modify `packages/shorebird_cli/lib/src/auth/auth.dart` to support custom authentication.
-
-## Database Schema
-
-Your self-hosted server will need a database with tables for:
-
-- `users` - User accounts
-- `organizations` - Organization groupings
-- `organization_memberships` - User-organization relationships
-- `apps` - Application records
-- `channels` - Deployment channels
-- `releases` - Release versions
-- `release_artifacts` - Release artifact metadata
-- `patches` - Patch records
-- `patch_artifacts` - Patch artifact metadata
-
-See `packages/shorebird_code_push_protocol/lib/src/models/` for model definitions.
-
-## Next Steps
-
-1. Fork this repository
-2. Implement the dart_frog server using the protocol models
-3. Configure S3-compatible storage (MinIO, AWS S3, etc.)
-4. Update artifact proxy configuration
-5. Test the full workflow: init → release → patch
+### Как сбросить всё и начать заново?
+Если запутались в версиях и релизах:
+1. `docker-compose down -v` (на сервере).
+2. `rm shorebird.yaml` (в проекте).
+3. `shorebird init`.
+4. Впишите `base_url` в новый `shorebird.yaml`.
+5. Повысьте версию в `pubspec.yaml` (например `1.0.0+1` -> `1.0.0+2`).
+6. `shorebird release android`.

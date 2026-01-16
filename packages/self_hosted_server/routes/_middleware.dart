@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dart_frog/dart_frog.dart';
 import 'package:self_hosted_server/self_hosted_server.dart';
 
@@ -51,6 +53,24 @@ Handler middleware(Handler handler) {
       // ignore: avoid_print
       print('Query: ${context.request.uri.queryParameters}');
     }
+
+    // Attempt to log request body if not binary
+    final contentType = context.request.headers['content-type'];
+    final isMultipart = contentType?.contains('multipart/form-data') ?? false;
+
+    if (!isMultipart) {
+      try {
+        final body = await context.request.body();
+        if (body.isNotEmpty) {
+          // ignore: avoid_print
+          print('Request Body: $body');
+        }
+      } catch (e) {
+        // ignore: avoid_print
+        print('Could not read request body: $e');
+      }
+    }
+
     // ignore: avoid_print
     print('----------------');
 
@@ -66,11 +86,44 @@ Handler middleware(Handler handler) {
       // We need to read the body to log it, but reading it consumes the stream.
       // We read it, log it, and then create a new response with the same body.
       // This is expensive but fine for debugging.
-      final responseBody = await response.body();
-      if (responseBody != null) {
+      // EXCEPTION: Do not try to read body if it is a binary stream (e.g. zip file download)
+      // or if response is streamed. The Utf8Decoder will fail on binary data.
+
+      // since reading it might fail for binary data or consume a stream we can't recreate easily.
+      final isBinary =
+          response.headers[HttpHeaders.contentTypeHeader]?.contains(
+                'application/zip',
+              ) ==
+              true ||
+          response.headers[HttpHeaders.contentTypeHeader]?.contains(
+                'application/octet-stream',
+              ) ==
+              true;
+
+      if (isBinary) {
         // ignore: avoid_print
-        print('Response Body: $responseBody');
+        print('Response Body: [Binary Data Omitted]');
+        print('----------------');
+        // Start a new response that copies everything but adds CORS
+        // Note: This relies on the original response stream not being consumed yet.
+        return Response.stream(
+          body: response.bytes(),
+          statusCode: response.statusCode,
+          headers: {...response.headers, ..._corsHeaders},
+        );
       }
+
+      String? responseBody;
+      try {
+        responseBody = await response.body();
+        if (responseBody != null) {
+          // ignore: avoid_print
+          print('Response Body: $responseBody');
+        }
+      } catch (_) {
+        // If we fail to read string body, just proceed
+      }
+
       // ignore: avoid_print
       print('----------------');
 

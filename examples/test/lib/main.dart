@@ -28,9 +28,9 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: .fromSeed(seedColor: Colors.green),
       ),
-      home: const MyHomePage(title: 'Patched'),
+      home: const MyHomePage(title: 'Opssss v2'),
     );
   }
 }
@@ -54,7 +54,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  int _counter = 100;
 
   void _incrementCounter() {
     setState(() {

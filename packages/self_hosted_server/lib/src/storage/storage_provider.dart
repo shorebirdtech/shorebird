@@ -42,4 +42,10 @@ abstract class StorageProvider {
     required String bucket,
     String? prefix,
   });
+
+  /// Download a file as a stream.
+  Future<Stream<List<int>>> downloadFile({
+    required String bucket,
+    required String path,
+  });
 }

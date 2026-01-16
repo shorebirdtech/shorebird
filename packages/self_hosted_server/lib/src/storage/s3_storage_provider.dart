@@ -138,4 +138,13 @@ class S3StorageProvider implements StorageProvider {
     }
     return keys;
   }
+  // TODO(serezhia): Убрать это и сделать забирание патча из s3 напрямую
+
+  @override
+  Future<Stream<List<int>>> downloadFile({
+    required String bucket,
+    required String path,
+  }) async {
+    return _minio.getObject(bucket, path);
+  }
 }

@@ -64,7 +64,8 @@ Future<Response> onRequest(
   } catch (e) {
     // If S3 is not available, construct URL manually
     final protocol = config.s3UseSSL ? 'https' : 'http';
-    uploadUrl = '$protocol://${config.s3Endpoint}:${config.s3Port}/'
+    uploadUrl =
+        '$protocol://${config.s3Endpoint}:${config.s3Port}/'
         '${config.s3BucketPatches}/$storagePath';
   }
 
@@ -85,6 +86,7 @@ Future<Response> onRequest(
     'hash': hash,
     'size': sizeInt,
     'url': uploadUrl,
+    'storage_path': storagePath,
   });
 
   return Response.json(
