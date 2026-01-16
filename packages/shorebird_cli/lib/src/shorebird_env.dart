@@ -50,6 +50,15 @@ class ShorebirdEnv {
   ///
   /// Assumes we are running from $ROOT/bin/cache.
   Directory get shorebirdRoot {
+    Directory dir = File(platform.script.toFilePath()).parent;
+    while (dir.path != dir.parent.path) {
+      if (File(
+        p.join(dir.path, 'bin', 'internal', 'flutter.version'),
+      ).existsSync()) {
+        return dir;
+      }
+      dir = dir.parent;
+    }
     return File(platform.script.toFilePath()).parent.parent.parent;
   }
 

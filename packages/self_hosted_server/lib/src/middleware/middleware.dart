@@ -38,14 +38,12 @@ void initializeServices(ServerConfig cfg) {
   database.initialize('data/database.json');
 
   // Initialize auth service
-  authService = AuthService(
-    db: database,
-    jwtSecret: config.jwtSecret,
-  );
+  authService = AuthService(db: database, jwtSecret: config.jwtSecret);
 
   // Initialize storage provider
   storageProvider = S3StorageProvider(
     endpoint: config.s3Endpoint,
+    publicEndpoint: config.s3PublicEndpoint,
     port: config.s3Port,
     accessKey: config.s3AccessKey,
     secretKey: config.s3SecretKey,
@@ -55,10 +53,8 @@ void initializeServices(ServerConfig cfg) {
 
   // Create default admin user if no users exist
   if (database.count('users') == 0) {
-    final adminEmail =
-        Platform.environment['ADMIN_EMAIL'] ?? 'admin@localhost';
-    final adminPassword =
-        Platform.environment['ADMIN_PASSWORD'] ?? 'admin123';
+    final adminEmail = Platform.environment['ADMIN_EMAIL'] ?? 'admin@localhost';
+    final adminPassword = Platform.environment['ADMIN_PASSWORD'] ?? 'admin123';
     authService.register(
       email: adminEmail,
       password: adminPassword,

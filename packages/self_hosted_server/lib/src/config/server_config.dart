@@ -7,6 +7,7 @@ class ServerConfig {
     required this.port,
     required this.host,
     required this.s3Endpoint,
+    required this.s3PublicEndpoint,
     required this.s3Port,
     required this.s3AccessKey,
     required this.s3SecretKey,
@@ -48,6 +49,8 @@ class ServerConfig {
       host: Platform.environment['HOST'] ?? '0.0.0.0',
       databaseUrl: Platform.environment['DATABASE_URL'],
       s3Endpoint: Platform.environment['S3_ENDPOINT'] ?? 'localhost',
+      s3PublicEndpoint:
+          Platform.environment['S3_PUBLIC_ENDPOINT'] ?? 'localhost',
       s3Port: int.tryParse(Platform.environment['S3_PORT'] ?? '9000') ?? 9000,
       s3AccessKey: s3AccessKey,
       s3SecretKey: s3SecretKey,
@@ -80,6 +83,9 @@ class ServerConfig {
 
   /// S3 endpoint (hostname without protocol).
   final String s3Endpoint;
+
+  /// The S3 endpoint to use for signed URLs (publicly accessible).
+  final String s3PublicEndpoint;
 
   /// S3 port.
   final int s3Port;

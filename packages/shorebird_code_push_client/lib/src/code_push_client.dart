@@ -159,41 +159,63 @@ class CodePushClient {
     String? hashSignature,
     String? podfileLockHash,
   }) async {
-    final request = http.MultipartRequest(
+    // 1) Create patch artifact metadata (your API), receive presigned S3/MinIO URL
+    final createReq = http.MultipartRequest(
       'POST',
       Uri.parse('$_v1/apps/$appId/patches/$patchId/artifacts'),
     );
-    final file = await http.MultipartFile.fromPath('file', artifactPath);
-    request.fields.addAll({
+
+    final artifactFile = File(artifactPath);
+    if (!await artifactFile.exists()) {
+      throw CodePushException(
+        message: 'Artifact file not found: $artifactPath',
+      );
+    }
+
+    // Keep parity with your existing flow (even if backend mostly uses fields)
+    final multipartFile = await http.MultipartFile.fromPath(
+      'file',
+      artifactPath,
+    );
+
+    final fields = <String, String>{
       'arch': arch,
       'platform': platform.name,
       'hash': hash,
-      'size': '${file.length}',
-      'hash_signature': ?hashSignature,
-      'podfile_lock_hash': ?podfileLockHash,
-    });
-    final response = await _httpClient.send(request);
-    final body = await response.stream.bytesToString();
+      'size': '${multipartFile.length}', // or '$artifactSize'
+      if (hashSignature != null && hashSignature.isNotEmpty)
+        'hash_signature': hashSignature,
+      if (podfileLockHash != null && podfileLockHash.isNotEmpty)
+        'podfile_lock_hash': podfileLockHash,
+    };
 
-    if (!response.isSuccess) {
-      throw _parseErrorResponse(response.statusCode, body);
+    createReq.fields.addAll(fields);
+
+    // If your API actually expects multipart file contents in this POST,
+    // uncomment the next line:
+    // createReq.files.add(multipartFile);
+
+    final createResp = await _httpClient.send(createReq);
+    final createBody = await createResp.stream.bytesToString();
+
+    if (!createResp.isSuccess) {
+      throw _parseErrorResponse(createResp.statusCode, createBody);
     }
 
     final decoded = CreatePatchArtifactResponse.fromJson(
-      json.decode(body) as Map<String, dynamic>,
+      json.decode(createBody) as Map<String, dynamic>,
     );
 
-    final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
-      ..files.add(file);
+    final presignedUri = Uri.parse(decoded.url);
+    print('Uploading to: ${presignedUri.host}:${presignedUri.port}');
 
-    final uploadResponse = await _httpClient.send(uploadRequest);
-
-    if (!uploadResponse.isSuccess) {
-      throw CodePushException(
-        message:
-            '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
-      );
-    }
+    // 2) Upload the file to presigned URL using dart:io HttpClient (robust on Windows)
+    await _uploadToPresignedPutUrl(
+      url: presignedUri,
+      file: artifactFile,
+      contentType: 'application/octet-stream',
+      timeout: const Duration(minutes: 5),
+    );
   }
 
   /// Create a new artifact for a specific [releaseId].
@@ -207,45 +229,61 @@ class CodePushClient {
     required bool canSideload,
     required String? podfileLockHash,
   }) async {
-    final request = http.MultipartRequest(
+    // 1) Create artifact metadata (your API), receive presigned S3/MinIO URL
+    final createReq = http.MultipartRequest(
       'POST',
       Uri.parse('$_v1/apps/$appId/releases/$releaseId/artifacts'),
     );
-    final file = await http.MultipartFile.fromPath('file', artifactPath);
+
+    final artifactFile = File(artifactPath);
+    if (!await artifactFile.exists()) {
+      throw CodePushException(
+        message: 'Artifact file not found: $artifactPath',
+      );
+    }
+
+    // NOTE: We only need length/name for the payload; the file itself is typically
+    // not sent in this POST (unless your API expects it). Keep your existing logic:
+    final multipartFile = await http.MultipartFile.fromPath(
+      'file',
+      artifactPath,
+    );
 
     final payload = CreateReleaseArtifactRequest(
       arch: arch,
       platform: platform,
       hash: hash,
-      size: file.length,
+      size: multipartFile.length, // or artifactSize; both should match
       canSideload: canSideload,
       filename: p.basename(artifactPath),
       podfileLockHash: podfileLockHash,
-    ).toJson().map((key, value) => MapEntry(key, '$value'));
-    request.fields.addAll(payload);
+    ).toJson().map((k, v) => MapEntry(k, '$v'));
 
-    final response = await _httpClient.send(request);
-    final body = await response.stream.bytesToString();
+    createReq.fields.addAll(payload);
 
-    if (!response.isSuccess) {
-      throw _parseErrorResponse(response.statusCode, body);
+    final createResp = await _httpClient.send(createReq);
+    final createBody = await createResp.stream.bytesToString();
+
+    if (!createResp.isSuccess) {
+      throw _parseErrorResponse(createResp.statusCode, createBody);
     }
 
     final decoded = CreateReleaseArtifactResponse.fromJson(
-      json.decode(body) as Map<String, dynamic>,
+      json.decode(createBody) as Map<String, dynamic>,
     );
 
-    final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
-      ..files.add(file);
+    final presignedUri = Uri.parse(decoded.url);
+    print('Uploading to: ${presignedUri.host}:${presignedUri.port}');
 
-    final uploadResponse = await _httpClient.send(uploadRequest);
+    // 2) Upload the file to presigned URL using dart:io HttpClient (most robust on Windows)
+    await _uploadToPresignedPutUrl(
+      url: presignedUri,
+      file: artifactFile,
+      contentType: 'application/octet-stream',
+      timeout: const Duration(minutes: 5),
+    );
 
-    if (!uploadResponse.isSuccess) {
-      throw CodePushException(
-        message:
-            '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
-      );
-    }
+    // Optional: If your API requires a "finalize" step after upload, do it here.
   }
 
   /// Create a new app with the provided [displayName].
@@ -565,6 +603,63 @@ class CodePushClient {
       throw exceptionBuilder(message: unknownErrorMessage);
     }
     return exceptionBuilder(message: error.message, details: error.details);
+  }
+
+  Future<void> _uploadToPresignedPutUrl({
+    required Uri url,
+    required File file,
+    required String contentType,
+    required Duration timeout,
+  }) async {
+    final len = await file.length();
+
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 20)
+      ..idleTimeout = const Duration(seconds: 20)
+      // Avoid some Windows/keep-alive edge cases; harmless for S3/MinIO PUT.
+      ..autoUncompress = false;
+
+    HttpClientRequest req;
+    try {
+      req = await client.putUrl(url).timeout(timeout);
+    } on Object catch (e) {
+      client.close(force: true);
+      throw CodePushException(message: 'Failed to open PUT connection: $e');
+    }
+
+    // These headers are safe and commonly expected.
+    req.headers.set(HttpHeaders.contentLengthHeader, len);
+    req.headers.set(HttpHeaders.contentTypeHeader, contentType);
+    req.headers.set(HttpHeaders.connectionHeader, 'close');
+
+    try {
+      await req.addStream(file.openRead()).timeout(timeout);
+      final resp = await req.close().timeout(timeout);
+
+      // Consume body (MinIO may return XML on errors)
+      final respBody = await resp.transform(utf8.decoder).join();
+
+      if (resp.statusCode != 200 && resp.statusCode != 204) {
+        throw CodePushException(
+          message:
+              'Failed to upload artifact: '
+              '${resp.statusCode} ${resp.reasonPhrase}. Body: $respBody',
+        );
+      }
+    } on CodePushException {
+      rethrow;
+    } on Object catch (e) {
+      // Commonly surfaces as SocketException errno=10053 on Windows when the
+      // connection is aborted mid-write; include URL host/port for debugging.
+      throw CodePushException(
+        message:
+            'Upload failed with exception: $e '
+            '(url=${url.host}:${url.port}${url.path}, size=$len)',
+      );
+    } finally {
+      // Ensure sockets are released promptly.
+      client.close(force: true);
+    }
   }
 }
 

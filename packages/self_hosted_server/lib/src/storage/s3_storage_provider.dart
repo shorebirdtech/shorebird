@@ -11,21 +11,34 @@ class S3StorageProvider implements StorageProvider {
   /// Creates a new [S3StorageProvider].
   S3StorageProvider({
     required String endpoint,
+    required this.publicEndpoint,
     required int port,
     required String accessKey,
     required String secretKey,
     this.useSSL = true,
     this.region = 'us-east-1',
   }) : _minio = Minio(
-          endPoint: endpoint,
-          port: port,
-          accessKey: accessKey,
-          secretKey: secretKey,
-          useSSL: useSSL,
-          region: region,
-        );
+         endPoint: endpoint,
+         port: port,
+         accessKey: accessKey,
+         secretKey: secretKey,
+         useSSL: useSSL,
+         region: region,
+       ),
+       _signingMinio = Minio(
+         endPoint: publicEndpoint,
+         port: port,
+         accessKey: accessKey,
+         secretKey: secretKey,
+         useSSL: useSSL,
+         region: region,
+       );
 
   final Minio _minio;
+  final Minio _signingMinio;
+
+  /// The public endpoint to use for signed URLs.
+  final String publicEndpoint;
 
   /// Whether to use SSL for connections.
   final bool useSSL;
@@ -61,7 +74,11 @@ class S3StorageProvider implements StorageProvider {
     required String path,
     Duration expiry = const Duration(hours: 1),
   }) async {
-    return _minio.presignedPutObject(bucket, path, expires: expiry.inSeconds);
+    return _signingMinio.presignedPutObject(
+      bucket,
+      path,
+      expires: expiry.inSeconds,
+    );
   }
 
   @override
@@ -70,14 +87,18 @@ class S3StorageProvider implements StorageProvider {
     required String path,
     Duration expiry = const Duration(hours: 1),
   }) async {
-    return _minio.presignedGetObject(bucket, path, expires: expiry.inSeconds);
+    return _signingMinio.presignedGetObject(
+      bucket,
+      path,
+      expires: expiry.inSeconds,
+    );
   }
 
   /// Get the public URL for an object.
   String getPublicUrl(String bucket, String path) {
     final protocol = useSSL ? 'https' : 'http';
     final port = _minio.port;
-    return '$protocol://${_minio.endPoint}:$port/$bucket/$path';
+    return '$protocol://$publicEndpoint:$port/$bucket/$path';
   }
 
   @override
