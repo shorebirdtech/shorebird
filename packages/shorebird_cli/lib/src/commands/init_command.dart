@@ -125,9 +125,16 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     if (shouldStartGradleDaemon) {
       try {
         await gradlew.startDaemon(projectRoot.path);
-      } on Exception {
-        logger.err('Unable to start gradle daemon.');
-        return ExitCode.software.code;
+      } on MissingAndroidProjectException {
+        // No Android project, continue without gradle daemon.
+        logger.detail('[gradlew] No Android project found, skipping daemon');
+      } on MissingGradleWrapperException {
+        // No gradle wrapper, continue without gradle daemon.
+        logger.detail('[gradlew] No gradle wrapper found, skipping daemon');
+      } on Exception catch (e) {
+        // Log the error but don't fail init - gradle daemon is optional.
+        logger.detail('[gradlew] Unable to start daemon: $e');
+        logger.warn('Unable to start gradle daemon. Continuing without it.');
       }
     }
 
@@ -321,6 +328,11 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
       // If gradle wrapper is missing, we can't start the daemon.
       // This is not a fatal error for non-Android projects.
       return false;
+    } on Exception catch (e) {
+      // If we can't determine daemon status (e.g., gradle --status fails),
+      // we still try to start the daemon.
+      logger.detail('[gradlew] isDaemonAvailable failed: $e');
+      return true;
     }
   }
 
@@ -332,6 +344,11 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     } on MissingGradleWrapperException {
       // If gradle wrapper is missing, we can't detect flavors.
       // This is not a fatal error for non-Android projects.
+      return null;
+    } on Exception catch (e) {
+      // If gradle fails for any reason, log it and return null.
+      // This allows init to continue for iOS-only projects.
+      logger.detail('[gradlew] productFlavors failed: $e');
       return null;
     }
   }

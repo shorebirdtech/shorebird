@@ -264,23 +264,30 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       verifyNever(() => gradlew.startDaemon(any()));
     });
 
-    test('throws when unable to initialize gradle wrapper', () async {
+    test('continues when unable to initialize gradle wrapper', () async {
       when(() => gradlew.isDaemonAvailable(any())).thenThrow(Exception('oops'));
+      when(() => gradlew.startDaemon(any())).thenAnswer((_) async {});
       final exitCode = await runWithOverrides(command.run);
-      expect(exitCode, ExitCode.software.code);
-      verifyNever(() => gradlew.startDaemon(any()));
-      verify(() => logger.err('Unable to initialize gradlew.')).called(1);
+      // Should succeed since gradle errors are no longer fatal
+      expect(exitCode, ExitCode.success.code);
+      verify(() => gradlew.startDaemon(any())).called(1);
+      verify(
+        () => logger.detail(any(that: contains('isDaemonAvailable failed'))),
+      ).called(1);
     });
 
-    test('starts gradle daemon if needed and throws on error', () async {
+    test('warns when unable to start gradle daemon but continues', () async {
       when(
         () => gradlew.isDaemonAvailable(any()),
       ).thenAnswer((_) async => false);
       when(() => gradlew.startDaemon(any())).thenThrow(Exception('oops'));
       final exitCode = await runWithOverrides(command.run);
-      expect(exitCode, ExitCode.software.code);
+      // Should succeed since gradle errors are no longer fatal
+      expect(exitCode, ExitCode.success.code);
       verify(() => gradlew.startDaemon(projectRoot.path)).called(1);
-      verify(() => logger.err('Unable to start gradle daemon.')).called(1);
+      verify(
+        () => logger.warn('Unable to start gradle daemon. Continuing without it.'),
+      ).called(1);
     });
 
     test('starts gradle daemon if needed and streams logs', () async {
@@ -294,18 +301,17 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       verify(() => gradlew.isDaemonAvailable(projectRoot.path)).called(1);
     });
 
-    test('fails when an error occurs while extracting flavors', () async {
+    test('continues when an error occurs while extracting android flavors', () async {
       final exception = Exception('oops');
       when(() => gradlew.productFlavors(any())).thenThrow(exception);
       final exitCode = await runWithOverrides(command.run);
       verify(() => logger.progress('Detecting product flavors')).called(1);
+      // Should log to detail but not fail
       verify(
-        () => logger.err(
-          any(that: contains('Unable to extract product flavors.')),
-        ),
+        () => logger.detail(any(that: contains('productFlavors failed'))),
       ).called(1);
-      verify(() => progress.fail()).called(1);
-      expect(exitCode, ExitCode.software.code);
+      // Should succeed since gradle errors are no longer fatal
+      expect(exitCode, ExitCode.success.code);
     });
 
     test('throws software error when error occurs creating app.', () async {
