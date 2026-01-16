@@ -2,6 +2,17 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'shorebird_yaml.g.dart';
 
+/// The patch verification mode for the app.
+@JsonEnum(fieldRename: FieldRename.snake)
+enum PatchVerification {
+  /// Verify the patch signature and hash before installing and loading.
+  strict,
+
+  /// Verify the patch signature and hash before installing, but not when
+  /// loading from cache.
+  installOnly,
+}
+
 /// {@template shorebird_yaml}
 /// A Shorebird configuration file which contains metadata about the app.
 /// {@endtemplate}
@@ -13,6 +24,7 @@ class ShorebirdYaml {
     this.flavors,
     this.baseUrl,
     this.autoUpdate,
+    this.patchVerification,
   });
 
   /// Creates a [ShorebirdYaml] from a JSON map.
@@ -46,6 +58,9 @@ class ShorebirdYaml {
 
   /// Whether or not to automatically update the app.
   final bool? autoUpdate;
+
+  /// The patch verification mode for the app.
+  final PatchVerification? patchVerification;
 }
 
 /// Extension on [ShorebirdYaml] to get the app id for a specific flavor.
