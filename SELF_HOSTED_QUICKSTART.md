@@ -6,6 +6,10 @@
 ```bash
 # Required: Your self-hosted API server URL
 export SHOREBIRD_HOSTED_URL="https://your-api-server.com"
+
+# Required for self-hosted: JWT token from your server's login endpoint
+# Note: Use SHOREBIRD_API_TOKEN (not SHOREBIRD_TOKEN) for self-hosted deployments
+export SHOREBIRD_API_TOKEN="your-jwt-token-from-login"
 ```
 
 ### Artifact Proxy Configuration
@@ -66,13 +70,21 @@ base_url: https://your-api-server.com
 # 1. Set up environment
 export SHOREBIRD_HOSTED_URL="https://your-api-server.com"
 
-# 2. Initialize project
+# 2. Get authentication token from your server
+TOKEN=$(curl -s -X POST https://your-api-server.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@localhost", "password": "admin123"}' | jq -r '.token')
+
+# 3. Set the API token (use SHOREBIRD_API_TOKEN for self-hosted)
+export SHOREBIRD_API_TOKEN="$TOKEN"
+
+# 4. Initialize project
 shorebird init
 
-# 3. Create release
+# 5. Create release
 shorebird release android
 
-# 4. Push update
+# 6. Push update
 shorebird patch android
 ```
 

@@ -102,15 +102,23 @@ export SHOREBIRD_HOSTED_URL=http://localhost:8080
 ### 3. Use Shorebird CLI
 
 ```bash
-# Initialize app (requires auth token)
-SHOREBIRD_TOKEN=your-jwt-token shorebird init
+# Set the API token (JWT from login response)
+export SHOREBIRD_API_TOKEN=your-jwt-token
+
+# Set the host URL
+export SHOREBIRD_HOSTED_URL=http://localhost:8080
+
+# Initialize app
+shorebird init
 
 # Create release
-SHOREBIRD_TOKEN=your-jwt-token shorebird release android
+shorebird release android
 
 # Push patch
-SHOREBIRD_TOKEN=your-jwt-token shorebird patch android
+shorebird patch android
 ```
+
+**Note:** Use `SHOREBIRD_API_TOKEN` (not `SHOREBIRD_TOKEN`) for self-hosted deployments. This bypasses OAuth and uses your JWT directly.
 
 ## API Endpoints
 

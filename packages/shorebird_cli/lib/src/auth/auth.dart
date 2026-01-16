@@ -40,6 +40,10 @@ const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
 /// The environment variable that holds the Shorebird CI token.
 const shorebirdTokenEnvVar = 'SHOREBIRD_TOKEN';
 
+/// The environment variable that holds a direct API token (JWT).
+/// This is used for self-hosted deployments that don't use OAuth.
+const shorebirdApiTokenEnvVar = 'SHOREBIRD_API_TOKEN';
+
 /// Callback for obtaining access credentials.
 typedef ObtainAccessCredentials =
     Future<oauth2.AccessCredentials> Function(
@@ -176,6 +180,27 @@ class AuthenticatedClient extends http.BaseClient {
   }
 }
 
+/// A client that uses a direct API token (JWT) for authentication.
+/// This is used for self-hosted deployments that don't use OAuth.
+class DirectTokenClient extends http.BaseClient {
+  /// Creates a new [DirectTokenClient] with the given [httpClient] and
+  /// [apiToken].
+  DirectTokenClient({
+    required http.Client httpClient,
+    required String apiToken,
+  }) : _baseClient = httpClient,
+       _apiToken = apiToken;
+
+  final http.Client _baseClient;
+  final String _apiToken;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    request.headers['Authorization'] = 'Bearer $_apiToken';
+    return _baseClient.send(request);
+  }
+}
+
 /// An OAuth 2.0 authentication provider.
 class Auth {
   /// Creates a new [Auth] instance.
@@ -202,6 +227,9 @@ class Auth {
   final CodePushClientBuilder _buildCodePushClient;
   CiToken? _token;
 
+  /// A direct API token (JWT) for self-hosted deployments.
+  String? _apiToken;
+
   /// The path to the credentials file.
   String get credentialsFilePath {
     return p.join(_credentialsDir, 'credentials.json');
@@ -209,6 +237,14 @@ class Auth {
 
   /// The underlying HTTP client.
   http.Client get client {
+    // Check for direct API token first (self-hosted mode)
+    if (_apiToken != null) {
+      return DirectTokenClient(
+        apiToken: _apiToken!,
+        httpClient: _httpClient,
+      );
+    }
+
     if (_credentials == null && _token == null) {
       return _httpClient;
     }
@@ -309,9 +345,19 @@ class Auth {
   String? get email => _email;
 
   /// Whether the user is authenticated.
-  bool get isAuthenticated => _email != null || _token != null;
+  bool get isAuthenticated =>
+      _email != null || _token != null || _apiToken != null;
 
   void _loadCredentials() {
+    // Check for direct API token first (for self-hosted deployments)
+    final apiToken = platform.environment[shorebirdApiTokenEnvVar];
+    if (apiToken != null) {
+      logger.detail('[env] $shorebirdApiTokenEnvVar detected');
+      _apiToken = apiToken.trim();
+      logger.detail('[env] $shorebirdApiTokenEnvVar loaded (self-hosted mode)');
+      return;
+    }
+
     final envToken = platform.environment[shorebirdTokenEnvVar];
     if (envToken != null) {
       logger.detail('[env] $shorebirdTokenEnvVar detected');
@@ -323,7 +369,9 @@ class Auth {
           ..err('''
 Failed to parse CI token from environment. This likely means that your CI token is incorrectly formatted.
 
-Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar environment variable, and try again.''')
+Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar environment variable, and try again.
+
+For self-hosted deployments, use $shorebirdApiTokenEnvVar with a raw JWT token instead.''')
           ..detail(e.toString());
         rethrow;
       }

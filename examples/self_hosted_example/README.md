@@ -38,10 +38,12 @@ Set environment variables and run shorebird init:
 
 ```bash
 export SHOREBIRD_HOSTED_URL=http://localhost:8080
-export SHOREBIRD_TOKEN=<your-token-from-step-2>
+export SHOREBIRD_API_TOKEN=<your-token-from-step-2>
 
 shorebird init
 ```
+
+**Important:** Use `SHOREBIRD_API_TOKEN` (not `SHOREBIRD_TOKEN`) for self-hosted deployments. This bypasses OAuth authentication and uses your JWT token directly.
 
 Or manually create `shorebird.yaml`:
 
@@ -55,7 +57,7 @@ base_url: http://localhost:8080
 
 ```bash
 export SHOREBIRD_HOSTED_URL=http://localhost:8080
-export SHOREBIRD_TOKEN=<your-token>
+export SHOREBIRD_API_TOKEN=<your-token>
 
 shorebird release android
 ```
@@ -66,7 +68,7 @@ Make changes to your app, then:
 
 ```bash
 export SHOREBIRD_HOSTED_URL=http://localhost:8080
-export SHOREBIRD_TOKEN=<your-token>
+export SHOREBIRD_API_TOKEN=<your-token>
 
 shorebird patch android
 ```
