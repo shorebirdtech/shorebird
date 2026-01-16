@@ -27,9 +27,7 @@ Future<Response> onRequest(
   return switch (context.request.method) {
     HttpMethod.get => _getArtifacts(context, appId, releaseIdInt),
     HttpMethod.post => _createArtifact(context, appId, releaseIdInt),
-    _ => Future.value(
-        Response(statusCode: HttpStatus.methodNotAllowed),
-      ),
+    _ => Future.value(Response(statusCode: HttpStatus.methodNotAllowed)),
   };
 }
 
@@ -52,35 +50,39 @@ Future<Response> _getArtifacts(
     artifactRows = artifactRows.where((a) => a['arch'] == archFilter).toList();
   }
   if (platformFilter != null) {
-    artifactRows = artifactRows.where((a) => a['platform'] == platformFilter).toList();
+    artifactRows = artifactRows
+        .where((a) => a['platform'] == platformFilter)
+        .toList();
   }
 
-  final artifacts = await Future.wait(artifactRows.map((row) async {
-    String url = row['url'] as String;
-    // Regenerate URL if storage_path is present (fresh download URL)
-    if (row['storage_path'] != null) {
-      try {
-        url = await storageProvider.getSignedDownloadUrl(
-          bucket: config.s3BucketReleases,
-          path: row['storage_path'] as String,
-        );
-      } catch (_) {
-        // Fallback to stored URL if signing fails
+  final artifacts = await Future.wait(
+    artifactRows.map((row) async {
+      String url = row['url'] as String;
+      // Regenerate URL if storage_path is present (fresh download URL)
+      if (row['storage_path'] != null) {
+        try {
+          url = await storageProvider.getSignedDownloadUrl(
+            bucket: config.s3BucketReleases,
+            path: row['storage_path'] as String,
+          );
+        } catch (_) {
+          // Fallback to stored URL if signing fails
+        }
       }
-    }
 
-    return ReleaseArtifact(
-      id: row['id'] as int,
-      releaseId: row['release_id'] as int,
-      arch: row['arch'] as String,
-      platform: _parsePlatform(row['platform'] as String),
-      hash: row['hash'] as String,
-      size: row['size'] as int,
-      url: url,
-      podfileLockHash: row['podfile_lock_hash'] as String?,
-      canSideload: row['can_sideload'] == 1 || row['can_sideload'] == true,
-    );
-  }));
+      return ReleaseArtifact(
+        id: row['id'] as int,
+        releaseId: row['release_id'] as int,
+        arch: row['arch'] as String,
+        platform: _parsePlatform(row['platform'] as String),
+        hash: row['hash'] as String,
+        size: row['size'] as int,
+        url: url,
+        podfileLockHash: row['podfile_lock_hash'] as String?,
+        canSideload: row['can_sideload'] == 1 || row['can_sideload'] == true,
+      );
+    }),
+  );
 
   return Response.json(
     body: GetReleaseArtifactsResponse(artifacts: artifacts).toJson(),
@@ -94,7 +96,7 @@ Future<Response> _createArtifact(
 ) async {
   // Handle multipart form data for file upload
   final formData = await context.request.formData();
-  
+
   final arch = formData.fields['arch'];
   final platform = formData.fields['platform'];
   final hash = formData.fields['hash'];
@@ -112,7 +114,7 @@ Future<Response> _createArtifact(
 
   // Generate upload URL using storage provider
   final storagePath = 'releases/$appId/$releaseId/$arch/$filename';
-  
+
   String uploadUrl;
   try {
     uploadUrl = await storageProvider.getSignedUploadUrl(
@@ -122,7 +124,8 @@ Future<Response> _createArtifact(
   } catch (e) {
     // If S3 is not available, construct URL manually
     final protocol = config.s3UseSSL ? 'https' : 'http';
-    uploadUrl = '$protocol://${config.s3Endpoint}:${config.s3Port}/'
+    uploadUrl =
+        '$protocol://${config.s3Endpoint}:${config.s3Port}/'
         '${config.s3BucketReleases}/$storagePath';
   }
 
