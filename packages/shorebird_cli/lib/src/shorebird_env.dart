@@ -228,9 +228,26 @@ class ShorebirdEnv {
     return module?['androidPackage'] as String?;
   }
 
-  /// The base URL for the Shorebird code push server that overrides the default
-  /// used by [CodePushClient]. If none is provided, [CodePushClient] will use
-  /// its default.
+  /// The base URL for the Shorebird CodePush API server.
+  ///
+  /// This URL is used by the CLI to communicate with the Shorebird API.
+  /// For self-hosted deployments, this should point to your own server.
+  ///
+  /// Configuration priority (highest to lowest):
+  /// 1. `SHOREBIRD_HOSTED_URL` environment variable
+  /// 2. `base_url` field in `shorebird.yaml`
+  /// 3. Default: `https://api.shorebird.dev`
+  ///
+  /// Example environment variable usage:
+  /// ```bash
+  /// export SHOREBIRD_HOSTED_URL="https://your-codepush-server.com"
+  /// ```
+  ///
+  /// Example shorebird.yaml configuration:
+  /// ```yaml
+  /// app_id: your-app-id
+  /// base_url: https://your-codepush-server.com
+  /// ```
   Uri? get hostedUri {
     try {
       final baseUrl =

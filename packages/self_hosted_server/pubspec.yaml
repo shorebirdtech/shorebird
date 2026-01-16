@@ -1,0 +1,21 @@
+name: self_hosted_server
+description: A self-hosted Shorebird CodePush API server built with dart_frog
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  dart_frog: ^1.0.0
+  shorebird_code_push_protocol:
+    path: ../shorebird_code_push_protocol
+  minio: ^3.5.0
+  uuid: ^4.0.0
+  crypto: ^3.0.0
+  dotenv: ^4.2.0
+  
+dev_dependencies:
+  mocktail: ^1.0.0
+  test: ^1.24.0
+  very_good_analysis: ^5.0.0

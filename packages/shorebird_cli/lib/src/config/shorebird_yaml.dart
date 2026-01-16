@@ -4,6 +4,23 @@ part 'shorebird_yaml.g.dart';
 
 /// {@template shorebird_yaml}
 /// A Shorebird configuration file which contains metadata about the app.
+///
+/// Example `shorebird.yaml`:
+/// ```yaml
+/// # Basic configuration
+/// app_id: 8d3155a8-a048-4820-acca-824d26c29b71
+///
+/// # For self-hosted deployments, specify your API server URL:
+/// # base_url: https://your-codepush-server.com
+///
+/// # Disable automatic updates (requires package:shorebird_code_push):
+/// # auto_update: false
+///
+/// # Multiple flavors configuration:
+/// # flavors:
+/// #   development: dev-app-id
+/// #   production: prod-app-id
+/// ```
 /// {@endtemplate}
 @JsonSerializable(anyMap: true, disallowUnrecognizedKeys: true)
 class ShorebirdYaml {
@@ -41,10 +58,26 @@ class ShorebirdYaml {
   /// ```
   final Map<String, String>? flavors;
 
-  /// The base url used to check for updates.
+  /// The base URL of the Shorebird CodePush API server.
+  ///
+  /// For self-hosted deployments, set this to your server's URL.
+  /// If not specified, defaults to `https://api.shorebird.dev`.
+  ///
+  /// Can also be set via the `SHOREBIRD_HOSTED_URL` environment variable,
+  /// which takes precedence over this configuration.
+  ///
+  /// Example:
+  /// ```yaml
+  /// base_url: https://your-codepush-server.com
+  /// ```
   final String? baseUrl;
 
   /// Whether or not to automatically update the app.
+  ///
+  /// When set to `false`, you must use `package:shorebird_code_push` to
+  /// manually trigger updates in your app.
+  ///
+  /// Defaults to `true` if not specified.
   final bool? autoUpdate;
 }
 

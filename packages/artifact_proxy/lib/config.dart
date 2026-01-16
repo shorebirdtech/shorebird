@@ -131,3 +131,65 @@ final flutterArtifactPatterns = {
   r'flutter_infra_release\/flutter\/fonts\/(.*)\/fonts\.zip',
   r'flutter_infra_release\/cipd\/flutter\/web\/canvaskit_bundle\/\+\/(.*)',
 };
+
+// =============================================================================
+// Self-Hosted Configuration
+// =============================================================================
+
+import 'dart:io';
+
+/// Configuration for self-hosted artifact proxy.
+///
+/// These settings can be customized via environment variables to point to
+/// your own storage infrastructure instead of Google Cloud Storage.
+///
+/// Environment variables:
+/// - `ARTIFACT_MANIFEST_BASE_URL`: Base URL for artifact manifest files
+/// - `FLUTTER_STORAGE_BASE_URL`: Base URL for standard Flutter artifacts
+/// - `SHOREBIRD_STORAGE_BASE_URL`: Base URL for Shorebird-specific artifacts
+class ArtifactProxyConfig {
+  /// Creates a new [ArtifactProxyConfig] with the specified URLs.
+  const ArtifactProxyConfig({
+    this.manifestBaseUrl = 'https://storage.googleapis.com/download.shorebird.dev',
+    this.flutterStorageBaseUrl = 'https://storage.googleapis.com',
+    this.shorebirdStorageBaseUrl = 'https://storage.googleapis.com',
+  });
+
+  /// Creates a new [ArtifactProxyConfig] from environment variables.
+  ///
+  /// If environment variables are not set, defaults to Google Cloud Storage URLs.
+  factory ArtifactProxyConfig.fromEnvironment() {
+    return ArtifactProxyConfig(
+      manifestBaseUrl: Platform.environment['ARTIFACT_MANIFEST_BASE_URL'] ??
+          'https://storage.googleapis.com/download.shorebird.dev',
+      flutterStorageBaseUrl:
+          Platform.environment['FLUTTER_STORAGE_BASE_URL'] ??
+              'https://storage.googleapis.com',
+      shorebirdStorageBaseUrl:
+          Platform.environment['SHOREBIRD_STORAGE_BASE_URL'] ??
+              'https://storage.googleapis.com',
+    );
+  }
+
+  /// Base URL for fetching artifact manifest files.
+  ///
+  /// The manifest files describe which artifacts should be overridden
+  /// with Shorebird-specific versions.
+  final String manifestBaseUrl;
+
+  /// Base URL for standard Flutter artifacts.
+  ///
+  /// These are the original Flutter SDK artifacts that don't require
+  /// Shorebird modifications.
+  final String flutterStorageBaseUrl;
+
+  /// Base URL for Shorebird-specific artifacts.
+  ///
+  /// These artifacts have been modified to support code push functionality.
+  final String shorebirdStorageBaseUrl;
+
+  /// Gets the full manifest URL for a specific engine revision.
+  String getManifestUrl(String revision) {
+    return '$manifestBaseUrl/shorebird/$revision/artifacts_manifest.yaml';
+  }
+}

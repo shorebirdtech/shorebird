@@ -36,8 +36,20 @@ replicating this proxy, please reach out to us over Discord.
 </html>
 """;
 
+/// Default configuration for the artifact proxy.
+/// Override by calling [artifactProxyHandler] with a custom config.
+final _defaultConfig = ArtifactProxyConfig.fromEnvironment();
+
 /// A [Handler] that proxies artifact requests to the correct location.
-Handler artifactProxyHandler({required ArtifactManifestClient client}) {
+///
+/// The [config] parameter allows customization of storage URLs for self-hosted
+/// deployments. If not provided, configuration is loaded from environment
+/// variables.
+Handler artifactProxyHandler({
+  required ArtifactManifestClient client,
+  ArtifactProxyConfig? config,
+}) {
+  final effectiveConfig = config ?? _defaultConfig;
   return (Request request) async {
     final path = request.url.path;
     if (path.isEmpty) {
@@ -81,6 +93,7 @@ Handler artifactProxyHandler({required ArtifactManifestClient client}) {
           artifactPath: normalizedPath,
           engine: shorebirdEngineRevision,
           bucket: manifest.storageBucket,
+          config: effectiveConfig,
         );
         print('Shorebird engine artifact detected, forwarding to: $location');
         return Response.found(location);
@@ -89,6 +102,7 @@ Handler artifactProxyHandler({required ArtifactManifestClient client}) {
       final location = getFlutterArtifactLocation(
         artifactPath: normalizedPath,
         engine: manifest.flutterEngineRevision,
+        config: effectiveConfig,
       );
       print('Flutter artifact detected, forwarding to: $location');
       return Response.found(location);
@@ -102,7 +116,10 @@ Handler artifactProxyHandler({required ArtifactManifestClient client}) {
       return Response.notFound('Unrecognized artifact path: $path');
     }
 
-    final location = getFlutterArtifactLocation(artifactPath: path);
+    final location = getFlutterArtifactLocation(
+      artifactPath: path,
+      config: effectiveConfig,
+    );
     print('Flutter artifact detected, forwarding to: $location');
     return Response.found(location);
   };
@@ -110,24 +127,34 @@ Handler artifactProxyHandler({required ArtifactManifestClient client}) {
 
 /// Returns the location of the artifact at [artifactPath] using the
 /// specified [engine] revision for original Flutter artifacts.
+///
+/// The [config] parameter allows customization of the storage URL for
+/// self-hosted deployments.
 String getFlutterArtifactLocation({
   required String artifactPath,
   String? engine,
+  ArtifactProxyConfig? config,
 }) {
+  final effectiveConfig = config ?? _defaultConfig;
   final adjustedPath = engine != null
       ? artifactPath.replaceAll(r'$engine', engine)
       : artifactPath;
 
-  return 'https://storage.googleapis.com/$adjustedPath';
+  return '${effectiveConfig.flutterStorageBaseUrl}/$adjustedPath';
 }
 
 /// Returns the location of the artifact at [artifactPath] using the
 /// specified [engine] revision for Shorebird artifacts.
+///
+/// The [config] parameter allows customization of the storage URL for
+/// self-hosted deployments.
 String getShorebirdArtifactLocation({
   required String artifactPath,
   required String engine,
   required String bucket,
+  ArtifactProxyConfig? config,
 }) {
+  final effectiveConfig = config ?? _defaultConfig;
   final adjustedPath = artifactPath.replaceAll(r'$engine', engine);
-  return 'https://storage.googleapis.com/$bucket/$adjustedPath';
+  return '${effectiveConfig.shorebirdStorageBaseUrl}/$bucket/$adjustedPath';
 }

@@ -84,9 +84,27 @@ class _CodePushHttpClient extends http.BaseClient {
 
 /// {@template code_push_client}
 /// Dart client for the Shorebird CodePush API.
+///
+/// For self-hosted deployments, provide a custom [hostedUri] pointing to your
+/// API server:
+///
+/// ```dart
+/// final client = CodePushClient(
+///   hostedUri: Uri.parse('https://your-codepush-server.com'),
+/// );
+/// ```
+///
+/// The default API endpoint is `https://api.shorebird.dev`.
 /// {@endtemplate}
 class CodePushClient {
   /// {@macro code_push_client}
+  ///
+  /// Parameters:
+  /// - [httpClient]: Optional HTTP client for making requests.
+  /// - [hostedUri]: The URL of the CodePush API server. Defaults to
+  ///   `https://api.shorebird.dev`. For self-hosted deployments, provide
+  ///   your own server URL.
+  /// - [customHeaders]: Additional headers to include in all requests.
   CodePushClient({
     http.Client? httpClient,
     Uri? hostedUri,
@@ -100,12 +118,17 @@ class CodePushClient {
   /// The standard headers applied to all requests.
   static const standardHeaders = <String, String>{'x-version': packageVersion};
 
+  /// The default API URL for the Shorebird CodePush service.
+  static final defaultHostedUri = Uri.https('api.shorebird.dev');
+
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';
 
   final http.Client _httpClient;
 
-  /// The hosted uri for the Shorebird CodePush API.
+  /// The hosted URI for the Shorebird CodePush API.
+  ///
+  /// For self-hosted deployments, this will be your custom server URL.
   final Uri hostedUri;
 
   Uri get _v1 => Uri.parse('$hostedUri/api/v1');
