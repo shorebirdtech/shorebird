@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # CodePush API Server
+  api:
+    build:
+      context: ../..
+      dockerfile: packages/self_hosted_server/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - HOST=0.0.0.0
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - S3_ENDPOINT=minio
+      - S3_PORT=9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - S3_USE_SSL=false
+      - S3_REGION=us-east-1
+      - S3_BUCKET_RELEASES=shorebird-releases
+      - S3_BUCKET_PATCHES=shorebird-patches
+      - ADMIN_EMAIL=admin@localhost
+      - ADMIN_PASSWORD=admin123
+    volumes:
+      - api_data:/app/data
+    depends_on:
+      minio-setup:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # MinIO S3-compatible storage
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+
+  # MinIO bucket setup
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb local/shorebird-releases --ignore-existing;
+      mc mb local/shorebird-patches --ignore-existing;
+      mc anonymous set download local/shorebird-releases;
+      mc anonymous set download local/shorebird-patches;
+      echo 'Buckets created successfully';
+      "
+
+volumes:
+  api_data:
+  minio_data:

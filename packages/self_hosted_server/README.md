@@ -1,14 +1,44 @@
-# Self-Hosted Shorebird Server
+# Self-Hosted Shorebird CodePush Server
 
 A self-hosted Shorebird CodePush API server built with [dart_frog](https://dartfrog.vgv.dev/).
 
 ## Features
 
-- Full API compatibility with Shorebird CLI
-- S3-compatible storage support (MinIO, AWS S3, etc.)
-- Simple deployment and configuration
+- ✅ Full API compatibility with Shorebird CLI
+- ✅ S3-compatible storage support (MinIO, AWS S3, etc.)
+- ✅ JWT-based authentication
+- ✅ JSON file database (production-ready PostgreSQL coming soon)
+- ✅ Docker Compose setup for easy deployment
 
-## Quick Start
+## Quick Start with Docker
+
+### 1. Clone and Navigate
+
+```bash
+cd packages/self_hosted_server
+```
+
+### 2. Start Services
+
+```bash
+docker-compose up -d
+```
+
+This starts:
+- **API Server** on port 8080
+- **MinIO** (S3-compatible storage) on ports 9000 (API) and 9001 (Console)
+
+### 3. Default Credentials
+
+**API Server:**
+- Email: `admin@localhost`
+- Password: `admin123`
+
+**MinIO Console** (http://localhost:9001):
+- Username: `minioadmin`
+- Password: `minioadmin`
+
+## Development Setup
 
 ### 1. Install dart_frog CLI
 
@@ -16,58 +46,84 @@ A self-hosted Shorebird CodePush API server built with [dart_frog](https://dartf
 dart pub global activate dart_frog_cli
 ```
 
-### 2. Configure Environment
+### 2. Start MinIO (for storage)
 
-Copy the example environment file and configure it:
+```bash
+docker run -p 9000:9000 -p 9001:9001 \
+  -e MINIO_ROOT_USER=minioadmin \
+  -e MINIO_ROOT_PASSWORD=minioadmin \
+  minio/minio server /data --console-address ":9001"
+```
+
+### 3. Configure Environment
 
 ```bash
 cp .env.example .env
+# Edit .env with your settings
 ```
 
-Edit `.env` with your settings:
+### 4. Run the Server
 
-```env
-# Server Configuration
-PORT=8080
-HOST=0.0.0.0
-
-# Database (implement your own adapter)
-DATABASE_URL=postgresql://localhost:5432/shorebird
-
-# S3 Storage Configuration
-S3_ENDPOINT=localhost
-S3_PORT=9000
-S3_ACCESS_KEY=your_access_key
-S3_SECRET_KEY=your_secret_key
-S3_USE_SSL=false
-S3_REGION=us-east-1
-S3_BUCKET_RELEASES=shorebird-releases
-S3_BUCKET_PATCHES=shorebird-patches
-
-# JWT Secret for authentication
-JWT_SECRET=your-secret-key-here
-```
-
-### 3. Start the Server
-
-Development mode:
 ```bash
 dart_frog dev
 ```
 
-Production build:
+## Using with Shorebird CLI
+
+### 1. Get Authentication Token
+
 ```bash
-dart_frog build
-dart build/bin/server.dart
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@localhost", "password": "admin123"}'
+```
+
+Response:
+```json
+{
+  "token": "your-jwt-token",
+  "user": {"id": 1, "email": "admin@localhost", "display_name": "Admin"}
+}
+```
+
+### 2. Configure Your Flutter Project
+
+Add to `shorebird.yaml`:
+```yaml
+app_id: your-app-id
+base_url: http://localhost:8080
+```
+
+Or set environment variable:
+```bash
+export SHOREBIRD_HOSTED_URL=http://localhost:8080
+```
+
+### 3. Use Shorebird CLI
+
+```bash
+# Initialize app (requires auth token)
+SHOREBIRD_TOKEN=your-jwt-token shorebird init
+
+# Create release
+SHOREBIRD_TOKEN=your-jwt-token shorebird release android
+
+# Push patch
+SHOREBIRD_TOKEN=your-jwt-token shorebird patch android
 ```
 
 ## API Endpoints
 
-The server implements the Shorebird CodePush API:
+### Authentication
+- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/login` - Login and get JWT token
 
 ### Users
 - `GET /api/v1/users/me` - Get current user
-- `POST /api/v1/users` - Create user
+- `POST /api/v1/users` - Update user
+
+### Organizations
+- `GET /api/v1/organizations` - List organizations
 
 ### Apps
 - `GET /api/v1/apps` - List apps
@@ -85,71 +141,73 @@ The server implements the Shorebird CodePush API:
 
 ### Artifacts
 - `GET /api/v1/apps/:appId/releases/:releaseId/artifacts` - List artifacts
-- `POST /api/v1/apps/:appId/releases/:releaseId/artifacts` - Create artifact
+- `POST /api/v1/apps/:appId/releases/:releaseId/artifacts` - Upload artifact
 
 ### Patches
 - `GET /api/v1/apps/:appId/releases/:releaseId/patches` - List patches
 - `POST /api/v1/apps/:appId/patches` - Create patch
-- `POST /api/v1/apps/:appId/patches/:patchId/artifacts` - Create patch artifact
-- `POST /api/v1/apps/:appId/patches/promote` - Promote patch
+- `POST /api/v1/apps/:appId/patches/:patchId/artifacts` - Upload patch artifact
+- `POST /api/v1/apps/:appId/patches/promote` - Promote patch to channel
 
-### Organizations
-- `GET /api/v1/organizations` - List organizations
+## Environment Variables
 
-## Storage
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | `8080` | Server port |
+| `HOST` | No | `0.0.0.0` | Server host |
+| `JWT_SECRET` | **Yes** | - | Secret for JWT tokens |
+| `S3_ENDPOINT` | **Yes** | - | S3 endpoint hostname |
+| `S3_PORT` | No | `9000` | S3 port |
+| `S3_ACCESS_KEY` | **Yes** | - | S3 access key |
+| `S3_SECRET_KEY` | **Yes** | - | S3 secret key |
+| `S3_USE_SSL` | No | `false` | Use SSL for S3 |
+| `S3_REGION` | No | `us-east-1` | S3 region |
+| `S3_BUCKET_RELEASES` | No | `shorebird-releases` | Bucket for releases |
+| `S3_BUCKET_PATCHES` | No | `shorebird-patches` | Bucket for patches |
+| `ADMIN_EMAIL` | No | `admin@localhost` | Default admin email |
+| `ADMIN_PASSWORD` | No | `admin123` | Default admin password |
 
-The server uses S3-compatible storage for artifacts. You can use:
+## Production Deployment
 
-- **MinIO** (recommended for self-hosting)
-- **AWS S3**
-- **DigitalOcean Spaces**
-- **Any S3-compatible provider**
-
-### Setting up MinIO
-
-```bash
-docker run -p 9000:9000 -p 9001:9001 \
-  -e MINIO_ROOT_USER=admin \
-  -e MINIO_ROOT_PASSWORD=password \
-  minio/minio server /data --console-address ":9001"
-```
-
-## Docker Deployment
-
-Build the Docker image:
+### 1. Generate Secure Secrets
 
 ```bash
-docker build -t shorebird-server .
+# Generate JWT secret
+openssl rand -hex 32
 ```
 
-Run with Docker Compose:
+### 2. Update docker-compose.yml
 
 ```yaml
-version: '3.8'
-services:
-  api:
-    image: shorebird-server
-    ports:
-      - "8080:8080"
-    environment:
-      - S3_ENDPOINT=minio
-      - S3_PORT=9000
-      - S3_ACCESS_KEY=admin
-      - S3_SECRET_KEY=password
-    depends_on:
-      - minio
-      
-  minio:
-    image: minio/minio
-    command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      - MINIO_ROOT_USER=admin
-      - MINIO_ROOT_PASSWORD=password
+environment:
+  - JWT_SECRET=<your-generated-secret>
+  - ADMIN_PASSWORD=<strong-password>
+  - S3_ACCESS_KEY=<s3-access-key>
+  - S3_SECRET_KEY=<s3-secret-key>
 ```
+
+### 3. Use External S3 (Optional)
+
+For AWS S3:
+```yaml
+environment:
+  - S3_ENDPOINT=s3.amazonaws.com
+  - S3_PORT=443
+  - S3_USE_SSL=true
+  - S3_REGION=us-east-1
+  - S3_ACCESS_KEY=<aws-access-key>
+  - S3_SECRET_KEY=<aws-secret-key>
+```
+
+### 4. Add Reverse Proxy (Recommended)
+
+Use nginx or Caddy for HTTPS termination.
+
+## Data Storage
+
+- **Database**: JSON file stored in `data/database.json`
+- **Artifacts**: Stored in S3-compatible storage
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License

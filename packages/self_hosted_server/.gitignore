@@ -1,0 +1,23 @@
+# Dart/Flutter
+.dart_tool/
+.packages
+build/
+pubspec.lock
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Environment
+.env
+
+# Server data
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# dart_frog
+.dart_frog/

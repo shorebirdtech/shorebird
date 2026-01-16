@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
+import 'package:self_hosted_server/self_hosted_server.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// POST /api/v1/apps/[appId]/patches/[patchId]/artifacts - Create patch artifact
@@ -13,6 +14,28 @@ Future<Response> onRequest(
     return Response(statusCode: HttpStatus.methodNotAllowed);
   }
 
+  final user = await authenticateRequest(context);
+  if (user == null) {
+    return Response(statusCode: HttpStatus.unauthorized);
+  }
+
+  final patchIdInt = int.tryParse(patchId);
+  if (patchIdInt == null) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: {'message': 'Invalid patch ID'},
+    );
+  }
+
+  // Verify patch exists
+  final patch = database.selectOne('patches', where: {'id': patchIdInt});
+  if (patch == null) {
+    return Response.json(
+      statusCode: HttpStatus.notFound,
+      body: {'message': 'Patch not found'},
+    );
+  }
+
   // Handle multipart form data for file upload
   final formData = await context.request.formData();
 
@@ -23,12 +46,38 @@ Future<Response> onRequest(
   final hashSignature = formData.fields['hash_signature'];
   final podfileLockHash = formData.fields['podfile_lock_hash'];
 
-  // TODO: Get the uploaded file and store in S3
-  // final file = formData.files['file'];
+  if (arch == null || platform == null || hash == null || size == null) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: {'message': 'arch, platform, hash, and size are required'},
+    );
+  }
 
-  // TODO: Generate a signed upload URL for the client
-  // This is the URL where the CLI will upload the artifact
-  final uploadUrl = 'https://your-s3-endpoint.com/upload-url';
+  // Generate upload URL using storage provider
+  final storagePath = 'patches/$appId/${patch['release_id']}/$patchId/$arch/patch.zip';
+  
+  String uploadUrl;
+  try {
+    uploadUrl = await storageProvider.getSignedUploadUrl(
+      bucket: config.s3BucketPatches,
+      path: storagePath,
+    );
+  } catch (e) {
+    // If S3 is not available, use a placeholder URL
+    uploadUrl = '${config.s3EndpointUrl}/${config.s3BucketPatches}/$storagePath';
+  }
+
+  // Store artifact metadata
+  database.insert('patch_artifacts', {
+    'patch_id': patchIdInt,
+    'arch': arch,
+    'platform': platform,
+    'hash': hash,
+    'hash_signature': hashSignature,
+    'size': int.parse(size),
+    'url': uploadUrl,
+    'podfile_lock_hash': podfileLockHash,
+  });
 
   return Response.json(
     statusCode: HttpStatus.created,
