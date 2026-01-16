@@ -113,9 +113,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       shouldStartGradleDaemon = await _shouldStartGradleDaemon(
         projectRoot.path,
       );
-    } on Exception {
+    } on Exception catch (e, stackTrace) {
       initializeGradleProgress.fail();
       logger.err('Unable to initialize gradlew.');
+      logger.detail('Error: $e');
+      logger.detail('Stack trace:\n$stackTrace');
       return ExitCode.software.code;
     }
     initializeGradleProgress.complete();
@@ -315,6 +317,10 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
       return !isAvailable;
     } on MissingAndroidProjectException {
       return false;
+    } on MissingGradleWrapperException {
+      // If gradle wrapper is missing, we can't start the daemon.
+      // This is not a fatal error for non-Android projects.
+      return false;
     }
   }
 
@@ -322,6 +328,10 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     try {
       return await gradlew.productFlavors(projectPath);
     } on MissingAndroidProjectException {
+      return null;
+    } on MissingGradleWrapperException {
+      // If gradle wrapper is missing, we can't detect flavors.
+      // This is not a fatal error for non-Android projects.
       return null;
     }
   }
