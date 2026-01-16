@@ -19,9 +19,9 @@ Handler middleware(Handler handler) {
         print('Warning: Failed to load config from environment: $e');
         // ignore: avoid_print
         print('Using development defaults...');
-        
+
         // Use development defaults
-        final devConfig = ServerConfig(
+        const devConfig = ServerConfig(
           port: 8080,
           host: '0.0.0.0',
           s3Endpoint: 'localhost',
@@ -40,10 +40,7 @@ Handler middleware(Handler handler) {
 
     // Handle CORS preflight
     if (context.request.method == HttpMethod.options) {
-      return Response(
-        statusCode: HttpStatus.ok,
-        headers: _corsHeaders,
-      );
+      return Response(headers: _corsHeaders);
     }
 
     // Process request and add CORS headers
@@ -60,5 +57,6 @@ Handler middleware(Handler handler) {
 const _corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Version, X-Cli-Version',
+  'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, X-Version, X-Cli-Version',
 };

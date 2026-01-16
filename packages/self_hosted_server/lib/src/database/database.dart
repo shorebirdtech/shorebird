@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 
 /// Simple in-memory database with optional file persistence.
-/// Perfect for development and testing. For production, replace with PostgreSQL.
+/// Perfect for development and testing.
+/// For production, replace with PostgreSQL.
 class Database {
   Database._();
 
   static Database? _instance;
+
+  /// Get the singleton instance of the database.
   static Database get instance => _instance ??= Database._();
 
   final Map<String, List<Map<String, dynamic>>> _tables = {};
@@ -46,7 +49,8 @@ class Database {
     final file = File(_persistPath!);
     if (file.existsSync()) {
       try {
-        final data = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+        final content = file.readAsStringSync();
+        final data = jsonDecode(content) as Map<String, dynamic>;
         for (final entry in data.entries) {
           if (entry.key == '_autoIncrements') {
             final autoInc = entry.value as Map<String, dynamic>;
@@ -129,7 +133,7 @@ class Database {
       }).toList();
     }
 
-    return rows.map((row) => Map<String, dynamic>.from(row)).toList();
+    return rows.map(Map<String, dynamic>.from).toList();
   }
 
   /// Select a single row from a table.

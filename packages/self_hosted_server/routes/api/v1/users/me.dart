@@ -18,9 +18,8 @@ Future<Response> onRequest(RequestContext context) async {
   final privateUser = PrivateUser(
     id: user['id'] as int,
     email: user['email'] as String,
-    displayName: user['display_name'] as String,
-    createdAt: DateTime.parse(user['created_at'] as String),
-    updatedAt: DateTime.parse(user['updated_at'] as String),
+    jwtIssuer: 'self-hosted',
+    displayName: user['display_name'] as String?,
   );
 
   return Response.json(body: privateUser.toJson());

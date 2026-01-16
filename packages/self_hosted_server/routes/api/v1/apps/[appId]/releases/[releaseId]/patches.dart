@@ -27,8 +27,11 @@ Future<Response> onRequest(
     );
   }
 
-  final patchRows = database.select('patches', where: {'release_id': releaseIdInt});
-  
+  final patchRows = database.select(
+    'patches',
+    where: {'release_id': releaseIdInt},
+  );
+
   final patches = <ReleasePatch>[];
   for (final row in patchRows) {
     // Get channels this patch is promoted to
@@ -36,16 +39,15 @@ Future<Response> onRequest(
       'channel_patches',
       where: {'patch_id': row['id']},
     );
-    
-    final channels = <Channel>[];
-    for (final cp in channelPatches) {
-      final channel = database.selectOne('channels', where: {'id': cp['channel_id']});
+
+    String? channelName;
+    if (channelPatches.isNotEmpty) {
+      final channel = database.selectOne(
+        'channels',
+        where: {'id': channelPatches.first['channel_id']},
+      );
       if (channel != null) {
-        channels.add(Channel(
-          id: channel['id'] as int,
-          appId: channel['app_id'] as String,
-          name: channel['name'] as String,
-        ));
+        channelName = channel['name'] as String;
       }
     }
 
@@ -55,22 +57,27 @@ Future<Response> onRequest(
       where: {'patch_id': row['id']},
     );
 
-    final artifacts = artifactRows.map((a) => PatchArtifact(
-      id: a['id'] as int,
-      patchId: a['patch_id'] as int,
-      arch: a['arch'] as String,
-      platform: _parsePlatform(a['platform'] as String),
-      hash: a['hash'] as String,
-      hashSignature: a['hash_signature'] as String?,
-      size: a['size'] as int,
-    )).toList();
+    final artifacts = artifactRows.map((a) {
+      final createdAtStr = a['created_at'] as String?;
+      return PatchArtifact(
+        id: a['id'] as int,
+        patchId: a['patch_id'] as int,
+        arch: a['arch'] as String,
+        platform: _parsePlatform(a['platform'] as String),
+        hash: a['hash'] as String,
+        size: a['size'] as int,
+        createdAt: createdAtStr != null
+            ? DateTime.parse(createdAtStr)
+            : DateTime.now(),
+      );
+    }).toList();
 
     patches.add(ReleasePatch(
       id: row['id'] as int,
       number: row['number'] as int,
-      channels: channels,
+      channel: channelName,
       artifacts: artifacts,
-      createdAt: DateTime.parse(row['created_at'] as String),
+      isRolledBack: false,
     ));
   }
 

@@ -8,8 +8,14 @@ import 'package:self_hosted_server/src/storage/s3_storage_provider.dart';
 
 /// Global instances (initialized on server start).
 late final Database database;
+
+/// Authentication service instance.
 late final AuthService authService;
+
+/// S3 storage provider instance.
 late final S3StorageProvider storageProvider;
+
+/// Server configuration.
 late final ServerConfig config;
 
 bool _initialized = false;
@@ -49,8 +55,10 @@ void initializeServices(ServerConfig cfg) {
 
   // Create default admin user if no users exist
   if (database.count('users') == 0) {
-    final adminEmail = Platform.environment['ADMIN_EMAIL'] ?? 'admin@localhost';
-    final adminPassword = Platform.environment['ADMIN_PASSWORD'] ?? 'admin123';
+    final adminEmail =
+        Platform.environment['ADMIN_EMAIL'] ?? 'admin@localhost';
+    final adminPassword =
+        Platform.environment['ADMIN_PASSWORD'] ?? 'admin123';
     authService.register(
       email: adminEmail,
       password: adminPassword,
@@ -71,16 +79,18 @@ Map<String, dynamic>? getCurrentUser(RequestContext context) {
 }
 
 /// Authenticate a request and return the user.
-Future<Map<String, dynamic>?> authenticateRequest(RequestContext context) async {
+Future<Map<String, dynamic>?> authenticateRequest(
+  RequestContext context,
+) async {
   final authHeader = context.request.headers['Authorization'];
   if (authHeader == null) return null;
-  
+
   if (authHeader.startsWith('Bearer ')) {
     final token = authHeader.substring(7);
     final userId = authService.verifyToken(token);
     if (userId == null) return null;
     return authService.getUserById(userId);
   }
-  
+
   return null;
 }

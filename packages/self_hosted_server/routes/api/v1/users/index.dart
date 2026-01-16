@@ -21,7 +21,10 @@ Future<Response> onRequest(RequestContext context) async {
 
   // For the Shorebird CLI, this is typically called after OAuth
   // In self-hosted, we create the user if they don't exist
-  final existingUser = database.selectOne('users', where: {'id': currentUser['id']});
+  final existingUser = database.selectOne(
+    'users',
+    where: {'id': currentUser['id']},
+  );
   if (existingUser == null) {
     return Response.json(
       statusCode: HttpStatus.notFound,
@@ -38,14 +41,16 @@ Future<Response> onRequest(RequestContext context) async {
     );
   }
 
-  final updatedUser = database.selectOne('users', where: {'id': currentUser['id']});
+  final updatedUser = database.selectOne(
+    'users',
+    where: {'id': currentUser['id']},
+  );
 
   final user = PrivateUser(
     id: updatedUser!['id'] as int,
     email: updatedUser['email'] as String,
-    displayName: updatedUser['display_name'] as String,
-    createdAt: DateTime.parse(updatedUser['created_at'] as String),
-    updatedAt: DateTime.parse(updatedUser['updated_at'] as String),
+    jwtIssuer: 'self-hosted',
+    displayName: updatedUser['display_name'] as String?,
   );
 
   return Response.json(

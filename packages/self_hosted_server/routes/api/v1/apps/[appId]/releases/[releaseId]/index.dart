@@ -43,23 +43,31 @@ Future<Response> onRequest(
   final body = await context.request.json() as Map<String, dynamic>;
   final request = UpdateReleaseRequest.fromJson(body);
 
+  // Check if platform and status are provided
+  if (request.platform == null || request.status == null) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: {'message': 'platform and status are required'},
+    );
+  }
+
   // Update or create platform status
   final existingStatus = database.selectOne(
     'release_platform_statuses',
-    where: {'release_id': releaseIdInt, 'platform': request.platform.name},
+    where: {'release_id': releaseIdInt, 'platform': request.platform!.name},
   );
 
   if (existingStatus != null) {
     database.update(
       'release_platform_statuses',
-      data: {'status': request.status.name},
+      data: {'status': request.status!.name},
       where: {'id': existingStatus['id']},
     );
   } else {
     database.insert('release_platform_statuses', {
       'release_id': releaseIdInt,
-      'platform': request.platform.name,
-      'status': request.status.name,
+      'platform': request.platform!.name,
+      'status': request.status!.name,
     });
   }
 

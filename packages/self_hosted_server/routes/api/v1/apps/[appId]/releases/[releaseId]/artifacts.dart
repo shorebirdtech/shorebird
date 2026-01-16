@@ -107,7 +107,8 @@ Future<Response> _createArtifact(
   } catch (e) {
     // If S3 is not available, construct URL manually
     final protocol = config.s3UseSSL ? 'https' : 'http';
-    uploadUrl = '$protocol://${config.s3Endpoint}:${config.s3Port}/${config.s3BucketReleases}/$storagePath';
+    uploadUrl = '$protocol://${config.s3Endpoint}:${config.s3Port}/'
+        '${config.s3BucketReleases}/$storagePath';
   }
 
   // Parse size safely
@@ -119,8 +120,8 @@ Future<Response> _createArtifact(
     );
   }
 
-  // Store artifact metadata
-  database.insert('release_artifacts', {
+  // Store artifact metadata and get the ID
+  final artifactId = database.insert('release_artifacts', {
     'release_id': releaseId,
     'arch': arch,
     'platform': platform,
@@ -133,7 +134,15 @@ Future<Response> _createArtifact(
 
   return Response.json(
     statusCode: HttpStatus.created,
-    body: CreateReleaseArtifactResponse(url: uploadUrl).toJson(),
+    body: CreateReleaseArtifactResponse(
+      id: artifactId,
+      releaseId: releaseId,
+      arch: arch,
+      platform: _parsePlatform(platform),
+      hash: hash,
+      size: sizeInt,
+      url: uploadUrl,
+    ).toJson(),
   );
 }
 

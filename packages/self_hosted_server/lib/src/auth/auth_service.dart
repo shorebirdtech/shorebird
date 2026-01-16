@@ -68,7 +68,7 @@ class AuthService {
 
     // Create default organization for user
     final orgId = db.insert('organizations', {
-      'name': '$displayName\'s Organization',
+      'name': "$displayName's Organization",
     });
 
     // Add user to organization as owner

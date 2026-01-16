@@ -33,6 +33,7 @@ Future<Response> onRequest(RequestContext context) async {
           organization: Organization(
             id: org['id'] as int,
             name: org['name'] as String,
+            organizationType: OrganizationType.personal,
             createdAt: DateTime.parse(org['created_at'] as String),
             updatedAt: DateTime.parse(org['updated_at'] as String),
           ),
@@ -47,13 +48,13 @@ Future<Response> onRequest(RequestContext context) async {
   );
 }
 
-OrganizationRole _parseRole(String role) {
+Role _parseRole(String role) {
   switch (role) {
     case 'owner':
-      return OrganizationRole.owner;
+      return Role.owner;
     case 'admin':
-      return OrganizationRole.admin;
+      return Role.admin;
     default:
-      return OrganizationRole.member;
+      return Role.developer;
   }
 }
