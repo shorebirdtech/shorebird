@@ -13,7 +13,7 @@ services:
       - HOST=0.0.0.0
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - S3_ENDPOINT=minio
-      - S3_PUBLIC_ENDPOINT=localhost
+      - S3_PUBLIC_ENDPOINT=127.0.0.1
       - S3_PORT=9000
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
@@ -39,6 +39,7 @@ services:
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_SERVER_URL=http://127.0.0.1:9000
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"

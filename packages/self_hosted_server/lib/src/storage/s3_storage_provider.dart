@@ -85,7 +85,7 @@ class S3StorageProvider implements StorageProvider {
   Future<String> getSignedDownloadUrl({
     required String bucket,
     required String path,
-    Duration expiry = const Duration(hours: 1),
+    Duration expiry = const Duration(hours: 7),
   }) async {
     return _signingMinio.presignedGetObject(
       bucket,

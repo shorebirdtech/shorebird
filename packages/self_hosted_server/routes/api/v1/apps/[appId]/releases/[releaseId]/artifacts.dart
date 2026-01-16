@@ -55,17 +55,32 @@ Future<Response> _getArtifacts(
     artifactRows = artifactRows.where((a) => a['platform'] == platformFilter).toList();
   }
 
-  final artifacts = artifactRows.map((row) => ReleaseArtifact(
-    id: row['id'] as int,
-    releaseId: row['release_id'] as int,
-    arch: row['arch'] as String,
-    platform: _parsePlatform(row['platform'] as String),
-    hash: row['hash'] as String,
-    size: row['size'] as int,
-    url: row['url'] as String,
-    podfileLockHash: row['podfile_lock_hash'] as String?,
-    canSideload: row['can_sideload'] == 1 || row['can_sideload'] == true,
-  )).toList();
+  final artifacts = await Future.wait(artifactRows.map((row) async {
+    String url = row['url'] as String;
+    // Regenerate URL if storage_path is present (fresh download URL)
+    if (row['storage_path'] != null) {
+      try {
+        url = await storageProvider.getSignedDownloadUrl(
+          bucket: config.s3BucketReleases,
+          path: row['storage_path'] as String,
+        );
+      } catch (_) {
+        // Fallback to stored URL if signing fails
+      }
+    }
+
+    return ReleaseArtifact(
+      id: row['id'] as int,
+      releaseId: row['release_id'] as int,
+      arch: row['arch'] as String,
+      platform: _parsePlatform(row['platform'] as String),
+      hash: row['hash'] as String,
+      size: row['size'] as int,
+      url: url,
+      podfileLockHash: row['podfile_lock_hash'] as String?,
+      canSideload: row['can_sideload'] == 1 || row['can_sideload'] == true,
+    );
+  }));
 
   return Response.json(
     body: GetReleaseArtifactsResponse(artifacts: artifacts).toJson(),
@@ -128,6 +143,7 @@ Future<Response> _createArtifact(
     'hash': hash,
     'size': sizeInt,
     'url': uploadUrl,
+    'storage_path': storagePath,
     'can_sideload': canSideload == 'true' ? 1 : 0,
     'podfile_lock_hash': podfileLockHash,
   });

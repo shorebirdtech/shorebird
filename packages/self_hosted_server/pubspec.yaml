@@ -11,7 +11,7 @@ dependencies:
   dart_frog: ^1.0.0
   dart_jsonwebtoken: ^2.12.0
   dotenv: ^4.2.0
-  minio: ^3.5.0
+  minio: ^3.5.8
   shorebird_code_push_protocol:
     path: ../shorebird_code_push_protocol
   uuid: ^4.0.0
