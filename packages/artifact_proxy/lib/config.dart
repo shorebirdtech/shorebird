@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// These are the URL patterns for all known artifact paths that Flutter
 /// downloads. If there is a Shorebird-specific override for an artifact, it
 /// will be downloaded from the shorebird servers. Otherwise, the standard
@@ -136,8 +138,6 @@ final flutterArtifactPatterns = {
 // Self-Hosted Configuration
 // =============================================================================
 
-import 'dart:io';
-
 /// Configuration for self-hosted artifact proxy.
 ///
 /// These settings can be customized via environment variables to point to
@@ -150,7 +150,8 @@ import 'dart:io';
 class ArtifactProxyConfig {
   /// Creates a new [ArtifactProxyConfig] with the specified URLs.
   const ArtifactProxyConfig({
-    this.manifestBaseUrl = 'https://storage.googleapis.com/download.shorebird.dev',
+    this.manifestBaseUrl =
+        'https://storage.googleapis.com/download.shorebird.dev',
     this.flutterStorageBaseUrl = 'https://storage.googleapis.com',
     this.shorebirdStorageBaseUrl = 'https://storage.googleapis.com',
   });
@@ -160,14 +161,15 @@ class ArtifactProxyConfig {
   /// If environment variables are not set, defaults to Google Cloud Storage URLs.
   factory ArtifactProxyConfig.fromEnvironment() {
     return ArtifactProxyConfig(
-      manifestBaseUrl: Platform.environment['ARTIFACT_MANIFEST_BASE_URL'] ??
+      manifestBaseUrl:
+          Platform.environment['ARTIFACT_MANIFEST_BASE_URL'] ??
           'https://storage.googleapis.com/download.shorebird.dev',
       flutterStorageBaseUrl:
           Platform.environment['FLUTTER_STORAGE_BASE_URL'] ??
-              'https://storage.googleapis.com',
+          'https://storage.googleapis.com',
       shorebirdStorageBaseUrl:
           Platform.environment['SHOREBIRD_STORAGE_BASE_URL'] ??
-              'https://storage.googleapis.com',
+          'https://storage.googleapis.com',
     );
   }
 

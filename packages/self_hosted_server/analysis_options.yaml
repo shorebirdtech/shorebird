@@ -1,3 +1,7 @@
+analyzer:
+  errors:
+    file_names: ignore
+    prefer_constructors_over_static_methods: ignore
 include: package:very_good_analysis/analysis_options.yaml
 
 linter:

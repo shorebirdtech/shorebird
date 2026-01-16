@@ -214,10 +214,9 @@ class Database {
   int getNextPatchNumber(int releaseId) {
     final patches = select('patches', where: {'release_id': releaseId});
     if (patches.isEmpty) return 1;
-    
-    final maxNumber = patches
-        .map((p) => p['number'] as int)
-        .reduce((a, b) => a > b ? a : b);
+
+    final maxNumber =
+        patches.map((p) => p['number'] as int).reduce((a, b) => a > b ? a : b);
     return maxNumber + 1;
   }
 
@@ -232,4 +231,3 @@ class Database {
     _saveToFile();
   }
 }
-

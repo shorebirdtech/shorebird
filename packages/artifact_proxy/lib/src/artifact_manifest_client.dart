@@ -10,7 +10,7 @@ import 'package:quiver/collection.dart';
 /// A client that fetches [ArtifactsManifest]s from the shorebird storage bucket
 /// and caches them in memory.
 ///
-/// For self-hosted deployments, provide a custom [config] to point to your
+/// For self-hosted deployments, provide a custom config to point to your
 /// own storage infrastructure.
 /// {@endtemplate}
 class ArtifactManifestClient {
