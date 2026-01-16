@@ -27,6 +27,9 @@ COPY --from=build /app/packages/self_hosted_server/build /app
 # Create data directory
 RUN mkdir -p /app/data
 
+RUN dart pub get
+RUN dart pub global activate dart_frog_cli
+
 # Set environment variables
 ENV PORT=8080
 ENV HOST=0.0.0.0
