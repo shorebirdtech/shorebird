@@ -122,7 +122,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
           // action in the IDE, or press "p" in the console), to see the
           // wireframe for each widget.
-          mainAxisAlignment: .center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text('You have pushed the button this many times:'),
             Text(
@@ -165,6 +165,7 @@ class _CustomState extends State<Custom> {
     // Get the current patch number and print it to the console.
     // It will be `null` if no patches are installed.
     updater.readCurrentPatch().then((currentPatch) {
+      // ignore: avoid_print
       print('The current patch number is: ${currentPatch?.number}');
     });
   }
@@ -197,8 +198,8 @@ class _CustomState extends State<Custom> {
       appBar: AppBar(title: Text(widget.title)),
       body: Center(
         child: ElevatedButton(
-          child: Text('Check for update'),
           onPressed: _checkForUpdates,
+          child: Text('Check for update'),
         ),
       ),
       // [Other code here]

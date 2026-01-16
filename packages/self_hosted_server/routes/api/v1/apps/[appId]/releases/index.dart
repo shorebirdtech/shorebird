@@ -24,9 +24,7 @@ Future<Response> onRequest(RequestContext context, String appId) async {
   return switch (context.request.method) {
     HttpMethod.get => _getReleases(context, appId),
     HttpMethod.post => _createRelease(context, appId),
-    _ => Future.value(
-        Response(statusCode: HttpStatus.methodNotAllowed),
-      ),
+    _ => Future.value(Response(statusCode: HttpStatus.methodNotAllowed)),
   };
 }
 
@@ -62,22 +60,22 @@ Future<Response> _getReleases(RequestContext context, String appId) async {
       if (!hasSideloadable) continue;
     }
 
-    releases.add(Release(
-      id: row['id'] as int,
-      appId: row['app_id'] as String,
-      version: row['version'] as String,
-      flutterRevision: row['flutter_revision'] as String,
-      flutterVersion: row['flutter_version'] as String?,
-      displayName: row['display_name'] as String?,
-      platformStatuses: platformStatuses,
-      createdAt: DateTime.parse(row['created_at'] as String),
-      updatedAt: DateTime.parse(row['updated_at'] as String),
-    ));
+    releases.add(
+      Release(
+        id: row['id'] as int,
+        appId: row['app_id'] as String,
+        version: row['version'] as String,
+        flutterRevision: row['flutter_revision'] as String,
+        flutterVersion: row['flutter_version'] as String?,
+        displayName: row['display_name'] as String?,
+        platformStatuses: platformStatuses,
+        createdAt: DateTime.parse(row['created_at'] as String),
+        updatedAt: DateTime.parse(row['updated_at'] as String),
+      ),
+    );
   }
 
-  return Response.json(
-    body: GetReleasesResponse(releases: releases).toJson(),
-  );
+  return Response.json(body: GetReleasesResponse(releases: releases).toJson());
 }
 
 Future<Response> _createRelease(RequestContext context, String appId) async {
@@ -123,7 +121,7 @@ Future<Response> _createRelease(RequestContext context, String appId) async {
     flutterRevision: flutterRevision,
     flutterVersion: flutterVersion,
     displayName: displayName ?? 'Version $version',
-    platformStatuses: {},
+    platformStatuses: const {},
     createdAt: DateTime.now(),
     updatedAt: DateTime.now(),
   );

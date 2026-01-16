@@ -158,7 +158,7 @@ class ArtifactProxyConfig {
 
   /// Creates a new [ArtifactProxyConfig] from environment variables.
   ///
-  /// If environment variables are not set, defaults to Google Cloud Storage URLs.
+  /// If environment variables are not set, defaults to Google Cloud Storage URL
   factory ArtifactProxyConfig.fromEnvironment() {
     return ArtifactProxyConfig(
       manifestBaseUrl:

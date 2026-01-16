@@ -113,11 +113,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       shouldStartGradleDaemon = await _shouldStartGradleDaemon(
         projectRoot.path,
       );
-    } on Exception catch (e, stackTrace) {
+    } on Exception catch (_) {
       initializeGradleProgress.fail();
-      logger.err('Unable to initialize gradlew.');
-      logger.detail('Error: $e');
-      logger.detail('Stack trace:\n$stackTrace');
+
       return ExitCode.software.code;
     }
     initializeGradleProgress.complete();

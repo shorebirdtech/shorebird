@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print, use_if_null_to_convert_nulls_to_bools, lines_longer_than_80_chars
+
 import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
@@ -15,9 +17,8 @@ Handler middleware(Handler handler) {
         final cfg = ServerConfig.fromEnvironment();
         initializeServices(cfg);
       } catch (e) {
-        // ignore: avoid_print
         print('Warning: Failed to load config from environment: $e');
-        // ignore: avoid_print
+
         print('Using development defaults...');
 
         // Use development defaults
@@ -45,12 +46,11 @@ Handler middleware(Handler handler) {
     }
 
     // Log request
-    // ignore: avoid_print
+
     print('--- Request ---');
-    // ignore: avoid_print
+
     print('${context.request.method.value} ${context.request.uri}');
     if (context.request.uri.queryParameters.isNotEmpty) {
-      // ignore: avoid_print
       print('Query: ${context.request.uri.queryParameters}');
     }
 
@@ -62,25 +62,21 @@ Handler middleware(Handler handler) {
       try {
         final body = await context.request.body();
         if (body.isNotEmpty) {
-          // ignore: avoid_print
           print('Request Body: $body');
         }
       } catch (e) {
-        // ignore: avoid_print
         print('Could not read request body: $e');
       }
     }
 
-    // ignore: avoid_print
     print('----------------');
 
     try {
       // Process request and add CORS headers
       final response = await handler(context);
 
-      // ignore: avoid_print
       print('--- Response ---');
-      // ignore: avoid_print
+
       print('Status: ${response.statusCode}');
 
       // We need to read the body to log it, but reading it consumes the stream.
@@ -101,7 +97,6 @@ Handler middleware(Handler handler) {
               true;
 
       if (isBinary) {
-        // ignore: avoid_print
         print('Response Body: [Binary Data Omitted]');
         print('----------------');
         // Start a new response that copies everything but adds CORS
@@ -116,15 +111,12 @@ Handler middleware(Handler handler) {
       String? responseBody;
       try {
         responseBody = await response.body();
-        if (responseBody != null) {
-          // ignore: avoid_print
-          print('Response Body: $responseBody');
-        }
+
+        print('Response Body: $responseBody');
       } catch (_) {
         // If we fail to read string body, just proceed
       }
 
-      // ignore: avoid_print
       print('----------------');
 
       return Response(
@@ -133,7 +125,6 @@ Handler middleware(Handler handler) {
         headers: {...response.headers, ..._corsHeaders},
       );
     } catch (e, st) {
-      // ignore: avoid_print
       print('Error processing request: $e\n$st');
       rethrow;
     }

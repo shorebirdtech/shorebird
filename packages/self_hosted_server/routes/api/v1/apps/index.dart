@@ -18,9 +18,7 @@ Future<Response> onRequest(RequestContext context) async {
   return switch (context.request.method) {
     HttpMethod.get => _getApps(context, user),
     HttpMethod.post => _createApp(context, user),
-    _ => Future.value(
-        Response(statusCode: HttpStatus.methodNotAllowed),
-      ),
+    _ => Future.value(Response(statusCode: HttpStatus.methodNotAllowed)),
   };
 }
 
@@ -45,10 +43,12 @@ Future<Response> _getApps(
   final apps = <AppMetadata>[];
   for (final app in userApps) {
     // Get latest release for this app
-    final releases = database.select('releases', where: {'app_id': app['id']});
-    releases.sort((a, b) =>
-        DateTime.parse(b['created_at'] as String)
-            .compareTo(DateTime.parse(a['created_at'] as String)));
+    final releases = database.select('releases', where: {'app_id': app['id']})
+      ..sort(
+        (a, b) => DateTime.parse(
+          b['created_at'] as String,
+        ).compareTo(DateTime.parse(a['created_at'] as String)),
+      );
 
     String? latestVersion;
     int? latestPatchNumber;
@@ -60,7 +60,9 @@ Future<Response> _getApps(
         where: {'release_id': releases.first['id']},
       );
       if (patches.isNotEmpty) {
-        patches.sort((a, b) => (b['number'] as int).compareTo(a['number'] as int));
+        patches.sort(
+          (a, b) => (b['number'] as int).compareTo(a['number'] as int),
+        );
         latestPatchNumber = patches.first['number'] as int;
       }
     }
@@ -77,9 +79,7 @@ Future<Response> _getApps(
     );
   }
 
-  return Response.json(
-    body: GetAppsResponse(apps: apps).toJson(),
-  );
+  return Response.json(body: GetAppsResponse(apps: apps).toJson());
 }
 
 Future<Response> _createApp(
@@ -92,10 +92,7 @@ Future<Response> _createApp(
   // Verify user has access to the organization
   final membership = database.selectOne(
     'organization_members',
-    where: {
-      'user_id': user['id'],
-      'organization_id': request.organizationId,
-    },
+    where: {'user_id': user['id'], 'organization_id': request.organizationId},
   );
 
   if (membership == null) {
@@ -115,13 +112,7 @@ Future<Response> _createApp(
     'display_name': request.displayName,
   });
 
-  final app = App(
-    id: appId,
-    displayName: request.displayName,
-  );
+  final app = App(id: appId, displayName: request.displayName);
 
-  return Response.json(
-    statusCode: HttpStatus.created,
-    body: app.toJson(),
-  );
+  return Response.json(statusCode: HttpStatus.created, body: app.toJson());
 }

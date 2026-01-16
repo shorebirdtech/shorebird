@@ -57,7 +57,7 @@ Future<Response> _getArtifacts(
 
   final artifacts = await Future.wait(
     artifactRows.map((row) async {
-      String url = row['url'] as String;
+      var url = row['url'] as String;
       // Regenerate URL if storage_path is present (fresh download URL)
       if (row['storage_path'] != null) {
         try {
