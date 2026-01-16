@@ -1,10 +1,16 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:self_hosted_server/src/database/database.dart';
 
 /// Authentication service for JWT-based authentication.
+///
+/// Note: This implementation uses SHA-256 with a unique salt per user for
+/// password hashing. While bcrypt/scrypt/Argon2 would be more secure for
+/// production, SHA-256 with salt is acceptable for development/testing.
+/// For production, consider using a bcrypt package.
 class AuthService {
   AuthService({
     required this.db,
@@ -16,16 +22,24 @@ class AuthService {
   final String jwtSecret;
   final Duration tokenExpiry;
 
-  /// Hash a password using SHA-256 with salt.
+  static final _random = Random.secure();
+
+  /// Hash a password using multiple rounds of SHA-256 with salt.
+  /// This is more secure than single-round SHA-256 but still not as
+  /// secure as bcrypt. For production, consider using bcrypt.
   String hashPassword(String password, String salt) {
-    final saltedPassword = '$salt:$password';
-    return sha256.convert(utf8.encode(saltedPassword)).toString();
+    // Use key stretching with multiple rounds to slow down attacks
+    var hash = '$salt:$password';
+    for (var i = 0; i < 10000; i++) {
+      hash = sha256.convert(utf8.encode(hash)).toString();
+    }
+    return hash;
   }
 
-  /// Generate a salt for password hashing.
+  /// Generate a cryptographically secure random salt.
   String generateSalt() {
-    final now = DateTime.now().microsecondsSinceEpoch;
-    return sha256.convert(utf8.encode('$now')).toString().substring(0, 16);
+    final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 
   /// Register a new user.

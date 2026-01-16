@@ -63,8 +63,18 @@ Future<Response> onRequest(
       path: storagePath,
     );
   } catch (e) {
-    // If S3 is not available, use a placeholder URL
-    uploadUrl = '${config.s3EndpointUrl}/${config.s3BucketPatches}/$storagePath';
+    // If S3 is not available, construct URL manually
+    final protocol = config.s3UseSSL ? 'https' : 'http';
+    uploadUrl = '$protocol://${config.s3Endpoint}:${config.s3Port}/${config.s3BucketPatches}/$storagePath';
+  }
+
+  // Parse size safely
+  final sizeInt = int.tryParse(size);
+  if (sizeInt == null) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: {'message': 'Invalid size value'},
+    );
   }
 
   // Store artifact metadata
@@ -74,7 +84,7 @@ Future<Response> onRequest(
     'platform': platform,
     'hash': hash,
     'hash_signature': hashSignature,
-    'size': int.parse(size),
+    'size': sizeInt,
     'url': uploadUrl,
     'podfile_lock_hash': podfileLockHash,
   });
