@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
+import 'package:uuid/uuid.dart';
+
+const _uuid = Uuid();
 
 /// GET /api/v1/apps - List apps
 /// POST /api/v1/apps - Create app
@@ -38,8 +41,8 @@ Future<Response> _createApp(RequestContext context) async {
   final request = CreateAppRequest.fromJson(body);
 
   // TODO: Implement app creation in database
-  // Generate a unique app ID
-  final appId = 'app-${DateTime.now().millisecondsSinceEpoch}';
+  // Generate a UUID for the app ID
+  final appId = _uuid.v4();
 
   final app = App(
     id: appId,
