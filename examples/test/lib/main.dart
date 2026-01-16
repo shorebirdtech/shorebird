@@ -1,8 +1,25 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shorebird_code_push/shorebird_code_push.dart';
 
 void main() {
   runApp(const MyApp());
 }
+
+final _router = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const MyHomePage(title: 'Opssss v3'),
+    ),
+    GoRoute(
+      path: '/details',
+      builder: (context, state) => const Custom(title: '1'),
+    ),
+  ],
+);
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -10,7 +27,7 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Flutter Demo',
       theme: ThemeData(
         // This is the theme of your application.
@@ -28,9 +45,12 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.green),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
       ),
-      home: const MyHomePage(title: 'Opssss v2'),
+      routerConfig: _router,
+      builder: (context, child) {
+        return Scaffold(body: child);
+      },
     );
   }
 }
@@ -109,6 +129,11 @@ class _MyHomePageState extends State<MyHomePage> {
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => context.push('/details'),
+              child: const Text('Go to Details'),
+            ),
           ],
         ),
       ),
@@ -117,6 +142,66 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ),
+    );
+  }
+}
+
+class Custom extends StatefulWidget {
+  const Custom({super.key, required this.title});
+  final String title;
+
+  @override
+  State<Custom> createState() => _CustomState();
+}
+
+class _CustomState extends State<Custom> {
+  // Create an instance of the updater class
+  final updater = ShorebirdUpdater();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Get the current patch number and print it to the console.
+    // It will be `null` if no patches are installed.
+    updater.readCurrentPatch().then((currentPatch) {
+      print('The current patch number is: ${currentPatch?.number}');
+    });
+  }
+
+  Future<void> _checkForUpdates() async {
+    // Check whether a new update is available.
+    final status = await updater.checkForUpdate();
+
+    if (status == UpdateStatus.outdated) {
+      try {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Качаем апдейт...')));
+        await updater.update();
+      } on UpdateException catch (error) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка при апдейте... $error')));
+      }
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Приложение уже обновлено')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: Center(
+        child: ElevatedButton(
+          child: Text('Check for update'),
+          onPressed: _checkForUpdates,
+        ),
+      ),
+      // [Other code here]
     );
   }
 }
