@@ -4,6 +4,11 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.77 (January 16, 2026)
+
+- 🐦 Support for Flutter 3.38.7
+- ⏱️ Support patch_verification: install_only for faster boot of very large patches.
+
 ## 1.6.76 (January 11, 2026)
 
 - 🐦 Support for Flutter 3.38.6
