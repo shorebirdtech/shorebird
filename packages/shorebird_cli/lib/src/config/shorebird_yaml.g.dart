@@ -14,7 +14,13 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
   ($checkedConvert) {
     $checkKeys(
       json,
-      allowedKeys: const ['app_id', 'flavors', 'base_url', 'auto_update'],
+      allowedKeys: const [
+        'app_id',
+        'flavors',
+        'base_url',
+        'auto_update',
+        'patch_verification',
+      ],
     );
     final val = ShorebirdYaml(
       appId: $checkedConvert('app_id', (v) => v as String),
@@ -24,6 +30,10 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
       ),
       baseUrl: $checkedConvert('base_url', (v) => v as String?),
       autoUpdate: $checkedConvert('auto_update', (v) => v as bool?),
+      patchVerification: $checkedConvert(
+        'patch_verification',
+        (v) => $enumDecodeNullable(_$PatchVerificationEnumMap, v),
+      ),
     );
     return val;
   },
@@ -31,13 +41,21 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
     'appId': 'app_id',
     'baseUrl': 'base_url',
     'autoUpdate': 'auto_update',
+    'patchVerification': 'patch_verification',
   },
 );
 
-Map<String, dynamic> _$ShorebirdYamlToJson(ShorebirdYaml instance) =>
-    <String, dynamic>{
-      'app_id': instance.appId,
-      'flavors': instance.flavors,
-      'base_url': instance.baseUrl,
-      'auto_update': instance.autoUpdate,
-    };
+Map<String, dynamic> _$ShorebirdYamlToJson(
+  ShorebirdYaml instance,
+) => <String, dynamic>{
+  'app_id': instance.appId,
+  'flavors': instance.flavors,
+  'base_url': instance.baseUrl,
+  'auto_update': instance.autoUpdate,
+  'patch_verification': _$PatchVerificationEnumMap[instance.patchVerification],
+};
+
+const _$PatchVerificationEnumMap = {
+  PatchVerification.strict: 'strict',
+  PatchVerification.installOnly: 'install_only',
+};
