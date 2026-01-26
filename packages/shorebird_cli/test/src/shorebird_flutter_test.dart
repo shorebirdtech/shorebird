@@ -313,62 +313,63 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
         );
       });
 
-      group('when input is a commit hash that maps to a Flutter version', () {
+      group('when input is a valid git hash that exists locally', () {
+        const fullHash = 'eead750584a909f506eb6fc111ece5d8fed4aa39';
+
         setUp(() {
           when(
-            () => git.forEachRef(
+            () => git.revParse(
+              revision: any(named: 'revision'),
               directory: any(named: 'directory'),
-              contains: any(named: 'contains'),
-              format: any(named: 'format'),
-              pattern: any(named: 'pattern'),
             ),
-          ).thenAnswer((_) async => 'origin/flutter_release/1.2.3');
+          ).thenAnswer((_) async => fullHash);
         });
 
-        test('returns the input string', () async {
+        test('returns full hash for full input', () async {
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterRevision(fullHash),
+          );
+          expect(revision, equals(fullHash));
+        });
+
+        test('returns full hash for short input', () async {
           final revision = await runWithOverrides(
             () => shorebirdFlutter.resolveFlutterRevision('deadbeef'),
           );
-          expect(revision, equals('deadbeef'));
+          expect(revision, equals(fullHash));
         });
       });
 
-      group(
-        'when input is not a commit hash that maps to a Flutter version',
-        () {
-          setUp(() {
-            when(
-              () => git.forEachRef(
-                directory: any(named: 'directory'),
-                contains: any(named: 'contains'),
-                format: any(named: 'format'),
-                pattern: any(named: 'pattern'),
-              ),
-            ).thenAnswer((_) async => '');
-          });
-
-          test('returns the input string', () async {
-            final revision = await runWithOverrides(
-              () => shorebirdFlutter.resolveFlutterRevision('not-a-version'),
-            );
-            expect(revision, isNull);
-          });
-        },
-      );
-
-      group('when exception occurs doing revision lookup', () {
+      group('when input is a valid git hash format but does not exist', () {
         setUp(() {
           when(
-            () => git.forEachRef(
+            () => git.revParse(
+              revision: any(named: 'revision'),
               directory: any(named: 'directory'),
-              contains: any(named: 'contains'),
-              format: any(named: 'format'),
-              pattern: any(named: 'pattern'),
             ),
-          ).thenThrow(Exception('oops'));
+          ).thenThrow(
+            const ProcessException('git', ['rev-parse']),
+          );
         });
 
         test('returns null', () async {
+          const validHash = 'eead750584a909f506eb6fc111ece5d8fed4aa39';
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterRevision(validHash),
+          );
+          expect(revision, isNull);
+        });
+      });
+
+      group('when input is not a valid git hash format', () {
+        test('returns null for too-short hash', () async {
+          final revision = await runWithOverrides(
+            () => shorebirdFlutter.resolveFlutterRevision('abc'),
+          );
+          expect(revision, isNull);
+        });
+
+        test('returns null for non-hex string', () async {
           final revision = await runWithOverrides(
             () => shorebirdFlutter.resolveFlutterRevision('not-a-version'),
           );

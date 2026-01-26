@@ -214,29 +214,37 @@ class ShorebirdFlutter {
         .firstOrNull;
   }
 
+  /// Pattern for a valid git hash (4-40 hex characters).
+  /// Git allows short hashes as long as they're unambiguous.
+  static final _gitHashPattern = RegExp(r'^[0-9a-fA-F]{4,40}$');
+
   /// Translates [versionOrHash] into a Flutter revision. If this is a semver
-  /// version, it will simply parse that into a [Version]. If not, it will
-  /// attempt to look up the Flutter version for the provided revision hash and
-  /// return the hash if a version is found, or null if not.
+  /// version, it will look up the git revision for that version. If not, it
+  /// will check if it's a valid git hash that exists in the local Flutter repo.
+  ///
+  /// Returns the full hash if valid, or null if it's neither a valid semver
+  /// version nor a valid git hash that exists locally.
   Future<String?> resolveFlutterRevision(String versionOrHash) async {
     final parsedVersion = tryParseVersion(versionOrHash);
     if (parsedVersion != null) {
       return getRevisionForVersion(versionOrHash);
     }
 
-    // If we were unable to parse the version, assume it's a revision hash.
-    try {
-      final version = await getVersionForRevision(
-        flutterRevision: versionOrHash,
-      );
-      if (version != null) {
-        return versionOrHash;
-      }
-    } on Exception {
+    // If we were unable to parse the version, check if it's a valid git hash.
+    if (!_gitHashPattern.hasMatch(versionOrHash)) {
       return null;
     }
 
-    return null;
+    // Verify the hash exists locally by resolving it to its full hash.
+    try {
+      final fullHash = await git.revParse(
+        revision: versionOrHash,
+        directory: _workingDirectory(),
+      );
+      return fullHash;
+    } on ProcessException {
+      return null;
+    }
   }
 
   /// Translates [versionOrHash] into a Flutter [Version]. If [versionOrHash]
