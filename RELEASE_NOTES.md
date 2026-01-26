@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.78 (January 26, 2026)
+
+- ⚙️ Fix: using FlutterEngineGroup could cause patches to fail.
+
 ## 1.6.77 (January 16, 2026)
 
 - 🐦 Support for Flutter 3.38.7
