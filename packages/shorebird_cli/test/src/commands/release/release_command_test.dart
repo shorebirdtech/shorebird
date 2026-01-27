@@ -677,6 +677,36 @@ $exception'''),
         verify(releaser.assertArgsAreValid).called(1);
       });
 
+      group(
+        'when patch_verification is set but public-key-path is not provided',
+        () {
+          setUp(() {
+            when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(
+              const ShorebirdYaml(
+                appId: appId,
+                patchVerification: PatchVerification.strict,
+              ),
+            );
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+            ).thenReturn(false);
+          });
+
+          test('logs a warning', () async {
+            final releaser = MockReleaser();
+            when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+            await runWithOverrides(() => command.assertArgsAreValid(releaser));
+            verify(
+              () => logger.warn(
+                'patch_verification is set in shorebird.yaml but '
+                '--${CommonArguments.publicKeyArg.name} was not provided.\n'
+                'patch_verification configuration will have no effect.',
+              ),
+            ).called(1);
+          });
+        },
+      );
+
       test('exits with code 64 if flutter version is not supported', () async {
         final releaser = MockReleaser();
         const releaseType = ReleaseType.android;
