@@ -369,6 +369,16 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   Future<void> assertArgsAreValid(Releaser releaser) async {
     results.assertAbsentOrValidPublicKey();
 
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
+    if (shorebirdYaml?.patchVerification != null &&
+        !results.wasParsed(CommonArguments.publicKeyArg.name)) {
+      logger.warn(
+        'patch_verification is set in shorebird.yaml but '
+        '--${CommonArguments.publicKeyArg.name} was not provided.\n'
+        'patch_verification configuration will have no effect.',
+      );
+    }
+
     final version = await shorebirdFlutter.resolveFlutterVersion(
       flutterVersionArg,
     );
