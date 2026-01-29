@@ -238,16 +238,12 @@ class Auth {
   Auth({
     http.Client? httpClient,
     String? credentialsDir,
-    ObtainAccessCredentials? obtainAccessCredentials,
     CodePushClientBuilder? buildCodePushClient,
     shorebird_auth.PerformShorebirdLogin? performShorebirdLogin,
     String? authServiceUrl,
   }) : _httpClient = httpClient ?? _defaultHttpClient,
        _credentialsDir =
            credentialsDir ?? applicationConfigHome(executableName),
-       _obtainAccessCredentials =
-           obtainAccessCredentials ??
-           oauth2.obtainAccessCredentialsViaUserConsent,
        _buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
        _performShorebirdLogin =
            performShorebirdLogin ?? shorebird_auth.performShorebirdLogin,
@@ -262,7 +258,6 @@ class Auth {
 
   final http.Client _httpClient;
   final String _credentialsDir;
-  final ObtainAccessCredentials _obtainAccessCredentials;
   final CodePushClientBuilder _buildCodePushClient;
   final shorebird_auth.PerformShorebirdLogin _performShorebirdLogin;
   final String _authServiceUrl;
@@ -300,42 +295,40 @@ class Auth {
     );
   }
 
-  /// Gets a CI token for the current user.
-  Future<CiToken> loginCI(
-    AuthProvider authProvider, {
+  /// Gets a CI token for the current user via auth.shorebird.dev.
+  ///
+  /// Returns a [CiToken] containing a Shorebird refresh token.
+  /// The token is base64-encoded for use as SHOREBIRD_TOKEN in CI.
+  // TODO(eseidel): Replace with API keys.
+  Future<CiToken> loginCI({
     required void Function(String) prompt,
   }) async {
-    final client = http.Client();
-    try {
-      final credentials = await _obtainAccessCredentials(
-        authProvider.clientId,
-        authProvider.scopes,
-        client,
-        prompt,
-        authEndpoints: authProvider.authEndpoints,
-      );
+    final result = await _performShorebirdLogin(
+      prompt: prompt,
+      authServiceUrl: _authServiceUrl,
+    );
 
-      final codePushClient = _buildCodePushClient(
-        httpClient: AuthenticatedClient.credentials(
-          credentials: credentials,
-          httpClient: _httpClient,
-        ),
-      );
-      final user = await codePushClient.getCurrentUser();
-      if (user == null) {
-        throw UserNotFoundException(email: credentials.email!);
-      }
-      if (credentials.refreshToken == null) {
-        throw Exception('No refresh token found.');
-      }
-
-      return CiToken(
-        refreshToken: credentials.refreshToken!,
-        authProvider: authProvider,
-      );
-    } finally {
-      client.close();
+    // Verify the user exists.
+    final creds = ShorebirdCredentials(
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    );
+    final codePushClient = _buildCodePushClient(
+      httpClient: ShorebirdAuthenticatedClient(
+        httpClient: _httpClient,
+        shorebirdCredentials: creds,
+        authServiceUrl: _authServiceUrl,
+      ),
+    );
+    final user = await codePushClient.getCurrentUser();
+    if (user == null) {
+      throw UserNotFoundException(email: creds.email ?? 'unknown');
     }
+
+    return CiToken(
+      refreshToken: result.refreshToken,
+      authProvider: AuthProvider.shorebird,
+    );
   }
 
   /// Logs in the user via auth.shorebird.dev.
@@ -387,12 +380,32 @@ class Auth {
       _email != null || _token != null || _shorebirdCredentials != null;
 
   void _loadCredentials() {
-    final envToken = platform.environment[shorebirdTokenEnvVar];
+    final envToken = platform.environment[shorebirdTokenEnvVar]?.trim();
     if (envToken != null) {
       logger.detail('[env] $shorebirdTokenEnvVar detected');
 
       try {
-        _token = CiToken.fromBase64(envToken.trim());
+        if (envToken.startsWith('sb_api_')) {
+          // API key: use directly as Bearer token, no refresh needed.
+          _shorebirdCredentials = ShorebirdCredentials(
+            accessToken: envToken,
+            refreshToken: '',
+          );
+        } else {
+          final token = CiToken.fromBase64(envToken);
+          if (token.authProvider == AuthProvider.shorebird) {
+            // New-style Shorebird CI token: the refresh token is a Shorebird
+            // refresh token (sb_rt_...). Create ShorebirdCredentials so the
+            // client refreshes via auth.shorebird.dev/token.
+            _shorebirdCredentials = ShorebirdCredentials(
+              accessToken: '', // Will be fetched on first request.
+              refreshToken: token.refreshToken,
+            );
+          } else {
+            // Old-style CI token: the refresh token is an OAuth refresh token.
+            _token = token;
+          }
+        }
       } on FormatException catch (e) {
         logger
           ..err('''

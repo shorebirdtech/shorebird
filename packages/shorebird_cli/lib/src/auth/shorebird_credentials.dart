@@ -50,8 +50,16 @@ class ShorebirdCredentials {
     }
   }
 
+  /// Whether this is an API key (sb_api_...) rather than a JWT.
+  bool get isApiKey => accessToken.startsWith('sb_api_');
+
   /// Whether the access token has expired.
+  ///
+  /// API keys never expire (server validates them directly).
+  /// Empty access tokens are treated as expired to trigger a refresh.
   bool get isExpired {
+    if (isApiKey) return false;
+    if (accessToken.isEmpty) return true;
     try {
       final jwt = Jwt.parse(accessToken);
       final exp = DateTime.fromMillisecondsSinceEpoch(jwt.payload.exp * 1000);

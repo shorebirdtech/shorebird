@@ -164,16 +164,6 @@ void main() {
           buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
-          obtainAccessCredentials:
-              (
-                clientId,
-                scopes,
-                client,
-                userPrompt, {
-                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-              }) async {
-                return accessCredentials;
-              },
           performShorebirdLogin: ({
             required void Function(String url) prompt,
             String authServiceUrl = 'https://auth.shorebird.dev',
@@ -698,25 +688,27 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
     });
 
     group('loginCI', () {
-      setUp(() {
-        when(() => platform.environment).thenReturn(<String, String>{
-          shorebirdTokenEnvVar: ciToken.toBase64(),
-        });
-        auth = buildAuth();
-      });
-
       test(
-        'returns a CI token and does not set the email or cache credentials',
+        'returns a CI token with shorebird provider',
         () async {
-          final token = await auth.loginCI(AuthProvider.google, prompt: (_) {});
-          expect(token.authProvider, ciToken.authProvider);
-          expect(token.refreshToken, ciToken.refreshToken);
-          expect(auth.email, isNull);
-          expect(auth.isAuthenticated, isTrue);
-          expect(buildAuth().email, isNull);
-          expect(buildAuth().isAuthenticated, isTrue);
-          when(() => platform.environment).thenReturn({});
-          expect(buildAuth().isAuthenticated, isFalse);
+          when(() => httpClient.post(
+                any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body'),
+                encoding: any(named: 'encoding'),
+              )).thenAnswer(
+            (_) async => http.Response(
+              '{"access_token": "$idToken", "token_type": "Bearer", "expires_in": 900}',
+              HttpStatus.ok,
+            ),
+          );
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+          );
+          final token = await auth.loginCI(prompt: (_) {});
+          expect(token.authProvider, AuthProvider.shorebird);
+          expect(token.refreshToken, refreshToken);
         },
       );
 
@@ -725,36 +717,28 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
           () => codePushClient.getCurrentUser(),
         ).thenAnswer((_) async => null);
 
+        when(() => httpClient.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+              encoding: any(named: 'encoding'),
+            )).thenAnswer(
+          (_) async => http.Response(
+            '{"access_token": "$idToken", "token_type": "Bearer", "expires_in": 900}',
+            HttpStatus.ok,
+          ),
+        );
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        );
+
         await expectLater(
-          auth.loginCI(AuthProvider.google, prompt: (_) {}),
+          auth.loginCI(prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
         expect(auth.email, isNull);
-      });
-
-      group('when credentials are missing a refresh token', () {
-        setUp(() {
-          accessCredentials = oauth2.AccessCredentials(
-            accessToken,
-            null,
-            scopes,
-            idToken: idToken,
-          );
-        });
-
-        test('throws if credentials are missing a refresh token', () async {
-          await expectLater(
-            auth.loginCI(AuthProvider.google, prompt: (_) {}),
-            throwsA(
-              isA<Exception>().having(
-                (e) => e.toString(),
-                'toString',
-                'Exception: No refresh token found.',
-              ),
-            ),
-          );
-        });
       });
     });
 

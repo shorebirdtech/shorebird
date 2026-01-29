@@ -2,31 +2,12 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart'
-    as api;
 
 /// {@template login_ci_command}
 /// `shorebird login:ci`
 /// Login as a CI user.
 /// {@endtemplate}
 class LoginCiCommand extends ShorebirdCommand {
-  /// {@macro login_ci_command}
-  LoginCiCommand() {
-    argParser.addOption(
-      'provider',
-      abbr: 'p',
-      allowed: _oauthProviders.map((e) => e.name),
-      defaultsTo: api.AuthProvider.google.name,
-      help: 'The authentication provider to use. Defaults to Google.',
-    );
-  }
-
-  /// Providers that support direct OAuth (used for CI token generation).
-  static const _oauthProviders = [
-    api.AuthProvider.google,
-    api.AuthProvider.microsoft,
-  ];
-
   @override
   String get description => 'Login as a CI user.';
 
@@ -35,20 +16,9 @@ class LoginCiCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    final api.AuthProvider provider;
-    if (results.wasParsed('provider')) {
-      provider = api.AuthProvider.values.byName(results['provider'] as String);
-    } else {
-      provider = logger.chooseOne(
-        'Choose an auth provider',
-        choices: _oauthProviders,
-        display: (p) => p.displayName,
-      );
-    }
-
     final CiToken ciToken;
     try {
-      ciToken = await auth.loginCI(provider, prompt: prompt);
+      ciToken = await auth.loginCI(prompt: prompt);
     } on UserNotFoundException catch (error) {
       logger
         ..err('''
@@ -69,7 +39,7 @@ We could not find a Shorebird account for ${error.email}.''')
 ${lightCyan.wrap(ciToken.toBase64())}
 
 Example:
-  
+
 ${lightCyan.wrap('export $shorebirdTokenEnvVar="\$SHOREBIRD_TOKEN" && shorebird patch android')}
 ''');
     return ExitCode.success.code;
