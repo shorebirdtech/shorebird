@@ -5,7 +5,6 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -13,6 +12,7 @@ import '../mocks.dart';
 void main() {
   group(LoginCiCommand, () {
     const email = 'test@email.com';
+    const apiKey = 'sb_api_test_key_123';
 
     late Auth auth;
     late http.Client httpClient;
@@ -35,21 +35,40 @@ void main() {
       logger = MockShorebirdLogger();
 
       when(() => auth.client).thenReturn(httpClient);
+      when(() => auth.isAuthenticated).thenReturn(false);
       when(
-        () => auth.loginCI(prompt: any(named: 'prompt')),
-      ).thenAnswer(
-        (_) async => const CiToken(
-          refreshToken: 'sb_rt_test_token',
-          authProvider: AuthProvider.shorebird,
-        ),
-      );
+        () => auth.login(prompt: any(named: 'prompt')),
+      ).thenAnswer((_) async {});
+      when(
+        () => auth.createApiKey(name: any(named: 'name')),
+      ).thenAnswer((_) async => apiKey);
 
       command = runWithOverrides(LoginCiCommand.new);
     });
 
+    test('calls login when not authenticated', () async {
+      await runWithOverrides(command.run);
+
+      verify(() => auth.login(prompt: any(named: 'prompt'))).called(1);
+      verify(
+        () => auth.createApiKey(name: 'SHOREBIRD_TOKEN (CLI)'),
+      ).called(1);
+    });
+
+    test('skips login when already authenticated', () async {
+      when(() => auth.isAuthenticated).thenReturn(true);
+
+      await runWithOverrides(command.run);
+
+      verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+      verify(
+        () => auth.createApiKey(name: 'SHOREBIRD_TOKEN (CLI)'),
+      ).called(1);
+    });
+
     test('exits with code 70 if no user is found', () async {
       when(
-        () => auth.loginCI(prompt: any(named: 'prompt')),
+        () => auth.login(prompt: any(named: 'prompt')),
       ).thenThrow(UserNotFoundException(email: email));
 
       final result = await runWithOverrides(command.run);
@@ -70,39 +89,24 @@ void main() {
     test('exits with code 70 when error occurs', () async {
       final error = Exception('oops something went wrong!');
       when(
-        () => auth.loginCI(prompt: any(named: 'prompt')),
+        () => auth.createApiKey(name: any(named: 'name')),
       ).thenThrow(error);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
 
-      verify(
-        () => auth.loginCI(prompt: any(named: 'prompt')),
-      ).called(1);
       verify(() => logger.err(error.toString())).called(1);
     });
 
     test('exits with code 0 when logged in successfully', () async {
-      const token = CiToken(
-        refreshToken: 'sb_rt_test_token',
-        authProvider: AuthProvider.shorebird,
-      );
-      when(
-        () => auth.loginCI(prompt: any(named: 'prompt')),
-      ).thenAnswer((_) async => token);
       when(() => auth.email).thenReturn(email);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
       verify(
-        () => auth.loginCI(prompt: any(named: 'prompt')),
-      ).called(1);
-      verify(
         () => logger.info(
-          any(
-            that: contains('${lightCyan.wrap(token.toBase64())}'),
-          ),
+          any(that: contains('${lightCyan.wrap(apiKey)}')),
         ),
       ).called(1);
     });

@@ -687,36 +687,15 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
       });
     });
 
-    group('loginCI', () {
-      test(
-        'returns a CI token with shorebird provider',
-        () async {
-          when(() => httpClient.post(
-                any(),
-                headers: any(named: 'headers'),
-                body: any(named: 'body'),
-                encoding: any(named: 'encoding'),
-              )).thenAnswer(
-            (_) async => http.Response(
-              '{"access_token": "$idToken", "token_type": "Bearer", "expires_in": 900}',
-              HttpStatus.ok,
-            ),
-          );
-          when(() => httpClient.send(any())).thenAnswer(
-            (_) async =>
-                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
-          );
-          final token = await auth.loginCI(prompt: (_) {});
-          expect(token.authProvider, AuthProvider.shorebird);
-          expect(token.refreshToken, refreshToken);
-        },
-      );
+    group('createApiKey', () {
+      const apiKey = 'sb_api_test_key_123';
 
-      test('throws when user does not exist', () async {
-        when(
-          () => codePushClient.getCurrentUser(),
-        ).thenAnswer((_) async => null);
+      setUp(() async {
+        // Login first so _shorebirdCredentials is set.
+        await auth.login(prompt: (_) {});
+      });
 
+      test('returns an API key', () async {
         when(() => httpClient.post(
               any(),
               headers: any(named: 'headers'),
@@ -724,21 +703,46 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
               encoding: any(named: 'encoding'),
             )).thenAnswer(
           (_) async => http.Response(
-            '{"access_token": "$idToken", "token_type": "Bearer", "expires_in": 900}',
-            HttpStatus.ok,
+            '{"api_key": "$apiKey", "name": "CI"}',
+            HttpStatus.created,
           ),
         );
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async =>
-              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+
+        final result = await auth.createApiKey(name: 'CI');
+        expect(result, apiKey);
+      });
+
+      test('throws when not logged in', () async {
+        auth.logout();
+        await expectLater(
+          auth.createApiKey(name: 'CI'),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('throws when API key creation fails', () async {
+        when(() => httpClient.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+              encoding: any(named: 'encoding'),
+            )).thenAnswer(
+          (_) async => http.Response(
+            '{"error": "unauthorized"}',
+            HttpStatus.unauthorized,
+          ),
         );
 
         await expectLater(
-          auth.loginCI(prompt: (_) {}),
-          throwsA(isA<UserNotFoundException>()),
+          auth.createApiKey(name: 'CI'),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('Failed to create API key'),
+            ),
+          ),
         );
-
-        expect(auth.email, isNull);
       });
     });
 

@@ -16,9 +16,25 @@ class LoginCiCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    final CiToken ciToken;
     try {
-      ciToken = await auth.loginCI(prompt: prompt);
+      if (!auth.isAuthenticated) {
+        await auth.login(prompt: prompt);
+      }
+      final apiKey = await auth.createApiKey(
+        name: 'SHOREBIRD_TOKEN (CLI)',
+      );
+
+      logger.info('''
+
+🎉 ${lightGreen.wrap('Success! Use the following token to login on a CI server:')}
+
+${lightCyan.wrap(apiKey)}
+
+Example:
+
+${lightCyan.wrap('export $shorebirdTokenEnvVar="\$SHOREBIRD_TOKEN" && shorebird patch android')}
+''');
+      return ExitCode.success.code;
     } on UserNotFoundException catch (error) {
       logger
         ..err('''
@@ -31,18 +47,6 @@ We could not find a Shorebird account for ${error.email}.''')
       logger.err(error.toString());
       return ExitCode.software.code;
     }
-
-    logger.info('''
-
-🎉 ${lightGreen.wrap('Success! Use the following token to login on a CI server:')}
-
-${lightCyan.wrap(ciToken.toBase64())}
-
-Example:
-
-${lightCyan.wrap('export $shorebirdTokenEnvVar="\$SHOREBIRD_TOKEN" && shorebird patch android')}
-''');
-    return ExitCode.success.code;
   }
 
   /// Prompt the user to visit the provided [url] to authorize the CLI.
