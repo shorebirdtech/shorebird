@@ -13,6 +13,9 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/ci_token.dart';
 import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
+import 'package:shorebird_cli/src/auth/shorebird_auth_login.dart'
+    as shorebird_auth;
+import 'package:shorebird_cli/src/auth/shorebird_credentials.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -36,6 +39,9 @@ const googleJwtIssuer = 'https://accounts.google.com';
 /// https://login.microsoftonline.com/{tenant-id}/v2.0. We don't care about the
 /// tenant ID, so we just match the prefix.
 const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
+
+/// The JWT issuer field for Shorebird-issued JWTs.
+const shorebirdJwtIssuer = 'https://auth.shorebird.dev';
 
 /// The environment variable that holds the Shorebird CI token.
 const shorebirdTokenEnvVar = 'SHOREBIRD_TOKEN';
@@ -176,6 +182,56 @@ class AuthenticatedClient extends http.BaseClient {
   }
 }
 
+/// An HTTP client that uses Shorebird credentials and auto-refreshes via
+/// auth.shorebird.dev.
+class ShorebirdAuthenticatedClient extends http.BaseClient {
+  /// Creates a new [ShorebirdAuthenticatedClient].
+  ShorebirdAuthenticatedClient({
+    required http.Client httpClient,
+    required this.shorebirdCredentials,
+    required this.authServiceUrl,
+    this.onRefresh,
+  }) : _baseClient = httpClient;
+
+  final http.Client _baseClient;
+
+  /// The Shorebird credentials.
+  final ShorebirdCredentials shorebirdCredentials;
+
+  /// The auth service URL for token refresh.
+  final String authServiceUrl;
+
+  /// Called after a successful token refresh.
+  final void Function()? onRefresh;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (shorebirdCredentials.isExpired) {
+      try {
+        await shorebirdCredentials.refresh(
+          httpClient: _baseClient,
+          authServiceUrl: authServiceUrl,
+        );
+        onRefresh?.call();
+      } on Exception catch (e, s) {
+        logger
+          ..err('Failed to refresh credentials.')
+          ..info(
+            '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
+          )
+          ..detail(e.toString())
+          ..detail(s.toString());
+
+        throw ProcessExit(ExitCode.software.code);
+      }
+    }
+
+    request.headers['Authorization'] =
+        'Bearer ${shorebirdCredentials.accessToken}';
+    return _baseClient.send(request);
+  }
+}
+
 /// An OAuth 2.0 authentication provider.
 class Auth {
   /// Creates a new [Auth] instance.
@@ -184,13 +240,21 @@ class Auth {
     String? credentialsDir,
     ObtainAccessCredentials? obtainAccessCredentials,
     CodePushClientBuilder? buildCodePushClient,
+    shorebird_auth.PerformShorebirdLogin? performShorebirdLogin,
+    String? authServiceUrl,
   }) : _httpClient = httpClient ?? _defaultHttpClient,
        _credentialsDir =
            credentialsDir ?? applicationConfigHome(executableName),
        _obtainAccessCredentials =
            obtainAccessCredentials ??
            oauth2.obtainAccessCredentialsViaUserConsent,
-       _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
+       _buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
+       _performShorebirdLogin =
+           performShorebirdLogin ?? shorebird_auth.performShorebirdLogin,
+       _authServiceUrl =
+           authServiceUrl ??
+           platform.environment[authServiceUrlEnvVar] ??
+           defaultAuthServiceUrl {
     _loadCredentials();
   }
 
@@ -200,7 +264,10 @@ class Auth {
   final String _credentialsDir;
   final ObtainAccessCredentials _obtainAccessCredentials;
   final CodePushClientBuilder _buildCodePushClient;
+  final shorebird_auth.PerformShorebirdLogin _performShorebirdLogin;
+  final String _authServiceUrl;
   CiToken? _token;
+  ShorebirdCredentials? _shorebirdCredentials;
 
   /// The path to the credentials file.
   String get credentialsFilePath {
@@ -209,6 +276,15 @@ class Auth {
 
   /// The underlying HTTP client.
   http.Client get client {
+    if (_shorebirdCredentials != null) {
+      return ShorebirdAuthenticatedClient(
+        httpClient: _httpClient,
+        shorebirdCredentials: _shorebirdCredentials!,
+        authServiceUrl: _authServiceUrl,
+        onRefresh: _flushShorebirdCredentials,
+      );
+    }
+
     if (_credentials == null && _token == null) {
       return _httpClient;
     }
@@ -220,7 +296,7 @@ class Auth {
     return AuthenticatedClient.credentials(
       credentials: _credentials!,
       httpClient: _httpClient,
-      onRefreshCredentials: _flushCredentials,
+      onRefreshCredentials: _flushOauthCredentials,
     );
   }
 
@@ -274,6 +350,10 @@ class Auth {
       throw UserAlreadyLoggedInException(email: _email!);
     }
 
+    if (authProvider == AuthProvider.shorebird) {
+      return _loginShorebird(prompt: prompt);
+    }
+
     final client = http.Client();
     try {
       _credentials = await _obtainAccessCredentials(
@@ -292,10 +372,35 @@ class Auth {
       }
 
       _email = user.email;
-      _flushCredentials(_credentials!);
+      _flushOauthCredentials(_credentials!);
     } finally {
       client.close();
     }
+  }
+
+  Future<void> _loginShorebird({
+    required void Function(String) prompt,
+  }) async {
+    final result = await _performShorebirdLogin(
+      prompt: prompt,
+      authServiceUrl: _authServiceUrl,
+    );
+
+    _shorebirdCredentials = ShorebirdCredentials(
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    );
+
+    final codePushClient = _buildCodePushClient(httpClient: client);
+    final user = await codePushClient.getCurrentUser();
+    if (user == null) {
+      final email = _shorebirdCredentials!.email ?? 'unknown';
+      _shorebirdCredentials = null;
+      throw UserNotFoundException(email: email);
+    }
+
+    _email = user.email;
+    _flushShorebirdCredentials();
   }
 
   /// Logs out the user.
@@ -309,7 +414,8 @@ class Auth {
   String? get email => _email;
 
   /// Whether the user is authenticated.
-  bool get isAuthenticated => _email != null || _token != null;
+  bool get isAuthenticated =>
+      _email != null || _token != null || _shorebirdCredentials != null;
 
   void _loadCredentials() {
     final envToken = platform.environment[shorebirdTokenEnvVar];
@@ -336,24 +442,37 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
     if (credentialsFile.existsSync()) {
       try {
         final contents = credentialsFile.readAsStringSync();
-        _credentials = oauth2.AccessCredentials.fromJson(
-          json.decode(contents) as Map<String, dynamic>,
-        );
-        _email = _credentials?.email;
+        final jsonMap = json.decode(contents) as Map<String, dynamic>;
+
+        if (jsonMap['type'] == 'shorebird') {
+          _shorebirdCredentials = ShorebirdCredentials.fromJson(jsonMap);
+          _email = _shorebirdCredentials?.email;
+        } else {
+          _credentials = oauth2.AccessCredentials.fromJson(jsonMap);
+          _email = _credentials?.email;
+        }
       } on Exception {
         // Swallow json decode exceptions.
       }
     }
   }
 
-  void _flushCredentials(oauth2.AccessCredentials credentials) {
+  void _flushOauthCredentials(oauth2.AccessCredentials credentials) {
     File(credentialsFilePath)
       ..createSync(recursive: true)
       ..writeAsStringSync(json.encode(credentials.toJson()));
   }
 
+  void _flushShorebirdCredentials() {
+    if (_shorebirdCredentials == null) return;
+    File(credentialsFilePath)
+      ..createSync(recursive: true)
+      ..writeAsStringSync(json.encode(_shorebirdCredentials!.toJson()));
+  }
+
   void _clearCredentials() {
     _credentials = null;
+    _shorebirdCredentials = null;
     _email = null;
 
     final credentialsFile = File(credentialsFilePath);
@@ -417,6 +536,8 @@ extension OauthAuthProvider on Jwt {
       return AuthProvider.google;
     } else if (payload.iss.startsWith(microsoftJwtIssuerPrefix)) {
       return AuthProvider.microsoft;
+    } else if (payload.iss == shorebirdJwtIssuer) {
+      return AuthProvider.shorebird;
     }
 
     throw Exception('Unknown jwt issuer: ${payload.iss}');
@@ -429,6 +550,8 @@ extension OauthValues on AuthProvider {
   oauth2.AuthEndpoints get authEndpoints => switch (this) {
     (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
     (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
+    (AuthProvider.shorebird) =>
+      throw UnsupportedError('Shorebird uses auth.shorebird.dev, not OAuth'),
   };
 
   /// The OAuth 2.0 client ID for the provider.
@@ -456,6 +579,10 @@ extension OauthValues on AuthProvider {
           /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
           '4fc38981-4ec4-4bd9-a755-e6ad9a413054',
         );
+      case AuthProvider.shorebird:
+        throw UnsupportedError(
+          'Shorebird uses auth.shorebird.dev, not OAuth',
+        );
     }
   }
 
@@ -471,5 +598,7 @@ extension OauthValues on AuthProvider {
       // Required to get refresh tokens.
       'offline_access',
     ],
+    (AuthProvider.shorebird) =>
+      throw UnsupportedError('Shorebird uses auth.shorebird.dev, not OAuth'),
   };
 }
