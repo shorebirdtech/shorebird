@@ -15,11 +15,17 @@ class LoginCiCommand extends ShorebirdCommand {
     argParser.addOption(
       'provider',
       abbr: 'p',
-      allowed: api.AuthProvider.values.map((e) => e.name),
+      allowed: _oauthProviders.map((e) => e.name),
       defaultsTo: api.AuthProvider.google.name,
       help: 'The authentication provider to use. Defaults to Google.',
     );
   }
+
+  /// Providers that support direct OAuth (used for CI token generation).
+  static const _oauthProviders = [
+    api.AuthProvider.google,
+    api.AuthProvider.microsoft,
+  ];
 
   @override
   String get description => 'Login as a CI user.';
@@ -35,7 +41,7 @@ class LoginCiCommand extends ShorebirdCommand {
     } else {
       provider = logger.chooseOne(
         'Choose an auth provider',
-        choices: api.AuthProvider.values,
+        choices: _oauthProviders,
         display: (p) => p.displayName,
       );
     }

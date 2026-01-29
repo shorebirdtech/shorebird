@@ -31,8 +31,8 @@ Future<ShorebirdLoginResult> performShorebirdLogin({
 
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   final port = server.port;
-  final returnTo = Uri.encodeFull('http://localhost:$port');
-  final loginUrl = '$authServiceUrl/login?return_to=$returnTo';
+  final redirectUri = Uri.encodeFull('http://localhost:$port');
+  final loginUrl = '$authServiceUrl/login?redirect_uri=$redirectUri';
 
   prompt(loginUrl);
 

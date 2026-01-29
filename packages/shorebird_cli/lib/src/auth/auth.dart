@@ -338,49 +338,18 @@ class Auth {
     }
   }
 
-  /// Logs in the user.
-  Future<void> login(
-    AuthProvider authProvider, {
+  /// Logs in the user via auth.shorebird.dev.
+  ///
+  /// Opens a browser to the auth service where the user picks
+  /// Google or Microsoft, then receives Shorebird tokens via localhost
+  /// callback.
+  Future<void> login({
     required void Function(String) prompt,
   }) async {
     if (isAuthenticated) {
-      // Because isAuthenticated is checks for the presence of either an email
-      // or a CI token, and because this method is for logging in without a CI
-      // token, we can safely assume that _email is not null.
       throw UserAlreadyLoggedInException(email: _email!);
     }
 
-    if (authProvider == AuthProvider.shorebird) {
-      return _loginShorebird(prompt: prompt);
-    }
-
-    final client = http.Client();
-    try {
-      _credentials = await _obtainAccessCredentials(
-        authProvider.clientId,
-        authProvider.scopes,
-        client,
-        prompt,
-        authEndpoints: authProvider.authEndpoints,
-      );
-
-      final codePushClient = _buildCodePushClient(httpClient: this.client);
-
-      final user = await codePushClient.getCurrentUser();
-      if (user == null) {
-        throw UserNotFoundException(email: _credentials!.email!);
-      }
-
-      _email = user.email;
-      _flushOauthCredentials(_credentials!);
-    } finally {
-      client.close();
-    }
-  }
-
-  Future<void> _loginShorebird({
-    required void Function(String) prompt,
-  }) async {
     final result = await _performShorebirdLogin(
       prompt: prompt,
       authServiceUrl: _authServiceUrl,
