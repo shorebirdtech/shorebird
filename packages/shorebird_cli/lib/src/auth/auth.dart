@@ -512,8 +512,9 @@ extension OauthValues on AuthProvider {
   oauth2.AuthEndpoints get authEndpoints => switch (this) {
     (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
     (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
-    (AuthProvider.shorebird) =>
-      throw UnsupportedError('Shorebird uses auth.shorebird.dev, not OAuth'),
+    (AuthProvider.shorebird) => throw UnsupportedError(
+      'Shorebird uses auth.shorebird.dev, not OAuth',
+    ),
   };
 
   /// The OAuth 2.0 client ID for the provider.
@@ -560,7 +561,8 @@ extension OauthValues on AuthProvider {
       // Required to get refresh tokens.
       'offline_access',
     ],
-    (AuthProvider.shorebird) =>
-      throw UnsupportedError('Shorebird uses auth.shorebird.dev, not OAuth'),
+    (AuthProvider.shorebird) => throw UnsupportedError(
+      'Shorebird uses auth.shorebird.dev, not OAuth',
+    ),
   };
 }

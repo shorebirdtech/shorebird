@@ -35,10 +35,10 @@ class ShorebirdCredentials {
 
   /// Converts to a JSON map for storage.
   Map<String, dynamic> toJson() => {
-        'type': 'shorebird',
-        'access_token': accessToken,
-        'refresh_token': refreshToken,
-      };
+    'type': 'shorebird',
+    'access_token': accessToken,
+    'refresh_token': refreshToken,
+  };
 
   /// The email from the JWT claims, or null if unavailable.
   String? get email {

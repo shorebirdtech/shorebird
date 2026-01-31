@@ -164,12 +164,13 @@ void main() {
           buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
-          performShorebirdLogin: ({
-            required void Function(String url) prompt,
-            String authServiceUrl = 'https://auth.shorebird.dev',
-          }) async {
-            return (accessToken: idToken, refreshToken: refreshToken);
-          },
+          performShorebirdLogin:
+              ({
+                required void Function(String url) prompt,
+                String authServiceUrl = 'https://auth.shorebird.dev',
+              }) async {
+                return (accessToken: idToken, refreshToken: refreshToken);
+              },
         ),
       );
     }
@@ -177,11 +178,13 @@ void main() {
     void writeCredentials() {
       File(
         p.join(credentialsDir, 'credentials.json'),
-      ).writeAsStringSync(jsonEncode({
-        'type': 'shorebird',
-        'access_token': idToken,
-        'refresh_token': refreshToken,
-      }));
+      ).writeAsStringSync(
+        jsonEncode({
+          'type': 'shorebird',
+          'access_token': idToken,
+          'refresh_token': refreshToken,
+        }),
+      );
     }
 
     setUp(() {
@@ -651,11 +654,13 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
           // Write corrupted Shorebird credentials.
           File(
             p.join(credentialsDir, 'credentials.json'),
-          ).writeAsStringSync(jsonEncode({
-            'type': 'shorebird',
-            'access_token': 'not a valid jwt',
-            'refresh_token': 'sb_rt_test',
-          }));
+          ).writeAsStringSync(
+            jsonEncode({
+              'type': 'shorebird',
+              'access_token': 'not a valid jwt',
+              'refresh_token': 'sb_rt_test',
+            }),
+          );
           auth = buildAuth();
         });
 
@@ -696,12 +701,14 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
       });
 
       test('returns an API key', () async {
-        when(() => httpClient.post(
-              any(),
-              headers: any(named: 'headers'),
-              body: any(named: 'body'),
-              encoding: any(named: 'encoding'),
-            )).thenAnswer(
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            encoding: any(named: 'encoding'),
+          ),
+        ).thenAnswer(
           (_) async => http.Response(
             '{"api_key": "$apiKey", "name": "CI"}',
             HttpStatus.created,
@@ -721,12 +728,14 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
       });
 
       test('throws when API key creation fails', () async {
-        when(() => httpClient.post(
-              any(),
-              headers: any(named: 'headers'),
-              body: any(named: 'body'),
-              encoding: any(named: 'encoding'),
-            )).thenAnswer(
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            encoding: any(named: 'encoding'),
+          ),
+        ).thenAnswer(
           (_) async => http.Response(
             '{"error": "unauthorized"}',
             HttpStatus.unauthorized,

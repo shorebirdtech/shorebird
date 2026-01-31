@@ -14,10 +14,11 @@ typedef ShorebirdLoginResult = ({String accessToken, String refreshToken});
 ///
 /// Starts a local HTTP server, opens auth.shorebird.dev/login in the browser,
 /// and waits for the callback with tokens.
-typedef PerformShorebirdLogin = Future<ShorebirdLoginResult> Function({
-  required void Function(String url) prompt,
-  String authServiceUrl,
-});
+typedef PerformShorebirdLogin =
+    Future<ShorebirdLoginResult> Function({
+      required void Function(String url) prompt,
+      String authServiceUrl,
+    });
 
 /// Performs the Shorebird login flow via auth.shorebird.dev.
 ///
@@ -60,8 +61,7 @@ Future<ShorebirdLoginResult> performShorebirdLogin({
           );
         }
 
-        final body =
-            jsonDecode(tokenResponse.body) as Map<String, dynamic>;
+        final body = jsonDecode(tokenResponse.body) as Map<String, dynamic>;
         final accessToken = body['access_token'] as String;
         final refreshToken = body['refresh_token'] as String;
 
