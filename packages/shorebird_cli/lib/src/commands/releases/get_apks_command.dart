@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -11,6 +10,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/executables/bundletool.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
+import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -177,10 +177,9 @@ class GetApksCommand extends ShorebirdCommand {
       throw ProcessExit(ExitCode.usage.code);
     }
 
-    return logger.chooseOne<Release>(
-      'Which release would you like to generate an apk for?',
-      choices: releases.sortedBy((r) => r.createdAt).reversed.toList(),
-      display: (r) => r.version,
+    return chooseRelease(
+      releases: releases,
+      action: 'generate an apk for',
     );
   }
 
