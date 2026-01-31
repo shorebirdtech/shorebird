@@ -456,8 +456,8 @@ This is only applicable when previewing Android releases.''',
       channel: track.channel,
     );
 
-    final exeFile = appDirectory.listSync().whereType<File>().firstWhere(
-      (file) => file.path.endsWith('.exe'),
+    final exeFile = windows.findExecutable(
+      releaseDirectory: appDirectory,
     );
 
     return startAndForwardOutput(exeFile.path);
