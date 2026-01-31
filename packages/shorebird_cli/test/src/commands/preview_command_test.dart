@@ -2393,12 +2393,10 @@ channel: ${DeploymentTrack.staging.channel}
             projectName: any(named: 'projectName'),
           ),
         ).thenAnswer((invocation) {
-          final dir =
-              invocation.namedArguments[#releaseDirectory] as Directory;
-          return dir
-              .listSync()
-              .whereType<File>()
-              .firstWhere((f) => f.path.endsWith('.exe'));
+          final dir = invocation.namedArguments[#releaseDirectory] as Directory;
+          return dir.listSync().whereType<File>().firstWhere(
+            (f) => f.path.endsWith('.exe'),
+          );
         });
         windowsReleaseArtifact = MockReleaseArtifact();
 
