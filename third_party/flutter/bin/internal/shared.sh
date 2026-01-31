@@ -155,6 +155,10 @@ function upgrade_shorebird () (
 
     export PUB_ENVIRONMENT="$PUB_ENVIRONMENT:shorebird_install"
     pub_get_with_retry
+    # pub get may not update pubspec.lock's mtime if dependencies are unchanged,
+    # which would cause the pubspec.yaml -nt pubspec.lock check above to keep
+    # triggering a rebuild on every invocation.
+    touch "$SHOREBIRD_ROOT/pubspec.lock"
 
     # Move the old snapshot - we can't just overwrite it as the VM might currently have it
     # memory mapped (e.g. on shorebird upgrade). For downloading a new dart sdk the folder is moved,
