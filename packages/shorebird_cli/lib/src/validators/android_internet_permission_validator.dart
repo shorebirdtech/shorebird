@@ -90,12 +90,35 @@ The command you are running must be run within a Flutter app project that suppor
   }
 
   void _addInternetPermissionToFile(String path) {
-    final xmlDocument = XmlDocument.parse(File(path).readAsStringSync());
-    xmlDocument.rootElement.children.add(
-      XmlElement(XmlName('uses-permission'), [
-        XmlAttribute(XmlName('android:name'), 'android.permission.INTERNET'),
-      ]),
+    final file = File(path);
+    final contents = file.readAsStringSync();
+    // Insert the permission after the opening <manifest> tag to preserve
+    // the existing formatting of the file.
+    final manifestTagEnd = RegExp('<manifest[^>]*>');
+    final match = manifestTagEnd.firstMatch(contents);
+    if (match == null) return;
+    final indent = _detectIndent(contents);
+    final permissionLine =
+        '$indent<uses-permission android:name="android.permission.INTERNET"/>';
+    final updated = contents.replaceRange(
+      match.end,
+      match.end,
+      '\n$permissionLine',
     );
-    File(path).writeAsStringSync(xmlDocument.toXmlString(pretty: true));
+    file.writeAsStringSync(updated);
+  }
+
+  /// Detects the indentation used in the manifest by looking at the first
+  /// indented line after the `<manifest>` tag.
+  String _detectIndent(String contents) {
+    final lines = contents.split('\n');
+    for (final line in lines) {
+      final stripped = line.trimLeft();
+      if (stripped.isEmpty || stripped.startsWith('<manifest')) continue;
+      if (line.length != stripped.length) {
+        return line.substring(0, line.length - stripped.length);
+      }
+    }
+    return '    ';
   }
 }

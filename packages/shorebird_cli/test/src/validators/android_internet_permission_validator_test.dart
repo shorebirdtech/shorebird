@@ -37,6 +37,55 @@ void main() {
 </manifest>
 ''';
 
+  // A stock AndroidManifest.xml from `flutter create`.
+  const stockFlutterManifest = r'''
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:label="xml"
+        android:name="\${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>
+''';
+
   group(AndroidInternetPermissionValidator, () {
     late Directory projectRoot;
     late ShorebirdEnv shorebirdEnv;
@@ -238,6 +287,81 @@ void main() {
           AndroidInternetPermissionValidator().validate,
         );
         expect(results, isEmpty);
+      });
+
+      test('preserves formatting of stock Flutter manifest', () async {
+        final manifestPath = p.join(
+          projectRoot.path,
+          'android',
+          'app',
+          'src',
+          'main',
+        );
+        writeManifestToPath(stockFlutterManifest, manifestPath);
+
+        final results = await runWithOverrides(
+          AndroidInternetPermissionValidator().validate,
+        );
+        expect(results, hasLength(1));
+        await runWithOverrides(() => results.first.fix!());
+
+        final updated = File(
+          p.join(manifestPath, 'AndroidManifest.xml'),
+        ).readAsStringSync();
+        final originalLines = stockFlutterManifest.split('\n');
+        final updatedLines = updated.split('\n');
+        // Should only add one line.
+        expect(updatedLines.length, originalLines.length + 1);
+        // First line is the manifest tag, unchanged.
+        expect(updatedLines[0], originalLines[0]);
+        // Second line is the new permission.
+        expect(
+          updatedLines[1],
+          '    <uses-permission '
+          'android:name="android.permission.INTERNET"/>',
+        );
+        // Remaining lines are identical to the original.
+        for (var i = 1; i < originalLines.length; i++) {
+          expect(updatedLines[i + 1], originalLines[i]);
+        }
+      });
+
+      test('preserves existing formatting', () async {
+        final manifestPath = p.join(
+          projectRoot.path,
+          'android',
+          'app',
+          'src',
+          'main',
+        );
+        writeManifestToPath(manifestWithNoPermissions, manifestPath);
+
+        final results = await runWithOverrides(
+          AndroidInternetPermissionValidator().validate,
+        );
+        await runWithOverrides(() => results.first.fix!());
+
+        final updated = File(
+          p.join(manifestPath, 'AndroidManifest.xml'),
+        ).readAsStringSync();
+        // The permission should be inserted after <manifest> with matching
+        // indentation, and the rest of the file should be unchanged.
+        expect(
+          updated,
+          contains(
+            '    <uses-permission '
+            'android:name="android.permission.INTERNET"/>',
+          ),
+        );
+        // Original closing tag should remain untouched.
+        expect(updated, contains('</manifest>'));
+        // Should not collapse attributes onto one line (no reformatting).
+        expect(
+          updated,
+          contains(
+            '    package="dev.shorebird.u_shorebird_clock">',
+          ),
+        );
       });
     });
   });
