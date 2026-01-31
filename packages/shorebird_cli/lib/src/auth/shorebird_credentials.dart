@@ -76,10 +76,15 @@ class ShorebirdCredentials {
     required http.Client httpClient,
     String authServiceUrl = defaultAuthServiceUrl,
   }) async {
+    if (isApiKey) {
+      throw StateError('Cannot refresh an API key credential.');
+    }
     final response = await httpClient.post(
       Uri.parse('$authServiceUrl/token'),
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: 'grant_type=refresh_token&refresh_token=$refreshToken',
+      body: {
+        'grant_type': 'refresh_token',
+        'refresh_token': refreshToken,
+      },
     );
 
     if (response.statusCode != 200) {

@@ -206,6 +206,10 @@ class ShorebirdAuthenticatedClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    // Note: if the CLI ever makes concurrent requests, refresh token rotation
+    // means two simultaneous refreshes would race — the first invalidates the
+    // token the second sends. Not a concern today since the CLI is sequential,
+    // but would need a coalescing lock if that changes.
     if (shorebirdCredentials.isExpired) {
       try {
         await shorebirdCredentials.refresh(
@@ -303,12 +307,11 @@ class Auth {
     if (_shorebirdCredentials == null) {
       throw StateError('Must be logged in to create an API key.');
     }
-    final response = await _httpClient.post(
+    // Use the authenticated client which sends the access token (not the
+    // refresh token) and handles auto-refresh if expired.
+    final response = await client.post(
       Uri.parse('$_authServiceUrl/api/api-keys'),
-      headers: {
-        'Authorization': 'Bearer ${_shorebirdCredentials!.refreshToken}',
-        'Content-Type': 'application/json',
-      },
+      headers: {'Content-Type': 'application/json'},
       body: json.encode({'name': name}),
     );
     if (response.statusCode != 201) {
@@ -318,6 +321,9 @@ class Auth {
       );
     }
     final body = json.decode(response.body) as Map<String, dynamic>;
+    if (body['api_key'] is! String) {
+      throw Exception('Unexpected response: missing api_key field');
+    }
     return body['api_key'] as String;
   }
 
@@ -366,8 +372,16 @@ class Auth {
   String? get email => _email;
 
   /// Whether the user is authenticated.
-  bool get isAuthenticated =>
-      _email != null || _token != null || _shorebirdCredentials != null;
+  ///
+  /// For Shorebird credentials, we require either a parseable email or an
+  /// API key. This avoids treating corrupted credentials as authenticated
+  /// (which would block re-login).
+  bool get isAuthenticated {
+    if (_email != null || _token != null) return true;
+    if (_shorebirdCredentials == null) return false;
+    return _shorebirdCredentials!.isApiKey ||
+        _shorebirdCredentials!.email != null;
+  }
 
   void _loadCredentials() {
     final envToken = platform.environment[shorebirdTokenEnvVar]?.trim();

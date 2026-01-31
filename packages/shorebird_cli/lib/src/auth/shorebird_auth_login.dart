@@ -50,8 +50,10 @@ Future<ShorebirdLoginResult> performShorebirdLogin({
         // Exchange the authorization code for tokens.
         final tokenResponse = await client.post(
           Uri.parse('$authServiceUrl/token'),
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          body: 'grant_type=authorization_code&code=$code',
+          body: {
+            'grant_type': 'authorization_code',
+            'code': code,
+          },
         );
 
         if (tokenResponse.statusCode != 200) {
@@ -94,7 +96,12 @@ Future<ShorebirdLoginResult> performShorebirdLogin({
   });
 
   try {
-    return await completer.future;
+    return await completer.future.timeout(
+      const Duration(minutes: 5),
+      onTimeout: () => throw TimeoutException(
+        'Login timed out waiting for browser callback after 5 minutes.',
+      ),
+    );
   } finally {
     await server.close();
   }
