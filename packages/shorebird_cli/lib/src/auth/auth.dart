@@ -307,11 +307,15 @@ class Auth {
     if (_shorebirdCredentials == null) {
       throw StateError('Must be logged in to create an API key.');
     }
-    // Use the authenticated client which sends the access token (not the
-    // refresh token) and handles auto-refresh if expired.
-    final response = await client.post(
+    // Use the access token directly. ShorebirdAuthenticatedClient handles
+    // refresh for normal API calls; createApiKey is a one-shot call to the
+    // auth service so we send the current token as-is.
+    final response = await _httpClient.post(
       Uri.parse('$_authServiceUrl/api/api-keys'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${_shorebirdCredentials!.accessToken}',
+      },
       body: json.encode({'name': name}),
     );
     if (response.statusCode != 201) {
@@ -378,9 +382,7 @@ class Auth {
   /// (which would block re-login).
   bool get isAuthenticated {
     if (_email != null || _token != null) return true;
-    if (_shorebirdCredentials == null) return false;
-    return _shorebirdCredentials!.isApiKey ||
-        _shorebirdCredentials!.email != null;
+    return _shorebirdCredentials != null;
   }
 
   void _loadCredentials() {
