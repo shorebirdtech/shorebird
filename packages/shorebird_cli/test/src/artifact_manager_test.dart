@@ -370,8 +370,8 @@ void main() {
             verifyInOrder([
               () => progress.update('hello (20%)'),
               () => progress.update(
-                    any(that: anyOf('hello (40%)', 'hello (60%)')),
-                  ),
+                any(that: anyOf('hello (40%)', 'hello (60%)')),
+              ),
               () => progress.update('hello (100%)'),
             ]);
             verifyNever(() => progress.update('hello (0%)'));
