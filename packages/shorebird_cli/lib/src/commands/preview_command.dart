@@ -19,6 +19,7 @@ import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -305,10 +306,9 @@ This is only applicable when previewing Android releases.''',
 
   /// Prompts the user to choose a release version to preview.
   Future<String> promptForReleaseVersion(List<Release> releases) async {
-    final release = logger.chooseOne(
-      'Which release would you like to preview?',
-      choices: releases,
-      display: (release) => release.version,
+    final release = chooseRelease(
+      releases: releases,
+      action: 'preview',
     );
     return release.version;
   }
