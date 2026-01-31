@@ -210,6 +210,46 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       expect(exitCode, ExitCode.software.code);
     });
 
+    test(
+      'shows up-to-date error when yaml exists without flavors '
+      'and no flavors detected',
+      () async {
+        when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+        when(() => shorebirdYaml.appId).thenReturn(appId);
+        when(() => shorebirdYaml.flavors).thenReturn(null);
+        // Default setUp has no product flavors (gradlew returns empty set).
+        final exitCode = await runWithOverrides(command.run);
+        verify(
+          () => logger.err(
+            'A "shorebird.yaml" file already exists and seems up-to-date.',
+          ),
+        ).called(1);
+        expect(exitCode, ExitCode.software.code);
+      },
+    );
+
+    test(
+      'shows up-to-date error when yaml exists with flavors '
+      'and no new flavors detected',
+      () async {
+        when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+        when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+        when(() => shorebirdYaml.appId).thenReturn(appId);
+        when(() => shorebirdYaml.flavors).thenReturn({'dev': 'id-1'});
+        when(
+          () => gradlew.productFlavors(any()),
+        ).thenAnswer((_) async => {'dev'});
+        final exitCode = await runWithOverrides(command.run);
+        verify(
+          () => logger.err(
+            'A "shorebird.yaml" file already exists and seems up-to-date.',
+          ),
+        ).called(1);
+        expect(exitCode, ExitCode.software.code);
+      },
+    );
+
     test('does not prompt for name when unable to accept user input', () async {
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       await runWithOverrides(command.run);
@@ -1117,6 +1157,76 @@ flavors:
             organizationId: organizationId,
           ),
         ]);
+      });
+
+      group('with new flavors added to existing no-flavor config', () {
+        setUp(() {
+          const androidVariants = {'dev', 'prod'};
+          when(
+            () => gradlew.productFlavors(any()),
+          ).thenAnswer((_) async => androidVariants);
+
+          when(() => shorebirdEnv.hasShorebirdYaml).thenReturn(true);
+          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(shorebirdYaml);
+          when(() => shorebirdYaml.appId).thenReturn(appId);
+          when(() => shorebirdYaml.flavors).thenReturn(null);
+        });
+
+        test('creates flavor entries preserving existing app_id', () async {
+          const newAppIds = ['test-appId-dev', 'test-appId-prod'];
+          const existingAppName = 'my-app';
+          var index = 0;
+
+          when(
+            () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+          ).thenAnswer(
+            (_) async => AppMetadata(
+              appId: appId,
+              displayName: existingAppName,
+              createdAt: DateTime(2023),
+              updatedAt: DateTime(2023),
+            ),
+          );
+          when(
+            () => codePushClientWrapper.createApp(
+              appName: any(named: 'appName'),
+              organizationId: any(named: 'organizationId'),
+            ),
+          ).thenAnswer((invocation) async {
+            final appName = invocation.namedArguments[#appName] as String?;
+            return App(id: newAppIds[index++], displayName: appName ?? '-');
+          });
+
+          final result = await runWithOverrides(command.run);
+
+          expect(result, ExitCode.success.code);
+          verify(
+            () => logger.info('New flavors detected: dev, prod'),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.createApp(
+              appName: '$existingAppName (dev)',
+              organizationId: organizationId,
+            ),
+          ).called(1);
+          verify(
+            () => codePushClientWrapper.createApp(
+              appName: '$existingAppName (prod)',
+              organizationId: organizationId,
+            ),
+          ).called(1);
+          verify(
+            () => shorebirdYamlFile.writeAsStringSync(
+              any(
+                that: contains('''
+app_id: test_app_id
+flavors:
+  dev: test-appId-dev
+  prod: test-appId-prod'''),
+              ),
+            ),
+          ).called(1);
+        });
       });
 
       group('with new flavors added', () {
