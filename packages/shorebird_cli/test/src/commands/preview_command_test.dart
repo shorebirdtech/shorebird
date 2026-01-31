@@ -1177,20 +1177,18 @@ channel: ${track.channel}
           ).thenAnswer((_) async => [release, otherRelease]);
         });
 
-        test('only prompts for release versions that '
+        test('only uses releases that '
             'support the current platform', () async {
           await runWithOverrides(command.run);
-          final releases =
-              verify(
-                    () => logger.chooseOne<Release>(
-                      any(),
-                      choices: captureAny(named: 'choices'),
-                      display: any(named: 'display'),
-                    ),
-                  ).captured.single
-                  as List<Release>;
-          expect(releases.length, equals(1));
-          expect(releases.first.version, equals(releaseVersion));
+          // Only one release matches the platform, so chooseRelease
+          // auto-selects it without prompting.
+          verifyNever(
+            () => logger.chooseOne<Release>(
+              any(),
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          );
         });
       });
 
@@ -1311,6 +1309,22 @@ channel: ${track.channel}
               display: any(named: 'display'),
             ),
           ).thenReturn(release);
+
+          // Need 2+ releases so chooseRelease prompts instead of
+          // auto-selecting.
+          final otherRelease = MockRelease();
+          when(() => otherRelease.id).thenReturn(999);
+          when(() => otherRelease.version).thenReturn('0.0.1');
+          when(() => otherRelease.createdAt).thenReturn(DateTime(2022));
+          when(() => otherRelease.platformStatuses).thenReturn({
+            ReleasePlatform.android: ReleaseStatus.active,
+          });
+          when(
+            () => codePushClientWrapper.getReleases(
+              appId: any(named: 'appId'),
+              sideloadableOnly: any(named: 'sideloadableOnly'),
+            ),
+          ).thenAnswer((_) async => [release, otherRelease]);
         });
 
         test('queries for releases', () async {

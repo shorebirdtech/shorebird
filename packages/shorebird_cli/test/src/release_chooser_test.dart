@@ -95,7 +95,7 @@ void main() {
 
     test('displays version with date', () {
       final release = _release('1.2.3', DateTime(2025, 3, 15));
-      final other = _release('1.2.2', DateTime(2025, 3, 1));
+      final other = _release('1.2.2', DateTime(2025, 3));
 
       when(
         () => logger.chooseOne<Release>(
@@ -119,8 +119,7 @@ void main() {
           display: captureAny(named: 'display'),
         ),
       );
-      final displayFn =
-          verification.captured.first as String Function(Release);
+      final displayFn = verification.captured.first as String Function(Release);
       expect(displayFn(release), equals('1.2.3  (Mar 15)'));
     });
 
@@ -138,8 +137,7 @@ void main() {
           display: any(named: 'display'),
         ),
       ).thenAnswer((invocation) {
-        final choices =
-            invocation.namedArguments[#choices] as List<Release>;
+        final choices = invocation.namedArguments[#choices] as List<Release>;
         callCount++;
         if (callCount == 1) {
           // 10 releases + 1 "show all" sentinel = 11.
@@ -181,8 +179,7 @@ void main() {
           display: any(named: 'display'),
         ),
       ).thenAnswer((invocation) {
-        final choices =
-            invocation.namedArguments[#choices] as List<Release>;
+        final choices = invocation.namedArguments[#choices] as List<Release>;
         // Return a real release, not the sentinel.
         return choices.first;
       });
@@ -219,8 +216,7 @@ void main() {
           display: any(named: 'display'),
         ),
       ).thenAnswer((invocation) {
-        final choices =
-            invocation.namedArguments[#choices] as List<Release>;
+        final choices = invocation.namedArguments[#choices] as List<Release>;
         expect(choices, hasLength(11));
         expect(
           choices.every((r) => !identical(r, showAllReleaseSentinel)),
@@ -258,8 +254,7 @@ void main() {
           display: any(named: 'display'),
         ),
       ).thenAnswer((invocation) {
-        final choices =
-            invocation.namedArguments[#choices] as List<Release>;
+        final choices = invocation.namedArguments[#choices] as List<Release>;
         expect(choices, hasLength(5));
         // No sentinel present.
         expect(
