@@ -285,6 +285,17 @@ void main() {
     group('when release version is not specified', () {
       setUp(() {
         when(() => argResults.wasParsed('release-version')).thenReturn(false);
+        // Need 2+ releases so chooseRelease prompts instead of auto-selecting.
+        final otherRelease = MockRelease();
+        when(() => otherRelease.id).thenReturn(999);
+        when(() => otherRelease.version).thenReturn('0.0.1');
+        when(() => otherRelease.createdAt).thenReturn(DateTime(2022));
+        when(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+            sideloadableOnly: any(named: 'sideloadableOnly'),
+          ),
+        ).thenAnswer((_) async => [release, otherRelease]);
       });
 
       test('prompts for release', () async {
