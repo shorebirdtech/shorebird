@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:shorebird_cli/src/auth/shorebird_credentials.dart';
 
 /// {@template shorebird_login_result}
@@ -21,13 +23,16 @@ typedef PerformShorebirdLogin = Future<ShorebirdLoginResult> Function({
 ///
 /// 1. Starts a local HTTP server on a random port
 /// 2. Calls [prompt] with the auth URL for the user to visit
-/// 3. Waits for the auth service to redirect back with tokens
-/// 4. Returns the access token and refresh token
+/// 3. Waits for the auth service to redirect back with an authorization code
+/// 4. Exchanges the code for tokens via POST /token
+/// 5. Returns the access token and refresh token
 Future<ShorebirdLoginResult> performShorebirdLogin({
   required void Function(String url) prompt,
   String authServiceUrl = defaultAuthServiceUrl,
+  http.Client? httpClient,
 }) async {
   final completer = Completer<ShorebirdLoginResult>();
+  final client = httpClient ?? http.Client();
 
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   final port = server.port;
@@ -38,10 +43,28 @@ Future<ShorebirdLoginResult> performShorebirdLogin({
 
   server.listen((request) async {
     try {
-      final accessToken = request.uri.queryParameters['access_token'];
-      final refreshToken = request.uri.queryParameters['refresh_token'];
+      final code = request.uri.queryParameters['code'];
 
-      if (accessToken != null && refreshToken != null) {
+      if (code != null) {
+        // Exchange the authorization code for tokens.
+        final tokenResponse = await client.post(
+          Uri.parse('$authServiceUrl/token'),
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'grant_type=authorization_code&code=$code',
+        );
+
+        if (tokenResponse.statusCode != 200) {
+          throw Exception(
+            'Token exchange failed: '
+            '${tokenResponse.statusCode} ${tokenResponse.body}',
+          );
+        }
+
+        final body =
+            jsonDecode(tokenResponse.body) as Map<String, dynamic>;
+        final accessToken = body['access_token'] as String;
+        final refreshToken = body['refresh_token'] as String;
+
         request.response
           ..statusCode = HttpStatus.ok
           ..headers.contentType = ContentType.html
@@ -60,7 +83,7 @@ Future<ShorebirdLoginResult> performShorebirdLogin({
       } else {
         request.response
           ..statusCode = HttpStatus.badRequest
-          ..write('Missing tokens');
+          ..write('Missing authorization code');
         await request.response.close();
       }
     } on Exception catch (e) {

@@ -30,8 +30,8 @@ class ShorebirdCredentials {
   /// The Shorebird JWT (access token).
   String accessToken;
 
-  /// The refresh token (sb_rt_...).
-  final String refreshToken;
+  /// The refresh token (sb_rt_...). Updated on each refresh (token rotation).
+  String refreshToken;
 
   /// Converts to a JSON map for storage.
   Map<String, dynamic> toJson() => {
@@ -90,5 +90,9 @@ class ShorebirdCredentials {
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     accessToken = body['access_token'] as String;
+    // The server rotates the refresh token on each use.
+    if (body['refresh_token'] != null) {
+      refreshToken = body['refresh_token'] as String;
+    }
   }
 }
