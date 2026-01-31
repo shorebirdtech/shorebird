@@ -145,6 +145,7 @@ void main() {
 
       when(() => release.id).thenReturn(releaseId);
       when(() => release.version).thenReturn(releaseVersion);
+      when(() => release.createdAt).thenReturn(DateTime(2023));
 
       when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
 
@@ -299,7 +300,7 @@ void main() {
                 ).captured.single
                 as String Function(Release);
 
-        expect(capturedDisplay(release), equals(releaseVersion));
+        expect(capturedDisplay(release), equals('$releaseVersion  (Jan 1)'));
       });
     });
 

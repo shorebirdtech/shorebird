@@ -1081,7 +1081,10 @@ void main() {
           final displayFunctionCapture = verificationResult.captured.flattened
               .whereType<String Function(Release)>()
               .first;
-          expect(displayFunctionCapture(release), equals(release.version));
+          expect(
+            displayFunctionCapture(release),
+            equals('${release.version}  (Jan 1)'),
+          );
         },
       );
 

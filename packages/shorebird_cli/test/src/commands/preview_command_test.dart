@@ -255,6 +255,7 @@ void main() {
       when(() => app.displayName).thenReturn(appDisplayName);
       when(() => release.id).thenReturn(releaseId);
       when(() => release.version).thenReturn(releaseVersion);
+      when(() => release.createdAt).thenReturn(DateTime(2023));
       when(() => release.platformStatuses).thenReturn({
         ReleasePlatform.android: ReleaseStatus.active,
         ReleasePlatform.ios: ReleaseStatus.active,
@@ -1153,6 +1154,7 @@ channel: ${track.channel}
           otherRelease = MockRelease();
           when(() => otherRelease.appId).thenReturn(appId);
           when(() => otherRelease.version).thenReturn(releaseVersion);
+          when(() => otherRelease.createdAt).thenReturn(DateTime(2023));
           when(() => otherRelease.displayName).thenReturn('2.0.0+1');
           when(() => otherRelease.platformStatuses).thenReturn({
             ReleasePlatform.macos: ReleaseStatus.active,
@@ -1323,7 +1325,7 @@ channel: ${track.channel}
                     ),
                   ).captured.single
                   as String Function(Release);
-          expect(captured(release), equals(releaseVersion));
+          expect(captured(release), equals('$releaseVersion  (Jan 1)'));
           verify(
             () => codePushClientWrapper.getReleases(
               appId: appId,
