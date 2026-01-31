@@ -141,6 +141,10 @@ function Update-Shorebird {
     Push-Location $shorebirdCliDir
     & $dart pub get
     Pop-Location
+    # pub get may not update pubspec.lock's mtime if dependencies are unchanged,
+    # which would cause the pubspec.yaml -gt pubspec.lock check to keep
+    # triggering a rebuild on every invocation.
+    (Get-Item "$shorebirdRootDir/pubspec.lock").LastWriteTime = Get-Date
 
     Write-Output "Compiling shorebird..."
 
