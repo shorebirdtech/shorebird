@@ -1,3 +1,4 @@
+// cspell:words crashpad
 import 'dart:io';
 
 import 'package:collection/collection.dart';
