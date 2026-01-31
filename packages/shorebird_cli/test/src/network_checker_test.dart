@@ -121,19 +121,15 @@ void main() {
 
       group('when download times out', () {
         const downloadTimeout = Duration(milliseconds: 1);
-        // Make this a healthy multiple of the upload timeout to avoid flakiness
-        // on slow (read: Windows) CI machines.
-        final responseTime = downloadTimeout * 100;
         setUp(() {
+          // Use a Completer that never completes so the timeout always fires,
+          // regardless of how slow the CI machine is.
           when(
             () => artifactManager.downloadFile(
               any(),
               outputPath: any(named: 'outputPath'),
             ),
-          ).thenAnswer((_) async {
-            await Future<void>.delayed(responseTime);
-            return File('');
-          });
+          ).thenAnswer((_) => Completer<File>().future);
         });
 
         test('throws a NetworkCheckerException', () async {
@@ -256,17 +252,11 @@ void main() {
 
       group('when upload times out', () {
         const uploadTimeout = Duration(milliseconds: 1);
-        // Make this a healthy multiple of the upload timeout to avoid flakiness
-        // on slow (read: Windows) CI machines.
-        final responseTime = uploadTimeout * 5;
         setUp(() {
-          when(() => httpClient.send(any())).thenAnswer((_) async {
-            await Future<void>.delayed(responseTime);
-            return http.StreamedResponse(
-              const Stream.empty(),
-              HttpStatus.noContent,
-            );
-          });
+          // Use a Completer that never completes so the timeout always fires,
+          // regardless of how slow the CI machine is.
+          when(() => httpClient.send(any()))
+              .thenAnswer((_) => Completer<http.StreamedResponse>().future);
         });
 
         test('throws a NetworkCheckerException', () async {
