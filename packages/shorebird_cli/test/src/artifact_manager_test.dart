@@ -352,10 +352,10 @@ void main() {
                 ),
               ),
             );
-            // Download the first 3/5. The first addition will trigger the first
-            // progress update, the second addition will be throttled, and the
-            // third addition will trigger the second progress update after the
-            // delay.
+            // Download the first 3/5. The first addition will trigger the
+            // first progress update, the second addition will be throttled,
+            // and the third addition will trigger the second progress update
+            // after the delay.
             responseStreamController
               ..add([1])
               ..add([1])
@@ -364,9 +364,14 @@ void main() {
             // Download the last 2/5, bringing the total to 5/5
             responseStreamController.add([1, 1]);
             await Future<void>.delayed(const Duration(milliseconds: 70));
+            // The first update (20%) always fires immediately. The
+            // trailing throttled update may be 40% or 60% depending on
+            // timing. The final 100% always fires.
             verifyInOrder([
               () => progress.update('hello (20%)'),
-              () => progress.update('hello (60%)'),
+              () => progress.update(
+                    any(that: anyOf('hello (40%)', 'hello (60%)')),
+                  ),
               () => progress.update('hello (100%)'),
             ]);
             verifyNever(() => progress.update('hello (0%)'));
