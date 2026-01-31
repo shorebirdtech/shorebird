@@ -255,8 +255,9 @@ void main() {
         setUp(() {
           // Use a Completer that never completes so the timeout always fires,
           // regardless of how slow the CI machine is.
-          when(() => httpClient.send(any()))
-              .thenAnswer((_) => Completer<http.StreamedResponse>().future);
+          when(
+            () => httpClient.send(any()),
+          ).thenAnswer((_) => Completer<http.StreamedResponse>().future);
         });
 
         test('throws a NetworkCheckerException', () async {
