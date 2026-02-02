@@ -1,18 +1,39 @@
-// cspell:words propertylistserialization xcarchives
+// cspell:words propertylistserialization xcarchives plutil
 
 import 'dart:io';
 
 import 'package:propertylistserialization/propertylistserialization.dart';
 
+/// Exception thrown when a plist file cannot be parsed.
+class PlistParseException implements Exception {
+  /// Creates a new [PlistParseException].
+  const PlistParseException({required this.filePath, required this.cause});
+
+  /// The path to the plist file that failed to parse.
+  final String filePath;
+
+  /// The underlying exception that caused the parse failure.
+  final Exception cause;
+
+  @override
+  String toString() =>
+      'Failed to parse $filePath: $cause\n'
+      'Verify the plist is valid by running: plutil -lint $filePath';
+}
+
 /// A representation of an Info.plist file.
 class Plist {
   /// Creates a new [Plist] from the contents of the provided [file].
   Plist({required File file}) {
-    properties =
-        PropertyListSerialization.propertyListWithString(
-              file.readAsStringSync(),
-            )
-            as Map<String, Object>;
+    try {
+      properties =
+          PropertyListSerialization.propertyListWithString(
+                file.readAsStringSync(),
+              )
+              as Map<String, Object>;
+    } on PropertyListReadStreamException catch (e) {
+      throw PlistParseException(filePath: file.path, cause: e);
+    }
   }
 
   /// This key is a user-visible string for the version of the bundle. The

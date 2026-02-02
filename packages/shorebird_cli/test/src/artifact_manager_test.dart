@@ -352,10 +352,10 @@ void main() {
                 ),
               ),
             );
-            // Download the first 3/5. The first addition will trigger the first
-            // progress update, the second addition will be throttled, and the
-            // third addition will trigger the second progress update after the
-            // delay.
+            // Download the first 3/5. The first addition will trigger the
+            // first progress update, the second addition will be throttled,
+            // and the third addition will trigger the second progress update
+            // after the delay.
             responseStreamController
               ..add([1])
               ..add([1])
@@ -364,9 +364,14 @@ void main() {
             // Download the last 2/5, bringing the total to 5/5
             responseStreamController.add([1, 1]);
             await Future<void>.delayed(const Duration(milliseconds: 70));
+            // The first update (20%) always fires immediately. The
+            // trailing throttled update may be 40% or 60% depending on
+            // timing. The final 100% always fires.
             verifyInOrder([
               () => progress.update('hello (20%)'),
-              () => progress.update('hello (60%)'),
+              () => progress.update(
+                any(that: anyOf('hello (40%)', 'hello (60%)')),
+              ),
               () => progress.update('hello (100%)'),
             ]);
             verifyNever(() => progress.update('hello (0%)'));
@@ -597,7 +602,7 @@ void main() {
         late Directory oldArchiveDirectory;
         late Directory newArchiveDirectory;
 
-        setUp(() async {
+        setUp(() {
           oldArchiveDirectory = Directory(
             p.join(
               projectRoot.path,
@@ -607,9 +612,6 @@ void main() {
               'Runner.xcarchive',
             ),
           )..createSync(recursive: true);
-          // Wait to ensure the new archive directory is created after the old
-          // archive directory.
-          await Future<void>.delayed(const Duration(milliseconds: 50));
           newArchiveDirectory = Directory(
             p.join(
               projectRoot.path,
@@ -619,6 +621,9 @@ void main() {
               'Runner2.xcarchive',
             ),
           )..createSync(recursive: true);
+          // Set explicit modification times so newArchiveDirectory is newer.
+          _setDirectoryMtime(oldArchiveDirectory, DateTime(2024));
+          _setDirectoryMtime(newArchiveDirectory, DateTime(2025));
         });
 
         test('selects the most recently updated xcarchive', () async {
@@ -688,7 +693,7 @@ void main() {
         late Directory oldAppDirectory;
         late Directory newAppDirectory;
 
-        setUp(() async {
+        setUp(() {
           oldAppDirectory = Directory(
             p.join(
               projectRoot.path,
@@ -700,9 +705,6 @@ void main() {
               'Runner.app',
             ),
           )..createSync(recursive: true);
-          // Wait to ensure the new app directory is created after the old
-          // app directory.
-          await Future<void>.delayed(const Duration(milliseconds: 50));
           newAppDirectory = Directory(
             p.join(
               projectRoot.path,
@@ -714,6 +716,9 @@ void main() {
               'Runner2.app',
             ),
           )..createSync(recursive: true);
+          // Set explicit modification times so newAppDirectory is newer.
+          _setDirectoryMtime(oldAppDirectory, DateTime(2024));
+          _setDirectoryMtime(newAppDirectory, DateTime(2025));
         });
 
         test('selects the most recently updated app', () async {
@@ -999,4 +1004,42 @@ void main() {
       });
     });
   });
+}
+
+/// Sets the modification time of [directory] to [mtime].
+///
+/// Dart's [Directory] does not expose `setLastModifiedSync`, so we shell out
+/// to platform-specific commands.
+void _setDirectoryMtime(Directory directory, DateTime mtime) {
+  final ProcessResult result;
+  if (Platform.isWindows) {
+    final formatted = mtime.toIso8601String();
+    result = Process.runSync('powershell', [
+      '-Command',
+      "(Get-Item '${directory.path}').LastWriteTime = '$formatted'",
+    ]);
+  } else {
+    result = Process.runSync('touch', [
+      '-t',
+      _toTouchTimestamp(mtime),
+      directory.path,
+    ]);
+  }
+  if (result.exitCode != 0) {
+    throw ProcessException(
+      'Failed to set mtime',
+      [],
+      '${result.stderr}',
+      result.exitCode,
+    );
+  }
+}
+
+String _toTouchTimestamp(DateTime dt) {
+  final y = dt.year.toString().padLeft(4, '0');
+  final m = dt.month.toString().padLeft(2, '0');
+  final d = dt.day.toString().padLeft(2, '0');
+  final h = dt.hour.toString().padLeft(2, '0');
+  final min = dt.minute.toString().padLeft(2, '0');
+  return '$y$m$d$h$min';
 }
