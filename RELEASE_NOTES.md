@@ -4,6 +4,17 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.79 (February 3, 2026)
+
+- 🐦‍⬛ Fix regression in Flutter 3.38.7. readCurrentPatch returning null: shorebird#3488
+- 🐛 Fix: `--flutter-version=hash` stopped working.
+- 🐛 Fix: stop unnecessary rebuild on every CLI invocation.
+- 🍎 Improve error displayed for malformed plist files.
+- 🍧 Allow adding flavors without resetting base app_id.
+- ✨ Improve release selection UX with date display and truncation.
+- 📝 Don't reformat AndroidManifest.xml when modifying it.
+- ⚠️ Warn if `patch_verification` is in shorebird.yaml but `public-key-path` is not set.
+
 ## 1.6.78 (January 26, 2026)
 
 - ⚙️ Fix: using FlutterEngineGroup could cause patches to fail.
