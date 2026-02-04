@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.80 (February 3, 2026)
+
+- 🐦 Support for Flutter 1.6.80
+
 ## 1.6.79 (February 3, 2026)
 
 - 🐦‍⬛ Fix regression in Flutter 3.38.7. readCurrentPatch returning null: shorebird#3488
