@@ -6,7 +6,7 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.80 (February 3, 2026)
 
-- 🐦 Support for Flutter 1.38.9
+- 🐦 Support for Flutter 3.38.9
 
 ## 1.6.79 (February 3, 2026)
 
