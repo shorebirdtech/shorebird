@@ -141,6 +141,14 @@ To target the latest release (e.g. the release that was most recently updated) u
         help: CommonArguments.publicKeyArg.description,
       )
       ..addOption(
+        CommonArguments.publicKeyCmd.name,
+        help: CommonArguments.publicKeyCmd.description,
+      )
+      ..addOption(
+        CommonArguments.signCmd.name,
+        help: CommonArguments.signCmd.description,
+      )
+      ..addOption(
         CommonArguments.splitDebugInfoArg.name,
         help: CommonArguments.splitDebugInfoArg.description,
       )
@@ -287,7 +295,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   Future<void> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
-    results.assertAbsentOrValidKeyPair();
+    results.assertAbsentOrValidKeyPairOrCommands();
 
     try {
       await shorebirdValidator.validateFlavors(
@@ -444,7 +452,9 @@ Building patch with Flutter $flutterVersionString
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: diffStatus.hasNativeChanges,
           inferredReleaseVersion: inferredReleaseVersion,
-          isSigned: results.wasParsed(CommonArguments.privateKeyArg.name),
+          isSigned:
+              results.wasParsed(CommonArguments.privateKeyArg.name) ||
+              results.wasParsed(CommonArguments.signCmd.name),
           environment: BuildEnvironmentMetadata(
             flutterRevision: shorebirdEnv.flutterRevision,
             operatingSystem: platform.operatingSystem,

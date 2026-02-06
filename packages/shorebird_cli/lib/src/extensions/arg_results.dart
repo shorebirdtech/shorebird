@@ -73,6 +73,25 @@ extension CodeSign on ArgResults {
     }
   }
 
+  /// Resolves the public key PEM string from the configured source.
+  ///
+  /// Returns null if no public key is configured. Throws
+  /// [ProcessException] or [FormatException] if a command-based key
+  /// fails.
+  Future<String?> resolvePublicKeyPem() async {
+    final publicKeyFile = file(CommonArguments.publicKeyArg.name);
+    if (publicKeyFile != null) {
+      return publicKeyFile.readAsStringSync();
+    }
+
+    final publicKeyCmd = this[CommonArguments.publicKeyCmd.name] as String?;
+    if (publicKeyCmd != null && wasParsed(CommonArguments.publicKeyCmd.name)) {
+      return codeSigner.runPublicKeyCmd(publicKeyCmd);
+    }
+
+    return null;
+  }
+
   /// Read the public key file and encode it to base64 if any.
   String? get encodedPublicKey {
     final publicKeyFile = file(CommonArguments.publicKeyArg.name);
@@ -80,6 +99,121 @@ extension CodeSign on ArgResults {
     return publicKeyFile != null
         ? codeSigner.base64PublicKey(publicKeyFile)
         : null;
+  }
+
+  /// Validates key arguments for patch commands.
+  ///
+  /// Valid configurations:
+  /// - No signing (nothing provided)
+  /// - File-based: --public-key-path + --private-key-path
+  /// - Command-based: --public-key-cmd + --sign-cmd
+  /// - Mixed: --public-key-path + --sign-cmd
+  ///
+  /// Invalid configurations:
+  /// - Both --public-key-path and --public-key-cmd (ambiguous public key)
+  /// - Both --private-key-path and --sign-cmd (ambiguous signing method)
+  /// - --sign-cmd without a public key source
+  /// - --private-key-path without --public-key-path
+  void assertAbsentOrValidKeyPairOrCommands() {
+    final hasPublicKeyFile = wasParsed(CommonArguments.publicKeyArg.name);
+    final hasPrivateKeyFile = wasParsed(CommonArguments.privateKeyArg.name);
+    final hasPublicKeyCmd = wasParsed(CommonArguments.publicKeyCmd.name);
+    final hasSignCmd = wasParsed(CommonArguments.signCmd.name);
+
+    // Can't have two public key sources
+    if (hasPublicKeyFile && hasPublicKeyCmd) {
+      logger.err(
+        'Cannot specify both --${CommonArguments.publicKeyArg.name} and '
+        '--${CommonArguments.publicKeyCmd.name}.',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    // Can't have two signing methods
+    if (hasPrivateKeyFile && hasSignCmd) {
+      logger.err(
+        'Cannot specify both --${CommonArguments.privateKeyArg.name} and '
+        '--${CommonArguments.signCmd.name}.',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    // File-based signing requires both file args
+    if (hasPrivateKeyFile || (hasPublicKeyFile && !hasSignCmd)) {
+      assertAbsentOrValidKeyPair();
+    }
+
+    // --sign-cmd requires a public key source
+    if (hasSignCmd && !hasPublicKeyFile && !hasPublicKeyCmd) {
+      logger.err(
+        '--${CommonArguments.signCmd.name} requires a public key '
+        '(--${CommonArguments.publicKeyArg.name} or '
+        '--${CommonArguments.publicKeyCmd.name}).',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    // Validate the public key file exists if provided
+    if (hasPublicKeyFile && hasSignCmd) {
+      assertAbsentOrValidPublicKey();
+    }
+  }
+
+  /// Validates public key arguments for release commands.
+  ///
+  /// Valid configurations:
+  /// - No public key (no signing)
+  /// - --public-key-path with valid file
+  /// - --public-key-cmd
+  ///
+  /// Invalid: mixing --public-key-path and --public-key-cmd
+  void assertAbsentOrValidPublicKeyOrCmd() {
+    final hasFilePath = wasParsed(CommonArguments.publicKeyArg.name);
+    final hasCmd = wasParsed(CommonArguments.publicKeyCmd.name);
+
+    if (hasFilePath && hasCmd) {
+      logger.err(
+        'Cannot specify both --${CommonArguments.publicKeyArg.name} and '
+        '--${CommonArguments.publicKeyCmd.name}.',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    if (hasFilePath) {
+      assertAbsentOrValidPublicKey();
+    }
+  }
+
+  /// Get base64-encoded public key from either file or command.
+  ///
+  /// Returns null if no public key is configured.
+  Future<String?> getEncodedPublicKey() async {
+    try {
+      final pem = await resolvePublicKeyPem();
+      if (pem == null) return null;
+      return codeSigner.base64PublicKeyFromPem(pem);
+    } on ProcessException catch (e) {
+      logger.err(
+        'Failed to run '
+        '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    } on FormatException catch (e) {
+      logger.err(
+        '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
+        '${e.message}',
+      );
+      throw ProcessExit(ExitCode.software.code);
+      // Malformed PEM content causes ASN1 parsing errors (RangeError, etc.)
+      // ignore: avoid_catching_errors
+    } on Error catch (e) {
+      // ASN1 parsing errors for malformed PEM content
+      logger.err(
+        '--${CommonArguments.publicKeyCmd.name} output is not a valid '
+        'public key: $e',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
   }
 }
 

@@ -9,9 +9,7 @@ import 'package:shorebird_cli/src/archive_analysis/windows_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -109,10 +107,7 @@ class WindowsPatcher extends Patcher {
     // build/windows/x64/runner/Release
     final appSoPath = p.join(tempDir.path, 'data', 'app.so');
 
-    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
-    final hashSignature = privateKeyFile != null
-        ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-        : null;
+    final hashSignature = await signHash(hash);
 
     final String diffPath;
     try {

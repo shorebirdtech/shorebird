@@ -11,7 +11,9 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
@@ -35,6 +37,7 @@ void main() {
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Directory projectRoot;
     late Doctor doctor;
     late FlavorValidator flavorValidator;
@@ -54,6 +57,7 @@ void main() {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -69,6 +73,7 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       doctor = MockDoctor();
       flavorValidator = MockFlavorValidator();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -269,6 +274,7 @@ To change the version of this release, change your app's version in your pubspec
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             args: any(named: 'args'),
+            base64PublicKey: any(named: 'base64PublicKey'),
           ),
         ).thenAnswer(
           (_) async => AppleBuildResult(kernelFile: File('/path/to/app.dill')),
@@ -352,6 +358,41 @@ To change the version of this release, change your app's version in your pubspec
           verify(() => artifactManager.getMacOSAppDirectory()).called(1);
           verify(
             () => artifactBuilder.buildMacos(args: ['--verbose']),
+          ).called(1);
+        });
+      });
+
+      group('when a public-key-cmd is provided', () {
+        setUp(() {
+          when(
+            () => argResults[CommonArguments.publicKeyCmd.name],
+          ).thenReturn('get-key-cmd');
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+          ).thenReturn(true);
+
+          when(
+            () => codeSigner.runPublicKeyCmd(any()),
+          ).thenAnswer((_) async => 'pem-public-key');
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenReturn('base64PublicKeyFromCmd');
+        });
+
+        test('runs public key cmd and forwards encoded key', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          verify(
+            () => codeSigner.runPublicKeyCmd('get-key-cmd'),
+          ).called(1);
+          verify(
+            () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
+          ).called(1);
+          verify(
+            () => artifactBuilder.buildMacos(
+              base64PublicKey: 'base64PublicKeyFromCmd',
+              args: any(named: 'args'),
+            ),
           ).called(1);
         });
       });

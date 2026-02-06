@@ -9,9 +9,7 @@ import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -143,13 +141,7 @@ class AarPatcher extends Patcher {
       logger.detail('Creating artifact for $artifactPath');
       final patchArtifact = File(artifactPath);
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
-
-      final privateKeyFile = argResults.file(
-        CommonArguments.privateKeyArg.name,
-      );
-      final hashSignature = privateKeyFile != null
-          ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-          : null;
+      final hashSignature = await signHash(hash);
 
       try {
         final diffPath = await artifactManager.createDiff(

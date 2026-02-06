@@ -366,6 +366,12 @@ void main() {
 
       group('when signing keys are provided', () {
         setUp(() {
+          final publicKeyFile = File(
+            p.join(
+              Directory.systemTemp.createTempSync().path,
+              'public-key.pem',
+            ),
+          )..createSync();
           when(
             () => artifactManager.createDiff(
               releaseArtifactPath: any(named: 'releaseArtifactPath'),
@@ -374,7 +380,7 @@ void main() {
           ).thenAnswer((_) async => diffFile.path);
           when(
             () => argResults[CommonArguments.publicKeyArg.name],
-          ).thenReturn('public-key.pem');
+          ).thenReturn(publicKeyFile.path);
           when(
             () => argResults[CommonArguments.privateKeyArg.name],
           ).thenReturn('private-key.pem');
@@ -384,6 +390,13 @@ void main() {
               privateKeyPemFile: any(named: 'privateKeyPemFile'),
             ),
           ).thenReturn('signature');
+          when(
+            () => codeSigner.verify(
+              message: any(named: 'message'),
+              signature: any(named: 'signature'),
+              publicKeyPem: any(named: 'publicKeyPem'),
+            ),
+          ).thenReturn(true);
         });
 
         test('signs patch', () async {

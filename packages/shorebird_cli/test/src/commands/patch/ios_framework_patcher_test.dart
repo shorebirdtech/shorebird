@@ -872,16 +872,19 @@ void main() {
 
             group('when code signing the patch', () {
               setUp(() {
+                final tempDir = Directory.systemTemp.createTempSync();
                 final privateKey = File(
-                  p.join(
-                    Directory.systemTemp.createTempSync().path,
-                    'test-private.pem',
-                  ),
+                  p.join(tempDir.path, 'test-private.pem'),
                 )..createSync();
+                final publicKey = File(p.join(tempDir.path, 'test-public.pem'))
+                  ..writeAsStringSync('public-key-pem');
 
                 when(
                   () => argResults[CommonArguments.privateKeyArg.name],
                 ).thenReturn(privateKey.path);
+                when(
+                  () => argResults[CommonArguments.publicKeyArg.name],
+                ).thenReturn(publicKey.path);
 
                 when(
                   () => codeSigner.sign(
@@ -892,6 +895,13 @@ void main() {
                   final message = invocation.namedArguments[#message] as String;
                   return '$message-signature';
                 });
+                when(
+                  () => codeSigner.verify(
+                    message: any(named: 'message'),
+                    signature: any(named: 'signature'),
+                    publicKeyPem: any(named: 'publicKeyPem'),
+                  ),
+                ).thenReturn(true);
               });
 
               test(

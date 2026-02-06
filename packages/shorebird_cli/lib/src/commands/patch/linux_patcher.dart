@@ -8,9 +8,7 @@ import 'package:shorebird_cli/src/archive_analysis/linux_bundle_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -85,10 +83,7 @@ class LinuxPatcher extends Patcher {
     // build/linux/x64/release/bundle
     final appSoPath = p.join(tempDir.path, 'lib', 'libapp.so');
 
-    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
-    final hashSignature = privateKeyFile != null
-        ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-        : null;
+    final hashSignature = await signHash(hash);
 
     final String diffPath;
     try {

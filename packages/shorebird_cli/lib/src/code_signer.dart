@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:pem/pem.dart';
 import 'package:pointycastle/pointycastle.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [CodeSigner] instance.
 final codeSignerRef = create(CodeSigner.new);
@@ -53,8 +54,13 @@ class CodeSigner {
   /// simply the modulus and exponent of the public key, without information
   /// about the algorithm or or ASN1 object type identifier.
   String base64PublicKey(File publicKeyPemFile) {
+    return base64PublicKeyFromPem(publicKeyPemFile.readAsStringSync());
+  }
+
+  /// Extracts the base64 encoded DER from a PEM-encoded public key string.
+  String base64PublicKeyFromPem(String publicKeyPem) {
     final publicKey = _RSAPublicKeyFromBytes.rsaPublicKeyFromBytes(
-      _pemBytes(pemFile: publicKeyPemFile, type: PemLabel.publicKey),
+      PemCodec(PemLabel.publicKey).decode(publicKeyPem),
     );
 
     final publicKeySeq = ASN1Sequence()
@@ -64,11 +70,104 @@ class CodeSigner {
     return base64.encode(publicKeySeq.encodedBytes!);
   }
 
-  /// Reads a PEM file containing a key of type [type] and returns its contents
-  /// as bytes.
-  List<int> _pemBytes({required File pemFile, required PemLabel type}) {
-    final privateKeyString = pemFile.readAsStringSync();
-    return PemCodec(type).decode(privateKeyString);
+  /// Runs a command and returns its stdout, expected to be a PEM public key.
+  Future<String> runPublicKeyCmd(String command) async {
+    final result = await process.run(
+      'sh',
+      ['-c', command],
+    );
+
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        command,
+        [],
+        'Command failed with exit code ${result.exitCode}: ${result.stderr}',
+        result.exitCode,
+      );
+    }
+
+    final output = '${result.stdout}'.trim();
+    if (!output.contains('-----BEGIN') || !output.contains('PUBLIC KEY')) {
+      if (output.isEmpty) {
+        throw const FormatException(
+          'Command produced no output. '
+          'Expected a PEM-encoded public key.',
+        );
+      }
+      final preview = output.length > 100
+          ? '${output.substring(0, 100)}...'
+          : output;
+      throw FormatException(
+        'Command output does not appear to be a PEM-encoded public key: '
+        '$preview',
+      );
+    }
+
+    return output;
+  }
+
+  /// Signs data by piping it to a command's stdin and reading the base64
+  /// signature from stdout.
+  Future<String> signWithCmd({
+    required String data,
+    required String command,
+  }) async {
+    final proc = await process.start(
+      'sh',
+      ['-c', command],
+    );
+
+    // Write data to stdin and close it
+    proc.stdin.write(data);
+    await proc.stdin.close();
+
+    // Read stdout and stderr concurrently to avoid potential deadlock
+    final results = await Future.wait([
+      proc.stdout.transform(utf8.decoder).join(),
+      proc.stderr.transform(utf8.decoder).join(),
+    ]);
+    final stdout = results[0];
+    final stderr = results[1];
+    final exitCode = await proc.exitCode;
+
+    if (exitCode != 0) {
+      throw ProcessException(
+        command,
+        [],
+        'Sign command failed with exit code $exitCode: $stderr',
+        exitCode,
+      );
+    }
+
+    final signature = stdout.trim();
+    if (signature.isEmpty) {
+      throw const FormatException('Sign command produced no output');
+    }
+
+    return signature;
+  }
+
+  /// Verifies a signature against a message using a PEM-encoded public key.
+  bool verify({
+    required String message,
+    required String signature,
+    required String publicKeyPem,
+  }) {
+    final publicKey = _RSAPublicKeyFromBytes.rsaPublicKeyFromBytes(
+      PemCodec(PemLabel.publicKey).decode(publicKeyPem),
+    );
+
+    final signer = Signer('SHA-256/RSA')
+      ..init(false, PublicKeyParameter<RSAPublicKey>(publicKey));
+
+    try {
+      return signer.verifySignature(
+        utf8.encode(message),
+        RSASignature(base64.decode(signature)),
+      );
+    } on Exception {
+      return false;
+    }
   }
 
   /// Parses a PEM-encoded private key string and returns the key bytes along
