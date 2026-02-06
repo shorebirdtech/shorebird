@@ -374,7 +374,8 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     results.assertAbsentOrValidPublicKeyOrCmd();
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
-    final hasPublicKey = results.wasParsed(CommonArguments.publicKeyArg.name) ||
+    final hasPublicKey =
+        results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
     if (shorebirdYaml?.patchVerification != null && !hasPublicKey) {
       logger.warn(
@@ -561,7 +562,8 @@ ${summary.join('\n')}
     required Release release,
     required Releaser releaser,
   }) async {
-    final hasPublicKey = results.wasParsed(CommonArguments.publicKeyArg.name) ||
+    final hasPublicKey =
+        results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
     final baseMetadata = UpdateReleaseMetadata(
       releasePlatform: releaser.releaseType.releasePlatform,

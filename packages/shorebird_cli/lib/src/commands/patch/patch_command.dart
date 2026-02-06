@@ -452,7 +452,8 @@ Building patch with Flutter $flutterVersionString
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: diffStatus.hasNativeChanges,
           inferredReleaseVersion: inferredReleaseVersion,
-          isSigned: results.wasParsed(CommonArguments.privateKeyArg.name) ||
+          isSigned:
+              results.wasParsed(CommonArguments.privateKeyArg.name) ||
               results.wasParsed(CommonArguments.signCmd.name),
           environment: BuildEnvironmentMetadata(
             flutterRevision: shorebirdEnv.flutterRevision,
