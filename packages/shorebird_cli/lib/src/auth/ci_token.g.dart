@@ -35,4 +35,5 @@ Map<String, dynamic> _$CiTokenToJson(CiToken instance) => <String, dynamic>{
 const _$AuthProviderEnumMap = {
   AuthProvider.google: 'google',
   AuthProvider.microsoft: 'microsoft',
+  AuthProvider.shorebird: 'shorebird',
 };

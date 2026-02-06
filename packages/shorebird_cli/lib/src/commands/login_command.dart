@@ -2,24 +2,12 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart'
-    as api;
 
 /// {@template login_command}
 /// `shorebird login`
 /// Login as a new Shorebird user.
 /// {@endtemplate}
 class LoginCommand extends ShorebirdCommand {
-  /// {@macro login_command}
-  LoginCommand() {
-    argParser.addOption(
-      'provider',
-      abbr: 'p',
-      allowed: api.AuthProvider.values.map((e) => e.name),
-      help: 'The authentication provider to use.',
-    );
-  }
-
   @override
   String get description => 'Login as a new Shorebird user.';
 
@@ -37,19 +25,8 @@ class LoginCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
-    final api.AuthProvider provider;
-    if (results.wasParsed('provider')) {
-      provider = api.AuthProvider.values.byName(results['provider'] as String);
-    } else {
-      provider = logger.chooseOne(
-        'Choose an auth provider',
-        choices: api.AuthProvider.values,
-        display: (p) => p.displayName,
-      );
-    }
-
     try {
-      await auth.login(provider, prompt: prompt);
+      await auth.login(prompt: prompt);
     } on UserNotFoundException catch (error) {
       final consoleUri = Uri.https('console.shorebird.dev');
       logger

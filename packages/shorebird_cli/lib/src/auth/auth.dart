@@ -13,6 +13,9 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/ci_token.dart';
 import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
+import 'package:shorebird_cli/src/auth/shorebird_auth_login.dart'
+    as shorebird_auth;
+import 'package:shorebird_cli/src/auth/shorebird_credentials.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -36,6 +39,9 @@ const googleJwtIssuer = 'https://accounts.google.com';
 /// https://login.microsoftonline.com/{tenant-id}/v2.0. We don't care about the
 /// tenant ID, so we just match the prefix.
 const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
+
+/// The JWT issuer field for Shorebird-issued JWTs.
+const shorebirdJwtIssuer = 'https://auth.shorebird.dev';
 
 /// The environment variable that holds the Shorebird CI token.
 const shorebirdTokenEnvVar = 'SHOREBIRD_TOKEN';
@@ -176,21 +182,79 @@ class AuthenticatedClient extends http.BaseClient {
   }
 }
 
+/// An HTTP client that uses Shorebird credentials and auto-refreshes via
+/// auth.shorebird.dev.
+class ShorebirdAuthenticatedClient extends http.BaseClient {
+  /// Creates a new [ShorebirdAuthenticatedClient].
+  ShorebirdAuthenticatedClient({
+    required http.Client httpClient,
+    required this.shorebirdCredentials,
+    required this.authServiceUrl,
+    this.onRefresh,
+  }) : _baseClient = httpClient;
+
+  final http.Client _baseClient;
+
+  /// The Shorebird credentials.
+  final ShorebirdCredentials shorebirdCredentials;
+
+  /// The auth service URL for token refresh.
+  final String authServiceUrl;
+
+  /// Called after a successful token refresh.
+  final void Function()? onRefresh;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    // Note: if the CLI ever makes concurrent requests, refresh token rotation
+    // means two simultaneous refreshes would race — the first invalidates the
+    // token the second sends. Not a concern today since the CLI is sequential,
+    // but would need a coalescing lock if that changes.
+    if (shorebirdCredentials.isExpired) {
+      try {
+        await shorebirdCredentials.refresh(
+          httpClient: _baseClient,
+          authServiceUrl: authServiceUrl,
+        );
+        onRefresh?.call();
+      } on Exception catch (e, s) {
+        logger
+          ..err('Failed to refresh credentials.')
+          ..info(
+            '''Try logging out with ${lightBlue.wrap('shorebird logout')} and logging in again.''',
+          )
+          ..detail(e.toString())
+          ..detail(s.toString());
+
+        throw ProcessExit(ExitCode.software.code);
+      }
+    }
+
+    request.headers['Authorization'] =
+        'Bearer ${shorebirdCredentials.accessToken}';
+    return _baseClient.send(request);
+  }
+}
+
 /// An OAuth 2.0 authentication provider.
 class Auth {
   /// Creates a new [Auth] instance.
   Auth({
     http.Client? httpClient,
     String? credentialsDir,
-    ObtainAccessCredentials? obtainAccessCredentials,
     CodePushClientBuilder? buildCodePushClient,
+    shorebird_auth.PerformShorebirdLogin? performShorebirdLogin,
+    String? authServiceUrl,
   }) : _httpClient = httpClient ?? _defaultHttpClient,
        _credentialsDir =
            credentialsDir ?? applicationConfigHome(executableName),
-       _obtainAccessCredentials =
-           obtainAccessCredentials ??
-           oauth2.obtainAccessCredentialsViaUserConsent,
-       _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
+       _buildCodePushClient = buildCodePushClient ?? CodePushClient.new,
+       _performShorebirdLogin =
+           performShorebirdLogin ?? shorebird_auth.performShorebirdLogin,
+       _authServiceUrl =
+           authServiceUrl ??
+           platform.environment[authServiceUrlEnvVar] ??
+           defaultAuthServiceUrl {
     _loadCredentials();
   }
 
@@ -198,9 +262,11 @@ class Auth {
 
   final http.Client _httpClient;
   final String _credentialsDir;
-  final ObtainAccessCredentials _obtainAccessCredentials;
   final CodePushClientBuilder _buildCodePushClient;
+  final shorebird_auth.PerformShorebirdLogin _performShorebirdLogin;
+  final String _authServiceUrl;
   CiToken? _token;
+  ShorebirdCredentials? _shorebirdCredentials;
 
   /// The path to the credentials file.
   String get credentialsFilePath {
@@ -209,6 +275,15 @@ class Auth {
 
   /// The underlying HTTP client.
   http.Client get client {
+    if (_shorebirdCredentials != null) {
+      return ShorebirdAuthenticatedClient(
+        httpClient: _httpClient,
+        shorebirdCredentials: _shorebirdCredentials!,
+        authServiceUrl: _authServiceUrl,
+        onRefresh: _flushShorebirdCredentials,
+      );
+    }
+
     if (_credentials == null && _token == null) {
       return _httpClient;
     }
@@ -220,82 +295,74 @@ class Auth {
     return AuthenticatedClient.credentials(
       credentials: _credentials!,
       httpClient: _httpClient,
-      onRefreshCredentials: _flushCredentials,
+      onRefreshCredentials: _flushOauthCredentials,
     );
   }
 
-  /// Gets a CI token for the current user.
-  Future<CiToken> loginCI(
-    AuthProvider authProvider, {
-    required void Function(String) prompt,
-  }) async {
-    final client = http.Client();
-    try {
-      final credentials = await _obtainAccessCredentials(
-        authProvider.clientId,
-        authProvider.scopes,
-        client,
-        prompt,
-        authEndpoints: authProvider.authEndpoints,
-      );
-
-      final codePushClient = _buildCodePushClient(
-        httpClient: AuthenticatedClient.credentials(
-          credentials: credentials,
-          httpClient: _httpClient,
-        ),
-      );
-      final user = await codePushClient.getCurrentUser();
-      if (user == null) {
-        throw UserNotFoundException(email: credentials.email!);
-      }
-      if (credentials.refreshToken == null) {
-        throw Exception('No refresh token found.');
-      }
-
-      return CiToken(
-        refreshToken: credentials.refreshToken!,
-        authProvider: authProvider,
-      );
-    } finally {
-      client.close();
+  /// Creates an API key for the authenticated user via auth.shorebird.dev.
+  ///
+  /// The user must be logged in (via [login]) before calling this.
+  /// Returns an `sb_api_...` string.
+  Future<String> createApiKey({required String name}) async {
+    if (_shorebirdCredentials == null) {
+      throw StateError('Must be logged in to create an API key.');
     }
+    // Use the access token directly. ShorebirdAuthenticatedClient handles
+    // refresh for normal API calls; createApiKey is a one-shot call to the
+    // auth service so we send the current token as-is.
+    final response = await _httpClient.post(
+      Uri.parse('$_authServiceUrl/api/api-keys'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${_shorebirdCredentials!.accessToken}',
+      },
+      body: json.encode({'name': name}),
+    );
+    if (response.statusCode != 201) {
+      throw Exception(
+        'Failed to create API key: '
+        '${response.statusCode} ${response.body}',
+      );
+    }
+    final body = json.decode(response.body) as Map<String, dynamic>;
+    if (body['api_key'] is! String) {
+      throw Exception('Unexpected response: missing api_key field');
+    }
+    return body['api_key'] as String;
   }
 
-  /// Logs in the user.
-  Future<void> login(
-    AuthProvider authProvider, {
+  /// Logs in the user via auth.shorebird.dev.
+  ///
+  /// Opens a browser to the auth service where the user picks
+  /// Google or Microsoft, then receives Shorebird tokens via localhost
+  /// callback.
+  Future<void> login({
     required void Function(String) prompt,
   }) async {
     if (isAuthenticated) {
-      // Because isAuthenticated is checks for the presence of either an email
-      // or a CI token, and because this method is for logging in without a CI
-      // token, we can safely assume that _email is not null.
       throw UserAlreadyLoggedInException(email: _email!);
     }
 
-    final client = http.Client();
-    try {
-      _credentials = await _obtainAccessCredentials(
-        authProvider.clientId,
-        authProvider.scopes,
-        client,
-        prompt,
-        authEndpoints: authProvider.authEndpoints,
-      );
+    final result = await _performShorebirdLogin(
+      prompt: prompt,
+      authServiceUrl: _authServiceUrl,
+    );
 
-      final codePushClient = _buildCodePushClient(httpClient: this.client);
+    _shorebirdCredentials = ShorebirdCredentials(
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    );
 
-      final user = await codePushClient.getCurrentUser();
-      if (user == null) {
-        throw UserNotFoundException(email: _credentials!.email!);
-      }
-
-      _email = user.email;
-      _flushCredentials(_credentials!);
-    } finally {
-      client.close();
+    final codePushClient = _buildCodePushClient(httpClient: client);
+    final user = await codePushClient.getCurrentUser();
+    if (user == null) {
+      final email = _shorebirdCredentials!.email ?? 'unknown';
+      _shorebirdCredentials = null;
+      throw UserNotFoundException(email: email);
     }
+
+    _email = user.email;
+    _flushShorebirdCredentials();
   }
 
   /// Logs out the user.
@@ -309,15 +376,32 @@ class Auth {
   String? get email => _email;
 
   /// Whether the user is authenticated.
-  bool get isAuthenticated => _email != null || _token != null;
+  ///
+  /// For Shorebird credentials, we require either a parseable email or an
+  /// API key. This avoids treating corrupted credentials as authenticated
+  /// (which would block re-login).
+  bool get isAuthenticated {
+    if (_email != null || _token != null) return true;
+    return _shorebirdCredentials != null;
+  }
 
   void _loadCredentials() {
-    final envToken = platform.environment[shorebirdTokenEnvVar];
+    final envToken = platform.environment[shorebirdTokenEnvVar]?.trim();
     if (envToken != null) {
       logger.detail('[env] $shorebirdTokenEnvVar detected');
 
       try {
-        _token = CiToken.fromBase64(envToken.trim());
+        if (envToken.startsWith('sb_api_')) {
+          // API key: use directly as Bearer token, no refresh needed.
+          _shorebirdCredentials = ShorebirdCredentials(
+            accessToken: envToken,
+            refreshToken: '',
+          );
+        } else {
+          // Legacy CI token: base64-encoded CiToken with an OAuth refresh
+          // token for Google or Microsoft.
+          _token = CiToken.fromBase64(envToken);
+        }
       } on FormatException catch (e) {
         logger
           ..err('''
@@ -336,24 +420,37 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
     if (credentialsFile.existsSync()) {
       try {
         final contents = credentialsFile.readAsStringSync();
-        _credentials = oauth2.AccessCredentials.fromJson(
-          json.decode(contents) as Map<String, dynamic>,
-        );
-        _email = _credentials?.email;
+        final jsonMap = json.decode(contents) as Map<String, dynamic>;
+
+        if (jsonMap['type'] == 'shorebird') {
+          _shorebirdCredentials = ShorebirdCredentials.fromJson(jsonMap);
+          _email = _shorebirdCredentials?.email;
+        } else {
+          _credentials = oauth2.AccessCredentials.fromJson(jsonMap);
+          _email = _credentials?.email;
+        }
       } on Exception {
         // Swallow json decode exceptions.
       }
     }
   }
 
-  void _flushCredentials(oauth2.AccessCredentials credentials) {
+  void _flushOauthCredentials(oauth2.AccessCredentials credentials) {
     File(credentialsFilePath)
       ..createSync(recursive: true)
       ..writeAsStringSync(json.encode(credentials.toJson()));
   }
 
+  void _flushShorebirdCredentials() {
+    if (_shorebirdCredentials == null) return;
+    File(credentialsFilePath)
+      ..createSync(recursive: true)
+      ..writeAsStringSync(json.encode(_shorebirdCredentials!.toJson()));
+  }
+
   void _clearCredentials() {
     _credentials = null;
+    _shorebirdCredentials = null;
     _email = null;
 
     final credentialsFile = File(credentialsFilePath);
@@ -417,6 +514,8 @@ extension OauthAuthProvider on Jwt {
       return AuthProvider.google;
     } else if (payload.iss.startsWith(microsoftJwtIssuerPrefix)) {
       return AuthProvider.microsoft;
+    } else if (payload.iss == shorebirdJwtIssuer) {
+      return AuthProvider.shorebird;
     }
 
     throw Exception('Unknown jwt issuer: ${payload.iss}');
@@ -429,6 +528,9 @@ extension OauthValues on AuthProvider {
   oauth2.AuthEndpoints get authEndpoints => switch (this) {
     (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
     (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
+    (AuthProvider.shorebird) => throw UnsupportedError(
+      'Shorebird uses auth.shorebird.dev, not OAuth',
+    ),
   };
 
   /// The OAuth 2.0 client ID for the provider.
@@ -456,6 +558,10 @@ extension OauthValues on AuthProvider {
           /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
           '4fc38981-4ec4-4bd9-a755-e6ad9a413054',
         );
+      case AuthProvider.shorebird:
+        throw UnsupportedError(
+          'Shorebird uses auth.shorebird.dev, not OAuth',
+        );
     }
   }
 
@@ -471,5 +577,8 @@ extension OauthValues on AuthProvider {
       // Required to get refresh tokens.
       'offline_access',
     ],
+    (AuthProvider.shorebird) => throw UnsupportedError(
+      'Shorebird uses auth.shorebird.dev, not OAuth',
+    ),
   };
 }
