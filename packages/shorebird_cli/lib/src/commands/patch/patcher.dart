@@ -130,6 +130,23 @@ More info: ${troubleshootingUrl.toLink()}.
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => argResults['allow-native-diffs'] == true;
 
+  /// Runs [fn] and wraps [ProcessException]/[FormatException] in a
+  /// user-friendly error message referencing [argName].
+  Future<T> _runSigningCmd<T>(
+    String argName,
+    Future<T> Function() fn,
+  ) async {
+    try {
+      return await fn();
+    } on ProcessException catch (e) {
+      logger.err('Failed to run --$argName: ${e.message}');
+      throw ProcessExit(ExitCode.software.code);
+    } on FormatException catch (e) {
+      logger.err('--$argName produced invalid output: ${e.message}');
+      throw ProcessExit(ExitCode.software.code);
+    }
+  }
+
   /// Signs a hash using either file-based or command-based signing.
   ///
   /// Returns null if no signing is configured.
@@ -143,33 +160,18 @@ More info: ${troubleshootingUrl.toLink()}.
     // Command-based signing
     final signCmd = argResults[CommonArguments.signCmd.name] as String?;
     if (signCmd != null) {
-      final String signature;
-      try {
-        signature = await codeSigner.signWithCmd(
-          data: hash,
-          command: signCmd,
-        );
-      } on ProcessException catch (e) {
-        logger.err('Failed to run --sign-cmd: ${e.message}');
-        throw ProcessExit(ExitCode.software.code);
-      } on FormatException catch (e) {
-        logger.err('--sign-cmd produced invalid output: ${e.message}');
-        throw ProcessExit(ExitCode.software.code);
-      }
+      final signature = await _runSigningCmd(
+        CommonArguments.signCmd.name,
+        () => codeSigner.signWithCmd(data: hash, command: signCmd),
+      );
 
       // Verify immediately using public key cmd
       final publicKeyCmd =
           argResults[CommonArguments.publicKeyCmd.name] as String;
-      final String publicKeyPem;
-      try {
-        publicKeyPem = await codeSigner.runPublicKeyCmd(publicKeyCmd);
-      } on ProcessException catch (e) {
-        logger.err('Failed to run --public-key-cmd: ${e.message}');
-        throw ProcessExit(ExitCode.software.code);
-      } on FormatException catch (e) {
-        logger.err('--public-key-cmd produced invalid output: ${e.message}');
-        throw ProcessExit(ExitCode.software.code);
-      }
+      final publicKeyPem = await _runSigningCmd(
+        CommonArguments.publicKeyCmd.name,
+        () => codeSigner.runPublicKeyCmd(publicKeyCmd),
+      );
 
       if (!codeSigner.verify(
         message: hash,
