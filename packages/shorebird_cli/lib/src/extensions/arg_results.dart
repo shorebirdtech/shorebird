@@ -82,11 +82,6 @@ extension CodeSign on ArgResults {
         : null;
   }
 
-  /// Returns true if using command-based signing.
-  bool get usesSigningCommands =>
-      wasParsed(CommonArguments.publicKeyCmd.name) ||
-      wasParsed(CommonArguments.signCmd.name);
-
   /// Validates key arguments for patch commands.
   ///
   /// Valid configurations:
@@ -98,9 +93,11 @@ extension CodeSign on ArgResults {
   /// - Mixing file-based and command-based signing
   /// - Only one of a pair (e.g., --public-key-path without --private-key-path)
   void assertAbsentOrValidKeyPairOrCommands() {
-    final hasFileKeys = wasParsed(CommonArguments.publicKeyArg.name) ||
+    final hasFileKeys =
+        wasParsed(CommonArguments.publicKeyArg.name) ||
         wasParsed(CommonArguments.privateKeyArg.name);
-    final hasCmdKeys = wasParsed(CommonArguments.publicKeyCmd.name) ||
+    final hasCmdKeys =
+        wasParsed(CommonArguments.publicKeyCmd.name) ||
         wasParsed(CommonArguments.signCmd.name);
 
     if (hasFileKeys && hasCmdKeys) {
