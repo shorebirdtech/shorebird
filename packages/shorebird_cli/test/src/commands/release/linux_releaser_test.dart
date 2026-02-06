@@ -318,6 +318,38 @@ To change the version of this release, change your app's version in your pubspec
           ).called(1);
         });
       });
+
+      group('when a public-key-cmd is provided', () {
+        setUp(() {
+          when(
+            () => argResults[CommonArguments.publicKeyCmd.name],
+          ).thenReturn('get-key-cmd');
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+          ).thenReturn(true);
+
+          when(
+            () => codeSigner.runPublicKeyCmd(any()),
+          ).thenAnswer((_) async => 'pem-public-key');
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenReturn('encoded_public_key_from_cmd');
+        });
+
+        test('passes public key to buildLinuxApp', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+          verify(
+            () => codeSigner.runPublicKeyCmd('get-key-cmd'),
+          ).called(1);
+          verify(
+            () => artifactBuilder.buildLinuxApp(
+              base64PublicKey: 'encoded_public_key_from_cmd',
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+            ),
+          ).called(1);
+        });
+      });
     });
 
     group('getReleaseVersion', () {

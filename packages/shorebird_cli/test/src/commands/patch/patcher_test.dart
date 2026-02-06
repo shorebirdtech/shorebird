@@ -254,6 +254,7 @@ void main() {
       late ArgResults argResults;
       late CodeSigner codeSigner;
       late ShorebirdLogger logger;
+      late File publicKeyTempFile;
 
       setUp(() {
         argParser = ArgParser()
@@ -263,6 +264,12 @@ void main() {
           ..addOption(CommonArguments.signCmd.name);
         codeSigner = MockCodeSigner();
         logger = MockShorebirdLogger();
+        publicKeyTempFile = File(
+          p.join(
+            Directory.systemTemp.createTempSync().path,
+            'public.pem',
+          ),
+        )..writeAsStringSync('fake-public-key-pem');
       });
 
       test('returns null when no signing is configured', () async {
@@ -286,6 +293,43 @@ void main() {
 
       test('returns signature from file-based signing', () async {
         argResults = argParser.parse([
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyTempFile.path}',
+          '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
+        ]);
+
+        when(
+          () => codeSigner.sign(
+            message: any(named: 'message'),
+            privateKeyPemFile: any(named: 'privateKeyPemFile'),
+          ),
+        ).thenReturn('file-signature');
+        when(
+          () => codeSigner.verify(
+            message: any(named: 'message'),
+            signature: any(named: 'signature'),
+            publicKeyPem: any(named: 'publicKeyPem'),
+          ),
+        ).thenReturn(true);
+
+        final patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+
+        await runScoped(
+          () async {
+            final result = await patcher.signHash('test-hash');
+            expect(result, equals('file-signature'));
+          },
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
+      });
+
+      test('throws ProcessExit when signer present but no public key',
+          () async {
+        argResults = argParser.parse([
           '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
         ]);
 
@@ -305,10 +349,20 @@ void main() {
 
         await runScoped(
           () async {
-            final result = await patcher.signHash('test-hash');
-            expect(result, equals('file-signature'));
+            await expectLater(
+              () => patcher.signHash('test-hash'),
+              throwsA(isA<ProcessExit>()),
+            );
+            verify(
+              () => logger.err(
+                any(that: contains('public key is required')),
+              ),
+            ).called(1);
           },
-          values: {codeSignerRef.overrideWith(() => codeSigner)},
+          values: {
+            codeSignerRef.overrideWith(() => codeSigner),
+            loggerRef.overrideWith(() => logger),
+          },
         );
       });
 
@@ -452,11 +506,8 @@ void main() {
       });
 
       test('supports mixed signing (public key file + sign cmd)', () async {
-        final publicKeyFile = File(
-          p.join(cryptoFixturesBasePath, 'public.pem'),
-        );
         argResults = argParser.parse([
-          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyTempFile.path}',
           '--${CommonArguments.signCmd.name}=sign-cmd',
         ]);
 

@@ -201,12 +201,20 @@ More info: ${troubleshootingUrl.toLink()}.
     final signature = await signer(hash);
     final publicKeyPem = await _resolvePublicKeyPem();
 
-    if (publicKeyPem != null &&
-        !codeSigner.verify(
-          message: hash,
-          signature: signature,
-          publicKeyPem: publicKeyPem,
-        )) {
+    if (publicKeyPem == null) {
+      logger.err(
+        'A public key is required for code signing. '
+        'Provide --${CommonArguments.publicKeyArg.name} or '
+        '--${CommonArguments.publicKeyCmd.name}.',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    if (!codeSigner.verify(
+      message: hash,
+      signature: signature,
+      publicKeyPem: publicKeyPem,
+    )) {
       logger.err(
         'Signature verification failed. The signature does not match '
         'the provided public key.',
