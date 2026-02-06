@@ -76,6 +76,12 @@ class CodeSigner {
 
     final output = '${result.stdout}'.trim();
     if (!output.contains('-----BEGIN') || !output.contains('PUBLIC KEY')) {
+      if (output.isEmpty) {
+        throw const FormatException(
+          'Command produced no output. '
+          'Expected a PEM-encoded public key.',
+        );
+      }
       final preview = output.length > 100
           ? '${output.substring(0, 100)}...'
           : output;

@@ -364,6 +364,92 @@ void main() {
         );
       });
 
+      test('throws ProcessExit when sign-cmd fails', () async {
+        argResults = argParser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+          '--${CommonArguments.signCmd.name}=bad-cmd',
+        ]);
+
+        when(
+          () => codeSigner.signWithCmd(
+            data: any(named: 'data'),
+            command: any(named: 'command'),
+          ),
+        ).thenThrow(
+          const ProcessException('bad-cmd', [], 'command not found', 127),
+        );
+
+        final patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+
+        await runScoped(
+          () async {
+            await expectLater(
+              () => patcher.signHash('test-hash'),
+              throwsA(isA<ProcessExit>()),
+            );
+            verify(
+              () => logger.err(any(that: contains('--sign-cmd'))),
+            ).called(1);
+          },
+          values: {
+            codeSignerRef.overrideWith(() => codeSigner),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+      });
+
+      test('throws ProcessExit when public-key-cmd fails', () async {
+        argResults = argParser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=bad-key-cmd',
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ]);
+
+        when(
+          () => codeSigner.signWithCmd(
+            data: any(named: 'data'),
+            command: any(named: 'command'),
+          ),
+        ).thenAnswer((_) async => 'signature');
+        when(
+          () => codeSigner.runPublicKeyCmd(any()),
+        ).thenThrow(
+          const ProcessException(
+            'bad-key-cmd',
+            [],
+            'command not found',
+            127,
+          ),
+        );
+
+        final patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+
+        await runScoped(
+          () async {
+            await expectLater(
+              () => patcher.signHash('test-hash'),
+              throwsA(isA<ProcessExit>()),
+            );
+            verify(
+              () => logger.err(any(that: contains('--public-key-cmd'))),
+            ).called(1);
+          },
+          values: {
+            codeSignerRef.overrideWith(() => codeSigner),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+      });
+
       test('throws ProcessExit when signature verification fails', () async {
         argResults = argParser.parse([
           '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',

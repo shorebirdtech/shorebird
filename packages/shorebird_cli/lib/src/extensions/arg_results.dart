@@ -156,8 +156,24 @@ extension CodeSign on ArgResults {
     }
     if (wasParsed(CommonArguments.publicKeyCmd.name)) {
       final command = this[CommonArguments.publicKeyCmd.name] as String;
-      final pem = await codeSigner.runPublicKeyCmd(command);
-      return codeSigner.base64PublicKeyFromPem(pem);
+      try {
+        final pem = await codeSigner.runPublicKeyCmd(command);
+        return codeSigner.base64PublicKeyFromPem(pem);
+      } on ProcessException catch (e) {
+        logger.err('Failed to run --public-key-cmd: ${e.message}');
+        throw ProcessExit(ExitCode.software.code);
+      } on FormatException catch (e) {
+        logger.err('--public-key-cmd produced invalid output: ${e.message}');
+        throw ProcessExit(ExitCode.software.code);
+        // Malformed PEM content causes ASN1 parsing errors (RangeError, etc.)
+        // ignore: avoid_catching_errors
+      } on Error catch (e) {
+        // ASN1 parsing errors for malformed PEM content
+        logger.err(
+          '--public-key-cmd output is not a valid public key: $e',
+        );
+        throw ProcessExit(ExitCode.software.code);
+      }
     }
     return null;
   }

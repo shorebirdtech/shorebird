@@ -207,6 +207,31 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
         );
       });
 
+      test('throws FormatException when output is empty', () async {
+        final result = MockShorebirdProcessResult();
+        when(() => result.exitCode).thenReturn(0);
+        when(() => result.stdout).thenReturn('');
+        when(
+          () => shorebirdProcess.run(any(), any()),
+        ).thenAnswer((_) async => result);
+
+        await runScoped(
+          () async {
+            await expectLater(
+              () => codeSigner.runPublicKeyCmd('empty-cmd'),
+              throwsA(
+                isA<FormatException>().having(
+                  (e) => e.message,
+                  'message',
+                  contains('produced no output'),
+                ),
+              ),
+            );
+          },
+          values: {processRef.overrideWith(() => shorebirdProcess)},
+        );
+      });
+
       test('throws FormatException when output is not a PEM key', () async {
         final result = MockShorebirdProcessResult();
         when(() => result.exitCode).thenReturn(0);
