@@ -417,6 +417,9 @@ To change the version of this release, change your app's version in your pubspec
           when(
             () => argResults[CommonArguments.publicKeyArg.name],
           ).thenReturn(patchSigningPublicKeyFile.path);
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
 
           when(
             () => artifactBuilder.buildAppBundle(

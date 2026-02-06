@@ -293,6 +293,9 @@ void main() {
           when(
             () => argResults[CommonArguments.publicKeyArg.name],
           ).thenReturn(patchSigningPublicKeyFile.path);
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
 
           when(
             () => artifactBuilder.buildIosFramework(
