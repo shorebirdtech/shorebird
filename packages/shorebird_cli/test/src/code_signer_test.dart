@@ -11,8 +11,13 @@ void main() {
     CodeSigner,
     () {
       final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
+      // PKCS#8 format (BEGIN PRIVATE KEY)
       final privateKeyFile = File(
         p.join(cryptoFixturesBasePath, 'private.pem'),
+      );
+      // PKCS#1 format (BEGIN RSA PRIVATE KEY)
+      final privateKeyPkcs1File = File(
+        p.join(cryptoFixturesBasePath, 'private_pkcs1.pem'),
       );
       final publicKeyFile = File(p.join(cryptoFixturesBasePath, 'public.pem'));
 
@@ -26,7 +31,7 @@ void main() {
         const message =
             '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b';
 
-        test('signature matches openssl output', () async {
+        test('signature matches openssl output with PKCS#8 key', () async {
           final outputDir = Directory.systemTemp.createTempSync();
           final messageFile = File(p.join(outputDir.path, 'message'))
             ..writeAsStringSync(message);
@@ -49,6 +54,45 @@ void main() {
             privateKeyPemFile: privateKeyFile,
           );
           expect(actualSignature, equals(expectedSignature));
+        });
+
+        test('signature matches openssl output with PKCS#1 key', () async {
+          final outputDir = Directory.systemTemp.createTempSync();
+          final messageFile = File(p.join(outputDir.path, 'message'))
+            ..writeAsStringSync(message);
+          final signatureFile = File(p.join(outputDir.path, 'signature'));
+          await Process.run('openssl', [
+            'dgst',
+            '-sha256',
+            '-sign',
+            privateKeyPkcs1File.path,
+            '-out',
+            signatureFile.path,
+            messageFile.path,
+          ]);
+
+          final expectedSignature = base64Encode(
+            signatureFile.readAsBytesSync(),
+          );
+          final actualSignature = codeSigner.sign(
+            message: message,
+            privateKeyPemFile: privateKeyPkcs1File,
+          );
+          expect(actualSignature, equals(expectedSignature));
+        });
+
+        test('PKCS#1 and PKCS#8 keys produce identical signatures', () {
+          // Both keys are derived from the same RSA key pair, so they should
+          // produce the same signature.
+          final pkcs8Signature = codeSigner.sign(
+            message: message,
+            privateKeyPemFile: privateKeyFile,
+          );
+          final pkcs1Signature = codeSigner.sign(
+            message: message,
+            privateKeyPemFile: privateKeyPkcs1File,
+          );
+          expect(pkcs1Signature, equals(pkcs8Signature));
         });
       });
 
