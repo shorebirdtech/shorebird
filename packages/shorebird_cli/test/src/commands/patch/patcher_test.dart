@@ -2,24 +2,31 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import '../../mocks.dart';
+
+class FakeFile extends Fake implements File {}
 
 void main() {
   group(Patcher, () {
     setUpAll(() {
       registerFallbackValue(ReleasePlatform.android);
       registerFallbackValue(DeploymentTrack.stable);
+      registerFallbackValue(FakeFile());
     });
 
     group('linkPercentage', () {
@@ -234,6 +241,171 @@ void main() {
             patchArtifactBundles: artifacts,
           ),
         ).called(1);
+      });
+    });
+
+    group('signHash', () {
+      final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
+      final privateKeyFile = File(
+        p.join(cryptoFixturesBasePath, 'private.pem'),
+      );
+
+      late ArgParser argParser;
+      late ArgResults argResults;
+      late CodeSigner codeSigner;
+      late ShorebirdLogger logger;
+
+      setUp(() {
+        argParser = ArgParser()
+          ..addOption(CommonArguments.privateKeyArg.name)
+          ..addOption(CommonArguments.publicKeyCmd.name)
+          ..addOption(CommonArguments.signCmd.name);
+        codeSigner = MockCodeSigner();
+        logger = MockShorebirdLogger();
+      });
+
+      test('returns null when no signing is configured', () async {
+        argResults = argParser.parse([]);
+
+        final patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+
+        await runScoped(
+          () async {
+            final result = await patcher.signHash('test-hash');
+            expect(result, isNull);
+          },
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
+      });
+
+      test('returns signature from file-based signing', () async {
+        argResults = argParser.parse([
+          '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
+        ]);
+
+        when(
+          () => codeSigner.sign(
+            message: any(named: 'message'),
+            privateKeyPemFile: any(named: 'privateKeyPemFile'),
+          ),
+        ).thenReturn('file-signature');
+
+        final patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+
+        await runScoped(
+          () async {
+            final result = await patcher.signHash('test-hash');
+            expect(result, equals('file-signature'));
+          },
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
+      });
+
+      test('returns signature from command-based signing when valid', () async {
+        argResults = argParser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ]);
+
+        when(
+          () => codeSigner.signWithCmd(
+            data: any(named: 'data'),
+            command: any(named: 'command'),
+          ),
+        ).thenAnswer((_) async => 'cmd-signature');
+        when(
+          () => codeSigner.runPublicKeyCmd(any()),
+        ).thenAnswer((_) async => 'pem-public-key');
+        when(
+          () => codeSigner.verify(
+            message: any(named: 'message'),
+            signature: any(named: 'signature'),
+            publicKeyPem: any(named: 'publicKeyPem'),
+          ),
+        ).thenReturn(true);
+
+        final patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+
+        await runScoped(
+          () async {
+            final result = await patcher.signHash('test-hash');
+            expect(result, equals('cmd-signature'));
+            verify(
+              () => codeSigner.signWithCmd(
+                data: 'test-hash',
+                command: 'sign-cmd',
+              ),
+            ).called(1);
+            verify(() => codeSigner.runPublicKeyCmd('get-key-cmd')).called(1);
+            verify(
+              () => codeSigner.verify(
+                message: 'test-hash',
+                signature: 'cmd-signature',
+                publicKeyPem: 'pem-public-key',
+              ),
+            ).called(1);
+          },
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
+      });
+
+      test('throws ProcessExit when signature verification fails', () async {
+        argResults = argParser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ]);
+
+        when(
+          () => codeSigner.signWithCmd(
+            data: any(named: 'data'),
+            command: any(named: 'command'),
+          ),
+        ).thenAnswer((_) async => 'bad-signature');
+        when(
+          () => codeSigner.runPublicKeyCmd(any()),
+        ).thenAnswer((_) async => 'pem-public-key');
+        when(
+          () => codeSigner.verify(
+            message: any(named: 'message'),
+            signature: any(named: 'signature'),
+            publicKeyPem: any(named: 'publicKeyPem'),
+          ),
+        ).thenReturn(false);
+
+        final patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+
+        await runScoped(
+          () async {
+            await expectLater(
+              () => patcher.signHash('test-hash'),
+              throwsA(isA<ProcessExit>()),
+            );
+          },
+          values: {
+            codeSignerRef.overrideWith(() => codeSigner),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
       });
     });
   });
