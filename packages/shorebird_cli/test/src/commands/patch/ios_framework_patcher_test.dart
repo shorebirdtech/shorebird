@@ -873,12 +873,11 @@ void main() {
             group('when code signing the patch', () {
               setUp(() {
                 final tempDir = Directory.systemTemp.createTempSync();
-                final privateKey =
-                    File(p.join(tempDir.path, 'test-private.pem'))
-                      ..createSync();
-                final publicKey =
-                    File(p.join(tempDir.path, 'test-public.pem'))
-                      ..writeAsStringSync('public-key-pem');
+                final privateKey = File(
+                  p.join(tempDir.path, 'test-private.pem'),
+                )..createSync();
+                final publicKey = File(p.join(tempDir.path, 'test-public.pem'))
+                  ..writeAsStringSync('public-key-pem');
 
                 when(
                   () => argResults[CommonArguments.privateKeyArg.name],

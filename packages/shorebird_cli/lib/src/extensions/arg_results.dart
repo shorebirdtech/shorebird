@@ -84,8 +84,7 @@ extension CodeSign on ArgResults {
       return publicKeyFile.readAsStringSync();
     }
 
-    final publicKeyCmd =
-        this[CommonArguments.publicKeyCmd.name] as String?;
+    final publicKeyCmd = this[CommonArguments.publicKeyCmd.name] as String?;
     if (publicKeyCmd != null && wasParsed(CommonArguments.publicKeyCmd.name)) {
       return codeSigner.runPublicKeyCmd(publicKeyCmd);
     }

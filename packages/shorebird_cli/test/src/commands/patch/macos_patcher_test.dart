@@ -955,9 +955,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           when(
             () => argResults[CommonArguments.publicKeyArg.name],
           ).thenReturn(
-            (createTempFile('public.pem')
-                  ..writeAsStringSync('public-key-pem'))
-                .path,
+            (createTempFile(
+              'public.pem',
+            )..writeAsStringSync('public-key-pem')).path,
           );
 
           when(

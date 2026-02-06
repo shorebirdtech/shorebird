@@ -327,44 +327,46 @@ void main() {
         );
       });
 
-      test('throws ProcessExit when signer present but no public key',
-          () async {
-        argResults = argParser.parse([
-          '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
-        ]);
+      test(
+        'throws ProcessExit when signer present but no public key',
+        () async {
+          argResults = argParser.parse([
+            '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
+          ]);
 
-        when(
-          () => codeSigner.sign(
-            message: any(named: 'message'),
-            privateKeyPemFile: any(named: 'privateKeyPemFile'),
-          ),
-        ).thenReturn('file-signature');
+          when(
+            () => codeSigner.sign(
+              message: any(named: 'message'),
+              privateKeyPemFile: any(named: 'privateKeyPemFile'),
+            ),
+          ).thenReturn('file-signature');
 
-        final patcher = _TestPatcher(
-          argParser: argParser,
-          argResults: argResults,
-          flavor: null,
-          target: null,
-        );
+          final patcher = _TestPatcher(
+            argParser: argParser,
+            argResults: argResults,
+            flavor: null,
+            target: null,
+          );
 
-        await runScoped(
-          () async {
-            await expectLater(
-              () => patcher.signHash('test-hash'),
-              throwsA(isA<ProcessExit>()),
-            );
-            verify(
-              () => logger.err(
-                any(that: contains('public key is required')),
-              ),
-            ).called(1);
-          },
-          values: {
-            codeSignerRef.overrideWith(() => codeSigner),
-            loggerRef.overrideWith(() => logger),
-          },
-        );
-      });
+          await runScoped(
+            () async {
+              await expectLater(
+                () => patcher.signHash('test-hash'),
+                throwsA(isA<ProcessExit>()),
+              );
+              verify(
+                () => logger.err(
+                  any(that: contains('public key is required')),
+                ),
+              ).called(1);
+            },
+            values: {
+              codeSignerRef.overrideWith(() => codeSigner),
+              loggerRef.overrideWith(() => logger),
+            },
+          );
+        },
+      );
 
       test('returns signature from command-based signing when valid', () async {
         argResults = argParser.parse([
