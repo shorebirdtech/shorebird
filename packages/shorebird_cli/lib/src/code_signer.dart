@@ -42,15 +42,7 @@ class CodeSigner {
   /// simply the modulus and exponent of the public key, without information
   /// about the algorithm or or ASN1 object type identifier.
   String base64PublicKey(File publicKeyPemFile) {
-    final publicKey = _RSAPublicKeyFromBytes.rsaPublicKeyFromBytes(
-      _pemBytes(pemFile: publicKeyPemFile, type: PemLabel.publicKey),
-    );
-
-    final publicKeySeq = ASN1Sequence()
-      ..add(ASN1Integer(publicKey.modulus))
-      ..add(ASN1Integer(publicKey.exponent))
-      ..encode();
-    return base64.encode(publicKeySeq.encodedBytes!);
+    return base64PublicKeyFromPem(publicKeyPemFile.readAsStringSync());
   }
 
   /// Extracts the base64 encoded DER from a PEM-encoded public key string.
@@ -71,7 +63,6 @@ class CodeSigner {
     final result = await process.run(
       'sh',
       ['-c', command],
-      runInShell: true,
     );
 
     if (result.exitCode != 0) {
@@ -85,9 +76,12 @@ class CodeSigner {
 
     final output = '${result.stdout}'.trim();
     if (!output.contains('-----BEGIN') || !output.contains('PUBLIC KEY')) {
+      final preview = output.length > 100
+          ? '${output.substring(0, 100)}...'
+          : output;
       throw FormatException(
         'Command output does not appear to be a PEM-encoded public key: '
-        '${output.substring(0, output.length.clamp(0, 100))}...',
+        '$preview',
       );
     }
 
@@ -109,9 +103,13 @@ class CodeSigner {
     proc.stdin.write(data);
     await proc.stdin.close();
 
-    // Read stdout as the signature
-    final stdout = await proc.stdout.transform(utf8.decoder).join();
-    final stderr = await proc.stderr.transform(utf8.decoder).join();
+    // Read stdout and stderr concurrently to avoid potential deadlock
+    final results = await Future.wait([
+      proc.stdout.transform(utf8.decoder).join(),
+      proc.stderr.transform(utf8.decoder).join(),
+    ]);
+    final stdout = results[0];
+    final stderr = results[1];
     final exitCode = await proc.exitCode;
 
     if (exitCode != 0) {

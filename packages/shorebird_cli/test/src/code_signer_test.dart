@@ -175,11 +175,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
 -----END PUBLIC KEY-----
 ''');
         when(
-          () => shorebirdProcess.run(
-            any(),
-            any(),
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => shorebirdProcess.run(any(), any()),
         ).thenAnswer((_) async => result);
 
         await runScoped(
@@ -197,11 +193,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
         when(() => result.exitCode).thenReturn(1);
         when(() => result.stderr).thenReturn('command not found');
         when(
-          () => shorebirdProcess.run(
-            any(),
-            any(),
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => shorebirdProcess.run(any(), any()),
         ).thenAnswer((_) async => result);
 
         await runScoped(
@@ -220,11 +212,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
         when(() => result.exitCode).thenReturn(0);
         when(() => result.stdout).thenReturn('not a pem key');
         when(
-          () => shorebirdProcess.run(
-            any(),
-            any(),
-            runInShell: any(named: 'runInShell'),
-          ),
+          () => shorebirdProcess.run(any(), any()),
         ).thenAnswer((_) async => result);
 
         await runScoped(
