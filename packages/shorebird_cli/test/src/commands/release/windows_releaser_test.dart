@@ -297,6 +297,12 @@ To change the version of this release, change your app's version in your pubspec
 
       group('when public key is passed as an arg', () {
         setUp(() {
+          final publicKeyFile = File(
+            p.join(
+              Directory.systemTemp.createTempSync().path,
+              'public-key.pem',
+            ),
+          )..createSync(recursive: true);
           when(
             () => artifactBuilder.buildWindowsApp(
               target: any(named: 'target'),
@@ -309,9 +315,9 @@ To change the version of this release, change your app's version in your pubspec
           ).thenReturn(true);
           when(
             () => argResults[CommonArguments.publicKeyArg.name],
-          ).thenReturn('public_key');
+          ).thenReturn(publicKeyFile.path);
           when(
-            () => codeSigner.base64PublicKey(any()),
+            () => codeSigner.base64PublicKeyFromPem(any()),
           ).thenReturn('encoded_public_key');
         });
 

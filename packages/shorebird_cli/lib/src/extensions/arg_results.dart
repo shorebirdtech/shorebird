@@ -73,6 +73,26 @@ extension CodeSign on ArgResults {
     }
   }
 
+  /// Resolves the public key PEM string from the configured source.
+  ///
+  /// Returns null if no public key is configured. Throws
+  /// [ProcessException] or [FormatException] if a command-based key
+  /// fails.
+  Future<String?> resolvePublicKeyPem() async {
+    final publicKeyFile = file(CommonArguments.publicKeyArg.name);
+    if (publicKeyFile != null) {
+      return publicKeyFile.readAsStringSync();
+    }
+
+    final publicKeyCmd =
+        this[CommonArguments.publicKeyCmd.name] as String?;
+    if (publicKeyCmd != null && wasParsed(CommonArguments.publicKeyCmd.name)) {
+      return codeSigner.runPublicKeyCmd(publicKeyCmd);
+    }
+
+    return null;
+  }
+
   /// Read the public key file and encode it to base64 if any.
   String? get encodedPublicKey {
     final publicKeyFile = file(CommonArguments.publicKeyArg.name);
@@ -165,35 +185,36 @@ extension CodeSign on ArgResults {
     }
   }
 
-  /// Get encoded public key from either file or command.
+  /// Get base64-encoded public key from either file or command.
   ///
   /// Returns null if no public key is configured.
   Future<String?> getEncodedPublicKey() async {
-    if (wasParsed(CommonArguments.publicKeyArg.name)) {
-      return encodedPublicKey;
+    try {
+      final pem = await resolvePublicKeyPem();
+      if (pem == null) return null;
+      return codeSigner.base64PublicKeyFromPem(pem);
+    } on ProcessException catch (e) {
+      logger.err(
+        'Failed to run '
+        '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    } on FormatException catch (e) {
+      logger.err(
+        '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
+        '${e.message}',
+      );
+      throw ProcessExit(ExitCode.software.code);
+      // Malformed PEM content causes ASN1 parsing errors (RangeError, etc.)
+      // ignore: avoid_catching_errors
+    } on Error catch (e) {
+      // ASN1 parsing errors for malformed PEM content
+      logger.err(
+        '--${CommonArguments.publicKeyCmd.name} output is not a valid '
+        'public key: $e',
+      );
+      throw ProcessExit(ExitCode.software.code);
     }
-    if (wasParsed(CommonArguments.publicKeyCmd.name)) {
-      final command = this[CommonArguments.publicKeyCmd.name] as String;
-      try {
-        final pem = await codeSigner.runPublicKeyCmd(command);
-        return codeSigner.base64PublicKeyFromPem(pem);
-      } on ProcessException catch (e) {
-        logger.err('Failed to run --public-key-cmd: ${e.message}');
-        throw ProcessExit(ExitCode.software.code);
-      } on FormatException catch (e) {
-        logger.err('--public-key-cmd produced invalid output: ${e.message}');
-        throw ProcessExit(ExitCode.software.code);
-        // Malformed PEM content causes ASN1 parsing errors (RangeError, etc.)
-        // ignore: avoid_catching_errors
-      } on Error catch (e) {
-        // ASN1 parsing errors for malformed PEM content
-        logger.err(
-          '--public-key-cmd output is not a valid public key: $e',
-        );
-        throw ProcessExit(ExitCode.software.code);
-      }
-    }
-    return null;
   }
 }
 

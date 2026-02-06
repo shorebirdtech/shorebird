@@ -441,7 +441,7 @@ To change the version of this release, change your app's version in your pubspec
           ).thenAnswer((_) async => File(''));
 
           when(
-            () => codeSigner.base64PublicKey(any()),
+            () => codeSigner.base64PublicKeyFromPem(any()),
           ).thenReturn(base64PublicKey);
         });
 

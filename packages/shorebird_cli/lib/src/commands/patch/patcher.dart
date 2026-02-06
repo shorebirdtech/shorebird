@@ -163,32 +163,21 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// Returns the public key PEM from the configured source, or null.
   Future<String?> _resolvePublicKeyPem() async {
-    final publicKeyFile = argResults.file(CommonArguments.publicKeyArg.name);
-    if (publicKeyFile != null) {
-      return publicKeyFile.readAsStringSync();
+    try {
+      return await argResults.resolvePublicKeyPem();
+    } on ProcessException catch (e) {
+      logger.err(
+        'Failed to run '
+        '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    } on FormatException catch (e) {
+      logger.err(
+        '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
+        '${e.message}',
+      );
+      throw ProcessExit(ExitCode.software.code);
     }
-
-    final publicKeyCmd =
-        argResults[CommonArguments.publicKeyCmd.name] as String?;
-    if (publicKeyCmd != null) {
-      try {
-        return await codeSigner.runPublicKeyCmd(publicKeyCmd);
-      } on ProcessException catch (e) {
-        logger.err(
-          'Failed to run '
-          '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
-        );
-        throw ProcessExit(ExitCode.software.code);
-      } on FormatException catch (e) {
-        logger.err(
-          '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
-          '${e.message}',
-        );
-        throw ProcessExit(ExitCode.software.code);
-      }
-    }
-
-    return null;
   }
 
   /// Signs a hash using the configured signing method.

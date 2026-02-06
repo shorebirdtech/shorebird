@@ -310,7 +310,7 @@ To change the version of this release, change your app's version in your pubspec
         ).thenReturn(xcarchiveDirectory);
 
         when(
-          () => codeSigner.base64PublicKey(any()),
+          () => codeSigner.base64PublicKeyFromPem(any()),
         ).thenReturn(base64PublicKey);
 
         when(

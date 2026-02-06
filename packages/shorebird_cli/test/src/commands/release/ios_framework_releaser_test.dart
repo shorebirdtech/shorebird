@@ -307,7 +307,7 @@ void main() {
                 AppleBuildResult(kernelFile: File('/path/to/app.dill')),
           );
           when(
-            () => codeSigner.base64PublicKey(any()),
+            () => codeSigner.base64PublicKeyFromPem(any()),
           ).thenReturn(base64PublicKey);
         });
 

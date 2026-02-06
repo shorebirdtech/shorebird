@@ -498,7 +498,7 @@ void main() {
           final result = parser.parse(args);
 
           when(
-            () => codeSigner.base64PublicKey(any()),
+            () => codeSigner.base64PublicKeyFromPem(any()),
           ).thenReturn('encoded-key');
 
           await runScoped(
