@@ -342,9 +342,10 @@ void main() {
         expect(result.assertAbsentOrValidKeyPairOrCommands, returnsNormally);
       });
 
-      test('throws when mixing file and cmd arguments', () {
+      test('throws when both public key sources provided', () {
         final args = [
           '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
           '--${CommonArguments.signCmd.name}=sign-cmd',
         ];
         final result = parser.parse(args);
@@ -360,8 +361,15 @@ void main() {
         );
       });
 
-      test('throws when only public-key-cmd provided without sign-cmd', () {
-        final args = ['--${CommonArguments.publicKeyCmd.name}=get-key-cmd'];
+      test('throws when both signing methods provided', () {
+        final privateKeyFile = File(
+          p.join(cryptoFixturesBasePath, 'private.pem'),
+        );
+        final args = [
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ];
         final result = parser.parse(args);
 
         runScoped(
@@ -375,7 +383,7 @@ void main() {
         );
       });
 
-      test('throws when only sign-cmd provided without public-key-cmd', () {
+      test('throws when sign-cmd provided without any public key', () {
         final args = ['--${CommonArguments.signCmd.name}=sign-cmd'];
         final result = parser.parse(args);
 
@@ -393,6 +401,15 @@ void main() {
       test('succeeds when both cmd arguments provided', () {
         final args = [
           '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ];
+        final result = parser.parse(args);
+        expect(result.assertAbsentOrValidKeyPairOrCommands, returnsNormally);
+      });
+
+      test('succeeds with public-key-path + sign-cmd (mixed)', () {
+        final args = [
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
           '--${CommonArguments.signCmd.name}=sign-cmd',
         ];
         final result = parser.parse(args);

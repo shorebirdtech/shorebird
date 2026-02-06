@@ -85,40 +85,58 @@ extension CodeSign on ArgResults {
   /// Validates key arguments for patch commands.
   ///
   /// Valid configurations:
-  /// - Neither file-based nor command-based signing (no signing)
-  /// - Both file-based keys (--public-key-path and --private-key-path)
-  /// - Both command-based signing (--public-key-cmd and --sign-cmd)
+  /// - No signing (nothing provided)
+  /// - File-based: --public-key-path + --private-key-path
+  /// - Command-based: --public-key-cmd + --sign-cmd
+  /// - Mixed: --public-key-path + --sign-cmd
   ///
   /// Invalid configurations:
-  /// - Mixing file-based and command-based signing
-  /// - Only one of a pair (e.g., --public-key-path without --private-key-path)
+  /// - Both --public-key-path and --public-key-cmd (ambiguous public key)
+  /// - Both --private-key-path and --sign-cmd (ambiguous signing method)
+  /// - --sign-cmd without a public key source
+  /// - --private-key-path without --public-key-path
   void assertAbsentOrValidKeyPairOrCommands() {
-    final hasFileKeys =
-        wasParsed(CommonArguments.publicKeyArg.name) ||
-        wasParsed(CommonArguments.privateKeyArg.name);
-    final hasCmdKeys =
-        wasParsed(CommonArguments.publicKeyCmd.name) ||
-        wasParsed(CommonArguments.signCmd.name);
+    final hasPublicKeyFile = wasParsed(CommonArguments.publicKeyArg.name);
+    final hasPrivateKeyFile = wasParsed(CommonArguments.privateKeyArg.name);
+    final hasPublicKeyCmd = wasParsed(CommonArguments.publicKeyCmd.name);
+    final hasSignCmd = wasParsed(CommonArguments.signCmd.name);
 
-    if (hasFileKeys && hasCmdKeys) {
-      logger.err('Cannot mix file-based and command-based signing.');
+    // Can't have two public key sources
+    if (hasPublicKeyFile && hasPublicKeyCmd) {
+      logger.err(
+        'Cannot specify both --${CommonArguments.publicKeyArg.name} and '
+        '--${CommonArguments.publicKeyCmd.name}.',
+      );
       throw ProcessExit(ExitCode.usage.code);
     }
 
-    if (hasFileKeys) {
+    // Can't have two signing methods
+    if (hasPrivateKeyFile && hasSignCmd) {
+      logger.err(
+        'Cannot specify both --${CommonArguments.privateKeyArg.name} and '
+        '--${CommonArguments.signCmd.name}.',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    // File-based signing requires both file args
+    if (hasPrivateKeyFile || (hasPublicKeyFile && !hasSignCmd)) {
       assertAbsentOrValidKeyPair();
     }
 
-    if (hasCmdKeys) {
-      final hasPublicKeyCmd = wasParsed(CommonArguments.publicKeyCmd.name);
-      final hasSignCmd = wasParsed(CommonArguments.signCmd.name);
-      if (hasPublicKeyCmd != hasSignCmd) {
-        logger.err(
-          'Both --${CommonArguments.publicKeyCmd.name} and '
-          '--${CommonArguments.signCmd.name} must be provided together.',
-        );
-        throw ProcessExit(ExitCode.usage.code);
-      }
+    // --sign-cmd requires a public key source
+    if (hasSignCmd && !hasPublicKeyFile && !hasPublicKeyCmd) {
+      logger.err(
+        '--${CommonArguments.signCmd.name} requires a public key '
+        '(--${CommonArguments.publicKeyArg.name} or '
+        '--${CommonArguments.publicKeyCmd.name}).',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    // Validate the public key file exists if provided
+    if (hasPublicKeyFile && hasSignCmd) {
+      assertAbsentOrValidPublicKey();
     }
   }
 

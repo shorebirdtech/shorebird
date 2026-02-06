@@ -130,64 +130,91 @@ More info: ${troubleshootingUrl.toLink()}.
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => argResults['allow-native-diffs'] == true;
 
-  /// Runs [fn] and wraps [ProcessException]/[FormatException] in a
-  /// user-friendly error message referencing [argName].
-  Future<T> _runSigningCmd<T>(
-    String argName,
-    Future<T> Function() fn,
-  ) async {
-    try {
-      return await fn();
-    } on ProcessException catch (e) {
-      logger.err('Failed to run --$argName: ${e.message}');
-      throw ProcessExit(ExitCode.software.code);
-    } on FormatException catch (e) {
-      logger.err('--$argName produced invalid output: ${e.message}');
-      throw ProcessExit(ExitCode.software.code);
-    }
-  }
-
-  /// Signs a hash using either file-based or command-based signing.
-  ///
-  /// Returns null if no signing is configured.
-  Future<String?> signHash(String hash) async {
-    // File-based signing (existing behavior)
+  /// Returns a function that signs data, or null if no signing is configured.
+  Future<String> Function(String)? _resolveSigner() {
     final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
     if (privateKeyFile != null) {
-      return codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile);
+      return (hash) async =>
+          codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile);
     }
 
-    // Command-based signing
     final signCmd = argResults[CommonArguments.signCmd.name] as String?;
     if (signCmd != null) {
-      final signature = await _runSigningCmd(
-        CommonArguments.signCmd.name,
-        () => codeSigner.signWithCmd(data: hash, command: signCmd),
-      );
-
-      // Verify immediately using public key cmd
-      final publicKeyCmd =
-          argResults[CommonArguments.publicKeyCmd.name] as String;
-      final publicKeyPem = await _runSigningCmd(
-        CommonArguments.publicKeyCmd.name,
-        () => codeSigner.runPublicKeyCmd(publicKeyCmd),
-      );
-
-      if (!codeSigner.verify(
-        message: hash,
-        signature: signature,
-        publicKeyPem: publicKeyPem,
-      )) {
-        logger.err(
-          'Signature verification failed. The signature from --sign-cmd '
-          'does not match the public key from --public-key-cmd.',
-        );
-        throw ProcessExit(ExitCode.software.code);
-      }
-      return signature;
+      return (hash) async {
+        try {
+          return await codeSigner.signWithCmd(data: hash, command: signCmd);
+        } on ProcessException catch (e) {
+          logger.err(
+            'Failed to run --${CommonArguments.signCmd.name}: ${e.message}',
+          );
+          throw ProcessExit(ExitCode.software.code);
+        } on FormatException catch (e) {
+          logger.err(
+            '--${CommonArguments.signCmd.name} produced invalid output: '
+            '${e.message}',
+          );
+          throw ProcessExit(ExitCode.software.code);
+        }
+      };
     }
 
     return null;
+  }
+
+  /// Returns the public key PEM from the configured source, or null.
+  Future<String?> _resolvePublicKeyPem() async {
+    final publicKeyFile = argResults.file(CommonArguments.publicKeyArg.name);
+    if (publicKeyFile != null) {
+      return publicKeyFile.readAsStringSync();
+    }
+
+    final publicKeyCmd =
+        argResults[CommonArguments.publicKeyCmd.name] as String?;
+    if (publicKeyCmd != null) {
+      try {
+        return await codeSigner.runPublicKeyCmd(publicKeyCmd);
+      } on ProcessException catch (e) {
+        logger.err(
+          'Failed to run '
+          '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
+        );
+        throw ProcessExit(ExitCode.software.code);
+      } on FormatException catch (e) {
+        logger.err(
+          '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
+          '${e.message}',
+        );
+        throw ProcessExit(ExitCode.software.code);
+      }
+    }
+
+    return null;
+  }
+
+  /// Signs a hash using the configured signing method.
+  ///
+  /// Returns null if no signing is configured.
+  Future<String?> signHash(String hash) async {
+    final signer = _resolveSigner();
+    if (signer == null) return null;
+
+    final signature = await signer(hash);
+    final publicKeyPem = await _resolvePublicKeyPem();
+
+    if (publicKeyPem != null &&
+        !codeSigner.verify(
+          message: hash,
+          signature: signature,
+          publicKeyPem: publicKeyPem,
+        )) {
+      logger.err(
+        'Signature verification failed. The signature does not match '
+        'the provided public key.',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+
+    return signature;
   }
 
   /// The link percentage for the generated patch artifact if applicable.

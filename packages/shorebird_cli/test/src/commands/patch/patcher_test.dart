@@ -257,6 +257,7 @@ void main() {
 
       setUp(() {
         argParser = ArgParser()
+          ..addOption(CommonArguments.publicKeyArg.name)
           ..addOption(CommonArguments.privateKeyArg.name)
           ..addOption(CommonArguments.publicKeyCmd.name)
           ..addOption(CommonArguments.signCmd.name);
@@ -447,6 +448,53 @@ void main() {
             codeSignerRef.overrideWith(() => codeSigner),
             loggerRef.overrideWith(() => logger),
           },
+        );
+      });
+
+      test('supports mixed signing (public key file + sign cmd)', () async {
+        final publicKeyFile = File(
+          p.join(cryptoFixturesBasePath, 'public.pem'),
+        );
+        argResults = argParser.parse([
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ]);
+
+        when(
+          () => codeSigner.signWithCmd(
+            data: any(named: 'data'),
+            command: any(named: 'command'),
+          ),
+        ).thenAnswer((_) async => 'cmd-signature');
+        when(
+          () => codeSigner.verify(
+            message: any(named: 'message'),
+            signature: any(named: 'signature'),
+            publicKeyPem: any(named: 'publicKeyPem'),
+          ),
+        ).thenReturn(true);
+
+        final patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+
+        await runScoped(
+          () async {
+            final result = await patcher.signHash('test-hash');
+            expect(result, equals('cmd-signature'));
+            verifyNever(() => codeSigner.runPublicKeyCmd(any()));
+            verify(
+              () => codeSigner.verify(
+                message: 'test-hash',
+                signature: 'cmd-signature',
+                publicKeyPem: any(named: 'publicKeyPem'),
+              ),
+            ).called(1);
+          },
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
         );
       });
 
