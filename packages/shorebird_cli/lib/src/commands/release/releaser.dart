@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:pub_semver/pub_semver.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -81,4 +82,9 @@ abstract class Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   });
+
+  /// Gets the base64-encoded public key from either file or command.
+  ///
+  /// Returns null if no public key is configured.
+  Future<String?> getEncodedPublicKey() => argResults.getEncodedPublicKey();
 }

@@ -4,16 +4,19 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/iterable.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -126,6 +129,45 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => argResults['allow-native-diffs'] == true;
+
+  /// Signs a hash using either file-based or command-based signing.
+  ///
+  /// Returns null if no signing is configured.
+  Future<String?> signHash(String hash) async {
+    // File-based signing (existing behavior)
+    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
+    if (privateKeyFile != null) {
+      return codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile);
+    }
+
+    // Command-based signing
+    final signCmd = argResults[CommonArguments.signCmd.name] as String?;
+    if (signCmd != null) {
+      final signature = await codeSigner.signWithCmd(
+        data: hash,
+        command: signCmd,
+      );
+
+      // Verify immediately using public key cmd
+      final publicKeyCmd =
+          argResults[CommonArguments.publicKeyCmd.name] as String;
+      final publicKeyPem = await codeSigner.runPublicKeyCmd(publicKeyCmd);
+      if (!codeSigner.verify(
+        message: hash,
+        signature: signature,
+        publicKeyPem: publicKeyPem,
+      )) {
+        logger.err(
+          'Signature verification failed. The signature from --sign-cmd '
+          'does not match the public key from --public-key-cmd.',
+        );
+        throw ProcessExit(ExitCode.software.code);
+      }
+      return signature;
+    }
+
+    return null;
+  }
 
   /// The link percentage for the generated patch artifact if applicable.
   /// Returns `null` if the platform does not use a linker or if the linking

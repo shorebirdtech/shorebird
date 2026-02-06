@@ -81,6 +81,89 @@ extension CodeSign on ArgResults {
         ? codeSigner.base64PublicKey(publicKeyFile)
         : null;
   }
+
+  /// Returns true if using command-based signing.
+  bool get usesSigningCommands =>
+      wasParsed(CommonArguments.publicKeyCmd.name) ||
+      wasParsed(CommonArguments.signCmd.name);
+
+  /// Validates key arguments for patch commands.
+  ///
+  /// Valid configurations:
+  /// - Neither file-based nor command-based signing (no signing)
+  /// - Both file-based keys (--public-key-path and --private-key-path)
+  /// - Both command-based signing (--public-key-cmd and --sign-cmd)
+  ///
+  /// Invalid configurations:
+  /// - Mixing file-based and command-based signing
+  /// - Only one of a pair (e.g., --public-key-path without --private-key-path)
+  void assertAbsentOrValidKeyPairOrCommands() {
+    final hasFileKeys = wasParsed(CommonArguments.publicKeyArg.name) ||
+        wasParsed(CommonArguments.privateKeyArg.name);
+    final hasCmdKeys = wasParsed(CommonArguments.publicKeyCmd.name) ||
+        wasParsed(CommonArguments.signCmd.name);
+
+    if (hasFileKeys && hasCmdKeys) {
+      logger.err('Cannot mix file-based and command-based signing.');
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    if (hasFileKeys) {
+      assertAbsentOrValidKeyPair();
+    }
+
+    if (hasCmdKeys) {
+      final hasPublicKeyCmd = wasParsed(CommonArguments.publicKeyCmd.name);
+      final hasSignCmd = wasParsed(CommonArguments.signCmd.name);
+      if (hasPublicKeyCmd != hasSignCmd) {
+        logger.err(
+          'Both --${CommonArguments.publicKeyCmd.name} and '
+          '--${CommonArguments.signCmd.name} must be provided together.',
+        );
+        throw ProcessExit(ExitCode.usage.code);
+      }
+    }
+  }
+
+  /// Validates public key arguments for release commands.
+  ///
+  /// Valid configurations:
+  /// - No public key (no signing)
+  /// - --public-key-path with valid file
+  /// - --public-key-cmd
+  ///
+  /// Invalid: mixing --public-key-path and --public-key-cmd
+  void assertAbsentOrValidPublicKeyOrCmd() {
+    final hasFilePath = wasParsed(CommonArguments.publicKeyArg.name);
+    final hasCmd = wasParsed(CommonArguments.publicKeyCmd.name);
+
+    if (hasFilePath && hasCmd) {
+      logger.err(
+        'Cannot specify both --${CommonArguments.publicKeyArg.name} and '
+        '--${CommonArguments.publicKeyCmd.name}.',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    if (hasFilePath) {
+      assertAbsentOrValidPublicKey();
+    }
+  }
+
+  /// Get encoded public key from either file or command.
+  ///
+  /// Returns null if no public key is configured.
+  Future<String?> getEncodedPublicKey() async {
+    if (wasParsed(CommonArguments.publicKeyArg.name)) {
+      return encodedPublicKey;
+    }
+    if (wasParsed(CommonArguments.publicKeyCmd.name)) {
+      final command = this[CommonArguments.publicKeyCmd.name] as String;
+      final pem = await codeSigner.runPublicKeyCmd(command);
+      return codeSigner.base64PublicKeyFromPem(pem);
+    }
+    return null;
+  }
 }
 
 /// Extension on [ArgResults] to provide file related extensions.

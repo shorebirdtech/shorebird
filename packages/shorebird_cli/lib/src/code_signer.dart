@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:pem/pem.dart';
 import 'package:pointycastle/pointycastle.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// A reference to a [CodeSigner] instance.
 final codeSignerRef = create(CodeSigner.new);
@@ -50,6 +51,107 @@ class CodeSigner {
       ..add(ASN1Integer(publicKey.exponent))
       ..encode();
     return base64.encode(publicKeySeq.encodedBytes!);
+  }
+
+  /// Extracts the base64 encoded DER from a PEM-encoded public key string.
+  String base64PublicKeyFromPem(String publicKeyPem) {
+    final publicKey = _RSAPublicKeyFromBytes.rsaPublicKeyFromBytes(
+      PemCodec(PemLabel.publicKey).decode(publicKeyPem),
+    );
+
+    final publicKeySeq = ASN1Sequence()
+      ..add(ASN1Integer(publicKey.modulus))
+      ..add(ASN1Integer(publicKey.exponent))
+      ..encode();
+    return base64.encode(publicKeySeq.encodedBytes!);
+  }
+
+  /// Runs a command and returns its stdout, expected to be a PEM public key.
+  Future<String> runPublicKeyCmd(String command) async {
+    final result = await process.run(
+      'sh',
+      ['-c', command],
+      runInShell: true,
+    );
+
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        command,
+        [],
+        'Command failed with exit code ${result.exitCode}: ${result.stderr}',
+        result.exitCode,
+      );
+    }
+
+    final output = '${result.stdout}'.trim();
+    if (!output.contains('-----BEGIN') || !output.contains('PUBLIC KEY')) {
+      throw FormatException(
+        'Command output does not appear to be a PEM-encoded public key: '
+        '${output.substring(0, output.length.clamp(0, 100))}...',
+      );
+    }
+
+    return output;
+  }
+
+  /// Signs data by piping it to a command's stdin and reading the base64
+  /// signature from stdout.
+  Future<String> signWithCmd({
+    required String data,
+    required String command,
+  }) async {
+    final proc = await process.start(
+      'sh',
+      ['-c', command],
+    );
+
+    // Write data to stdin and close it
+    proc.stdin.write(data);
+    await proc.stdin.close();
+
+    // Read stdout as the signature
+    final stdout = await proc.stdout.transform(utf8.decoder).join();
+    final stderr = await proc.stderr.transform(utf8.decoder).join();
+    final exitCode = await proc.exitCode;
+
+    if (exitCode != 0) {
+      throw ProcessException(
+        command,
+        [],
+        'Sign command failed with exit code $exitCode: $stderr',
+        exitCode,
+      );
+    }
+
+    final signature = stdout.trim();
+    if (signature.isEmpty) {
+      throw const FormatException('Sign command produced no output');
+    }
+
+    return signature;
+  }
+
+  /// Verifies a signature against a message using a PEM-encoded public key.
+  bool verify({
+    required String message,
+    required String signature,
+    required String publicKeyPem,
+  }) {
+    final publicKey = _RSAPublicKeyFromBytes.rsaPublicKeyFromBytes(
+      PemCodec(PemLabel.publicKey).decode(publicKeyPem),
+    );
+
+    final signer = Signer('SHA-256/RSA')
+      ..init(false, PublicKeyParameter<RSAPublicKey>(publicKey));
+
+    try {
+      return signer.verifySignature(
+        utf8.encode(message),
+        RSASignature(base64.decode(signature)),
+      );
+    } on Exception {
+      return false;
+    }
   }
 
   /// Reads a PEM file containing a key of type [type] and returns its contents

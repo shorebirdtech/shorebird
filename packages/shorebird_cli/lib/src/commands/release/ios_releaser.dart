@@ -102,12 +102,13 @@ To change the version of this release, change your app's version in your pubspec
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
+    final base64PublicKey = await getEncodedPublicKey();
     await artifactBuilder.buildIpa(
       codesign: codesign,
       flavor: flavor,
       target: target,
       args: argResults.forwardedArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: base64PublicKey,
     );
 
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory();

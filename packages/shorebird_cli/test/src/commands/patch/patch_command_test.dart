@@ -194,6 +194,12 @@ void main() {
       when(
         () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
       ).thenReturn(false);
+      when(
+        () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+      ).thenReturn(false);
+      when(
+        () => argResults.wasParsed(CommonArguments.signCmd.name),
+      ).thenReturn(false);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 

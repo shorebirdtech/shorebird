@@ -66,11 +66,12 @@ To change the version of this release, change your app's version in your pubspec
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts() {
+  Future<FileSystemEntity> buildReleaseArtifacts() async {
+    final base64PublicKey = await getEncodedPublicKey();
     return artifactBuilder.buildWindowsApp(
       target: target,
       args: argResults.forwardedArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: base64PublicKey,
     );
   }
 
