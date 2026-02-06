@@ -170,13 +170,6 @@ class CodeSigner {
     }
   }
 
-  /// Reads a PEM file containing a key of type [type] and returns its contents
-  /// as bytes.
-  List<int> _pemBytes({required File pemFile, required PemLabel type}) {
-    final privateKeyString = pemFile.readAsStringSync();
-    return PemCodec(type).decode(privateKeyString);
-  }
-
   /// Parses a PEM-encoded private key string and returns the key bytes along
   /// with the detected format.
   ///
