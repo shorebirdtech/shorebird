@@ -17,6 +17,7 @@ void main() {
         maxTeamSize: 42,
         pricePerOverageInstall: Decimal.fromInt(10),
         isTrial: true,
+        mauInsightEnabled: true,
         availableRoles: {
           Role.admin: [
             'apps.view',

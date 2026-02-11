@@ -23,6 +23,7 @@ class Plan {
     required this.isTiered,
     required this.isTrial,
     required this.availableRoles,
+    required this.mauInsightEnabled,
     this.pricePerOverageInstall,
     this.maxTeamSize,
   });
@@ -71,6 +72,9 @@ class Plan {
   /// Whether the user is on a trial plan. Trial plans are not billed and cancel
   /// automatically at the end of the trial period.
   final bool isTrial;
+
+  /// Whether or not MAU insights are supported for the plan.
+  final bool mauInsightEnabled;
 
   /// The maximum number of collaborators allowed per account. This will be null
   /// for accounts with unlimited collaborators.
