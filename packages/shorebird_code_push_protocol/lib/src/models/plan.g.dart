@@ -43,6 +43,10 @@ Plan _$PlanFromJson(Map<String, dynamic> json) => $checkedCreate(
           ),
         ),
       ),
+      mauInsightEnabled: $checkedConvert(
+        'mau_insight_enabled',
+        (v) => v as bool,
+      ),
       pricePerOverageInstall: $checkedConvert(
         'price_per_overage_install',
         (v) => v == null ? null : Decimal.fromJson(v as String),
@@ -63,6 +67,7 @@ Plan _$PlanFromJson(Map<String, dynamic> json) => $checkedCreate(
     'isTiered': 'is_tiered',
     'isTrial': 'is_trial',
     'availableRoles': 'available_roles',
+    'mauInsightEnabled': 'mau_insight_enabled',
     'pricePerOverageInstall': 'price_per_overage_install',
     'maxTeamSize': 'max_team_size',
   },
@@ -79,6 +84,7 @@ Map<String, dynamic> _$PlanToJson(Plan instance) => <String, dynamic>{
   'cancel_at_period_end': instance.cancelAtPeriodEnd,
   'is_tiered': instance.isTiered,
   'is_trial': instance.isTrial,
+  'mau_insight_enabled': instance.mauInsightEnabled,
   'max_team_size': instance.maxTeamSize,
   'available_roles': instance.availableRoles.map(
     (k, e) => MapEntry(_$RoleEnumMap[k]!, e),
