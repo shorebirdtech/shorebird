@@ -37,58 +37,43 @@ flutter pub add shorebird_code_push
 
 ## Usage
 
-After adding the package to your `pubspec.yaml`, you can use it in your app like
-this:
+Shorebird automatically checks for and downloads updates in the background.
+Most apps do not need this package. This package is for apps that want
+additional control, such as displaying update status to the user or prompting
+before downloading.
+
+**Important:** `checkForUpdate()` and `update()` make network calls that may
+be slow. Avoid gating app startup on the result (e.g. awaiting in `initState`),
+as the app may appear stuck on the splash screen. Use `.then()` instead.
 
 ```dart
-// Import the library
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
-// Launch your app
 void main() => runApp(const MyApp());
 
 // [Other code here]
 
 class _MyHomePageState extends State<MyHomePage> {
-  // Create an instance of the updater class
   final updater = ShorebirdUpdater();
+  Patch? _currentPatch;
+  bool _updateAvailable = false;
 
   @override
   void initState() {
     super.initState();
 
-    // Get the current patch number and print it to the console.
-    // It will be `null` if no patches are installed.
-    updater.readCurrentPatch().then((currentPatch) {
-      print('The current patch number is: ${currentPatch?.number}');
+    // Read the current patch number (null if no patch is installed).
+    updater.readCurrentPatch().then((patch) {
+      setState(() => _currentPatch = patch);
+    });
+
+    // Check if an update is available to show in the UI.
+    updater.checkForUpdate().then((status) {
+      setState(() => _updateAvailable = status == UpdateStatus.outdated);
     });
   }
 
-  Future<void> _checkForUpdates() async {
-    // Check whether a new update is available.
-    final status = await updater.checkForUpdate();
-
-    if (status == UpdateStatus.outdated) {
-      try {
-        // Perform the update
-        await updater.update();
-      } on UpdateException catch (error) {
-        // Handle any errors that occur while updating.
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      // [Other code here]
-      ElevatedButton(
-        child: Text('Check for update'),
-        onPressed: _checkForUpdates,
-      )
-      // [Other code here]
-    );
-  }
+  // [Other code here]
 }
 ```
 
@@ -111,23 +96,11 @@ shorebird patch android --track beta
 (We're just using Android for this example. Tracks are supported on all
 platforms).
 
-To check for updates on a given track, simply pass an `UpdateTrack` to
-`checkForUpdate` and `update`. For example, this:
+To check for updates on a given track, pass an `UpdateTrack` to
+`checkForUpdate` (and `update` if you use it):
 
 ```dart
-final status = await updater.checkForUpdate();
-if (status == UpdateStatus.outdated) {
-  await updater.update();
-}
-```
-
-Becomes this:
-
-```dart
-final status = await updater.checkForUpdate(track: UpdateTrack.beta);
-if (status == UpdateStatus.outdated) {
-  await updater.update(track: UpdateTrack.beta);
-}
+updater.checkForUpdate(track: UpdateTrack.beta);
 ```
 
 You can also use custom track names. When creating a patch, specify a track name
@@ -140,12 +113,12 @@ shorebird patch android --track my-custom-track
 And:
 
 ```dart
-const track = UpdateTrack('my-custom-track');
-final status = await updater.checkForUpdate(track: track);
-if (status == UpdateStatus.outdated) {
-  await updater.update(track: track);
-}
+updater.checkForUpdate(track: UpdateTrack('my-custom-track'));
 ```
+
+**Note:** Updating to a specific track does not uninstall patches from other
+tracks. See [#3484](https://github.com/shorebirdtech/shorebird/issues/3484)
+for details.
 
 ## Join us on Discord!
 

@@ -135,6 +135,21 @@ abstract class ShorebirdUpdater {
   /// If this detects that the current patch has been rolled back, the current
   /// patch will be uninstalled.
   /// A separate call to `update()` is required to install new patches.
+  ///
+  /// **Warning:** This method makes a network call that may take a long time
+  /// to complete. If your app gates startup on the result (e.g. waiting in
+  /// `initState` before showing content), the app may appear stuck on the
+  /// splash screen. Use `.then()` to avoid blocking app progression:
+  ///
+  /// ```dart
+  /// // Do this:
+  /// updater.checkForUpdate().then((status) {
+  ///   // handle status
+  /// });
+  ///
+  /// // Avoid this in startup code — app won't progress until it completes:
+  /// final status = await updater.checkForUpdate();
+  /// ```
   Future<UpdateStatus> checkForUpdate({UpdateTrack? track});
 
   /// Updates the app to the latest patch available on the specified track, or
@@ -148,6 +163,25 @@ abstract class ShorebirdUpdater {
   ///
   /// Note: The app must be restarted for the update to take effect.
   /// Note: This method does nothing if the updater is not available.
+  ///
+  /// **Warning:** This method makes a network call to download the update,
+  /// which may take a long time to complete. If your app gates startup on
+  /// the result (e.g. waiting in `initState` before showing content), the app
+  /// may appear stuck on the splash screen. Use `.then()` to avoid blocking
+  /// app progression:
+  ///
+  /// ```dart
+  /// // Do this:
+  /// updater.checkForUpdate().then((status) {
+  ///   if (status == UpdateStatus.outdated) {
+  ///     updater.update();
+  ///   }
+  /// });
+  ///
+  /// // Avoid this in startup code — app won't progress until it completes:
+  /// final status = await updater.checkForUpdate();
+  /// await updater.update();
+  /// ```
   ///
   /// See also:
   /// * [isAvailable], which indicates whether the updater is available.
