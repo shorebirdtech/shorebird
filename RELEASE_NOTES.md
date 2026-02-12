@@ -4,6 +4,13 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.81 (February 11, 2026)
+
+- 🐦 Support for Flutter 3.41.0
+- ✨ Add `--public-key-cmd` and `--sign-cmd` support for external signing tools
+- ✨ Add features param to code push protocol
+- 🐛 Fix: support PKCS#1 private key format for patch signing
+
 ## 1.6.80 (February 3, 2026)
 
 - 🐦 Support for Flutter 3.38.9
