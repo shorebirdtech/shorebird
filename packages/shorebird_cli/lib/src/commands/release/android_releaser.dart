@@ -102,7 +102,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    final base64PublicKey = argResults.encodedPublicKey;
+    final base64PublicKey = await getEncodedPublicKey();
     final aab = await artifactBuilder.buildAppBundle(
       flavor: flavor,
       target: target,

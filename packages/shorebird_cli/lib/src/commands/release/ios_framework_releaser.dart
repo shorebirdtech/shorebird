@@ -78,9 +78,10 @@ class IosFrameworkReleaser extends Releaser {
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
+    final base64PublicKey = await getEncodedPublicKey();
     await artifactBuilder.buildIosFramework(
       args: argResults.forwardedArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: base64PublicKey,
     );
 
     // Copy release xcframework to a new directory to avoid overwriting with

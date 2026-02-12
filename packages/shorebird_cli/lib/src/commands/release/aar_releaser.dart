@@ -74,11 +74,12 @@ class AarReleaser extends Releaser {
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    final base64PublicKey = await getEncodedPublicKey();
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
       targetPlatforms: architectures,
       args: argResults.forwardedArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      base64PublicKey: base64PublicKey,
     );
 
     // Copy release AAR to a new directory to avoid overwriting with

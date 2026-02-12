@@ -417,6 +417,9 @@ To change the version of this release, change your app's version in your pubspec
           when(
             () => argResults[CommonArguments.publicKeyArg.name],
           ).thenReturn(patchSigningPublicKeyFile.path);
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
 
           when(
             () => artifactBuilder.buildAppBundle(
@@ -438,7 +441,7 @@ To change the version of this release, change your app's version in your pubspec
           ).thenAnswer((_) async => File(''));
 
           when(
-            () => codeSigner.base64PublicKey(any()),
+            () => codeSigner.base64PublicKeyFromPem(any()),
           ).thenReturn(base64PublicKey);
         });
 
@@ -495,6 +498,61 @@ To change the version of this release, change your app's version in your pubspec
             },
           );
         });
+      });
+
+      group('when a public-key-cmd is provided', () {
+        const base64PublicKey = 'base64PublicKeyFromCmd';
+
+        setUp(() {
+          when(
+            () => argResults[CommonArguments.publicKeyCmd.name],
+          ).thenReturn('get-key-cmd');
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+          ).thenReturn(true);
+
+          when(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).thenAnswer((_) async => aabFile);
+
+          when(
+            () => codeSigner.runPublicKeyCmd(any()),
+          ).thenAnswer((_) async => 'pem-public-key');
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenReturn(base64PublicKey);
+        });
+
+        test(
+          'runs public key cmd and forwards encoded key to buildAab',
+          () async {
+            await runWithOverrides(
+              () => androidReleaser.buildReleaseArtifacts(),
+            );
+
+            verify(
+              () => codeSigner.runPublicKeyCmd('get-key-cmd'),
+            ).called(1);
+            verify(
+              () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
+            ).called(1);
+            verify(
+              () => artifactBuilder.buildAppBundle(
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: any(named: 'args'),
+                base64PublicKey: base64PublicKey,
+              ),
+            ).called(1);
+          },
+        );
       });
     });
 

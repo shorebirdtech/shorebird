@@ -8,9 +8,7 @@ import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -201,11 +199,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
     final patchFile = File(patchFilePath);
     final patchFileSize = patchFile.statSync().size;
-    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
     final hash = sha256.convert(patchArtifact.readAsBytesSync()).toString();
-    final hashSignature = privateKeyFile != null
-        ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-        : null;
+    final hashSignature = await signHash(hash);
 
     return PatchArtifactBundle(
       arch: arch.arch,

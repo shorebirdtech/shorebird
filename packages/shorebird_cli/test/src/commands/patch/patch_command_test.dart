@@ -194,6 +194,12 @@ void main() {
       when(
         () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
       ).thenReturn(false);
+      when(
+        () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+      ).thenReturn(false);
+      when(
+        () => argResults.wasParsed(CommonArguments.signCmd.name),
+      ).thenReturn(false);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
@@ -1028,6 +1034,23 @@ void main() {
     group('when release version is not specified', () {
       setUp(() {
         when(() => argResults.wasParsed('release-version')).thenReturn(false);
+        // Need 2+ releases so chooseRelease prompts instead of auto-selecting.
+        final olderRelease = Release(
+          id: 99,
+          appId: appId,
+          version: '0.0.1',
+          flutterRevision: flutterRevision,
+          flutterVersion: flutterVersion,
+          displayName: '0.0.1',
+          platformStatuses: const {releasePlatform: ReleaseStatus.active},
+          createdAt: DateTime(2022),
+          updatedAt: DateTime(2022),
+        );
+        when(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+          ),
+        ).thenAnswer((_) async => [release, olderRelease]);
       });
 
       test(
@@ -1081,7 +1104,10 @@ void main() {
           final displayFunctionCapture = verificationResult.captured.flattened
               .whereType<String Function(Release)>()
               .first;
-          expect(displayFunctionCapture(release), equals(release.version));
+          expect(
+            displayFunctionCapture(release),
+            equals('${release.version}  (Jan 1)'),
+          );
         },
       );
 
@@ -1144,18 +1170,15 @@ void main() {
         test('only lists and uses releases '
             'for the specified platform', () async {
           await expectLater(runWithOverrides(command.run), completes);
-          final captured =
-              verify(
-                    () => logger.chooseOne<Release>(
-                      any(),
-                      choices: captureAny(named: 'choices'),
-                      display: any(named: 'display'),
-                    ),
-                  ).captured.single
-                  as List<Release>;
-
-          expect(captured.length, equals(1));
-          expect(captured.first.version, equals(releaseVersion));
+          // Only one release matches the platform, so chooseRelease
+          // auto-selects it without prompting.
+          verifyNever(
+            () => logger.chooseOne<Release>(
+              any(),
+              choices: any(named: 'choices'),
+              display: any(named: 'display'),
+            ),
+          );
 
           verify(
             () => patcher.buildPatchArtifact(releaseVersion: releaseVersion),

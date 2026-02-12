@@ -952,6 +952,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           when(
             () => argResults[CommonArguments.privateKeyArg.name],
           ).thenReturn(createTempFile('private.pem').path);
+          when(
+            () => argResults[CommonArguments.publicKeyArg.name],
+          ).thenReturn(
+            (createTempFile(
+              'public.pem',
+            )..writeAsStringSync('public-key-pem')).path,
+          );
 
           when(
             () => codeSigner.sign(
@@ -959,6 +966,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               privateKeyPemFile: any(named: 'privateKeyPemFile'),
             ),
           ).thenReturn('my-signature');
+          when(
+            () => codeSigner.verify(
+              message: any(named: 'message'),
+              signature: any(named: 'signature'),
+              publicKeyPem: any(named: 'publicKeyPem'),
+            ),
+          ).thenReturn(true);
         });
 
         test('returns artifact bundles with non-null hash signature', () async {

@@ -62,11 +62,12 @@ void main() {
       group('when an exact match does not exist', () {
         late File app;
 
-        setUp(() async {
-          File(p.join(tempDir.path, 'other.exe')).createSync();
-          // Ensure my_app is created after other.
-          await Future<void>.delayed(const Duration(seconds: 1));
+        setUp(() {
+          final other = File(p.join(tempDir.path, 'other.exe'))..createSync();
           app = File(p.join(tempDir.path, '$projectName.exe'))..createSync();
+          // Set modification times so my_app is newer than other.
+          other.setLastModifiedSync(DateTime(2024));
+          app.setLastModifiedSync(DateTime(2025));
         });
 
         test('returns most recently modified executable', () {

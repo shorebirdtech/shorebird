@@ -326,6 +326,9 @@ void main() {
             when(
               () => argResults[CommonArguments.publicKeyArg.name],
             ).thenReturn(patchSigningPublicKeyFile.path);
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+            ).thenReturn(true);
 
             when(
               () => artifactBuilder.buildAar(
@@ -337,7 +340,7 @@ void main() {
             ).thenAnswer((_) async => File(''));
 
             when(
-              () => codeSigner.base64PublicKey(any()),
+              () => codeSigner.base64PublicKeyFromPem(any()),
             ).thenReturn(base64PublicKey);
           });
 
@@ -346,6 +349,57 @@ void main() {
             () async {
               await runWithOverrides(() => aarReleaser.buildReleaseArtifacts());
 
+              verify(
+                () => artifactBuilder.buildAar(
+                  buildNumber: buildNumber,
+                  targetPlatforms: any(named: 'targetPlatforms'),
+                  args: any(named: 'args'),
+                  base64PublicKey: base64PublicKey,
+                ),
+              ).called(1);
+            },
+          );
+        });
+
+        group('when a public-key-cmd is provided', () {
+          const base64PublicKey = 'base64PublicKeyFromCmd';
+
+          setUp(() {
+            when(
+              () => argResults[CommonArguments.publicKeyCmd.name],
+            ).thenReturn('get-key-cmd');
+            when(
+              () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+            ).thenReturn(true);
+
+            when(
+              () => artifactBuilder.buildAar(
+                buildNumber: any(named: 'buildNumber'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).thenAnswer((_) async => File(''));
+
+            when(
+              () => codeSigner.runPublicKeyCmd(any()),
+            ).thenAnswer((_) async => 'pem-public-key');
+            when(
+              () => codeSigner.base64PublicKeyFromPem(any()),
+            ).thenReturn(base64PublicKey);
+          });
+
+          test(
+            'runs public key cmd and forwards encoded key to buildAar',
+            () async {
+              await runWithOverrides(() => aarReleaser.buildReleaseArtifacts());
+
+              verify(
+                () => codeSigner.runPublicKeyCmd('get-key-cmd'),
+              ).called(1);
+              verify(
+                () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
+              ).called(1);
               verify(
                 () => artifactBuilder.buildAar(
                   buildNumber: buildNumber,

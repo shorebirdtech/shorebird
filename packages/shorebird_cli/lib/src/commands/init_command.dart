@@ -161,12 +161,16 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     if (existingFlavors != null) {
       final existingFlavorNames = existingFlavors.keys.toSet();
       newFlavors = productFlavors.difference(existingFlavorNames);
+    } else if (shorebirdYaml != null) {
+      // Existing shorebird.yaml without flavors — treat all detected flavors
+      // as new so they can be added without resetting the base app_id.
+      newFlavors = productFlavors;
     } else {
       newFlavors = {};
     }
 
-    // New flavors not being empty means that we have existing flavors, which
-    // means that there is already an existing app.
+    // New flavors not being empty means that there is already an existing app
+    // and we just need to add the new flavor entries.
     // If the --force flag is present, we will completely reinit the app and
     // don't care about which flavors are new.
     if (!force && newFlavors.isNotEmpty) {
@@ -188,7 +192,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final deflavoredAppName = existingApp.displayName
           .replaceAll(RegExp(r'\(.*\)'), '')
           .trim();
-      final flavorsToAppIds = shorebirdYaml.flavors!;
+      final flavorsToAppIds = shorebirdYaml.flavors ?? {};
       for (final flavor in newFlavors) {
         final app = await codePushClientWrapper.createApp(
           appName: '$deflavoredAppName ($flavor)',

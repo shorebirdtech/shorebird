@@ -107,6 +107,9 @@ void main() {
       when(() => argResults['platforms']).thenReturn(['android']);
       when(() => argResults['flutter-version']).thenReturn('latest');
       when(() => argResults.wasParsed(any())).thenReturn(true);
+      when(
+        () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+      ).thenReturn(false);
 
       when(cache.updateAll).thenAnswer((_) async => {});
 
@@ -699,7 +702,9 @@ $exception'''),
             verify(
               () => logger.warn(
                 'patch_verification is set in shorebird.yaml but '
-                '--${CommonArguments.publicKeyArg.name} was not provided.\n'
+                'no public key was provided '
+                '(--${CommonArguments.publicKeyArg.name} '
+                'or --${CommonArguments.publicKeyCmd.name}).\n'
                 'patch_verification configuration will have no effect.',
               ),
             ).called(1);

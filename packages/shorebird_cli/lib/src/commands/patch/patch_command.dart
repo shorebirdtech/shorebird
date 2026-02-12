@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -20,6 +19,7 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
+import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -139,6 +139,14 @@ To target the latest release (e.g. the release that was most recently updated) u
       ..addOption(
         CommonArguments.publicKeyArg.name,
         help: CommonArguments.publicKeyArg.description,
+      )
+      ..addOption(
+        CommonArguments.publicKeyCmd.name,
+        help: CommonArguments.publicKeyCmd.description,
+      )
+      ..addOption(
+        CommonArguments.signCmd.name,
+        help: CommonArguments.signCmd.description,
       )
       ..addOption(
         CommonArguments.splitDebugInfoArg.name,
@@ -287,7 +295,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   Future<void> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
-    results.assertAbsentOrValidKeyPair();
+    results.assertAbsentOrValidKeyPairOrCommands();
 
     try {
       await shorebirdValidator.validateFlavors(
@@ -444,7 +452,9 @@ Building patch with Flutter $flutterVersionString
           usedIgnoreNativeChangesFlag: allowNativeDiffs,
           hasNativeChanges: diffStatus.hasNativeChanges,
           inferredReleaseVersion: inferredReleaseVersion,
-          isSigned: results.wasParsed(CommonArguments.privateKeyArg.name),
+          isSigned:
+              results.wasParsed(CommonArguments.privateKeyArg.name) ||
+              results.wasParsed(CommonArguments.signCmd.name),
           environment: BuildEnvironmentMetadata(
             flutterRevision: shorebirdEnv.flutterRevision,
             operatingSystem: platform.operatingSystem,
@@ -486,10 +496,9 @@ Building patch with Flutter $flutterVersionString
       throw ProcessExit(ExitCode.usage.code);
     }
 
-    return logger.chooseOne<Release>(
-      'Which release would you like to patch?',
-      choices: [...releasesForPlatform.sortedBy((r) => r.createdAt).reversed],
-      display: (r) => r.version,
+    return chooseRelease(
+      releases: releasesForPlatform,
+      action: 'patch',
     );
   }
 

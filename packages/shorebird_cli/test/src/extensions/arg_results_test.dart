@@ -1,11 +1,29 @@
 // cspell:ignore qwer
+import 'dart:io';
+
 import 'package:args/args.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
+import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:test/test.dart';
 
+class MockCodeSigner extends Mock implements CodeSigner {}
+
+class MockShorebirdLogger extends Mock implements ShorebirdLogger {}
+
+class FakeFile extends Fake implements File {}
+
 void main() {
+  setUpAll(() {
+    registerFallbackValue(FakeFile());
+  });
+
   group('OptionFinder', () {
     late ArgParser argParser;
 
@@ -298,6 +316,227 @@ void main() {
           contains('--export-options-plist=build/ExportOptions.plist'),
         );
       });
+    });
+  });
+
+  group('CodeSign', () {
+    final cryptoFixturesBasePath = p.join('test', 'fixtures', 'crypto');
+    final publicKeyFile = File(p.join(cryptoFixturesBasePath, 'public.pem'));
+
+    late ArgParser parser;
+    late ShorebirdLogger logger;
+
+    setUp(() {
+      logger = MockShorebirdLogger();
+      parser = ArgParser()
+        ..addOption(CommonArguments.publicKeyArg.name)
+        ..addOption(CommonArguments.privateKeyArg.name)
+        ..addOption(CommonArguments.publicKeyCmd.name)
+        ..addOption(CommonArguments.signCmd.name);
+    });
+
+    group('assertAbsentOrValidKeyPairOrCommands', () {
+      test('succeeds when no signing arguments provided', () {
+        final args = <String>[];
+        final result = parser.parse(args);
+        expect(result.assertAbsentOrValidKeyPairOrCommands, returnsNormally);
+      });
+
+      test('throws when both public key sources provided', () {
+        final args = [
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ];
+        final result = parser.parse(args);
+
+        runScoped(
+          () {
+            expect(
+              result.assertAbsentOrValidKeyPairOrCommands,
+              throwsA(isA<ProcessExit>()),
+            );
+          },
+          values: {loggerRef.overrideWith(() => logger)},
+        );
+      });
+
+      test('throws when both signing methods provided', () {
+        final privateKeyFile = File(
+          p.join(cryptoFixturesBasePath, 'private.pem'),
+        );
+        final args = [
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ];
+        final result = parser.parse(args);
+
+        runScoped(
+          () {
+            expect(
+              result.assertAbsentOrValidKeyPairOrCommands,
+              throwsA(isA<ProcessExit>()),
+            );
+          },
+          values: {loggerRef.overrideWith(() => logger)},
+        );
+      });
+
+      test('throws when sign-cmd provided without any public key', () {
+        final args = ['--${CommonArguments.signCmd.name}=sign-cmd'];
+        final result = parser.parse(args);
+
+        runScoped(
+          () {
+            expect(
+              result.assertAbsentOrValidKeyPairOrCommands,
+              throwsA(isA<ProcessExit>()),
+            );
+          },
+          values: {loggerRef.overrideWith(() => logger)},
+        );
+      });
+
+      test('succeeds when both cmd arguments provided', () {
+        final args = [
+          '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ];
+        final result = parser.parse(args);
+        expect(result.assertAbsentOrValidKeyPairOrCommands, returnsNormally);
+      });
+
+      test('succeeds with public-key-path + sign-cmd (mixed)', () {
+        final args = [
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ];
+        final result = parser.parse(args);
+        expect(result.assertAbsentOrValidKeyPairOrCommands, returnsNormally);
+      });
+
+      test('succeeds when both file arguments provided with valid files', () {
+        final privateKeyFile = File(
+          p.join(cryptoFixturesBasePath, 'private.pem'),
+        );
+        final args = [
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
+        ];
+        final result = parser.parse(args);
+        expect(result.assertAbsentOrValidKeyPairOrCommands, returnsNormally);
+      });
+    });
+
+    group('assertAbsentOrValidPublicKeyOrCmd', () {
+      test('succeeds when no public key arguments provided', () {
+        final args = <String>[];
+        final result = parser.parse(args);
+        expect(result.assertAbsentOrValidPublicKeyOrCmd, returnsNormally);
+      });
+
+      test('succeeds when only public-key-path provided', () {
+        final args = [
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+        ];
+        final result = parser.parse(args);
+        expect(result.assertAbsentOrValidPublicKeyOrCmd, returnsNormally);
+      });
+
+      test('succeeds when only public-key-cmd provided', () {
+        final args = ['--${CommonArguments.publicKeyCmd.name}=get-key-cmd'];
+        final result = parser.parse(args);
+        expect(result.assertAbsentOrValidPublicKeyOrCmd, returnsNormally);
+      });
+
+      test('throws when both public-key-path and public-key-cmd provided', () {
+        final args = [
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+        ];
+        final result = parser.parse(args);
+
+        runScoped(
+          () {
+            expect(
+              result.assertAbsentOrValidPublicKeyOrCmd,
+              throwsA(isA<ProcessExit>()),
+            );
+          },
+          values: {loggerRef.overrideWith(() => logger)},
+        );
+      });
+    });
+
+    group('getEncodedPublicKey', () {
+      late CodeSigner codeSigner;
+
+      setUp(() {
+        codeSigner = MockCodeSigner();
+      });
+
+      test('returns null when no public key configured', () async {
+        final args = <String>[];
+        final result = parser.parse(args);
+
+        await runScoped(
+          () async {
+            final encoded = await result.getEncodedPublicKey();
+            expect(encoded, isNull);
+          },
+          values: {codeSignerRef.overrideWith(() => codeSigner)},
+        );
+      });
+
+      test(
+        'returns encoded key from file when public-key-path provided',
+        () async {
+          final args = [
+            '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          ];
+          final result = parser.parse(args);
+
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenReturn('encoded-key');
+
+          await runScoped(
+            () async {
+              final encoded = await result.getEncodedPublicKey();
+              expect(encoded, equals('encoded-key'));
+            },
+            values: {codeSignerRef.overrideWith(() => codeSigner)},
+          );
+        },
+      );
+
+      test(
+        'returns encoded key from cmd when public-key-cmd provided',
+        () async {
+          final args = ['--${CommonArguments.publicKeyCmd.name}=get-key-cmd'];
+          final result = parser.parse(args);
+
+          when(
+            () => codeSigner.runPublicKeyCmd(any()),
+          ).thenAnswer((_) async => 'pem-key');
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenReturn('encoded-key');
+
+          await runScoped(
+            () async {
+              final encoded = await result.getEncodedPublicKey();
+              expect(encoded, equals('encoded-key'));
+              verify(() => codeSigner.runPublicKeyCmd('get-key-cmd')).called(1);
+              verify(
+                () => codeSigner.base64PublicKeyFromPem('pem-key'),
+              ).called(1);
+            },
+            values: {codeSignerRef.overrideWith(() => codeSigner)},
+          );
+        },
+      );
     });
   });
 }

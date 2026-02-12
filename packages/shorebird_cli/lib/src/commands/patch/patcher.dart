@@ -4,16 +4,19 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/iterable.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -126,6 +129,90 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => argResults['allow-native-diffs'] == true;
+
+  /// Returns a function that signs data, or null if no signing is configured.
+  Future<String> Function(String)? _resolveSigner() {
+    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
+    if (privateKeyFile != null) {
+      return (hash) async =>
+          codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile);
+    }
+
+    final signCmd = argResults[CommonArguments.signCmd.name] as String?;
+    if (signCmd != null) {
+      return (hash) async {
+        try {
+          return await codeSigner.signWithCmd(data: hash, command: signCmd);
+        } on ProcessException catch (e) {
+          logger.err(
+            'Failed to run --${CommonArguments.signCmd.name}: ${e.message}',
+          );
+          throw ProcessExit(ExitCode.software.code);
+        } on FormatException catch (e) {
+          logger.err(
+            '--${CommonArguments.signCmd.name} produced invalid output: '
+            '${e.message}',
+          );
+          throw ProcessExit(ExitCode.software.code);
+        }
+      };
+    }
+
+    return null;
+  }
+
+  /// Returns the public key PEM from the configured source, or null.
+  Future<String?> _resolvePublicKeyPem() async {
+    try {
+      return await argResults.resolvePublicKeyPem();
+    } on ProcessException catch (e) {
+      logger.err(
+        'Failed to run '
+        '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    } on FormatException catch (e) {
+      logger.err(
+        '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
+        '${e.message}',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+  }
+
+  /// Signs a hash using the configured signing method.
+  ///
+  /// Returns null if no signing is configured.
+  Future<String?> signHash(String hash) async {
+    final signer = _resolveSigner();
+    if (signer == null) return null;
+
+    final signature = await signer(hash);
+    final publicKeyPem = await _resolvePublicKeyPem();
+
+    if (publicKeyPem == null) {
+      logger.err(
+        'A public key is required for code signing. '
+        'Provide --${CommonArguments.publicKeyArg.name} or '
+        '--${CommonArguments.publicKeyCmd.name}.',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    if (!codeSigner.verify(
+      message: hash,
+      signature: signature,
+      publicKeyPem: publicKeyPem,
+    )) {
+      logger.err(
+        'Signature verification failed. The signature does not match '
+        'the provided public key.',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+
+    return signature;
+  }
 
   /// The link percentage for the generated patch artifact if applicable.
   /// Returns `null` if the platform does not use a linker or if the linking

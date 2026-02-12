@@ -146,6 +146,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         help: CommonArguments.publicKeyArg.description,
       )
       ..addOption(
+        CommonArguments.publicKeyCmd.name,
+        help: CommonArguments.publicKeyCmd.description,
+      )
+      ..addOption(
         CommonArguments.splitDebugInfoArg.name,
         help: CommonArguments.splitDebugInfoArg.description,
       );
@@ -367,14 +371,18 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   /// Validates arguments that are common to all release types.
   Future<void> assertArgsAreValid(Releaser releaser) async {
-    results.assertAbsentOrValidPublicKey();
+    results.assertAbsentOrValidPublicKeyOrCmd();
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
-    if (shorebirdYaml?.patchVerification != null &&
-        !results.wasParsed(CommonArguments.publicKeyArg.name)) {
+    final hasPublicKey =
+        results.wasParsed(CommonArguments.publicKeyArg.name) ||
+        results.wasParsed(CommonArguments.publicKeyCmd.name);
+    if (shorebirdYaml?.patchVerification != null && !hasPublicKey) {
       logger.warn(
         'patch_verification is set in shorebird.yaml but '
-        '--${CommonArguments.publicKeyArg.name} was not provided.\n'
+        'no public key was provided '
+        '(--${CommonArguments.publicKeyArg.name} '
+        'or --${CommonArguments.publicKeyCmd.name}).\n'
         'patch_verification configuration will have no effect.',
       );
     }
@@ -554,10 +562,13 @@ ${summary.join('\n')}
     required Release release,
     required Releaser releaser,
   }) async {
+    final hasPublicKey =
+        results.wasParsed(CommonArguments.publicKeyArg.name) ||
+        results.wasParsed(CommonArguments.publicKeyCmd.name);
     final baseMetadata = UpdateReleaseMetadata(
       releasePlatform: releaser.releaseType.releasePlatform,
       flutterVersionOverride: flutterVersionArg,
-      includesPublicKey: results.wasParsed(CommonArguments.publicKeyArg.name),
+      includesPublicKey: hasPublicKey,
       environment: BuildEnvironmentMetadata(
         flutterRevision: shorebirdEnv.flutterRevision,
         operatingSystem: platform.operatingSystem,

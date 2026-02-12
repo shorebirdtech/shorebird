@@ -293,6 +293,9 @@ void main() {
           when(
             () => argResults[CommonArguments.publicKeyArg.name],
           ).thenReturn(patchSigningPublicKeyFile.path);
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
 
           when(
             () => artifactBuilder.buildIosFramework(
@@ -304,7 +307,7 @@ void main() {
                 AppleBuildResult(kernelFile: File('/path/to/app.dill')),
           );
           when(
-            () => codeSigner.base64PublicKey(any()),
+            () => codeSigner.base64PublicKeyFromPem(any()),
           ).thenReturn(base64PublicKey);
         });
 
@@ -316,6 +319,59 @@ void main() {
               () => iosFrameworkReleaser.buildReleaseArtifacts(),
             );
 
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                args: any(named: 'args'),
+                base64PublicKey: base64PublicKey,
+              ),
+            ).called(1);
+          },
+        );
+      });
+
+      group('when a public-key-cmd is provided', () {
+        const base64PublicKey = 'base64PublicKeyFromCmd';
+
+        setUp(() {
+          when(
+            () => argResults[CommonArguments.publicKeyCmd.name],
+          ).thenReturn('get-key-cmd');
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+          ).thenReturn(true);
+
+          when(
+            () => artifactBuilder.buildIosFramework(
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).thenAnswer(
+            (_) async =>
+                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
+          );
+
+          when(
+            () => codeSigner.runPublicKeyCmd(any()),
+          ).thenAnswer((_) async => 'pem-public-key');
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenReturn(base64PublicKey);
+        });
+
+        test(
+          'runs public key cmd and forwards encoded key to '
+          'buildIosFramework',
+          () async {
+            await runWithOverrides(
+              () => iosFrameworkReleaser.buildReleaseArtifacts(),
+            );
+
+            verify(
+              () => codeSigner.runPublicKeyCmd('get-key-cmd'),
+            ).called(1);
+            verify(
+              () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
+            ).called(1);
             verify(
               () => artifactBuilder.buildIosFramework(
                 args: any(named: 'args'),
