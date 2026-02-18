@@ -82,6 +82,7 @@ Command: shorebird ${args.join(' ')}
           patchDiffCheckerRef,
           platformRef,
           powershellRef,
+          productBuildRef,
           processRef,
           pubspecEditorRef,
           shorebirdAndroidArtifactsRef,

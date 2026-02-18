@@ -9,7 +9,7 @@ import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/xcodebuild.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/metadata/update_release_metadata.dart';
@@ -33,6 +33,9 @@ class MacosReleaser extends Releaser {
 
   /// Whether to codesign the release.
   bool get codesign => argResults['codesign'] == true;
+
+  /// The Developer ID Installer identity to sign the PKG with, if provided.
+  String? get pkgSign => argResults['pkg-sign'] as String?;
 
   @override
   ReleaseType get releaseType => ReleaseType.macos;
@@ -108,7 +111,52 @@ To change the version of this release, change your app's version in your pubspec
       throw ProcessExit(ExitCode.software.code);
     }
 
+    // If PKG signing is requested, create a PKG installer as an additional
+    // artifact
+    if (pkgSign != null) {
+      await _createPkgInstaller(appDirectory);
+    }
+
+    // Always return the app directory for other processes to continue with
     return appDirectory;
+  }
+
+  /// Creates a signed PKG installer from the built app.
+  Future<File> _createPkgInstaller(Directory appDirectory) async {
+    final buildDir = Directory(
+      p.join(
+        shorebirdEnv.getShorebirdProjectRoot()!.path,
+        'build',
+        'macos',
+        'pkg',
+      ),
+    );
+
+    if (!buildDir.existsSync()) {
+      buildDir.createSync(recursive: true);
+    }
+
+    final appName = p.basenameWithoutExtension(appDirectory.path);
+    final pkgPath = p.join(buildDir.path, '$appName.pkg');
+
+    // Create signed PKG installer directly with productbuild
+    final buildProgress = logger.progress('Creating signed PKG installer');
+    final productBuildResult = await productBuild.buildFromComponent(
+      componentPath: appDirectory.path,
+      installLocation: '/Applications',
+      outputPath: pkgPath,
+      sign: pkgSign,
+    );
+
+    if (productBuildResult.exitCode != 0) {
+      buildProgress.fail('Failed to create signed PKG installer');
+      logger.err('productbuild error: ${productBuildResult.stderr}');
+      throw ProcessExit(ExitCode.software.code);
+    }
+    buildProgress.complete();
+
+    logger.info('Created signed PKG installer at $pkgPath');
+    return File(pkgPath);
   }
 
   @override
@@ -172,9 +220,27 @@ To change the version of this release, change your app's version in your pubspec
   );
 
   @override
-  String get postReleaseInstructions =>
-      '''
+  String get postReleaseInstructions {
+    final appPath = artifactManager.getMacOSAppDirectory(flavor: flavor)!.path;
 
-macOS app created at ${artifactManager.getMacOSAppDirectory(flavor: flavor)!.path}.
+    if (pkgSign != null) {
+      final buildDir = p.join(
+        shorebirdEnv.getShorebirdProjectRoot()!.path,
+        'build',
+        'macos',
+        'pkg',
+      );
+      return '''
+
+macOS app created at $appPath.
+macOS PKG installer created at $buildDir.
+The PKG file is signed and ready for distribution.
 ''';
+    }
+
+    return '''
+
+macOS app created at $appPath.
+''';
+  }
 }
