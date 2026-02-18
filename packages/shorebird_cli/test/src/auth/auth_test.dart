@@ -142,6 +142,7 @@ void main() {
 
     setUpAll(() {
       registerFallbackValue(FakeBaseRequest());
+      registerFallbackValue(Uri.parse('https://example.com'));
     });
 
     R runWithOverrides<R>(R Function() body) {
@@ -163,15 +164,12 @@ void main() {
           buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
-          obtainAccessCredentials:
-              (
-                clientId,
-                scopes,
-                client,
-                userPrompt, {
-                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+          performShorebirdLogin:
+              ({
+                required void Function(String url) prompt,
+                String authServiceUrl = 'https://auth.shorebird.dev',
               }) async {
-                return accessCredentials;
+                return (accessToken: idToken, refreshToken: refreshToken);
               },
         ),
       );
@@ -180,7 +178,13 @@ void main() {
     void writeCredentials() {
       File(
         p.join(credentialsDir, 'credentials.json'),
-      ).writeAsStringSync(jsonEncode(accessCredentials.toJson()));
+      ).writeAsStringSync(
+        jsonEncode({
+          'type': 'shorebird',
+          'access_token': idToken,
+          'refresh_token': refreshToken,
+        }),
+      );
     }
 
     setUp(() {
@@ -505,14 +509,28 @@ void main() {
     group('client', () {
       test('returns an authenticated client '
           'when credentials are present.', () async {
+        // Stub the refresh POST (the test JWT is expired).
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            encoding: any(named: 'encoding'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            '{"access_token": "$idToken", "token_type": "Bearer", "expires_in": 900}',
+            HttpStatus.ok,
+          ),
+        );
         when(() => httpClient.send(any())).thenAnswer(
           (_) async =>
               http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
         );
-        await auth.login(AuthProvider.google, prompt: (_) {});
+        await auth.login(prompt: (_) {});
         final client = auth.client;
         expect(client, isA<http.Client>());
-        expect(client, isA<AuthenticatedClient>());
+        expect(client, isA<ShorebirdAuthenticatedClient>());
 
         await runWithOverrides(
           () => client.get(Uri.parse('https://example.com')),
@@ -607,26 +625,13 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
       test(
         'should set the email when claims are valid and current user exists',
         () async {
-          await auth.login(AuthProvider.google, prompt: (_) {});
+          await auth.login(prompt: (_) {});
           expect(auth.email, email);
           expect(auth.isAuthenticated, isTrue);
           expect(buildAuth().email, email);
           expect(buildAuth().isAuthenticated, isTrue);
         },
       );
-
-      group('with custom auth provider', () {
-        test(
-          '''should set the email when claims are valid and current user exists''',
-          () async {
-            await auth.login(AuthProvider.microsoft, prompt: (_) {});
-            expect(auth.email, email);
-            expect(auth.isAuthenticated, isTrue);
-            expect(buildAuth().email, email);
-            expect(buildAuth().isAuthenticated, isTrue);
-          },
-        );
-      });
 
       test(
         'throws UserAlreadyLoggedInException if user is authenticated',
@@ -635,7 +640,7 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
           auth = buildAuth();
 
           await expectLater(
-            auth.login(AuthProvider.google, prompt: (_) {}),
+            auth.login(prompt: (_) {}),
             throwsA(isA<UserAlreadyLoggedInException>()),
           );
 
@@ -646,19 +651,27 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
 
       group('when login credentials are corrupted', () {
         setUp(() {
-          accessCredentials = oauth2.AccessCredentials(
-            accessToken,
-            refreshToken,
-            scopes,
-            idToken: 'not a valid jwt',
+          // Write corrupted Shorebird credentials.
+          File(
+            p.join(credentialsDir, 'credentials.json'),
+          ).writeAsStringSync(
+            jsonEncode({
+              'type': 'shorebird',
+              'access_token': 'not a valid jwt',
+              'refresh_token': 'sb_rt_test',
+            }),
           );
-          writeCredentials();
           auth = buildAuth();
         });
 
         test('proceeds with login', () async {
+          // Email is null because the JWT is corrupted.
           expect(auth.email, isNull);
-          await auth.login(AuthProvider.google, prompt: (_) {});
+          // But isAuthenticated is true because we have shorebird credentials.
+          expect(auth.isAuthenticated, isTrue);
+          // Logout first so login doesn't throw UserAlreadyLoggedInException.
+          auth.logout();
+          await auth.login(prompt: (_) {});
           expect(auth.email, equals(email));
           expect(auth.isAuthenticated, isTrue);
         });
@@ -670,7 +683,7 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
         ).thenAnswer((_) async => null);
 
         await expectLater(
-          auth.login(AuthProvider.google, prompt: (_) {}),
+          auth.login(prompt: (_) {}),
           throwsA(isA<UserNotFoundException>()),
         );
 
@@ -679,70 +692,72 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
       });
     });
 
-    group('loginCI', () {
-      setUp(() {
-        when(() => platform.environment).thenReturn(<String, String>{
-          shorebirdTokenEnvVar: ciToken.toBase64(),
-        });
-        auth = buildAuth();
+    group('createApiKey', () {
+      const apiKey = 'sb_api_test_key_123';
+
+      setUp(() async {
+        // Login first so _shorebirdCredentials is set.
+        await auth.login(prompt: (_) {});
       });
 
-      test(
-        'returns a CI token and does not set the email or cache credentials',
-        () async {
-          final token = await auth.loginCI(AuthProvider.google, prompt: (_) {});
-          expect(token.authProvider, ciToken.authProvider);
-          expect(token.refreshToken, ciToken.refreshToken);
-          expect(auth.email, isNull);
-          expect(auth.isAuthenticated, isTrue);
-          expect(buildAuth().email, isNull);
-          expect(buildAuth().isAuthenticated, isTrue);
-          when(() => platform.environment).thenReturn({});
-          expect(buildAuth().isAuthenticated, isFalse);
-        },
-      );
-
-      test('throws when user does not exist', () async {
+      test('returns an API key', () async {
         when(
-          () => codePushClient.getCurrentUser(),
-        ).thenAnswer((_) async => null);
-
-        await expectLater(
-          auth.loginCI(AuthProvider.google, prompt: (_) {}),
-          throwsA(isA<UserNotFoundException>()),
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            encoding: any(named: 'encoding'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            '{"api_key": "$apiKey", "name": "CI"}',
+            HttpStatus.created,
+          ),
         );
 
-        expect(auth.email, isNull);
+        final result = await auth.createApiKey(name: 'CI');
+        expect(result, apiKey);
       });
 
-      group('when credentials are missing a refresh token', () {
-        setUp(() {
-          accessCredentials = oauth2.AccessCredentials(
-            accessToken,
-            null,
-            scopes,
-            idToken: idToken,
-          );
-        });
+      test('throws when not logged in', () async {
+        auth.logout();
+        await expectLater(
+          auth.createApiKey(name: 'CI'),
+          throwsA(isA<StateError>()),
+        );
+      });
 
-        test('throws if credentials are missing a refresh token', () async {
-          await expectLater(
-            auth.loginCI(AuthProvider.google, prompt: (_) {}),
-            throwsA(
-              isA<Exception>().having(
-                (e) => e.toString(),
-                'toString',
-                'Exception: No refresh token found.',
-              ),
+      test('throws when API key creation fails', () async {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+            encoding: any(named: 'encoding'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            '{"error": "unauthorized"}',
+            HttpStatus.unauthorized,
+          ),
+        );
+
+        await expectLater(
+          auth.createApiKey(name: 'CI'),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'toString',
+              contains('Failed to create API key'),
             ),
-          );
-        });
+          ),
+        );
       });
     });
 
     group('logout', () {
       test('clears session and wipes state', () async {
-        await auth.login(AuthProvider.google, prompt: (_) {});
+        await auth.login(prompt: (_) {});
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
 

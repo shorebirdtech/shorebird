@@ -2,25 +2,12 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart'
-    as api;
 
 /// {@template login_ci_command}
 /// `shorebird login:ci`
 /// Login as a CI user.
 /// {@endtemplate}
 class LoginCiCommand extends ShorebirdCommand {
-  /// {@macro login_ci_command}
-  LoginCiCommand() {
-    argParser.addOption(
-      'provider',
-      abbr: 'p',
-      allowed: api.AuthProvider.values.map((e) => e.name),
-      defaultsTo: api.AuthProvider.google.name,
-      help: 'The authentication provider to use. Defaults to Google.',
-    );
-  }
-
   @override
   String get description => 'Login as a CI user.';
 
@@ -29,20 +16,25 @@ class LoginCiCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    final api.AuthProvider provider;
-    if (results.wasParsed('provider')) {
-      provider = api.AuthProvider.values.byName(results['provider'] as String);
-    } else {
-      provider = logger.chooseOne(
-        'Choose an auth provider',
-        choices: api.AuthProvider.values,
-        display: (p) => p.displayName,
-      );
-    }
-
-    final CiToken ciToken;
     try {
-      ciToken = await auth.loginCI(provider, prompt: prompt);
+      if (!auth.isAuthenticated) {
+        await auth.login(prompt: prompt);
+      }
+      final apiKey = await auth.createApiKey(
+        name: 'SHOREBIRD_TOKEN (CLI)',
+      );
+
+      logger.info('''
+
+🎉 ${lightGreen.wrap('Success! Use the following token to login on a CI server:')}
+
+${lightCyan.wrap(apiKey)}
+
+Example:
+
+${lightCyan.wrap('export $shorebirdTokenEnvVar="\$SHOREBIRD_TOKEN" && shorebird patch android')}
+''');
+      return ExitCode.success.code;
     } on UserNotFoundException catch (error) {
       logger
         ..err('''
@@ -55,18 +47,6 @@ We could not find a Shorebird account for ${error.email}.''')
       logger.err(error.toString());
       return ExitCode.software.code;
     }
-
-    logger.info('''
-
-🎉 ${lightGreen.wrap('Success! Use the following token to login on a CI server:')}
-
-${lightCyan.wrap(ciToken.toBase64())}
-
-Example:
-  
-${lightCyan.wrap('export $shorebirdTokenEnvVar="\$SHOREBIRD_TOKEN" && shorebird patch android')}
-''');
-    return ExitCode.success.code;
   }
 
   /// Prompt the user to visit the provided [url] to authorize the CLI.
