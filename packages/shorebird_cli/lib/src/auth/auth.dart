@@ -429,6 +429,8 @@ extension OauthValues on AuthProvider {
   oauth2.AuthEndpoints get authEndpoints => switch (this) {
     (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
     (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
+    (AuthProvider.shorebird) =>
+      throw UnsupportedError('Shorebird auth is not yet supported in the CLI'),
   };
 
   /// The OAuth 2.0 client ID for the provider.
@@ -456,6 +458,10 @@ extension OauthValues on AuthProvider {
           /// Shorebird CLI's OAuth 2.0 identifier for Azure/Entra.
           '4fc38981-4ec4-4bd9-a755-e6ad9a413054',
         );
+      case AuthProvider.shorebird:
+        throw UnsupportedError(
+          'Shorebird auth is not yet supported in the CLI',
+        );
     }
   }
 
@@ -471,5 +477,7 @@ extension OauthValues on AuthProvider {
       // Required to get refresh tokens.
       'offline_access',
     ],
+    (AuthProvider.shorebird) =>
+      throw UnsupportedError('Shorebird auth is not yet supported in the CLI'),
   };
 }
