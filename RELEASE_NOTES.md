@@ -4,6 +4,11 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.83 (February 20, 2026)
+
+- 🐦 Support for Flutter 3.41.2
+- ✨ Add AuthProvider to code push protocol
+
 ## 1.6.82 (February 13, 2026)
 
 - 🐦 Support for Flutter 3.41.1
