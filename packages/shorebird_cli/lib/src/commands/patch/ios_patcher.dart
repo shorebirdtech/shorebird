@@ -91,6 +91,9 @@ class IosPatcher extends Patcher {
   String? get supplementaryReleaseArtifactArch => 'ios_supplement';
 
   @override
+  String? get obfuscationMapReleaseArtifactArch => 'ios_obfuscation_map';
+
+  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
@@ -152,7 +155,10 @@ This may indicate that the patch contains native changes, which cannot be applie
   }
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
+  Future<File> buildPatchArtifact({
+    String? releaseVersion,
+    String? obfuscationMapPath,
+  }) async {
     final shouldCodesign = argResults['codesign'] == true;
     final (flutterVersionAndRevision, flutterVersion) = await (
       shorebirdFlutter.getVersionAndRevision(),
@@ -167,15 +173,38 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       throw ProcessExit(ExitCode.software.code);
     }
 
+    final buildArgs = [
+      ...argResults.forwardedArgs,
+      ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+    ];
+
+    // If an obfuscation map was provided (from the release), inject the
+    // flags needed to build the patch with consistent obfuscated names.
+    if (obfuscationMapPath != null) {
+      if (!buildArgs.contains('--obfuscate')) {
+        buildArgs.add('--obfuscate');
+      }
+      // Flutter requires --split-debug-info with --obfuscate. If not already
+      // provided, add a temporary directory (the debug info is discarded).
+      if (!buildArgs.any((arg) => arg.startsWith('--split-debug-info'))) {
+        final tempDebugInfoDir = Directory.systemTemp.createTempSync(
+          'shorebird_patch_debug_info_',
+        );
+        buildArgs.add('--split-debug-info=${tempDebugInfoDir.path}');
+      }
+      buildArgs.add(
+        '--extra-gen-snapshot-options='
+        '--load-obfuscation-map=$obfuscationMapPath',
+      );
+    }
+
     // If buildIpa is called with a different codesign value than the
     // release was, we will erroneously report native diffs.
     final ipaBuildResult = await artifactBuilder.buildIpa(
       codesign: shouldCodesign,
       flavor: flavor,
       target: target,
-      args:
-          argResults.forwardedArgs +
-          buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 

@@ -707,6 +707,7 @@ aar artifact already exists, continuing...''');
     required String appPath,
     required bool isCodesigned,
     required String? podfileLockHash,
+    String? obfuscationMapPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final tempDir = await Directory.systemTemp.createTemp();
@@ -732,6 +733,30 @@ aar artifact already exists, continuing...''');
       );
     }
 
+    if (obfuscationMapPath != null) {
+      final obfuscationMapFile = File(obfuscationMapPath);
+      try {
+        await codePushClient.createReleaseArtifact(
+          appId: appId,
+          releaseId: releaseId,
+          artifactPath: obfuscationMapFile.path,
+          arch: 'macos_obfuscation_map',
+          platform: ReleasePlatform.macos,
+          hash: sha256
+              .convert(await obfuscationMapFile.readAsBytes())
+              .toString(),
+          canSideload: false,
+          podfileLockHash: null,
+        );
+      } catch (error) {
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading obfuscation map: $error',
+        );
+      }
+    }
+
     createArtifactProgress.complete();
   }
 
@@ -745,6 +770,7 @@ aar artifact already exists, continuing...''');
     required bool isCodesigned,
     required String? podfileLockHash,
     required String? supplementPath,
+    String? obfuscationMapPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final thinnedArchiveDirectory = await _thinXcarchive(
@@ -811,6 +837,30 @@ aar artifact already exists, continuing...''');
           error,
           progress: createArtifactProgress,
           message: 'Error uploading release supplements: $error',
+        );
+      }
+    }
+
+    if (obfuscationMapPath != null) {
+      final obfuscationMapFile = File(obfuscationMapPath);
+      try {
+        await codePushClient.createReleaseArtifact(
+          appId: appId,
+          releaseId: releaseId,
+          artifactPath: obfuscationMapFile.path,
+          arch: 'ios_obfuscation_map',
+          platform: ReleasePlatform.ios,
+          hash: sha256
+              .convert(await obfuscationMapFile.readAsBytes())
+              .toString(),
+          canSideload: false,
+          podfileLockHash: null,
+        );
+      } catch (error) {
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading obfuscation map: $error',
         );
       }
     }

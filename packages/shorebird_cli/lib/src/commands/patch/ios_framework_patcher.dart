@@ -103,7 +103,10 @@ class IosFrameworkPatcher extends Patcher {
   );
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
+  Future<File> buildPatchArtifact({
+    String? releaseVersion,
+    String? obfuscationMapPath,
+  }) async {
     final buildResult = await artifactBuilder.buildIosFramework(
       args: argResults.forwardedArgs,
       base64PublicKey: argResults.encodedPublicKey,

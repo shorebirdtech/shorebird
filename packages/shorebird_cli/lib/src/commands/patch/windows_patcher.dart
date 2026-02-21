@@ -70,7 +70,10 @@ class WindowsPatcher extends Patcher {
   }
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
+  Future<File> buildPatchArtifact({
+    String? releaseVersion,
+    String? obfuscationMapPath,
+  }) async {
     final releaseDir = await artifactBuilder.buildWindowsApp(
       target: target,
       args: argResults.forwardedArgs,

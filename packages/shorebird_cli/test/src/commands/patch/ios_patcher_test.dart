@@ -168,6 +168,15 @@ void main() {
       });
     });
 
+    group('obfuscationMapReleaseArtifactArch', () {
+      test('is "ios_obfuscation_map"', () {
+        expect(
+          patcher.obfuscationMapReleaseArtifactArch,
+          'ios_obfuscation_map',
+        );
+      });
+    });
+
     group('releaseType', () {
       test('is ReleaseType.ios', () {
         expect(patcher.releaseType, ReleaseType.ios);
@@ -757,6 +766,111 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           expect(copiedKernelFile.existsSync(), isFalse);
           await runWithOverrides(patcher.buildPatchArtifact);
           expect(copiedKernelFile.existsSync(), isTrue);
+        });
+
+        group('when obfuscationMapPath is provided', () {
+          late File obfuscationMapFile;
+
+          setUp(() {
+            obfuscationMapFile = File(
+              p.join(
+                Directory.systemTemp.createTempSync().path,
+                'obfuscation_map.json',
+              ),
+            )
+              ..createSync(recursive: true)
+              ..writeAsStringSync('{"key": "value"}');
+          });
+
+          test('injects obfuscation flags into build args', () async {
+            await runWithOverrides(
+              () => patcher.buildPatchArtifact(
+                obfuscationMapPath: obfuscationMapFile.path,
+              ),
+            );
+
+            final captured = verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: captureAny(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).captured;
+
+            final args = captured.last as List<String>;
+            expect(args, contains('--obfuscate'));
+            expect(
+              args.any((a) => a.startsWith('--split-debug-info=')),
+              isTrue,
+            );
+            expect(
+              args,
+              contains(
+                '--extra-gen-snapshot-options='
+                '--load-obfuscation-map=${obfuscationMapFile.path}',
+              ),
+            );
+          });
+
+          group('when --obfuscate is already in args', () {
+            setUp(() {
+              when(() => argResults.rest).thenReturn(['--obfuscate']);
+            });
+
+            test('does not add --obfuscate again', () async {
+              await runWithOverrides(
+                () => patcher.buildPatchArtifact(
+                  obfuscationMapPath: obfuscationMapFile.path,
+                ),
+              );
+
+              final captured = verify(
+                () => artifactBuilder.buildIpa(
+                  codesign: any(named: 'codesign'),
+                  args: captureAny(named: 'args'),
+                  flavor: any(named: 'flavor'),
+                  target: any(named: 'target'),
+                  base64PublicKey: any(named: 'base64PublicKey'),
+                ),
+              ).captured;
+
+              final args = captured.last as List<String>;
+              // Should contain exactly one --obfuscate flag.
+              expect(
+                args.where((a) => a == '--obfuscate').length,
+                equals(1),
+              );
+            });
+          });
+        });
+
+        group('when obfuscationMapPath is null', () {
+          test('does not inject obfuscation flags', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            final captured = verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: captureAny(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).captured;
+
+            final args = captured.last as List<String>;
+            expect(args, isNot(contains('--obfuscate')));
+            expect(
+              args.any(
+                (a) => a.startsWith(
+                  '--extra-gen-snapshot-options=--load-obfuscation-map',
+                ),
+              ),
+              isFalse,
+            );
+          });
         });
       });
     });
