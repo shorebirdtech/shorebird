@@ -34,6 +34,18 @@ class MacosReleaser extends Releaser {
   /// Whether to codesign the release.
   bool get codesign => argResults['codesign'] == true;
 
+  /// Whether the user is building with obfuscation.
+  bool get _useObfuscation =>
+      argResults.forwardedArgs.contains('--obfuscate');
+
+  /// The path where the obfuscation map will be saved during the build.
+  String get _obfuscationMapPath => p.join(
+        projectRoot.path,
+        'build',
+        'shorebird',
+        'obfuscation_map.json',
+      );
+
   @override
   ReleaseType get releaseType => ReleaseType.macos;
 
@@ -50,17 +62,6 @@ The "--release-version" flag is only supported for aar and ios-framework release
 To change the version of this release, change your app's version in your pubspec.yaml.''',
       );
       throw ProcessExit(ExitCode.usage.code);
-    }
-
-    if (argResults.rest.contains('--obfuscate')) {
-      // Obfuscated releases break patching, so we don't support them.
-      // See https://github.com/shorebirdtech/shorebird/issues/1619
-      logger
-        ..err('Shorebird does not currently support obfuscation on macOS.')
-        ..info(
-          '''We hope to support obfuscation in the future. We are tracking this work at ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1619'))}.''',
-        );
-      throw ProcessExit(ExitCode.unavailable.code);
     }
   }
 
@@ -94,13 +95,36 @@ To change the version of this release, change your app's version in your pubspec
     }
 
     final base64PublicKey = await getEncodedPublicKey();
+
+    final buildArgs = [...argResults.forwardedArgs];
+    if (_useObfuscation) {
+      final mapDir = Directory(p.dirname(_obfuscationMapPath));
+      if (!mapDir.existsSync()) {
+        mapDir.createSync(recursive: true);
+      }
+      buildArgs.add(
+        '--extra-gen-snapshot-options='
+        '--save-obfuscation-map=$_obfuscationMapPath',
+      );
+    }
+
     await artifactBuilder.buildMacos(
       codesign: codesign,
       flavor: flavor,
       target: target,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
+
+    if (_useObfuscation) {
+      final mapFile = File(_obfuscationMapPath);
+      if (!mapFile.existsSync()) {
+        logger.err('Obfuscation was enabled but the obfuscation map was not '
+            'generated at $_obfuscationMapPath');
+        throw ProcessExit(ExitCode.software.code);
+      }
+      logger.detail('Obfuscation map saved to $_obfuscationMapPath');
+    }
 
     final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);
     if (appDirectory == null) {
@@ -153,12 +177,15 @@ To change the version of this release, change your app's version in your pubspec
       podfileLockHash = null;
     }
 
+    final obfuscationMapFile = File(_obfuscationMapPath);
     await codePushClientWrapper.createMacosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
       appPath: appDirectory.path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
+      obfuscationMapPath:
+          obfuscationMapFile.existsSync() ? _obfuscationMapPath : null,
     );
   }
 

@@ -74,7 +74,10 @@ class AarPatcher extends Patcher {
   );
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
+  Future<File> buildPatchArtifact({
+    String? releaseVersion,
+    String? obfuscationMapPath,
+  }) async {
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
       args: argResults.forwardedArgs,

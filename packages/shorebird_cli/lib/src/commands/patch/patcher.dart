@@ -67,6 +67,11 @@ More info: ${troubleshootingUrl.toLink()}.
   /// The identifier used for any supplementary release artifacts.
   String? get supplementaryReleaseArtifactArch => null;
 
+  /// The arch identifier for the obfuscation map release artifact, if
+  /// supported by this platform. Returns null if the platform does not
+  /// support obfuscation.
+  String? get obfuscationMapReleaseArtifactArch => null;
+
   /// The root directory of the current project.
   Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;
 
@@ -86,7 +91,13 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// Builds the patch artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
-  Future<File> buildPatchArtifact({String? releaseVersion});
+  ///
+  /// If [obfuscationMapPath] is provided, the patch will be built with
+  /// obfuscation flags that load the map for consistent symbol naming.
+  Future<File> buildPatchArtifact({
+    String? releaseVersion,
+    String? obfuscationMapPath,
+  });
 
   /// Determines the release version from the provided app artifact.
   Future<String> extractReleaseVersionFromArtifact(File artifact);

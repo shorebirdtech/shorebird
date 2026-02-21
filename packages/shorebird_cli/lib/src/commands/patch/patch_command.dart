@@ -389,6 +389,16 @@ Building with Flutter $flutterVersionString to determine the release version...
           )
         : null;
 
+    final obfuscationMapArtifact =
+        patcher.obfuscationMapReleaseArtifactArch != null
+        ? await codePushClientWrapper.maybeGetReleaseArtifact(
+            appId: appId,
+            releaseId: release.id,
+            arch: patcher.obfuscationMapReleaseArtifactArch!,
+            platform: releasePlatform,
+          )
+        : null;
+
     final releaseArchive = await downloadReleaseArtifact(
       releaseArtifact: releaseArtifact,
     );
@@ -396,6 +406,19 @@ Building with Flutter $flutterVersionString to determine the release version...
     final supplementArchive = supplementalArtifact != null
         ? await downloadReleaseArtifact(releaseArtifact: supplementalArtifact)
         : null;
+
+    final File? obfuscationMapFile;
+    if (obfuscationMapArtifact != null) {
+      obfuscationMapFile = await downloadReleaseArtifact(
+        releaseArtifact: obfuscationMapArtifact,
+      );
+      logger.info(
+        'Release was built with obfuscation. '
+        'Applying obfuscation map to patch build.',
+      );
+    } else {
+      obfuscationMapFile = null;
+    }
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
@@ -413,7 +436,10 @@ Building with Flutter $flutterVersionString to determine the release version...
 Building patch with Flutter $flutterVersionString
 ''');
           patchArtifactFile = await _tryBuildingArtifact<File>(
-            () => patcher.buildPatchArtifact(releaseVersion: release.version),
+            () => patcher.buildPatchArtifact(
+              releaseVersion: release.version,
+              obfuscationMapPath: obfuscationMapFile?.path,
+            ),
           );
         }
 
