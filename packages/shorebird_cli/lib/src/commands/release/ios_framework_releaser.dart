@@ -36,6 +36,9 @@ class IosFrameworkReleaser extends Releaser {
     p.join(shorebirdEnv.getShorebirdProjectRoot()!.path, 'release'),
   );
 
+  /// Whether the user is building with obfuscation.
+  bool get _useObfuscation => argResults['obfuscate'] == true;
+
   @override
   String get artifactDisplayName => 'iOS framework';
 
@@ -79,8 +82,15 @@ class IosFrameworkReleaser extends Releaser {
     }
 
     final base64PublicKey = await getEncodedPublicKey();
+    final buildArgs = [...argResults.forwardedArgs];
+    if (_useObfuscation &&
+        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
+      buildArgs.add(
+        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
     await artifactBuilder.buildIosFramework(
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
 

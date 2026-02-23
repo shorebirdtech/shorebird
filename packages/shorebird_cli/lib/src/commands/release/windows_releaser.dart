@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -65,12 +66,22 @@ To change the version of this release, change your app's version in your pubspec
     }
   }
 
+  /// Whether the user is building with obfuscation.
+  bool get _useObfuscation => argResults['obfuscate'] == true;
+
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     final base64PublicKey = await getEncodedPublicKey();
+    final buildArgs = [...argResults.forwardedArgs];
+    if (_useObfuscation &&
+        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
+      buildArgs.add(
+        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
     return artifactBuilder.buildWindowsApp(
       target: target,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
   }

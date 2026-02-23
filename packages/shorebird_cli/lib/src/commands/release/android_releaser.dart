@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
@@ -100,14 +101,24 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
     }
   }
 
+  /// Whether the user is building with obfuscation.
+  bool get _useObfuscation => argResults['obfuscate'] == true;
+
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     final base64PublicKey = await getEncodedPublicKey();
+    final buildArgs = [...argResults.forwardedArgs];
+    if (_useObfuscation &&
+        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
+      buildArgs.add(
+        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
     final aab = await artifactBuilder.buildAppBundle(
       flavor: flavor,
       target: target,
       targetPlatforms: architectures,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
 
@@ -117,7 +128,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         flavor: flavor,
         target: target,
         targetPlatforms: architectures,
-        args: argResults.forwardedArgs,
+        args: buildArgs,
         base64PublicKey: base64PublicKey,
       );
     }
