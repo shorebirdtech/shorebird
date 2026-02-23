@@ -78,9 +78,16 @@ class AarPatcher extends Patcher {
     String? releaseVersion,
     String? obfuscationMapPath,
   }) async {
+    final buildArgs = [...argResults.forwardedArgs];
+    if (argResults['obfuscate'] == true &&
+        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
+      buildArgs.add(
+        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 

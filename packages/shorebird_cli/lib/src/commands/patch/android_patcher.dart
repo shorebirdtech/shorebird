@@ -90,12 +90,20 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       logger.warn(updaterPatchErrorWarning);
     }
 
+    final buildArgs = [
+      ...argResults.forwardedArgs,
+      ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+    ];
+    if (argResults['obfuscate'] == true &&
+        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
+      buildArgs.add(
+        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
     final aabFile = await artifactBuilder.buildAppBundle(
       flavor: flavor,
       target: target,
-      args:
-          argResults.forwardedArgs +
-          buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 

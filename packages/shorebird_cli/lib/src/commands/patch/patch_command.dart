@@ -153,6 +153,11 @@ To target the latest release (e.g. the release that was most recently updated) u
         CommonArguments.splitDebugInfoArg.name,
         help: CommonArguments.splitDebugInfoArg.description,
       )
+      ..addFlag(
+        CommonArguments.obfuscateArg.name,
+        help: CommonArguments.obfuscateArg.description,
+        negatable: false,
+      )
       ..addOption(
         CommonArguments.minLinkPercentage.name,
         help: CommonArguments.minLinkPercentage.description,

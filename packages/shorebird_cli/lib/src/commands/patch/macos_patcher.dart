@@ -146,6 +146,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
     ];
 
+    // Auto-default --split-debug-info when --obfuscate is used alone.
+    if (argResults['obfuscate'] == true &&
+        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
+      buildArgs.add(
+        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
+
     if (obfuscationMapPath != null) {
       if (!buildArgs.contains('--obfuscate')) {
         buildArgs.add('--obfuscate');
