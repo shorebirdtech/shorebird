@@ -228,7 +228,8 @@ To change the version of this release, change your app's version in your pubspec
 
       group('when --obfuscate is passed', () {
         setUp(() {
-          when(() => argResults.rest).thenReturn(['--obfuscate']);
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
         });
 
         test('returns normally', () async {
@@ -427,7 +428,8 @@ To change the version of this release, change your app's version in your pubspec
 
       group('when --obfuscate is passed', () {
         setUp(() {
-          when(() => argResults.rest).thenReturn(['--obfuscate']);
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
           // By default, simulate the build creating the obfuscation map.
           when(
             () => artifactBuilder.buildMacos(
@@ -475,6 +477,66 @@ To change the version of this release, change your app's version in your pubspec
             ),
             isTrue,
           );
+        });
+
+        test('auto-defaults --split-debug-info when not provided', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          final captured = verify(
+            () => artifactBuilder.buildMacos(
+              codesign: any(named: 'codesign'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: captureAny(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).captured;
+
+          final args = captured.last as List<String>;
+          expect(
+            args.any(
+              (a) => a.startsWith('--split-debug-info='),
+            ),
+            isTrue,
+          );
+        });
+
+        group('when --split-debug-info is also provided', () {
+          setUp(() {
+            when(
+              () => argResults.wasParsed('split-debug-info'),
+            ).thenReturn(true);
+            when(
+              () => argResults['split-debug-info'],
+            ).thenReturn('custom/symbols');
+          });
+
+          test('preserves user-provided --split-debug-info', () async {
+            await runWithOverrides(releaser.buildReleaseArtifacts);
+
+            final captured = verify(
+              () => artifactBuilder.buildMacos(
+                codesign: any(named: 'codesign'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                args: captureAny(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).captured;
+
+            final args = captured.last as List<String>;
+            expect(
+              args,
+              contains('--split-debug-info=custom/symbols'),
+            );
+            // Should not contain a second auto-defaulted one.
+            expect(
+              args
+                  .where((a) => a.startsWith('--split-debug-info='))
+                  .length,
+              equals(1),
+            );
+          });
         });
 
         test('logs detail about map location', () async {

@@ -35,8 +35,7 @@ class IosReleaser extends Releaser {
   bool get codesign => argResults['codesign'] == true;
 
   /// Whether the user is building with obfuscation.
-  bool get _useObfuscation =>
-      argResults.forwardedArgs.contains('--obfuscate');
+  bool get _useObfuscation => argResults['obfuscate'] == true;
 
   /// The path where the obfuscation map will be saved during the build.
   String get _obfuscationMapPath => p.join(
@@ -106,6 +105,12 @@ To change the version of this release, change your app's version in your pubspec
     final base64PublicKey = await getEncodedPublicKey();
 
     final buildArgs = [...argResults.forwardedArgs];
+    if (_useObfuscation &&
+        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
+      buildArgs.add(
+        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
     if (_useObfuscation) {
       // Ensure the obfuscation map directory exists.
       final mapDir = Directory(p.dirname(_obfuscationMapPath));
