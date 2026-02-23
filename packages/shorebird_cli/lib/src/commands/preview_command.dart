@@ -962,10 +962,13 @@ This is only applicable when previewing Android releases.''',
       final encoder = ZipFileEncoder()..create(tmpAabFile.path);
       for (final file in Directory(outputPath).listSync(recursive: true)) {
         if (file is File) {
-          await encoder.addFile(
-            file,
-            file.path.replaceFirst('$outputPath${p.separator}', ''),
-          );
+          // Use forward slashes for ZIP entry names per the ZIP spec.
+          // Without this, Windows backslashes cause bundletool to fail
+          // with "File 'base/manifest/AndroidManifest.xml' not found".
+          final entryName = file.path
+              .replaceFirst('$outputPath${p.separator}', '')
+              .replaceAll(r'\', '/');
+          await encoder.addFile(file, entryName);
         }
       }
       await encoder.close();
