@@ -27,6 +27,7 @@ final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/ios\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/ios-release\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/ios-release\/Flutter.dSYM\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/ios-release\/Flutter\.framework\.dSYM\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/ios-profile\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/flutter-web-sdk\.zip', // Web SDK seems to be all-platform after 3.10.0.
   r'flutter_infra_release\/flutter\/(.*)\/flutter-web-sdk-windows-x64\.zip', // Platform-specific web-sdks may no longer needed as of 3.10.0?
@@ -38,6 +39,7 @@ final engineArtifactPatterns = {
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/gen_snapshot\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/font-subset\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/FlutterMacOS.framework\.zip',
+  r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/FlutterMacOS\.framework\.dSYM\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64\/artifacts\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-release\/FlutterMacOS.framework\.zip',
   r'flutter_infra_release\/flutter\/(.*)\/darwin-x64-profile\/FlutterMacOS.framework\.zip',
