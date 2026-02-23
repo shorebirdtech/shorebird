@@ -815,8 +815,7 @@ channel: ${track.channel}
 ''');
           });
 
-          test('re-zipped AAB uses forward slashes in entry names',
-              () async {
+          test('re-zipped AAB uses forward slashes in entry names', () async {
             aabFile = await createAabFile(channel: 'dev');
             await runWithOverrides(
               () => command.setChannelOnAab(
@@ -834,8 +833,7 @@ channel: ${track.channel}
               expect(
                 file.name,
                 isNot(contains(r'\')),
-                reason:
-                    'ZIP entry "${file.name}" contains backslash',
+                reason: 'ZIP entry "${file.name}" contains backslash',
               );
             }
           });
