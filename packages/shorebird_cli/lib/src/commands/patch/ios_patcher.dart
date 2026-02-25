@@ -70,9 +70,9 @@ class IosPatcher extends Patcher {
     return p.join(p.absolute(directory), splitDebugInfoFileName);
   }
 
-  /// Whether the last build used an obfuscation map from the release.
+  /// The obfuscation map path used by the last build, if any.
   @visibleForTesting
-  bool lastBuildUsedObfuscation = false;
+  String? lastBuildObfuscationMapPath;
 
   /// The last build's link percentage.
   @visibleForTesting
@@ -163,7 +163,7 @@ This may indicate that the patch contains native changes, which cannot be applie
     String? releaseVersion,
     String? obfuscationMapPath,
   }) async {
-    lastBuildUsedObfuscation = obfuscationMapPath != null;
+    lastBuildObfuscationMapPath = obfuscationMapPath;
     final shouldCodesign = argResults['codesign'] == true;
     final (flutterVersionAndRevision, flutterVersion) = await (
       shorebirdFlutter.getVersionAndRevision(),
@@ -309,10 +309,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
           ...splitDebugInfoArgs(splitDebugInfoPath),
           // Obfuscated releases always auto-add --split-debug-info, which
           // causes Flutter to pass --dwarf-stack-traces to gen_snapshot.
-          // The linker's internal gen_snapshot calls must match this flag
-          // so the VM sections are identical.
-          if (lastBuildUsedObfuscation && splitDebugInfoPath == null)
-            '--dwarf-stack-traces',
+          // The linker's internal gen_snapshot calls must match these flags
+          // so the VM sections and function hashes are identical.
+          if (lastBuildObfuscationMapPath != null) ...[
+            '--obfuscate',
+            '--load-obfuscation-map=$lastBuildObfuscationMapPath',
+            if (splitDebugInfoPath == null) '--dwarf-stack-traces',
+          ],
         ],
         aotOutputFile: File(_aotOutputPath),
         vmCodeFile: File(_vmcodeOutputPath),
