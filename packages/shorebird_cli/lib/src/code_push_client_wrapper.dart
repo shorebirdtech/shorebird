@@ -452,6 +452,7 @@ Please create a release using "shorebird release" and try again.
     required String aabPath,
     required Iterable<Arch> architectures,
     String? flavor,
+    String? obfuscationMapPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final archsDir = ArtifactManager.androidArchsDirectory(
@@ -535,6 +536,30 @@ aab artifact already exists, continuing...''');
         progress: createArtifactProgress,
         message: 'Error uploading $aabPath: $error',
       );
+    }
+
+    if (obfuscationMapPath != null) {
+      final obfuscationMapFile = File(obfuscationMapPath);
+      try {
+        await codePushClient.createReleaseArtifact(
+          appId: appId,
+          releaseId: releaseId,
+          artifactPath: obfuscationMapFile.path,
+          arch: 'android_obfuscation_map',
+          platform: platform,
+          hash: sha256
+              .convert(await obfuscationMapFile.readAsBytes())
+              .toString(),
+          canSideload: false,
+          podfileLockHash: null,
+        );
+      } catch (error) {
+        _handleErrorAndExit(
+          error,
+          progress: createArtifactProgress,
+          message: 'Error uploading obfuscation map: $error',
+        );
+      }
     }
 
     createArtifactProgress.complete();

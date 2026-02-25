@@ -52,6 +52,9 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
   String get primaryReleaseArtifactArch => 'aab';
 
   @override
+  String? get obfuscationMapReleaseArtifactArch => 'android_obfuscation_map';
+
+  @override
   Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
@@ -98,6 +101,21 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
         !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
       buildArgs.add(
         '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
+    if (obfuscationMapPath != null) {
+      if (!buildArgs.contains('--obfuscate')) {
+        buildArgs.add('--obfuscate');
+      }
+      if (!buildArgs.any((arg) => arg.startsWith('--split-debug-info'))) {
+        final tempDebugInfoDir = Directory.systemTemp.createTempSync(
+          'shorebird_patch_debug_info_',
+        );
+        buildArgs.add('--split-debug-info=${tempDebugInfoDir.path}');
+      }
+      buildArgs.add(
+        '--extra-gen-snapshot-options='
+        '--load-obfuscation-map=$obfuscationMapPath',
       );
     }
     final aabFile = await artifactBuilder.buildAppBundle(
