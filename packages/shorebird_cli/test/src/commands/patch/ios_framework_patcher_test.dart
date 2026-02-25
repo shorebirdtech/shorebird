@@ -449,6 +449,47 @@ void main() {
           });
         });
 
+        group('when obfuscationMapPath is set', () {
+          late File obfuscationMapFile;
+
+          setUp(() {
+            obfuscationMapFile = File(
+              p.join(
+                Directory.systemTemp.createTempSync().path,
+                'obfuscation_map.json',
+              ),
+            )
+              ..createSync(recursive: true)
+              ..writeAsStringSync('{"key": "value"}');
+          });
+
+          test(
+            'passes obfuscationGenSnapshotArgs to buildElfAotSnapshot',
+            () async {
+              patcher.obfuscationMapPath = obfuscationMapFile.path;
+              await runWithOverrides(patcher.buildPatchArtifact);
+
+              final captured = verify(
+                () => artifactBuilder.buildElfAotSnapshot(
+                  appDillPath: any(named: 'appDillPath'),
+                  outFilePath: any(named: 'outFilePath'),
+                  genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                  additionalArgs: captureAny(named: 'additionalArgs'),
+                ),
+              ).captured;
+
+              final args = captured.last as List<String>;
+              expect(args, contains('--obfuscate'));
+              expect(
+                args.any(
+                  (a) => a.startsWith('--load-obfuscation-map='),
+                ),
+                isTrue,
+              );
+            },
+          );
+        });
+
         group('when platform was specified via arg results rest', () {
           setUp(() {
             when(() => argResults.rest).thenReturn(['ios', '--verbose']);
@@ -777,6 +818,55 @@ void main() {
                   splitDebugInfoArgs: [],
                 ),
               ).called(1);
+            });
+
+            group('when obfuscationMapPath is set', () {
+              late File obfuscationMapFile;
+
+              setUp(() {
+                obfuscationMapFile = File(
+                  p.join(
+                    Directory.systemTemp.createTempSync().path,
+                    'obfuscation_map.json',
+                  ),
+                )
+                  ..createSync(recursive: true)
+                  ..writeAsStringSync('{"key": "value"}');
+              });
+
+              test(
+                'passes obfuscationGenSnapshotArgs to runLinker',
+                () async {
+                  patcher.obfuscationMapPath = obfuscationMapFile.path;
+                  await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                    ),
+                  );
+
+                  final captured = verify(
+                    () => apple.runLinker(
+                      kernelFile: any(named: 'kernelFile'),
+                      aotOutputFile: any(named: 'aotOutputFile'),
+                      releaseArtifact: any(named: 'releaseArtifact'),
+                      vmCodeFile: any(named: 'vmCodeFile'),
+                      splitDebugInfoArgs:
+                          captureAny(named: 'splitDebugInfoArgs'),
+                    ),
+                  ).captured;
+
+                  final args = captured.last as List<String>;
+                  expect(args, contains('--obfuscate'));
+                  expect(
+                    args.any(
+                      (a) => a.startsWith('--load-obfuscation-map='),
+                    ),
+                    isTrue,
+                  );
+                },
+              );
             });
 
             test('returns linked patch artifact in patch bundle', () async {

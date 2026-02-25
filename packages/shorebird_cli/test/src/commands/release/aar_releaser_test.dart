@@ -415,6 +415,93 @@ void main() {
             },
           );
         });
+
+        group('when --obfuscate is passed', () {
+          setUp(() {
+            when(() => argResults['obfuscate']).thenReturn(true);
+            when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+            // Simulate the build creating the obfuscation map.
+            when(
+              () => artifactBuilder.buildAar(
+                buildNumber: any(named: 'buildNumber'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: any(named: 'args'),
+              ),
+            ).thenAnswer((_) async {
+              final mapPath = p.join(
+                projectRoot.path,
+                'build',
+                'shorebird',
+                'obfuscation_map.json',
+              );
+              File(mapPath)
+                ..createSync(recursive: true)
+                ..writeAsStringSync('{}');
+            });
+          });
+
+          test('injects --save-obfuscation-map into build args', () async {
+            await runWithOverrides(aarReleaser.buildReleaseArtifacts);
+
+            final captured = verify(
+              () => artifactBuilder.buildAar(
+                buildNumber: any(named: 'buildNumber'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: captureAny(named: 'args'),
+              ),
+            ).captured;
+
+            final args = captured.last as List<String>;
+            expect(
+              args.any(
+                (a) => a.startsWith(
+                  '--extra-gen-snapshot-options=--save-obfuscation-map=',
+                ),
+              ),
+              isTrue,
+            );
+          });
+
+          test('logs detail about map location', () async {
+            await runWithOverrides(aarReleaser.buildReleaseArtifacts);
+
+            verify(
+              () => logger.detail(
+                any(that: startsWith('Obfuscation map saved to')),
+              ),
+            ).called(1);
+          });
+
+          group('when obfuscation map is not generated', () {
+            setUp(() {
+              // Override to NOT create the map file.
+              when(
+                () => artifactBuilder.buildAar(
+                  buildNumber: any(named: 'buildNumber'),
+                  targetPlatforms: any(named: 'targetPlatforms'),
+                  args: any(named: 'args'),
+                ),
+              ).thenAnswer((_) async {});
+            });
+
+            test('logs error and exits', () async {
+              await expectLater(
+                () => runWithOverrides(aarReleaser.buildReleaseArtifacts),
+                exitsWithCode(ExitCode.software),
+              );
+
+              verify(
+                () => logger.err(
+                  any(
+                    that: contains(
+                      'Obfuscation was enabled but the obfuscation map was not',
+                    ),
+                  ),
+                ),
+              ).called(1);
+            });
+          });
+        });
       });
     });
 

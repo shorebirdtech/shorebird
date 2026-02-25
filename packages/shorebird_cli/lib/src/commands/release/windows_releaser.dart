@@ -76,11 +76,14 @@ To change the version of this release, change your app's version in your pubspec
     final base64PublicKey = await getEncodedPublicKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
-    return artifactBuilder.buildWindowsApp(
+    addObfuscationMapArgs(buildArgs);
+    final result = await artifactBuilder.buildWindowsApp(
       target: target,
       args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
+    verifyObfuscationMap();
+    return result;
   }
 
   @override

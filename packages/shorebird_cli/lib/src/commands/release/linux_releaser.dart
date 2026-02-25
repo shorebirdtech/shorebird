@@ -73,11 +73,13 @@ To change the version of this release, change your app's version in your pubspec
     final base64PublicKey = await getEncodedPublicKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
     await artifactBuilder.buildLinuxApp(
       target: target,
       args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
+    verifyObfuscationMap();
 
     return artifactManager.linuxBundleDirectory;
   }

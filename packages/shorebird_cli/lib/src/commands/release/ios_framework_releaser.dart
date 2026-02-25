@@ -87,10 +87,12 @@ class IosFrameworkReleaser extends Releaser {
     final base64PublicKey = await getEncodedPublicKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
     await artifactBuilder.buildIosFramework(
       args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
+    verifyObfuscationMap();
 
     // Copy release xcframework to a new directory to avoid overwriting with
     // subsequent patch builds.

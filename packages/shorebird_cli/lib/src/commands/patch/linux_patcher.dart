@@ -51,6 +51,7 @@ class LinuxPatcher extends Patcher {
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     await artifactBuilder.buildLinuxApp(
       base64PublicKey: argResults.encodedPublicKey,
+      args: extraBuildArgs,
     );
     return artifactManager.linuxBundleDirectory.zipToTempFile();
   }

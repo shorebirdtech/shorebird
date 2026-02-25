@@ -83,12 +83,14 @@ class AarReleaser extends Releaser {
     final base64PublicKey = await getEncodedPublicKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
       targetPlatforms: architectures,
       args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
+    verifyObfuscationMap();
 
     // Copy release AAR to a new directory to avoid overwriting with
     // subsequent patch builds.

@@ -117,7 +117,10 @@ class IosFrameworkPatcher extends Patcher {
       appDillPath: buildResult.kernelFile.path,
       outFilePath: _aotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
-      additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+      additionalArgs: [
+        ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        ...obfuscationGenSnapshotArgs,
+      ],
     );
 
     // Copy the kernel file to the build directory so that it can be used
@@ -176,7 +179,10 @@ class IosFrameworkPatcher extends Patcher {
       final result = await apple.runLinker(
         kernelFile: File(_appDillCopyPath),
         releaseArtifact: releaseArtifactFile,
-        splitDebugInfoArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        splitDebugInfoArgs: [
+          ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+          ...obfuscationGenSnapshotArgs,
+        ],
         aotOutputFile: File(_aotOutputPath),
         vmCodeFile: File(_vmcodeOutputPath),
       );

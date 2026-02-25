@@ -356,6 +356,93 @@ To change the version of this release, change your app's version in your pubspec
           ).called(1);
         });
       });
+
+      group('when --obfuscate is passed', () {
+        setUp(() {
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          // Simulate the build creating the obfuscation map.
+          when(
+            () => artifactBuilder.buildLinuxApp(
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).thenAnswer((_) async {
+            final mapPath = p.join(
+              projectRoot.path,
+              'build',
+              'shorebird',
+              'obfuscation_map.json',
+            );
+            File(mapPath)
+              ..createSync(recursive: true)
+              ..writeAsStringSync('{}');
+          });
+        });
+
+        test('injects --save-obfuscation-map into build args', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          final captured = verify(
+            () => artifactBuilder.buildLinuxApp(
+              target: any(named: 'target'),
+              args: captureAny(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).captured;
+
+          final args = captured.last as List<String>;
+          expect(
+            args.any(
+              (a) => a.startsWith(
+                '--extra-gen-snapshot-options=--save-obfuscation-map=',
+              ),
+            ),
+            isTrue,
+          );
+        });
+
+        test('logs detail about map location', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          verify(
+            () => logger.detail(
+              any(that: startsWith('Obfuscation map saved to')),
+            ),
+          ).called(1);
+        });
+
+        group('when obfuscation map is not generated', () {
+          setUp(() {
+            // Override to NOT create the map file.
+            when(
+              () => artifactBuilder.buildLinuxApp(
+                target: any(named: 'target'),
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).thenAnswer((_) async {});
+          });
+
+          test('logs error and exits', () async {
+            await expectLater(
+              () => runWithOverrides(releaser.buildReleaseArtifacts),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err(
+                any(
+                  that: contains(
+                    'Obfuscation was enabled but the obfuscation map was not',
+                  ),
+                ),
+              ),
+            ).called(1);
+          });
+        });
+      });
     });
 
     group('getReleaseVersion', () {
