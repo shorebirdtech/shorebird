@@ -47,11 +47,13 @@ class WindowsReleaser extends Releaser {
       logger.err(
         '''
 The "--release-version" flag is only supported for aar and ios-framework releases.
-        
+
 To change the version of this release, change your app's version in your pubspec.yaml.''',
       );
       throw ProcessExit(ExitCode.usage.code);
     }
+
+    await assertObfuscationIsSupported();
   }
 
   @override

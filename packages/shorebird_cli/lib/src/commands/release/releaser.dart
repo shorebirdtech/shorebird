@@ -10,11 +10,15 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 export 'package:pub_semver/pub_semver.dart';
+
+/// Minimum Flutter version for obfuscation support across all platforms.
+final minimumObfuscationFlutterVersion = Version(3, 41, 2);
 
 /// {@template releaser}
 /// Executes platform-specific functionality to create a release.
@@ -148,6 +152,24 @@ abstract class Releaser {
       );
     }
     return supplementDir;
+  }
+
+  /// Asserts that the current Flutter version supports obfuscation, if
+  /// obfuscation is enabled.
+  Future<void> assertObfuscationIsSupported() async {
+    if (!useObfuscation) return;
+    final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
+      shorebirdEnv.flutterRevision,
+    );
+    if (flutterVersion != null &&
+        flutterVersion < minimumObfuscationFlutterVersion) {
+      logger.err(
+        'Obfuscation on ${releaseType.releasePlatform.displayName} requires Flutter '
+        '$minimumObfuscationFlutterVersion or later '
+        '(current: $flutterVersion).',
+      );
+      throw ProcessExit(ExitCode.unavailable.code);
+    }
   }
 
   /// Verifies the obfuscation map was generated after build.

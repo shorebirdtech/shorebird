@@ -104,6 +104,8 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         );
       throw ProcessExit(ExitCode.unavailable.code);
     }
+
+    await assertObfuscationIsSupported();
   }
 
   @override

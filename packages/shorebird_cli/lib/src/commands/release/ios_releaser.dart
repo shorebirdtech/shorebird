@@ -16,7 +16,6 @@ import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -59,20 +58,7 @@ To change the version of this release, change your app's version in your pubspec
       throw ProcessExit(ExitCode.usage.code);
     }
 
-    if (useObfuscation) {
-      final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
-        shorebirdEnv.flutterRevision,
-      );
-      if (flutterVersion != null &&
-          flutterVersion < minimumObfuscationFlutterVersion) {
-        logger.err(
-          'Obfuscation on iOS requires Flutter '
-          '$minimumObfuscationFlutterVersion or later '
-          '(current: $flutterVersion).',
-        );
-        throw ProcessExit(ExitCode.unavailable.code);
-      }
-    }
+    await assertObfuscationIsSupported();
   }
 
   @override

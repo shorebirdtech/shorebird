@@ -29,11 +29,6 @@ final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
 /// The minimum allowed Flutter version for creating macOS releases.
 final minimumSupportedMacosFlutterVersion = Version(3, 27, 4);
 
-/// The minimum Flutter version that supports obfuscation for iOS/macOS
-/// releases and patches. Older versions lack the upstream Dart VM changes
-/// needed for obfuscation to work with Shorebird patching.
-final minimumObfuscationFlutterVersion = Version(3, 41, 2);
-
 /// A reference to a [Apple] instance.
 final appleRef = create(Apple.new);
 
