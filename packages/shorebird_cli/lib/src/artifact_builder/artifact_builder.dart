@@ -558,6 +558,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       '--deterministic',
       '--snapshot-kind=app-aot-elf',
       '--elf=$outFilePath',
+      '--strip',
       ...additionalArgs,
       appDillPath,
     ];
