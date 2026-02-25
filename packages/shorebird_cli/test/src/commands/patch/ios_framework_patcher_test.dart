@@ -453,14 +453,15 @@ void main() {
           late File obfuscationMapFile;
 
           setUp(() {
-            obfuscationMapFile = File(
-              p.join(
-                Directory.systemTemp.createTempSync().path,
-                'obfuscation_map.json',
-              ),
-            )
-              ..createSync(recursive: true)
-              ..writeAsStringSync('{"key": "value"}');
+            obfuscationMapFile =
+                File(
+                    p.join(
+                      Directory.systemTemp.createTempSync().path,
+                      'obfuscation_map.json',
+                    ),
+                  )
+                  ..createSync(recursive: true)
+                  ..writeAsStringSync('{"key": "value"}');
           });
 
           test(
@@ -824,14 +825,15 @@ void main() {
               late File obfuscationMapFile;
 
               setUp(() {
-                obfuscationMapFile = File(
-                  p.join(
-                    Directory.systemTemp.createTempSync().path,
-                    'obfuscation_map.json',
-                  ),
-                )
-                  ..createSync(recursive: true)
-                  ..writeAsStringSync('{"key": "value"}');
+                obfuscationMapFile =
+                    File(
+                        p.join(
+                          Directory.systemTemp.createTempSync().path,
+                          'obfuscation_map.json',
+                        ),
+                      )
+                      ..createSync(recursive: true)
+                      ..writeAsStringSync('{"key": "value"}');
               });
 
               test(
@@ -852,8 +854,9 @@ void main() {
                       aotOutputFile: any(named: 'aotOutputFile'),
                       releaseArtifact: any(named: 'releaseArtifact'),
                       vmCodeFile: any(named: 'vmCodeFile'),
-                      splitDebugInfoArgs:
-                          captureAny(named: 'splitDebugInfoArgs'),
+                      splitDebugInfoArgs: captureAny(
+                        named: 'splitDebugInfoArgs',
+                      ),
                     ),
                   ).captured;
 
