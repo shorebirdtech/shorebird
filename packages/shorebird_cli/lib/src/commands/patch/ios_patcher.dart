@@ -176,14 +176,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
     ];
 
-    // Auto-default --split-debug-info when --obfuscate is used.
-    if (buildArgs.contains('--obfuscate') &&
-        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
-      buildArgs.add(
-        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
-      );
-    }
-
     // If buildIpa is called with a different codesign value than the
     // release was, we will erroneously report native diffs.
     final ipaBuildResult = await artifactBuilder.buildIpa(

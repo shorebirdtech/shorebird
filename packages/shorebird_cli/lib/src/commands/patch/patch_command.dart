@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -430,13 +431,30 @@ Building with Flutter $flutterVersionString to determine the release version...
     }
 
     patcher.obfuscationMapPath = obfuscationMapFile?.path;
+
+    // Build extra args to inject into the Flutter build command. This
+    // centralizes obfuscation flag handling so patchers don't need to.
+    final extraBuildArgs = <String>[];
     if (obfuscationMapFile != null) {
-      patcher.extraBuildArgs = [
+      extraBuildArgs.addAll([
         '--obfuscate',
         '--extra-gen-snapshot-options='
             '--load-obfuscation-map=${obfuscationMapFile.path}',
-      ];
+      ]);
     }
+    // Flutter requires --split-debug-info with --obfuscate. Auto-add it
+    // if --obfuscate will be in the build args (from the user or from
+    // the obfuscation map injection above) but --split-debug-info is not.
+    final hasObfuscate =
+        (results.wasParsed('obfuscate') && results['obfuscate'] == true) ||
+        extraBuildArgs.contains('--obfuscate');
+    final hasSplitDebugInfo = results.wasParsed('split-debug-info');
+    if (hasObfuscate && !hasSplitDebugInfo) {
+      extraBuildArgs.add(
+        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
+    patcher.extraBuildArgs = extraBuildArgs;
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
