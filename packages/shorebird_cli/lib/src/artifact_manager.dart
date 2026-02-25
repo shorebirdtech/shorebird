@@ -377,7 +377,8 @@ class ArtifactManager {
     required String platformSubdir,
     bool create = false,
   }) {
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
+    if (projectRoot == null) return null;
     final releaseSupplementDir = Directory(
       p.join(projectRoot.path, 'build', platformSubdir, 'shorebird'),
     );

@@ -74,6 +74,8 @@ More info: ${troubleshootingUrl.toLink()}.
     if (obfuscationMapPath != null) ...[
       '--obfuscate',
       '--load-obfuscation-map=$obfuscationMapPath',
+      // --split-debug-info already implies --dwarf-stack-traces, so we only
+      // need to pass it as a standalone flag when split debug info isn't used.
       if (splitDebugInfoPath == null) '--dwarf-stack-traces',
     ],
   ];

@@ -850,6 +850,9 @@ aar artifact already exists, continuing...''');
         platform: platform,
         hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
         canSideload: false,
+        // Supplement artifacts contain only Dart snapshot metadata (e.g. class
+        // tables, dispatch tables) and have no dependency on native pods, so
+        // the podfile lock hash is not applicable here.
         podfileLockHash: null,
       );
     } catch (error) {
