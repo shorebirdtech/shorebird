@@ -184,8 +184,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       Directory(splitDebugInfoPath!).createSync(recursive: true);
     }
     final obfuscationArgs = [
-      if (obfuscationMapPath != null)
+      if (obfuscationMapPath != null) ...[
+        '--obfuscate',
         '--load-obfuscation-map=$obfuscationMapPath',
+        // Obfuscated releases always auto-add --split-debug-info, which
+        // causes Flutter to pass --dwarf-stack-traces to gen_snapshot.
+        // We must match that here so the VM sections are identical.
+        if (splitDebugInfoPath == null) '--dwarf-stack-traces',
+      ],
     ];
     await artifactBuilder.buildElfAotSnapshot(
       appDillPath: macosBuildResult.kernelFile.path,

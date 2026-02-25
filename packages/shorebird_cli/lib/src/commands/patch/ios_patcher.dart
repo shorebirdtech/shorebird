@@ -70,6 +70,10 @@ class IosPatcher extends Patcher {
     return p.join(p.absolute(directory), splitDebugInfoFileName);
   }
 
+  /// Whether the last build used an obfuscation map from the release.
+  @visibleForTesting
+  bool lastBuildUsedObfuscation = false;
+
   /// The last build's link percentage.
   @visibleForTesting
   double? lastBuildLinkPercentage;
@@ -159,6 +163,7 @@ This may indicate that the patch contains native changes, which cannot be applie
     String? releaseVersion,
     String? obfuscationMapPath,
   }) async {
+    lastBuildUsedObfuscation = obfuscationMapPath != null;
     final shouldCodesign = argResults['codesign'] == true;
     final (flutterVersionAndRevision, flutterVersion) = await (
       shorebirdFlutter.getVersionAndRevision(),
@@ -225,8 +230,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
       additionalArgs: [
         ...splitDebugInfoArgs(splitDebugInfoPath),
-        if (obfuscationMapPath != null)
+        if (obfuscationMapPath != null) ...[
+          '--obfuscate',
           '--load-obfuscation-map=$obfuscationMapPath',
+          // Obfuscated releases always auto-add --split-debug-info, which
+          // causes Flutter to pass --dwarf-stack-traces to gen_snapshot.
+          // We must match that here so the VM sections are identical.
+          if (splitDebugInfoPath == null) '--dwarf-stack-traces',
+        ],
       ],
     );
 
@@ -294,7 +305,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       final result = await apple.runLinker(
         kernelFile: File(_appDillCopyPath),
         releaseArtifact: releaseArtifactFile,
-        splitDebugInfoArgs: splitDebugInfoArgs(splitDebugInfoPath),
+        splitDebugInfoArgs: [
+          ...splitDebugInfoArgs(splitDebugInfoPath),
+          // Obfuscated releases always auto-add --split-debug-info, which
+          // causes Flutter to pass --dwarf-stack-traces to gen_snapshot.
+          // The linker's internal gen_snapshot calls must match this flag
+          // so the VM sections are identical.
+          if (lastBuildUsedObfuscation && splitDebugInfoPath == null)
+            '--dwarf-stack-traces',
+        ],
         aotOutputFile: File(_aotOutputPath),
         vmCodeFile: File(_vmcodeOutputPath),
       );
