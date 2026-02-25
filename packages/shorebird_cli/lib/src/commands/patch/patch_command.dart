@@ -430,8 +430,12 @@ Building with Flutter $flutterVersionString to determine the release version...
 
     patcher.obfuscationMapPath = obfuscationMapFile?.path;
 
-    // Build extra args to inject into the Flutter build command. This
-    // centralizes obfuscation flag handling so patchers don't need to.
+    // Build extra args to inject into the Flutter build command. These use
+    // --extra-gen-snapshot-options= because they're passed through Flutter's
+    // build system, which forwards them to gen_snapshot. This is distinct from
+    // patcher.obfuscationGenSnapshotArgs, which produces bare gen_snapshot
+    // flags (e.g. --load-obfuscation-map=...) for direct gen_snapshot/linker
+    // calls made by Apple patchers outside the Flutter build.
     final extraBuildArgs = <String>[];
     if (obfuscationMapFile != null) {
       extraBuildArgs.addAll([

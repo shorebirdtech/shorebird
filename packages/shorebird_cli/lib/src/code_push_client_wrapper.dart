@@ -849,6 +849,9 @@ aar artifact already exists, continuing...''');
         arch: arch,
         platform: platform,
         hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
+        // Supplements are auxiliary snapshot metadata used during patching and
+        // can't produce a working app on their own, so sideloading isn't
+        // applicable.
         canSideload: false,
         // Supplement artifacts contain only Dart snapshot metadata (e.g. class
         // tables, dispatch tables) and have no dependency on native pods, so

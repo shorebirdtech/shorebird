@@ -18,7 +18,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 export 'package:pub_semver/pub_semver.dart';
 
 /// Minimum Flutter version for obfuscation support across all platforms.
-final minimumObfuscationFlutterVersion = Version(3, 41, 2);
+final _minimumObfuscationFlutterVersion = Version(3, 41, 2);
 
 /// {@template releaser}
 /// Executes platform-specific functionality to create a release.
@@ -162,10 +162,10 @@ abstract class Releaser {
       shorebirdEnv.flutterRevision,
     );
     if (flutterVersion != null &&
-        flutterVersion < minimumObfuscationFlutterVersion) {
+        flutterVersion < _minimumObfuscationFlutterVersion) {
       logger.err(
         'Obfuscation on ${releaseType.releasePlatform.displayName} requires Flutter '
-        '$minimumObfuscationFlutterVersion or later '
+        '$_minimumObfuscationFlutterVersion or later '
         '(current: $flutterVersion).',
       );
       throw ProcessExit(ExitCode.unavailable.code);
