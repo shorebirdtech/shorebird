@@ -57,6 +57,12 @@ More info: ${troubleshootingUrl.toLink()}.
   /// The target script to run, if any.
   final String? target;
 
+  /// The path to the obfuscation map downloaded from the release, if any.
+  /// Set by the patch command after downloading the map. When non-null,
+  /// patchers should build with obfuscation flags that load the map for
+  /// consistent symbol naming.
+  String? obfuscationMapPath;
+
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;
 
@@ -91,13 +97,7 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// Builds the patch artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
-  ///
-  /// If [obfuscationMapPath] is provided, the patch will be built with
-  /// obfuscation flags that load the map for consistent symbol naming.
-  Future<File> buildPatchArtifact({
-    String? releaseVersion,
-    String? obfuscationMapPath,
-  });
+  Future<File> buildPatchArtifact({String? releaseVersion});
 
   /// Determines the release version from the provided app artifact.
   Future<String> extractReleaseVersionFromArtifact(File artifact);

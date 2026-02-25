@@ -81,10 +81,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
   }
 
   @override
-  Future<File> buildPatchArtifact({
-    String? releaseVersion,
-    String? obfuscationMapPath,
-  }) async {
+  Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final flutterVersion = await shorebirdFlutter.getVersion();
     // Android versions prior to 3.24.2 have a bug that can cause patches to
     // be erroneously uninstalled.

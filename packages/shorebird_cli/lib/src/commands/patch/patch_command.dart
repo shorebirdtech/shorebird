@@ -429,6 +429,8 @@ Building with Flutter $flutterVersionString to determine the release version...
       obfuscationMapFile = null;
     }
 
+    patcher.obfuscationMapPath = obfuscationMapFile?.path;
+
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
     );
@@ -447,7 +449,6 @@ Building patch with Flutter $flutterVersionString
           patchArtifactFile = await _tryBuildingArtifact<File>(
             () => patcher.buildPatchArtifact(
               releaseVersion: release.version,
-              obfuscationMapPath: obfuscationMapFile?.path,
             ),
           );
         }

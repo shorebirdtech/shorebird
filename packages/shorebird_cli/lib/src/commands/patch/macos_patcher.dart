@@ -124,10 +124,7 @@ This may indicate that the patch contains native changes, which cannot be applie
   }
 
   @override
-  Future<File> buildPatchArtifact({
-    String? releaseVersion,
-    String? obfuscationMapPath,
-  }) async {
+  Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final (flutterVersionAndRevision, flutterVersion) = await (
       shorebirdFlutter.getVersionAndRevision(),
       shorebirdFlutter.getVersion(),

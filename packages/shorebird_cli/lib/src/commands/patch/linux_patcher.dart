@@ -48,10 +48,7 @@ class LinuxPatcher extends Patcher {
   }
 
   @override
-  Future<File> buildPatchArtifact({
-    String? releaseVersion,
-    String? obfuscationMapPath,
-  }) async {
+  Future<File> buildPatchArtifact({String? releaseVersion}) async {
     await artifactBuilder.buildLinuxApp(
       base64PublicKey: argResults.encodedPublicKey,
     );

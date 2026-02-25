@@ -74,10 +74,7 @@ class AarPatcher extends Patcher {
   );
 
   @override
-  Future<File> buildPatchArtifact({
-    String? releaseVersion,
-    String? obfuscationMapPath,
-  }) async {
+  Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final buildArgs = [...argResults.forwardedArgs];
     if (argResults['obfuscate'] == true &&
         !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {

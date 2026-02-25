@@ -784,11 +784,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           });
 
           test('injects obfuscation flags into build args', () async {
-            await runWithOverrides(
-              () => patcher.buildPatchArtifact(
-                obfuscationMapPath: obfuscationMapFile.path,
-              ),
-            );
+            patcher.obfuscationMapPath = obfuscationMapFile.path;
+            await runWithOverrides(patcher.buildPatchArtifact);
 
             final captured = verify(
               () => artifactBuilder.buildIpa(
@@ -821,11 +818,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             });
 
             test('does not add --obfuscate again', () async {
-              await runWithOverrides(
-                () => patcher.buildPatchArtifact(
-                  obfuscationMapPath: obfuscationMapFile.path,
-                ),
-              );
+              patcher.obfuscationMapPath = obfuscationMapFile.path;
+              await runWithOverrides(patcher.buildPatchArtifact);
 
               final captured = verify(
                 () => artifactBuilder.buildIpa(
