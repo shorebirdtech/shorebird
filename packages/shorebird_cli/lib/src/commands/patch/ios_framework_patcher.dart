@@ -137,7 +137,7 @@ class IosFrameworkPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
     late final String releaseXcframeworkPath;
@@ -150,13 +150,8 @@ class IosFrameworkPatcher extends Patcher {
       releaseXcframeworkPath = tempDir.path;
     }
 
-    final releaseSupplementDir = Directory.systemTemp.createTempSync();
-    if (supplementArtifact != null) {
-      await artifactManager.extractZip(
-        zipFile: supplementArtifact,
-        outputDirectory: releaseSupplementDir,
-      );
-    }
+    final releaseSupplementDir =
+        supplementDirectory ?? Directory.systemTemp.createTempSync();
 
     unzipProgress.complete(
       'Extracted release artifact to $releaseXcframeworkPath',

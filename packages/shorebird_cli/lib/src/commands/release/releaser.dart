@@ -4,6 +4,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -121,6 +122,32 @@ abstract class Releaser {
     buildArgs.add(
       '--extra-gen-snapshot-options=--save-obfuscation-map=$obfuscationMapPath',
     );
+  }
+
+  /// Platform subdirectory for the supplement directory (e.g. 'android',
+  /// 'ios'). Used to construct `build/<platformSubdir>/shorebird/`.
+  String get supplementPlatformSubdir;
+
+  /// Arch string for the supplement artifact on the server (e.g.
+  /// 'android_supplement').
+  String get supplementArtifactArch;
+
+  /// Assembles the supplement directory: copies the obfuscation map (if
+  /// present) into the platform supplement dir. Returns the directory, or null
+  /// if empty.
+  Directory? assembleSupplementDirectory() {
+    final obfuscationMapFile = File(obfuscationMapPath);
+    final hasObfuscationMap = useObfuscation && obfuscationMapFile.existsSync();
+    final supplementDir = artifactManager.getReleaseSupplementDirectory(
+      platformSubdir: supplementPlatformSubdir,
+      create: hasObfuscationMap,
+    );
+    if (hasObfuscationMap && supplementDir != null) {
+      obfuscationMapFile.copySync(
+        p.join(supplementDir.path, 'obfuscation_map.json'),
+      );
+    }
+    return supplementDir;
   }
 
   /// Verifies the obfuscation map was generated after build.

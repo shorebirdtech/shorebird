@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/android_releaser.dart';
@@ -34,6 +35,7 @@ void main() {
   group(AndroidReleaser, () {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
+    late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
     late CodeSigner codeSigner;
     late Doctor doctor;
@@ -53,6 +55,7 @@ void main() {
         body,
         values: {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
+          artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
@@ -78,6 +81,7 @@ void main() {
     setUp(() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
+      artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
       doctor = MockDoctor();

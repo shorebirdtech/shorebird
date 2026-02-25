@@ -58,7 +58,7 @@ class MacosPatcher extends Patcher {
   String get primaryReleaseArtifactArch => 'app';
 
   @override
-  String? get obfuscationMapReleaseArtifactArch => 'macos_obfuscation_map';
+  String? get supplementaryReleaseArtifactArch => 'macos_supplement';
 
   @override
   Future<void> assertPreconditions() async {
@@ -226,7 +226,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
     final releaseAppDirectory = Directory.systemTemp.createTempSync();

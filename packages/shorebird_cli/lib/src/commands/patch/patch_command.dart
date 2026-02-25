@@ -399,16 +399,6 @@ Building with Flutter $flutterVersionString to determine the release version...
           )
         : null;
 
-    final obfuscationMapArtifact =
-        patcher.obfuscationMapReleaseArtifactArch != null
-        ? await codePushClientWrapper.maybeGetReleaseArtifact(
-            appId: appId,
-            releaseId: release.id,
-            arch: patcher.obfuscationMapReleaseArtifactArch!,
-            platform: releasePlatform,
-          )
-        : null;
-
     final releaseArchive = await downloadReleaseArtifact(
       releaseArtifact: releaseArtifact,
     );
@@ -417,17 +407,25 @@ Building with Flutter $flutterVersionString to determine the release version...
         ? await downloadReleaseArtifact(releaseArtifact: supplementalArtifact)
         : null;
 
-    final File? obfuscationMapFile;
-    if (obfuscationMapArtifact != null) {
-      obfuscationMapFile = await downloadReleaseArtifact(
-        releaseArtifact: obfuscationMapArtifact,
+    // Download and extract the supplement archive (if present).
+    Directory? supplementDirectory;
+    File? obfuscationMapFile;
+    if (supplementArchive != null) {
+      supplementDirectory = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: supplementArchive,
+        outputDirectory: supplementDirectory,
       );
-      logger.info(
-        'Release was built with obfuscation. '
-        'Applying obfuscation map to patch build.',
+      final candidateMapFile = File(
+        p.join(supplementDirectory.path, 'obfuscation_map.json'),
       );
-    } else {
-      obfuscationMapFile = null;
+      if (candidateMapFile.existsSync()) {
+        obfuscationMapFile = candidateMapFile;
+        logger.info(
+          'Release was built with obfuscation. '
+          'Applying obfuscation map to patch build.',
+        );
+      }
     }
 
     patcher.obfuscationMapPath = obfuscationMapFile?.path;
@@ -488,7 +486,7 @@ Building patch with Flutter $flutterVersionString
           appId: appId,
           releaseId: release.id,
           releaseArtifact: releaseArchive,
-          supplementArtifact: supplementArchive,
+          supplementDirectory: supplementDirectory,
         );
 
         final dryRun = results['dry-run'] == true;

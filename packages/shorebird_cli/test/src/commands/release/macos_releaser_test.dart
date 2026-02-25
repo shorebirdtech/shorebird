@@ -750,7 +750,6 @@ To change the version of this release, change your app's version in your pubspec
             appPath: any(named: 'appPath'),
             isCodesigned: any(named: 'isCodesigned'),
             podfileLockHash: any(named: 'podfileLockHash'),
-            obfuscationMapPath: any(named: 'obfuscationMapPath'),
           ),
         ).thenAnswer((_) async => {});
 
@@ -819,12 +818,6 @@ To change the version of this release, change your app's version in your pubspec
             ),
           );
 
-          final expectedMapPath = p.join(
-            projectRoot.path,
-            'build',
-            'shorebird',
-            'obfuscation_map.json',
-          );
           verify(
             () => codePushClientWrapper.createMacosReleaseArtifacts(
               appId: appId,
@@ -833,7 +826,6 @@ To change the version of this release, change your app's version in your pubspec
               isCodesigned: codesign,
               podfileLockHash:
                   '${sha256.convert(utf8.encode(podfileLockContent))}',
-              obfuscationMapPath: expectedMapPath,
             ),
           ).called(1);
         });

@@ -88,11 +88,6 @@ More info: ${troubleshootingUrl.toLink()}.
   /// The identifier used for any supplementary release artifacts.
   String? get supplementaryReleaseArtifactArch => null;
 
-  /// The arch identifier for the obfuscation map release artifact, if
-  /// supported by this platform. Returns null if the platform does not
-  /// support obfuscation.
-  String? get obfuscationMapReleaseArtifactArch => null;
-
   /// The root directory of the current project.
   Directory get projectRoot => shorebirdEnv.getShorebirdProjectRoot()!;
 
@@ -122,7 +117,7 @@ More info: ${troubleshootingUrl.toLink()}.
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   });
 
   /// Updates the provided metadata to include patcher-specific fields.

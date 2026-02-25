@@ -43,6 +43,12 @@ class IosFrameworkReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.iosFramework;
 
   @override
+  String get supplementPlatformSubdir => 'ios';
+
+  @override
+  String get supplementArtifactArch => 'ios_framework_supplement';
+
+  @override
   Future<void> assertArgsAreValid() async {
     if (!argResults.wasParsed('release-version')) {
       logger.err('Missing required argument: --release-version');
@@ -119,13 +125,23 @@ class IosFrameworkReleaser extends Releaser {
   Future<void> uploadReleaseArtifacts({
     required Release release,
     required String appId,
-  }) {
-    return codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+  }) async {
+    await codePushClientWrapper.createIosFrameworkReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
       appFrameworkPath: p.join(releaseDirectory.path, 'App.xcframework'),
-      supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,
     );
+
+    final supplementDir = assembleSupplementDirectory();
+    if (supplementDir != null) {
+      await codePushClientWrapper.createSupplementReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        platform: releaseType.releasePlatform,
+        supplementDirectoryPath: supplementDir.path,
+        arch: supplementArtifactArch,
+      );
+    }
   }
 
   @override

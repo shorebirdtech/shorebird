@@ -30,6 +30,12 @@ class LinuxReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.linux;
 
   @override
+  String get supplementPlatformSubdir => 'linux';
+
+  @override
+  String get supplementArtifactArch => 'linux_supplement';
+
+  @override
   String get artifactDisplayName => 'Linux app';
 
   @override
@@ -94,9 +100,22 @@ Linux release created at ${artifactManager.linuxBundleDirectory.path}.
   Future<void> uploadReleaseArtifacts({
     required Release release,
     required String appId,
-  }) => codePushClientWrapper.createLinuxReleaseArtifacts(
-    appId: appId,
-    releaseId: release.id,
-    bundle: artifactManager.linuxBundleDirectory,
-  );
+  }) async {
+    await codePushClientWrapper.createLinuxReleaseArtifacts(
+      appId: appId,
+      releaseId: release.id,
+      bundle: artifactManager.linuxBundleDirectory,
+    );
+
+    final supplementDir = assembleSupplementDirectory();
+    if (supplementDir != null) {
+      await codePushClientWrapper.createSupplementReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        platform: releaseType.releasePlatform,
+        supplementDirectoryPath: supplementDir.path,
+        arch: supplementArtifactArch,
+      );
+    }
+  }
 }

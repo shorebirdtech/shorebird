@@ -342,7 +342,7 @@ void main() {
               appId: 'com.example.app',
               releaseId: 1,
               releaseArtifact: releaseArtifact,
-              supplementArtifact: File('supplement.zip'),
+              supplementDirectory: Directory('supplement'),
             ),
           );
 

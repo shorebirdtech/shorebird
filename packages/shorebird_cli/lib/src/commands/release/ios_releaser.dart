@@ -38,6 +38,12 @@ class IosReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.ios;
 
   @override
+  String get supplementPlatformSubdir => 'ios';
+
+  @override
+  String get supplementArtifactArch => 'ios_supplement';
+
+  @override
   String get artifactDisplayName => 'iOS app';
 
   @override
@@ -159,7 +165,6 @@ To change the version of this release, change your app's version in your pubspec
     } else {
       podfileLockHash = null;
     }
-    final obfuscationMapFile = File(obfuscationMapPath);
     await codePushClientWrapper.createIosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
@@ -169,11 +174,18 @@ To change the version of this release, change your app's version in your pubspec
           .path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
-      supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,
-      obfuscationMapPath: obfuscationMapFile.existsSync()
-          ? obfuscationMapPath
-          : null,
     );
+
+    final supplementDir = assembleSupplementDirectory();
+    if (supplementDir != null) {
+      await codePushClientWrapper.createSupplementReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        platform: releaseType.releasePlatform,
+        supplementDirectoryPath: supplementDir.path,
+        arch: supplementArtifactArch,
+      );
+    }
   }
 
   @override

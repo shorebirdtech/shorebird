@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
@@ -31,6 +30,12 @@ class AndroidReleaser extends Releaser {
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
+
+  @override
+  String get supplementPlatformSubdir => 'android';
+
+  @override
+  String get supplementArtifactArch => 'android_supplement';
 
   @override
   String get artifactDisplayName => 'Android app bundle';
@@ -156,13 +161,12 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   Future<void> uploadReleaseArtifacts({
     required String appId,
     required Release release,
-  }) {
+  }) async {
     final aabFile = shorebirdAndroidArtifacts.findAab(
       project: projectRoot,
       flavor: flavor,
     );
-    final obfuscationMapFile = File(obfuscationMapPath);
-    return codePushClientWrapper.createAndroidReleaseArtifacts(
+    await codePushClientWrapper.createAndroidReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
       projectRoot: projectRoot.path,
@@ -170,10 +174,18 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       platform: releaseType.releasePlatform,
       architectures: architectures,
       flavor: flavor,
-      obfuscationMapPath: obfuscationMapFile.existsSync()
-          ? obfuscationMapPath
-          : null,
     );
+
+    final supplementDir = assembleSupplementDirectory();
+    if (supplementDir != null) {
+      await codePushClientWrapper.createSupplementReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        platform: releaseType.releasePlatform,
+        supplementDirectoryPath: supplementDir.path,
+        arch: supplementArtifactArch,
+      );
+    }
   }
 
   @override

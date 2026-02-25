@@ -209,6 +209,12 @@ void main() {
           message: any(named: 'message'),
         ),
       ).thenAnswer((_) async => File(''));
+      when(
+        () => artifactManager.extractZip(
+          zipFile: any(named: 'zipFile'),
+          outputDirectory: any(named: 'outputDirectory'),
+        ),
+      ).thenAnswer((_) async {});
 
       when(() => cache.updateAll()).thenAnswer((_) async => {});
 
@@ -291,7 +297,7 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           releaseArtifact: any(named: 'releaseArtifact'),
-          supplementArtifact: any(named: 'supplementArtifact'),
+          supplementDirectory: any(named: 'supplementDirectory'),
         ),
       ).thenAnswer((_) async => patchArtifactBundles);
       when(
@@ -541,7 +547,7 @@ void main() {
                 appId: appId,
                 releaseId: release.id,
                 releaseArtifact: any(named: 'releaseArtifact'),
-                supplementArtifact: any(named: 'supplementArtifact'),
+                supplementDirectory: any(named: 'supplementDirectory'),
               ),
             ).called(1);
           });
@@ -565,7 +571,7 @@ void main() {
                   appId: appId,
                   releaseId: release.id,
                   releaseArtifact: any(named: 'releaseArtifact'),
-                  supplementArtifact: any(named: 'supplementArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
                 ),
               ).called(1);
             });

@@ -52,7 +52,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
   String get primaryReleaseArtifactArch => 'aab';
 
   @override
-  String? get obfuscationMapReleaseArtifactArch => 'android_obfuscation_map';
+  String? get supplementaryReleaseArtifactArch => 'android_supplement';
 
   @override
   Future<DiffStatus> assertUnpatchableDiffs({
@@ -129,7 +129,7 @@ Looked in:
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
     Duration downloadMessageTimeout = const Duration(minutes: 1),
   }) async {
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(

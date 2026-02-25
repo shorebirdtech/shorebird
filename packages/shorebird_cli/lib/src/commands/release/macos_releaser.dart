@@ -38,6 +38,12 @@ class MacosReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.macos;
 
   @override
+  String get supplementPlatformSubdir => 'macos';
+
+  @override
+  String get supplementArtifactArch => 'macos_supplement';
+
+  @override
   String get artifactDisplayName => 'macOS app';
 
   @override
@@ -149,17 +155,24 @@ To change the version of this release, change your app's version in your pubspec
       podfileLockHash = null;
     }
 
-    final obfuscationMapFile = File(obfuscationMapPath);
     await codePushClientWrapper.createMacosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
       appPath: appDirectory.path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
-      obfuscationMapPath: obfuscationMapFile.existsSync()
-          ? obfuscationMapPath
-          : null,
     );
+
+    final supplementDir = assembleSupplementDirectory();
+    if (supplementDir != null) {
+      await codePushClientWrapper.createSupplementReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        platform: releaseType.releasePlatform,
+        supplementDirectoryPath: supplementDir.path,
+        arch: supplementArtifactArch,
+      );
+    }
   }
 
   @override

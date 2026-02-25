@@ -91,9 +91,6 @@ class IosPatcher extends Patcher {
   String? get supplementaryReleaseArtifactArch => 'ios_supplement';
 
   @override
-  String? get obfuscationMapReleaseArtifactArch => 'ios_obfuscation_map';
-
-  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
@@ -211,7 +208,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     // Verify that we have built a patch .xcarchive
     if (artifactManager.getXcarchiveDirectory()?.path == null) {
@@ -231,13 +228,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       releaseXcarchivePath = tempDir.path;
     }
 
-    final releaseSupplementDir = Directory.systemTemp.createTempSync();
-    if (supplementArtifact != null) {
-      await artifactManager.extractZip(
-        zipFile: supplementArtifact,
-        outputDirectory: releaseSupplementDir,
-      );
-    }
+    final releaseSupplementDir =
+        supplementDirectory ?? Directory.systemTemp.createTempSync();
 
     unzipProgress.complete();
     final appDirectory = artifactManager.getIosAppDirectory(

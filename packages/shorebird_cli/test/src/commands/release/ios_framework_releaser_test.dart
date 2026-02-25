@@ -468,7 +468,6 @@ void main() {
             appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
             appFrameworkPath: any(named: 'appFrameworkPath'),
-            supplementPath: any(named: 'supplementPath'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -490,7 +489,6 @@ void main() {
               'release',
               ArtifactManager.appXcframeworkName,
             ),
-            supplementPath: null,
           ),
         ).called(1);
       });

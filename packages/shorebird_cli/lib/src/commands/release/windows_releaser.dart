@@ -33,6 +33,12 @@ class WindowsReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.windows;
 
   @override
+  String get supplementPlatformSubdir => 'windows';
+
+  @override
+  String get supplementArtifactArch => 'windows_supplement';
+
+  @override
   String get artifactDisplayName => 'Windows app';
 
   @override
@@ -109,6 +115,17 @@ To change the version of this release, change your app's version in your pubspec
       projectRoot: projectRoot.path,
       releaseZipPath: zippedRelease.path,
     );
+
+    final supplementDir = assembleSupplementDirectory();
+    if (supplementDir != null) {
+      await codePushClientWrapper.createSupplementReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        platform: releaseType.releasePlatform,
+        supplementDirectoryPath: supplementDir.path,
+        arch: supplementArtifactArch,
+      );
+    }
   }
 
   @override

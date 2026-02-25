@@ -45,6 +45,12 @@ class AarReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
+  String get supplementPlatformSubdir => 'android';
+
+  @override
+  String get supplementArtifactArch => 'aar_supplement';
+
+  @override
   String get artifactDisplayName => 'Android archive';
 
   @override
@@ -128,6 +134,17 @@ class AarReleaser extends Releaser {
       extractedAarDir: extractedAarDir.path,
       architectures: architectures,
     );
+
+    final supplementDir = assembleSupplementDirectory();
+    if (supplementDir != null) {
+      await codePushClientWrapper.createSupplementReleaseArtifact(
+        appId: appId,
+        releaseId: release.id,
+        platform: releaseType.releasePlatform,
+        supplementDirectoryPath: supplementDir.path,
+        arch: supplementArtifactArch,
+      );
+    }
   }
 
   @override

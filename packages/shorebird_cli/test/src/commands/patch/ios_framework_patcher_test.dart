@@ -539,7 +539,7 @@ void main() {
         canSideload: true,
       );
       late File releaseArtifactFile;
-      late File supplementArtifactFile;
+      late Directory supplementDirectory;
 
       void setUpProjectRootArtifacts() {
         File(
@@ -582,12 +582,7 @@ void main() {
             'release.xcframework',
           ),
         )..createSync(recursive: true);
-        supplementArtifactFile = File(
-          p.join(
-            Directory.systemTemp.createTempSync().path,
-            'ios_framework_supplement.zip',
-          ),
-        )..createSync(recursive: true);
+        supplementDirectory = Directory.systemTemp.createTempSync();
 
         when(
           () => codePushClientWrapper.getReleaseArtifact(
@@ -818,21 +813,12 @@ void main() {
                     p.join(outDir.path, 'ios-arm64', 'App.framework', 'App'),
                   ).createSync(recursive: true);
                 });
-                when(
-                  () => artifactManager.extractZip(
-                    zipFile: supplementArtifactFile,
-                    outputDirectory: any(named: 'outputDirectory'),
-                  ),
-                ).thenAnswer((invocation) async {
-                  final outDir =
-                      invocation.namedArguments[#outputDirectory] as Directory;
-                  File(
-                    p.join(outDir.path, 'App.ct.link'),
-                  ).createSync(recursive: true);
-                  File(
-                    p.join(outDir.path, 'App.class_table.json'),
-                  ).createSync(recursive: true);
-                });
+                File(
+                  p.join(supplementDirectory.path, 'App.ct.link'),
+                ).createSync(recursive: true);
+                File(
+                  p.join(supplementDirectory.path, 'App.class_table.json'),
+                ).createSync(recursive: true);
               });
 
               test('returns linked patch artifact in patch bundle', () async {
@@ -841,7 +827,7 @@ void main() {
                     appId: appId,
                     releaseId: releaseId,
                     releaseArtifact: releaseArtifactFile,
-                    supplementArtifact: supplementArtifactFile,
+                    supplementDirectory: supplementDirectory,
                   ),
                 );
 
@@ -864,7 +850,7 @@ void main() {
                   appId: appId,
                   releaseId: releaseId,
                   releaseArtifact: releaseArtifactFile,
-                  supplementArtifact: supplementArtifactFile,
+                  supplementDirectory: supplementDirectory,
                 ),
               );
               expect(patcher.linkPercentage, isNotNull);

@@ -183,11 +183,11 @@ void main() {
       });
     });
 
-    group('obfuscationMapReleaseArtifactArch', () {
-      test('is "macos_obfuscation_map"', () {
+    group('supplementaryReleaseArtifactArch', () {
+      test('is "macos_supplement"', () {
         expect(
-          patcher.obfuscationMapReleaseArtifactArch,
-          'macos_obfuscation_map',
+          patcher.supplementaryReleaseArtifactArch,
+          'macos_supplement',
         );
       });
     });

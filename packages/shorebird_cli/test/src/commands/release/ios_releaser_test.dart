@@ -851,8 +851,6 @@ To change the version of this release, change your app's version in your pubspec
             runnerPath: any(named: 'runnerPath'),
             isCodesigned: any(named: 'isCodesigned'),
             podfileLockHash: any(named: 'podfileLockHash'),
-            supplementPath: any(named: 'supplementPath'),
-            obfuscationMapPath: any(named: 'obfuscationMapPath'),
           ),
         ).thenAnswer((_) async => {});
         when(() => shorebirdEnv.iosPodfileLockFile).thenReturn(podfileLockFile);
@@ -875,7 +873,6 @@ To change the version of this release, change your app's version in your pubspec
             isCodesigned: codesign,
             podfileLockHash:
                 '${sha256.convert(utf8.encode(podfileLockContent))}',
-            supplementPath: supplementDirectory.path,
           ),
         ).called(1);
       });
@@ -903,12 +900,6 @@ To change the version of this release, change your app's version in your pubspec
             ),
           );
 
-          final expectedMapPath = p.join(
-            projectRoot.path,
-            'build',
-            'shorebird',
-            'obfuscation_map.json',
-          );
           verify(
             () => codePushClientWrapper.createIosReleaseArtifacts(
               appId: appId,
@@ -918,8 +909,6 @@ To change the version of this release, change your app's version in your pubspec
               isCodesigned: codesign,
               podfileLockHash:
                   '${sha256.convert(utf8.encode(podfileLockContent))}',
-              supplementPath: supplementDirectory.path,
-              obfuscationMapPath: expectedMapPath,
             ),
           ).called(1);
         });

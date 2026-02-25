@@ -168,15 +168,6 @@ void main() {
       });
     });
 
-    group('obfuscationMapReleaseArtifactArch', () {
-      test('is "ios_obfuscation_map"', () {
-        expect(
-          patcher.obfuscationMapReleaseArtifactArch,
-          'ios_obfuscation_map',
-        );
-      });
-    });
-
     group('releaseType', () {
       test('is ReleaseType.ios', () {
         expect(patcher.releaseType, ReleaseType.ios);
@@ -870,7 +861,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         canSideload: true,
       );
       late File releaseArtifactFile;
-      late File supplementArtifactFile;
+      late Directory supplementDirectory;
 
       void setUpProjectRootArtifacts() {
         File(
@@ -926,12 +917,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             'release.xcarchive',
           ),
         )..createSync(recursive: true);
-        supplementArtifactFile = File(
-          p.join(
-            Directory.systemTemp.createTempSync().path,
-            'ios_supplement.zip',
-          ),
-        )..createSync(recursive: true);
+        supplementDirectory = Directory.systemTemp.createTempSync();
 
         when(
           () => codePushClientWrapper.getReleaseArtifact(
@@ -1202,21 +1188,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
 
             group('when class table link info & debug info are present', () {
               setUp(() {
-                when(
-                  () => artifactManager.extractZip(
-                    zipFile: supplementArtifactFile,
-                    outputDirectory: any(named: 'outputDirectory'),
-                  ),
-                ).thenAnswer((invocation) async {
-                  final outDir =
-                      invocation.namedArguments[#outputDirectory] as Directory;
-                  File(
-                    p.join(outDir.path, 'App.ct.link'),
-                  ).createSync(recursive: true);
-                  File(
-                    p.join(outDir.path, 'App.class_table.json'),
-                  ).createSync(recursive: true);
-                });
+                File(
+                  p.join(supplementDirectory.path, 'App.ct.link'),
+                ).createSync(recursive: true);
+                File(
+                  p.join(supplementDirectory.path, 'App.class_table.json'),
+                ).createSync(recursive: true);
               });
 
               test('returns linked patch artifact in patch bundle', () async {
@@ -1225,7 +1202,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                     appId: appId,
                     releaseId: releaseId,
                     releaseArtifact: releaseArtifactFile,
-                    supplementArtifact: supplementArtifactFile,
+                    supplementDirectory: supplementDirectory,
                   ),
                 );
 
@@ -1247,7 +1224,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                     appId: appId,
                     releaseId: releaseId,
                     releaseArtifact: releaseArtifactFile,
-                    supplementArtifact: supplementArtifactFile,
+                    supplementDirectory: supplementDirectory,
                   ),
                 );
                 expect(patcher.linkPercentage, isNotNull);
