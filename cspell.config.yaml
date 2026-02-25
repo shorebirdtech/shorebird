@@ -105,10 +105,12 @@ words:
   - sideload
   - sideloadable
   - sideloaded
+  - sideloading
   - signup
   - SIGSTOP
   - storepass # From .github/workflows/e2e.yaml
   - storyboardc
+  - symbolication
   - syskeys # From adb.dart
   - subosito # From .github dir, doesn't show up in "**" check?
   - swiftshader # From .github dir, doesn't show up in "**" check?
