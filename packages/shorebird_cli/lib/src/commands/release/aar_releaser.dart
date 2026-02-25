@@ -72,19 +72,11 @@ class AarReleaser extends Releaser {
     }
   }
 
-  /// Whether the user is building with obfuscation.
-  bool get _useObfuscation => argResults['obfuscate'] == true;
-
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     final base64PublicKey = await getEncodedPublicKey();
     final buildArgs = [...argResults.forwardedArgs];
-    if (_useObfuscation &&
-        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
-      buildArgs.add(
-        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
-      );
-    }
+    addSplitDebugInfoDefault(buildArgs);
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
       targetPlatforms: architectures,

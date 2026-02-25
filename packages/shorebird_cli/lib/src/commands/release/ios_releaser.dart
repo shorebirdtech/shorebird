@@ -34,17 +34,6 @@ class IosReleaser extends Releaser {
   /// Whether to codesign the release.
   bool get codesign => argResults['codesign'] == true;
 
-  /// Whether the user is building with obfuscation.
-  bool get _useObfuscation => argResults['obfuscate'] == true;
-
-  /// The path where the obfuscation map will be saved during the build.
-  String get _obfuscationMapPath => p.join(
-    projectRoot.path,
-    'build',
-    'shorebird',
-    'obfuscation_map.json',
-  );
-
   @override
   ReleaseType get releaseType => ReleaseType.ios;
 
@@ -105,23 +94,8 @@ To change the version of this release, change your app's version in your pubspec
     final base64PublicKey = await getEncodedPublicKey();
 
     final buildArgs = [...argResults.forwardedArgs];
-    if (_useObfuscation &&
-        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
-      buildArgs.add(
-        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
-      );
-    }
-    if (_useObfuscation) {
-      // Ensure the obfuscation map directory exists.
-      final mapDir = Directory(p.dirname(_obfuscationMapPath));
-      if (!mapDir.existsSync()) {
-        mapDir.createSync(recursive: true);
-      }
-      buildArgs.add(
-        '--extra-gen-snapshot-options='
-        '--save-obfuscation-map=$_obfuscationMapPath',
-      );
-    }
+    addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
 
     await artifactBuilder.buildIpa(
       codesign: codesign,
@@ -131,17 +105,7 @@ To change the version of this release, change your app's version in your pubspec
       base64PublicKey: base64PublicKey,
     );
 
-    if (_useObfuscation) {
-      final mapFile = File(_obfuscationMapPath);
-      if (!mapFile.existsSync()) {
-        logger.err(
-          'Obfuscation was enabled but the obfuscation map was not '
-          'generated at $_obfuscationMapPath',
-        );
-        throw ProcessExit(ExitCode.software.code);
-      }
-      logger.detail('Obfuscation map saved to $_obfuscationMapPath');
-    }
+    verifyObfuscationMap();
 
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory();
     if (xcarchiveDirectory == null) {
@@ -195,7 +159,7 @@ To change the version of this release, change your app's version in your pubspec
     } else {
       podfileLockHash = null;
     }
-    final obfuscationMapFile = File(_obfuscationMapPath);
+    final obfuscationMapFile = File(obfuscationMapPath);
     await codePushClientWrapper.createIosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
@@ -207,7 +171,7 @@ To change the version of this release, change your app's version in your pubspec
       podfileLockHash: podfileLockHash,
       supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,
       obfuscationMapPath: obfuscationMapFile.existsSync()
-          ? _obfuscationMapPath
+          ? obfuscationMapPath
           : null,
     );
   }

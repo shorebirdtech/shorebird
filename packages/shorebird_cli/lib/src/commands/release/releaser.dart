@@ -1,11 +1,15 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -87,4 +91,49 @@ abstract class Releaser {
   ///
   /// Returns null if no public key is configured.
   Future<String?> getEncodedPublicKey() => argResults.getEncodedPublicKey();
+
+  /// Whether the user is building with obfuscation.
+  bool get useObfuscation => argResults['obfuscate'] == true;
+
+  /// Path where the obfuscation map is saved during obfuscated builds.
+  String get obfuscationMapPath => p.join(
+    projectRoot.path,
+    'build',
+    'shorebird',
+    'obfuscation_map.json',
+  );
+
+  /// Auto-adds --split-debug-info when --obfuscate is used without it.
+  void addSplitDebugInfoDefault(List<String> buildArgs) {
+    if (useObfuscation &&
+        !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
+      buildArgs.add(
+        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
+  }
+
+  /// Adds --save-obfuscation-map to build args when obfuscation is enabled.
+  void addObfuscationMapArgs(List<String> buildArgs) {
+    if (!useObfuscation) return;
+    final mapDir = Directory(p.dirname(obfuscationMapPath));
+    if (!mapDir.existsSync()) mapDir.createSync(recursive: true);
+    buildArgs.add(
+      '--extra-gen-snapshot-options=--save-obfuscation-map=$obfuscationMapPath',
+    );
+  }
+
+  /// Verifies the obfuscation map was generated after build.
+  void verifyObfuscationMap() {
+    if (!useObfuscation) return;
+    final mapFile = File(obfuscationMapPath);
+    if (!mapFile.existsSync()) {
+      logger.err(
+        'Obfuscation was enabled but the obfuscation map was not '
+        'generated at $obfuscationMapPath',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+    logger.detail('Obfuscation map saved to $obfuscationMapPath');
+  }
 }
