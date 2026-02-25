@@ -768,7 +768,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           expect(copiedKernelFile.existsSync(), isTrue);
         });
 
-        group('when obfuscationMapPath is provided', () {
+        group('when extraBuildArgs has obfuscation flags', () {
           late File obfuscationMapFile;
 
           setUp(() {
@@ -783,8 +783,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                   ..writeAsStringSync('{"key": "value"}');
           });
 
-          test('injects obfuscation flags into build args', () async {
+          test('includes obfuscation flags in build args', () async {
             patcher.obfuscationMapPath = obfuscationMapFile.path;
+            patcher.extraBuildArgs = [
+              '--obfuscate',
+              '--extra-gen-snapshot-options='
+                  '--load-obfuscation-map=${obfuscationMapFile.path}',
+            ];
             await runWithOverrides(patcher.buildPatchArtifact);
 
             final captured = verify(
@@ -811,37 +816,9 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               ),
             );
           });
-
-          group('when --obfuscate is already in args', () {
-            setUp(() {
-              when(() => argResults.rest).thenReturn(['--obfuscate']);
-            });
-
-            test('does not add --obfuscate again', () async {
-              patcher.obfuscationMapPath = obfuscationMapFile.path;
-              await runWithOverrides(patcher.buildPatchArtifact);
-
-              final captured = verify(
-                () => artifactBuilder.buildIpa(
-                  codesign: any(named: 'codesign'),
-                  args: captureAny(named: 'args'),
-                  flavor: any(named: 'flavor'),
-                  target: any(named: 'target'),
-                  base64PublicKey: any(named: 'base64PublicKey'),
-                ),
-              ).captured;
-
-              final args = captured.last as List<String>;
-              // Should contain exactly one --obfuscate flag.
-              expect(
-                args.where((a) => a == '--obfuscate').length,
-                equals(1),
-              );
-            });
-          });
         });
 
-        group('when obfuscationMapPath is null', () {
+        group('when extraBuildArgs is empty', () {
           test('does not inject obfuscation flags', () async {
             await runWithOverrides(patcher.buildPatchArtifact);
 

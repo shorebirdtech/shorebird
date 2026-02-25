@@ -430,6 +430,13 @@ Building with Flutter $flutterVersionString to determine the release version...
     }
 
     patcher.obfuscationMapPath = obfuscationMapFile?.path;
+    if (obfuscationMapFile != null) {
+      patcher.extraBuildArgs = [
+        '--obfuscate',
+        '--extra-gen-snapshot-options='
+            '--load-obfuscation-map=${obfuscationMapFile.path}',
+      ];
+    }
 
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,

@@ -172,34 +172,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
     final buildArgs = [
       ...argResults.forwardedArgs,
+      ...extraBuildArgs,
       ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
     ];
 
-    // Auto-default --split-debug-info when --obfuscate is used alone.
-    if (argResults['obfuscate'] == true &&
+    // Auto-default --split-debug-info when --obfuscate is used.
+    if (buildArgs.contains('--obfuscate') &&
         !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
       buildArgs.add(
         '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
-      );
-    }
-
-    // If an obfuscation map was provided (from the release), inject the
-    // flags needed to build the patch with consistent obfuscated names.
-    if (obfuscationMapPath != null) {
-      if (!buildArgs.contains('--obfuscate')) {
-        buildArgs.add('--obfuscate');
-      }
-      // Flutter requires --split-debug-info with --obfuscate. If not already
-      // provided, add a temporary directory (the debug info is discarded).
-      if (!buildArgs.any((arg) => arg.startsWith('--split-debug-info'))) {
-        final tempDebugInfoDir = Directory.systemTemp.createTempSync(
-          'shorebird_patch_debug_info_',
-        );
-        buildArgs.add('--split-debug-info=${tempDebugInfoDir.path}');
-      }
-      buildArgs.add(
-        '--extra-gen-snapshot-options='
-        '--load-obfuscation-map=$obfuscationMapPath',
       );
     }
 

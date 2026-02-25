@@ -58,10 +58,14 @@ More info: ${troubleshootingUrl.toLink()}.
   final String? target;
 
   /// The path to the obfuscation map downloaded from the release, if any.
-  /// Set by the patch command after downloading the map. When non-null,
-  /// patchers should build with obfuscation flags that load the map for
-  /// consistent symbol naming.
+  /// Set by the patch command after downloading the map. Used by Apple
+  /// patchers to pass obfuscation flags to gen_snapshot and the linker.
   String? obfuscationMapPath;
+
+  /// Extra build arguments injected by the patch command. These are included
+  /// in the Flutter build command args by patchers. Currently used to inject
+  /// obfuscation flags when the release was built with obfuscation.
+  List<String> extraBuildArgs = const [];
 
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;

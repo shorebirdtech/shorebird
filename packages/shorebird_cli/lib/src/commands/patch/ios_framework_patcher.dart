@@ -104,8 +104,8 @@ class IosFrameworkPatcher extends Patcher {
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final buildArgs = [...argResults.forwardedArgs];
-    if (argResults['obfuscate'] == true &&
+    final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
+    if (buildArgs.contains('--obfuscate') &&
         !buildArgs.any((a) => a.startsWith('--split-debug-info'))) {
       buildArgs.add(
         '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',

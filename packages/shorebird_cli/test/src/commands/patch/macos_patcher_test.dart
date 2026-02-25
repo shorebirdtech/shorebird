@@ -876,7 +876,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           expect(copiedKernelFile.existsSync(), isTrue);
         });
 
-        group('when obfuscationMapPath is provided', () {
+        group('when extraBuildArgs has obfuscation flags', () {
           late File obfuscationMapFile;
 
           setUp(() {
@@ -891,8 +891,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                   ..writeAsStringSync('{"key": "value"}');
           });
 
-          test('injects obfuscation flags into build args', () async {
+          test('includes obfuscation flags in build args', () async {
             patcher.obfuscationMapPath = obfuscationMapFile.path;
+            patcher.extraBuildArgs = [
+              '--obfuscate',
+              '--extra-gen-snapshot-options='
+                  '--load-obfuscation-map=${obfuscationMapFile.path}',
+            ];
             await runWithOverrides(patcher.buildPatchArtifact);
 
             final captured = verify(
@@ -921,7 +926,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           });
         });
 
-        group('when obfuscationMapPath is null', () {
+        group('when extraBuildArgs is empty', () {
           test('does not inject obfuscation flags', () async {
             await runWithOverrides(patcher.buildPatchArtifact);
 
