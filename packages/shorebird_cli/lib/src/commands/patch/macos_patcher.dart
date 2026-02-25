@@ -183,10 +183,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     if (splitDebugInfoPath != null) {
       Directory(splitDebugInfoPath!).createSync(recursive: true);
     }
+    final obfuscationArgs = [
+      if (obfuscationMapPath != null)
+        '--load-obfuscation-map=$obfuscationMapPath',
+    ];
     await artifactBuilder.buildElfAotSnapshot(
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _arm64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
+      additionalArgs: obfuscationArgs,
     );
 
     if (!File(_arm64AotOutputPath).existsSync()) {
@@ -197,6 +202,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _x64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
+      additionalArgs: obfuscationArgs,
     );
 
     if (!File(_x64AotOutputPath).existsSync()) {

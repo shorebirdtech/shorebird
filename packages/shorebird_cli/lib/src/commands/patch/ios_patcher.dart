@@ -223,7 +223,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       appDillPath: ipaBuildResult.kernelFile.path,
       outFilePath: _aotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
-      additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
+      additionalArgs: [
+        ...splitDebugInfoArgs(splitDebugInfoPath),
+        if (obfuscationMapPath != null)
+          '--load-obfuscation-map=$obfuscationMapPath',
+      ],
     );
 
     // Copy the kernel file to the build directory so that it can be used
