@@ -230,7 +230,7 @@ To change the version of this release, change your app's version in your pubspec
         setUp(() {
           when(() => argResults['obfuscate']).thenReturn(true);
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
-          when(() => shorebirdEnv.flutterRevision).thenReturn('aabbccdd');
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
         });
 
         group('when Flutter version supports obfuscation', () {
