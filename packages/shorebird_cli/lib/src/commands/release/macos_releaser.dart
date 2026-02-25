@@ -39,11 +39,11 @@ class MacosReleaser extends Releaser {
 
   /// The path where the obfuscation map will be saved during the build.
   String get _obfuscationMapPath => p.join(
-        projectRoot.path,
-        'build',
-        'shorebird',
-        'obfuscation_map.json',
-      );
+    projectRoot.path,
+    'build',
+    'shorebird',
+    'obfuscation_map.json',
+  );
 
   @override
   ReleaseType get releaseType => ReleaseType.macos;
@@ -124,8 +124,10 @@ To change the version of this release, change your app's version in your pubspec
     if (_useObfuscation) {
       final mapFile = File(_obfuscationMapPath);
       if (!mapFile.existsSync()) {
-        logger.err('Obfuscation was enabled but the obfuscation map was not '
-            'generated at $_obfuscationMapPath');
+        logger.err(
+          'Obfuscation was enabled but the obfuscation map was not '
+          'generated at $_obfuscationMapPath',
+        );
         throw ProcessExit(ExitCode.software.code);
       }
       logger.detail('Obfuscation map saved to $_obfuscationMapPath');
@@ -189,8 +191,9 @@ To change the version of this release, change your app's version in your pubspec
       appPath: appDirectory.path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
-      obfuscationMapPath:
-          obfuscationMapFile.existsSync() ? _obfuscationMapPath : null,
+      obfuscationMapPath: obfuscationMapFile.existsSync()
+          ? _obfuscationMapPath
+          : null,
     );
   }
 

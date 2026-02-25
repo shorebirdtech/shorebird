@@ -624,7 +624,10 @@ class _TestPatcher extends Patcher {
   }
 
   @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) {
+  Future<File> buildPatchArtifact({
+    String? releaseVersion,
+    String? obfuscationMapPath,
+  }) {
     throw UnimplementedError();
   }
 

@@ -772,14 +772,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           late File obfuscationMapFile;
 
           setUp(() {
-            obfuscationMapFile = File(
-              p.join(
-                Directory.systemTemp.createTempSync().path,
-                'obfuscation_map.json',
-              ),
-            )
-              ..createSync(recursive: true)
-              ..writeAsStringSync('{"key": "value"}');
+            obfuscationMapFile =
+                File(
+                    p.join(
+                      Directory.systemTemp.createTempSync().path,
+                      'obfuscation_map.json',
+                    ),
+                  )
+                  ..createSync(recursive: true)
+                  ..writeAsStringSync('{"key": "value"}');
           });
 
           test('injects obfuscation flags into build args', () async {

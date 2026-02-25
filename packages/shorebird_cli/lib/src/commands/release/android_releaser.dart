@@ -106,11 +106,11 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
 
   /// The path where the obfuscation map will be saved during the build.
   String get _obfuscationMapPath => p.join(
-        projectRoot.path,
-        'build',
-        'shorebird',
-        'obfuscation_map.json',
-      );
+    projectRoot.path,
+    'build',
+    'shorebird',
+    'obfuscation_map.json',
+  );
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
@@ -143,8 +143,10 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
     if (_useObfuscation) {
       final mapFile = File(_obfuscationMapPath);
       if (!mapFile.existsSync()) {
-        logger.err('Obfuscation was enabled but the obfuscation map was not '
-            'generated at $_obfuscationMapPath');
+        logger.err(
+          'Obfuscation was enabled but the obfuscation map was not '
+          'generated at $_obfuscationMapPath',
+        );
         throw ProcessExit(ExitCode.software.code);
       }
       logger.detail('Obfuscation map saved to $_obfuscationMapPath');
@@ -203,8 +205,9 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       platform: releaseType.releasePlatform,
       architectures: architectures,
       flavor: flavor,
-      obfuscationMapPath:
-          obfuscationMapFile.existsSync() ? _obfuscationMapPath : null,
+      obfuscationMapPath: obfuscationMapFile.existsSync()
+          ? _obfuscationMapPath
+          : null,
     );
   }
 

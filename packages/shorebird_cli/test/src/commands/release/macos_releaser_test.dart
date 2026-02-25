@@ -531,9 +531,7 @@ To change the version of this release, change your app's version in your pubspec
             );
             // Should not contain a second auto-defaulted one.
             expect(
-              args
-                  .where((a) => a.startsWith('--split-debug-info='))
-                  .length,
+              args.where((a) => a.startsWith('--split-debug-info=')).length,
               equals(1),
             );
           });
@@ -802,13 +800,13 @@ To change the version of this release, change your app's version in your pubspec
         setUp(() {
           // Create the obfuscation map file at the expected path.
           File(
-            p.join(
-              projectRoot.path,
-              'build',
-              'shorebird',
-              'obfuscation_map.json',
-            ),
-          )
+              p.join(
+                projectRoot.path,
+                'build',
+                'shorebird',
+                'obfuscation_map.json',
+              ),
+            )
             ..createSync(recursive: true)
             ..writeAsStringSync('{"key": "value"}');
         });
