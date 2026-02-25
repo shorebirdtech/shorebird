@@ -203,14 +203,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
       additionalArgs: [
         ...splitDebugInfoArgs(splitDebugInfoPath),
-        if (obfuscationMapPath != null) ...[
-          '--obfuscate',
-          '--load-obfuscation-map=$obfuscationMapPath',
-          // Obfuscated releases always auto-add --split-debug-info, which
-          // causes Flutter to pass --dwarf-stack-traces to gen_snapshot.
-          // We must match that here so the VM sections are identical.
-          if (splitDebugInfoPath == null) '--dwarf-stack-traces',
-        ],
+        ...obfuscationGenSnapshotArgs,
       ],
     );
 
@@ -280,15 +273,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         releaseArtifact: releaseArtifactFile,
         splitDebugInfoArgs: [
           ...splitDebugInfoArgs(splitDebugInfoPath),
-          // Obfuscated releases always auto-add --split-debug-info, which
-          // causes Flutter to pass --dwarf-stack-traces to gen_snapshot.
-          // The linker's internal gen_snapshot calls must match these flags
-          // so the VM sections and function hashes are identical.
-          if (obfuscationMapPath != null) ...[
-            '--obfuscate',
-            '--load-obfuscation-map=$obfuscationMapPath',
-            if (splitDebugInfoPath == null) '--dwarf-stack-traces',
-          ],
+          ...obfuscationGenSnapshotArgs,
         ],
         aotOutputFile: File(_aotOutputPath),
         vmCodeFile: File(_vmcodeOutputPath),

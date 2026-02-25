@@ -67,6 +67,17 @@ More info: ${troubleshootingUrl.toLink()}.
   /// obfuscation flags when the release was built with obfuscation.
   List<String> extraBuildArgs = const [];
 
+  /// Additional gen_snapshot arguments needed to match the release's
+  /// obfuscation flags. Used by Apple patchers for [buildElfAotSnapshot]
+  /// and linker calls.
+  List<String> get obfuscationGenSnapshotArgs => [
+    if (obfuscationMapPath != null) ...[
+      '--obfuscate',
+      '--load-obfuscation-map=$obfuscationMapPath',
+      if (splitDebugInfoPath == null) '--dwarf-stack-traces',
+    ],
+  ];
+
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;
 

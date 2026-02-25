@@ -165,21 +165,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     if (splitDebugInfoPath != null) {
       Directory(splitDebugInfoPath!).createSync(recursive: true);
     }
-    final obfuscationArgs = [
-      if (obfuscationMapPath != null) ...[
-        '--obfuscate',
-        '--load-obfuscation-map=$obfuscationMapPath',
-        // Obfuscated releases always auto-add --split-debug-info, which
-        // causes Flutter to pass --dwarf-stack-traces to gen_snapshot.
-        // We must match that here so the VM sections are identical.
-        if (splitDebugInfoPath == null) '--dwarf-stack-traces',
-      ],
-    ];
     await artifactBuilder.buildElfAotSnapshot(
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _arm64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
-      additionalArgs: obfuscationArgs,
+      additionalArgs: obfuscationGenSnapshotArgs,
     );
 
     if (!File(_arm64AotOutputPath).existsSync()) {
@@ -190,7 +180,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _x64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
-      additionalArgs: obfuscationArgs,
+      additionalArgs: obfuscationGenSnapshotArgs,
     );
 
     if (!File(_x64AotOutputPath).existsSync()) {
