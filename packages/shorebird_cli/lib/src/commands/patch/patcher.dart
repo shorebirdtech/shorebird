@@ -79,6 +79,9 @@ More info: ${troubleshootingUrl.toLink()}.
       // --split-debug-info already implies --dwarf-stack-traces, so we only
       // need to pass it as a standalone flag when split debug info isn't used.
       if (splitDebugInfoPath == null) '--dwarf-stack-traces',
+      // Strip DWARF debug info so obfuscated snapshots don't leak the
+      // identifiers that obfuscation was meant to hide.
+      '--strip',
     ],
   ];
 
