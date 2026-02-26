@@ -428,6 +428,21 @@ Building with Flutter $flutterVersionString to determine the release version...
       }
     }
 
+    // If the user explicitly passed --obfuscate but the release has no
+    // obfuscation map, the patch would be obfuscated against a non-obfuscated
+    // release, producing a broken patch.
+    final userPassedObfuscate =
+        (results.wasParsed('obfuscate') && results['obfuscate'] == true) ||
+        results.rest.any((a) => a == '--obfuscate');
+    if (userPassedObfuscate && obfuscationMapFile == null) {
+      logger.err(
+        '--obfuscate was passed, but the release was not built with '
+        'obfuscation. A patch cannot change the obfuscation mode of a '
+        'release.',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+
     patcher.obfuscationMapPath = obfuscationMapFile?.path;
 
     // Build extra args to inject into the Flutter build command. These use
