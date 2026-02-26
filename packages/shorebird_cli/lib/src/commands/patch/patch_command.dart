@@ -431,6 +431,8 @@ Building with Flutter $flutterVersionString to determine the release version...
     // If the user explicitly passed --obfuscate but the release has no
     // obfuscation map, the patch would be obfuscated against a non-obfuscated
     // release, producing a broken patch.
+    // Also check rest for `-- --obfuscate`, which bypasses the parser but
+    // still flows through forwardedArgs to the Flutter build command.
     final userPassedObfuscate =
         (results.wasParsed('obfuscate') && results['obfuscate'] == true) ||
         results.rest.any((a) => a == '--obfuscate');
