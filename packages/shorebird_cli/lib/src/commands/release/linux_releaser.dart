@@ -111,15 +111,6 @@ Linux release created at ${artifactManager.linuxBundleDirectory.path}.
       bundle: artifactManager.linuxBundleDirectory,
     );
 
-    final supplementDir = assembleSupplementDirectory();
-    if (supplementDir != null) {
-      await codePushClientWrapper.createSupplementReleaseArtifact(
-        appId: appId,
-        releaseId: release.id,
-        platform: releaseType.releasePlatform,
-        supplementDirectoryPath: supplementDir.path,
-        arch: supplementArtifactArch,
-      );
-    }
+    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 }

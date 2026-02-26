@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -158,6 +159,24 @@ abstract class Releaser {
       );
     }
     return supplementDir;
+  }
+
+  /// Uploads the supplement artifact (e.g. obfuscation map) if one was
+  /// assembled. Call this at the end of [uploadReleaseArtifacts].
+  Future<void> uploadSupplementArtifact({
+    required String appId,
+    required int releaseId,
+  }) async {
+    final supplementDir = assembleSupplementDirectory();
+    if (supplementDir != null) {
+      await codePushClientWrapper.createSupplementReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        platform: releaseType.releasePlatform,
+        supplementDirectoryPath: supplementDir.path,
+        arch: supplementArtifactArch,
+      );
+    }
   }
 
   /// Asserts that the current Flutter version supports obfuscation, if

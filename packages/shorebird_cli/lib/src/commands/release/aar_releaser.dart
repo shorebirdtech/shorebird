@@ -139,16 +139,7 @@ class AarReleaser extends Releaser {
       architectures: architectures,
     );
 
-    final supplementDir = assembleSupplementDirectory();
-    if (supplementDir != null) {
-      await codePushClientWrapper.createSupplementReleaseArtifact(
-        appId: appId,
-        releaseId: release.id,
-        platform: releaseType.releasePlatform,
-        supplementDirectoryPath: supplementDir.path,
-        arch: supplementArtifactArch,
-      );
-    }
+    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

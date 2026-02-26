@@ -121,16 +121,7 @@ To change the version of this release, change your app's version in your pubspec
       releaseZipPath: zippedRelease.path,
     );
 
-    final supplementDir = assembleSupplementDirectory();
-    if (supplementDir != null) {
-      await codePushClientWrapper.createSupplementReleaseArtifact(
-        appId: appId,
-        releaseId: release.id,
-        platform: releaseType.releasePlatform,
-        supplementDirectoryPath: supplementDir.path,
-        arch: supplementArtifactArch,
-      );
-    }
+    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override
