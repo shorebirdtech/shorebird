@@ -6,6 +6,7 @@ Future<void> main() async {
     issuer: '<ISSUER>',
     audience: {'<AUDIENCE>'},
     publicKeysUrl: '<PUBLIC_KEYS_URL>',
+    jwksFormat: jwt.JwksFormat.keyValue,
   );
   print(token);
 }
