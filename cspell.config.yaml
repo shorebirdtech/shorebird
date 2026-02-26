@@ -121,6 +121,7 @@ words:
   - udid # Unique Device Identifier
   - unawaited
   - unmockable
+  - unobfuscated
   - unpadded
   - Unpatchable
   - unsets
