@@ -442,6 +442,9 @@ Building with Flutter $flutterVersionString to determine the release version...
         '--obfuscate',
         '--extra-gen-snapshot-options='
             '--load-obfuscation-map=${obfuscationMapFile.path}',
+        // Strip unobfuscated DWARF debug info from the compiled snapshot so
+        // it doesn't leak identifiers that obfuscation was meant to hide.
+        '--extra-gen-snapshot-options=--strip',
       ]);
     }
     // Flutter requires --split-debug-info with --obfuscate. Auto-add it

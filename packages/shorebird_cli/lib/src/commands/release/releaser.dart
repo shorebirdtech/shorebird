@@ -118,14 +118,20 @@ abstract class Releaser {
     }
   }
 
-  /// Adds --save-obfuscation-map to build args when obfuscation is enabled.
+  /// Adds obfuscation-related gen_snapshot options to [buildArgs].
+  ///
+  /// When obfuscation is enabled, passes --save-obfuscation-map to capture the
+  /// mapping and --strip to remove unobfuscated DWARF debugging information
+  /// from the compiled snapshot (the DWARF sections would otherwise leak
+  /// identifiers that obfuscation was meant to hide).
   void addObfuscationMapArgs(List<String> buildArgs) {
     if (!useObfuscation) return;
     final mapDir = Directory(p.dirname(obfuscationMapPath));
     if (!mapDir.existsSync()) mapDir.createSync(recursive: true);
-    buildArgs.add(
+    buildArgs.addAll([
       '--extra-gen-snapshot-options=--save-obfuscation-map=$obfuscationMapPath',
-    );
+      '--extra-gen-snapshot-options=--strip',
+    ]);
   }
 
   /// Platform subdirectory for the supplement directory (e.g. 'android',
