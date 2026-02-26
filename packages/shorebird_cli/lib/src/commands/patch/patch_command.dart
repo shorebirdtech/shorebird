@@ -442,6 +442,12 @@ Building with Flutter $flutterVersionString to determine the release version...
       );
       throw ProcessExit(ExitCode.software.code);
     }
+    if (userPassedObfuscate && obfuscationMapFile != null) {
+      logger.info(
+        '--obfuscate is not needed for patching. Obfuscation is applied '
+        'automatically when the release was built with --obfuscate.',
+      );
+    }
 
     patcher.obfuscationMapPath = obfuscationMapFile?.path;
 
