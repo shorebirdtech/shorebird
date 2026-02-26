@@ -16,7 +16,10 @@ import 'package:ttl_cache/ttl_cache.dart';
 @visibleForTesting
 final publicKeyStores = TtlCache<String, PublicKeyStore>();
 
-Future<PublicKeyStore?> _getPublicKeys(String url) async {
+Future<PublicKeyStore?> _getPublicKeys(
+  String url, {
+  required JwksFormat jwksFormat,
+}) async {
   final store = publicKeyStores.get(url);
   if (store != null) {
     return store;
@@ -34,6 +37,7 @@ Future<PublicKeyStore?> _getPublicKeys(String url) async {
 
   final publicKeyStore = PublicKeyStore.tryDeserialize(
     json.decode(response.body) as Map<String, dynamic>,
+    format: jwksFormat,
   );
 
   if (publicKeyStore == null) {
@@ -107,6 +111,7 @@ Future<Jwt> verify(
   required String issuer,
   required Set<String> audience,
   required String publicKeysUrl,
+  required JwksFormat jwksFormat,
 }) async {
   final Jwt jwt;
   try {
@@ -115,7 +120,10 @@ Future<Jwt> verify(
     throw JwtVerificationFailure(e.message);
   }
 
-  final publicKeys = await _getPublicKeys(publicKeysUrl);
+  final publicKeys = await _getPublicKeys(
+    publicKeysUrl,
+    jwksFormat: jwksFormat,
+  );
   if (publicKeys == null) {
     throw JwtVerificationFailure(
       'Invalid public keys returned by $publicKeysUrl.',
@@ -125,12 +133,13 @@ Future<Jwt> verify(
   await _verifyHeader(jwt.header, publicKeys.keyIds);
   _verifyPayload(jwt.payload, issuer, audience);
 
-  // By using this keystore's key IDs to validate the header above, we've
-  // guaranteed that there is a public key for this key ID.
-  final publicKey = publicKeys.getPublicKey(jwt.header.kid)!;
+  final keyMaterial = publicKeys.getKeyMaterial(jwt.header.kid);
+  if (keyMaterial == null) {
+    throw const JwtVerificationFailure('No usable public key for key id.');
+  }
   final bool isValid;
   try {
-    isValid = _verifySignature(encodedJwt, publicKey);
+    isValid = _verifySignature(encodedJwt, keyMaterial);
   } on Exception {
     throw const JwtVerificationFailure('JWT signature is malformed.');
   }
@@ -192,7 +201,7 @@ void _verifyPayload(JwtPayload payload, String issuer, Set<String> audience) {
   }
 }
 
-bool _verifySignature(String jwt, String publicKey) {
+bool _verifySignature(String jwt, KeyMaterial keyMaterial) {
   final parts = jwt.split('.');
   final encodedHeader = parts[0];
   final encodedPayload = parts[1];
@@ -200,13 +209,19 @@ bool _verifySignature(String jwt, String publicKey) {
   final body = utf8.encode('$encodedHeader.$encodedPayload');
   final sign = base64Url.decode(base64Padded(signature));
 
-  final parser = rsa.RSAPKCSParser();
-  final pair = parser.parsePEM(publicKey);
-  if (pair.public is! rsa.RSAPublicKey) return false;
-  final public = pair.public;
+  final RSAPublicKey key;
+  switch (keyMaterial) {
+    case PemKeyMaterial(:final pem):
+      final parser = rsa.RSAPKCSParser();
+      final pair = parser.parsePEM(pem);
+      if (pair.public is! rsa.RSAPublicKey) return false;
+      final public = pair.public!;
+      key = RSAPublicKey(public.modulus, BigInt.from(public.publicExponent));
+    case RsaKeyMaterial(:final publicKey):
+      key = publicKey;
+  }
 
   final signer = Signer('SHA-256/RSA');
-  final key = RSAPublicKey(public!.modulus, BigInt.from(public.publicExponent));
   final param = ParametersWithRandom(
     PublicKeyParameter<RSAPublicKey>(key),
     SecureRandom('AES/CTR/PRNG'),

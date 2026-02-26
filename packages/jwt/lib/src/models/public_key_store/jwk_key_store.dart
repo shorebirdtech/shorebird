@@ -26,15 +26,15 @@ class JwkKeyStore extends PublicKeyStore {
   Iterable<String> get keyIds => keys.map((key) => key.kid);
 
   @override
-  String? getPublicKey(String kid) {
+  KeyMaterial? getKeyMaterial(String kid) {
     final key = keys.firstWhereOrNull((key) => key.kid == kid)?.x5c.firstOrNull;
     if (key == null) {
       return null;
     }
 
-    return '''
+    return PemKeyMaterial('''
 -----BEGIN CERTIFICATE-----
 $key
------END CERTIFICATE-----''';
+-----END CERTIFICATE-----''');
   }
 }
