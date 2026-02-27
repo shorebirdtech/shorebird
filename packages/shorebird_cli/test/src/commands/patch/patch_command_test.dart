@@ -825,7 +825,10 @@ void main() {
         group('when user confirms', () {
           setUp(() {
             when(
-              () => logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+              () => logger.confirm(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+              ),
             ).thenReturn(true);
           });
 
@@ -853,7 +856,10 @@ void main() {
         group('when user declines', () {
           setUp(() {
             when(
-              () => logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+              () => logger.confirm(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+              ),
             ).thenReturn(false);
           });
 
@@ -892,7 +898,8 @@ void main() {
             completes,
           );
           verifyNever(
-            () => logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+            () =>
+                logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
           );
         });
       });
