@@ -158,6 +158,7 @@ To target the latest release (e.g. the release that was most recently updated) u
         CommonArguments.obfuscateArg.name,
         help: CommonArguments.obfuscateArg.description,
         negatable: false,
+        hide: true,
       )
       ..addOption(
         CommonArguments.minLinkPercentage.name,
