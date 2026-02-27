@@ -32,6 +32,12 @@ class AndroidReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.android;
 
   @override
+  String get supplementPlatformSubdir => 'android';
+
+  @override
+  String get supplementArtifactArch => 'android_supplement';
+
+  @override
   String get artifactDisplayName => 'Android app bundle';
 
   /// The architectures to build for.
@@ -98,18 +104,25 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         );
       throw ProcessExit(ExitCode.unavailable.code);
     }
+
+    await assertObfuscationIsSupported();
   }
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     final base64PublicKey = await getEncodedPublicKey();
+    final buildArgs = [...argResults.forwardedArgs];
+    addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
     final aab = await artifactBuilder.buildAppBundle(
       flavor: flavor,
       target: target,
       targetPlatforms: architectures,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
+
+    verifyObfuscationMap();
 
     if (generateApk) {
       logger.info('Building APK');
@@ -117,7 +130,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
         flavor: flavor,
         target: target,
         targetPlatforms: architectures,
-        args: argResults.forwardedArgs,
+        args: buildArgs,
         base64PublicKey: base64PublicKey,
       );
     }
@@ -150,12 +163,12 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
   Future<void> uploadReleaseArtifacts({
     required String appId,
     required Release release,
-  }) {
+  }) async {
     final aabFile = shorebirdAndroidArtifacts.findAab(
       project: projectRoot,
       flavor: flavor,
     );
-    return codePushClientWrapper.createAndroidReleaseArtifacts(
+    await codePushClientWrapper.createAndroidReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
       projectRoot: projectRoot.path,
@@ -164,6 +177,8 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
       architectures: architectures,
       flavor: flavor,
     );
+
+    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

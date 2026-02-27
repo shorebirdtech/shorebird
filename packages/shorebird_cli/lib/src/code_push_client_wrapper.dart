@@ -744,7 +744,6 @@ aar artifact already exists, continuing...''');
     required String runnerPath,
     required bool isCodesigned,
     required String? podfileLockHash,
-    required String? supplementPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final thinnedArchiveDirectory = await _thinXcarchive(
@@ -791,30 +790,6 @@ aar artifact already exists, continuing...''');
       );
     }
 
-    if (supplementPath != null) {
-      final zippedSupplement = await Directory(
-        supplementPath,
-      ).zipToTempFile(name: 'ios_supplement');
-      try {
-        await codePushClient.createReleaseArtifact(
-          appId: appId,
-          releaseId: releaseId,
-          artifactPath: zippedSupplement.path,
-          arch: 'ios_supplement',
-          platform: ReleasePlatform.ios,
-          hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
-          canSideload: false,
-          podfileLockHash: podfileLockHash,
-        );
-      } catch (error) {
-        _handleErrorAndExit(
-          error,
-          progress: createArtifactProgress,
-          message: 'Error uploading release supplements: $error',
-        );
-      }
-    }
-
     createArtifactProgress.complete();
   }
 
@@ -824,7 +799,6 @@ aar artifact already exists, continuing...''');
     required String appId,
     required int releaseId,
     required String appFrameworkPath,
-    required String? supplementPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final appFrameworkDirectory = Directory(appFrameworkPath);
@@ -850,31 +824,48 @@ aar artifact already exists, continuing...''');
       );
     }
 
-    if (supplementPath != null) {
-      final zippedSupplement = await Directory(
-        supplementPath,
-      ).zipToTempFile(name: 'ios_framework_supplement');
-      try {
-        await codePushClient.createReleaseArtifact(
-          appId: appId,
-          releaseId: releaseId,
-          artifactPath: zippedSupplement.path,
-          arch: 'ios_framework_supplement',
-          platform: ReleasePlatform.ios,
-          hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
-          canSideload: false,
-          podfileLockHash: null,
-        );
-      } catch (error) {
-        _handleErrorAndExit(
-          error,
-          progress: createArtifactProgress,
-          message: 'Error uploading release supplements: $error',
-        );
-      }
-    }
-
     createArtifactProgress.complete();
+  }
+
+  /// Zips and uploads a supplement directory as a release artifact.
+  Future<void> createSupplementReleaseArtifact({
+    required String appId,
+    required int releaseId,
+    required ReleasePlatform platform,
+    required String supplementDirectoryPath,
+    required String arch,
+  }) async {
+    final createSupplementProgress = logger.progress(
+      'Uploading supplement artifacts',
+    );
+    final zippedSupplement = await Directory(
+      supplementDirectoryPath,
+    ).zipToTempFile(name: arch);
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: zippedSupplement.path,
+        arch: arch,
+        platform: platform,
+        hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
+        // Supplements are auxiliary snapshot metadata used during patching and
+        // can't produce a working app on their own, so sideloading isn't
+        // applicable.
+        canSideload: false,
+        // Supplement artifacts contain only Dart snapshot metadata (e.g. class
+        // tables, dispatch tables) and have no dependency on native pods, so
+        // the podfile lock hash is not applicable here.
+        podfileLockHash: null,
+      );
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: createSupplementProgress,
+        message: 'Error uploading supplement artifacts: $error',
+      );
+    }
+    createSupplementProgress.complete();
   }
 
   /// Creates a patch for the given [appId], [releaseId], and [metadata].

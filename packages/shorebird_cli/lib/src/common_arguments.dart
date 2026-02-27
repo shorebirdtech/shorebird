@@ -137,6 +137,16 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
     description: 'The version of the release (e.g. "1.0.0").',
   );
 
+  /// The Flutter --obfuscate argument.
+  static const obfuscateArg = ArgumentDescriber(
+    name: 'obfuscate',
+    description:
+        'In a release build, this flag removes identifiers and replaces '
+        'them with randomized values for the purposes of source code '
+        'obfuscation. This flag must always be combined with '
+        '"--split-debug-info" command, to not break crash reports.',
+  );
+
   /// An argument that allows the user to specify a directory where program
   /// symbols are stored.
   static const splitDebugInfoArg = ArgumentDescriber(

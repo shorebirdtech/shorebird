@@ -41,6 +41,9 @@ class AarPatcher extends Patcher {
   String get primaryReleaseArtifactArch => 'aar';
 
   @override
+  String? get supplementaryReleaseArtifactArch => 'aar_supplement';
+
+  @override
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
@@ -75,9 +78,10 @@ class AarPatcher extends Patcher {
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
+    final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 
@@ -94,7 +98,7 @@ class AarPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
       appId: appId,

@@ -183,6 +183,15 @@ void main() {
       });
     });
 
+    group('supplementaryReleaseArtifactArch', () {
+      test('is "macos_supplement"', () {
+        expect(
+          patcher.supplementaryReleaseArtifactArch,
+          'macos_supplement',
+        );
+      });
+    });
+
     group('releaseType', () {
       test('is ReleaseType.macos', () {
         expect(patcher.releaseType, ReleaseType.macos);
@@ -865,6 +874,84 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           expect(copiedKernelFile.existsSync(), isFalse);
           await runWithOverrides(patcher.buildPatchArtifact);
           expect(copiedKernelFile.existsSync(), isTrue);
+        });
+
+        group('when extraBuildArgs has obfuscation flags', () {
+          late File obfuscationMapFile;
+
+          setUp(() {
+            obfuscationMapFile =
+                File(
+                    p.join(
+                      Directory.systemTemp.createTempSync().path,
+                      'obfuscation_map.json',
+                    ),
+                  )
+                  ..createSync(recursive: true)
+                  ..writeAsStringSync('{"key": "value"}');
+          });
+
+          test('includes obfuscation flags in build args', () async {
+            patcher.obfuscationMapPath = obfuscationMapFile.path;
+            patcher.extraBuildArgs = [
+              '--obfuscate',
+              '--extra-gen-snapshot-options='
+                  '--load-obfuscation-map=${obfuscationMapFile.path}',
+              '--split-debug-info=build/shorebird/symbols',
+            ];
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            final captured = verify(
+              () => artifactBuilder.buildMacos(
+                codesign: any(named: 'codesign'),
+                args: captureAny(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).captured;
+
+            final args = captured.last as List<String>;
+            expect(args, contains('--obfuscate'));
+            expect(
+              args.any((a) => a.startsWith('--split-debug-info=')),
+              isTrue,
+            );
+            expect(
+              args,
+              contains(
+                '--extra-gen-snapshot-options='
+                '--load-obfuscation-map=${obfuscationMapFile.path}',
+              ),
+            );
+          });
+        });
+
+        group('when extraBuildArgs is empty', () {
+          test('does not inject obfuscation flags', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            final captured = verify(
+              () => artifactBuilder.buildMacos(
+                codesign: any(named: 'codesign'),
+                args: captureAny(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).captured;
+
+            final args = captured.last as List<String>;
+            expect(args, isNot(contains('--obfuscate')));
+            expect(
+              args.any(
+                (a) => a.startsWith(
+                  '--extra-gen-snapshot-options=--load-obfuscation-map',
+                ),
+              ),
+              isFalse,
+            );
+          });
         });
       });
     });

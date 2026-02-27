@@ -51,6 +51,7 @@ class LinuxPatcher extends Patcher {
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     await artifactBuilder.buildLinuxApp(
       base64PublicKey: argResults.encodedPublicKey,
+      args: extraBuildArgs,
     );
     return artifactManager.linuxBundleDirectory.zipToTempFile();
   }
@@ -60,7 +61,7 @@ class LinuxPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     final createDiffProgress = logger.progress('Creating patch artifacts');
     final patchArtifactPath = p.join(
@@ -121,6 +122,9 @@ class LinuxPatcher extends Patcher {
 
   @override
   String get primaryReleaseArtifactArch => 'bundle';
+
+  @override
+  String? get supplementaryReleaseArtifactArch => 'linux_supplement';
 
   @override
   ReleaseType get releaseType => ReleaseType.linux;

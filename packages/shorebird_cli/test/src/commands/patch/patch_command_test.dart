@@ -200,6 +200,7 @@ void main() {
       when(
         () => argResults.wasParsed(CommonArguments.signCmd.name),
       ).thenReturn(false);
+      when(() => argResults.rest).thenReturn([]);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
@@ -209,6 +210,12 @@ void main() {
           message: any(named: 'message'),
         ),
       ).thenAnswer((_) async => File(''));
+      when(
+        () => artifactManager.extractZip(
+          zipFile: any(named: 'zipFile'),
+          outputDirectory: any(named: 'outputDirectory'),
+        ),
+      ).thenAnswer((_) async {});
 
       when(() => cache.updateAll()).thenAnswer((_) async => {});
 
@@ -291,7 +298,7 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           releaseArtifact: any(named: 'releaseArtifact'),
-          supplementArtifact: any(named: 'supplementArtifact'),
+          supplementDirectory: any(named: 'supplementDirectory'),
         ),
       ).thenAnswer((_) async => patchArtifactBundles);
       when(
@@ -541,7 +548,7 @@ void main() {
                 appId: appId,
                 releaseId: release.id,
                 releaseArtifact: any(named: 'releaseArtifact'),
-                supplementArtifact: any(named: 'supplementArtifact'),
+                supplementDirectory: any(named: 'supplementDirectory'),
               ),
             ).called(1);
           });
@@ -565,12 +572,36 @@ void main() {
                   appId: appId,
                   releaseId: release.id,
                   releaseArtifact: any(named: 'releaseArtifact'),
-                  supplementArtifact: any(named: 'supplementArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
                 ),
               ).called(1);
             });
           });
         });
+
+        group(
+          'when --obfuscate is passed but release has no obfuscation map',
+          () {
+            setUp(() {
+              when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+              when(() => argResults['obfuscate']).thenReturn(true);
+            });
+
+            test('logs error and exits', () async {
+              await expectLater(
+                () => runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithCode(ExitCode.software),
+              );
+              verify(
+                () => logger.err(
+                  '--obfuscate was passed, but the release was not built with '
+                  'obfuscation. A patch cannot change the obfuscation mode of '
+                  'a release.',
+                ),
+              ).called(1);
+            });
+          },
+        );
       });
     });
 

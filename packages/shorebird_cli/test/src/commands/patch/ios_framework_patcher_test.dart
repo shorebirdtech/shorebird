@@ -449,6 +449,48 @@ void main() {
           });
         });
 
+        group('when obfuscationMapPath is set', () {
+          late File obfuscationMapFile;
+
+          setUp(() {
+            obfuscationMapFile =
+                File(
+                    p.join(
+                      Directory.systemTemp.createTempSync().path,
+                      'obfuscation_map.json',
+                    ),
+                  )
+                  ..createSync(recursive: true)
+                  ..writeAsStringSync('{"key": "value"}');
+          });
+
+          test(
+            'passes obfuscationGenSnapshotArgs to buildElfAotSnapshot',
+            () async {
+              patcher.obfuscationMapPath = obfuscationMapFile.path;
+              await runWithOverrides(patcher.buildPatchArtifact);
+
+              final captured = verify(
+                () => artifactBuilder.buildElfAotSnapshot(
+                  appDillPath: any(named: 'appDillPath'),
+                  outFilePath: any(named: 'outFilePath'),
+                  genSnapshotArtifact: any(named: 'genSnapshotArtifact'),
+                  additionalArgs: captureAny(named: 'additionalArgs'),
+                ),
+              ).captured;
+
+              final args = captured.last as List<String>;
+              expect(args, contains('--obfuscate'));
+              expect(
+                args.any(
+                  (a) => a.startsWith('--load-obfuscation-map='),
+                ),
+                isTrue,
+              );
+            },
+          );
+        });
+
         group('when platform was specified via arg results rest', () {
           setUp(() {
             when(() => argResults.rest).thenReturn(['ios', '--verbose']);
@@ -539,7 +581,7 @@ void main() {
         canSideload: true,
       );
       late File releaseArtifactFile;
-      late File supplementArtifactFile;
+      late Directory supplementDirectory;
 
       void setUpProjectRootArtifacts() {
         File(
@@ -582,12 +624,7 @@ void main() {
             'release.xcframework',
           ),
         )..createSync(recursive: true);
-        supplementArtifactFile = File(
-          p.join(
-            Directory.systemTemp.createTempSync().path,
-            'ios_framework_supplement.zip',
-          ),
-        )..createSync(recursive: true);
+        supplementDirectory = Directory.systemTemp.createTempSync();
 
         when(
           () => codePushClientWrapper.getReleaseArtifact(
@@ -784,6 +821,57 @@ void main() {
               ).called(1);
             });
 
+            group('when obfuscationMapPath is set', () {
+              late File obfuscationMapFile;
+
+              setUp(() {
+                obfuscationMapFile =
+                    File(
+                        p.join(
+                          Directory.systemTemp.createTempSync().path,
+                          'obfuscation_map.json',
+                        ),
+                      )
+                      ..createSync(recursive: true)
+                      ..writeAsStringSync('{"key": "value"}');
+              });
+
+              test(
+                'passes obfuscationGenSnapshotArgs to runLinker',
+                () async {
+                  patcher.obfuscationMapPath = obfuscationMapFile.path;
+                  await runWithOverrides(
+                    () => patcher.createPatchArtifacts(
+                      appId: appId,
+                      releaseId: releaseId,
+                      releaseArtifact: releaseArtifactFile,
+                    ),
+                  );
+
+                  final captured = verify(
+                    () => apple.runLinker(
+                      kernelFile: any(named: 'kernelFile'),
+                      aotOutputFile: any(named: 'aotOutputFile'),
+                      releaseArtifact: any(named: 'releaseArtifact'),
+                      vmCodeFile: any(named: 'vmCodeFile'),
+                      splitDebugInfoArgs: captureAny(
+                        named: 'splitDebugInfoArgs',
+                      ),
+                    ),
+                  ).captured;
+
+                  final args = captured.last as List<String>;
+                  expect(args, contains('--obfuscate'));
+                  expect(
+                    args.any(
+                      (a) => a.startsWith('--load-obfuscation-map='),
+                    ),
+                    isTrue,
+                  );
+                },
+              );
+            });
+
             test('returns linked patch artifact in patch bundle', () async {
               final patchBundle = await runWithOverrides(
                 () => patcher.createPatchArtifacts(
@@ -818,21 +906,12 @@ void main() {
                     p.join(outDir.path, 'ios-arm64', 'App.framework', 'App'),
                   ).createSync(recursive: true);
                 });
-                when(
-                  () => artifactManager.extractZip(
-                    zipFile: supplementArtifactFile,
-                    outputDirectory: any(named: 'outputDirectory'),
-                  ),
-                ).thenAnswer((invocation) async {
-                  final outDir =
-                      invocation.namedArguments[#outputDirectory] as Directory;
-                  File(
-                    p.join(outDir.path, 'App.ct.link'),
-                  ).createSync(recursive: true);
-                  File(
-                    p.join(outDir.path, 'App.class_table.json'),
-                  ).createSync(recursive: true);
-                });
+                File(
+                  p.join(supplementDirectory.path, 'App.ct.link'),
+                ).createSync(recursive: true);
+                File(
+                  p.join(supplementDirectory.path, 'App.class_table.json'),
+                ).createSync(recursive: true);
               });
 
               test('returns linked patch artifact in patch bundle', () async {
@@ -841,7 +920,7 @@ void main() {
                     appId: appId,
                     releaseId: releaseId,
                     releaseArtifact: releaseArtifactFile,
-                    supplementArtifact: supplementArtifactFile,
+                    supplementDirectory: supplementDirectory,
                   ),
                 );
 
@@ -864,7 +943,7 @@ void main() {
                   appId: appId,
                   releaseId: releaseId,
                   releaseArtifact: releaseArtifactFile,
-                  supplementArtifact: supplementArtifactFile,
+                  supplementDirectory: supplementDirectory,
                 ),
               );
               expect(patcher.linkPercentage, isNotNull);

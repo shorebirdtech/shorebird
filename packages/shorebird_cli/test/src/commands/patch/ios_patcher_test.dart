@@ -758,6 +758,84 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           await runWithOverrides(patcher.buildPatchArtifact);
           expect(copiedKernelFile.existsSync(), isTrue);
         });
+
+        group('when extraBuildArgs has obfuscation flags', () {
+          late File obfuscationMapFile;
+
+          setUp(() {
+            obfuscationMapFile =
+                File(
+                    p.join(
+                      Directory.systemTemp.createTempSync().path,
+                      'obfuscation_map.json',
+                    ),
+                  )
+                  ..createSync(recursive: true)
+                  ..writeAsStringSync('{"key": "value"}');
+          });
+
+          test('includes obfuscation flags in build args', () async {
+            patcher.obfuscationMapPath = obfuscationMapFile.path;
+            patcher.extraBuildArgs = [
+              '--obfuscate',
+              '--extra-gen-snapshot-options='
+                  '--load-obfuscation-map=${obfuscationMapFile.path}',
+              '--split-debug-info=build/shorebird/symbols',
+            ];
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            final captured = verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: captureAny(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).captured;
+
+            final args = captured.last as List<String>;
+            expect(args, contains('--obfuscate'));
+            expect(
+              args.any((a) => a.startsWith('--split-debug-info=')),
+              isTrue,
+            );
+            expect(
+              args,
+              contains(
+                '--extra-gen-snapshot-options='
+                '--load-obfuscation-map=${obfuscationMapFile.path}',
+              ),
+            );
+          });
+        });
+
+        group('when extraBuildArgs is empty', () {
+          test('does not inject obfuscation flags', () async {
+            await runWithOverrides(patcher.buildPatchArtifact);
+
+            final captured = verify(
+              () => artifactBuilder.buildIpa(
+                codesign: any(named: 'codesign'),
+                args: captureAny(named: 'args'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).captured;
+
+            final args = captured.last as List<String>;
+            expect(args, isNot(contains('--obfuscate')));
+            expect(
+              args.any(
+                (a) => a.startsWith(
+                  '--extra-gen-snapshot-options=--load-obfuscation-map',
+                ),
+              ),
+              isFalse,
+            );
+          });
+        });
       });
     });
 
@@ -783,7 +861,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         canSideload: true,
       );
       late File releaseArtifactFile;
-      late File supplementArtifactFile;
+      late Directory supplementDirectory;
 
       void setUpProjectRootArtifacts() {
         File(
@@ -839,12 +917,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             'release.xcarchive',
           ),
         )..createSync(recursive: true);
-        supplementArtifactFile = File(
-          p.join(
-            Directory.systemTemp.createTempSync().path,
-            'ios_supplement.zip',
-          ),
-        )..createSync(recursive: true);
+        supplementDirectory = Directory.systemTemp.createTempSync();
 
         when(
           () => codePushClientWrapper.getReleaseArtifact(
@@ -1115,21 +1188,12 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
 
             group('when class table link info & debug info are present', () {
               setUp(() {
-                when(
-                  () => artifactManager.extractZip(
-                    zipFile: supplementArtifactFile,
-                    outputDirectory: any(named: 'outputDirectory'),
-                  ),
-                ).thenAnswer((invocation) async {
-                  final outDir =
-                      invocation.namedArguments[#outputDirectory] as Directory;
-                  File(
-                    p.join(outDir.path, 'App.ct.link'),
-                  ).createSync(recursive: true);
-                  File(
-                    p.join(outDir.path, 'App.class_table.json'),
-                  ).createSync(recursive: true);
-                });
+                File(
+                  p.join(supplementDirectory.path, 'App.ct.link'),
+                ).createSync(recursive: true);
+                File(
+                  p.join(supplementDirectory.path, 'App.class_table.json'),
+                ).createSync(recursive: true);
               });
 
               test('returns linked patch artifact in patch bundle', () async {
@@ -1138,7 +1202,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                     appId: appId,
                     releaseId: releaseId,
                     releaseArtifact: releaseArtifactFile,
-                    supplementArtifact: supplementArtifactFile,
+                    supplementDirectory: supplementDirectory,
                   ),
                 );
 
@@ -1160,7 +1224,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                     appId: appId,
                     releaseId: releaseId,
                     releaseArtifact: releaseArtifactFile,
-                    supplementArtifact: supplementArtifactFile,
+                    supplementDirectory: supplementDirectory,
                   ),
                 );
                 expect(patcher.linkPercentage, isNotNull);

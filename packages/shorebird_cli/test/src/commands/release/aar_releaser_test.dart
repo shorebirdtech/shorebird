@@ -5,7 +5,9 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/aar_releaser.dart';
@@ -18,6 +20,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -33,6 +36,7 @@ void main() {
 
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
+    late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
     late CodeSigner codeSigner;
     late Directory projectRoot;
@@ -41,6 +45,7 @@ void main() {
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late AarReleaser aarReleaser;
@@ -50,6 +55,7 @@ void main() {
         body,
         values: {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
+          artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           codeSignerRef.overrideWith(() => codeSigner),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
@@ -57,6 +63,7 @@ void main() {
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
           shorebirdAndroidArtifactsRef.overrideWith(
             () => shorebirdAndroidArtifacts,
@@ -74,6 +81,7 @@ void main() {
     setUp(() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
+      artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
       operatingSystemInterface = MockOperatingSystemInterface();
@@ -82,6 +90,7 @@ void main() {
       logger = MockShorebirdLogger();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
@@ -230,6 +239,58 @@ void main() {
           expect(
             () => runWithOverrides(aarReleaser.assertArgsAreValid),
             returnsNormally,
+          );
+        });
+      });
+
+      group('when --obfuscate is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        });
+
+        group('when Flutter version supports obfuscation', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 2));
+          });
+
+          test('returns normally', () async {
+            await expectLater(
+              runWithOverrides(aarReleaser.assertArgsAreValid),
+              completes,
+            );
+          });
+        });
+
+        group('when Flutter version does not support obfuscation', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 27, 4));
+          });
+
+          test('logs error and exits', () async {
+            await expectLater(
+              () => runWithOverrides(aarReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.unavailable),
+            );
+          });
+        });
+      });
+
+      group('when --obfuscate is not passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+        });
+
+        test('returns normally', () async {
+          await expectLater(
+            runWithOverrides(aarReleaser.assertArgsAreValid),
+            completes,
           );
         });
       });
@@ -410,6 +471,93 @@ void main() {
               ).called(1);
             },
           );
+        });
+
+        group('when --obfuscate is passed', () {
+          setUp(() {
+            when(() => argResults['obfuscate']).thenReturn(true);
+            when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+            // Simulate the build creating the obfuscation map.
+            when(
+              () => artifactBuilder.buildAar(
+                buildNumber: any(named: 'buildNumber'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: any(named: 'args'),
+              ),
+            ).thenAnswer((_) async {
+              final mapPath = p.join(
+                projectRoot.path,
+                'build',
+                'shorebird',
+                'obfuscation_map.json',
+              );
+              File(mapPath)
+                ..createSync(recursive: true)
+                ..writeAsStringSync('{}');
+            });
+          });
+
+          test('injects --save-obfuscation-map into build args', () async {
+            await runWithOverrides(aarReleaser.buildReleaseArtifacts);
+
+            final captured = verify(
+              () => artifactBuilder.buildAar(
+                buildNumber: any(named: 'buildNumber'),
+                targetPlatforms: any(named: 'targetPlatforms'),
+                args: captureAny(named: 'args'),
+              ),
+            ).captured;
+
+            final args = captured.last as List<String>;
+            expect(
+              args.any(
+                (a) => a.startsWith(
+                  '--extra-gen-snapshot-options=--save-obfuscation-map=',
+                ),
+              ),
+              isTrue,
+            );
+          });
+
+          test('logs detail about map location', () async {
+            await runWithOverrides(aarReleaser.buildReleaseArtifacts);
+
+            verify(
+              () => logger.detail(
+                any(that: startsWith('Obfuscation map saved to')),
+              ),
+            ).called(1);
+          });
+
+          group('when obfuscation map is not generated', () {
+            setUp(() {
+              // Override to NOT create the map file.
+              when(
+                () => artifactBuilder.buildAar(
+                  buildNumber: any(named: 'buildNumber'),
+                  targetPlatforms: any(named: 'targetPlatforms'),
+                  args: any(named: 'args'),
+                ),
+              ).thenAnswer((_) async {});
+            });
+
+            test('logs error and exits', () async {
+              await expectLater(
+                () => runWithOverrides(aarReleaser.buildReleaseArtifacts),
+                exitsWithCode(ExitCode.software),
+              );
+
+              verify(
+                () => logger.err(
+                  any(
+                    that: contains(
+                      'Obfuscation was enabled but the obfuscation map was not',
+                    ),
+                  ),
+                ),
+              ).called(1);
+            });
+          });
         });
       });
     });

@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -152,6 +153,53 @@ The "--release-version" flag is only supported for aar and ios-framework release
 To change the version of this release, change your app's version in your pubspec.yaml.''',
             ),
           ).called(1);
+        });
+      });
+
+      group('when --obfuscate is passed', () {
+        setUp(() {
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        });
+
+        group('when Flutter version supports obfuscation', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 2));
+          });
+
+          test('returns normally', () async {
+            await expectLater(
+              runWithOverrides(releaser.assertArgsAreValid),
+              completes,
+            );
+          });
+        });
+
+        group('when Flutter version does not support obfuscation', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 27, 4));
+          });
+
+          test('logs error and exits', () async {
+            await expectLater(
+              () => runWithOverrides(releaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.unavailable),
+            );
+          });
+        });
+      });
+
+      group('when --obfuscate is not passed', () {
+        test('returns normally', () async {
+          await expectLater(
+            runWithOverrides(releaser.assertArgsAreValid),
+            completes,
+          );
         });
       });
     });
@@ -354,6 +402,93 @@ To change the version of this release, change your app's version in your pubspec
               args: any(named: 'args'),
             ),
           ).called(1);
+        });
+      });
+
+      group('when --obfuscate is passed', () {
+        setUp(() {
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          // Simulate the build creating the obfuscation map.
+          when(
+            () => artifactBuilder.buildLinuxApp(
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).thenAnswer((_) async {
+            final mapPath = p.join(
+              projectRoot.path,
+              'build',
+              'shorebird',
+              'obfuscation_map.json',
+            );
+            File(mapPath)
+              ..createSync(recursive: true)
+              ..writeAsStringSync('{}');
+          });
+        });
+
+        test('injects --save-obfuscation-map into build args', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          final captured = verify(
+            () => artifactBuilder.buildLinuxApp(
+              target: any(named: 'target'),
+              args: captureAny(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).captured;
+
+          final args = captured.last as List<String>;
+          expect(
+            args.any(
+              (a) => a.startsWith(
+                '--extra-gen-snapshot-options=--save-obfuscation-map=',
+              ),
+            ),
+            isTrue,
+          );
+        });
+
+        test('logs detail about map location', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          verify(
+            () => logger.detail(
+              any(that: startsWith('Obfuscation map saved to')),
+            ),
+          ).called(1);
+        });
+
+        group('when obfuscation map is not generated', () {
+          setUp(() {
+            // Override to NOT create the map file.
+            when(
+              () => artifactBuilder.buildLinuxApp(
+                target: any(named: 'target'),
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).thenAnswer((_) async {});
+          });
+
+          test('logs error and exits', () async {
+            await expectLater(
+              () => runWithOverrides(releaser.buildReleaseArtifacts),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err(
+                any(
+                  that: contains(
+                    'Obfuscation was enabled but the obfuscation map was not',
+                  ),
+                ),
+              ),
+            ).called(1);
+          });
         });
       });
     });

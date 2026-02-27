@@ -153,6 +153,11 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       ..addOption(
         CommonArguments.splitDebugInfoArg.name,
         help: CommonArguments.splitDebugInfoArg.description,
+      )
+      ..addFlag(
+        CommonArguments.obfuscateArg.name,
+        help: CommonArguments.obfuscateArg.description,
+        negatable: false,
       );
   }
 

@@ -45,6 +45,12 @@ class AarReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
+  String get supplementPlatformSubdir => 'android';
+
+  @override
+  String get supplementArtifactArch => 'aar_supplement';
+
+  @override
   String get artifactDisplayName => 'Android archive';
 
   @override
@@ -70,17 +76,23 @@ class AarReleaser extends Releaser {
       logger.err('Missing required argument: --release-version');
       throw ProcessExit(ExitCode.usage.code);
     }
+
+    await assertObfuscationIsSupported();
   }
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     final base64PublicKey = await getEncodedPublicKey();
+    final buildArgs = [...argResults.forwardedArgs];
+    addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
       targetPlatforms: architectures,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
+    verifyObfuscationMap();
 
     // Copy release AAR to a new directory to avoid overwriting with
     // subsequent patch builds.
@@ -126,6 +138,8 @@ class AarReleaser extends Releaser {
       extractedAarDir: extractedAarDir.path,
       architectures: architectures,
     );
+
+    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override
