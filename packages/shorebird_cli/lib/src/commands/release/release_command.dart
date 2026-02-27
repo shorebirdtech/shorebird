@@ -124,16 +124,10 @@ Defaults to "latest" which builds using the latest stable Flutter version.''',
         hide: true,
         negatable: false,
       )
-      ..addFlag(
-        CommonArguments.noConfirmArg.name,
-        help: CommonArguments.noConfirmArg.description,
-        negatable: false,
-      )
       // Added for https://github.com/shorebirdtech/shorebird/issues/3223.
       // Can be removed fall 2026 or later.
       ..addFlag(
         'confirm',
-        negatable: false,
         hide: true,
       )
       ..addOption(
