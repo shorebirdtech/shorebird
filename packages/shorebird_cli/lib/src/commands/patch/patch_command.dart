@@ -103,16 +103,10 @@ To target the latest release (e.g. the release that was most recently updated) u
 [DEPRECATED] Whether to publish the patch to the staging environment. Use --track=staging instead.''',
         hide: true,
       )
-      ..addFlag(
-        CommonArguments.noConfirmArg.name,
-        help: CommonArguments.noConfirmArg.description,
-        negatable: false,
-      )
       // Added for https://github.com/shorebirdtech/shorebird/issues/3223.
       // Can be removed fall 2026 or later.
       ..addFlag(
         'confirm',
-        negatable: false,
         hide: true,
       )
       ..addOption(

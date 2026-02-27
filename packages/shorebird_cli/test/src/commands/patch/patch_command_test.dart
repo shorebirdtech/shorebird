@@ -1386,7 +1386,7 @@ void main() {
 
     group('when --no-confirm is specified', () {
       setUp(() {
-        when(() => argResults['no-confirm']).thenReturn(true);
+        when(() => argResults['confirm']).thenReturn(false);
       });
 
       test('does not prompt for confirmation', () async {
