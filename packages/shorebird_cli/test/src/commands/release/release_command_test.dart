@@ -405,7 +405,7 @@ void main() {
     // but we do accept a --no-confirm argument for backwards compatibility.
     group('when --no-confirm is specified', () {
       setUp(() {
-        when(() => argResults['no-confirm']).thenReturn(true);
+        when(() => argResults['confirm']).thenReturn(false);
       });
 
       test('does not prompt for confirmation', () async {
