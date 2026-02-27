@@ -108,6 +108,11 @@ To target the latest release (e.g. the release that was most recently updated) u
         help: CommonArguments.noConfirmArg.description,
         negatable: false,
       )
+      ..addFlag(
+        'confirm',
+        negatable: false,
+        hide: true,
+      )
       ..addOption(
         CommonArguments.exportOptionsPlistArg.name,
         help: CommonArguments.exportOptionsPlistArg.description,
@@ -187,6 +192,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   /// The target script, if provided.
   late String? target = results.findOption('target', argParser: argParser);
+
+  /// Whether to prompt for confirmation before creating the patch.
+  bool get confirm => results['confirm'] == true;
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
   bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
@@ -608,6 +616,13 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
 ${summary.join('\n')}
 ''');
+
+    if (confirm && shorebirdEnv.canAcceptUserInput) {
+      if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
+        logger.info('Aborting.');
+        throw ProcessExit(ExitCode.success.code);
+      }
+    }
   }
 
   /// Downloads the given [releaseArtifact].

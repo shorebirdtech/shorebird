@@ -129,6 +129,11 @@ Defaults to "latest" which builds using the latest stable Flutter version.''',
         help: CommonArguments.noConfirmArg.description,
         negatable: false,
       )
+      ..addFlag(
+        'confirm',
+        negatable: false,
+        hide: true,
+      )
       ..addOption(
         'release-version',
         help: '''
@@ -224,6 +229,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         );
     }
   }
+
+  /// Whether to prompt for confirmation before creating the release.
+  bool get confirm => results['confirm'] == true;
 
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
@@ -524,6 +532,13 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 ${summary.join('\n')}
 ''');
+
+    if (confirm && shorebirdEnv.canAcceptUserInput) {
+      if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
+        logger.info('Aborting.');
+        throw ProcessExit(ExitCode.success.code);
+      }
+    }
   }
 
   /// Fetches the release with version [version] from the server or creates a
