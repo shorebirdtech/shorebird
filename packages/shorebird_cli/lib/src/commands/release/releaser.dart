@@ -163,6 +163,12 @@ abstract class Releaser {
 
   /// Uploads the supplement artifact (e.g. obfuscation map) if one was
   /// assembled. Call this at the end of [uploadReleaseArtifacts].
+  ///
+  // TODO(bdero): This is a separate network call from the primary artifact
+  // upload, so an interruption between the two leaves the release without its
+  // supplement. Now that the supplement drives patching decisions (e.g.
+  // obfuscation), we should make this atomic or recoverable.
+  // https://github.com/shorebirdtech/shorebird/issues/3630
   Future<void> uploadSupplementArtifact({
     required String appId,
     required int releaseId,
