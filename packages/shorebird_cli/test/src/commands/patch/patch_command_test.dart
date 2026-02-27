@@ -815,6 +815,94 @@ void main() {
           });
         });
       });
+
+      group('when --confirm is passed', () {
+        setUp(() {
+          when(() => argResults['confirm']).thenReturn(true);
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+        });
+
+        group('when user confirms', () {
+          setUp(() {
+            when(
+              () => logger.confirm(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+              ),
+            ).thenReturn(true);
+          });
+
+          test('continues', () async {
+            await expectLater(
+              runWithOverrides(
+                () => command.logPatchSummary(
+                  app: appMetadata,
+                  releaseVersion: releaseVersion,
+                  patcher: patcher,
+                  patchArtifactBundles: patchArtifactBundles,
+                ),
+              ),
+              completes,
+            );
+            verify(
+              () => logger.confirm(
+                'Would you like to continue?',
+                defaultValue: true,
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when user declines', () {
+          setUp(() {
+            when(
+              () => logger.confirm(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+              ),
+            ).thenReturn(false);
+          });
+
+          test('exits with success and prints Aborting.', () async {
+            await expectLater(
+              runWithOverrides(
+                () => command.logPatchSummary(
+                  app: appMetadata,
+                  releaseVersion: releaseVersion,
+                  patcher: patcher,
+                  patchArtifactBundles: patchArtifactBundles,
+                ),
+              ),
+              exitsWithCode(ExitCode.success),
+            );
+            verify(() => logger.info('Aborting.')).called(1);
+          });
+        });
+      });
+
+      group('when --confirm is not passed', () {
+        setUp(() {
+          when(() => argResults['confirm']).thenReturn(false);
+        });
+
+        test('does not prompt for confirmation', () async {
+          await expectLater(
+            runWithOverrides(
+              () => command.logPatchSummary(
+                app: appMetadata,
+                releaseVersion: releaseVersion,
+                patcher: patcher,
+                patchArtifactBundles: patchArtifactBundles,
+              ),
+            ),
+            completes,
+          );
+          verifyNever(
+            () =>
+                logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+          );
+        });
+      });
     });
 
     group('when flutter install fails', () {
