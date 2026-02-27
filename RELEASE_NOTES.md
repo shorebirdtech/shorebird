@@ -4,6 +4,14 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.84 (February 27, 2026)
+
+- ✨ Add `--obfuscate` support to the `release` command (starting with Flutter 3.41.2)
+- ✨ Add `--confirm` flag to `release` and `patch` commands
+- 🔐 Support RSA JWK key stores for Shorebird auth
+- 🐛 Fix: use forward slashes in AAB ZIP entries on Windows
+- 🍎 Fix: add dSYM artifact proxy patterns for new filenames
+
 ## 1.6.83 (February 20, 2026)
 
 - 🐦 Support for Flutter 3.41.2
