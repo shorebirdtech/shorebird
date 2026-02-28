@@ -15,4 +15,4 @@ workspace:
   - packages/stripe_api
 
 dev_dependencies:
-  very_good_analysis: ^10.0.0
+  very_good_analysis: ^10.2.0
