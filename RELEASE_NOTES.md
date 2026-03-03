@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.85 (March 2, 2026)
+
+- 🐦 Support for Flutter 3.41.3
+
 ## 1.6.84 (February 27, 2026)
 
 - ✨ Add `--obfuscate` support to the `release` command (starting with Flutter 3.41.2)
