@@ -231,11 +231,9 @@ class ShorebirdEnv {
   /// The base URL for the Shorebird auth service. Can be overridden with the
   /// `AUTH_SERVICE_URL` environment variable. Defaults to
   /// `https://auth.shorebird.dev`.
-  Uri get authServiceUri =>
-      Uri.parse(
-        platform.environment['AUTH_SERVICE_URL'] ??
-            'https://auth.shorebird.dev',
-      );
+  Uri get authServiceUri => Uri.parse(
+    platform.environment['AUTH_SERVICE_URL'] ?? 'https://auth.shorebird.dev',
+  );
 
   /// The expected JWT issuer for Shorebird-issued tokens. Can be overridden
   /// with the `SHOREBIRD_JWT_ISSUER` environment variable. Defaults to

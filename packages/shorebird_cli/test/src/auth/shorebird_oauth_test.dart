@@ -144,8 +144,7 @@ void main() {
     });
 
     test('handles authBaseUrl with trailing slash', () async {
-      final authBaseUrlWithSlash =
-          Uri.parse('https://auth.shorebird.dev/v1/');
+      final authBaseUrlWithSlash = Uri.parse('https://auth.shorebird.dev/v1/');
       final testJwt = _buildTestJwt(issuer: 'https://auth.shorebird.dev/v1/');
 
       when(
@@ -377,8 +376,7 @@ void main() {
     });
 
     test('throws when JWT issuer does not match expected issuer', () async {
-      final wrongIssuerJwt =
-          _buildTestJwt(issuer: 'https://evil.example.com');
+      final wrongIssuerJwt = _buildTestJwt(issuer: 'https://evil.example.com');
       when(
         () => httpClient.post(
           any(),
@@ -714,8 +712,7 @@ void main() {
     });
 
     test('throws when JWT issuer does not match expected issuer', () async {
-      final wrongIssuerJwt =
-          _buildTestJwt(issuer: 'https://evil.example.com');
+      final wrongIssuerJwt = _buildTestJwt(issuer: 'https://evil.example.com');
       when(
         () => httpClient.post(
           any(),

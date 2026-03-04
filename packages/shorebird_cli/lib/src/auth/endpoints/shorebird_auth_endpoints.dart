@@ -13,6 +13,5 @@ class ShorebirdAuthEndpoints extends AuthEndpoints {
       shorebirdEnv.authServiceUri.replace(path: '/login');
 
   @override
-  Uri get tokenEndpoint =>
-      shorebirdEnv.authServiceUri.replace(path: '/token');
+  Uri get tokenEndpoint => shorebirdEnv.authServiceUri.replace(path: '/token');
 }

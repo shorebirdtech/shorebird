@@ -29,8 +29,9 @@ class LoginCiCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    final provider =
-        api.AuthProvider.values.byName(results['provider'] as String);
+    final provider = api.AuthProvider.values.byName(
+      results['provider'] as String,
+    );
 
     final CiToken ciToken;
     try {

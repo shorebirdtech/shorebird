@@ -128,7 +128,8 @@ Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
   final response = await httpClient.post(
     tokenUrl,
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: 'grant_type=refresh_token'
+    body:
+        'grant_type=refresh_token'
         '&refresh_token=${Uri.encodeComponent(refreshToken)}',
   );
 
@@ -155,7 +156,8 @@ Future<oauth2.AccessCredentials> _exchangeAuthCode({
   final response = await httpClient.post(
     tokenUrl,
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: 'grant_type=authorization_code'
+    body:
+        'grant_type=authorization_code'
         '&code=${Uri.encodeComponent(code)}',
   );
 
