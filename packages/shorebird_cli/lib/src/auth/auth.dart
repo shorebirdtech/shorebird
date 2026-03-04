@@ -13,11 +13,14 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/ci_token.dart';
 import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
+import 'package:shorebird_cli/src/auth/shorebird_oauth.dart'
+    as shorebird_oauth;
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -59,6 +62,15 @@ typedef RefreshCredentials =
       oauth2.AuthEndpoints authEndpoints,
     });
 
+/// Callback for obtaining Shorebird access credentials via loopback login.
+typedef ObtainShorebirdCredentials =
+    Future<oauth2.AccessCredentials> Function({
+      required http.Client httpClient,
+      required Uri authBaseUrl,
+      required void Function(String) userPrompt,
+      Duration timeout,
+    });
+
 /// Callback when credentials are refreshed.
 typedef OnRefreshCredentials =
     void Function(oauth2.AccessCredentials credentials);
@@ -70,12 +82,14 @@ class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient.credentials({
     required http.Client httpClient,
     required oauth2.AccessCredentials credentials,
+    Uri? authServiceUri,
     OnRefreshCredentials? onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : this._(
          httpClient: httpClient,
          onRefreshCredentials: onRefreshCredentials,
          credentials: credentials,
+         authServiceUri: authServiceUri,
          refreshCredentials: refreshCredentials,
        );
 
@@ -84,11 +98,13 @@ class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient.token({
     required http.Client httpClient,
     required CiToken token,
+    Uri? authServiceUri,
     OnRefreshCredentials? onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : this._(
          httpClient: httpClient,
          token: token,
+         authServiceUri: authServiceUri,
          onRefreshCredentials: onRefreshCredentials,
          refreshCredentials: refreshCredentials,
        );
@@ -98,16 +114,19 @@ class AuthenticatedClient extends http.BaseClient {
     OnRefreshCredentials? onRefreshCredentials,
     oauth2.AccessCredentials? credentials,
     CiToken? token,
+    Uri? authServiceUri,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : _baseClient = httpClient,
        _credentials = credentials,
        _onRefreshCredentials = onRefreshCredentials,
        _refreshCredentials = refreshCredentials,
+       _authServiceUri = authServiceUri,
        _token = token;
 
   final http.Client _baseClient;
   final OnRefreshCredentials? _onRefreshCredentials;
   final RefreshCredentials _refreshCredentials;
+  final Uri? _authServiceUri;
   oauth2.AccessCredentials? _credentials;
   final CiToken? _token;
 
@@ -117,29 +136,23 @@ class AuthenticatedClient extends http.BaseClient {
 
     if (credentials == null) {
       final token = _token!;
-      credentials = _credentials = await _tryRefreshCredentials(
-        token.authProvider.clientId,
+      credentials = _credentials = await _refreshForProvider(
+        token.authProvider,
         oauth2.AccessCredentials(
           // This isn't relevant for a refresh operation.
           AccessToken('Bearer', '', DateTime.timestamp()),
           token.refreshToken,
           token.authProvider.scopes,
         ),
-        _baseClient,
-        authEndpoints: token.authProvider.authEndpoints,
       );
       _onRefreshCredentials?.call(credentials);
     }
 
     if (credentials.accessToken.hasExpired && credentials.idToken != null) {
       final jwt = Jwt.parse(credentials.idToken!);
-      final authProvider = jwt.authProvider;
-
-      credentials = _credentials = await _tryRefreshCredentials(
-        authProvider.clientId,
+      credentials = _credentials = await _refreshForProvider(
+        jwt.authProvider,
         credentials,
-        _baseClient,
-        authEndpoints: authProvider.authEndpoints,
       );
       _onRefreshCredentials?.call(credentials);
     }
@@ -149,19 +162,32 @@ class AuthenticatedClient extends http.BaseClient {
     return _baseClient.send(request);
   }
 
-  Future<oauth2.AccessCredentials> _tryRefreshCredentials(
-    oauth2.ClientId clientId,
+  Future<oauth2.AccessCredentials> _refreshForProvider(
+    AuthProvider authProvider,
     oauth2.AccessCredentials credentials,
-    http.Client client, {
-    required oauth2.AuthEndpoints authEndpoints,
-  }) async {
+  ) async {
     try {
-      return await _refreshCredentials(
-        clientId,
-        credentials,
-        client,
-        authEndpoints: authEndpoints,
-      );
+      if (authProvider == AuthProvider.shorebird) {
+        final authServiceUri = _authServiceUri;
+        if (authServiceUri == null) {
+          throw StateError(
+            'authServiceUri must be provided to refresh Shorebird credentials. '
+            'Ensure AuthenticatedClient is constructed with authServiceUri.',
+          );
+        }
+        return await shorebird_oauth.refreshShorebirdCredentials(
+          credentials,
+          _baseClient,
+          authBaseUrl: authServiceUri,
+        );
+      } else {
+        return await _refreshCredentials(
+          authProvider.clientId,
+          credentials,
+          _baseClient,
+          authEndpoints: authProvider.authEndpoints,
+        );
+      }
     } on Exception catch (e, s) {
       logger
         ..err('Failed to refresh credentials.')
@@ -182,14 +208,20 @@ class Auth {
   Auth({
     http.Client? httpClient,
     String? credentialsDir,
+    Uri? authServiceUri,
     ObtainAccessCredentials? obtainAccessCredentials,
+    ObtainShorebirdCredentials? obtainShorebirdCredentials,
     CodePushClientBuilder? buildCodePushClient,
   }) : _httpClient = httpClient ?? _defaultHttpClient,
        _credentialsDir =
            credentialsDir ?? applicationConfigHome(executableName),
+       _authServiceUri = authServiceUri ?? shorebirdEnv.authServiceUri,
        _obtainAccessCredentials =
            obtainAccessCredentials ??
            oauth2.obtainAccessCredentialsViaUserConsent,
+       _obtainShorebirdCredentials =
+           obtainShorebirdCredentials ??
+           shorebird_oauth.obtainShorebirdCredentials,
        _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
     _loadCredentials();
   }
@@ -198,7 +230,9 @@ class Auth {
 
   final http.Client _httpClient;
   final String _credentialsDir;
+  final Uri _authServiceUri;
   final ObtainAccessCredentials _obtainAccessCredentials;
+  final ObtainShorebirdCredentials _obtainShorebirdCredentials;
   final CodePushClientBuilder _buildCodePushClient;
   CiToken? _token;
 
@@ -214,12 +248,17 @@ class Auth {
     }
 
     if (_token != null) {
-      return AuthenticatedClient.token(token: _token!, httpClient: _httpClient);
+      return AuthenticatedClient.token(
+        token: _token!,
+        httpClient: _httpClient,
+        authServiceUri: _authServiceUri,
+      );
     }
 
     return AuthenticatedClient.credentials(
       credentials: _credentials!,
       httpClient: _httpClient,
+      authServiceUri: _authServiceUri,
       onRefreshCredentials: _flushCredentials,
     );
   }
@@ -231,19 +270,19 @@ class Auth {
   }) async {
     final client = http.Client();
     try {
-      final credentials = await _obtainAccessCredentials(
-        authProvider.clientId,
-        authProvider.scopes,
-        client,
-        prompt,
-        authEndpoints: authProvider.authEndpoints,
+      final credentials = await _obtainCredentials(
+        authProvider,
+        client: client,
+        prompt: prompt,
       );
 
       final codePushClient = _buildCodePushClient(
         httpClient: AuthenticatedClient.credentials(
           credentials: credentials,
           httpClient: _httpClient,
+          authServiceUri: _authServiceUri,
         ),
+        hostedUri: shorebirdEnv.hostedUri,
       );
       final user = await codePushClient.getCurrentUser();
       if (user == null) {
@@ -276,15 +315,16 @@ class Auth {
 
     final client = http.Client();
     try {
-      _credentials = await _obtainAccessCredentials(
-        authProvider.clientId,
-        authProvider.scopes,
-        client,
-        prompt,
-        authEndpoints: authProvider.authEndpoints,
+      _credentials = await _obtainCredentials(
+        authProvider,
+        client: client,
+        prompt: prompt,
       );
 
-      final codePushClient = _buildCodePushClient(httpClient: this.client);
+      final codePushClient = _buildCodePushClient(
+        httpClient: this.client,
+        hostedUri: shorebirdEnv.hostedUri,
+      );
 
       final user = await codePushClient.getCurrentUser();
       if (user == null) {
@@ -295,6 +335,28 @@ class Auth {
       _flushCredentials(_credentials!);
     } finally {
       client.close();
+    }
+  }
+
+  Future<oauth2.AccessCredentials> _obtainCredentials(
+    AuthProvider authProvider, {
+    required http.Client client,
+    required void Function(String) prompt,
+  }) async {
+    if (authProvider == AuthProvider.shorebird) {
+      return _obtainShorebirdCredentials(
+        httpClient: client,
+        authBaseUrl: _authServiceUri,
+        userPrompt: prompt,
+      );
+    } else {
+      return _obtainAccessCredentials(
+        authProvider.clientId,
+        authProvider.scopes,
+        client,
+        prompt,
+        authEndpoints: authProvider.authEndpoints,
+      );
     }
   }
 
@@ -413,7 +475,9 @@ class UserNotFoundException implements Exception {
 extension OauthAuthProvider on Jwt {
   /// Get the [AuthProvider] from the JWT issuer.
   AuthProvider get authProvider {
-    if (payload.iss == googleJwtIssuer) {
+    if (payload.iss == shorebirdEnv.jwtIssuer) {
+      return AuthProvider.shorebird;
+    } else if (payload.iss == googleJwtIssuer) {
       return AuthProvider.google;
     } else if (payload.iss.startsWith(microsoftJwtIssuerPrefix)) {
       return AuthProvider.microsoft;
@@ -429,9 +493,7 @@ extension OauthValues on AuthProvider {
   oauth2.AuthEndpoints get authEndpoints => switch (this) {
     (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
     (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
-    (AuthProvider.shorebird) => throw UnsupportedError(
-      'Shorebird auth is not yet supported in the CLI',
-    ),
+    (AuthProvider.shorebird) => ShorebirdAuthEndpoints(),
   };
 
   /// The OAuth 2.0 client ID for the provider.
@@ -460,9 +522,7 @@ extension OauthValues on AuthProvider {
           '4fc38981-4ec4-4bd9-a755-e6ad9a413054',
         );
       case AuthProvider.shorebird:
-        throw UnsupportedError(
-          'Shorebird auth is not yet supported in the CLI',
-        );
+        throw UnsupportedError('Shorebird auth does not use a client ID');
     }
   }
 
@@ -478,8 +538,7 @@ extension OauthValues on AuthProvider {
       // Required to get refresh tokens.
       'offline_access',
     ],
-    (AuthProvider.shorebird) => throw UnsupportedError(
-      'Shorebird auth is not yet supported in the CLI',
-    ),
+    // Shorebird auth doesn't use scopes.
+    (AuthProvider.shorebird) => [],
   };
 }

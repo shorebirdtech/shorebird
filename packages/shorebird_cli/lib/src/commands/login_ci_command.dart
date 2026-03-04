@@ -16,8 +16,8 @@ class LoginCiCommand extends ShorebirdCommand {
       'provider',
       abbr: 'p',
       allowed: api.AuthProvider.values.map((e) => e.name),
-      defaultsTo: api.AuthProvider.google.name,
-      help: 'The authentication provider to use. Defaults to Google.',
+      defaultsTo: api.AuthProvider.shorebird.name,
+      help: 'The authentication provider to use. Defaults to Shorebird.',
     );
   }
 
@@ -29,16 +29,8 @@ class LoginCiCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    final api.AuthProvider provider;
-    if (results.wasParsed('provider')) {
-      provider = api.AuthProvider.values.byName(results['provider'] as String);
-    } else {
-      provider = logger.chooseOne(
-        'Choose an auth provider',
-        choices: api.AuthProvider.values,
-        display: (p) => p.displayName,
-      );
-    }
+    final provider =
+        api.AuthProvider.values.byName(results['provider'] as String);
 
     final CiToken ciToken;
     try {

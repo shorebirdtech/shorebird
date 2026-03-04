@@ -41,8 +41,7 @@ void main() {
       logger = MockShorebirdLogger();
       results = MockArgResults();
 
-      when(() => results.wasParsed('provider')).thenReturn(false);
-      when(() => results['provider']).thenReturn(null);
+      when(() => results['provider']).thenReturn(AuthProvider.shorebird.name);
       when(() => auth.client).thenReturn(httpClient);
       when(() => auth.loginCI(any(), prompt: any(named: 'prompt'))).thenAnswer(
         (_) async => const CiToken(
@@ -51,14 +50,6 @@ void main() {
           authProvider: AuthProvider.google,
         ),
       );
-      when(
-        () => logger.chooseOne<AuthProvider>(
-          any(),
-          choices: any(named: 'choices'),
-          display: any(named: 'display'),
-        ),
-      ).thenReturn(AuthProvider.google);
-
       command = runWithOverrides(
         () => LoginCiCommand()..testArgResults = results,
       );
@@ -69,7 +60,6 @@ void main() {
         const provider = AuthProvider.google;
 
         setUp(() {
-          when(() => results.wasParsed('provider')).thenReturn(true);
           when(() => results['provider']).thenReturn(provider.name);
         });
 
@@ -77,41 +67,43 @@ void main() {
           await runWithOverrides(() => command.run());
 
           verify(
-            () => auth.loginCI(provider, prompt: any(named: 'prompt')),
+            () => auth.loginCI(
+              provider,
+              prompt: any(named: 'prompt'),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when --provider shorebird is passed', () {
+        setUp(() {
+          when(
+            () => results['provider'],
+          ).thenReturn(AuthProvider.shorebird.name);
+        });
+
+        test('uses Shorebird provider', () async {
+          await runWithOverrides(() => command.run());
+
+          verify(
+            () => auth.loginCI(
+              AuthProvider.shorebird,
+              prompt: any(named: 'prompt'),
+            ),
           ).called(1);
         });
       });
 
       group('when provider is not passed as an arg', () {
-        const provider = AuthProvider.microsoft;
-
-        setUp(() {
-          when(() => results.wasParsed('provider')).thenReturn(false);
-          when(
-            () => logger.chooseOne<AuthProvider>(
-              any(),
-              choices: any(named: 'choices'),
-              display: captureAny(named: 'display'),
-            ),
-          ).thenReturn(provider);
-        });
-
-        test('uses the provider chosen by the user', () async {
+        test('defaults to Shorebird', () async {
           await runWithOverrides(() => command.run());
 
           verify(
-            () => auth.loginCI(provider, prompt: any(named: 'prompt')),
+            () => auth.loginCI(
+              AuthProvider.shorebird,
+              prompt: any(named: 'prompt'),
+            ),
           ).called(1);
-          final captured =
-              verify(
-                    () => logger.chooseOne<AuthProvider>(
-                      any(),
-                      choices: any(named: 'choices'),
-                      display: captureAny(named: 'display'),
-                    ),
-                  ).captured.single
-                  as String Function(AuthProvider);
-          expect(captured(AuthProvider.google), contains('Google'));
         });
       });
     });

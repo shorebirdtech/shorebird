@@ -57,14 +57,6 @@ void main() {
         () => auth.login(any(), prompt: any(named: 'prompt')),
       ).thenAnswer((_) async {});
 
-      when(
-        () => logger.chooseOne<AuthProvider>(
-          any(),
-          choices: any(named: 'choices'),
-          display: any(named: 'display'),
-        ),
-      ).thenReturn(AuthProvider.google);
-
       command = runWithOverrides(
         () => LoginCommand()..testArgResults = results,
       );
@@ -88,36 +80,40 @@ void main() {
         });
       });
 
-      group('when provider is not passed as an arg', () {
-        const provider = AuthProvider.microsoft;
-
+      group('when --provider shorebird is passed', () {
         setUp(() {
-          when(() => results.wasParsed('provider')).thenReturn(false);
+          when(() => results.wasParsed('provider')).thenReturn(true);
           when(
-            () => logger.chooseOne<AuthProvider>(
-              any(),
-              choices: any(named: 'choices'),
-              display: any(named: 'display'),
-            ),
-          ).thenReturn(provider);
+            () => results['provider'],
+          ).thenReturn(AuthProvider.shorebird.name);
         });
 
-        test('uses the provider chosen by the user', () async {
+        test('uses Shorebird provider', () async {
           await runWithOverrides(() => command.run());
 
           verify(
-            () => auth.login(provider, prompt: any(named: 'prompt')),
+            () => auth.login(
+              AuthProvider.shorebird,
+              prompt: any(named: 'prompt'),
+            ),
           ).called(1);
-          final captured =
-              verify(
-                    () => logger.chooseOne<AuthProvider>(
-                      any(),
-                      choices: any(named: 'choices'),
-                      display: captureAny(named: 'display'),
-                    ),
-                  ).captured.single
-                  as String Function(AuthProvider);
-          expect(captured(AuthProvider.google), contains('Google'));
+        });
+      });
+
+      group('when provider is not passed as an arg', () {
+        setUp(() {
+          when(() => results.wasParsed('provider')).thenReturn(false);
+        });
+
+        test('defaults to Shorebird', () async {
+          await runWithOverrides(() => command.run());
+
+          verify(
+            () => auth.login(
+              AuthProvider.shorebird,
+              prompt: any(named: 'prompt'),
+            ),
+          ).called(1);
         });
       });
     });

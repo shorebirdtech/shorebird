@@ -41,11 +41,7 @@ class LoginCommand extends ShorebirdCommand {
     if (results.wasParsed('provider')) {
       provider = api.AuthProvider.values.byName(results['provider'] as String);
     } else {
-      provider = logger.chooseOne(
-        'Choose an auth provider',
-        choices: api.AuthProvider.values,
-        display: (p) => p.displayName,
-      );
+      provider = api.AuthProvider.shorebird;
     }
 
     try {
