@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
@@ -34,7 +35,10 @@ Future<oauth2.AccessCredentials> obtainShorebirdCredentials({
   required void Function(String) userPrompt,
   Duration timeout = const Duration(minutes: 5),
 }) async {
-  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+  final server = await HttpServer.bind(
+    InternetAddress.loopbackIPv4,
+    0,
+  ).catchError((_) => HttpServer.bind(InternetAddress.loopbackIPv6, 0));
   try {
     final port = server.port;
     const callbackPath = '/callback';
@@ -204,15 +208,19 @@ oauth2.AccessCredentials _parseTokenResponse(
   }
 
   // Validate the issuer matches the expected auth service.
-  final issuer = expectedIssuer.toString();
-  if (jwt.payload.iss != issuer) {
+  // Strip trailing slashes to normalize URIs for comparison — e.g.
+  // "https://auth.shorebird.dev/" and "https://auth.shorebird.dev" should
+  // be treated as equivalent.
+  final issuer = expectedIssuer.toString().replaceAll(RegExp(r'/+$'), '');
+  final actualIssuer = jwt.payload.iss.replaceAll(RegExp(r'/+$'), '');
+  if (actualIssuer != issuer) {
     throw ShorebirdAuthException(
       'Token issuer mismatch: expected $issuer, '
       'got ${jwt.payload.iss}',
     );
   }
 
-  final expiry = DateTime.now().add(Duration(seconds: expiresIn)).toUtc();
+  final expiry = clock.now().add(Duration(seconds: expiresIn)).toUtc();
 
   return oauth2.AccessCredentials(
     AccessToken(tokenType, accessTokenValue, expiry),

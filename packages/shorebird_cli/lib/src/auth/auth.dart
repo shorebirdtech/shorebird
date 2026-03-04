@@ -474,9 +474,12 @@ class UserNotFoundException implements Exception {
 extension OauthAuthProvider on Jwt {
   /// Get the [AuthProvider] from the JWT issuer.
   AuthProvider get authProvider {
-    if (payload.iss == shorebirdEnv.jwtIssuer) {
+    // Strip trailing slashes so "https://auth.shorebird.dev/" and
+    // "https://auth.shorebird.dev" compare as equal.
+    final iss = payload.iss.replaceAll(RegExp(r'/+$'), '');
+    if (iss == shorebirdEnv.jwtIssuer.replaceAll(RegExp(r'/+$'), '')) {
       return AuthProvider.shorebird;
-    } else if (payload.iss == googleJwtIssuer) {
+    } else if (iss == googleJwtIssuer) {
       return AuthProvider.google;
     } else if (payload.iss.startsWith(microsoftJwtIssuerPrefix)) {
       return AuthProvider.microsoft;

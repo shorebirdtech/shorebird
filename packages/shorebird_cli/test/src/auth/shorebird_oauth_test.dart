@@ -415,6 +415,81 @@ void main() {
       );
     });
 
+    test(
+      'succeeds when JWT issuer has trailing slash but authBaseUrl does not',
+      () async {
+        // JWT has trailing slash, authBaseUrl does not.
+        final jwt = _buildTestJwt(issuer: 'https://auth.shorebird.dev/');
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'access_token': jwt,
+              'refresh_token': 'sb_rt_test',
+              'token_type': 'Bearer',
+              'expires_in': 900,
+            }),
+            HttpStatus.ok,
+          ),
+        );
+
+        final credentials = await obtainShorebirdCredentials(
+          httpClient: httpClient,
+          authBaseUrl: authBaseUrl, // https://auth.shorebird.dev (no slash)
+          userPrompt: (url) {
+            final loginUri = Uri.parse(url);
+            final continueUrl = loginUri.queryParameters['continue']!;
+            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+          },
+        );
+
+        expect(credentials.accessToken.type, equals('Bearer'));
+      },
+    );
+
+    test(
+      'succeeds when authBaseUrl has trailing slash but JWT issuer does not',
+      () async {
+        // JWT has no trailing slash, authBaseUrl does.
+        final jwt = _buildTestJwt(issuer: 'https://auth.shorebird.dev');
+        final authBaseUrlWithSlash = Uri.parse('https://auth.shorebird.dev/');
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'access_token': jwt,
+              'refresh_token': 'sb_rt_test',
+              'token_type': 'Bearer',
+              'expires_in': 900,
+            }),
+            HttpStatus.ok,
+          ),
+        );
+
+        final credentials = await obtainShorebirdCredentials(
+          httpClient: httpClient,
+          authBaseUrl: authBaseUrlWithSlash,
+          userPrompt: (url) {
+            final loginUri = Uri.parse(url);
+            final continueUrl = loginUri.queryParameters['continue']!;
+            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+          },
+        );
+
+        expect(credentials.accessToken.type, equals('Bearer'));
+      },
+    );
+
     test('throws on network error during token exchange', () async {
       when(
         () => httpClient.post(
