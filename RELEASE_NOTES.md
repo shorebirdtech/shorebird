@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.87 (March 5, 2026)
+
+- 🔐 `shorebird login` now uses the new Shorebird auth service.
+
 ## 1.6.86 (March 4, 2026)
 
 - 🐦 Support for Flutter 3.41.4
@@ -1288,7 +1292,6 @@ Please let us know if we can help!
 ## 0.17.4 (November 10, 2023)
 
 - 💿 Includes our new custom Dart Virtual Machine "mixed-mode" (not yet enabled)
-
   - We rewrote how Dart code is executed on iOS in this release. We haven't yet enabled the new faster "mixed-mode" execution so there should be no observable change, but the faster VM is now included and in partial use. Because this was such a large (multi-month!) change, there could be unanticipated changes on iOS devices. If you see anything surprising, please let us know!
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.17.4
