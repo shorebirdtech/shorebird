@@ -6,7 +6,7 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
 
 ## 1.6.87 (March 5, 2026)
 
-- 🔐 `shorebird login` now uses the new Shorebird auth service (direct Google and Microsoft login deprecated)
+- 🔐 `shorebird login` now uses the new Shorebird auth service.
 
 ## 1.6.86 (March 4, 2026)
 
