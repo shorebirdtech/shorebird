@@ -36,7 +36,7 @@ void main() {
     registerFallbackValue(Uri.parse(''));
   });
 
-  group('obtainShorebirdCredentials', () {
+  group('obtainCredentialsViaLoopbackLogin', () {
     late MockHttpClient httpClient;
     final authBaseUrl = Uri.parse('https://auth.shorebird.dev');
 
@@ -64,7 +64,7 @@ void main() {
         ),
       );
 
-      final credentials = await obtainShorebirdCredentials(
+      final credentials = await obtainCredentialsViaLoopbackLogin(
         httpClient: httpClient,
         authBaseUrl: authBaseUrl,
         userPrompt: (url) {
@@ -92,9 +92,9 @@ void main() {
       ).captured;
       final tokenUrl = captured[0] as Uri;
       expect(tokenUrl.path, contains('/token'));
-      final body = captured[1] as String;
-      expect(body, contains('grant_type=authorization_code'));
-      expect(body, contains('code=test_code'));
+      final body = captured[1] as Map<String, String>;
+      expect(body['grant_type'], equals('authorization_code'));
+      expect(body['code'], equals('test_code'));
     });
 
     test('constructs correct login URL with continue parameter', () async {
@@ -118,7 +118,7 @@ void main() {
       );
 
       late String capturedUrl;
-      await obtainShorebirdCredentials(
+      await obtainCredentialsViaLoopbackLogin(
         httpClient: httpClient,
         authBaseUrl: authBaseUrl,
         userPrompt: (url) {
@@ -166,7 +166,7 @@ void main() {
       );
 
       late String capturedUrl;
-      await obtainShorebirdCredentials(
+      await obtainCredentialsViaLoopbackLogin(
         httpClient: httpClient,
         authBaseUrl: authBaseUrlWithSlash,
         userPrompt: (url) {
@@ -213,7 +213,7 @@ void main() {
         ),
       );
 
-      final credentials = await obtainShorebirdCredentials(
+      final credentials = await obtainCredentialsViaLoopbackLogin(
         httpClient: httpClient,
         authBaseUrl: authBaseUrl,
         userPrompt: (url) {
@@ -237,7 +237,7 @@ void main() {
 
     test('throws when redirect contains error parameter', () async {
       await expectLater(
-        obtainShorebirdCredentials(
+        obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
@@ -262,7 +262,7 @@ void main() {
 
     test('throws when redirect has no code parameter', () async {
       await expectLater(
-        obtainShorebirdCredentials(
+        obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
@@ -295,7 +295,7 @@ void main() {
       );
 
       await expectLater(
-        obtainShorebirdCredentials(
+        obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
@@ -318,7 +318,7 @@ void main() {
 
     test('throws on timeout when no redirect arrives', () async {
       await expectLater(
-        obtainShorebirdCredentials(
+        obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (_) {
@@ -356,7 +356,7 @@ void main() {
       );
 
       await expectLater(
-        obtainShorebirdCredentials(
+        obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
@@ -396,7 +396,7 @@ void main() {
       );
 
       await expectLater(
-        obtainShorebirdCredentials(
+        obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
@@ -415,81 +415,6 @@ void main() {
       );
     });
 
-    test(
-      'succeeds when JWT issuer has trailing slash but authBaseUrl does not',
-      () async {
-        // JWT has trailing slash, authBaseUrl does not.
-        final jwt = _buildTestJwt(issuer: 'https://auth.shorebird.dev/');
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            jsonEncode({
-              'access_token': jwt,
-              'refresh_token': 'sb_rt_test',
-              'token_type': 'Bearer',
-              'expires_in': 900,
-            }),
-            HttpStatus.ok,
-          ),
-        );
-
-        final credentials = await obtainShorebirdCredentials(
-          httpClient: httpClient,
-          authBaseUrl: authBaseUrl, // https://auth.shorebird.dev (no slash)
-          userPrompt: (url) {
-            final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
-          },
-        );
-
-        expect(credentials.accessToken.type, equals('Bearer'));
-      },
-    );
-
-    test(
-      'succeeds when authBaseUrl has trailing slash but JWT issuer does not',
-      () async {
-        // JWT has no trailing slash, authBaseUrl does.
-        final jwt = _buildTestJwt(issuer: 'https://auth.shorebird.dev');
-        final authBaseUrlWithSlash = Uri.parse('https://auth.shorebird.dev/');
-        when(
-          () => httpClient.post(
-            any(),
-            headers: any(named: 'headers'),
-            body: any(named: 'body'),
-          ),
-        ).thenAnswer(
-          (_) async => http.Response(
-            jsonEncode({
-              'access_token': jwt,
-              'refresh_token': 'sb_rt_test',
-              'token_type': 'Bearer',
-              'expires_in': 900,
-            }),
-            HttpStatus.ok,
-          ),
-        );
-
-        final credentials = await obtainShorebirdCredentials(
-          httpClient: httpClient,
-          authBaseUrl: authBaseUrlWithSlash,
-          userPrompt: (url) {
-            final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
-          },
-        );
-
-        expect(credentials.accessToken.type, equals('Bearer'));
-      },
-    );
-
     test('throws on network error during token exchange', () async {
       when(
         () => httpClient.post(
@@ -502,7 +427,7 @@ void main() {
       );
 
       await expectLater(
-        obtainShorebirdCredentials(
+        obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
@@ -530,7 +455,7 @@ void main() {
       );
 
       await expectLater(
-        obtainShorebirdCredentials(
+        obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
@@ -562,7 +487,7 @@ void main() {
       );
 
       await expectLater(
-        obtainShorebirdCredentials(
+        obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
@@ -595,7 +520,7 @@ void main() {
       );
 
       await expectLater(
-        obtainShorebirdCredentials(
+        obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
@@ -662,9 +587,9 @@ void main() {
       ).captured;
       final tokenUrl = captured[0] as Uri;
       expect(tokenUrl.path, contains('/token'));
-      final body = captured[1] as String;
-      expect(body, contains('grant_type=refresh_token'));
-      expect(body, contains('refresh_token=sb_rt_old'));
+      final body = captured[1] as Map<String, String>;
+      expect(body['grant_type'], equals('refresh_token'));
+      expect(body['refresh_token'], equals('sb_rt_old'));
     });
 
     test('throws when no refresh token is available', () async {

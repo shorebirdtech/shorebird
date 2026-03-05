@@ -162,6 +162,16 @@ void main() {
       refreshToken: refreshToken,
       authProvider: AuthProvider.google,
     );
+    // Decoded payload:
+    // {
+    //   "iss": "https://auth.shorebird.dev",
+    //   "aud": "shorebird",
+    //   "sub": "12345",
+    //   "email": "test@email.com",
+    //   "email_verified": true,
+    //   "iat": 1234,
+    //   "exp": 6789
+    // }
     // cspell:disable-next-line
     const shorebirdIdToken =
         '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2F1dGguc2hvcmViaXJkLmRldiIsImF1ZCI6InNob3JlYmlyZCIsInN1YiI6IjEyMzQ1IiwiZW1haWwiOiJ0ZXN0QGVtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpYXQiOjEyMzQsImV4cCI6Njc4OX0.dGVzdA''';
@@ -222,7 +232,7 @@ void main() {
               }) async {
                 return accessCredentials;
               },
-          obtainShorebirdCredentials:
+          obtainCredentialsViaLoopbackLogin:
               ({
                 required http.Client httpClient,
                 required Uri authBaseUrl,
@@ -288,6 +298,7 @@ void main() {
             () => AuthenticatedClient.token(
               token: ciToken,
               httpClient: httpClient,
+              authServiceUri: Uri.parse('https://auth.shorebird.dev'),
               refreshCredentials:
                   (
                     clientId,
@@ -313,6 +324,7 @@ void main() {
             final client = AuthenticatedClient.token(
               token: ciToken,
               httpClient: httpClient,
+              authServiceUri: Uri.parse('https://auth.shorebird.dev'),
               onRefreshCredentials: onRefreshCredentialsCalls.add,
               refreshCredentials:
                   (
@@ -361,6 +373,7 @@ void main() {
             client = AuthenticatedClient.token(
               token: ciToken,
               httpClient: httpClient,
+              authServiceUri: Uri.parse('https://auth.shorebird.dev'),
               onRefreshCredentials: onRefreshCredentialsCalls.add,
               refreshCredentials:
                   (
@@ -400,6 +413,7 @@ void main() {
           final client = AuthenticatedClient.token(
             token: ciToken,
             httpClient: httpClient,
+            authServiceUri: Uri.parse('https://auth.shorebird.dev'),
             onRefreshCredentials: onRefreshCredentialsCalls.add,
             refreshCredentials:
                 (
@@ -561,6 +575,7 @@ void main() {
             final client = AuthenticatedClient.credentials(
               credentials: expiredCredentials,
               httpClient: httpClient,
+              authServiceUri: Uri.parse('https://auth.shorebird.dev'),
               onRefreshCredentials: onRefreshCredentialsCalls.add,
               refreshCredentials:
                   (
@@ -621,6 +636,7 @@ void main() {
             client = AuthenticatedClient.credentials(
               credentials: expiredCredentials,
               httpClient: httpClient,
+              authServiceUri: Uri.parse('https://auth.shorebird.dev'),
               onRefreshCredentials: onRefreshCredentialsCalls.add,
               refreshCredentials:
                   (
@@ -660,6 +676,7 @@ void main() {
           final client = AuthenticatedClient.credentials(
             credentials: accessCredentials,
             httpClient: httpClient,
+            authServiceUri: Uri.parse('https://auth.shorebird.dev'),
             onRefreshCredentials: onRefreshCredentialsCalls.add,
           );
 
@@ -1142,79 +1159,12 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
     });
 
     group('authEndpoints', () {
-      test('returns ShorebirdAuthEndpoints for shorebird', () {
-        late ShorebirdEnv shorebirdEnv;
-        runScoped(
-          () {
-            shorebirdEnv = MockShorebirdEnv();
-            when(
-              () => shorebirdEnv.authServiceUri,
-            ).thenReturn(Uri.parse('https://auth.shorebird.dev'));
-            expect(
-              AuthProvider.shorebird.authEndpoints,
-              isA<AuthEndpoints>(),
-            );
-          },
-          values: {
-            shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-          },
+      test('throws UnsupportedError for shorebird', () {
+        expect(
+          () => AuthProvider.shorebird.authEndpoints,
+          throwsA(isA<UnsupportedError>()),
         );
       });
     });
-  });
-
-  group('AuthenticatedClient', () {
-    group(
-      'when Shorebird token refresh is attempted without authServiceUri',
-      () {
-        late http.Client httpClient;
-        late ShorebirdLogger logger;
-        late Platform platform;
-        late ShorebirdEnv shorebirdEnv;
-
-        const shorebirdCiToken = CiToken(
-          refreshToken: 'sb_rt_test',
-          authProvider: AuthProvider.shorebird,
-        );
-
-        setUpAll(() {
-          registerFallbackValue(FakeBaseRequest());
-        });
-
-        setUp(() {
-          httpClient = MockHttpClient();
-          logger = MockShorebirdLogger();
-          platform = MockPlatform();
-          shorebirdEnv = MockShorebirdEnv();
-          when(() => platform.environment).thenReturn(<String, String>{});
-          when(() => shorebirdEnv.jwtIssuer).thenReturn(shorebirdJwtIssuer);
-        });
-
-        test('throws StateError', () async {
-          final client = AuthenticatedClient.token(
-            token: shorebirdCiToken,
-            httpClient: httpClient,
-          );
-
-          await expectLater(
-            () => runScoped(
-              () => client.get(Uri.parse('https://example.com')),
-              values: {
-                loggerRef.overrideWith(() => logger),
-                platformRef.overrideWith(() => platform),
-                shorebirdEnvRef.overrideWith(() => shorebirdEnv),
-              },
-            ),
-            throwsA(
-              isA<StateError>().having(
-                (e) => e.message,
-                'message',
-                contains('authServiceUri must be provided'),
-              ),
-            ),
-          );
-        });
-      },
-    );
   });
 }

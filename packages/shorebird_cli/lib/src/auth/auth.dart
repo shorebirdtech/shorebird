@@ -62,7 +62,7 @@ typedef RefreshCredentials =
     });
 
 /// Callback for obtaining Shorebird access credentials via loopback login.
-typedef ObtainShorebirdCredentials =
+typedef ObtainCredentialsViaLoopbackLogin =
     Future<oauth2.AccessCredentials> Function({
       required http.Client httpClient,
       required Uri authBaseUrl,
@@ -81,7 +81,7 @@ class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient.credentials({
     required http.Client httpClient,
     required oauth2.AccessCredentials credentials,
-    Uri? authServiceUri,
+    required Uri authServiceUri,
     OnRefreshCredentials? onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : this._(
@@ -97,7 +97,7 @@ class AuthenticatedClient extends http.BaseClient {
   AuthenticatedClient.token({
     required http.Client httpClient,
     required CiToken token,
-    Uri? authServiceUri,
+    required Uri authServiceUri,
     OnRefreshCredentials? onRefreshCredentials,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : this._(
@@ -110,10 +110,10 @@ class AuthenticatedClient extends http.BaseClient {
 
   AuthenticatedClient._({
     required http.Client httpClient,
+    required Uri authServiceUri,
     OnRefreshCredentials? onRefreshCredentials,
     oauth2.AccessCredentials? credentials,
     CiToken? token,
-    Uri? authServiceUri,
     RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
   }) : _baseClient = httpClient,
        _credentials = credentials,
@@ -125,7 +125,7 @@ class AuthenticatedClient extends http.BaseClient {
   final http.Client _baseClient;
   final OnRefreshCredentials? _onRefreshCredentials;
   final RefreshCredentials _refreshCredentials;
-  final Uri? _authServiceUri;
+  final Uri _authServiceUri;
   oauth2.AccessCredentials? _credentials;
   final CiToken? _token;
 
@@ -166,27 +166,22 @@ class AuthenticatedClient extends http.BaseClient {
     oauth2.AccessCredentials credentials,
   ) async {
     try {
+      // Shorebird uses its own refresh flow; Google and Microsoft use the
+      // standard OAuth refresh. This branching can be removed once the
+      // Google/Microsoft providers are fully removed from the CLI.
       if (authProvider == AuthProvider.shorebird) {
-        final authServiceUri = _authServiceUri;
-        if (authServiceUri == null) {
-          throw StateError(
-            'authServiceUri must be provided to refresh Shorebird credentials. '
-            'Ensure AuthenticatedClient is constructed with authServiceUri.',
-          );
-        }
         return await shorebird_oauth.refreshShorebirdCredentials(
           credentials,
           _baseClient,
-          authBaseUrl: authServiceUri,
-        );
-      } else {
-        return await _refreshCredentials(
-          authProvider.clientId,
-          credentials,
-          _baseClient,
-          authEndpoints: authProvider.authEndpoints,
+          authBaseUrl: _authServiceUri,
         );
       }
+      return await _refreshCredentials(
+        authProvider.clientId,
+        credentials,
+        _baseClient,
+        authEndpoints: authProvider.authEndpoints,
+      );
     } on Exception catch (e, s) {
       logger
         ..err('Failed to refresh credentials.')
@@ -209,7 +204,7 @@ class Auth {
     String? credentialsDir,
     Uri? authServiceUri,
     ObtainAccessCredentials? obtainAccessCredentials,
-    ObtainShorebirdCredentials? obtainShorebirdCredentials,
+    ObtainCredentialsViaLoopbackLogin? obtainCredentialsViaLoopbackLogin,
     CodePushClientBuilder? buildCodePushClient,
   }) : _httpClient = httpClient ?? _defaultHttpClient,
        _credentialsDir =
@@ -218,9 +213,9 @@ class Auth {
        _obtainAccessCredentials =
            obtainAccessCredentials ??
            oauth2.obtainAccessCredentialsViaUserConsent,
-       _obtainShorebirdCredentials =
-           obtainShorebirdCredentials ??
-           shorebird_oauth.obtainShorebirdCredentials,
+       _obtainCredentialsViaLoopbackLogin =
+           obtainCredentialsViaLoopbackLogin ??
+           shorebird_oauth.obtainCredentialsViaLoopbackLogin,
        _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
     _loadCredentials();
   }
@@ -231,7 +226,7 @@ class Auth {
   final String _credentialsDir;
   final Uri _authServiceUri;
   final ObtainAccessCredentials _obtainAccessCredentials;
-  final ObtainShorebirdCredentials _obtainShorebirdCredentials;
+  final ObtainCredentialsViaLoopbackLogin _obtainCredentialsViaLoopbackLogin;
   final CodePushClientBuilder _buildCodePushClient;
   CiToken? _token;
 
@@ -342,21 +337,23 @@ class Auth {
     required http.Client client,
     required void Function(String) prompt,
   }) async {
+    // Shorebird uses its own login flow; Google and Microsoft use the
+    // standard OAuth consent flow. This branching can be removed once the
+    // Google/Microsoft providers are fully removed from the CLI.
     if (authProvider == AuthProvider.shorebird) {
-      return _obtainShorebirdCredentials(
+      return _obtainCredentialsViaLoopbackLogin(
         httpClient: client,
         authBaseUrl: _authServiceUri,
         userPrompt: prompt,
       );
-    } else {
-      return _obtainAccessCredentials(
-        authProvider.clientId,
-        authProvider.scopes,
-        client,
-        prompt,
-        authEndpoints: authProvider.authEndpoints,
-      );
     }
+    return _obtainAccessCredentials(
+      authProvider.clientId,
+      authProvider.scopes,
+      client,
+      prompt,
+      authEndpoints: authProvider.authEndpoints,
+    );
   }
 
   /// Logs out the user.
@@ -474,12 +471,9 @@ class UserNotFoundException implements Exception {
 extension OauthAuthProvider on Jwt {
   /// Get the [AuthProvider] from the JWT issuer.
   AuthProvider get authProvider {
-    // Strip trailing slashes so "https://auth.shorebird.dev/" and
-    // "https://auth.shorebird.dev" compare as equal.
-    final iss = payload.iss.replaceAll(RegExp(r'/+$'), '');
-    if (iss == shorebirdEnv.jwtIssuer.replaceAll(RegExp(r'/+$'), '')) {
+    if (payload.iss == shorebirdEnv.jwtIssuer) {
       return AuthProvider.shorebird;
-    } else if (iss == googleJwtIssuer) {
+    } else if (payload.iss == googleJwtIssuer) {
       return AuthProvider.google;
     } else if (payload.iss.startsWith(microsoftJwtIssuerPrefix)) {
       return AuthProvider.microsoft;
@@ -492,10 +486,15 @@ extension OauthAuthProvider on Jwt {
 /// Extension on [AuthProvider] which exposes OAuth 2.0 values.
 extension OauthValues on AuthProvider {
   /// The OAuth 2.0 endpoints for the provider.
+  ///
+  /// This getter only exists to support the Google and Microsoft OAuth flows.
+  /// It can be removed once those providers are fully removed from the CLI.
   oauth2.AuthEndpoints get authEndpoints => switch (this) {
     (AuthProvider.google) => const oauth2.GoogleAuthEndpoints(),
     (AuthProvider.microsoft) => MicrosoftAuthEndpoints(),
-    (AuthProvider.shorebird) => ShorebirdAuthEndpoints(),
+    (AuthProvider.shorebird) => throw UnsupportedError(
+      'Shorebird auth does not use OAuth endpoints',
+    ),
   };
 
   /// The OAuth 2.0 client ID for the provider.

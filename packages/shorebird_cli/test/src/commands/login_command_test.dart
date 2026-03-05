@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:args/args.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -18,7 +17,6 @@ void main() {
   group(LoginCommand, () {
     const email = 'test@email.com';
 
-    late ArgResults results;
     late Auth auth;
     late http.Client httpClient;
     late Directory applicationConfigHome;
@@ -36,18 +34,15 @@ void main() {
     }
 
     setUpAll(() {
-      registerFallbackValue(AuthProvider.google);
+      registerFallbackValue(AuthProvider.shorebird);
     });
 
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
-      results = MockArgResults();
       auth = MockAuth();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
 
-      when(() => results.wasParsed('provider')).thenReturn(false);
-      when(() => results['provider']).thenReturn(null);
       when(() => auth.isAuthenticated).thenReturn(false);
       when(() => auth.client).thenReturn(httpClient);
       when(
@@ -57,65 +52,7 @@ void main() {
         () => auth.login(any(), prompt: any(named: 'prompt')),
       ).thenAnswer((_) async {});
 
-      command = runWithOverrides(
-        () => LoginCommand()..testArgResults = results,
-      );
-    });
-
-    group('provider', () {
-      group('when provider is passed as an arg', () {
-        const provider = AuthProvider.google;
-
-        setUp(() {
-          when(() => results.wasParsed('provider')).thenReturn(true);
-          when(() => results['provider']).thenReturn(provider.name);
-        });
-
-        test('uses the passed provider', () async {
-          await runWithOverrides(() => command.run());
-
-          verify(
-            () => auth.login(provider, prompt: any(named: 'prompt')),
-          ).called(1);
-        });
-      });
-
-      group('when --provider shorebird is passed', () {
-        setUp(() {
-          when(() => results.wasParsed('provider')).thenReturn(true);
-          when(
-            () => results['provider'],
-          ).thenReturn(AuthProvider.shorebird.name);
-        });
-
-        test('uses Shorebird provider', () async {
-          await runWithOverrides(() => command.run());
-
-          verify(
-            () => auth.login(
-              AuthProvider.shorebird,
-              prompt: any(named: 'prompt'),
-            ),
-          ).called(1);
-        });
-      });
-
-      group('when provider is not passed as an arg', () {
-        setUp(() {
-          when(() => results.wasParsed('provider')).thenReturn(false);
-        });
-
-        test('defaults to Shorebird', () async {
-          await runWithOverrides(() => command.run());
-
-          verify(
-            () => auth.login(
-              AuthProvider.shorebird,
-              prompt: any(named: 'prompt'),
-            ),
-          ).called(1);
-        });
-      });
+      command = runWithOverrides(LoginCommand.new);
     });
 
     group('when user is already logged in', () {

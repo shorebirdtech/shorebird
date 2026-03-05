@@ -29,16 +29,18 @@ class ShorebirdAuthException implements Exception {
 /// 4. Waits for the auth service to redirect back with an auth code.
 /// 5. Exchanges the auth code for tokens via the auth service's /token endpoint.
 /// 6. Returns the tokens as [oauth2.AccessCredentials].
-Future<oauth2.AccessCredentials> obtainShorebirdCredentials({
+Future<oauth2.AccessCredentials> obtainCredentialsViaLoopbackLogin({
   required http.Client httpClient,
   required Uri authBaseUrl,
   required void Function(String) userPrompt,
   Duration timeout = const Duration(minutes: 5),
 }) async {
-  final server = await HttpServer.bind(
-    InternetAddress.loopbackIPv4,
-    0,
-  ).catchError((_) => HttpServer.bind(InternetAddress.loopbackIPv6, 0));
+  HttpServer server;
+  try {
+    server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+  } on SocketException {
+    server = await HttpServer.bind(InternetAddress.loopbackIPv6, 0);
+  }
   try {
     final port = server.port;
     const callbackPath = '/callback';
@@ -49,56 +51,12 @@ Future<oauth2.AccessCredentials> obtainShorebirdCredentials({
 
     userPrompt(loginUrl.toString());
 
-    // Use a Completer so we can respond to non-callback requests (e.g.,
-    // favicon) with a 404 instead of leaving them hanging.
-    final completer = Completer<HttpRequest>();
-    final subscription = server.listen((request) {
-      if (request.uri.path == callbackPath) {
-        completer.complete(request);
-      } else {
-        request.response.statusCode = HttpStatus.notFound;
-        unawaited(request.response.close());
-      }
-    });
-
-    final HttpRequest request;
-    try {
-      request = await completer.future.timeout(
-        timeout,
-        onTimeout: () {
-          throw const ShorebirdAuthException(
-            'Timed out waiting for authentication response.',
-          );
-        },
-      );
-    } finally {
-      await subscription.cancel();
-    }
-
-    final code = request.uri.queryParameters['code'];
-    final error = request.uri.queryParameters['error'];
-
-    // Respond to the browser before processing.
-    request.response
-      ..statusCode = HttpStatus.ok
-      ..headers.contentType = ContentType.html
-      ..write(
-        '<html><body><h1>Authentication complete.</h1> '
-        '<p>You can close this window.</p></body></html>',
-      );
-    await request.response.close();
-
-    if (error != null) {
-      throw ShorebirdAuthException(
-        'Authentication failed: $error',
-      );
-    }
-
-    if (code == null) {
-      throw const ShorebirdAuthException(
-        'Authentication failed: no auth code received.',
-      );
-    }
+    final request = await _waitForCallback(
+      server,
+      callbackPath: callbackPath,
+      timeout: timeout,
+    );
+    final code = await _extractAuthCode(request);
 
     return await _exchangeAuthCode(
       httpClient: httpClient,
@@ -108,6 +66,70 @@ Future<oauth2.AccessCredentials> obtainShorebirdCredentials({
   } finally {
     await server.close();
   }
+}
+
+/// Listens on [server] for a request to [callbackPath] and returns it.
+///
+/// Responds to all other requests with 404 so they don't hang.
+Future<HttpRequest> _waitForCallback(
+  HttpServer server, {
+  required String callbackPath,
+  required Duration timeout,
+}) async {
+  final completer = Completer<HttpRequest>();
+  final subscription = server.listen((request) {
+    if (request.uri.path == callbackPath) {
+      completer.complete(request);
+    } else {
+      request.response.statusCode = HttpStatus.notFound;
+      unawaited(request.response.close());
+    }
+  });
+  try {
+    return await completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        throw const ShorebirdAuthException(
+          'Timed out waiting for authentication response.',
+        );
+      },
+    );
+  } finally {
+    await subscription.cancel();
+  }
+}
+
+/// Sends a success page to the browser and extracts the auth code from the
+/// callback [request].
+///
+/// Throws [ShorebirdAuthException] if the callback contains an error or is
+/// missing the auth code.
+Future<String> _extractAuthCode(HttpRequest request) async {
+  final code = request.uri.queryParameters['code'];
+  final error = request.uri.queryParameters['error'];
+
+  request.response
+    ..statusCode = HttpStatus.ok
+    ..headers.contentType = ContentType.html
+    ..write(
+      '<html><body><h1>Authentication complete.</h1> '
+      '<p>You can close this window.</p></body></html>',
+    );
+  await request.response.close();
+
+  if (error != null) {
+    throw ShorebirdAuthException(
+      'Authentication failed: $error',
+    );
+  }
+
+  if (code == null) {
+    throw const ShorebirdAuthException(
+      'Authentication failed: no auth code received.',
+    );
+  }
+
+  return code;
 }
 
 /// Refreshes Shorebird tokens using the refresh token.
@@ -131,10 +153,10 @@ Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
 
   final response = await httpClient.post(
     tokenUrl,
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body:
-        'grant_type=refresh_token'
-        '&refresh_token=${Uri.encodeComponent(refreshToken)}',
+    body: {
+      'grant_type': 'refresh_token',
+      'refresh_token': refreshToken,
+    },
   );
 
   if (response.statusCode != HttpStatus.ok) {
@@ -159,10 +181,10 @@ Future<oauth2.AccessCredentials> _exchangeAuthCode({
 
   final response = await httpClient.post(
     tokenUrl,
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body:
-        'grant_type=authorization_code'
-        '&code=${Uri.encodeComponent(code)}',
+    body: {
+      'grant_type': 'authorization_code',
+      'code': code,
+    },
   );
 
   if (response.statusCode != HttpStatus.ok) {
@@ -208,12 +230,8 @@ oauth2.AccessCredentials _parseTokenResponse(
   }
 
   // Validate the issuer matches the expected auth service.
-  // Strip trailing slashes to normalize URIs for comparison — e.g.
-  // "https://auth.shorebird.dev/" and "https://auth.shorebird.dev" should
-  // be treated as equivalent.
-  final issuer = expectedIssuer.toString().replaceAll(RegExp(r'/+$'), '');
-  final actualIssuer = jwt.payload.iss.replaceAll(RegExp(r'/+$'), '');
-  if (actualIssuer != issuer) {
+  final issuer = expectedIssuer.toString();
+  if (jwt.payload.iss != issuer) {
     throw ShorebirdAuthException(
       'Token issuer mismatch: expected $issuer, '
       'got ${jwt.payload.iss}',
