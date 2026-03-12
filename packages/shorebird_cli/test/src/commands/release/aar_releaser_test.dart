@@ -562,6 +562,121 @@ void main() {
       });
     });
 
+    group('assembleSupplementDirectory', () {
+      late Directory supplementDir;
+
+      setUp(() {
+        // Create the supplement directory as it would exist on disk.
+        supplementDir = Directory(
+          p.join(projectRoot.path, 'build', 'android', 'shorebird'),
+        )..createSync(recursive: true);
+
+        // Stub getReleaseSupplementDirectory to use the real directory.
+        when(
+          () => artifactManager.getReleaseSupplementDirectory(
+            platformSubdir: any(named: 'platformSubdir'),
+            create: any(named: 'create'),
+          ),
+        ).thenAnswer((invocation) {
+          final create =
+              invocation.namedArguments[const Symbol('create')] as bool;
+          if (!supplementDir.existsSync() && create) {
+            supplementDir.createSync(recursive: true);
+          }
+          return supplementDir.existsSync() ? supplementDir : null;
+        });
+      });
+
+      group('when obfuscation is enabled and map exists', () {
+        setUp(() {
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+
+          // Create the obfuscation map at the expected build output location.
+          final mapFile = File(
+            p.join(
+              projectRoot.path,
+              'build',
+              'shorebird',
+              'obfuscation_map.json',
+            ),
+          )..createSync(recursive: true);
+          mapFile.writeAsStringSync('{"key": "value"}');
+        });
+
+        test('copies map into supplement directory and returns it', () {
+          final result = runWithOverrides(
+            () => aarReleaser.assembleSupplementDirectory(),
+          );
+
+          expect(result, isNotNull);
+          final mapInSupplement = File(
+            p.join(supplementDir.path, 'obfuscation_map.json'),
+          );
+          expect(mapInSupplement.existsSync(), isTrue);
+          expect(mapInSupplement.readAsStringSync(), '{"key": "value"}');
+        });
+      });
+
+      group('when obfuscation is disabled', () {
+        setUp(() {
+          when(() => argResults['obfuscate']).thenReturn(false);
+        });
+
+        group('and no stale map exists', () {
+          test('returns null', () {
+            // Remove the supplement dir so it's empty/missing.
+            if (supplementDir.existsSync()) {
+              supplementDir.deleteSync(recursive: true);
+            }
+            when(
+              () => artifactManager.getReleaseSupplementDirectory(
+                platformSubdir: any(named: 'platformSubdir'),
+                create: any(named: 'create'),
+              ),
+            ).thenReturn(null);
+
+            final result = runWithOverrides(
+              () => aarReleaser.assembleSupplementDirectory(),
+            );
+
+            expect(result, isNull);
+          });
+        });
+
+        group('and a stale obfuscation map exists', () {
+          setUp(() {
+            // Simulate a leftover obfuscation_map.json from a previous
+            // obfuscated build.
+            File(
+                p.join(supplementDir.path, 'obfuscation_map.json'),
+              )
+              ..createSync(recursive: true)
+              ..writeAsStringSync('{"stale": true}');
+          });
+
+          test('removes stale map, logs detail, and returns null', () {
+            final result = runWithOverrides(
+              () => aarReleaser.assembleSupplementDirectory(),
+            );
+
+            expect(result, isNull);
+            expect(
+              File(
+                p.join(supplementDir.path, 'obfuscation_map.json'),
+              ).existsSync(),
+              isFalse,
+            );
+            verify(
+              () => logger.detail(
+                any(that: contains('Removing stale obfuscation map')),
+              ),
+            ).called(1);
+          });
+        });
+      });
+    });
+
     group('getReleaseVersion', () {
       const releaseVersion = '1.0.0';
       setUp(() {
