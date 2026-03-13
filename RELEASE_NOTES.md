@@ -4,6 +4,26 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.87 (March 5, 2026)
+
+- 🔐 `shorebird login` now uses the new Shorebird auth service.
+
+## 1.6.86 (March 4, 2026)
+
+- 🐦 Support for Flutter 3.41.4
+
+## 1.6.85 (March 2, 2026)
+
+- 🐦 Support for Flutter 3.41.3
+
+## 1.6.84 (February 27, 2026)
+
+- ✨ Add `--obfuscate` support to the `release` command (starting with Flutter 3.41.2)
+- ✨ Add `--confirm` flag to `release` and `patch` commands
+- 🔐 Support RSA JWK key stores for Shorebird auth
+- 🐛 Fix: use forward slashes in AAB ZIP entries on Windows
+- 🍎 Fix: add dSYM artifact proxy patterns for new filenames
+
 ## 1.6.83 (February 20, 2026)
 
 - 🐦 Support for Flutter 3.41.2
@@ -1272,7 +1292,6 @@ Please let us know if we can help!
 ## 0.17.4 (November 10, 2023)
 
 - 💿 Includes our new custom Dart Virtual Machine "mixed-mode" (not yet enabled)
-
   - We rewrote how Dart code is executed on iOS in this release. We haven't yet enabled the new faster "mixed-mode" execution so there should be no observable change, but the faster VM is now included and in partial use. Because this was such a large (multi-month!) change, there could be unanticipated changes on iOS devices. If you see anything surprising, please let us know!
 
 📚 Release notes can be found at https://github.com/shorebirdtech/shorebird/releases/tag/v0.17.4

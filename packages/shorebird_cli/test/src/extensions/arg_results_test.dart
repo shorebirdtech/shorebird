@@ -138,6 +138,10 @@ void main() {
           'platforms',
           allowed: ReleaseType.values.map((e) => e.cliName),
         )
+        ..addFlag(
+          CommonArguments.obfuscateArg.name,
+          negatable: false,
+        )
         ..addFlag('verbose', abbr: 'v');
     });
 
@@ -315,6 +319,23 @@ void main() {
           result.forwardedArgs,
           contains('--export-options-plist=build/ExportOptions.plist'),
         );
+      });
+    });
+
+    group('when --obfuscate flag is provided', () {
+      test('forwards it', () {
+        final args = ['--verbose', '--obfuscate'];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, hasLength(1));
+        expect(result.forwardedArgs, contains('--obfuscate'));
+      });
+    });
+
+    group('when --obfuscate flag is not provided', () {
+      test('does not forward it', () {
+        final args = ['--verbose'];
+        final result = parser.parse(args);
+        expect(result.forwardedArgs, isNot(contains('--obfuscate')));
       });
     });
   });

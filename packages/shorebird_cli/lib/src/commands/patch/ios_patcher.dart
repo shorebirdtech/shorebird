@@ -167,15 +167,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       throw ProcessExit(ExitCode.software.code);
     }
 
+    final buildArgs = [
+      ...argResults.forwardedArgs,
+      ...extraBuildArgs,
+      ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+    ];
+
     // If buildIpa is called with a different codesign value than the
     // release was, we will erroneously report native diffs.
     final ipaBuildResult = await artifactBuilder.buildIpa(
       codesign: shouldCodesign,
       flavor: flavor,
       target: target,
-      args:
-          argResults.forwardedArgs +
-          buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 
@@ -186,7 +190,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       appDillPath: ipaBuildResult.kernelFile.path,
       outFilePath: _aotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
-      additionalArgs: splitDebugInfoArgs(splitDebugInfoPath),
+      additionalArgs: [
+        ...splitDebugInfoArgs(splitDebugInfoPath),
+        ...obfuscationGenSnapshotArgs,
+      ],
     );
 
     // Copy the kernel file to the build directory so that it can be used
@@ -201,7 +208,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     // Verify that we have built a patch .xcarchive
     if (artifactManager.getXcarchiveDirectory()?.path == null) {
@@ -221,13 +228,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       releaseXcarchivePath = tempDir.path;
     }
 
-    final releaseSupplementDir = Directory.systemTemp.createTempSync();
-    if (supplementArtifact != null) {
-      await artifactManager.extractZip(
-        zipFile: supplementArtifact,
-        outputDirectory: releaseSupplementDir,
-      );
-    }
+    final releaseSupplementDir =
+        supplementDirectory ?? Directory.systemTemp.createTempSync();
 
     unzipProgress.complete();
     final appDirectory = artifactManager.getIosAppDirectory(
@@ -253,7 +255,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       final result = await apple.runLinker(
         kernelFile: File(_appDillCopyPath),
         releaseArtifact: releaseArtifactFile,
-        splitDebugInfoArgs: splitDebugInfoArgs(splitDebugInfoPath),
+        splitDebugInfoArgs: [
+          ...splitDebugInfoArgs(splitDebugInfoPath),
+          ...obfuscationGenSnapshotArgs,
+        ],
         aotOutputFile: File(_aotOutputPath),
         vmCodeFile: File(_vmcodeOutputPath),
       );

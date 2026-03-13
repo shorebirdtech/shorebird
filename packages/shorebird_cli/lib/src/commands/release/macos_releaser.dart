@@ -38,6 +38,12 @@ class MacosReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.macos;
 
   @override
+  String get supplementPlatformSubdir => 'macos';
+
+  @override
+  String get supplementArtifactArch => 'macos_supplement';
+
+  @override
   String get artifactDisplayName => 'macOS app';
 
   @override
@@ -46,22 +52,13 @@ class MacosReleaser extends Releaser {
       logger.err(
         '''
 The "--release-version" flag is only supported for aar and ios-framework releases.
-        
+
 To change the version of this release, change your app's version in your pubspec.yaml.''',
       );
       throw ProcessExit(ExitCode.usage.code);
     }
 
-    if (argResults.rest.contains('--obfuscate')) {
-      // Obfuscated releases break patching, so we don't support them.
-      // See https://github.com/shorebirdtech/shorebird/issues/1619
-      logger
-        ..err('Shorebird does not currently support obfuscation on macOS.')
-        ..info(
-          '''We hope to support obfuscation in the future. We are tracking this work at ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1619'))}.''',
-        );
-      throw ProcessExit(ExitCode.unavailable.code);
-    }
+    await assertObfuscationIsSupported();
   }
 
   @override
@@ -94,13 +91,20 @@ To change the version of this release, change your app's version in your pubspec
     }
 
     final base64PublicKey = await getEncodedPublicKey();
+
+    final buildArgs = [...argResults.forwardedArgs];
+    addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
+
     await artifactBuilder.buildMacos(
       codesign: codesign,
       flavor: flavor,
       target: target,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
+
+    verifyObfuscationMap();
 
     final appDirectory = artifactManager.getMacOSAppDirectory(flavor: flavor);
     if (appDirectory == null) {
@@ -160,6 +164,8 @@ To change the version of this release, change your app's version in your pubspec
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
     );
+
+    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

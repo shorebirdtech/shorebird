@@ -15,11 +15,17 @@ class LoginCiCommand extends ShorebirdCommand {
     argParser.addOption(
       'provider',
       abbr: 'p',
-      allowed: api.AuthProvider.values.map((e) => e.name),
+      allowed: _supportedProviders.map((e) => e.name),
       defaultsTo: api.AuthProvider.google.name,
       help: 'The authentication provider to use. Defaults to Google.',
     );
   }
+
+  /// Providers supported for CI login. Shorebird auth tokens cannot be used
+  /// for CI authentication.
+  static final _supportedProviders = api.AuthProvider.values
+      .where((p) => p != api.AuthProvider.shorebird)
+      .toList();
 
   @override
   String get description => 'Login as a CI user.';
@@ -31,11 +37,13 @@ class LoginCiCommand extends ShorebirdCommand {
   Future<int> run() async {
     final api.AuthProvider provider;
     if (results.wasParsed('provider')) {
-      provider = api.AuthProvider.values.byName(results['provider'] as String);
+      provider = api.AuthProvider.values.byName(
+        results['provider'] as String,
+      );
     } else {
       provider = logger.chooseOne(
         'Choose an auth provider',
-        choices: api.AuthProvider.values,
+        choices: _supportedProviders,
         display: (p) => p.displayName,
       );
     }

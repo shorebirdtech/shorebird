@@ -252,6 +252,52 @@ void main() {
           );
         });
       });
+
+      group('when extraBuildArgs has obfuscation flags', () {
+        setUp(() {
+          final releaseDir = Directory(
+            p.join(
+              projectRoot.path,
+              'build',
+              'linux',
+              'x64',
+              'release',
+              'bundle',
+            ),
+          )..createSync(recursive: true);
+          when(
+            () => artifactManager.linuxBundleDirectory,
+          ).thenReturn(releaseDir);
+          when(
+            () => artifactBuilder.buildLinuxApp(
+              base64PublicKey: any(named: 'base64PublicKey'),
+              args: any(named: 'args'),
+            ),
+          ).thenAnswer((_) async => {});
+        });
+
+        test('passes extraBuildArgs to buildLinuxApp', () async {
+          patcher.extraBuildArgs = [
+            '--obfuscate',
+            '--split-debug-info=build/shorebird/symbols',
+          ];
+          await runWithOverrides(() => patcher.buildPatchArtifact());
+
+          final captured = verify(
+            () => artifactBuilder.buildLinuxApp(
+              base64PublicKey: any(named: 'base64PublicKey'),
+              args: captureAny(named: 'args'),
+            ),
+          ).captured;
+
+          final args = captured.last as List<String>;
+          expect(args, contains('--obfuscate'));
+          expect(
+            args.any((a) => a.startsWith('--split-debug-info=')),
+            isTrue,
+          );
+        });
+      });
     });
 
     group('createPatchArtifacts', () {
@@ -342,7 +388,7 @@ void main() {
               appId: 'com.example.app',
               releaseId: 1,
               releaseArtifact: releaseArtifact,
-              supplementArtifact: File('supplement.zip'),
+              supplementDirectory: Directory('supplement'),
             ),
           );
 

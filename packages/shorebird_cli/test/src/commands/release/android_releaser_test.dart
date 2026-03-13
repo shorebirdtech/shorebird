@@ -5,7 +5,9 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/android_releaser.dart';
@@ -20,6 +22,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -34,6 +37,7 @@ void main() {
   group(AndroidReleaser, () {
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
+    late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
     late CodeSigner codeSigner;
     late Doctor doctor;
@@ -44,6 +48,7 @@ void main() {
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdAndroidArtifacts shorebirdAndroidArtifacts;
     late AndroidReleaser androidReleaser;
@@ -53,6 +58,7 @@ void main() {
         body,
         values: {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
+          artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
@@ -61,6 +67,7 @@ void main() {
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
           shorebirdAndroidArtifactsRef.overrideWith(
             () => shorebirdAndroidArtifacts,
@@ -78,6 +85,7 @@ void main() {
     setUp(() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
+      artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
       doctor = MockDoctor();
@@ -88,6 +96,7 @@ void main() {
       logger = MockShorebirdLogger();
       shorebirdProcess = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
       shorebirdValidator = MockShorebirdValidator();
       shorebirdAndroidArtifacts = MockShorebirdAndroidArtifacts();
 
@@ -274,6 +283,60 @@ To change the version of this release, change your app's version in your pubspec
           expect(
             () => runWithOverrides(androidReleaser.assertArgsAreValid),
             returnsNormally,
+          );
+        });
+      });
+
+      group('when --obfuscate is passed', () {
+        setUp(() {
+          when(() => argResults['artifact']).thenReturn('aab');
+          when(() => argResults['split-per-abi']).thenReturn(false);
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        });
+
+        group('when Flutter version supports obfuscation', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 2));
+          });
+
+          test('returns normally', () async {
+            await expectLater(
+              runWithOverrides(androidReleaser.assertArgsAreValid),
+              completes,
+            );
+          });
+        });
+
+        group('when Flutter version does not support obfuscation', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 27, 4));
+          });
+
+          test('logs error and exits', () async {
+            await expectLater(
+              () => runWithOverrides(androidReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.unavailable),
+            );
+          });
+        });
+      });
+
+      group('when --obfuscate is not passed', () {
+        setUp(() {
+          when(() => argResults['artifact']).thenReturn('aab');
+          when(() => argResults['split-per-abi']).thenReturn(false);
+        });
+
+        test('returns normally', () async {
+          await expectLater(
+            runWithOverrides(androidReleaser.assertArgsAreValid),
+            completes,
           );
         });
       });

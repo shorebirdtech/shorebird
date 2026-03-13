@@ -873,6 +873,46 @@ base_url: https://example.com''');
       });
     });
 
+    group('authServiceUri', () {
+      test('returns default URI when env var is not set', () {
+        when(() => platform.environment).thenReturn({});
+        expect(
+          runWithOverrides(() => shorebirdEnv.authServiceUri),
+          equals(Uri.parse('https://auth.shorebird.dev')),
+        );
+      });
+
+      test('returns URI from env var when set', () {
+        when(() => platform.environment).thenReturn({
+          'AUTH_SERVICE_URL': 'https://custom-auth.example.com',
+        });
+        expect(
+          runWithOverrides(() => shorebirdEnv.authServiceUri),
+          equals(Uri.parse('https://custom-auth.example.com')),
+        );
+      });
+    });
+
+    group('jwtIssuer', () {
+      test('returns default issuer when env var is not set', () {
+        when(() => platform.environment).thenReturn({});
+        expect(
+          runWithOverrides(() => shorebirdEnv.jwtIssuer),
+          equals('https://auth.shorebird.dev'),
+        );
+      });
+
+      test('returns issuer from env var when set', () {
+        when(() => platform.environment).thenReturn({
+          'SHOREBIRD_JWT_ISSUER': 'https://custom-issuer.example.com',
+        });
+        expect(
+          runWithOverrides(() => shorebirdEnv.jwtIssuer),
+          equals('https://custom-issuer.example.com'),
+        );
+      });
+    });
+
     group('isRunningOnCI', () {
       test('returns true if BOT variable is "true"', () {
         when(() => platform.environment).thenReturn({'BOT': 'true'});

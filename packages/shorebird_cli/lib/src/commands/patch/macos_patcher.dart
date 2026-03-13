@@ -58,6 +58,9 @@ class MacosPatcher extends Patcher {
   String get primaryReleaseArtifactArch => 'app';
 
   @override
+  String? get supplementaryReleaseArtifactArch => 'macos_supplement';
+
+  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(
@@ -135,15 +138,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       throw ProcessExit(ExitCode.software.code);
     }
 
+    final buildArgs = [
+      ...argResults.forwardedArgs,
+      ...extraBuildArgs,
+      ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+    ];
+
     // If buildMacos is called with a different codesign value than the
     // release was, we will erroneously report native diffs.
     final macosBuildResult = await artifactBuilder.buildMacos(
       codesign: codesign,
       flavor: flavor,
       target: target,
-      args:
-          argResults.forwardedArgs +
-          buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 
@@ -154,6 +161,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _arm64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
+      additionalArgs: [
+        ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        ...obfuscationGenSnapshotArgs,
+      ],
     );
 
     if (!File(_arm64AotOutputPath).existsSync()) {
@@ -164,6 +175,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _x64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
+      additionalArgs: [
+        ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        ...obfuscationGenSnapshotArgs,
+      ],
     );
 
     if (!File(_x64AotOutputPath).existsSync()) {
@@ -217,7 +232,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
     final releaseAppDirectory = Directory.systemTemp.createTempSync();

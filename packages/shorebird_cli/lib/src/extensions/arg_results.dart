@@ -251,6 +251,16 @@ extension ForwardedArgs on ArgResults {
     }
   }
 
+  /// Returns `['--$name']` when the boolean flag [name] was parsed and is
+  /// `true`, or an empty iterable otherwise.
+  Iterable<String> _flagNamed(String name) {
+    if (!wasParsed(name)) {
+      return [];
+    }
+    final value = this[name] as bool;
+    return value ? ['--$name'] : [];
+  }
+
   /// A list of arguments parsed by Shorebird commands that will be forwarded
   /// to the underlying Flutter commands (that is, placed after `--`).
   List<String> get forwardedArgs {
@@ -269,6 +279,7 @@ extension ForwardedArgs on ArgResults {
       ..._argsNamed(CommonArguments.splitDebugInfoArg.name),
       ..._argsNamed(CommonArguments.exportMethodArg.name),
       ..._argsNamed(CommonArguments.exportOptionsPlistArg.name),
+      ..._flagNamed(CommonArguments.obfuscateArg.name),
     ]);
 
     return forwarded;
