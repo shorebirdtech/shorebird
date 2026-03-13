@@ -8,7 +8,6 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/commands/login_command.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../mocks.dart';
@@ -33,10 +32,6 @@ void main() {
       );
     }
 
-    setUpAll(() {
-      registerFallbackValue(AuthProvider.shorebird);
-    });
-
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
       auth = MockAuth();
@@ -49,10 +44,18 @@ void main() {
         () => auth.credentialsFilePath,
       ).thenReturn(p.join(applicationConfigHome.path, 'credentials.json'));
       when(
-        () => auth.login(any(), prompt: any(named: 'prompt')),
+        () => auth.login(prompt: any(named: 'prompt')),
       ).thenAnswer((_) async {});
 
       command = runWithOverrides(LoginCommand.new);
+    });
+
+    test('has correct name', () {
+      expect(command.name, 'login');
+    });
+
+    test('has correct description', () {
+      expect(command.description, 'Login as a new Shorebird user.');
     });
 
     group('when user is already logged in', () {
@@ -75,14 +78,36 @@ void main() {
               '''Run ${lightCyan.wrap('shorebird logout')} to log out and try again.''',
             ),
           ).called(1);
-          verifyNever(() => auth.login(any(), prompt: any(named: 'prompt')));
+          verifyNever(() => auth.login(prompt: any(named: 'prompt')));
         },
       );
     });
 
+    group('when user is authenticated via API key', () {
+      setUp(() {
+        when(() => auth.isAuthenticated).thenReturn(true);
+        when(() => auth.email).thenReturn(null);
+      });
+
+      test('prints API key message and exits with code 0', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.info('You are already authenticated via API key.'),
+        ).called(1);
+        verify(
+          () => logger.info(
+            '''Run ${lightCyan.wrap('shorebird logout')} to log out and try again.''',
+          ),
+        ).called(1);
+        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+      });
+    });
+
     test('exits with code 70 if no user is found', () async {
       when(
-        () => auth.login(any(), prompt: any(named: 'prompt')),
+        () => auth.login(prompt: any(named: 'prompt')),
       ).thenThrow(UserNotFoundException(email: email));
 
       final result = await runWithOverrides(command.run);
@@ -99,26 +124,26 @@ void main() {
     test('exits with code 70 when error occurs', () async {
       final error = Exception('oops something went wrong!');
       when(
-        () => auth.login(any(), prompt: any(named: 'prompt')),
+        () => auth.login(prompt: any(named: 'prompt')),
       ).thenThrow(error);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.software.code));
 
-      verify(() => auth.login(any(), prompt: any(named: 'prompt'))).called(1);
+      verify(() => auth.login(prompt: any(named: 'prompt'))).called(1);
       verify(() => logger.err(error.toString())).called(1);
     });
 
     test('exits with code 0 when logged in successfully', () async {
       when(
-        () => auth.login(any(), prompt: any(named: 'prompt')),
+        () => auth.login(prompt: any(named: 'prompt')),
       ).thenAnswer((_) async {});
       when(() => auth.email).thenReturn(email);
 
       final result = await runWithOverrides(command.run);
       expect(result, equals(ExitCode.success.code));
 
-      verify(() => auth.login(any(), prompt: any(named: 'prompt'))).called(1);
+      verify(() => auth.login(prompt: any(named: 'prompt'))).called(1);
       verify(
         () => logger.info(
           any(that: contains('You are now logged in as <$email>.')),
