@@ -364,7 +364,7 @@ class DexParser {
   }
 
   DexHeader _parseHeader(Uint8List bytes) {
-    final r = _BinaryReader(bytes, 56);
+    final r = _BinaryReader(bytes, offset: 56);
     return DexHeader(
       stringIdsSize: r.readUint32(),
       stringIdsOff: r.readUint32(),
@@ -382,7 +382,7 @@ class DexParser {
   }
 
   List<String> _parseStrings(Uint8List bytes, DexHeader header) {
-    final r = _BinaryReader(bytes, header.stringIdsOff);
+    final r = _BinaryReader(bytes, offset: header.stringIdsOff);
     final strings = <String>[];
     for (var i = 0; i < header.stringIdsSize; i++) {
       final stringDataOff = r.readUint32();
@@ -396,7 +396,7 @@ class DexParser {
     DexHeader header,
     List<String> strings,
   ) {
-    final r = _BinaryReader(bytes, header.typeIdsOff);
+    final r = _BinaryReader(bytes, offset: header.typeIdsOff);
     final types = <String>[];
     for (var i = 0; i < header.typeIdsSize; i++) {
       types.add(strings[r.readUint32()]);
@@ -410,7 +410,7 @@ class DexParser {
     List<String> strings,
     List<String> typeDescriptors,
   ) {
-    final r = _BinaryReader(bytes, header.protoIdsOff);
+    final r = _BinaryReader(bytes, offset: header.protoIdsOff);
     final protos = <DexProtoId>[];
     for (var i = 0; i < header.protoIdsSize; i++) {
       final shortyIdx = r.readUint32();
@@ -443,7 +443,7 @@ class DexParser {
     List<String> strings,
     List<String> typeDescriptors,
   ) {
-    final r = _BinaryReader(bytes, header.fieldIdsOff);
+    final r = _BinaryReader(bytes, offset: header.fieldIdsOff);
     final fields = <DexFieldId>[];
     for (var i = 0; i < header.fieldIdsSize; i++) {
       final classIdx = r.readUint16();
@@ -468,7 +468,7 @@ class DexParser {
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
   ) {
-    final r = _BinaryReader(bytes, header.methodIdsOff);
+    final r = _BinaryReader(bytes, offset: header.methodIdsOff);
     final methods = <DexMethodId>[];
     for (var i = 0; i < header.methodIdsSize; i++) {
       final classIdx = r.readUint16();
@@ -495,7 +495,7 @@ class DexParser {
     List<DexFieldId> fieldIds,
     List<DexMethodId> methodIds,
   ) {
-    final r = _BinaryReader(bytes, header.classDefsOff);
+    final r = _BinaryReader(bytes, offset: header.classDefsOff);
     final classDefs = <DexClassDef>[];
     for (var i = 0; i < header.classDefsSize; i++) {
       final classIdx = r.readUint32();
@@ -519,7 +519,7 @@ class DexParser {
       DexClassData? classData;
       if (classDataOff != 0) {
         classData = _parseClassData(
-          _BinaryReader(bytes, classDataOff),
+          _BinaryReader(bytes, offset: classDataOff),
           strings,
           typeDescriptors,
           protoIds,
@@ -530,7 +530,7 @@ class DexParser {
 
       final canonAnnotations = annotationsOff != 0
           ? _canonicalizeAnnotationDirectory(
-              _BinaryReader(bytes, annotationsOff),
+              _BinaryReader(bytes, offset: annotationsOff),
               strings,
               typeDescriptors,
               protoIds,
@@ -541,7 +541,7 @@ class DexParser {
 
       final canonStaticValues = staticValuesOff != 0
           ? _canonicalizeEncodedArray(
-              _BinaryReader(bytes, staticValuesOff),
+              _BinaryReader(bytes, offset: staticValuesOff),
               strings,
               typeDescriptors,
               protoIds,
@@ -843,7 +843,7 @@ class DexParser {
     }
 
     // encoded_catch_handler_list follows try_items.
-    final r = _BinaryReader(bytes, triesOff + triesSize * 8);
+    final r = _BinaryReader(bytes, offset: triesOff + triesSize * 8);
 
     final listSize = r.readUleb128();
     buf.write('HL:$listSize,');
@@ -1237,13 +1237,13 @@ class DexParser {
 // =====================================================================
 
 class _BinaryReader {
-  _BinaryReader(this.bytes, this._pos);
+  _BinaryReader(this.bytes, {int offset = 0}) : _pos = offset;
 
   final Uint8List bytes;
   int _pos;
 
   /// Creates a new reader at a different offset in the same bytes.
-  _BinaryReader at(int offset) => _BinaryReader(bytes, offset);
+  _BinaryReader at(int offset) => _BinaryReader(bytes, offset: offset);
 
   /// Advances position by [count] bytes without reading.
   void skip(int count) => _pos += count;
