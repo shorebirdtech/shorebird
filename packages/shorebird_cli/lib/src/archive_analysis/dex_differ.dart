@@ -30,7 +30,11 @@ enum DexDifferenceKind {
   superclassChanged,
 
   /// The interface list of a class changed.
-  interfacesChanged,
+  interfacesChanged;
+
+  /// Whether this kind of difference is safe (does not affect runtime
+  /// behavior).
+  bool get isSafe => this == sourceFileChanged;
 }
 
 /// {@template dex_difference}
@@ -45,10 +49,6 @@ class DexDifference {
 
   /// A human-readable description of the difference.
   final String description;
-
-  /// Whether this difference is safe (does not affect runtime behavior).
-  bool get isSafe =>
-      kind == DexDifferenceKind.sourceFileChanged;
 }
 
 /// {@template dex_diff_result}
@@ -56,21 +56,21 @@ class DexDifference {
 /// {@endtemplate}
 class DexDiffResult {
   /// {@macro dex_diff_result}
-  const DexDiffResult({
-    required this.safeDifferences,
-    required this.breakingDifferences,
-  });
+  const DexDiffResult({required this.differences});
 
   /// Creates an empty (identical) diff result.
-  const DexDiffResult.identical()
-      : safeDifferences = const [],
-        breakingDifferences = const [];
+  const DexDiffResult.identical() : differences = const [];
+
+  /// All differences found between the two DEX files.
+  final List<DexDifference> differences;
 
   /// Differences that are safe to ignore (e.g. source file paths).
-  final List<DexDifference> safeDifferences;
+  Iterable<DexDifference> get safeDifferences =>
+      differences.where((d) => d.kind.isSafe);
 
   /// Differences that indicate real code changes.
-  final List<DexDifference> breakingDifferences;
+  Iterable<DexDifference> get breakingDifferences =>
+      differences.where((d) => !d.kind.isSafe);
 
   /// Whether all differences are safe to ignore.
   bool get isSafe => breakingDifferences.isEmpty;
@@ -78,21 +78,23 @@ class DexDiffResult {
   /// A human-readable summary of the differences.
   String describe() {
     final buffer = StringBuffer();
+    final safe = safeDifferences.toList();
+    final breaking = breakingDifferences.toList();
 
-    if (safeDifferences.isNotEmpty) {
+    if (safe.isNotEmpty) {
       buffer.writeln(
-        'Safe differences (${safeDifferences.length}):',
+        'Safe differences (${safe.length}):',
       );
-      for (final diff in safeDifferences) {
+      for (final diff in safe) {
         buffer.writeln('  - ${diff.description}');
       }
     }
 
-    if (breakingDifferences.isNotEmpty) {
+    if (breaking.isNotEmpty) {
       buffer.writeln(
-        'Breaking differences (${breakingDifferences.length}):',
+        'Breaking differences (${breaking.length}):',
       );
-      for (final diff in breakingDifferences) {
+      for (final diff in breaking) {
         buffer.writeln('  - ${diff.description}');
       }
     }
@@ -111,8 +113,7 @@ class DexDiffer {
 
   /// Compares two DEX files and returns the differences.
   DexDiffResult diff(DexFile oldFile, DexFile newFile) {
-    final safe = <DexDifference>[];
-    final breaking = <DexDifference>[];
+    final differences = <DexDifference>[];
 
     // Build class maps keyed by type descriptor.
     final oldClasses = {
@@ -127,7 +128,7 @@ class DexDiffer {
 
     // Detect added/removed classes.
     for (final added in newClassNames.difference(oldClassNames)) {
-      breaking.add(
+      differences.add(
         DexDifference(
           kind: DexDifferenceKind.classAdded,
           description: 'Class added: $added',
@@ -136,7 +137,7 @@ class DexDiffer {
     }
 
     for (final removed in oldClassNames.difference(newClassNames)) {
-      breaking.add(
+      differences.add(
         DexDifference(
           kind: DexDifferenceKind.classRemoved,
           description: 'Class removed: $removed',
@@ -146,26 +147,21 @@ class DexDiffer {
 
     // Compare matched classes.
     for (final name in oldClassNames.intersection(newClassNames)) {
-      _compareClasses(oldClasses[name]!, newClasses[name]!, safe, breaking);
+      _compareClasses(oldClasses[name]!, newClasses[name]!, differences);
     }
 
-    return DexDiffResult(
-      safeDifferences: safe,
-      breakingDifferences: breaking,
-    );
+    return DexDiffResult(differences: differences);
   }
 
   void _compareClasses(
     DexClassDef oldClass,
     DexClassDef newClass,
-    List<DexDifference> safe,
-    List<DexDifference> breaking,
+    List<DexDifference> differences,
   ) {
     final name = oldClass.className;
 
-    // Source file change is safe.
     if (oldClass.sourceFile != newClass.sourceFile) {
-      safe.add(
+      differences.add(
         DexDifference(
           kind: DexDifferenceKind.sourceFileChanged,
           description:
@@ -175,9 +171,8 @@ class DexDiffer {
       );
     }
 
-    // Access flags change is breaking.
     if (oldClass.accessFlags != newClass.accessFlags) {
-      breaking.add(
+      differences.add(
         DexDifference(
           kind: DexDifferenceKind.accessFlagsChanged,
           description:
@@ -188,9 +183,8 @@ class DexDiffer {
       );
     }
 
-    // Superclass change is breaking.
     if (oldClass.superclass != newClass.superclass) {
-      breaking.add(
+      differences.add(
         DexDifference(
           kind: DexDifferenceKind.superclassChanged,
           description:
@@ -200,9 +194,8 @@ class DexDiffer {
       );
     }
 
-    // Interfaces change is breaking.
     if (!_listEquals(oldClass.interfaces, newClass.interfaces)) {
-      breaking.add(
+      differences.add(
         DexDifference(
           kind: DexDifferenceKind.interfacesChanged,
           description: '$name: interfaces changed',
@@ -210,16 +203,20 @@ class DexDiffer {
       );
     }
 
-    // Compare fields and methods.
-    _compareFields(name, oldClass.classData, newClass.classData, breaking);
-    _compareMethods(name, oldClass.classData, newClass.classData, breaking);
+    _compareFields(name, oldClass.classData, newClass.classData, differences);
+    _compareMethods(
+      name,
+      oldClass.classData,
+      newClass.classData,
+      differences,
+    );
   }
 
   void _compareFields(
     String className,
     DexClassData? oldData,
     DexClassData? newData,
-    List<DexDifference> breaking,
+    List<DexDifference> differences,
   ) {
     final oldFields = <String, int>{};
     final newFields = <String, int>{};
@@ -244,7 +241,7 @@ class DexDiffer {
     final newKeys = newFields.keys.toSet();
 
     for (final added in newKeys.difference(oldKeys)) {
-      breaking.add(
+      differences.add(
         DexDifference(
           kind: DexDifferenceKind.fieldAdded,
           description: '$className: field added: $added',
@@ -253,7 +250,7 @@ class DexDiffer {
     }
 
     for (final removed in oldKeys.difference(newKeys)) {
-      breaking.add(
+      differences.add(
         DexDifference(
           kind: DexDifferenceKind.fieldRemoved,
           description: '$className: field removed: $removed',
@@ -263,7 +260,7 @@ class DexDiffer {
 
     for (final common in oldKeys.intersection(newKeys)) {
       if (oldFields[common] != newFields[common]) {
-        breaking.add(
+        differences.add(
           DexDifference(
             kind: DexDifferenceKind.accessFlagsChanged,
             description:
@@ -280,7 +277,7 @@ class DexDiffer {
     String className,
     DexClassData? oldData,
     DexClassData? newData,
-    List<DexDifference> breaking,
+    List<DexDifference> differences,
   ) {
     final oldMethods = <String, int>{};
     final newMethods = <String, int>{};
@@ -303,7 +300,7 @@ class DexDiffer {
     final newKeys = newMethods.keys.toSet();
 
     for (final added in newKeys.difference(oldKeys)) {
-      breaking.add(
+      differences.add(
         DexDifference(
           kind: DexDifferenceKind.methodAdded,
           description: '$className: method added: $added',
@@ -312,7 +309,7 @@ class DexDiffer {
     }
 
     for (final removed in oldKeys.difference(newKeys)) {
-      breaking.add(
+      differences.add(
         DexDifference(
           kind: DexDifferenceKind.methodRemoved,
           description: '$className: method removed: $removed',
@@ -322,7 +319,7 @@ class DexDiffer {
 
     for (final common in oldKeys.intersection(newKeys)) {
       if (oldMethods[common] != newMethods[common]) {
-        breaking.add(
+        differences.add(
           DexDifference(
             kind: DexDifferenceKind.accessFlagsChanged,
             description:

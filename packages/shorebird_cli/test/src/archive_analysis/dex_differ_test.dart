@@ -125,21 +125,13 @@ void main() {
       });
     });
 
-    group('DexDifference.isSafe', () {
+    group('DexDifferenceKind.isSafe', () {
       test('sourceFileChanged is safe', () {
-        const diff = DexDifference(
-          kind: DexDifferenceKind.sourceFileChanged,
-          description: 'test',
-        );
-        expect(diff.isSafe, isTrue);
+        expect(DexDifferenceKind.sourceFileChanged.isSafe, isTrue);
       });
 
       test('classAdded is not safe', () {
-        const diff = DexDifference(
-          kind: DexDifferenceKind.classAdded,
-          description: 'test',
-        );
-        expect(diff.isSafe, isFalse);
+        expect(DexDifferenceKind.classAdded.isSafe, isFalse);
       });
     });
   });
