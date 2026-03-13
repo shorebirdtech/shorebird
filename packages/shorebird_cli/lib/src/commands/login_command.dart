@@ -2,7 +2,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template login_command}
 /// `shorebird login`
@@ -18,8 +17,13 @@ class LoginCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     if (auth.isAuthenticated) {
+      final emailDisplay = auth.email;
       logger
-        ..info('You are already logged in as <${auth.email}>.')
+        ..info(
+          emailDisplay != null
+              ? 'You are already logged in as <$emailDisplay>.'
+              : 'You are already authenticated via API key.',
+        )
         ..info(
           'Run ${lightCyan.wrap('shorebird logout')} to log out and try again.',
         );
@@ -27,7 +31,7 @@ class LoginCommand extends ShorebirdCommand {
     }
 
     try {
-      await auth.login(AuthProvider.shorebird, prompt: prompt);
+      await auth.login(prompt: prompt);
     } on UserNotFoundException catch (error) {
       final consoleUri = Uri.https('console.shorebird.dev');
       logger
