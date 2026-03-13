@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/dex_differ.dart';
@@ -85,11 +84,41 @@ void main() {
     });
 
     test('mixed safe and breaking differences are not safe', () {
-      // path_only_diff changes source files (safe) but also has same structure
-      // Let's test with superclass_changed which only has breaking changes
       final superclassChangedDex = parseDexFixture('superclass_changed.dex');
       final result = differ.diff(baseDex, superclassChangedDex);
       expect(result.isSafe, isFalse);
+    });
+
+    group('bytecode comparison', () {
+      late DexFile baseWithCode;
+
+      setUp(() {
+        baseWithCode = parseDexFixture('base_with_code.dex');
+      });
+
+      test('identical bytecode is safe', () {
+        final result = differ.diff(baseWithCode, baseWithCode);
+        expect(result.isSafe, isTrue);
+      });
+
+      test('changed bytecode is breaking', () {
+        final codeChanged = parseDexFixture('code_changed.dex');
+        final result = differ.diff(baseWithCode, codeChanged);
+        expect(result.isSafe, isFalse);
+        expect(
+          result.breakingDifferences.any(
+            (d) => d.kind == DexDifferenceKind.bytecodeChanged,
+          ),
+          isTrue,
+        );
+      });
+
+      test('path-only diff with identical bytecode is safe', () {
+        final pathWithCode = parseDexFixture('path_only_with_code.dex');
+        final result = differ.diff(baseWithCode, pathWithCode);
+        expect(result.isSafe, isTrue);
+        expect(result.safeDifferences, isNotEmpty);
+      });
     });
 
     group('describe', () {
@@ -132,6 +161,18 @@ void main() {
 
       test('classAdded is not safe', () {
         expect(DexDifferenceKind.classAdded.isSafe, isFalse);
+      });
+
+      test('bytecodeChanged is not safe', () {
+        expect(DexDifferenceKind.bytecodeChanged.isSafe, isFalse);
+      });
+
+      test('annotationsChanged is not safe', () {
+        expect(DexDifferenceKind.annotationsChanged.isSafe, isFalse);
+      });
+
+      test('staticValuesChanged is not safe', () {
+        expect(DexDifferenceKind.staticValuesChanged.isSafe, isFalse);
       });
     });
   });

@@ -27,6 +27,11 @@ void main() {
         expect(dex.classDefs, hasLength(2));
       });
 
+      test('stores raw bytes', () {
+        final dex = parser.parse(baseDexBytes);
+        expect(dex.bytes, same(baseDexBytes));
+      });
+
       test('resolves string table values', () {
         final dex = parser.parse(baseDexBytes);
         expect(dex.strings, contains('<init>'));
@@ -106,6 +111,24 @@ void main() {
           equals('getValue'),
         );
       });
+
+      test('parses code offsets', () {
+        final dex = parser.parse(
+          File(p.join('test', 'fixtures', 'dex', 'base_with_code.dex'))
+              .readAsBytesSync(),
+        );
+        final method = dex.classDefs[0].classData!.directMethods[0];
+        expect(method.codeOffset, isNot(0));
+      });
+
+      test('parses annotationsOff and staticValuesOff', () {
+        final dex = parser.parse(baseDexBytes);
+        // Our test fixtures don't have annotations or static values.
+        for (final classDef in dex.classDefs) {
+          expect(classDef.annotationsOff, equals(0));
+          expect(classDef.staticValuesOff, equals(0));
+        }
+      });
     });
 
     group('error handling', () {
@@ -124,14 +147,11 @@ void main() {
 
     group('readUleb128', () {
       test('decodes single-byte values', () {
-        // 0
         expect(readUleb128(Uint8List.fromList([0x00]), 0), equals((0, 1)));
-        // 127
         expect(readUleb128(Uint8List.fromList([0x7F]), 0), equals((127, 1)));
       });
 
       test('decodes two-byte values', () {
-        // 128 = 0x00 | 0x80, 0x01
         expect(
           readUleb128(Uint8List.fromList([0x80, 0x01]), 0),
           equals((128, 2)),
@@ -139,7 +159,6 @@ void main() {
       });
 
       test('decodes three-byte values', () {
-        // 16384 = 0x00 | 0x80, 0x00 | 0x80, 0x01
         expect(
           readUleb128(Uint8List.fromList([0x80, 0x80, 0x01]), 0),
           equals((16384, 3)),
