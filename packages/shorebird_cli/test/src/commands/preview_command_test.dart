@@ -2388,6 +2388,7 @@ channel: ${DeploymentTrack.staging.channel}
       late ShorebirdProcess shorebirdProcess;
       late Process process;
       late Directory windowsReleaseDirectory;
+      late Windows windowsMock;
 
       R runWithOverrides<R>(R Function() body) {
         return HttpOverrides.runZoned(
@@ -2406,6 +2407,7 @@ channel: ${DeploymentTrack.staging.channel}
               processRef.overrideWith(() => shorebirdProcess),
               shorebirdEnvRef.overrideWith(() => shorebirdEnv),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+              windowsRef.overrideWith(() => windowsMock),
             },
           ),
         );
@@ -2435,6 +2437,18 @@ channel: ${DeploymentTrack.staging.channel}
       setUp(() {
         shorebirdProcess = MockShorebirdProcess();
         process = MockProcess();
+        windowsMock = MockWindows();
+        when(
+          () => windowsMock.findExecutable(
+            releaseDirectory: any(named: 'releaseDirectory'),
+            projectName: any(named: 'projectName'),
+          ),
+        ).thenAnswer((invocation) {
+          final dir = invocation.namedArguments[#releaseDirectory] as Directory;
+          return dir.listSync().whereType<File>().firstWhere(
+            (f) => f.path.endsWith('.exe'),
+          );
+        });
         windowsReleaseArtifact = MockReleaseArtifact();
 
         final tempDir = Directory.systemTemp.createTempSync();
