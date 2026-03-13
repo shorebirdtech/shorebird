@@ -287,17 +287,16 @@ class DexDiffer {
       differences,
     );
 
-    if (oldClass.canonicalAnnotations !=
-        newClass.canonicalAnnotations) {
+    if (oldClass.annotations != newClass.annotations) {
       // Both null means equal — this only triggers when they
       // actually differ (including one being null and other not).
-      if (oldClass.canonicalAnnotations != null ||
-          newClass.canonicalAnnotations != null) {
+      if (oldClass.annotations != null ||
+          newClass.annotations != null) {
         differences.add(
           DexDifference(
             kind: DexDifferenceKind.annotationsChanged,
-            description: oldClass.canonicalAnnotations == null ||
-                    newClass.canonicalAnnotations == null
+            description: oldClass.annotations == null ||
+                    newClass.annotations == null
                 ? '$className: annotations added or removed'
                 : '$className: annotations changed',
           ),
@@ -305,20 +304,21 @@ class DexDiffer {
       }
     }
 
-    if (oldClass.canonicalStaticValues !=
-        newClass.canonicalStaticValues) {
-      if (oldClass.canonicalStaticValues != null ||
-          newClass.canonicalStaticValues != null) {
+    if (!_nullableListEquals(
+      oldClass.staticValues,
+      newClass.staticValues,
+    )) {
+      if (oldClass.staticValues != null ||
+          newClass.staticValues != null) {
         differences.add(
           DexDifference(
             kind: DexDifferenceKind.staticValuesChanged,
-            description:
-                oldClass.canonicalStaticValues == null ||
-                        newClass.canonicalStaticValues == null
-                    ? '$className: static field initial values '
-                        'added or removed'
-                    : '$className: static field initial values '
-                        'changed',
+            description: oldClass.staticValues == null ||
+                    newClass.staticValues == null
+                ? '$className: static field initial values '
+                    'added or removed'
+                : '$className: static field initial values '
+                    'changed',
           ),
         );
       }
@@ -447,6 +447,16 @@ class DexDiffer {
   }
 
   bool _listEquals<T>(List<T> a, List<T> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  static bool _nullableListEquals<T>(List<T>? a, List<T>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
       if (a[i] != b[i]) return false;

@@ -131,12 +131,12 @@ void main() {
         expect(code.canonicalBytecode, isNotEmpty);
       });
 
-      test('parses canonicalAnnotations and canonicalStaticValues', () {
+      test('parses annotations and staticValues', () {
         final dex = parser.parse(baseDexBytes);
         // Our test fixtures don't have annotations or static values.
         for (final classDef in dex.classDefs) {
-          expect(classDef.canonicalAnnotations, isNull);
-          expect(classDef.canonicalStaticValues, isNull);
+          expect(classDef.annotations, isNull);
+          expect(classDef.staticValues, isNull);
         }
       });
     });

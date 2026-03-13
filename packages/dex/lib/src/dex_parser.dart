@@ -1,6 +1,8 @@
 // cspell:words uleb sleb mutf Dalvik Ljava insns annot iget iput sget sput
 import 'dart:typed_data';
 
+import 'package:meta/meta.dart';
+
 /// {@template dex_file}
 /// A parsed DEX (Dalvik Executable) file.
 /// {@endtemplate}
@@ -98,6 +100,7 @@ class DexHeader {
 /// {@template dex_proto_id}
 /// A resolved prototype identifier (method signature).
 /// {@endtemplate}
+@immutable
 class DexProtoId {
   /// {@macro dex_proto_id}
   const DexProtoId({
@@ -114,11 +117,26 @@ class DexProtoId {
 
   /// Parameter type descriptors, empty if no parameters.
   final List<String> parameterTypes;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexProtoId &&
+          shorty == other.shorty &&
+          returnType == other.returnType &&
+          _listEquals(parameterTypes, other.parameterTypes);
+
+  @override
+  int get hashCode =>
+      shorty.hashCode ^
+      returnType.hashCode ^
+      Object.hashAll(parameterTypes);
 }
 
 /// {@template dex_field_id}
 /// A resolved field identifier.
 /// {@endtemplate}
+@immutable
 class DexFieldId {
   /// {@macro dex_field_id}
   const DexFieldId({
@@ -135,11 +153,26 @@ class DexFieldId {
 
   /// The field name.
   final String fieldName;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexFieldId &&
+          className == other.className &&
+          typeName == other.typeName &&
+          fieldName == other.fieldName;
+
+  @override
+  int get hashCode =>
+      className.hashCode ^
+      typeName.hashCode ^
+      fieldName.hashCode;
 }
 
 /// {@template dex_method_id}
 /// A resolved method identifier.
 /// {@endtemplate}
+@immutable
 class DexMethodId {
   /// {@macro dex_method_id}
   const DexMethodId({
@@ -156,7 +189,470 @@ class DexMethodId {
 
   /// The resolved prototype (signature).
   final DexProtoId proto;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexMethodId &&
+          className == other.className &&
+          methodName == other.methodName &&
+          proto == other.proto;
+
+  @override
+  int get hashCode =>
+      className.hashCode ^
+      methodName.hashCode ^
+      proto.hashCode;
 }
+
+// -- Annotation and encoded-value types -----------------------------------
+
+/// {@template dex_annotation_directory}
+/// All annotations associated with a class, including annotations on
+/// the class itself, its fields, methods, and method parameters.
+///
+/// All pool indices are resolved to their actual string/type/field/method
+/// values at parse time so that two semantically identical DEX files
+/// compare equal even when their internal index tables differ.
+/// {@endtemplate}
+@immutable
+class DexAnnotationDirectory {
+  /// {@macro dex_annotation_directory}
+  const DexAnnotationDirectory({
+    required this.classAnnotations,
+    required this.fieldAnnotations,
+    required this.methodAnnotations,
+    required this.parameterAnnotations,
+  });
+
+  /// Annotations on the class itself.
+  final List<DexAnnotation> classAnnotations;
+
+  /// Annotations on fields, keyed by resolved field descriptor.
+  final Map<String, List<DexAnnotation>> fieldAnnotations;
+
+  /// Annotations on methods, keyed by resolved method descriptor.
+  final Map<String, List<DexAnnotation>> methodAnnotations;
+
+  /// Parameter annotations on methods, keyed by resolved method
+  /// descriptor. Each value is a list of annotation sets, one per
+  /// parameter.
+  final Map<String, List<List<DexAnnotation>>>
+      parameterAnnotations;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! DexAnnotationDirectory) return false;
+    // classAnnotations: order-independent comparison.
+    if (!_sortedAnnotationListEquals(
+      classAnnotations,
+      other.classAnnotations,
+    )) {
+      return false;
+    }
+    if (!_annotationMapEquals(
+      fieldAnnotations,
+      other.fieldAnnotations,
+    )) {
+      return false;
+    }
+    if (!_annotationMapEquals(
+      methodAnnotations,
+      other.methodAnnotations,
+    )) {
+      return false;
+    }
+    if (!_paramAnnotationMapEquals(
+      parameterAnnotations,
+      other.parameterAnnotations,
+    )) {
+      return false;
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hashAll([
+        ...classAnnotations,
+        ...fieldAnnotations.keys,
+        ...methodAnnotations.keys,
+        ...parameterAnnotations.keys,
+      ]);
+}
+
+/// {@template dex_annotation}
+/// A single annotation with all pool references resolved.
+///
+/// Corresponds to an `annotation_item` in the DEX format, which
+/// combines a visibility flag with an `encoded_annotation`.
+/// {@endtemplate}
+@immutable
+class DexAnnotation implements Comparable<DexAnnotation> {
+  /// {@macro dex_annotation}
+  const DexAnnotation({
+    required this.visibility,
+    required this.typeDescriptor,
+    required this.elements,
+  });
+
+  /// Annotation visibility (0 = build, 1 = runtime, 2 = system).
+  final int visibility;
+
+  /// The resolved type descriptor of the annotation type.
+  final String typeDescriptor;
+
+  /// Annotation element name-value pairs. Names are resolved from
+  /// the string pool.
+  final Map<String, DexEncodedValue> elements;
+
+  @override
+  int compareTo(DexAnnotation other) =>
+      typeDescriptor.compareTo(other.typeDescriptor);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! DexAnnotation) return false;
+    if (visibility != other.visibility) return false;
+    if (typeDescriptor != other.typeDescriptor) return false;
+    if (elements.length != other.elements.length) return false;
+    for (final entry in elements.entries) {
+      if (other.elements[entry.key] != entry.value) return false;
+    }
+    return true;
+  }
+
+  @override
+  int get hashCode =>
+      visibility.hashCode ^
+      typeDescriptor.hashCode ^
+      Object.hashAll(
+        elements.entries
+            .toList()
+            .map((e) => Object.hash(e.key, e.value)),
+      );
+}
+
+/// {@template dex_encoded_value}
+/// A value from the DEX `encoded_value` format, with all pool
+/// indices resolved to their actual values.
+///
+/// The DEX format encodes annotation element values, static field
+/// initializers, and other constant data using a tagged union. This
+/// sealed class hierarchy mirrors those tags with proper Dart types.
+/// {@endtemplate}
+@immutable
+sealed class DexEncodedValue {
+  /// Base constructor for encoded values.
+  const DexEncodedValue();
+}
+
+/// A primitive numeric value (byte, short, char, int, long, float,
+/// or double) stored as its raw integer representation.
+@immutable
+class DexEncodedPrimitive extends DexEncodedValue {
+  /// Creates a primitive encoded value.
+  const DexEncodedPrimitive({
+    required this.typeTag,
+    required this.value,
+  });
+
+  /// The DEX value_type tag (0x00=byte, 0x02=short, 0x03=char,
+  /// 0x04=int, 0x06=long, 0x10=float, 0x11=double).
+  final int typeTag;
+
+  /// The raw integer representation of the value.
+  final int value;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedPrimitive &&
+          typeTag == other.typeTag &&
+          value == other.value;
+
+  @override
+  int get hashCode => typeTag.hashCode ^ value.hashCode;
+}
+
+/// A resolved string value from the string pool.
+@immutable
+class DexEncodedString extends DexEncodedValue {
+  /// Creates a string encoded value.
+  const DexEncodedString(this.value);
+
+  /// The resolved string.
+  final String value;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedString && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
+}
+
+/// A resolved type descriptor from the type pool.
+@immutable
+class DexEncodedType extends DexEncodedValue {
+  /// Creates a type encoded value.
+  const DexEncodedType(this.descriptor);
+
+  /// The resolved type descriptor (e.g. `Ljava/lang/String;`).
+  final String descriptor;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedType &&
+          descriptor == other.descriptor;
+
+  @override
+  int get hashCode => descriptor.hashCode;
+}
+
+/// A resolved field reference (as an encoded value in
+/// annotations or static initializers).
+@immutable
+class DexEncodedFieldRef extends DexEncodedValue {
+  /// Creates a field reference encoded value.
+  const DexEncodedFieldRef(this.field);
+
+  /// The resolved field identifier.
+  final DexFieldId field;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedFieldRef && field == other.field;
+
+  @override
+  int get hashCode => field.hashCode;
+}
+
+/// A resolved method reference (as an encoded value in
+/// annotations or static initializers).
+@immutable
+class DexEncodedMethodRef extends DexEncodedValue {
+  /// Creates a method reference encoded value.
+  const DexEncodedMethodRef(this.method);
+
+  /// The resolved method identifier.
+  final DexMethodId method;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedMethodRef &&
+          method == other.method;
+
+  @override
+  int get hashCode => method.hashCode;
+}
+
+/// A resolved enum constant reference (stored as a field
+/// reference in the DEX format).
+@immutable
+class DexEncodedEnum extends DexEncodedValue {
+  /// Creates an enum encoded value.
+  const DexEncodedEnum(this.field);
+
+  /// The resolved field identifier of the enum constant.
+  final DexFieldId field;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedEnum && field == other.field;
+
+  @override
+  int get hashCode => field.hashCode;
+}
+
+/// A resolved method type (prototype) reference.
+@immutable
+class DexEncodedMethodType extends DexEncodedValue {
+  /// Creates a method type encoded value.
+  const DexEncodedMethodType(this.proto);
+
+  /// The resolved prototype.
+  final DexProtoId proto;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedMethodType && proto == other.proto;
+
+  @override
+  int get hashCode => proto.hashCode;
+}
+
+/// A method handle reference. These are not fully resolved because
+/// the method_handle pool is not parsed.
+@immutable
+class DexEncodedMethodHandle extends DexEncodedValue {
+  /// Creates a method handle encoded value.
+  const DexEncodedMethodHandle(this.index);
+
+  /// The raw method handle index.
+  final int index;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedMethodHandle &&
+          index == other.index;
+
+  @override
+  int get hashCode => index.hashCode;
+}
+
+/// An array of encoded values.
+@immutable
+class DexEncodedArray extends DexEncodedValue {
+  /// Creates an array encoded value.
+  const DexEncodedArray(this.values);
+
+  /// The array elements.
+  final List<DexEncodedValue> values;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedArray &&
+          _encodedValueListEquals(values, other.values);
+
+  @override
+  int get hashCode => Object.hashAll(values);
+}
+
+/// An embedded annotation value.
+@immutable
+class DexEncodedAnnotation extends DexEncodedValue {
+  /// Creates an annotation encoded value.
+  const DexEncodedAnnotation(this.annotation);
+
+  /// The embedded annotation.
+  final DexAnnotation annotation;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedAnnotation &&
+          annotation == other.annotation;
+
+  @override
+  int get hashCode => annotation.hashCode;
+}
+
+/// The null value.
+@immutable
+class DexEncodedNull extends DexEncodedValue {
+  /// Creates a null encoded value.
+  const DexEncodedNull();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is DexEncodedNull;
+
+  @override
+  int get hashCode => 0;
+}
+
+/// A boolean value.
+@immutable
+class DexEncodedBoolean extends DexEncodedValue {
+  /// Creates a boolean encoded value.
+  const DexEncodedBoolean({required this.value});
+
+  /// The boolean value.
+  final bool value;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DexEncodedBoolean && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
+}
+
+// -- Equality helpers used by annotation types ----------------------------
+
+bool _listEquals<T>(List<T> a, List<T> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+bool _encodedValueListEquals(
+  List<DexEncodedValue> a,
+  List<DexEncodedValue> b,
+) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+bool _sortedAnnotationListEquals(
+  List<DexAnnotation> a,
+  List<DexAnnotation> b,
+) {
+  if (a.length != b.length) return false;
+  final aSorted = [...a]..sort();
+  final bSorted = [...b]..sort();
+  for (var i = 0; i < aSorted.length; i++) {
+    if (aSorted[i] != bSorted[i]) return false;
+  }
+  return true;
+}
+
+bool _annotationMapEquals(
+  Map<String, List<DexAnnotation>> a,
+  Map<String, List<DexAnnotation>> b,
+) {
+  if (a.length != b.length) return false;
+  for (final entry in a.entries) {
+    final bVal = b[entry.key];
+    if (bVal == null) return false;
+    if (!_sortedAnnotationListEquals(entry.value, bVal)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _paramAnnotationMapEquals(
+  Map<String, List<List<DexAnnotation>>> a,
+  Map<String, List<List<DexAnnotation>>> b,
+) {
+  if (a.length != b.length) return false;
+  for (final entry in a.entries) {
+    final bVal = b[entry.key];
+    if (bVal == null) return false;
+    if (entry.value.length != bVal.length) return false;
+    for (var i = 0; i < entry.value.length; i++) {
+      if (!_sortedAnnotationListEquals(
+        entry.value[i],
+        bVal[i],
+      )) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+// -- Class definition and class data types --------------------------------
 
 /// {@template dex_class_def}
 /// A resolved class definition.
@@ -169,8 +665,8 @@ class DexClassDef {
     required this.superclass,
     required this.interfaces,
     required this.sourceFile,
-    required this.canonicalAnnotations,
-    required this.canonicalStaticValues,
+    required this.annotations,
+    required this.staticValues,
     required this.classData,
   });
 
@@ -189,12 +685,12 @@ class DexClassDef {
   /// Source file name, or `null` if not present.
   final String? sourceFile;
 
-  /// Canonical string representation of annotations, or `null` if none.
-  final String? canonicalAnnotations;
+  /// Parsed annotation directory, or `null` if the class has no
+  /// annotations.
+  final DexAnnotationDirectory? annotations;
 
-  /// Canonical string representation of static field initial values,
-  /// or `null` if none.
-  final String? canonicalStaticValues;
+  /// Parsed static field initial values, or `null` if none.
+  final List<DexEncodedValue>? staticValues;
 
   /// Class data (fields and methods), or `null` if no data.
   final DexClassData? classData;
@@ -528,8 +1024,16 @@ class DexParser {
         );
       }
 
-      final canonAnnotations = annotationsOff != 0
-          ? _canonicalizeAnnotationDirectory(
+      // Annotations and static values resolve all pool indices
+      // at parse time. DEX files store cross-references as
+      // integer indices into pool tables (string_ids, type_ids,
+      // etc.). When source file paths change between builds, the
+      // sorted string table shifts indices, which cascades
+      // through all pools. Resolving indices here lets the
+      // differ compare content without worrying about index
+      // remapping.
+      final parsedAnnotations = annotationsOff != 0
+          ? _parseAnnotationDirectory(
               _BinaryReader(bytes, offset: annotationsOff),
               strings,
               typeDescriptors,
@@ -539,8 +1043,8 @@ class DexParser {
             )
           : null;
 
-      final canonStaticValues = staticValuesOff != 0
-          ? _canonicalizeEncodedArray(
+      final parsedStaticValues = staticValuesOff != 0
+          ? _parseEncodedArrayItems(
               _BinaryReader(bytes, offset: staticValuesOff),
               strings,
               typeDescriptors,
@@ -561,8 +1065,8 @@ class DexParser {
           sourceFile: sourceFileIdx == _noIndex
               ? null
               : strings[sourceFileIdx],
-          canonicalAnnotations: canonAnnotations,
-          canonicalStaticValues: canonStaticValues,
+          annotations: parsedAnnotations,
+          staticValues: parsedStaticValues,
           classData: classData,
         ),
       );
@@ -843,7 +1347,8 @@ class DexParser {
     }
 
     // encoded_catch_handler_list follows try_items.
-    final r = _BinaryReader(bytes, offset: triesOff + triesSize * 8);
+    final r =
+        _BinaryReader(bytes, offset: triesOff + triesSize * 8);
 
     final listSize = r.readUleb128();
     buf.write('HL:$listSize,');
@@ -868,9 +1373,16 @@ class DexParser {
     }
   }
 
-  // -- Annotation canonicalization ----------------------------------------
+  // -- Annotation parsing -------------------------------------------------
+  // All pool indices (string_ids, type_ids, field_ids, method_ids,
+  // proto_ids) are resolved at parse time. This is necessary because
+  // DEX string tables are sorted, so when source file paths change
+  // between builds the string table reorders, cascading new indices
+  // through type_ids, field_ids, method_ids, and proto_ids. Resolving
+  // here means the differ can compare annotations structurally
+  // without needing to know about index remapping.
 
-  String _canonicalizeAnnotationDirectory(
+  DexAnnotationDirectory _parseAnnotationDirectory(
     _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
@@ -878,83 +1390,83 @@ class DexParser {
     List<DexFieldId> fieldIds,
     List<DexMethodId> methodIds,
   ) {
-    final buf = StringBuffer();
     final classAnnotationsOff = r.readUint32();
     final fieldsSize = r.readUint32();
     final methodsSize = r.readUint32();
     final paramsSize = r.readUint32();
 
-    if (classAnnotationsOff != 0) {
-      buf.writeln(
-        'CLASS:'
-        '${_canonicalizeAnnotationSet(
-          r.at(classAnnotationsOff),
-          strings,
-          typeDescriptors,
-          protoIds,
-          fieldIds,
-          methodIds,
-        )}',
-      );
-    }
+    final classAnnotations = classAnnotationsOff != 0
+        ? _parseAnnotationSet(
+            r.at(classAnnotationsOff),
+            strings,
+            typeDescriptors,
+            protoIds,
+            fieldIds,
+            methodIds,
+          )
+        : <DexAnnotation>[];
 
+    final fieldAnnotations = <String, List<DexAnnotation>>{};
     for (var i = 0; i < fieldsSize; i++) {
       final fieldIdx = r.readUint32();
       final annotOff = r.readUint32();
       final f = fieldIds[fieldIdx];
-      buf.writeln(
-        'FIELD:${f.className}.${f.fieldName}:'
-        '${_canonicalizeAnnotationSet(
-          r.at(annotOff),
-          strings,
-          typeDescriptors,
-          protoIds,
-          fieldIds,
-          methodIds,
-        )}',
+      final key =
+          '${f.className}.${f.fieldName}:${f.typeName}';
+      fieldAnnotations[key] = _parseAnnotationSet(
+        r.at(annotOff),
+        strings,
+        typeDescriptors,
+        protoIds,
+        fieldIds,
+        methodIds,
       );
     }
 
+    final methodAnnotations = <String, List<DexAnnotation>>{};
     for (var i = 0; i < methodsSize; i++) {
       final methodIdx = r.readUint32();
       final annotOff = r.readUint32();
       final m = methodIds[methodIdx];
       final params = m.proto.parameterTypes.join(',');
-      buf.writeln(
-        'METHOD:${m.className}.${m.methodName}($params):'
-        '${_canonicalizeAnnotationSet(
-          r.at(annotOff),
-          strings,
-          typeDescriptors,
-          protoIds,
-          fieldIds,
-          methodIds,
-        )}',
+      final key = '${m.className}.${m.methodName}($params)';
+      methodAnnotations[key] = _parseAnnotationSet(
+        r.at(annotOff),
+        strings,
+        typeDescriptors,
+        protoIds,
+        fieldIds,
+        methodIds,
       );
     }
 
+    final parameterAnnotations =
+        <String, List<List<DexAnnotation>>>{};
     for (var i = 0; i < paramsSize; i++) {
       final methodIdx = r.readUint32();
       final annotOff = r.readUint32();
       final m = methodIds[methodIdx];
       final params = m.proto.parameterTypes.join(',');
-      buf.writeln(
-        'PARAM:${m.className}.${m.methodName}($params):'
-        '${_canonicalizeAnnotationSetRefList(
-          r.at(annotOff),
-          strings,
-          typeDescriptors,
-          protoIds,
-          fieldIds,
-          methodIds,
-        )}',
+      final key = '${m.className}.${m.methodName}($params)';
+      parameterAnnotations[key] = _parseAnnotationSetRefList(
+        r.at(annotOff),
+        strings,
+        typeDescriptors,
+        protoIds,
+        fieldIds,
+        methodIds,
       );
     }
 
-    return buf.toString();
+    return DexAnnotationDirectory(
+      classAnnotations: classAnnotations,
+      fieldAnnotations: fieldAnnotations,
+      methodAnnotations: methodAnnotations,
+      parameterAnnotations: parameterAnnotations,
+    );
   }
 
-  String _canonicalizeAnnotationSet(
+  List<DexAnnotation> _parseAnnotationSet(
     _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
@@ -963,10 +1475,10 @@ class DexParser {
     List<DexMethodId> methodIds,
   ) {
     final size = r.readUint32();
-    final items = <String>[];
+    final items = <DexAnnotation>[];
     for (var i = 0; i < size; i++) {
       final annotOff = r.readUint32();
-      items.add(_canonicalizeAnnotationItem(
+      items.add(_parseAnnotationItem(
         r.at(annotOff),
         strings,
         typeDescriptors,
@@ -975,13 +1487,10 @@ class DexParser {
         methodIds,
       ));
     }
-    // Sort for order-independence (sorted by type_idx in the file,
-    // but type_idx values may differ between builds).
-    items.sort();
-    return '{${items.join(';')}}';
+    return items;
   }
 
-  String _canonicalizeAnnotationSetRefList(
+  List<List<DexAnnotation>> _parseAnnotationSetRefList(
     _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
@@ -990,13 +1499,13 @@ class DexParser {
     List<DexMethodId> methodIds,
   ) {
     final size = r.readUint32();
-    final items = <String>[];
+    final items = <List<DexAnnotation>>[];
     for (var i = 0; i < size; i++) {
       final setOff = r.readUint32();
       items.add(
         setOff == 0
-            ? 'null'
-            : _canonicalizeAnnotationSet(
+            ? <DexAnnotation>[]
+            : _parseAnnotationSet(
                 r.at(setOff),
                 strings,
                 typeDescriptors,
@@ -1006,10 +1515,10 @@ class DexParser {
               ),
       );
     }
-    return '[${items.join(',')}]';
+    return items;
   }
 
-  String _canonicalizeAnnotationItem(
+  DexAnnotation _parseAnnotationItem(
     _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
@@ -1018,47 +1527,50 @@ class DexParser {
     List<DexMethodId> methodIds,
   ) {
     final visibility = r.readByte();
-    return 'v$visibility:${_canonicalizeEncodedAnnotation(
+    return _parseEncodedAnnotation(
       r,
       strings,
       typeDescriptors,
       protoIds,
       fieldIds,
       methodIds,
-    )}';
+      visibility: visibility,
+    );
   }
 
-  String _canonicalizeEncodedAnnotation(
+  DexAnnotation _parseEncodedAnnotation(
     _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
     List<DexFieldId> fieldIds,
-    List<DexMethodId> methodIds,
-  ) {
+    List<DexMethodId> methodIds, {
+    int visibility = 0,
+  }) {
     final typeIdx = r.readUleb128();
     final size = r.readUleb128();
     final typeName = typeDescriptors[typeIdx];
-    final elements = <String>[];
+    final elements = <String, DexEncodedValue>{};
     for (var i = 0; i < size; i++) {
       final nameIdx = r.readUleb128();
       final name = strings[nameIdx];
-      elements.add(
-        '$name=${_canonicalizeEncodedValue(
-          r,
-          strings,
-          typeDescriptors,
-          protoIds,
-          fieldIds,
-          methodIds,
-        )}',
+      elements[name] = _parseEncodedValue(
+        r,
+        strings,
+        typeDescriptors,
+        protoIds,
+        fieldIds,
+        methodIds,
       );
     }
-    elements.sort();
-    return '$typeName(${elements.join(',')})';
+    return DexAnnotation(
+      visibility: visibility,
+      typeDescriptor: typeName,
+      elements: elements,
+    );
   }
 
-  String _canonicalizeEncodedValue(
+  DexEncodedValue _parseEncodedValue(
     _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
@@ -1073,44 +1585,53 @@ class DexParser {
 
     switch (valueType) {
       case 0x00: // byte
-        return 'B:${r.readByte()}';
+        return DexEncodedPrimitive(
+          typeTag: 0x00,
+          value: r.readByte(),
+        );
       case 0x02: // short
       case 0x03: // char
       case 0x04: // int
       case 0x06: // long
       case 0x10: // float
       case 0x11: // double
-        return 'N$valueType:${r.readSignExtended(byteCount)}';
+        return DexEncodedPrimitive(
+          typeTag: valueType,
+          value: r.readSignExtended(byteCount),
+        );
       case 0x15: // method_type (proto@)
-        final p = protoIds[r.readUnsigned(byteCount)];
-        return 'MT:${p.returnType}'
-            '(${p.parameterTypes.join(',')})';
+        return DexEncodedMethodType(
+          protoIds[r.readUnsigned(byteCount)],
+        );
       case 0x16: // method_handle
-        return 'MH:${r.readUnsigned(byteCount)}';
+        return DexEncodedMethodHandle(
+          r.readUnsigned(byteCount),
+        );
       case 0x17: // string
-        return 'S:${strings[r.readUnsigned(byteCount)]}';
+        return DexEncodedString(
+          strings[r.readUnsigned(byteCount)],
+        );
       case 0x18: // type
-        final desc =
-            typeDescriptors[r.readUnsigned(byteCount)];
-        return 'T:$desc';
+        return DexEncodedType(
+          typeDescriptors[r.readUnsigned(byteCount)],
+        );
       case 0x19: // field
-        final f = fieldIds[r.readUnsigned(byteCount)];
-        return 'F:${f.className}.${f.fieldName}'
-            ':${f.typeName}';
+        return DexEncodedFieldRef(
+          fieldIds[r.readUnsigned(byteCount)],
+        );
       case 0x1a: // method
-        final m = methodIds[r.readUnsigned(byteCount)];
-        final params = m.proto.parameterTypes.join(',');
-        return 'M:${m.className}.${m.methodName}'
-            '($params)${m.proto.returnType}';
+        return DexEncodedMethodRef(
+          methodIds[r.readUnsigned(byteCount)],
+        );
       case 0x1b: // enum (field@)
-        final f = fieldIds[r.readUnsigned(byteCount)];
-        return 'E:${f.className}.${f.fieldName}'
-            ':${f.typeName}';
+        return DexEncodedEnum(
+          fieldIds[r.readUnsigned(byteCount)],
+        );
       case 0x1c: // array
         final size = r.readUleb128();
-        final items = [
+        final items = <DexEncodedValue>[
           for (var i = 0; i < size; i++)
-            _canonicalizeEncodedValue(
+            _parseEncodedValue(
               r,
               strings,
               typeDescriptors,
@@ -1119,28 +1640,34 @@ class DexParser {
               methodIds,
             ),
         ];
-        return 'A:[${items.join(',')}]';
+        return DexEncodedArray(items);
       case 0x1d: // annotation
-        return '@:${_canonicalizeEncodedAnnotation(
-          r,
-          strings,
-          typeDescriptors,
-          protoIds,
-          fieldIds,
-          methodIds,
-        )}';
+        return DexEncodedAnnotation(
+          _parseEncodedAnnotation(
+            r,
+            strings,
+            typeDescriptors,
+            protoIds,
+            fieldIds,
+            methodIds,
+          ),
+        );
       case 0x1e: // null
-        return 'NULL';
+        return const DexEncodedNull();
       case 0x1f: // boolean
-        return 'BOOL:$valueArg';
+        return DexEncodedBoolean(value: valueArg != 0);
       default:
-        return '?$valueType:${r.readRawBytes(byteCount)}';
+        // Unknown value type — store raw bytes as a primitive.
+        return DexEncodedPrimitive(
+          typeTag: valueType,
+          value: r.readUnsigned(byteCount),
+        );
     }
   }
 
-  // -- Static values canonicalization -------------------------------------
+  // -- Static values parsing ----------------------------------------------
 
-  String _canonicalizeEncodedArray(
+  List<DexEncodedValue> _parseEncodedArrayItems(
     _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
@@ -1149,9 +1676,9 @@ class DexParser {
     List<DexMethodId> methodIds,
   ) {
     final size = r.readUleb128();
-    final items = [
+    return [
       for (var i = 0; i < size; i++)
-        _canonicalizeEncodedValue(
+        _parseEncodedValue(
           r,
           strings,
           typeDescriptors,
@@ -1160,7 +1687,6 @@ class DexParser {
           methodIds,
         ),
     ];
-    return items.join(',');
   }
 
   // -- Payload size -------------------------------------------------------
@@ -1246,7 +1772,8 @@ class _BinaryReader {
   int get pos => _pos;
 
   /// Creates a new reader at a different offset in the same bytes.
-  _BinaryReader at(int offset) => _BinaryReader(bytes, offset: offset);
+  _BinaryReader at(int offset) =>
+      _BinaryReader(bytes, offset: offset);
 
   /// Advances position by [count] bytes without reading.
   void skip(int count) => _pos += count;
@@ -1315,7 +1842,8 @@ class _BinaryReader {
     return value;
   }
 
-  List<int> readRawBytes(int count) {
+  /// Reads [count] raw bytes and advances the position.
+  Uint8List readRawBytes(int count) {
     final result = bytes.sublist(_pos, _pos + count);
     _pos += count;
     return result;
@@ -1370,6 +1898,14 @@ Map<int, _OpcodeIndexInfo> _range(
 };
 
 // Instruction sizes by opcode (in 16-bit code units).
+//
+// Derived from the Dalvik bytecode instruction formats table at
+// https://source.android.com/docs/core/runtime/instruction-formats
+// and the opcode-to-format mapping at
+// https://source.android.com/docs/core/runtime/dalvik-bytecode
+//
+// Each entry is the number of 16-bit code units the instruction
+// occupies. Unused/reserved opcodes default to size 1.
 // cspell:disable
 const _opcodeSizes = [
   1, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 1, 1, 1, 1, 1, // 0x00-0x0f
@@ -1392,6 +1928,14 @@ const _opcodeSizes = [
 // cspell:enable
 
 /// Opcodes that carry pool-index references.
+///
+/// Derived from the same Dalvik bytecode spec as [_opcodeSizes].
+/// Only opcodes that reference a pool index (string@, type@, field@,
+/// method@, proto@, call_site@, method_handle@) are listed here.
+///
+/// This is `final` rather than `const` because the `_range()` helper
+/// used to generate consecutive entries is a function call, which
+/// Dart doesn't allow in const expressions.
 final _opcodeIndexInfo = <int, _OpcodeIndexInfo>{
   // const-string (string@)
   0x1a: const _OpcodeIndexInfo([
