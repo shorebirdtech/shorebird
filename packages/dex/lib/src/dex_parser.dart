@@ -681,8 +681,8 @@ class DexParser {
     final triesSize = r.readUint16();
     r.skip(4); // debug_info_off — safe to differ.
     final insnsSize = r.readUint32();
-    // r._pos is now at the start of insns.
-    final insnsOff = r._pos;
+    // r.pos is now at the start of insns.
+    final insnsOff = r.pos;
 
     final buf = StringBuffer();
 
@@ -1194,7 +1194,7 @@ class DexParser {
     r.readUleb128();
 
     final codeUnits = <int>[];
-    while (r._pos < r.bytes.length && r.bytes[r._pos] != 0) {
+    while (r.pos < r.bytes.length && r.bytes[r.pos] != 0) {
       final byte1 = r.readByte();
       if (byte1 & 0x80 == 0) {
         // Single-byte character (0xxxxxxx).
@@ -1241,6 +1241,9 @@ class _BinaryReader {
 
   final Uint8List bytes;
   int _pos;
+
+  /// The current byte offset in [bytes].
+  int get pos => _pos;
 
   /// Creates a new reader at a different offset in the same bytes.
   _BinaryReader at(int offset) => _BinaryReader(bytes, offset: offset);
