@@ -27,11 +27,6 @@ void main() {
         expect(dex.classDefs, hasLength(2));
       });
 
-      test('stores raw bytes', () {
-        final dex = parser.parse(baseDexBytes);
-        expect(dex.bytes, same(baseDexBytes));
-      });
-
       test('resolves string table values', () {
         final dex = parser.parse(baseDexBytes);
         expect(dex.strings, contains('<init>'));
@@ -112,21 +107,22 @@ void main() {
         );
       });
 
-      test('parses code offsets', () {
+      test('parses code items', () {
         final dex = parser.parse(
           File(p.join('test', 'fixtures', 'dex', 'base_with_code.dex'))
               .readAsBytesSync(),
         );
         final method = dex.classDefs[0].classData!.directMethods[0];
-        expect(method.codeOffset, isNot(0));
+        expect(method.code, isA<DexCodeItem>());
+        expect(method.code!.registersSize, isNonZero);
       });
 
-      test('parses annotationsOff and staticValuesOff', () {
+      test('parses canonicalAnnotations and canonicalStaticValues', () {
         final dex = parser.parse(baseDexBytes);
         // Our test fixtures don't have annotations or static values.
         for (final classDef in dex.classDefs) {
-          expect(classDef.annotationsOff, equals(0));
-          expect(classDef.staticValuesOff, equals(0));
+          expect(classDef.canonicalAnnotations, isNull);
+          expect(classDef.canonicalStaticValues, isNull);
         }
       });
     });

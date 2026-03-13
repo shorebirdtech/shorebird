@@ -8,11 +8,11 @@ export 'src/dex_parser.dart'
     show
         DexClassData,
         DexClassDef,
+        DexCodeItem,
         DexEncodedField,
         DexEncodedMethod,
         DexFieldId,
         DexFile,
-        DexHeader,
         DexMethodId,
         DexParser,
         DexProtoId;
