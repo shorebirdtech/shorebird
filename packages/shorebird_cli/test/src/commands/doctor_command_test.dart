@@ -95,7 +95,7 @@ void main() {
         () => shorebirdEnv.flutterRevision,
       ).thenReturn(shorebirdFlutterRevision);
       when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
-      when(() => doctor.generalValidators).thenReturn([validator]);
+      when(() => doctor.initAndDoctorValidators).thenReturn([validator]);
       when(
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
       ).thenAnswer((_) async => {});
