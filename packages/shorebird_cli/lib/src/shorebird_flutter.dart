@@ -32,18 +32,68 @@ class ShorebirdFlutter {
   static const String flutterGitUrl =
       'https://github.com/shorebirdtech/flutter.git';
 
+  /// Default max age for pruning old Flutter revisions.
+  static const defaultPruneMaxAge = Duration(days: 30);
+
   /// Arguments to pass to `flutter precache`.
   List<String> get precacheArgs => ['--android', if (platform.isMacOS) '--ios'];
+
+  /// The path to the shared bare repo for Flutter revisions.
+  String get _repoDirectory => p.join(
+    shorebirdEnv.flutterDirectory.parent.path,
+    '.repo',
+  );
+
+  /// The path to the last-used timestamp directory.
+  String get _lastUsedDirectory => p.join(
+    shorebirdEnv.flutterDirectory.parent.path,
+    '.last_used',
+  );
 
   String _workingDirectory({String? revision}) {
     revision ??= shorebirdEnv.flutterRevision;
     return p.join(shorebirdEnv.flutterDirectory.parent.path, revision);
   }
 
+  /// Returns a directory suitable for running git queries (forEachRef,
+  /// revParse, etc.). Prefers the shared bare repo when available, falling
+  /// back to the current revision's checkout.
+  String _gitQueryDirectory() {
+    final repoDir = _repoDirectory;
+    if (Directory(repoDir).existsSync()) return repoDir;
+    return _workingDirectory();
+  }
+
+  /// Ensures the shared bare repo exists and is up-to-date.
+  Future<void> _ensureBareRepo() async {
+    final repoDir = Directory(_repoDirectory);
+    if (repoDir.existsSync()) {
+      await git.fetch(directory: repoDir.path, args: ['--all']);
+      return;
+    }
+    await git.cloneBare(
+      url: flutterGitUrl,
+      outputDirectory: repoDir.path,
+      args: ['--filter=tree:0'],
+    );
+  }
+
+  /// Records that [revision] was used at the current time.
+  void _touchLastUsed(String revision) {
+    final file = File(p.join(_lastUsedDirectory, revision));
+    file.createSync(recursive: true);
+    file.writeAsStringSync(DateTime.now().toIso8601String());
+  }
+
   /// Install the provided Flutter [revision].
   Future<void> installRevision({required String revision}) async {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
-    if (targetDirectory.existsSync()) return;
+    if (targetDirectory.existsSync()) {
+      _touchLastUsed(revision);
+      return;
+    }
+
+    await _ensureBareRepo();
 
     final version = await getVersionForRevision(flutterRevision: revision);
 
@@ -52,15 +102,11 @@ class ShorebirdFlutter {
     );
 
     try {
-      // Clone the Shorebird Flutter repo into the target directory.
-      await git.clone(
-        url: flutterGitUrl,
-        outputDirectory: targetDirectory.path,
-        args: ['--filter=tree:0', '--no-checkout'],
+      await git.worktreeAdd(
+        directory: targetDirectory.path,
+        revision: revision,
+        repoDirectory: _repoDirectory,
       );
-
-      // Checkout the correct revision.
-      await git.checkout(directory: targetDirectory.path, revision: revision);
       installProgress.complete();
     } catch (error) {
       installProgress.fail(
@@ -86,6 +132,8 @@ class ShorebirdFlutter {
         '''This is not a critical error, but your next build make take longer than usual.''',
       );
     }
+
+    _touchLastUsed(revision);
   }
 
   /// Whether the current revision is unmodified.
@@ -205,7 +253,7 @@ class ShorebirdFlutter {
       contains: flutterRevision,
       format: '%(refname:short)',
       pattern: 'refs/remotes/origin/flutter_release/*',
-      directory: _workingDirectory(),
+      directory: _gitQueryDirectory(),
     );
 
     return LineSplitter.split(result)
@@ -239,7 +287,7 @@ class ShorebirdFlutter {
     try {
       final fullHash = await git.revParse(
         revision: versionOrHash,
-        directory: _workingDirectory(),
+        directory: _gitQueryDirectory(),
       );
       return fullHash;
     } on ProcessException {
@@ -287,7 +335,7 @@ class ShorebirdFlutter {
     try {
       final result = await git.revParse(
         revision: 'refs/remotes/origin/flutter_release/$version',
-        directory: _workingDirectory(),
+        directory: _gitQueryDirectory(),
       );
       return LineSplitter.split(result).toList().firstOrNull;
     } on ProcessException {
@@ -300,10 +348,57 @@ class ShorebirdFlutter {
     final result = await git.forEachRef(
       format: '%(refname:short)',
       pattern: 'refs/remotes/origin/flutter_release/*',
-      directory: _workingDirectory(revision: revision),
+      directory: _gitQueryDirectory(),
     );
     return LineSplitter.split(
       result,
     ).map((e) => e.replaceFirst('origin/flutter_release/', '')).toList();
+  }
+
+  /// Remove Flutter revisions not used in [maxAge] (default 30 days).
+  /// Skips the currently active revision.
+  /// Returns the number of revisions pruned.
+  Future<int> pruneOldRevisions({
+    Duration maxAge = defaultPruneMaxAge,
+    DateTime? now,
+  }) async {
+    final lastUsedDir = Directory(_lastUsedDirectory);
+    if (!lastUsedDir.existsSync()) return 0;
+
+    final currentRevision = shorebirdEnv.flutterRevision;
+    final currentTime = now ?? DateTime.now();
+    var pruned = 0;
+
+    for (final file in lastUsedDir.listSync().whereType<File>()) {
+      final revision = p.basename(file.path);
+      if (revision == currentRevision) continue;
+
+      final content = file.readAsStringSync();
+      final lastUsed = DateTime.tryParse(content);
+      if (lastUsed == null) continue;
+      if (currentTime.difference(lastUsed) < maxAge) continue;
+
+      final revisionDir = Directory(_workingDirectory(revision: revision));
+      if (revisionDir.existsSync()) {
+        // Try worktree remove first, fall back to directory delete for
+        // legacy standalone clones.
+        final repoDir = Directory(_repoDirectory);
+        if (repoDir.existsSync()) {
+          try {
+            await git.worktreeRemove(
+              directory: revisionDir.path,
+              repoDirectory: _repoDirectory,
+            );
+          } catch (_) {
+            await revisionDir.delete(recursive: true);
+          }
+        } else {
+          await revisionDir.delete(recursive: true);
+        }
+      }
+      file.deleteSync();
+      pruned++;
+    }
+    return pruned;
   }
 }
