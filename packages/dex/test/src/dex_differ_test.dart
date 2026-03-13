@@ -1,8 +1,8 @@
 import 'dart:io';
 
+import 'package:dex/src/dex_differ.dart';
+import 'package:dex/src/dex_parser.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/archive_analysis/dex_differ.dart';
-import 'package:shorebird_cli/src/archive_analysis/dex_parser.dart';
 import 'package:test/test.dart';
 
 void main() {

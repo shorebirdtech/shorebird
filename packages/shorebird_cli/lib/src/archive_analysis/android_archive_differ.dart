@@ -1,10 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:dex/dex.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
-import 'package:shorebird_cli/src/archive_analysis/dex_differ.dart';
-import 'package:shorebird_cli/src/archive_analysis/dex_parser.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 
 /// {@template android_archive_differ}

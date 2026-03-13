@@ -1,7 +1,7 @@
 // cspell:words uleb sleb
 import 'dart:typed_data';
 
-import 'package:shorebird_cli/src/archive_analysis/dex_parser.dart';
+import 'package:dex/src/dex_parser.dart';
 
 /// The kind of difference found between two DEX files.
 enum DexDifferenceKind {

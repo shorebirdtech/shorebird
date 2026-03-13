@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dex/src/dex_parser.dart';
 import 'package:path/path.dart' as p;
-import 'package:shorebird_cli/src/archive_analysis/dex_parser.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -147,20 +147,26 @@ void main() {
 
     group('readUleb128', () {
       test('decodes single-byte values', () {
-        expect(readUleb128(Uint8List.fromList([0x00]), 0), equals((0, 1)));
-        expect(readUleb128(Uint8List.fromList([0x7F]), 0), equals((127, 1)));
+        expect(
+          DexParser.readUleb128(Uint8List.fromList([0x00]), 0),
+          equals((0, 1)),
+        );
+        expect(
+          DexParser.readUleb128(Uint8List.fromList([0x7F]), 0),
+          equals((127, 1)),
+        );
       });
 
       test('decodes two-byte values', () {
         expect(
-          readUleb128(Uint8List.fromList([0x80, 0x01]), 0),
+          DexParser.readUleb128(Uint8List.fromList([0x80, 0x01]), 0),
           equals((128, 2)),
         );
       });
 
       test('decodes three-byte values', () {
         expect(
-          readUleb128(Uint8List.fromList([0x80, 0x80, 0x01]), 0),
+          DexParser.readUleb128(Uint8List.fromList([0x80, 0x80, 0x01]), 0),
           equals((16384, 3)),
         );
       });
@@ -169,7 +175,7 @@ void main() {
     group('readUint16', () {
       test('reads little-endian uint16', () {
         expect(
-          readUint16(Uint8List.fromList([0x01, 0x02]), 0),
+          DexParser.readUint16(Uint8List.fromList([0x01, 0x02]), 0),
           equals(0x0201),
         );
       });
@@ -178,7 +184,7 @@ void main() {
     group('readUint32', () {
       test('reads little-endian uint32', () {
         expect(
-          readUint32(Uint8List.fromList([0x01, 0x02, 0x03, 0x04]), 0),
+          DexParser.readUint32(Uint8List.fromList([0x01, 0x02, 0x03, 0x04]), 0),
           equals(0x04030201),
         );
       });

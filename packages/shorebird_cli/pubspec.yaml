@@ -18,6 +18,8 @@ dependencies:
   clock: ^1.1.2
   collection: ^1.19.1
   crypto: ^3.0.6
+  dex:
+    path: ../dex
   equatable: ^2.0.7
   googleapis_auth: ^2.0.0
   http: ^1.5.0

@@ -692,20 +692,3 @@ class DexParser {
         (bytes[offset + 3] << 24);
   }
 }
-
-/// Reads an unsigned LEB128 value from the given offset.
-///
-/// Returns a record of (value, bytesConsumed).
-(int, int) readUleb128(Uint8List bytes, int offset) {
-  return DexParser.readUleb128(bytes, offset);
-}
-
-/// Reads a 16-bit unsigned integer as a little-endian value.
-int readUint16(Uint8List bytes, int offset) {
-  return DexParser.readUint16(bytes, offset);
-}
-
-/// Reads a 32-bit unsigned integer as a little-endian value.
-int readUint32(Uint8List bytes, int offset) {
-  return DexParser.readUint32(bytes, offset);
-}
