@@ -143,8 +143,7 @@ class DexDiffer {
       );
     }
 
-    for (final removed
-        in oldClassNames.difference(newClassNames)) {
+    for (final removed in oldClassNames.difference(newClassNames)) {
       differences.add(
         DexDifference(
           kind: DexDifferenceKind.classRemoved,
@@ -246,7 +245,8 @@ class DexDiffer {
           ...data.instanceFields,
         ])
           '${f.field.className}.${f.field.fieldName}'
-              ':${f.field.typeName}': f.accessFlags,
+                  ':${f.field.typeName}':
+              f.accessFlags,
       },
       memberLabel: 'field',
       addedKind: DexDifferenceKind.fieldAdded,
@@ -290,13 +290,12 @@ class DexDiffer {
     if (oldClass.annotations != newClass.annotations) {
       // Both null means equal — this only triggers when they
       // actually differ (including one being null and other not).
-      if (oldClass.annotations != null ||
-          newClass.annotations != null) {
+      if (oldClass.annotations != null || newClass.annotations != null) {
         differences.add(
           DexDifference(
             kind: DexDifferenceKind.annotationsChanged,
-            description: oldClass.annotations == null ||
-                    newClass.annotations == null
+            description:
+                oldClass.annotations == null || newClass.annotations == null
                 ? '$className: annotations added or removed'
                 : '$className: annotations changed',
           ),
@@ -308,17 +307,16 @@ class DexDiffer {
       oldClass.staticValues,
       newClass.staticValues,
     )) {
-      if (oldClass.staticValues != null ||
-          newClass.staticValues != null) {
+      if (oldClass.staticValues != null || newClass.staticValues != null) {
         differences.add(
           DexDifference(
             kind: DexDifferenceKind.staticValuesChanged,
-            description: oldClass.staticValues == null ||
-                    newClass.staticValues == null
+            description:
+                oldClass.staticValues == null || newClass.staticValues == null
                 ? '$className: static field initial values '
-                    'added or removed'
+                      'added or removed'
                 : '$className: static field initial values '
-                    'changed',
+                      'changed',
           ),
         );
       }
@@ -377,8 +375,7 @@ class DexDiffer {
     return oldCode.registersSize == newCode.registersSize &&
         oldCode.insSize == newCode.insSize &&
         oldCode.outsSize == newCode.outsSize &&
-        oldCode.canonicalBytecode ==
-            newCode.canonicalBytecode;
+        oldCode.canonicalBytecode == newCode.canonicalBytecode;
   }
 
   // -- Member comparison (shared helper) ----------------------------------
@@ -393,10 +390,8 @@ class DexDiffer {
     required DexDifferenceKind removedKind,
     required List<DexDifference> differences,
   }) {
-    final oldMembers =
-        oldData != null ? extract(oldData) : <String, int>{};
-    final newMembers =
-        newData != null ? extract(newData) : <String, int>{};
+    final oldMembers = oldData != null ? extract(oldData) : <String, int>{};
+    final newMembers = newData != null ? extract(newData) : <String, int>{};
 
     final oldKeys = oldMembers.keys.toSet();
     final newKeys = newMembers.keys.toSet();
@@ -405,8 +400,7 @@ class DexDiffer {
       differences.add(
         DexDifference(
           kind: addedKind,
-          description:
-              '$className: $memberLabel added: $added',
+          description: '$className: $memberLabel added: $added',
         ),
       );
     }
@@ -415,8 +409,7 @@ class DexDiffer {
       differences.add(
         DexDifference(
           kind: removedKind,
-          description:
-              '$className: $memberLabel removed: $removed',
+          description: '$className: $memberLabel removed: $removed',
         ),
       );
     }

@@ -1,9 +1,5 @@
 export 'src/dex_differ.dart'
-    show
-        DexDiffResult,
-        DexDiffer,
-        DexDifference,
-        DexDifferenceKind;
+    show DexDiffResult, DexDiffer, DexDifference, DexDifferenceKind;
 export 'src/dex_parser.dart'
     show
         DexAnnotation,

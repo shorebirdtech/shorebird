@@ -1,4 +1,4 @@
-// cspell:words uleb sleb mutf Dalvik Ljava insns annot iget iput sget sput
+// cspell:words uleb sleb mutf Ljava insns annot iget iput sget sput
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
@@ -128,9 +128,7 @@ class DexProtoId {
 
   @override
   int get hashCode =>
-      shorty.hashCode ^
-      returnType.hashCode ^
-      Object.hashAll(parameterTypes);
+      shorty.hashCode ^ returnType.hashCode ^ Object.hashAll(parameterTypes);
 }
 
 /// {@template dex_field_id}
@@ -164,9 +162,7 @@ class DexFieldId {
 
   @override
   int get hashCode =>
-      className.hashCode ^
-      typeName.hashCode ^
-      fieldName.hashCode;
+      className.hashCode ^ typeName.hashCode ^ fieldName.hashCode;
 }
 
 /// {@template dex_method_id}
@@ -199,10 +195,7 @@ class DexMethodId {
           proto == other.proto;
 
   @override
-  int get hashCode =>
-      className.hashCode ^
-      methodName.hashCode ^
-      proto.hashCode;
+  int get hashCode => className.hashCode ^ methodName.hashCode ^ proto.hashCode;
 }
 
 // -- Annotation and encoded-value types -----------------------------------
@@ -237,8 +230,7 @@ class DexAnnotationDirectory {
   /// Parameter annotations on methods, keyed by resolved method
   /// descriptor. Each value is a list of annotation sets, one per
   /// parameter.
-  final Map<String, List<List<DexAnnotation>>>
-      parameterAnnotations;
+  final Map<String, List<List<DexAnnotation>>> parameterAnnotations;
 
   @override
   bool operator ==(Object other) {
@@ -273,13 +265,12 @@ class DexAnnotationDirectory {
   }
 
   @override
-  int get hashCode =>
-      Object.hashAll([
-        ...classAnnotations,
-        ...fieldAnnotations.keys,
-        ...methodAnnotations.keys,
-        ...parameterAnnotations.keys,
-      ]);
+  int get hashCode => Object.hashAll([
+    ...classAnnotations,
+    ...fieldAnnotations.keys,
+    ...methodAnnotations.keys,
+    ...parameterAnnotations.keys,
+  ]);
 }
 
 /// {@template dex_annotation}
@@ -329,9 +320,7 @@ class DexAnnotation implements Comparable<DexAnnotation> {
       visibility.hashCode ^
       typeDescriptor.hashCode ^
       Object.hashAll(
-        elements.entries
-            .toList()
-            .map((e) => Object.hash(e.key, e.value)),
+        elements.entries.toList().map((e) => Object.hash(e.key, e.value)),
       );
 }
 
@@ -407,8 +396,7 @@ class DexEncodedType extends DexEncodedValue {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is DexEncodedType &&
-          descriptor == other.descriptor;
+      other is DexEncodedType && descriptor == other.descriptor;
 
   @override
   int get hashCode => descriptor.hashCode;
@@ -446,8 +434,7 @@ class DexEncodedMethodRef extends DexEncodedValue {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is DexEncodedMethodRef &&
-          method == other.method;
+      other is DexEncodedMethodRef && method == other.method;
 
   @override
   int get hashCode => method.hashCode;
@@ -465,8 +452,7 @@ class DexEncodedEnum extends DexEncodedValue {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is DexEncodedEnum && field == other.field;
+      identical(this, other) || other is DexEncodedEnum && field == other.field;
 
   @override
   int get hashCode => field.hashCode;
@@ -503,8 +489,7 @@ class DexEncodedMethodHandle extends DexEncodedValue {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is DexEncodedMethodHandle &&
-          index == other.index;
+      other is DexEncodedMethodHandle && index == other.index;
 
   @override
   int get hashCode => index.hashCode;
@@ -522,8 +507,7 @@ class DexEncodedArray extends DexEncodedValue {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is DexEncodedArray &&
-          _encodedValueListEquals(values, other.values);
+      other is DexEncodedArray && _encodedValueListEquals(values, other.values);
 
   @override
   int get hashCode => Object.hashAll(values);
@@ -541,8 +525,7 @@ class DexEncodedAnnotation extends DexEncodedValue {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is DexEncodedAnnotation &&
-          annotation == other.annotation;
+      other is DexEncodedAnnotation && annotation == other.annotation;
 
   @override
   int get hashCode => annotation.hashCode;
@@ -811,12 +794,9 @@ class DexParser {
 
     final header = _parseHeader(bytes);
     final strings = _parseStrings(bytes, header);
-    final typeDescriptors =
-        _parseTypeDescriptors(bytes, header, strings);
-    final protoIds =
-        _parseProtoIds(bytes, header, strings, typeDescriptors);
-    final fieldIds =
-        _parseFieldIds(bytes, header, strings, typeDescriptors);
+    final typeDescriptors = _parseTypeDescriptors(bytes, header, strings);
+    final protoIds = _parseProtoIds(bytes, header, strings, typeDescriptors);
+    final fieldIds = _parseFieldIds(bytes, header, strings, typeDescriptors);
     final methodIds = _parseMethodIds(
       bytes,
       header,
@@ -1062,9 +1042,7 @@ class DexParser {
               ? null
               : typeDescriptors[superclassIdx],
           interfaces: interfaces,
-          sourceFile: sourceFileIdx == _noIndex
-              ? null
-              : strings[sourceFileIdx],
+          sourceFile: sourceFileIdx == _noIndex ? null : strings[sourceFileIdx],
           annotations: parsedAnnotations,
           staticValues: parsedStaticValues,
           classData: classData,
@@ -1240,8 +1218,7 @@ class DexParser {
 
       // Handle pseudo-instructions (payloads).
       if (opcode == 0x00) {
-        final payloadSize =
-            _payloadSize(bytes, insnsOff + pos * 2);
+        final payloadSize = _payloadSize(bytes, insnsOff + pos * 2);
         if (payloadSize > 0) {
           for (var i = 0; i < payloadSize; i++) {
             buf
@@ -1266,32 +1243,35 @@ class DexParser {
             ..write(u)
             ..write(',');
         } else if (ref.is32Bit) {
-          final hi =
-              _readUint16(bytes, insnsOff + (pos + i + 1) * 2);
+          final hi = _readUint16(bytes, insnsOff + (pos + i + 1) * 2);
           final idx = u | (hi << 16);
           buf
-            ..write(_resolvePoolIndex(
-              idx,
-              ref.pool,
-              strings,
-              typeDescriptors,
-              protoIds,
-              fieldIds,
-              methodIds,
-            ))
+            ..write(
+              _resolvePoolIndex(
+                idx,
+                ref.pool,
+                strings,
+                typeDescriptors,
+                protoIds,
+                fieldIds,
+                methodIds,
+              ),
+            )
             ..write(',');
           i++; // consumed the next unit
         } else {
           buf
-            ..write(_resolvePoolIndex(
-              u,
-              ref.pool,
-              strings,
-              typeDescriptors,
-              protoIds,
-              fieldIds,
-              methodIds,
-            ))
+            ..write(
+              _resolvePoolIndex(
+                u,
+                ref.pool,
+                strings,
+                typeDescriptors,
+                protoIds,
+                fieldIds,
+                methodIds,
+              ),
+            )
             ..write(',');
         }
       }
@@ -1347,8 +1327,7 @@ class DexParser {
     }
 
     // encoded_catch_handler_list follows try_items.
-    final r =
-        _BinaryReader(bytes, offset: triesOff + triesSize * 8);
+    final r = _BinaryReader(bytes, offset: triesOff + triesSize * 8);
 
     final listSize = r.readUleb128();
     buf.write('HL:$listSize,');
@@ -1411,8 +1390,7 @@ class DexParser {
       final fieldIdx = r.readUint32();
       final annotOff = r.readUint32();
       final f = fieldIds[fieldIdx];
-      final key =
-          '${f.className}.${f.fieldName}:${f.typeName}';
+      final key = '${f.className}.${f.fieldName}:${f.typeName}';
       fieldAnnotations[key] = _parseAnnotationSet(
         r.at(annotOff),
         strings,
@@ -1440,8 +1418,7 @@ class DexParser {
       );
     }
 
-    final parameterAnnotations =
-        <String, List<List<DexAnnotation>>>{};
+    final parameterAnnotations = <String, List<List<DexAnnotation>>>{};
     for (var i = 0; i < paramsSize; i++) {
       final methodIdx = r.readUint32();
       final annotOff = r.readUint32();
@@ -1478,14 +1455,16 @@ class DexParser {
     final items = <DexAnnotation>[];
     for (var i = 0; i < size; i++) {
       final annotOff = r.readUint32();
-      items.add(_parseAnnotationItem(
-        r.at(annotOff),
-        strings,
-        typeDescriptors,
-        protoIds,
-        fieldIds,
-        methodIds,
-      ));
+      items.add(
+        _parseAnnotationItem(
+          r.at(annotOff),
+          strings,
+          typeDescriptors,
+          protoIds,
+          fieldIds,
+          methodIds,
+        ),
+      );
     }
     return items;
   }
@@ -1736,9 +1715,7 @@ class DexParser {
         final byte2 = r.readByte();
         final byte3 = r.readByte();
         codeUnits.add(
-          ((byte1 & 0x0F) << 12) |
-              ((byte2 & 0x3F) << 6) |
-              (byte3 & 0x3F),
+          ((byte1 & 0x0F) << 12) | ((byte2 & 0x3F) << 6) | (byte3 & 0x3F),
         );
       }
     }
@@ -1772,8 +1749,7 @@ class _BinaryReader {
   int get pos => _pos;
 
   /// Creates a new reader at a different offset in the same bytes.
-  _BinaryReader at(int offset) =>
-      _BinaryReader(bytes, offset: offset);
+  _BinaryReader at(int offset) => _BinaryReader(bytes, offset: offset);
 
   /// Advances position by [count] bytes without reading.
   void skip(int count) => _pos += count;
@@ -1787,7 +1763,8 @@ class _BinaryReader {
   }
 
   int readUint32() {
-    final v = bytes[_pos] |
+    final v =
+        bytes[_pos] |
         (bytes[_pos + 1] << 8) |
         (bytes[_pos + 2] << 16) |
         (bytes[_pos + 3] << 24);

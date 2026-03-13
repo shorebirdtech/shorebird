@@ -13,8 +13,9 @@ void main() {
     late Uint8List baseDexBytes;
 
     setUp(() {
-      baseDexBytes = File(p.join('test', 'fixtures', 'dex', 'base.dex'))
-          .readAsBytesSync();
+      baseDexBytes = File(
+        p.join('test', 'fixtures', 'dex', 'base.dex'),
+      ).readAsBytesSync();
     });
 
     group('parse', () {
@@ -110,8 +111,9 @@ void main() {
 
       test('parses code items', () {
         final dex = parser.parse(
-          File(p.join('test', 'fixtures', 'dex', 'base_with_code.dex'))
-              .readAsBytesSync(),
+          File(
+            p.join('test', 'fixtures', 'dex', 'base_with_code.dex'),
+          ).readAsBytesSync(),
         );
         final method = dex.classDefs[0].classData!.directMethods[0];
         expect(method.code, isA<DexCodeItem>());
@@ -120,8 +122,9 @@ void main() {
 
       test('DexCodeItem has expected field values', () {
         final dex = parser.parse(
-          File(p.join('test', 'fixtures', 'dex', 'base_with_code.dex'))
-              .readAsBytesSync(),
+          File(
+            p.join('test', 'fixtures', 'dex', 'base_with_code.dex'),
+          ).readAsBytesSync(),
         );
         final method = dex.classDefs[0].classData!.directMethods[0];
         final code = method.code!;

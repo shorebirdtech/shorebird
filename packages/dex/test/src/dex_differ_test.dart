@@ -148,30 +148,44 @@ void main() {
       test('path-only diff produces exact output', () {
         final pathDex = parseDexFixture('path_only_diff.dex');
         final result = differ.diff(baseDex, pathDex);
-        expect(result.describe(), equals('''
+        expect(
+          result.describe(),
+          equals(
+            '''
 Safe differences (2):
   - Lcom/example/Helper;: source file changed from "Helper.java" to "/different/path/Helper.java"
-  - Lcom/example/MyClass;: source file changed from "MyClass.java" to "/different/path/MyClass.java"'''));
+  - Lcom/example/MyClass;: source file changed from "MyClass.java" to "/different/path/MyClass.java"''',
+          ),
+        );
       });
 
       test('method-added diff produces exact output', () {
         final methodAddedDex = parseDexFixture('method_added.dex');
         final result = differ.diff(baseDex, methodAddedDex);
-        expect(result.describe(), equals('''
+        expect(
+          result.describe(),
+          equals(
+            '''
 Breaking differences (1):
   - Lcom/example/MyClass;: method added: '''
-            'Lcom/example/MyClass;.newMethod()V'));
+            'Lcom/example/MyClass;.newMethod()V',
+          ),
+        );
       });
 
       test('bytecode-changed diff produces exact output', () {
-        final baseWithCode =
-            parseDexFixture('base_with_code.dex');
+        final baseWithCode = parseDexFixture('base_with_code.dex');
         final codeChanged = parseDexFixture('code_changed.dex');
         final result = differ.diff(baseWithCode, codeChanged);
-        expect(result.describe(), equals('''
+        expect(
+          result.describe(),
+          equals(
+            '''
 Breaking differences (1):
   - Lcom/example/Foo;: bytecode changed in '''
-            'Lcom/example/Foo;.<init>()V'));
+            'Lcom/example/Foo;.<init>()V',
+          ),
+        );
       });
     });
 

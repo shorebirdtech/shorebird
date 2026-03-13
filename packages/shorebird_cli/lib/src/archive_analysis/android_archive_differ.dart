@@ -1,3 +1,4 @@
+// cspell:words unparseable
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -54,8 +55,9 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
       newArchivePath,
     );
 
-    final dexPaths =
-        fileSetDiff.changedPaths.where((p) => p.endsWith('.dex')).toList();
+    final dexPaths = fileSetDiff.changedPaths
+        .where((p) => p.endsWith('.dex'))
+        .toList();
 
     if (dexPaths.isEmpty) return fileSetDiff;
 

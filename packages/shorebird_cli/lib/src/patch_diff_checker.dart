@@ -1,3 +1,4 @@
+// cspell:words dexdump
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -85,12 +86,12 @@ class PatchDiffChecker {
 
       // Show detailed DEX diff information if available.
       if (archiveDiffer is AndroidArchiveDiffer) {
-        for (final dexPath in archiveDiffer
-            .nativeFileSetDiff(contentDiffs)
-            .changedPaths
-            .where((p) => p.endsWith('.dex'))) {
-          final dexResult =
-              AndroidArchiveDiffer.dexDiffResultForPath(dexPath);
+        for (final dexPath
+            in archiveDiffer
+                .nativeFileSetDiff(contentDiffs)
+                .changedPaths
+                .where((p) => p.endsWith('.dex'))) {
+          final dexResult = AndroidArchiveDiffer.dexDiffResultForPath(dexPath);
           if (dexResult != null) {
             logger.info(yellow.wrap(dexResult.describe()));
           }
@@ -103,12 +104,12 @@ class PatchDiffChecker {
       }
 
       logger.info(
-          yellow.wrap(
-            '''
+        yellow.wrap(
+          '''
 
 If you don't know why you're seeing this error, visit our troubleshooting page at ${nativeChangesTroubleshootingUrl.toLink()}''',
-          ),
-        );
+        ),
+      );
 
       if (!allowNativeChanges) {
         if (!shorebirdEnv.canAcceptUserInput) {

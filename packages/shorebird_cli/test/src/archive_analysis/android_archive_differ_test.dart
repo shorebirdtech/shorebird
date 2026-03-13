@@ -77,9 +77,7 @@ void main() {
           );
           // DEX file should be filtered out since only source paths differ.
           expect(
-            fileSetDiff.changedPaths
-                .where((p) => p.endsWith('.dex'))
-                .isEmpty,
+            fileSetDiff.changedPaths.where((p) => p.endsWith('.dex')).isEmpty,
             isTrue,
           );
           expect(
