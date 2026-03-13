@@ -151,6 +151,44 @@ class Git {
     return true;
   }
 
+  /// Clone a bare repository.
+  /// `git clone --bare <url> ...<args> <outputDirectory>`
+  Future<void> cloneBare({
+    required String url,
+    required String outputDirectory,
+    List<String>? args,
+  }) async {
+    await git(['clone', '--bare', url, ...?args, outputDirectory]);
+  }
+
+  /// Add a git worktree at [directory] checked out to [revision].
+  Future<void> worktreeAdd({
+    required String directory,
+    required String revision,
+    required String repoDirectory,
+  }) async {
+    await git([
+      'worktree',
+      'add',
+      '--detach',
+      directory,
+      revision,
+    ], workingDirectory: repoDirectory);
+  }
+
+  /// Remove a git worktree at [directory].
+  Future<void> worktreeRemove({
+    required String directory,
+    required String repoDirectory,
+  }) async {
+    await git([
+      'worktree',
+      'remove',
+      '--force',
+      directory,
+    ], workingDirectory: repoDirectory);
+  }
+
   /// Whether [file] is tracked by its git repository.
   Future<bool> isFileTracked({required File file}) async {
     try {
