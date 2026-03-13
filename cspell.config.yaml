@@ -22,6 +22,7 @@ words:
   - bitcode
   - bryanoltman
   - bundletool
+  - Dalvik # Android Dalvik VM / DEX file format
   - canvaskit
   - carryforward
   - cipd
@@ -90,6 +91,7 @@ words:
   - PRNG
   - propertylistserialization
   - propertylistserialization
+  - protos # Protocol buffer generated files
   - pubspec
   - pwsh
   - quantiles

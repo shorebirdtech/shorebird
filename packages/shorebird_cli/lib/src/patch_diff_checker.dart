@@ -1,7 +1,9 @@
+// cspell:words dexdump
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
@@ -80,14 +82,34 @@ class PatchDiffChecker {
           yellow.wrap(
             archiveDiffer.nativeFileSetDiff(contentDiffs).prettyString,
           ),
-        )
-        ..info(
-          yellow.wrap(
-            '''
+        );
 
-If you don't know why you're seeing this error, visit our troubleshooting page at ${nativeChangesTroubleshootingUrl.toLink()}''',
+      // Show detailed DEX diff information if available.
+      if (archiveDiffer is AndroidArchiveDiffer) {
+        for (final dexPath
+            in archiveDiffer
+                .nativeFileSetDiff(contentDiffs)
+                .changedPaths
+                .where((p) => p.endsWith('.dex'))) {
+          final dexResult = AndroidArchiveDiffer.dexDiffResultForPath(dexPath);
+          if (dexResult != null) {
+            logger.info(yellow.wrap(dexResult.describe()));
+          }
+        }
+        logger.info(
+          yellow.wrap(
+            '\nFor detailed DEX disassembly, run: dexdump -d <file>',
           ),
         );
+      }
+
+      logger.info(
+        yellow.wrap(
+          '''
+
+If you don't know why you're seeing this error, visit our troubleshooting page at ${nativeChangesTroubleshootingUrl.toLink()}''',
+        ),
+      );
 
       if (!allowNativeChanges) {
         if (!shorebirdEnv.canAcceptUserInput) {
