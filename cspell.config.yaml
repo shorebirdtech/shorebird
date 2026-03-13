@@ -91,6 +91,7 @@ words:
   - PRNG
   - propertylistserialization
   - propertylistserialization
+  - protos # Protocol buffer generated files
   - pubspec
   - pwsh
   - quantiles
