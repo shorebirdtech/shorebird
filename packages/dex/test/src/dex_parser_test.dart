@@ -1,3 +1,4 @@
+// cspell:words Lcom Ljava Uleb
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -117,6 +118,19 @@ void main() {
         expect(method.code!.registersSize, isNonZero);
       });
 
+      test('DexCodeItem has expected field values', () {
+        final dex = parser.parse(
+          File(p.join('test', 'fixtures', 'dex', 'base_with_code.dex'))
+              .readAsBytesSync(),
+        );
+        final method = dex.classDefs[0].classData!.directMethods[0];
+        final code = method.code!;
+        expect(code.registersSize, equals(1));
+        expect(code.insSize, equals(1));
+        expect(code.outsSize, equals(0));
+        expect(code.canonicalBytecode, isNotEmpty);
+      });
+
       test('parses canonicalAnnotations and canonicalStaticValues', () {
         final dex = parser.parse(baseDexBytes);
         // Our test fixtures don't have annotations or static values.
@@ -141,49 +155,7 @@ void main() {
       });
     });
 
-    group('readUleb128', () {
-      test('decodes single-byte values', () {
-        expect(
-          DexParser.readUleb128(Uint8List.fromList([0x00]), 0),
-          equals((0, 1)),
-        );
-        expect(
-          DexParser.readUleb128(Uint8List.fromList([0x7F]), 0),
-          equals((127, 1)),
-        );
-      });
-
-      test('decodes two-byte values', () {
-        expect(
-          DexParser.readUleb128(Uint8List.fromList([0x80, 0x01]), 0),
-          equals((128, 2)),
-        );
-      });
-
-      test('decodes three-byte values', () {
-        expect(
-          DexParser.readUleb128(Uint8List.fromList([0x80, 0x80, 0x01]), 0),
-          equals((16384, 3)),
-        );
-      });
-    });
-
-    group('readUint16', () {
-      test('reads little-endian uint16', () {
-        expect(
-          DexParser.readUint16(Uint8List.fromList([0x01, 0x02]), 0),
-          equals(0x0201),
-        );
-      });
-    });
-
-    group('readUint32', () {
-      test('reads little-endian uint32', () {
-        expect(
-          DexParser.readUint32(Uint8List.fromList([0x01, 0x02, 0x03, 0x04]), 0),
-          equals(0x04030201),
-        );
-      });
-    });
+    // readUleb128, readUint16, and readUint32 are now internal to
+    // _BinaryReader and exercised transitively through parse().
   });
 }

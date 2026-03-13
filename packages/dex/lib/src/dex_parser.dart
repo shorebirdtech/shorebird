@@ -1,4 +1,4 @@
-// cspell:words uleb sleb mutf
+// cspell:words uleb sleb mutf Dalvik Ljava insns annot iget iput sget sput
 import 'dart:typed_data';
 
 /// {@template dex_file}
@@ -364,28 +364,29 @@ class DexParser {
   }
 
   DexHeader _parseHeader(Uint8List bytes) {
+    final r = _BinaryReader(bytes, 56);
     return DexHeader(
-      stringIdsSize: readUint32(bytes, 56),
-      stringIdsOff: readUint32(bytes, 60),
-      typeIdsSize: readUint32(bytes, 64),
-      typeIdsOff: readUint32(bytes, 68),
-      protoIdsSize: readUint32(bytes, 72),
-      protoIdsOff: readUint32(bytes, 76),
-      fieldIdsSize: readUint32(bytes, 80),
-      fieldIdsOff: readUint32(bytes, 84),
-      methodIdsSize: readUint32(bytes, 88),
-      methodIdsOff: readUint32(bytes, 92),
-      classDefsSize: readUint32(bytes, 96),
-      classDefsOff: readUint32(bytes, 100),
+      stringIdsSize: r.readUint32(),
+      stringIdsOff: r.readUint32(),
+      typeIdsSize: r.readUint32(),
+      typeIdsOff: r.readUint32(),
+      protoIdsSize: r.readUint32(),
+      protoIdsOff: r.readUint32(),
+      fieldIdsSize: r.readUint32(),
+      fieldIdsOff: r.readUint32(),
+      methodIdsSize: r.readUint32(),
+      methodIdsOff: r.readUint32(),
+      classDefsSize: r.readUint32(),
+      classDefsOff: r.readUint32(),
     );
   }
 
   List<String> _parseStrings(Uint8List bytes, DexHeader header) {
+    final r = _BinaryReader(bytes, header.stringIdsOff);
     final strings = <String>[];
     for (var i = 0; i < header.stringIdsSize; i++) {
-      final stringDataOff =
-          readUint32(bytes, header.stringIdsOff + i * 4);
-      strings.add(_readMutf8String(bytes, stringDataOff));
+      final stringDataOff = r.readUint32();
+      strings.add(_readMutf8String(r.at(stringDataOff)));
     }
     return strings;
   }
@@ -395,11 +396,10 @@ class DexParser {
     DexHeader header,
     List<String> strings,
   ) {
+    final r = _BinaryReader(bytes, header.typeIdsOff);
     final types = <String>[];
     for (var i = 0; i < header.typeIdsSize; i++) {
-      final stringIdx =
-          readUint32(bytes, header.typeIdsOff + i * 4);
-      types.add(strings[stringIdx]);
+      types.add(strings[r.readUint32()]);
     }
     return types;
   }
@@ -410,20 +410,19 @@ class DexParser {
     List<String> strings,
     List<String> typeDescriptors,
   ) {
+    final r = _BinaryReader(bytes, header.protoIdsOff);
     final protos = <DexProtoId>[];
     for (var i = 0; i < header.protoIdsSize; i++) {
-      final offset = header.protoIdsOff + i * 12;
-      final shortyIdx = readUint32(bytes, offset);
-      final returnTypeIdx = readUint32(bytes, offset + 4);
-      final parametersOff = readUint32(bytes, offset + 8);
+      final shortyIdx = r.readUint32();
+      final returnTypeIdx = r.readUint32();
+      final parametersOff = r.readUint32();
 
       final parameterTypes = <String>[];
       if (parametersOff != 0) {
-        final paramCount = readUint32(bytes, parametersOff);
+        final pr = r.at(parametersOff);
+        final paramCount = pr.readUint32();
         for (var j = 0; j < paramCount; j++) {
-          final typeIdx =
-              readUint16(bytes, parametersOff + 4 + j * 2);
-          parameterTypes.add(typeDescriptors[typeIdx]);
+          parameterTypes.add(typeDescriptors[pr.readUint16()]);
         }
       }
 
@@ -444,12 +443,12 @@ class DexParser {
     List<String> strings,
     List<String> typeDescriptors,
   ) {
+    final r = _BinaryReader(bytes, header.fieldIdsOff);
     final fields = <DexFieldId>[];
     for (var i = 0; i < header.fieldIdsSize; i++) {
-      final offset = header.fieldIdsOff + i * 8;
-      final classIdx = readUint16(bytes, offset);
-      final typeIdx = readUint16(bytes, offset + 2);
-      final nameIdx = readUint32(bytes, offset + 4);
+      final classIdx = r.readUint16();
+      final typeIdx = r.readUint16();
+      final nameIdx = r.readUint32();
 
       fields.add(
         DexFieldId(
@@ -469,12 +468,12 @@ class DexParser {
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
   ) {
+    final r = _BinaryReader(bytes, header.methodIdsOff);
     final methods = <DexMethodId>[];
     for (var i = 0; i < header.methodIdsSize; i++) {
-      final offset = header.methodIdsOff + i * 8;
-      final classIdx = readUint16(bytes, offset);
-      final protoIdx = readUint16(bytes, offset + 2);
-      final nameIdx = readUint32(bytes, offset + 4);
+      final classIdx = r.readUint16();
+      final protoIdx = r.readUint16();
+      final nameIdx = r.readUint32();
 
       methods.add(
         DexMethodId(
@@ -496,33 +495,31 @@ class DexParser {
     List<DexFieldId> fieldIds,
     List<DexMethodId> methodIds,
   ) {
+    final r = _BinaryReader(bytes, header.classDefsOff);
     final classDefs = <DexClassDef>[];
     for (var i = 0; i < header.classDefsSize; i++) {
-      final offset = header.classDefsOff + i * 32;
-      final classIdx = readUint32(bytes, offset);
-      final accessFlags = readUint32(bytes, offset + 4);
-      final superclassIdx = readUint32(bytes, offset + 8);
-      final interfacesOff = readUint32(bytes, offset + 12);
-      final sourceFileIdx = readUint32(bytes, offset + 16);
-      final annotationsOff = readUint32(bytes, offset + 20);
-      final classDataOff = readUint32(bytes, offset + 24);
-      final staticValuesOff = readUint32(bytes, offset + 28);
+      final classIdx = r.readUint32();
+      final accessFlags = r.readUint32();
+      final superclassIdx = r.readUint32();
+      final interfacesOff = r.readUint32();
+      final sourceFileIdx = r.readUint32();
+      final annotationsOff = r.readUint32();
+      final classDataOff = r.readUint32();
+      final staticValuesOff = r.readUint32();
 
       final interfaces = <String>[];
       if (interfacesOff != 0) {
-        final count = readUint32(bytes, interfacesOff);
+        final ir = r.at(interfacesOff);
+        final count = ir.readUint32();
         for (var j = 0; j < count; j++) {
-          final typeIdx =
-              readUint16(bytes, interfacesOff + 4 + j * 2);
-          interfaces.add(typeDescriptors[typeIdx]);
+          interfaces.add(typeDescriptors[ir.readUint16()]);
         }
       }
 
       DexClassData? classData;
       if (classDataOff != 0) {
         classData = _parseClassData(
-          bytes,
-          classDataOff,
+          _BinaryReader(bytes, classDataOff),
           strings,
           typeDescriptors,
           protoIds,
@@ -533,7 +530,7 @@ class DexParser {
 
       final canonAnnotations = annotationsOff != 0
           ? _canonicalizeAnnotationDirectory(
-              _DexReader(bytes, annotationsOff),
+              _BinaryReader(bytes, annotationsOff),
               strings,
               typeDescriptors,
               protoIds,
@@ -544,7 +541,7 @@ class DexParser {
 
       final canonStaticValues = staticValuesOff != 0
           ? _canonicalizeEncodedArray(
-              _DexReader(bytes, staticValuesOff),
+              _BinaryReader(bytes, staticValuesOff),
               strings,
               typeDescriptors,
               protoIds,
@@ -574,32 +571,23 @@ class DexParser {
   }
 
   DexClassData _parseClassData(
-    Uint8List bytes,
-    int offset,
+    _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
     List<DexFieldId> fieldIds,
     List<DexMethodId> methodIds,
   ) {
-    var pos = offset;
-    final (staticFieldsSize, b1) = readUleb128(bytes, pos);
-    pos += b1;
-    final (instanceFieldsSize, b2) = readUleb128(bytes, pos);
-    pos += b2;
-    final (directMethodsSize, b3) = readUleb128(bytes, pos);
-    pos += b3;
-    final (virtualMethodsSize, b4) = readUleb128(bytes, pos);
-    pos += b4;
+    final staticFieldsSize = r.readUleb128();
+    final instanceFieldsSize = r.readUleb128();
+    final directMethodsSize = r.readUleb128();
+    final virtualMethodsSize = r.readUleb128();
 
     final staticFields = <DexEncodedField>[];
     var fieldIdx = 0;
     for (var i = 0; i < staticFieldsSize; i++) {
-      final (fieldIdxDiff, fb1) = readUleb128(bytes, pos);
-      pos += fb1;
-      final (accessFlags, fb2) = readUleb128(bytes, pos);
-      pos += fb2;
-      fieldIdx += fieldIdxDiff;
+      fieldIdx += r.readUleb128();
+      final accessFlags = r.readUleb128();
       staticFields.add(
         DexEncodedField(
           field: fieldIds[fieldIdx],
@@ -611,11 +599,8 @@ class DexParser {
     final instanceFields = <DexEncodedField>[];
     fieldIdx = 0;
     for (var i = 0; i < instanceFieldsSize; i++) {
-      final (fieldIdxDiff, fb1) = readUleb128(bytes, pos);
-      pos += fb1;
-      final (accessFlags, fb2) = readUleb128(bytes, pos);
-      pos += fb2;
-      fieldIdx += fieldIdxDiff;
+      fieldIdx += r.readUleb128();
+      final accessFlags = r.readUleb128();
       instanceFields.add(
         DexEncodedField(
           field: fieldIds[fieldIdx],
@@ -627,21 +612,16 @@ class DexParser {
     final directMethods = <DexEncodedMethod>[];
     var methodIdx = 0;
     for (var i = 0; i < directMethodsSize; i++) {
-      final (methodIdxDiff, mb1) = readUleb128(bytes, pos);
-      pos += mb1;
-      final (accessFlags, mb2) = readUleb128(bytes, pos);
-      pos += mb2;
-      final (codeOff, mb3) = readUleb128(bytes, pos);
-      pos += mb3;
-      methodIdx += methodIdxDiff;
+      methodIdx += r.readUleb128();
+      final accessFlags = r.readUleb128();
+      final codeOff = r.readUleb128();
       directMethods.add(
         DexEncodedMethod(
           method: methodIds[methodIdx],
           accessFlags: accessFlags,
           code: codeOff != 0
               ? _parseCodeItem(
-                  bytes,
-                  codeOff,
+                  r.at(codeOff),
                   strings,
                   typeDescriptors,
                   protoIds,
@@ -656,21 +636,16 @@ class DexParser {
     final virtualMethods = <DexEncodedMethod>[];
     methodIdx = 0;
     for (var i = 0; i < virtualMethodsSize; i++) {
-      final (methodIdxDiff, mb1) = readUleb128(bytes, pos);
-      pos += mb1;
-      final (accessFlags, mb2) = readUleb128(bytes, pos);
-      pos += mb2;
-      final (codeOff, mb3) = readUleb128(bytes, pos);
-      pos += mb3;
-      methodIdx += methodIdxDiff;
+      methodIdx += r.readUleb128();
+      final accessFlags = r.readUleb128();
+      final codeOff = r.readUleb128();
       virtualMethods.add(
         DexEncodedMethod(
           method: methodIds[methodIdx],
           accessFlags: accessFlags,
           code: codeOff != 0
               ? _parseCodeItem(
-                  bytes,
-                  codeOff,
+                  r.at(codeOff),
                   strings,
                   typeDescriptors,
                   protoIds,
@@ -693,27 +668,27 @@ class DexParser {
   // -- Code item parsing --------------------------------------------------
 
   DexCodeItem _parseCodeItem(
-    Uint8List bytes,
-    int off,
+    _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
     List<DexFieldId> fieldIds,
     List<DexMethodId> methodIds,
   ) {
-    final registersSize = readUint16(bytes, off);
-    final insSize = readUint16(bytes, off + 2);
-    final outsSize = readUint16(bytes, off + 4);
-    final triesSize = readUint16(bytes, off + 6);
-    // debug_info_off at +8 — skip (safe to differ).
-    final insnsSize = readUint32(bytes, off + 12);
+    final registersSize = r.readUint16();
+    final insSize = r.readUint16();
+    final outsSize = r.readUint16();
+    final triesSize = r.readUint16();
+    r.skip(4); // debug_info_off — safe to differ.
+    final insnsSize = r.readUint32();
+    // r._pos is now at the start of insns.
+    final insnsOff = r._pos;
 
     final buf = StringBuffer();
-    final insnsOff = off + 16;
 
     _canonicalizeInstructions(
       buf,
-      bytes,
+      r.bytes,
       insnsOff,
       insnsSize,
       strings,
@@ -728,7 +703,7 @@ class DexParser {
       final triesOff = insnsOff + insnsSize * 2 + pad;
       _canonicalizeTryCatch(
         buf,
-        bytes,
+        r.bytes,
         triesOff,
         triesSize,
         typeDescriptors,
@@ -756,7 +731,7 @@ class DexParser {
   ) {
     var pos = 0;
     while (pos < insnsSize) {
-      final unit = readUint16(bytes, insnsOff + pos * 2);
+      final unit = _readUint16(bytes, insnsOff + pos * 2);
       final opcode = unit & 0xFF;
 
       // Handle pseudo-instructions (payloads).
@@ -767,7 +742,7 @@ class DexParser {
           for (var i = 0; i < payloadSize; i++) {
             buf
               ..write(
-                readUint16(bytes, insnsOff + (pos + i) * 2),
+                _readUint16(bytes, insnsOff + (pos + i) * 2),
               )
               ..write(',');
           }
@@ -780,7 +755,7 @@ class DexParser {
       final indexInfo = _opcodeIndexInfo[opcode];
 
       for (var i = 0; i < size; i++) {
-        final u = readUint16(bytes, insnsOff + (pos + i) * 2);
+        final u = _readUint16(bytes, insnsOff + (pos + i) * 2);
         final ref = indexInfo?.refAt(i);
         if (ref == null) {
           buf
@@ -788,7 +763,7 @@ class DexParser {
             ..write(',');
         } else if (ref.is32Bit) {
           final hi =
-              readUint16(bytes, insnsOff + (pos + i + 1) * 2);
+              _readUint16(bytes, insnsOff + (pos + i + 1) * 2);
           final idx = u | (hi << 16);
           buf
             ..write(_resolvePoolIndex(
@@ -868,33 +843,27 @@ class DexParser {
     }
 
     // encoded_catch_handler_list follows try_items.
-    var pos = triesOff + triesSize * 8;
+    final r = _BinaryReader(bytes, triesOff + triesSize * 8);
 
-    final (listSize, hb1) = readUleb128(bytes, pos);
-    pos += hb1;
+    final listSize = r.readUleb128();
     buf.write('HL:$listSize,');
 
     for (var i = 0; i < listSize; i++) {
-      final (handlerSize, sb1) = readSleb128(bytes, pos);
-      pos += sb1;
+      final handlerSize = r.readSleb128();
       buf.write('HS:$handlerSize,');
 
       for (var j = 0; j < handlerSize.abs(); j++) {
-        // type_idx — resolve to type descriptor.
-        final (typeIdx, tb1) = readUleb128(bytes, pos);
-        pos += tb1;
-        buf.write('T:${typeDescriptors[typeIdx]},');
-
-        // addr — no resolution needed.
-        final (addr, ab1) = readUleb128(bytes, pos);
-        pos += ab1;
-        buf.write('A:$addr,');
+        final typeIdx = r.readUleb128();
+        final addr = r.readUleb128();
+        buf
+          // type_idx — resolve to type descriptor.
+          ..write('T:${typeDescriptors[typeIdx]},')
+          // addr — no resolution needed.
+          ..write('A:$addr,');
       }
 
       if (handlerSize <= 0) {
-        final (addr, ab1) = readUleb128(bytes, pos);
-        pos += ab1;
-        buf.write('CA:$addr,');
+        buf.write('CA:${r.readUleb128()},');
       }
     }
   }
@@ -902,7 +871,7 @@ class DexParser {
   // -- Annotation canonicalization ----------------------------------------
 
   String _canonicalizeAnnotationDirectory(
-    _DexReader r,
+    _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
@@ -986,7 +955,7 @@ class DexParser {
   }
 
   String _canonicalizeAnnotationSet(
-    _DexReader r,
+    _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
@@ -1013,7 +982,7 @@ class DexParser {
   }
 
   String _canonicalizeAnnotationSetRefList(
-    _DexReader r,
+    _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
@@ -1041,7 +1010,7 @@ class DexParser {
   }
 
   String _canonicalizeAnnotationItem(
-    _DexReader r,
+    _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
@@ -1060,7 +1029,7 @@ class DexParser {
   }
 
   String _canonicalizeEncodedAnnotation(
-    _DexReader r,
+    _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
@@ -1090,7 +1059,7 @@ class DexParser {
   }
 
   String _canonicalizeEncodedValue(
-    _DexReader r,
+    _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
@@ -1172,7 +1141,7 @@ class DexParser {
   // -- Static values canonicalization -------------------------------------
 
   String _canonicalizeEncodedArray(
-    _DexReader r,
+    _BinaryReader r,
     List<String> strings,
     List<String> typeDescriptors,
     List<DexProtoId> protoIds,
@@ -1197,17 +1166,17 @@ class DexParser {
   // -- Payload size -------------------------------------------------------
 
   static int _payloadSize(Uint8List bytes, int off) {
-    final ident = readUint16(bytes, off);
+    final ident = _readUint16(bytes, off);
     switch (ident) {
       case 0x0100: // packed-switch-payload
-        final size = readUint16(bytes, off + 2);
+        final size = _readUint16(bytes, off + 2);
         return 4 + size * 2;
       case 0x0200: // sparse-switch-payload
-        final size = readUint16(bytes, off + 2);
+        final size = _readUint16(bytes, off + 2);
         return 2 + size * 4;
       case 0x0300: // fill-array-data-payload
-        final elementWidth = readUint16(bytes, off + 2);
-        final size = readUint32(bytes, off + 4);
+        final elementWidth = _readUint16(bytes, off + 2);
+        final size = _readUint32(bytes, off + 4);
         final totalBytes = size * elementWidth;
         return 4 + ((totalBytes + 1) ~/ 2);
       default:
@@ -1215,32 +1184,31 @@ class DexParser {
     }
   }
 
-  /// Reads a MUTF-8 encoded string from the given offset.
+  /// Reads a MUTF-8 encoded string using the given reader.
   ///
   /// The format is: ULEB128 length (in UTF-16 code units), followed
   /// by MUTF-8 encoded bytes, followed by a null terminator.
-  String _readMutf8String(Uint8List bytes, int offset) {
+  String _readMutf8String(_BinaryReader r) {
     // Skip the ULEB128 size prefix (size in UTF-16 code units,
     // not bytes).
-    final (_, sizeBytes) = readUleb128(bytes, offset);
-    var pos = offset + sizeBytes;
+    r.readUleb128();
 
     final codeUnits = <int>[];
-    while (pos < bytes.length && bytes[pos] != 0) {
-      final byte1 = bytes[pos++];
+    while (r._pos < r.bytes.length && r.bytes[r._pos] != 0) {
+      final byte1 = r.readByte();
       if (byte1 & 0x80 == 0) {
         // Single-byte character (0xxxxxxx).
         codeUnits.add(byte1);
       } else if (byte1 & 0xE0 == 0xC0) {
         // Two-byte character (110xxxxx 10xxxxxx).
-        final byte2 = bytes[pos++];
+        final byte2 = r.readByte();
         codeUnits.add(
           ((byte1 & 0x1F) << 6) | (byte2 & 0x3F),
         );
       } else if (byte1 & 0xF0 == 0xE0) {
         // Three-byte character (1110xxxx 10xxxxxx 10xxxxxx).
-        final byte2 = bytes[pos++];
-        final byte3 = bytes[pos++];
+        final byte2 = r.readByte();
+        final byte3 = r.readByte();
         codeUnits.add(
           ((byte1 & 0x0F) << 12) |
               ((byte2 & 0x3F) << 6) |
@@ -1252,56 +1220,11 @@ class DexParser {
     return String.fromCharCodes(codeUnits);
   }
 
-  /// Reads an unsigned LEB128 value from the given offset.
-  ///
-  /// Returns a record of (value, bytesConsumed).
-  static (int, int) readUleb128(Uint8List bytes, int offset) {
-    var result = 0;
-    var shift = 0;
-    var bytesConsumed = 0;
-
-    while (true) {
-      final byte = bytes[offset + bytesConsumed];
-      bytesConsumed++;
-      result |= (byte & 0x7F) << shift;
-      if (byte & 0x80 == 0) break;
-      shift += 7;
-    }
-
-    return (result, bytesConsumed);
-  }
-
-  /// Reads a signed LEB128 value from the given offset.
-  ///
-  /// Returns a record of (value, bytesConsumed).
-  static (int, int) readSleb128(Uint8List bytes, int offset) {
-    var result = 0;
-    var shift = 0;
-    var bytesConsumed = 0;
-
-    int byte;
-    do {
-      byte = bytes[offset + bytesConsumed];
-      bytesConsumed++;
-      result |= (byte & 0x7F) << shift;
-      shift += 7;
-    } while (byte & 0x80 != 0);
-
-    // Sign extend if the high bit of the last byte is set.
-    if (shift < 64 && (byte & 0x40) != 0) {
-      result |= -(1 << shift);
-    }
-
-    return (result, bytesConsumed);
-  }
-
-  /// Reads a 16-bit unsigned integer as a little-endian value.
-  static int readUint16(Uint8List bytes, int offset) {
+  static int _readUint16(Uint8List bytes, int offset) {
     return bytes[offset] | (bytes[offset + 1] << 8);
   }
 
-  /// Reads a 32-bit unsigned integer as a little-endian value.
-  static int readUint32(Uint8List bytes, int offset) {
+  static int _readUint32(Uint8List bytes, int offset) {
     return bytes[offset] |
         (bytes[offset + 1] << 8) |
         (bytes[offset + 2] << 16) |
@@ -1310,31 +1233,63 @@ class DexParser {
 }
 
 // =====================================================================
-// _DexReader — cursor-based reader for annotation/value parsing.
+// _BinaryReader — cursor-based reader for sequential binary parsing.
 // =====================================================================
 
-class _DexReader {
-  _DexReader(this.bytes, this._pos);
+class _BinaryReader {
+  _BinaryReader(this.bytes, this._pos);
 
   final Uint8List bytes;
   int _pos;
 
   /// Creates a new reader at a different offset in the same bytes.
-  _DexReader at(int offset) => _DexReader(bytes, offset);
+  _BinaryReader at(int offset) => _BinaryReader(bytes, offset);
+
+  /// Advances position by [count] bytes without reading.
+  void skip(int count) => _pos += count;
 
   int readByte() => bytes[_pos++];
 
+  int readUint16() {
+    final v = bytes[_pos] | (bytes[_pos + 1] << 8);
+    _pos += 2;
+    return v;
+  }
+
   int readUint32() {
-    final v = DexParser.readUint32(bytes, _pos);
+    final v = bytes[_pos] |
+        (bytes[_pos + 1] << 8) |
+        (bytes[_pos + 2] << 16) |
+        (bytes[_pos + 3] << 24);
     _pos += 4;
     return v;
   }
 
   int readUleb128() {
-    final (value, consumed) =
-        DexParser.readUleb128(bytes, _pos);
-    _pos += consumed;
-    return value;
+    var result = 0;
+    var shift = 0;
+    while (true) {
+      final byte = bytes[_pos++];
+      result |= (byte & 0x7F) << shift;
+      if (byte & 0x80 == 0) break;
+      shift += 7;
+    }
+    return result;
+  }
+
+  int readSleb128() {
+    var result = 0;
+    var shift = 0;
+    int byte;
+    do {
+      byte = bytes[_pos++];
+      result |= (byte & 0x7F) << shift;
+      shift += 7;
+    } while (byte & 0x80 != 0);
+    if (shift < 64 && (byte & 0x40) != 0) {
+      result |= -(1 << shift);
+    }
+    return result;
   }
 
   int readUnsigned(int byteCount) {

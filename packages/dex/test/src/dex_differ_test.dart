@@ -1,3 +1,4 @@
+// cspell:words Lcom Ljava
 import 'dart:io';
 
 import 'package:dex/src/dex_differ.dart';
@@ -143,6 +144,35 @@ void main() {
         final result = differ.diff(baseDex, baseDex);
         expect(result.describe(), isEmpty);
       });
+
+      test('path-only diff produces exact output', () {
+        final pathDex = parseDexFixture('path_only_diff.dex');
+        final result = differ.diff(baseDex, pathDex);
+        expect(result.describe(), equals('''
+Safe differences (2):
+  - Lcom/example/Helper;: source file changed from "Helper.java" to "/different/path/Helper.java"
+  - Lcom/example/MyClass;: source file changed from "MyClass.java" to "/different/path/MyClass.java"'''));
+      });
+
+      test('method-added diff produces exact output', () {
+        final methodAddedDex = parseDexFixture('method_added.dex');
+        final result = differ.diff(baseDex, methodAddedDex);
+        expect(result.describe(), equals('''
+Breaking differences (1):
+  - Lcom/example/MyClass;: method added: '''
+            'Lcom/example/MyClass;.newMethod()V'));
+      });
+
+      test('bytecode-changed diff produces exact output', () {
+        final baseWithCode =
+            parseDexFixture('base_with_code.dex');
+        final codeChanged = parseDexFixture('code_changed.dex');
+        final result = differ.diff(baseWithCode, codeChanged);
+        expect(result.describe(), equals('''
+Breaking differences (1):
+  - Lcom/example/Foo;: bytecode changed in '''
+            'Lcom/example/Foo;.<init>()V'));
+      });
     });
 
     group('DexDiffResult.identical', () {
@@ -161,6 +191,38 @@ void main() {
 
       test('classAdded is not safe', () {
         expect(DexDifferenceKind.classAdded.isSafe, isFalse);
+      });
+
+      test('classRemoved is not safe', () {
+        expect(DexDifferenceKind.classRemoved.isSafe, isFalse);
+      });
+
+      test('methodAdded is not safe', () {
+        expect(DexDifferenceKind.methodAdded.isSafe, isFalse);
+      });
+
+      test('methodRemoved is not safe', () {
+        expect(DexDifferenceKind.methodRemoved.isSafe, isFalse);
+      });
+
+      test('fieldAdded is not safe', () {
+        expect(DexDifferenceKind.fieldAdded.isSafe, isFalse);
+      });
+
+      test('fieldRemoved is not safe', () {
+        expect(DexDifferenceKind.fieldRemoved.isSafe, isFalse);
+      });
+
+      test('accessFlagsChanged is not safe', () {
+        expect(DexDifferenceKind.accessFlagsChanged.isSafe, isFalse);
+      });
+
+      test('superclassChanged is not safe', () {
+        expect(DexDifferenceKind.superclassChanged.isSafe, isFalse);
+      });
+
+      test('interfacesChanged is not safe', () {
+        expect(DexDifferenceKind.interfacesChanged.isSafe, isFalse);
       });
 
       test('bytecodeChanged is not safe', () {
