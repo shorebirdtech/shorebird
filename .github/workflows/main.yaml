@@ -48,7 +48,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v6
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         name: Build Detection
         id: needs_dart_build
         with:
@@ -64,7 +64,7 @@ jobs:
               - ./.github/actions/dart_package/action.yaml
               - packages/discord_gcp_alerts/**
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         name: Build Detection
         id: needs_cross_platform_dart_build
         with:
@@ -108,7 +108,7 @@ jobs:
               - ./.github/actions/dart_package/action.yaml
               - packages/stripe_api/**
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         name: Redis Detection
         id: needs_redis_build
         with:
@@ -119,7 +119,7 @@ jobs:
               - ./.github/actions/dart_package/action.yaml
               - packages/redis_client/**
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         name: Verify Detection
         id: needs_verify
         with:
