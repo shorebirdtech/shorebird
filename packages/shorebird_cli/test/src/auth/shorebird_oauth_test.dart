@@ -6,8 +6,12 @@ import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
+
+import '../mocks.dart';
 
 class MockHttpClient extends Mock implements http.Client {}
 
@@ -32,9 +36,25 @@ String _buildTestJwt({String issuer = 'https://auth.shorebird.dev'}) {
 }
 
 void main() {
+  late ShorebirdEnv shorebirdEnv;
+
   setUpAll(() {
     registerFallbackValue(Uri.parse(''));
   });
+
+  setUp(() {
+    shorebirdEnv = MockShorebirdEnv();
+    when(
+      () => shorebirdEnv.jwtIssuer,
+    ).thenReturn('https://auth.shorebird.dev');
+  });
+
+  R runWithOverrides<R>(R Function() body) {
+    return runScoped(
+      body,
+      values: {shorebirdEnvRef.overrideWith(() => shorebirdEnv)},
+    );
+  }
 
   group('obtainCredentialsViaLoopbackLogin', () {
     late MockHttpClient httpClient;
@@ -64,17 +84,19 @@ void main() {
         ),
       );
 
-      final credentials = await obtainCredentialsViaLoopbackLogin(
-        httpClient: httpClient,
-        authBaseUrl: authBaseUrl,
-        userPrompt: (url) {
-          final loginUri = Uri.parse(url);
-          final continueUrl = loginUri.queryParameters['continue']!;
-          // Simulate the browser redirect with an auth code.
-          unawaited(
-            http.get(Uri.parse('$continueUrl?code=test_code')),
-          );
-        },
+      final credentials = await runWithOverrides(
+        () => obtainCredentialsViaLoopbackLogin(
+          httpClient: httpClient,
+          authBaseUrl: authBaseUrl,
+          userPrompt: (url) {
+            final loginUri = Uri.parse(url);
+            final continueUrl = loginUri.queryParameters['continue']!;
+            // Simulate the browser redirect with an auth code.
+            unawaited(
+              http.get(Uri.parse('$continueUrl?code=test_code')),
+            );
+          },
+        ),
       );
 
       expect(credentials.accessToken.type, equals('Bearer'));
@@ -118,17 +140,19 @@ void main() {
       );
 
       late String capturedUrl;
-      await obtainCredentialsViaLoopbackLogin(
-        httpClient: httpClient,
-        authBaseUrl: authBaseUrl,
-        userPrompt: (url) {
-          capturedUrl = url;
-          final loginUri = Uri.parse(url);
-          final continueUrl = loginUri.queryParameters['continue']!;
-          unawaited(
-            http.get(Uri.parse('$continueUrl?code=test_code')),
-          );
-        },
+      await runWithOverrides(
+        () => obtainCredentialsViaLoopbackLogin(
+          httpClient: httpClient,
+          authBaseUrl: authBaseUrl,
+          userPrompt: (url) {
+            capturedUrl = url;
+            final loginUri = Uri.parse(url);
+            final continueUrl = loginUri.queryParameters['continue']!;
+            unawaited(
+              http.get(Uri.parse('$continueUrl?code=test_code')),
+            );
+          },
+        ),
       );
 
       final loginUri = Uri.parse(capturedUrl);
@@ -146,6 +170,9 @@ void main() {
     test('handles authBaseUrl with trailing slash', () async {
       final authBaseUrlWithSlash = Uri.parse('https://auth.shorebird.dev/v1/');
       final testJwt = _buildTestJwt(issuer: 'https://auth.shorebird.dev/v1/');
+      when(
+        () => shorebirdEnv.jwtIssuer,
+      ).thenReturn('https://auth.shorebird.dev/v1/');
 
       when(
         () => httpClient.post(
@@ -166,17 +193,19 @@ void main() {
       );
 
       late String capturedUrl;
-      await obtainCredentialsViaLoopbackLogin(
-        httpClient: httpClient,
-        authBaseUrl: authBaseUrlWithSlash,
-        userPrompt: (url) {
-          capturedUrl = url;
-          final loginUri = Uri.parse(url);
-          final continueUrl = loginUri.queryParameters['continue']!;
-          unawaited(
-            http.get(Uri.parse('$continueUrl?code=test_code')),
-          );
-        },
+      await runWithOverrides(
+        () => obtainCredentialsViaLoopbackLogin(
+          httpClient: httpClient,
+          authBaseUrl: authBaseUrlWithSlash,
+          userPrompt: (url) {
+            capturedUrl = url;
+            final loginUri = Uri.parse(url);
+            final continueUrl = loginUri.queryParameters['continue']!;
+            unawaited(
+              http.get(Uri.parse('$continueUrl?code=test_code')),
+            );
+          },
+        ),
       );
 
       final loginUri = Uri.parse(capturedUrl);
@@ -213,22 +242,24 @@ void main() {
         ),
       );
 
-      final credentials = await obtainCredentialsViaLoopbackLogin(
-        httpClient: httpClient,
-        authBaseUrl: authBaseUrl,
-        userPrompt: (url) {
-          final loginUri = Uri.parse(url);
-          final continueUrl = loginUri.queryParameters['continue']!;
-          final callbackUri = Uri.parse(continueUrl);
-          final baseUrl = 'http://localhost:${callbackUri.port}';
-          // Send a favicon request first — should be ignored.
-          // Use .ignore() because the server may close before responding.
-          http.get(Uri.parse('$baseUrl/favicon.ico')).ignore();
-          // Then send the actual callback with auth code.
-          unawaited(
-            http.get(Uri.parse('$continueUrl?code=test_code')),
-          );
-        },
+      final credentials = await runWithOverrides(
+        () => obtainCredentialsViaLoopbackLogin(
+          httpClient: httpClient,
+          authBaseUrl: authBaseUrl,
+          userPrompt: (url) {
+            final loginUri = Uri.parse(url);
+            final continueUrl = loginUri.queryParameters['continue']!;
+            final callbackUri = Uri.parse(continueUrl);
+            final baseUrl = 'http://localhost:${callbackUri.port}';
+            // Send a favicon request first — should be ignored.
+            // Use .ignore() because the server may close before responding.
+            http.get(Uri.parse('$baseUrl/favicon.ico')).ignore();
+            // Then send the actual callback with auth code.
+            unawaited(
+              http.get(Uri.parse('$continueUrl?code=test_code')),
+            );
+          },
+        ),
       );
 
       expect(credentials.accessToken.type, equals('Bearer'));
@@ -356,14 +387,16 @@ void main() {
       );
 
       await expectLater(
-        obtainCredentialsViaLoopbackLogin(
-          httpClient: httpClient,
-          authBaseUrl: authBaseUrl,
-          userPrompt: (url) {
-            final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
-          },
+        runWithOverrides(
+          () => obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              final loginUri = Uri.parse(url);
+              final continueUrl = loginUri.queryParameters['continue']!;
+              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+            },
+          ),
         ),
         throwsA(
           isA<ShorebirdAuthException>().having(
@@ -396,14 +429,16 @@ void main() {
       );
 
       await expectLater(
-        obtainCredentialsViaLoopbackLogin(
-          httpClient: httpClient,
-          authBaseUrl: authBaseUrl,
-          userPrompt: (url) {
-            final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
-          },
+        runWithOverrides(
+          () => obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              final loginUri = Uri.parse(url);
+              final continueUrl = loginUri.queryParameters['continue']!;
+              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+            },
+          ),
         ),
         throwsA(
           isA<ShorebirdAuthException>().having(
@@ -455,14 +490,16 @@ void main() {
       );
 
       await expectLater(
-        obtainCredentialsViaLoopbackLogin(
-          httpClient: httpClient,
-          authBaseUrl: authBaseUrl,
-          userPrompt: (url) {
-            final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
-          },
+        runWithOverrides(
+          () => obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              final loginUri = Uri.parse(url);
+              final continueUrl = loginUri.queryParameters['continue']!;
+              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+            },
+          ),
         ),
         throwsA(isA<FormatException>()),
       );
@@ -487,14 +524,16 @@ void main() {
       );
 
       await expectLater(
-        obtainCredentialsViaLoopbackLogin(
-          httpClient: httpClient,
-          authBaseUrl: authBaseUrl,
-          userPrompt: (url) {
-            final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
-          },
+        runWithOverrides(
+          () => obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              final loginUri = Uri.parse(url);
+              final continueUrl = loginUri.queryParameters['continue']!;
+              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+            },
+          ),
         ),
         throwsA(isA<TypeError>()),
       );
@@ -520,14 +559,16 @@ void main() {
       );
 
       await expectLater(
-        obtainCredentialsViaLoopbackLogin(
-          httpClient: httpClient,
-          authBaseUrl: authBaseUrl,
-          userPrompt: (url) {
-            final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
-          },
+        runWithOverrides(
+          () => obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              final loginUri = Uri.parse(url);
+              final continueUrl = loginUri.queryParameters['continue']!;
+              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+            },
+          ),
         ),
         throwsA(isA<TypeError>()),
       );
@@ -562,14 +603,16 @@ void main() {
         ),
       );
 
-      final credentials = await refreshShorebirdCredentials(
-        oauth2.AccessCredentials(
-          AccessToken('Bearer', '', DateTime.timestamp()),
-          'sb_rt_old',
-          [],
+      final credentials = await runWithOverrides(
+        () => refreshShorebirdCredentials(
+          oauth2.AccessCredentials(
+            AccessToken('Bearer', '', DateTime.timestamp()),
+            'sb_rt_old',
+            [],
+          ),
+          httpClient,
+          authBaseUrl: authBaseUrl,
         ),
-        httpClient,
-        authBaseUrl: authBaseUrl,
       );
 
       expect(credentials.accessToken.type, equals('Bearer'));
@@ -692,14 +735,16 @@ void main() {
       );
 
       await expectLater(
-        refreshShorebirdCredentials(
-          oauth2.AccessCredentials(
-            AccessToken('Bearer', '', DateTime.timestamp()),
-            'sb_rt_old',
-            [],
+        runWithOverrides(
+          () => refreshShorebirdCredentials(
+            oauth2.AccessCredentials(
+              AccessToken('Bearer', '', DateTime.timestamp()),
+              'sb_rt_old',
+              [],
+            ),
+            httpClient,
+            authBaseUrl: authBaseUrl,
           ),
-          httpClient,
-          authBaseUrl: authBaseUrl,
         ),
         throwsA(
           isA<ShorebirdAuthException>().having(
@@ -732,14 +777,16 @@ void main() {
       );
 
       await expectLater(
-        refreshShorebirdCredentials(
-          oauth2.AccessCredentials(
-            AccessToken('Bearer', '', DateTime.timestamp()),
-            'sb_rt_old',
-            [],
+        runWithOverrides(
+          () => refreshShorebirdCredentials(
+            oauth2.AccessCredentials(
+              AccessToken('Bearer', '', DateTime.timestamp()),
+              'sb_rt_old',
+              [],
+            ),
+            httpClient,
+            authBaseUrl: authBaseUrl,
           ),
-          httpClient,
-          authBaseUrl: authBaseUrl,
         ),
         throwsA(
           isA<ShorebirdAuthException>().having(
@@ -766,14 +813,16 @@ void main() {
       );
 
       await expectLater(
-        refreshShorebirdCredentials(
-          oauth2.AccessCredentials(
-            AccessToken('Bearer', '', DateTime.timestamp()),
-            'sb_rt_old',
-            [],
+        runWithOverrides(
+          () => refreshShorebirdCredentials(
+            oauth2.AccessCredentials(
+              AccessToken('Bearer', '', DateTime.timestamp()),
+              'sb_rt_old',
+              [],
+            ),
+            httpClient,
+            authBaseUrl: authBaseUrl,
           ),
-          httpClient,
-          authBaseUrl: authBaseUrl,
         ),
         throwsA(isA<FormatException>()),
       );
@@ -798,14 +847,16 @@ void main() {
       );
 
       await expectLater(
-        refreshShorebirdCredentials(
-          oauth2.AccessCredentials(
-            AccessToken('Bearer', '', DateTime.timestamp()),
-            'sb_rt_old',
-            [],
+        runWithOverrides(
+          () => refreshShorebirdCredentials(
+            oauth2.AccessCredentials(
+              AccessToken('Bearer', '', DateTime.timestamp()),
+              'sb_rt_old',
+              [],
+            ),
+            httpClient,
+            authBaseUrl: authBaseUrl,
           ),
-          httpClient,
-          authBaseUrl: authBaseUrl,
         ),
         throwsA(isA<TypeError>()),
       );
@@ -831,14 +882,16 @@ void main() {
       );
 
       await expectLater(
-        refreshShorebirdCredentials(
-          oauth2.AccessCredentials(
-            AccessToken('Bearer', '', DateTime.timestamp()),
-            'sb_rt_old',
-            [],
+        runWithOverrides(
+          () => refreshShorebirdCredentials(
+            oauth2.AccessCredentials(
+              AccessToken('Bearer', '', DateTime.timestamp()),
+              'sb_rt_old',
+              [],
+            ),
+            httpClient,
+            authBaseUrl: authBaseUrl,
           ),
-          httpClient,
-          authBaseUrl: authBaseUrl,
         ),
         throwsA(isA<TypeError>()),
       );
