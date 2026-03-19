@@ -23,7 +23,7 @@ class LogoutCommand extends ShorebirdCommand {
     }
 
     final logoutProgress = logger.progress('Logging out of shorebird.dev');
-    auth.logout();
+    await auth.logout();
     logoutProgress.complete();
 
     logger.info('${lightGreen.wrap('You are now logged out.')}');

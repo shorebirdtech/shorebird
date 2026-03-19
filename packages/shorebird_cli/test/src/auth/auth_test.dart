@@ -1126,11 +1126,104 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
 
-        auth.logout();
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('{"ok":true}', 200),
+        );
+
+        await runWithOverrides(() => auth.logout());
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
         expect(buildAuth().email, isNull);
         expect(buildAuth().isAuthenticated, isFalse);
+      });
+
+      test('revokes server session with refresh token', () async {
+        await runWithOverrides(
+          () => auth.login(AuthProvider.google, prompt: (_) {}),
+        );
+
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('{"ok":true}', 200),
+        );
+
+        await runWithOverrides(() => auth.logout());
+
+        final captured = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: captureAny(named: 'headers'),
+          ),
+        ).captured;
+
+        final uri = captured[0] as Uri;
+        expect(uri.path, contains('api/logout'));
+
+        final headers = captured[1] as Map<String, String>;
+        expect(headers['Authorization'], equals('Bearer $refreshToken'));
+      });
+
+      test('logs detail when server returns non-200', () async {
+        await runWithOverrides(
+          () => auth.login(AuthProvider.google, prompt: (_) {}),
+        );
+
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('{"error":"gone"}', 500),
+        );
+
+        await runWithOverrides(() => auth.logout());
+        expect(auth.isAuthenticated, isFalse);
+
+        verify(
+          () => logger.detail(
+            any(that: contains('Session revocation returned 500')),
+          ),
+        ).called(1);
+      });
+
+      test('clears credentials even if server revocation fails', () async {
+        await runWithOverrides(
+          () => auth.login(AuthProvider.google, prompt: (_) {}),
+        );
+        expect(auth.isAuthenticated, isTrue);
+
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenThrow(const SocketException('no internet'));
+
+        await runWithOverrides(() => auth.logout());
+        expect(auth.email, isNull);
+        expect(auth.isAuthenticated, isFalse);
+      });
+
+      test('skips revocation when no refresh token', () async {
+        accessCredentials = oauth2.AccessCredentials(
+          accessToken,
+          null, // no refresh token
+          scopes,
+          idToken: idToken,
+        );
+        auth = buildAuth();
+        writeCredentials();
+        auth = buildAuth();
+
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('{"ok":true}', 200),
+        );
+
+        await runWithOverrides(() => auth.logout());
+
+        verifyNever(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        );
       });
     });
 
