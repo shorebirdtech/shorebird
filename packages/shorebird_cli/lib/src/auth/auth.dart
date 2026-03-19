@@ -381,7 +381,7 @@ class Auth {
         logoutUrl,
         headers: {'Authorization': 'Bearer $refreshToken'},
       );
-      if (response.statusCode != 200) {
+      if (response.statusCode < 200 || response.statusCode >= 300) {
         logger.detail(
           'Session revocation returned ${response.statusCode}: '
           '${response.body}',

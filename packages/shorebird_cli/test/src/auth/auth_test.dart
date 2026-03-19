@@ -1166,7 +1166,7 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
         expect(headers['Authorization'], equals('Bearer $refreshToken'));
       });
 
-      test('logs detail when server returns non-200', () async {
+      test('logs detail when server returns non-2xx', () async {
         await runWithOverrides(
           () => auth.login(AuthProvider.google, prompt: (_) {}),
         );
