@@ -357,7 +357,41 @@ class Auth {
   }
 
   /// Logs out the user.
-  void logout() => _clearCredentials();
+  ///
+  /// If a Shorebird refresh token is available, revokes the server-side
+  /// session before clearing local credentials. Local credentials are always
+  /// cleared even if the server call fails.
+  Future<void> logout() async {
+    await _revokeSession();
+    _clearCredentials();
+  }
+
+  /// Sends the current refresh token to the auth service's logout endpoint
+  /// to revoke the server-side session. Failures are logged but swallowed
+  /// so that local logout always succeeds.
+  Future<void> _revokeSession() async {
+    final refreshToken = _credentials?.refreshToken;
+    if (refreshToken == null) return;
+
+    try {
+      final logoutUrl = _authServiceUri.replace(
+        path: p.url.join(_authServiceUri.path, 'api/logout'),
+      );
+      final response = await _httpClient.post(
+        logoutUrl,
+        headers: {'Authorization': 'Bearer $refreshToken'},
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        logger.detail(
+          'Session revocation returned ${response.statusCode}: '
+          '${response.body}',
+        );
+      }
+    } on Exception catch (e) {
+      // Best-effort — don't block logout if the server is unreachable.
+      logger.detail('Failed to revoke session: $e');
+    }
+  }
 
   oauth2.AccessCredentials? _credentials;
 
