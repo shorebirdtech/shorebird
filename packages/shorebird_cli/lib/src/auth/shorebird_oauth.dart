@@ -8,6 +8,7 @@ import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// Exception thrown when the Shorebird auth flow fails.
 class ShorebirdAuthException implements Exception {
@@ -165,7 +166,7 @@ Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
     );
   }
 
-  return _parseTokenResponse(response.body, expectedIssuer: authBaseUrl);
+  return _parseTokenResponse(response.body);
 }
 
 /// Exchanges an auth code for tokens by POSTing to the auth service's
@@ -193,14 +194,14 @@ Future<oauth2.AccessCredentials> _exchangeAuthCode({
     );
   }
 
-  return _parseTokenResponse(response.body, expectedIssuer: authBaseUrl);
+  return _parseTokenResponse(response.body);
 }
 
 /// Parses the JSON token response from the auth service into
 /// [oauth2.AccessCredentials].
 ///
 /// Validates that the `access_token` is a well-formed JWT and that its
-/// issuer matches [expectedIssuer].
+/// issuer matches the expected JWT issuer from [ShorebirdEnv].
 ///
 /// Expected JSON shape:
 /// ```json
@@ -211,10 +212,7 @@ Future<oauth2.AccessCredentials> _exchangeAuthCode({
 ///   "expires_in": 900
 /// }
 /// ```
-oauth2.AccessCredentials _parseTokenResponse(
-  String responseBody, {
-  required Uri expectedIssuer,
-}) {
+oauth2.AccessCredentials _parseTokenResponse(String responseBody) {
   final json = jsonDecode(responseBody) as Map<String, dynamic>;
   final accessTokenValue = json['access_token'] as String;
   final refreshToken = json['refresh_token'] as String?;
@@ -230,10 +228,10 @@ oauth2.AccessCredentials _parseTokenResponse(
   }
 
   // Validate the issuer matches the expected auth service.
-  final issuer = expectedIssuer.toString();
-  if (jwt.payload.iss != issuer) {
+  final expectedIssuer = shorebirdEnv.jwtIssuer;
+  if (jwt.payload.iss != expectedIssuer) {
     throw ShorebirdAuthException(
-      'Token issuer mismatch: expected $issuer, '
+      'Token issuer mismatch: expected $expectedIssuer, '
       'got ${jwt.payload.iss}',
     );
   }
