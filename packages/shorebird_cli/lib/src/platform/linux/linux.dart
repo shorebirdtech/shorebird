@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 
 /// The primary release artifact architecture for Linux releases.
@@ -13,9 +12,6 @@ import 'package:scoped_deps/scoped_deps.dart';
 ///   - lib/, which contains libapp.so and libflutter_linux_gtk.so
 ///   - executable_flutter_app
 const primaryLinuxReleaseArtifactArch = 'bundle';
-
-/// The minimum allowed Flutter version for creating Linux releases.
-final minimumSupportedLinuxFlutterVersion = Version(3, 27, 4);
 
 /// A reference to a [Linux] instance.
 final linuxRef = create(Linux.new);
