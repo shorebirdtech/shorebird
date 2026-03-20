@@ -1,0 +1,1667 @@
+openapi: 3.1.0
+info:
+  title: Shorebird Code Push API
+  description: >
+    Public API for Shorebird's over-the-air code push service.
+    Used by the Shorebird CLI and mobile clients.
+  version: "1.0"
+  contact:
+    name: Shorebird
+    url: https://shorebird.dev
+
+servers:
+  - url: https://api.shorebird.dev
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Users
+    description: User registration and profile
+  - name: Apps
+    description: Application management
+  - name: Channels
+    description: Release channels
+  - name: Releases
+    description: Release management
+  - name: Release Artifacts
+    description: Binary artifacts for releases
+  - name: Patches
+    description: Patch management
+  - name: Patch Artifacts
+    description: Binary artifacts for patches
+  - name: Collaborators
+    description: App-level collaborator management
+  - name: Organizations
+    description: Organization and team management
+  - name: Plan
+    description: Subscription plan information
+  - name: Diagnostics
+    description: Network diagnostics
+  - name: Patch Check
+    description: Client-facing patch availability check
+
+paths:
+  # ── Users ──────────────────────────────────────────────────────────────
+  /api/v1/users:
+    post:
+      operationId: createUser
+      tags: [Users]
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateUser"
+        "409":
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/users/me:
+    get:
+      operationId: getCurrentUser
+      tags: [Users]
+      summary: Get the authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Apps ────────────────────────────────────────────────────────────────
+  /api/v1/apps:
+    get:
+      operationId: getApps
+      tags: [Apps]
+      summary: List apps the user has access to
+      responses:
+        "200":
+          description: List of apps
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetAppsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createApp
+      tags: [Apps]
+      summary: Create a new app
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAppRequest"
+      responses:
+        "201":
+          description: App created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/App"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/apps/{appId}:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+    get:
+      operationId: getApp
+      tags: [Apps]
+      summary: Get an app by ID
+      responses:
+        "200":
+          description: App details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/App"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateApp
+      tags: [Apps]
+      summary: Update an app
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAppRequest"
+      responses:
+        "204":
+          description: App updated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteApp
+      tags: [Apps]
+      summary: Delete an app and all its artifacts
+      responses:
+        "204":
+          description: App deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Channels ────────────────────────────────────────────────────────────
+  /api/v1/apps/{appId}/channels:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+    get:
+      operationId: getChannels
+      tags: [Channels]
+      summary: List channels for an app
+      responses:
+        "200":
+          description: List of channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Channel"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createChannel
+      tags: [Channels]
+      summary: Create a channel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChannelRequest"
+      responses:
+        "201":
+          description: Channel created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/apps/{appId}/channels/{channelId}:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+      - $ref: "#/components/parameters/channelId"
+    delete:
+      operationId: deleteChannel
+      tags: [Channels]
+      summary: Delete a channel
+      responses:
+        "204":
+          description: Channel deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Releases ────────────────────────────────────────────────────────────
+  /api/v1/apps/{appId}/releases:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+    get:
+      operationId: getReleases
+      tags: [Releases]
+      summary: List releases for an app
+      parameters:
+        - name: sideloadable
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter to only sideloadable releases
+      responses:
+        "200":
+          description: List of releases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetReleasesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createRelease
+      tags: [Releases]
+      summary: Create a release
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReleaseRequest"
+      responses:
+        "201":
+          description: Release created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateReleaseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/apps/{appId}/releases/{releaseId}:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+      - $ref: "#/components/parameters/releaseId"
+    get:
+      operationId: getRelease
+      tags: [Releases]
+      summary: Get a release by ID
+      responses:
+        "200":
+          description: Release details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetReleaseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateRelease
+      tags: [Releases]
+      summary: Update a release
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReleaseRequest"
+      responses:
+        "204":
+          description: Release updated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteRelease
+      tags: [Releases]
+      summary: Delete a release and all related artifacts
+      responses:
+        "204":
+          description: Release deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Release Artifacts ───────────────────────────────────────────────────
+  /api/v1/apps/{appId}/releases/{releaseId}/artifacts:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+      - $ref: "#/components/parameters/releaseId"
+    get:
+      operationId: getReleaseArtifacts
+      tags: [Release Artifacts]
+      summary: List artifacts for a release
+      parameters:
+        - name: arch
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by architecture
+        - name: platform
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ReleasePlatform"
+          description: Filter by platform
+      responses:
+        "200":
+          description: List of artifacts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetReleaseArtifactsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createReleaseArtifact
+      tags: [Release Artifacts]
+      summary: Upload a release artifact
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [arch, platform, hash, size, filename, file]
+              properties:
+                arch:
+                  type: string
+                  description: Target architecture (e.g. aarch64, x86_64)
+                platform:
+                  $ref: "#/components/schemas/ReleasePlatform"
+                hash:
+                  type: string
+                  description: SHA-256 hash of the artifact
+                size:
+                  type: string
+                  description: Size in bytes (sent as string)
+                canSideload:
+                  type: string
+                  description: Whether the artifact can be sideloaded (true/false)
+                  default: "true"
+                filename:
+                  type: string
+                  description: Original filename
+                podfileLockHash:
+                  type: string
+                  description: Hash of Podfile.lock (iOS only)
+                file:
+                  type: string
+                  format: binary
+                  description: The artifact binary
+      responses:
+        "200":
+          description: Artifact created with signed upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateReleaseArtifactResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Artifact already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteReleaseArtifacts
+      tags: [Release Artifacts]
+      summary: Delete release artifacts
+      parameters:
+        - name: platform
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ReleasePlatform"
+          description: Delete only artifacts for this platform
+      responses:
+        "204":
+          description: Artifacts deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Patches ─────────────────────────────────────────────────────────────
+  /api/v1/apps/{appId}/patches:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+    post:
+      operationId: createPatch
+      tags: [Patches]
+      summary: Create a patch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePatchRequest"
+      responses:
+        "201":
+          description: Patch created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatePatchResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/apps/{appId}/patches/promote:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+    post:
+      operationId: promotePatch
+      tags: [Patches]
+      summary: Promote a patch to a channel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromotePatchRequest"
+      responses:
+        "201":
+          description: Patch promoted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/apps/{appId}/releases/{releaseId}/patches:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+      - $ref: "#/components/parameters/releaseId"
+    get:
+      operationId: getReleasePatches
+      tags: [Patches]
+      summary: List patches for a release
+      responses:
+        "200":
+          description: List of patches
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetReleasePatchesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/apps/{appId}/releases/{releaseId}/patches/{patchId}:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+      - $ref: "#/components/parameters/releaseId"
+      - $ref: "#/components/parameters/patchId"
+    patch:
+      operationId: updatePatch
+      tags: [Patches]
+      summary: Update a patch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePatchRequest"
+      responses:
+        "204":
+          description: Patch updated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/apps/{appId}/releases/{releaseId}/patches/{patchId}/rollback:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+      - $ref: "#/components/parameters/releaseId"
+      - $ref: "#/components/parameters/patchId"
+    post:
+      operationId: rollbackPatch
+      tags: [Patches]
+      summary: Roll back a patch
+      description: Prevents the patch from being served. Devices revert to the previous patch.
+      responses:
+        "204":
+          description: Patch rolled back
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/apps/{appId}/releases/{releaseId}/patches/{patchId}/rollforward:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+      - $ref: "#/components/parameters/releaseId"
+      - $ref: "#/components/parameters/patchId"
+    post:
+      operationId: rollforwardPatch
+      tags: [Patches]
+      summary: Roll forward a previously rolled-back patch
+      responses:
+        "204":
+          description: Patch rolled forward
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Patch Artifacts ─────────────────────────────────────────────────────
+  /api/v1/apps/{appId}/patches/{patchId}/artifacts:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+      - $ref: "#/components/parameters/patchId"
+    post:
+      operationId: createPatchArtifact
+      tags: [Patch Artifacts]
+      summary: Upload a patch artifact
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [arch, platform, hash, size, file]
+              properties:
+                arch:
+                  type: string
+                  description: Target architecture (e.g. aarch64, x86_64)
+                platform:
+                  $ref: "#/components/schemas/ReleasePlatform"
+                hash:
+                  type: string
+                  description: SHA-256 hash of the artifact
+                size:
+                  type: string
+                  description: Size in bytes (sent as string)
+                hashSignature:
+                  type: string
+                  description: Signature of the hash (code signing)
+                podfileLockHash:
+                  type: string
+                  description: Hash of Podfile.lock (iOS only)
+                file:
+                  type: string
+                  format: binary
+                  description: The patch artifact binary
+      responses:
+        "200":
+          description: Artifact created with signed upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatePatchArtifactResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Collaborators ───────────────────────────────────────────────────────
+  /api/v1/apps/{appId}/collaborators:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+    get:
+      operationId: getCollaborators
+      tags: [Collaborators]
+      summary: List collaborators for an app
+      responses:
+        "200":
+          description: List of collaborators
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppRoleGrant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: addCollaborator
+      tags: [Collaborators]
+      summary: Add a collaborator to an app
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAppCollaboratorRequest"
+      responses:
+        "201":
+          description: Collaborator added
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/apps/{appId}/collaborators/{collaboratorId}:
+    parameters:
+      - $ref: "#/components/parameters/appId"
+      - $ref: "#/components/parameters/collaboratorId"
+    patch:
+      operationId: updateCollaborator
+      tags: [Collaborators]
+      summary: Update a collaborator's role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAppCollaboratorRequest"
+      responses:
+        "204":
+          description: Collaborator updated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: removeCollaborator
+      tags: [Collaborators]
+      summary: Remove a collaborator from an app
+      responses:
+        "204":
+          description: Collaborator removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Organizations ───────────────────────────────────────────────────────
+  /api/v1/organizations:
+    get:
+      operationId: getOrganizations
+      tags: [Organizations]
+      summary: List organizations the user belongs to
+      responses:
+        "200":
+          description: List of organization memberships
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOrganizationsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createOrganization
+      tags: [Organizations]
+      summary: Create an organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+      responses:
+        "201":
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/organizations/{organizationId}:
+    parameters:
+      - $ref: "#/components/parameters/organizationId"
+    get:
+      operationId: getOrganization
+      tags: [Organizations]
+      summary: Get an organization
+      responses:
+        "200":
+          description: Organization membership details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationMembership"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateOrganization
+      tags: [Organizations]
+      summary: Update an organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationRequest"
+      responses:
+        "204":
+          description: Organization updated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteOrganization
+      tags: [Organizations]
+      summary: Delete an organization
+      description: Cannot delete personal organizations.
+      responses:
+        "204":
+          description: Organization deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/organizations/{organizationId}/apps:
+    parameters:
+      - $ref: "#/components/parameters/organizationId"
+    get:
+      operationId: getOrganizationApps
+      tags: [Organizations]
+      summary: List apps in an organization
+      responses:
+        "200":
+          description: List of apps
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOrganizationAppsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: transferAppToOrganization
+      tags: [Organizations]
+      summary: Transfer an app to this organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferOrganizationAppRequest"
+      responses:
+        "204":
+          description: App transferred
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/organizations/{organizationId}/users:
+    parameters:
+      - $ref: "#/components/parameters/organizationId"
+    get:
+      operationId: getOrganizationUsers
+      tags: [Organizations]
+      summary: List members of an organization
+      responses:
+        "200":
+          description: List of organization members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetOrganizationUsersResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: addOrganizationUser
+      tags: [Organizations]
+      summary: Add a user to an organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationUserRequest"
+      responses:
+        "204":
+          description: User added
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/organizations/{organizationId}/users/{userId}:
+    parameters:
+      - $ref: "#/components/parameters/organizationId"
+      - $ref: "#/components/parameters/userId"
+    patch:
+      operationId: updateOrganizationUserRole
+      tags: [Organizations]
+      summary: Update a member's role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserOrganizationRoleRequest"
+      responses:
+        "204":
+          description: Role updated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: removeOrganizationUser
+      tags: [Organizations]
+      summary: Remove a user from an organization
+      description: Cannot remove the organization owner.
+      responses:
+        "204":
+          description: User removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/organizations/{organizationId}/plan:
+    parameters:
+      - $ref: "#/components/parameters/organizationId"
+    get:
+      operationId: getOrganizationPlan
+      tags: [Organizations]
+      summary: Get the organization's subscription plan
+      responses:
+        "200":
+          description: Plan details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Plan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/organizations/{organizationId}/usage:
+    parameters:
+      - $ref: "#/components/parameters/organizationId"
+    get:
+      operationId: getOrganizationUsage
+      tags: [Organizations]
+      summary: Get patch install usage for an organization
+      responses:
+        "200":
+          description: Usage details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetUsageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Plan ────────────────────────────────────────────────────────────────
+  /api/v1/plan:
+    get:
+      operationId: getCurrentPlan
+      tags: [Plan]
+      summary: Get the authenticated user's subscription plan
+      responses:
+        "200":
+          description: Plan details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Plan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Diagnostics ─────────────────────────────────────────────────────────
+  /api/v1/diagnostics/gcp_upload:
+    get:
+      operationId: getDiagnosticsUploadUrl
+      tags: [Diagnostics]
+      summary: Get a signed URL for upload speed testing
+      responses:
+        "200":
+          description: Signed upload URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [upload_url]
+                properties:
+                  upload_url:
+                    type: string
+                    format: uri
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/diagnostics/gcp_download:
+    get:
+      operationId: getDiagnosticsDownloadUrl
+      tags: [Diagnostics]
+      summary: Get a signed URL for download speed testing
+      responses:
+        "200":
+          description: Signed download URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [download_url]
+                properties:
+                  download_url:
+                    type: string
+                    format: uri
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Patch Check (client-facing) ─────────────────────────────────────────
+  /api/v1/patches/check:
+    post:
+      operationId: checkForPatch
+      tags: [Patch Check]
+      summary: Check if a patch is available for download
+      description: Called by mobile apps to check for OTA updates.
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchCheckRequest"
+      responses:
+        "200":
+          description: Patch availability result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatchCheckResponse"
+
+components:
+  # ── Security Schemes ────────────────────────────────────────────────────
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained via Shorebird authentication
+    apiKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Shorebird API key for client-side patch checks
+
+  # ── Reusable Parameters ─────────────────────────────────────────────────
+  parameters:
+    appId:
+      name: appId
+      in: path
+      required: true
+      schema:
+        type: string
+    releaseId:
+      name: releaseId
+      in: path
+      required: true
+      schema:
+        type: integer
+    patchId:
+      name: patchId
+      in: path
+      required: true
+      schema:
+        type: integer
+    channelId:
+      name: channelId
+      in: path
+      required: true
+      schema:
+        type: integer
+    collaboratorId:
+      name: collaboratorId
+      in: path
+      required: true
+      schema:
+        type: integer
+    organizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema:
+        type: integer
+    userId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  # ── Reusable Responses ──────────────────────────────────────────────────
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Schemas ─────────────────────────────────────────────────────────────
+  schemas:
+    # ── Enums ──────────────────────────────────────────────────────────
+    ReleasePlatform:
+      type: string
+      enum: [android, ios, linux, macos, windows]
+
+    ReleaseStatus:
+      type: string
+      enum: [draft, active]
+
+    Role:
+      type: string
+      enum: [owner, admin, appManager, developer, viewer, none]
+
+    AppCollaboratorRole:
+      type: string
+      enum: [admin, developer]
+
+    OrganizationType:
+      type: string
+      enum: [personal, team]
+
+    AuthProvider:
+      type: string
+      enum: [google, microsoft, shorebird]
+
+    # ── Models ─────────────────────────────────────────────────────────
+    App:
+      type: object
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+
+    AppMetadata:
+      type: object
+      required: [appId, displayName, createdAt, updatedAt]
+      properties:
+        appId:
+          type: string
+        displayName:
+          type: string
+        latestReleaseVersion:
+          type: string
+        latestPatchNumber:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Channel:
+      type: object
+      required: [id, appId, name]
+      properties:
+        id:
+          type: integer
+        appId:
+          type: string
+        name:
+          type: string
+
+    Release:
+      type: object
+      required:
+        [id, appId, version, flutterRevision, platformStatuses, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        appId:
+          type: string
+        version:
+          type: string
+        flutterRevision:
+          type: string
+        flutterVersion:
+          type: string
+        displayName:
+          type: string
+        platformStatuses:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ReleaseStatus"
+          description: Map from ReleasePlatform to ReleaseStatus
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+
+    ReleaseArtifact:
+      type: object
+      required: [id, releaseId, arch, platform, hash, size, url, canSideload]
+      properties:
+        id:
+          type: integer
+        releaseId:
+          type: integer
+        arch:
+          type: string
+        platform:
+          $ref: "#/components/schemas/ReleasePlatform"
+        hash:
+          type: string
+        size:
+          type: integer
+        url:
+          type: string
+          format: uri
+        podfileLockHash:
+          type: string
+        canSideload:
+          type: boolean
+
+    Patch:
+      type: object
+      required: [id, number]
+      properties:
+        id:
+          type: integer
+        number:
+          type: integer
+        notes:
+          type: string
+
+    ReleasePatch:
+      type: object
+      required: [id, number, artifacts, isRolledBack]
+      properties:
+        id:
+          type: integer
+        number:
+          type: integer
+        channel:
+          type: string
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/PatchArtifact"
+        isRolledBack:
+          type: boolean
+        notes:
+          type: string
+
+    PatchArtifact:
+      type: object
+      required: [id, patchId, arch, platform, hash, size, createdAt]
+      properties:
+        id:
+          type: integer
+        patchId:
+          type: integer
+        arch:
+          type: string
+        platform:
+          $ref: "#/components/schemas/ReleasePlatform"
+        hash:
+          type: string
+        size:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    PatchCheckMetadata:
+      type: object
+      required: [number, downloadUrl, hash]
+      properties:
+        number:
+          type: integer
+        downloadUrl:
+          type: string
+          format: uri
+        hash:
+          type: string
+        hashSignature:
+          type: string
+
+    Plan:
+      type: object
+      required:
+        - name
+        - currency
+        - basePrice
+        - baseInstallCount
+        - currentPeriodStart
+        - currentPeriodEnd
+        - cancelAtPeriodEnd
+        - isTiered
+        - isTrial
+        - mauInsightEnabled
+        - availableRoles
+      properties:
+        name:
+          type: string
+        currency:
+          type: string
+          description: ISO 4217 currency code
+        basePrice:
+          type: integer
+          description: Price per billing period in minor currency units
+        baseInstallCount:
+          type: integer
+          description: Patch installs included with the base price
+        currentPeriodStart:
+          type: string
+          format: date-time
+        currentPeriodEnd:
+          type: string
+          format: date-time
+        cancelAtPeriodEnd:
+          type: boolean
+        isTiered:
+          type: boolean
+          description: Whether the user can change plan tier
+        isTrial:
+          type: boolean
+        mauInsightEnabled:
+          type: boolean
+        pricePerOverageInstall:
+          type: string
+          description: Price per overage install in minor currency units (decimal string)
+        maxTeamSize:
+          type: integer
+          description: Maximum collaborators (null means unlimited)
+        availableRoles:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Map from Role name to list of permission strings
+
+    PublicUser:
+      type: object
+      required: [id, email]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+
+    PrivateUser:
+      type: object
+      required: [id, email, hasActiveSubscription, jwtIssuer]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        hasActiveSubscription:
+          type: boolean
+        stripeCustomerId:
+          type: string
+        jwtIssuer:
+          type: string
+        patchOverageLimit:
+          type: integer
+
+    Organization:
+      type: object
+      required: [id, name, organizationType, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        organizationType:
+          $ref: "#/components/schemas/OrganizationType"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrganizationMembership:
+      type: object
+      required: [organization, role]
+      properties:
+        organization:
+          $ref: "#/components/schemas/Organization"
+        role:
+          $ref: "#/components/schemas/Role"
+
+    OrganizationUser:
+      type: object
+      required: [user, role]
+      properties:
+        user:
+          $ref: "#/components/schemas/PublicUser"
+        role:
+          $ref: "#/components/schemas/Role"
+
+    AppRoleGrant:
+      type: object
+      required: [userId, email, role]
+      properties:
+        userId:
+          type: integer
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/Role"
+
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: string
+
+    # ── Request / Response Types ───────────────────────────────────────
+    CreateUserRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    CreateAppRequest:
+      type: object
+      required: [displayName, organizationId]
+      properties:
+        displayName:
+          type: string
+        organizationId:
+          type: integer
+
+    UpdateAppRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    GetAppsResponse:
+      type: object
+      required: [apps]
+      properties:
+        apps:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppMetadata"
+
+    CreateChannelRequest:
+      type: object
+      required: [channel]
+      properties:
+        channel:
+          type: string
+
+    CreateReleaseRequest:
+      type: object
+      required: [version, flutterRevision]
+      properties:
+        version:
+          type: string
+        flutterRevision:
+          type: string
+        flutterVersion:
+          type: string
+        displayName:
+          type: string
+
+    CreateReleaseResponse:
+      type: object
+      required: [release]
+      properties:
+        release:
+          $ref: "#/components/schemas/Release"
+
+    GetReleasesResponse:
+      type: object
+      required: [releases]
+      properties:
+        releases:
+          type: array
+          items:
+            $ref: "#/components/schemas/Release"
+
+    GetReleaseResponse:
+      type: object
+      required: [release]
+      properties:
+        release:
+          $ref: "#/components/schemas/Release"
+
+    UpdateReleaseRequest:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ReleaseStatus"
+        platform:
+          $ref: "#/components/schemas/ReleasePlatform"
+        metadata:
+          type: object
+          additionalProperties: true
+        notes:
+          type: string
+
+    GetReleaseArtifactsResponse:
+      type: object
+      required: [artifacts]
+      properties:
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReleaseArtifact"
+
+    CreateReleaseArtifactResponse:
+      type: object
+      required: [id, releaseId, arch, platform, hash, size, url]
+      properties:
+        id:
+          type: integer
+        releaseId:
+          type: integer
+        arch:
+          type: string
+        platform:
+          $ref: "#/components/schemas/ReleasePlatform"
+        hash:
+          type: string
+        size:
+          type: integer
+        url:
+          type: string
+          format: uri
+          description: Signed upload URL
+
+    CreatePatchRequest:
+      type: object
+      required: [releaseId, metadata]
+      properties:
+        releaseId:
+          type: integer
+        metadata:
+          type: object
+          additionalProperties: true
+
+    CreatePatchResponse:
+      type: object
+      required: [id, number]
+      properties:
+        id:
+          type: integer
+        number:
+          type: integer
+
+    GetReleasePatchesResponse:
+      type: object
+      required: [patches]
+      properties:
+        patches:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReleasePatch"
+
+    UpdatePatchRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+
+    PromotePatchRequest:
+      type: object
+      required: [patchId, channelId]
+      properties:
+        patchId:
+          type: integer
+        channelId:
+          type: integer
+
+    CreatePatchArtifactResponse:
+      type: object
+      required: [id, patchId, arch, platform, hash, size, url]
+      properties:
+        id:
+          type: integer
+        patchId:
+          type: integer
+        arch:
+          type: string
+        platform:
+          $ref: "#/components/schemas/ReleasePlatform"
+        hash:
+          type: string
+        size:
+          type: integer
+        url:
+          type: string
+          format: uri
+          description: Signed upload URL
+
+    CreateAppCollaboratorRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    UpdateAppCollaboratorRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/AppCollaboratorRole"
+
+    CreateOrganizationRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    UpdateOrganizationRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    GetOrganizationsResponse:
+      type: object
+      required: [organizations]
+      properties:
+        organizations:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrganizationMembership"
+
+    GetOrganizationAppsResponse:
+      type: object
+      required: [apps]
+      properties:
+        apps:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppMetadata"
+
+    GetOrganizationUsersResponse:
+      type: object
+      required: [users]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrganizationUser"
+
+    CreateOrganizationUserRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/Role"
+
+    UpdateUserOrganizationRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/Role"
+
+    TransferOrganizationAppRequest:
+      type: object
+      required: [appId]
+      properties:
+        appId:
+          type: string
+
+    GetUsageResponse:
+      type: object
+      required: [apps]
+      properties:
+        apps:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppUsage"
+        reportedOverage:
+          type: integer
+
+    AppUsage:
+      type: object
+      required: [id, name, patchInstallCount]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        patchInstallCount:
+          type: integer
+
+    PatchCheckRequest:
+      type: object
+      required: [releaseVersion, platform, arch, appId, channel]
+      properties:
+        releaseVersion:
+          type: string
+        patchNumber:
+          type: integer
+          description: Highest patch number currently downloaded
+        patchHash:
+          type: string
+          description: Hash of the currently installed patch
+        platform:
+          $ref: "#/components/schemas/ReleasePlatform"
+        arch:
+          type: string
+        appId:
+          type: string
+        channel:
+          type: string
+        clientId:
+          type: string
+          description: Unique device identifier
+
+    PatchCheckResponse:
+      type: object
+      required: [patchAvailable]
+      properties:
+        patchAvailable:
+          type: boolean
+        patch:
+          $ref: "#/components/schemas/PatchCheckMetadata"
+        rolledBackPatchNumbers:
+          type: array
+          items:
+            type: integer
