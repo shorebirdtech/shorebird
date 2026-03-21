@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
-import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 
 /// The primary release artifact architecture for Windows releases.
@@ -13,9 +12,6 @@ import 'package:scoped_deps/scoped_deps.dart';
 ///   - app.exe (where `app` is the name of the Flutter app)
 ///   - data/, which contains flutter assets and the app.so file
 const primaryWindowsReleaseArtifactArch = 'win_archive';
-
-/// The minimum allowed Flutter version for creating Windows releases.
-final minimumSupportedWindowsFlutterVersion = Version(3, 32, 6);
 
 /// A reference to a [Windows] instance.
 final windowsRef = create(Windows.new);

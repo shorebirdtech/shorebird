@@ -7,6 +7,7 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -17,9 +18,6 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 export 'package:pub_semver/pub_semver.dart';
-
-/// Minimum Flutter version for obfuscation support across all platforms.
-final _minimumObfuscationFlutterVersion = Version(3, 41, 2);
 
 /// {@template releaser}
 /// Executes platform-specific functionality to create a release.
@@ -153,11 +151,30 @@ abstract class Releaser {
       platformSubdir: supplementPlatformSubdir,
       create: hasObfuscationMap,
     );
-    if (hasObfuscationMap && supplementDir != null) {
-      obfuscationMapFile.copySync(
-        p.join(supplementDir.path, 'obfuscation_map.json'),
+    if (supplementDir == null) return null;
+
+    final targetMapFile = File(
+      p.join(supplementDir.path, 'obfuscation_map.json'),
+    );
+    if (hasObfuscationMap) {
+      obfuscationMapFile.copySync(targetMapFile.path);
+    } else if (targetMapFile.existsSync()) {
+      // Remove stale obfuscation map from a previous obfuscated build so that
+      // the supplement doesn't incorrectly signal that this release was
+      // obfuscated.
+      logger.detail(
+        'Removing stale obfuscation map from supplement directory. '
+        'If this release should be obfuscated, re-run with --obfuscate.',
       );
+      targetMapFile.deleteSync();
     }
+
+    // Return null if the supplement directory is now empty (nothing to upload).
+    // Note: currently the obfuscation map is the only supplement artifact. If
+    // other supplement files are added in the future, this check (and the
+    // stale-file cleanup above) should be updated to handle them explicitly.
+    if (supplementDir.listSync().isEmpty) return null;
+
     return supplementDir;
   }
 
@@ -193,10 +210,10 @@ abstract class Releaser {
       shorebirdEnv.flutterRevision,
     );
     if (flutterVersion != null &&
-        flutterVersion < _minimumObfuscationFlutterVersion) {
+        flutterVersion < minimumObfuscationFlutterVersion) {
       logger.err(
-        'Obfuscation on ${releaseType.releasePlatform.displayName} requires Flutter '
-        '$_minimumObfuscationFlutterVersion or later '
+        'Obfuscation on ${releaseType.releasePlatform.displayName} '
+        'requires Flutter $minimumObfuscationFlutterVersion or later '
         '(current: $flutterVersion).',
       );
       throw ProcessExit(ExitCode.unavailable.code);

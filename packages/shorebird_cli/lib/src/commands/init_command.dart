@@ -87,10 +87,19 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       );
       if (organizationMembership == null) {
         logger.err('Organization with ID "$orgId" not found.');
+        _logAvailableOrganizations(organizationMemberships);
         return ExitCode.usage.code;
       }
       organization = organizationMembership.organization;
     } else if (organizationMemberships.length > 1) {
+      if (!shorebirdEnv.canAcceptUserInput) {
+        logger.err(
+          'Multiple organizations found. '
+          'Use --organization-id to specify one:',
+        );
+        _logAvailableOrganizations(organizationMemberships);
+        return ExitCode.usage.code;
+      }
       organization = logger.chooseOne(
         'Which organization should this app belong to?',
         choices: organizationMemberships.map((o) => o.organization).toList(),
@@ -362,5 +371,15 @@ app_id:
         .writeAsStringSync(editor.toString());
 
     return ShorebirdYaml(appId: appId);
+  }
+
+  void _logAvailableOrganizations(
+    List<OrganizationMembership> memberships,
+  ) {
+    logger.info('Available organizations:');
+    for (final membership in memberships) {
+      final org = membership.organization;
+      logger.info('  ${org.name} (id: ${org.id})');
+    }
   }
 }
