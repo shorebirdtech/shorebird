@@ -47,6 +47,10 @@ class Git {
     );
     if (result.exitCode != 0) {
       final stderr = '${result.stderr}';
+      // This assumes all git remotes are on GitHub, which is currently true
+      // (we only clone/fetch shorebirdtech/flutter and shorebirdtech/shorebird).
+      // If we ever add non-GitHub remotes, this detection should be scoped to
+      // GitHub URLs only.
       if (_githubOutagePattern.hasMatch(stderr)) {
         throw const GitHubOutageException(
           'GitHub appears to be experiencing an outage. '
