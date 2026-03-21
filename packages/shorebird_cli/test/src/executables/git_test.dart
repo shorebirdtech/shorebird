@@ -55,7 +55,7 @@ void main() {
           ),
           throwsA(
             isA<GitServerUnreachableException>().having(
-              (e) => e.toString(),
+              (e) => e.message,
               'message',
               allOf(contains('github.com'), contains('githubstatus.com')),
             ),
@@ -74,7 +74,7 @@ void main() {
           () => runWithOverrides(() => git.fetch(directory: 'repo')),
           throwsA(
             isA<GitServerUnreachableException>().having(
-              (e) => e.toString(),
+              (e) => e.message,
               'message',
               allOf(
                 contains('gitlab.com'),
@@ -94,7 +94,7 @@ void main() {
           () => runWithOverrides(() => git.fetch(directory: 'repo')),
           throwsA(
             isA<GitServerUnreachableException>().having(
-              (e) => e.toString(),
+              (e) => e.message,
               'message',
               contains('the remote git server'),
             ),

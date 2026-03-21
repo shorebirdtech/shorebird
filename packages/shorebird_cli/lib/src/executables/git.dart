@@ -13,21 +13,20 @@ Git get git => read(gitRef);
 /// {@template git_server_unreachable_exception}
 /// Exception thrown when a git command fails due to a server error.
 /// {@endtemplate}
-class GitServerUnreachableException implements Exception {
+class GitServerUnreachableException extends ProcessException {
   /// {@macro git_server_unreachable_exception}
-  const GitServerUnreachableException(this.message);
-
-  /// The error message.
-  final String message;
-
-  @override
-  String toString() => message;
+  GitServerUnreachableException(
+    super.executable,
+    super.arguments, [
+    super.message = '',
+    super.errorCode = 0,
+  ]);
 }
 
-/// Pattern that matches HTTP server errors (500, 502, 503) or "Internal Server
-/// Error" in git output.
+/// Pattern that matches HTTP server errors (500, 502, 503, 504) or "Internal
+/// Server Error" in git output.
 final _serverErrorPattern = RegExp(
-  'The requested URL returned error: (500|502|503)|Internal Server Error',
+  'The requested URL returned error: (500|502|503|504)|Internal Server Error',
 );
 
 /// Pattern that extracts the hostname from a git remote URL in stderr.
@@ -68,7 +67,10 @@ class Git {
       final stderr = '${result.stderr}';
       if (_serverErrorPattern.hasMatch(stderr)) {
         throw GitServerUnreachableException(
+          executable,
+          arguments,
           _buildServerErrorMessage(stderr),
+          result.exitCode,
         );
       }
       throw ProcessException(
