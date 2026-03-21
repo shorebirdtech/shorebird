@@ -1,4 +1,4 @@
-// cspell:words unmatch
+// cspell:words unmatch githubstatus
 import 'dart:io';
 
 import 'package:scoped_deps/scoped_deps.dart';
@@ -9,6 +9,44 @@ final gitRef = create(Git.new);
 
 /// The [Git] instance available in the current zone.
 Git get git => read(gitRef);
+
+/// {@template git_server_unreachable_exception}
+/// Exception thrown when a git command fails due to a server error.
+/// {@endtemplate}
+class GitServerUnreachableException extends ProcessException {
+  /// {@macro git_server_unreachable_exception}
+  GitServerUnreachableException(
+    super.executable,
+    super.arguments, [
+    super.message = '',
+    super.errorCode = 0,
+  ]);
+}
+
+/// Pattern that matches HTTP server errors (500, 502, 503, 504) or "Internal
+/// Server Error" in git output.
+final _serverErrorPattern = RegExp(
+  'The requested URL returned error: (500|502|503|504)|Internal Server Error',
+);
+
+/// Pattern that extracts the hostname from a git remote URL in stderr.
+/// Matches URLs like `https://github.com/org/repo.git/`.
+final _remoteHostPattern = RegExp(r"https?://([^/']+)");
+
+String _buildServerErrorMessage(String stderr) {
+  final hostMatch = _remoteHostPattern.firstMatch(stderr);
+  final host = hostMatch?.group(1);
+  final serverName = host ?? 'the remote git server';
+
+  final buffer = StringBuffer('Unable to reach $serverName.');
+  if (host == 'github.com') {
+    buffer.write(
+      '\nIf your network connection is working, check '
+      'https://www.githubstatus.com for service status.',
+    );
+  }
+  return buffer.toString();
+}
 
 /// A wrapper around all git related functionality.
 class Git {
@@ -26,10 +64,19 @@ class Git {
       workingDirectory: workingDirectory,
     );
     if (result.exitCode != 0) {
+      final stderr = '${result.stderr}';
+      if (_serverErrorPattern.hasMatch(stderr)) {
+        throw GitServerUnreachableException(
+          executable,
+          arguments,
+          _buildServerErrorMessage(stderr),
+          result.exitCode,
+        );
+      }
       throw ProcessException(
         executable,
         arguments,
-        '${result.stderr}',
+        stderr,
         result.exitCode,
       );
     }
