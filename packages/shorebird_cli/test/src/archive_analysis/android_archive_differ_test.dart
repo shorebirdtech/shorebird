@@ -60,6 +60,58 @@ void main() {
             'META-INF/MANIFEST.MF',
           });
         });
+
+        test('filters out DEX files with only path differences', () async {
+          final baseDexAabPath = p.join(
+            aabFixturesBasePath,
+            'base_dex_test.aab',
+          );
+          final pathOnlyAabPath = p.join(
+            aabFixturesBasePath,
+            'changed_dex_path_only.aab',
+          );
+
+          final fileSetDiff = await differ.changedFiles(
+            baseDexAabPath,
+            pathOnlyAabPath,
+          );
+          // DEX file should be filtered out since only source paths differ.
+          expect(
+            fileSetDiff.changedPaths.where((p) => p.endsWith('.dex')).isEmpty,
+            isTrue,
+          );
+          expect(
+            differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
+            isFalse,
+          );
+        });
+
+        test('keeps DEX files with structural changes', () async {
+          final baseDexAabPath = p.join(
+            aabFixturesBasePath,
+            'base_dex_test.aab',
+          );
+          final methodAddedAabPath = p.join(
+            aabFixturesBasePath,
+            'changed_dex_method_added.aab',
+          );
+
+          final fileSetDiff = await differ.changedFiles(
+            baseDexAabPath,
+            methodAddedAabPath,
+          );
+          // DEX file should remain since there are structural changes.
+          expect(
+            fileSetDiff.changedPaths
+                .where((p) => p.endsWith('.dex'))
+                .isNotEmpty,
+            isTrue,
+          );
+          expect(
+            differ.containsPotentiallyBreakingNativeDiffs(fileSetDiff),
+            isTrue,
+          );
+        });
       });
 
       group('contentDifferences', () {
