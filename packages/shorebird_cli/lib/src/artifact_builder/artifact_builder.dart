@@ -91,11 +91,6 @@ We strongly encourage always specifying an explicit Flutter version:
 
 ${lightCyan.wrap('shorebird release <platform> --flutter-version=3.29.0')}
 
-• If the error seems unexpected or mentions corrupted files, try clearing
-the Shorebird cache and retrying:
-
-${lightCyan.wrap('shorebird cache clean')}
-
 • If `flutter build` completes successfully and `shorebird release`
 fails when using the same flutter version, please file an issue:
 ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
