@@ -39,8 +39,7 @@ void main() {
     });
 
     group('server error detection', () {
-      test('includes github.com and status link for GitHub URLs',
-          () async {
+      test('includes github.com and status link for GitHub URLs', () async {
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
           "fatal: unable to access 'https://github.com/"
@@ -58,10 +57,7 @@ void main() {
             isA<GitServerUnreachableException>().having(
               (e) => e.toString(),
               'message',
-              allOf(
-                contains('github.com'),
-                contains('githubstatus.com'),
-              ),
+              allOf(contains('github.com'), contains('githubstatus.com')),
             ),
           ),
         );
@@ -75,9 +71,7 @@ void main() {
           'The requested URL returned error: 502',
         );
         expect(
-          () => runWithOverrides(
-            () => git.fetch(directory: 'repo'),
-          ),
+          () => runWithOverrides(() => git.fetch(directory: 'repo')),
           throwsA(
             isA<GitServerUnreachableException>().having(
               (e) => e.toString(),
@@ -91,16 +85,13 @@ void main() {
         );
       });
 
-      test('falls back to generic message when no URL in stderr',
-          () async {
+      test('falls back to generic message when no URL in stderr', () async {
         when(() => processResult.exitCode).thenReturn(128);
-        when(() => processResult.stderr).thenReturn(
-          'remote: Internal Server Error',
-        );
+        when(
+          () => processResult.stderr,
+        ).thenReturn('remote: Internal Server Error');
         expect(
-          () => runWithOverrides(
-            () => git.fetch(directory: 'repo'),
-          ),
+          () => runWithOverrides(() => git.fetch(directory: 'repo')),
           throwsA(
             isA<GitServerUnreachableException>().having(
               (e) => e.toString(),
@@ -111,16 +102,13 @@ void main() {
         );
       });
 
-      test('throws ProcessException for non-server errors',
-          () async {
+      test('throws ProcessException for non-server errors', () async {
         when(() => processResult.exitCode).thenReturn(128);
-        when(() => processResult.stderr).thenReturn(
-          'fatal: repository not found',
-        );
+        when(
+          () => processResult.stderr,
+        ).thenReturn('fatal: repository not found');
         expect(
-          () => runWithOverrides(
-            () => git.fetch(directory: 'repo'),
-          ),
+          () => runWithOverrides(() => git.fetch(directory: 'repo')),
           throwsA(isA<ProcessException>()),
         );
       });
