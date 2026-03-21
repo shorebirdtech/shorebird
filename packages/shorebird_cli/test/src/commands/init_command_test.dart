@@ -401,11 +401,14 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             when(() => argResults['organization-id']).thenReturn('999999');
           });
 
-          test('exits with usage error code', () async {
+          test('exits with usage error code and lists orgs', () async {
             final exitCode = await runWithOverrides(command.run);
             expect(exitCode, equals(ExitCode.usage.code));
             verify(
               () => logger.err('Organization with ID "999999" not found.'),
+            ).called(1);
+            verify(
+              () => logger.info('Available organizations:'),
             ).called(1);
           });
         });
@@ -539,10 +542,15 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                 'Use --organization-id to specify one:',
               ),
             ).called(1);
-            verify(() => logger.err('  ${org1.name} (id: ${org1.id})'))
-                .called(1);
-            verify(() => logger.err('  ${org2.name} (id: ${org2.id})'))
-                .called(1);
+            verify(
+              () => logger.info('Available organizations:'),
+            ).called(1);
+            verify(
+              () => logger.info('  ${org1.name} (id: ${org1.id})'),
+            ).called(1);
+            verify(
+              () => logger.info('  ${org2.name} (id: ${org2.id})'),
+            ).called(1);
             verifyNever(
               () => logger.chooseOne<Organization>(
                 any(),
