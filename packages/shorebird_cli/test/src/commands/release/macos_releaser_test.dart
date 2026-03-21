@@ -11,7 +11,9 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
@@ -35,6 +37,7 @@ void main() {
     late ArtifactBuilder artifactBuilder;
     late ArtifactManager artifactManager;
     late CodePushClientWrapper codePushClientWrapper;
+    late CodeSigner codeSigner;
     late Directory projectRoot;
     late Doctor doctor;
     late FlavorValidator flavorValidator;
@@ -54,6 +57,7 @@ void main() {
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          codeSignerRef.overrideWith(() => codeSigner),
           doctorRef.overrideWith(() => doctor),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -69,6 +73,7 @@ void main() {
       artifactBuilder = MockArtifactBuilder();
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
+      codeSigner = MockCodeSigner();
       doctor = MockDoctor();
       flavorValidator = MockFlavorValidator();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -214,7 +219,7 @@ void main() {
             () => logger.err(
               '''
 The "--release-version" flag is only supported for aar and ios-framework releases.
-        
+
 To change the version of this release, change your app's version in your pubspec.yaml.''',
             ),
           ).called(1);
@@ -223,25 +228,39 @@ To change the version of this release, change your app's version in your pubspec
 
       group('when --obfuscate is passed', () {
         setUp(() {
-          when(() => argResults.rest).thenReturn(['--obfuscate']);
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
         });
 
-        test('logs error and exits', () async {
-          await expectLater(
-            runWithOverrides(releaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.unavailable),
-          );
+        group('when Flutter version supports obfuscation', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 2));
+          });
 
-          verify(
-            () => logger.err(
-              'Shorebird does not currently support obfuscation on macOS.',
-            ),
-          ).called(1);
-          verify(
-            () => logger.info(
-              '''We hope to support obfuscation in the future. We are tracking this work at ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1619'))}.''',
-            ),
-          ).called(1);
+          test('returns normally', () async {
+            await expectLater(
+              runWithOverrides(releaser.assertArgsAreValid),
+              completes,
+            );
+          });
+        });
+
+        group('when Flutter version does not support obfuscation', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 27, 4));
+          });
+
+          test('logs error and exits', () async {
+            await expectLater(
+              () => runWithOverrides(releaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.unavailable),
+            );
+          });
         });
       });
 
@@ -269,6 +288,7 @@ To change the version of this release, change your app's version in your pubspec
             flavor: any(named: 'flavor'),
             target: any(named: 'target'),
             args: any(named: 'args'),
+            base64PublicKey: any(named: 'base64PublicKey'),
           ),
         ).thenAnswer(
           (_) async => AppleBuildResult(kernelFile: File('/path/to/app.dill')),
@@ -356,6 +376,41 @@ To change the version of this release, change your app's version in your pubspec
         });
       });
 
+      group('when a public-key-cmd is provided', () {
+        setUp(() {
+          when(
+            () => argResults[CommonArguments.publicKeyCmd.name],
+          ).thenReturn('get-key-cmd');
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+          ).thenReturn(true);
+
+          when(
+            () => codeSigner.runPublicKeyCmd(any()),
+          ).thenAnswer((_) async => 'pem-public-key');
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenReturn('base64PublicKeyFromCmd');
+        });
+
+        test('runs public key cmd and forwards encoded key', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          verify(
+            () => codeSigner.runPublicKeyCmd('get-key-cmd'),
+          ).called(1);
+          verify(
+            () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
+          ).called(1);
+          verify(
+            () => artifactBuilder.buildMacos(
+              base64PublicKey: 'base64PublicKeyFromCmd',
+              args: any(named: 'args'),
+            ),
+          ).called(1);
+        });
+      });
+
       test('verifies artifacts exist and returns app path', () async {
         expect(
           await runWithOverrides(releaser.buildReleaseArtifacts),
@@ -392,6 +447,163 @@ To change the version of this release, change your app's version in your pubspec
           );
 
           verify(() => logger.err('Unable to find .app directory')).called(1);
+        });
+      });
+
+      group('when --obfuscate is passed', () {
+        setUp(() {
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          // By default, simulate the build creating the obfuscation map.
+          when(
+            () => artifactBuilder.buildMacos(
+              codesign: any(named: 'codesign'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).thenAnswer((_) async {
+            final mapPath = p.join(
+              projectRoot.path,
+              'build',
+              'shorebird',
+              'obfuscation_map.json',
+            );
+            File(mapPath)
+              ..createSync(recursive: true)
+              ..writeAsStringSync('{}');
+            return AppleBuildResult(
+              kernelFile: File('/path/to/app.dill'),
+            );
+          });
+        });
+
+        test('injects --save-obfuscation-map into build args', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          final captured = verify(
+            () => artifactBuilder.buildMacos(
+              codesign: any(named: 'codesign'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: captureAny(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).captured;
+
+          final args = captured.last as List<String>;
+          expect(
+            args.any(
+              (a) => a.startsWith(
+                '--extra-gen-snapshot-options=--save-obfuscation-map=',
+              ),
+            ),
+            isTrue,
+          );
+        });
+
+        test('auto-defaults --split-debug-info when not provided', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          final captured = verify(
+            () => artifactBuilder.buildMacos(
+              codesign: any(named: 'codesign'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: captureAny(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).captured;
+
+          final args = captured.last as List<String>;
+          expect(
+            args.any(
+              (a) => a.startsWith('--split-debug-info='),
+            ),
+            isTrue,
+          );
+        });
+
+        group('when --split-debug-info is also provided', () {
+          setUp(() {
+            when(
+              () => argResults.wasParsed('split-debug-info'),
+            ).thenReturn(true);
+            when(
+              () => argResults['split-debug-info'],
+            ).thenReturn('custom/symbols');
+          });
+
+          test('preserves user-provided --split-debug-info', () async {
+            await runWithOverrides(releaser.buildReleaseArtifacts);
+
+            final captured = verify(
+              () => artifactBuilder.buildMacos(
+                codesign: any(named: 'codesign'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                args: captureAny(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).captured;
+
+            final args = captured.last as List<String>;
+            expect(
+              args,
+              contains('--split-debug-info=custom/symbols'),
+            );
+            // Should not contain a second auto-defaulted one.
+            expect(
+              args.where((a) => a.startsWith('--split-debug-info=')).length,
+              equals(1),
+            );
+          });
+        });
+
+        test('logs detail about map location', () async {
+          await runWithOverrides(releaser.buildReleaseArtifacts);
+
+          verify(
+            () => logger.detail(
+              any(that: startsWith('Obfuscation map saved to')),
+            ),
+          ).called(1);
+        });
+
+        group('when obfuscation map is not generated', () {
+          setUp(() {
+            // Override to NOT create the map file.
+            when(
+              () => artifactBuilder.buildMacos(
+                codesign: any(named: 'codesign'),
+                flavor: any(named: 'flavor'),
+                target: any(named: 'target'),
+                args: any(named: 'args'),
+                base64PublicKey: any(named: 'base64PublicKey'),
+              ),
+            ).thenAnswer(
+              (_) async =>
+                  AppleBuildResult(kernelFile: File('/path/to/app.dill')),
+            );
+          });
+
+          test('logs error and exits', () async {
+            await expectLater(
+              () => runWithOverrides(releaser.buildReleaseArtifacts),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err(
+                any(
+                  that: contains(
+                    'Obfuscation was enabled but the obfuscation map was not',
+                  ),
+                ),
+              ),
+            ).called(1);
+          });
         });
       });
     });
@@ -536,6 +748,9 @@ To change the version of this release, change your app's version in your pubspec
 
       setUp(() {
         when(() => argResults['codesign']).thenReturn(codesign);
+        when(
+          () => shorebirdEnv.getShorebirdProjectRoot(),
+        ).thenReturn(projectRoot);
 
         appDirectory = Directory.systemTemp.createTempSync();
 
@@ -603,6 +818,42 @@ To change the version of this release, change your app's version in your pubspec
           ),
         ).called(1);
       });
+
+      group('when obfuscation map exists', () {
+        setUp(() {
+          // Create the obfuscation map file at the expected path.
+          File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'shorebird',
+                'obfuscation_map.json',
+              ),
+            )
+            ..createSync(recursive: true)
+            ..writeAsStringSync('{"key": "value"}');
+        });
+
+        test('passes obfuscation map path to wrapper', () async {
+          await runWithOverrides(
+            () => releaser.uploadReleaseArtifacts(
+              release: release,
+              appId: appId,
+            ),
+          );
+
+          verify(
+            () => codePushClientWrapper.createMacosReleaseArtifacts(
+              appId: appId,
+              releaseId: release.id,
+              appPath: appDirectory.path,
+              isCodesigned: codesign,
+              podfileLockHash:
+                  '${sha256.convert(utf8.encode(podfileLockContent))}',
+            ),
+          ).called(1);
+        });
+      });
     });
 
     group('updatedReleaseMetadata', () {
@@ -665,10 +916,16 @@ To change the version of this release, change your app's version in your pubspec
       test('prints xcarchive upload steps', () {
         expect(
           runWithOverrides(() => releaser.postReleaseInstructions),
-          equals('''
+          contains('macOS app created at ${appDirectory.path}.'),
+        );
+      });
 
-macOS app created at ${appDirectory.path}.
-'''),
+      test('includes .pkg distribution warning', () {
+        expect(
+          runWithOverrides(() => releaser.postReleaseInstructions),
+          contains(
+            'https://github.com/shorebirdtech/shorebird/issues/3223',
+          ),
         );
       });
     });

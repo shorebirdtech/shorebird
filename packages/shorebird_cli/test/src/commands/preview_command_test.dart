@@ -139,6 +139,18 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync(yamlContents);
 
+      // Include AndroidManifest.xml to match real AAB structure.
+      File(
+          p.join(
+            aabDirectory.path,
+            'base',
+            'manifest',
+            'AndroidManifest.xml',
+          ),
+        )
+        ..createSync(recursive: true)
+        ..writeAsStringSync('<manifest />');
+
       await ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
 
       return File(aabPath());
@@ -801,6 +813,29 @@ channel: ${track.channel}
 app_id: $appId
 channel: ${track.channel}
 ''');
+          });
+
+          test('re-zipped AAB uses forward slashes in entry names', () async {
+            aabFile = await createAabFile(channel: 'dev');
+            await runWithOverrides(
+              () => command.setChannelOnAab(
+                aabFile: aabFile,
+                channel: track.channel,
+              ),
+            );
+
+            // Verify all ZIP entry names use forward slashes per the
+            // ZIP spec. On Windows, without normalization, entries would
+            // contain backslashes which breaks bundletool.
+            final bytes = aabFile.readAsBytesSync();
+            final archive = ZipDecoder().decodeBytes(bytes);
+            for (final file in archive.files) {
+              expect(
+                file.name,
+                isNot(contains(r'\')),
+                reason: 'ZIP entry "${file.name}" contains backslash',
+              );
+            }
           });
         });
       });

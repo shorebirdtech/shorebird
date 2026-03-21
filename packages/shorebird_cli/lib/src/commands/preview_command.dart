@@ -326,6 +326,9 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Downloads and runs the given [release] the given [appId] on Linux.
+  // TODO(eseidel): Unlike mobile, desktop preview doesn't clear app state
+  // or previously downloaded patches. Consider clearing state to match
+  // the mobile behavior.
   Future<int> installAndLaunchLinux({
     required String appId,
     required Release release,
@@ -398,6 +401,9 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Downloads and runs the given [release] the given [appId] on Windows.
+  // TODO(eseidel): Unlike mobile, desktop preview doesn't clear app state
+  // or previously downloaded patches. Consider clearing state to match
+  // the mobile behavior.
   Future<int> installAndLaunchWindows({
     required String appId,
     required Release release,
@@ -464,6 +470,9 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Installs and launches the release on macOS.
+  // TODO(eseidel): Unlike mobile, desktop preview doesn't clear app state
+  // or previously downloaded patches. Consider clearing state to match
+  // the mobile behavior.
   Future<int> installAndLaunchMacos({
     required String appId,
     required Release release,
@@ -689,6 +698,9 @@ This is only applicable when previewing Android releases.''',
       return ExitCode.software.code;
     }
 
+    logger.info(
+      'This will reinstall the app and clear its data on the device.',
+    );
     final installApksProgress = logger.progress('Installing apks');
     try {
       await bundletool.installApks(apks: apksPath, deviceId: deviceId);
@@ -811,6 +823,9 @@ This is only applicable when previewing Android releases.''',
           : '''No iOS 17+ device found, looking for devices running iOS 16 or lower''';
       deviceLocateProgress.complete(progressCompleteMessage);
 
+      logger.info(
+        'This will reinstall the app and clear its data on the device.',
+      );
       final int installExitCode;
       if (shouldUseDeviceCtl) {
         logger.detail(

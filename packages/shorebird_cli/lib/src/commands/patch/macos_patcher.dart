@@ -8,9 +8,7 @@ import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -58,6 +56,9 @@ class MacosPatcher extends Patcher {
 
   @override
   String get primaryReleaseArtifactArch => 'app';
+
+  @override
+  String? get supplementaryReleaseArtifactArch => 'macos_supplement';
 
   @override
   Future<void> assertPreconditions() async {
@@ -137,15 +138,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       throw ProcessExit(ExitCode.software.code);
     }
 
+    final buildArgs = [
+      ...argResults.forwardedArgs,
+      ...extraBuildArgs,
+      ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+    ];
+
     // If buildMacos is called with a different codesign value than the
     // release was, we will erroneously report native diffs.
     final macosBuildResult = await artifactBuilder.buildMacos(
       codesign: codesign,
       flavor: flavor,
       target: target,
-      args:
-          argResults.forwardedArgs +
-          buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 
@@ -156,6 +161,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _arm64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
+      additionalArgs: [
+        ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        ...obfuscationGenSnapshotArgs,
+      ],
     );
 
     if (!File(_arm64AotOutputPath).existsSync()) {
@@ -166,6 +175,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _x64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
+      additionalArgs: [
+        ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        ...obfuscationGenSnapshotArgs,
+      ],
     );
 
     if (!File(_x64AotOutputPath).existsSync()) {
@@ -201,11 +214,8 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
     final patchFile = File(patchFilePath);
     final patchFileSize = patchFile.statSync().size;
-    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
     final hash = sha256.convert(patchArtifact.readAsBytesSync()).toString();
-    final hashSignature = privateKeyFile != null
-        ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-        : null;
+    final hashSignature = await signHash(hash);
 
     return PatchArtifactBundle(
       arch: arch.arch,
@@ -222,7 +232,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
     final releaseAppDirectory = Directory.systemTemp.createTempSync();

@@ -26,5 +26,9 @@ class KeyValueKeyStore extends PublicKeyStore {
   Iterable<String> get keyIds => keys.keys;
 
   @override
-  String? getPublicKey(String kid) => keys[kid];
+  KeyMaterial? getKeyMaterial(String kid) {
+    final pem = keys[kid];
+    if (pem == null) return null;
+    return PemKeyMaterial(pem);
+  }
 }

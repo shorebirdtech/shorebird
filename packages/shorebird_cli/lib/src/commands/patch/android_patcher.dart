@@ -9,9 +9,7 @@ import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -54,6 +52,9 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
   String get primaryReleaseArtifactArch => 'aab';
 
   @override
+  String? get supplementaryReleaseArtifactArch => 'android_supplement';
+
+  @override
   Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
@@ -89,12 +90,15 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       logger.warn(updaterPatchErrorWarning);
     }
 
+    final buildArgs = [
+      ...argResults.forwardedArgs,
+      ...extraBuildArgs,
+      ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+    ];
     final aabFile = await artifactBuilder.buildAppBundle(
       flavor: flavor,
       target: target,
-      args:
-          argResults.forwardedArgs +
-          buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 
@@ -125,7 +129,7 @@ Looked in:
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
     Duration downloadMessageTimeout = const Duration(minutes: 1),
   }) async {
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(
@@ -189,13 +193,7 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
       logger.detail('Creating artifact for $patchArtifactPath');
       final patchArtifact = File(patchArtifactPath);
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
-
-      final privateKeyFile = argResults.file(
-        CommonArguments.privateKeyArg.name,
-      );
-      final hashSignature = privateKeyFile != null
-          ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-          : null;
+      final hashSignature = await signHash(hash);
 
       try {
         final diffPath = await artifactManager.createDiff(

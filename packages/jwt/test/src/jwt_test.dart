@@ -1,10 +1,84 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:clock/clock.dart';
 import 'package:http/http.dart';
 import 'package:jwt/jwt.dart';
+import 'package:jwt/src/models/public_key_store/public_key_store.dart';
+import 'package:jwt/src/models/public_key_store/rsa_jwk_key_store.dart';
 import 'package:path/path.dart' as p;
+import 'package:pointycastle/pointycastle.dart' as pc;
 import 'package:test/test.dart';
+
+/// Encodes a [BigInt] as an unpadded base64url string (JWK `n`/`e` format).
+String _encodeBigInt(BigInt value) {
+  var hex = value.toRadixString(16);
+  if (hex.length.isOdd) hex = '0$hex';
+  final bytes = <int>[];
+  for (var i = 0; i < hex.length; i += 2) {
+    bytes.add(int.parse(hex.substring(i, i + 2), radix: 16));
+  }
+  return base64Url.encode(Uint8List.fromList(bytes)).replaceAll('=', '');
+}
+
+pc.SecureRandom _secureRandom() {
+  final sr = pc.SecureRandom('AES/CTR/PRNG');
+  final random = Random.secure();
+  final seeds = List<int>.generate(32, (_) => random.nextInt(256));
+  sr.seed(pc.KeyParameter(Uint8List.fromList(seeds)));
+  return sr;
+}
+
+pc.AsymmetricKeyPair<pc.RSAPublicKey, pc.RSAPrivateKey> _generateRsaKeyPair() {
+  final keyGen = pc.KeyGenerator('RSA');
+  keyGen.init(
+    pc.ParametersWithRandom(
+      pc.RSAKeyGeneratorParameters(BigInt.parse('65537'), 2048, 64),
+      _secureRandom(),
+    ),
+  );
+  final pair = keyGen.generateKeyPair();
+  return pc.AsymmetricKeyPair(
+    pair.publicKey as pc.RSAPublicKey,
+    pair.privateKey as pc.RSAPrivateKey,
+  );
+}
+
+/// Creates a signed JWT from the given [header], [payload], and [privateKey].
+String _createSignedJwt({
+  required Map<String, dynamic> header,
+  required Map<String, dynamic> payload,
+  required pc.RSAPrivateKey privateKey,
+}) {
+  final encodedHeader = base64Url
+      .encode(utf8.encode(json.encode(header)))
+      .replaceAll('=', '');
+  final encodedPayload = base64Url
+      .encode(utf8.encode(json.encode(payload)))
+      .replaceAll('=', '');
+  final signingInput = '$encodedHeader.$encodedPayload';
+
+  final signer = pc.Signer('SHA-256/RSA');
+  signer.init(
+    true,
+    pc.ParametersWithRandom(
+      pc.PrivateKeyParameter<pc.RSAPrivateKey>(privateKey),
+      _secureRandom(),
+    ),
+  );
+  final signature =
+      signer.generateSignature(
+            Uint8List.fromList(utf8.encode(signingInput)),
+          )
+          as pc.RSASignature;
+  final encodedSignature = base64Url
+      .encode(signature.bytes)
+      .replaceAll('=', '');
+
+  return '$signingInput.$encodedSignature';
+}
 
 void main() {
   const token = // cspell: disable-next-line
@@ -29,6 +103,12 @@ void main() {
   ).readAsStringSync();
   final expiresAt = DateTime.fromMillisecondsSinceEpoch(1643687866 * 1000);
   final validTime = expiresAt.subtract(const Duration(minutes: 15));
+
+  // Test values for RsaJwkKeyStore unit tests.
+  final testModulus = BigInt.parse('12345678901234567890');
+  final testExponent = BigInt.from(65537);
+  final testModulusB64 = _encodeBigInt(testModulus);
+  final testExponentB64 = _encodeBigInt(testExponent);
 
   late String keyStoreResponseBody;
 
@@ -117,6 +197,147 @@ void main() {
     });
   });
 
+  group('RsaJwkKeyStore', () {
+    test('deserializes and returns expected key IDs', () {
+      final store = RsaJwkKeyStore.fromJson({
+        'keys': [
+          {
+            'kty': 'RSA',
+            'use': 'sig',
+            'kid': 'key-1',
+            'n': testModulusB64,
+            'e': testExponentB64,
+          },
+          {
+            'kty': 'RSA',
+            'use': 'sig',
+            'kid': 'key-2',
+            'n': testModulusB64,
+            'e': testExponentB64,
+          },
+        ],
+      });
+      expect(store.keyIds, containsAll(['key-1', 'key-2']));
+    });
+
+    test('getKeyMaterial returns RsaKeyMaterial with correct values', () {
+      final store = RsaJwkKeyStore.fromJson({
+        'keys': [
+          {
+            'kty': 'RSA',
+            'use': 'sig',
+            'kid': 'key-1',
+            'n': testModulusB64,
+            'e': testExponentB64,
+          },
+        ],
+      });
+      final material = store.getKeyMaterial('key-1');
+      expect(material, isA<RsaKeyMaterial>());
+      final rsaMaterial = material! as RsaKeyMaterial;
+      expect(rsaMaterial.publicKey.modulus, equals(testModulus));
+      expect(rsaMaterial.publicKey.exponent, equals(testExponent));
+    });
+
+    test('unknown kid returns null', () {
+      final store = RsaJwkKeyStore.fromJson({
+        'keys': [
+          {
+            'kty': 'RSA',
+            'use': 'sig',
+            'kid': 'key-1',
+            'n': testModulusB64,
+            'e': testExponentB64,
+          },
+        ],
+      });
+      expect(store.getKeyMaterial('nonexistent'), isNull);
+    });
+
+    test('accepts key with alg RS256', () {
+      final store = RsaJwkKeyStore.fromJson({
+        'keys': [
+          {
+            'kty': 'RSA',
+            'use': 'sig',
+            'kid': 'key-1',
+            'n': testModulusB64,
+            'e': testExponentB64,
+            'alg': 'RS256',
+          },
+        ],
+      });
+      expect(store.getKeyMaterial('key-1'), isA<RsaKeyMaterial>());
+    });
+
+    test('accepts key with absent alg', () {
+      final store = RsaJwkKeyStore.fromJson({
+        'keys': [
+          {
+            'kty': 'RSA',
+            'use': 'sig',
+            'kid': 'key-1',
+            'n': testModulusB64,
+            'e': testExponentB64,
+          },
+        ],
+      });
+      expect(store.getKeyMaterial('key-1'), isA<RsaKeyMaterial>());
+    });
+
+    test('rejects key with wrong alg', () {
+      for (final wrongAlg in ['RS512', 'ES256', 'HS256']) {
+        final store = RsaJwkKeyStore.fromJson({
+          'keys': [
+            {
+              'kty': 'RSA',
+              'use': 'sig',
+              'kid': 'key-1',
+              'n': testModulusB64,
+              'e': testExponentB64,
+              'alg': wrongAlg,
+            },
+          ],
+        });
+        expect(
+          store.getKeyMaterial('key-1'),
+          isNull,
+          reason: 'alg=$wrongAlg should be rejected',
+        );
+      }
+    });
+
+    test('rejects key with wrong kty', () {
+      final store = RsaJwkKeyStore.fromJson({
+        'keys': [
+          {
+            'kty': 'EC',
+            'use': 'sig',
+            'kid': 'key-1',
+            'n': testModulusB64,
+            'e': testExponentB64,
+          },
+        ],
+      });
+      expect(store.getKeyMaterial('key-1'), isNull);
+    });
+
+    test('rejects key with wrong use', () {
+      final store = RsaJwkKeyStore.fromJson({
+        'keys': [
+          {
+            'kty': 'RSA',
+            'use': 'enc',
+            'kid': 'key-1',
+            'n': testModulusB64,
+            'e': testExponentB64,
+          },
+        ],
+      });
+      expect(store.getKeyMaterial('key-1'), isNull);
+    });
+  });
+
   group('verify', () {
     group('when key store is key-value', () {
       const issuer = 'https://securetoken.google.com/my-app';
@@ -133,6 +354,7 @@ void main() {
             audience: {audience},
             issuer: issuer,
             publicKeysUrl: keyValuePublicKeysUrl,
+            jwksFormat: JwksFormat.keyValue,
           ),
           throwsA(
             isA<JwtVerificationFailure>().having(
@@ -153,6 +375,7 @@ void main() {
               audience: {audience},
               issuer: issuer,
               publicKeysUrl: keyValuePublicKeysUrl,
+              jwksFormat: JwksFormat.keyValue,
             ),
             throwsA(
               isA<JwtVerificationFailure>().having(
@@ -172,6 +395,7 @@ void main() {
             audience: {audience},
             issuer: issuer,
             publicKeysUrl: keyValuePublicKeysUrl,
+            jwksFormat: JwksFormat.keyValue,
           ),
           throwsA(
             isA<JwtVerificationFailure>().having(
@@ -193,6 +417,7 @@ void main() {
                 audience: {audience},
                 issuer: issuer,
                 publicKeysUrl: keyValuePublicKeysUrl,
+                jwksFormat: JwksFormat.keyValue,
               ),
               throwsA(
                 isA<JwtVerificationFailure>().having(
@@ -214,6 +439,7 @@ void main() {
               audience: {audience},
               issuer: issuer,
               publicKeysUrl: keyValuePublicKeysUrl,
+              jwksFormat: JwksFormat.keyValue,
             ),
             throwsA(
               isA<JwtVerificationFailure>().having(
@@ -243,6 +469,7 @@ void main() {
               audience: {audience},
               issuer: issuer,
               publicKeysUrl: keyValuePublicKeysUrl,
+              jwksFormat: JwksFormat.keyValue,
             ),
             throwsA(
               isA<JwtVerificationFailure>().having(
@@ -272,6 +499,37 @@ void main() {
               audience: {audience},
               issuer: issuer,
               publicKeysUrl: keyValuePublicKeysUrl,
+              jwksFormat: JwksFormat.jwkCertificate,
+            ),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                '''Invalid public keys returned by https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com.''',
+              ),
+            ),
+          );
+        });
+      });
+
+      test('throws exception if invalid keys are provided '
+          'by the publicKeysUrl (RsaJwkKeyStore)', () async {
+        getOverride = (Uri uri) async {
+          return Response(
+            '{"keys": 456}',
+            HttpStatus.ok,
+            headers: {'cache-control': 'max-age=3600'},
+          );
+        };
+
+        await withClock(Clock.fixed(validTime), () async {
+          await expectLater(
+            () => verify(
+              tokenWithNoMatchingKid,
+              audience: {audience},
+              issuer: issuer,
+              publicKeysUrl: keyValuePublicKeysUrl,
+              jwksFormat: JwksFormat.rsaJwk,
             ),
             throwsA(
               isA<JwtVerificationFailure>().having(
@@ -292,6 +550,7 @@ void main() {
               audience: {'invalid-audience'},
               issuer: issuer,
               publicKeysUrl: keyValuePublicKeysUrl,
+              jwksFormat: JwksFormat.keyValue,
             );
             fail('should throw');
           } on Exception catch (error) {
@@ -315,6 +574,7 @@ void main() {
               audience: {audience},
               issuer: 'https://invalid/issuer',
               publicKeysUrl: keyValuePublicKeysUrl,
+              jwksFormat: JwksFormat.keyValue,
             );
             fail('should throw');
           } on Exception catch (error) {
@@ -337,6 +597,7 @@ void main() {
             audience: {audience},
             issuer: issuer,
             publicKeysUrl: keyValuePublicKeysUrl,
+            jwksFormat: JwksFormat.keyValue,
           );
           expect(jwt, isA<Jwt>());
         });
@@ -349,6 +610,7 @@ void main() {
             audience: {'other-audience', audience},
             issuer: issuer,
             publicKeysUrl: keyValuePublicKeysUrl,
+            jwksFormat: JwksFormat.keyValue,
           );
           expect(jwt, isA<Jwt>());
         });
@@ -361,6 +623,7 @@ void main() {
             audience: {audience},
             issuer: issuer,
             publicKeysUrl: keyValuePublicKeysUrl,
+            jwksFormat: JwksFormat.keyValue,
           );
           expect(jwt, isA<Jwt>());
         });
@@ -386,9 +649,117 @@ void main() {
               audience: {audience},
               issuer: issuer,
               publicKeysUrl: jwkPublicKeysUrl,
+              jwksFormat: JwksFormat.jwkCertificate,
             );
             expect(jwt, isA<Jwt>());
           });
+        });
+      });
+    });
+
+    group('when key store is RSA JWK store', () {
+      late pc.AsymmetricKeyPair<pc.RSAPublicKey, pc.RSAPrivateKey> rsaKeyPair;
+      late String rsaJwkToken;
+      late String rsaJwkKeyStoreJson;
+      const rsaJwkPublicKeysUrl =
+          'https://auth.example.com/.well-known/jwks.json';
+      const rsaJwkKid = 'test-rsa-key-1';
+      const rsaJwkIssuer = 'https://auth.example.com';
+      const rsaJwkAudience = 'test-audience';
+
+      setUpAll(() {
+        rsaKeyPair = _generateRsaKeyPair();
+
+        final publicKey = rsaKeyPair.publicKey;
+        final nB64 = _encodeBigInt(publicKey.modulus!);
+        final eB64 = _encodeBigInt(publicKey.exponent!);
+
+        final now = DateTime(2024, 6, 1);
+        final iat = now.millisecondsSinceEpoch ~/ 1000;
+        final exp =
+            now.add(const Duration(hours: 1)).millisecondsSinceEpoch ~/ 1000;
+
+        rsaJwkToken = _createSignedJwt(
+          header: {'alg': 'RS256', 'kid': rsaJwkKid, 'typ': 'JWT'},
+          payload: {
+            'iss': rsaJwkIssuer,
+            'aud': rsaJwkAudience,
+            'sub': 'test-user-123',
+            'iat': iat,
+            'exp': exp,
+          },
+          privateKey: rsaKeyPair.privateKey,
+        );
+
+        rsaJwkKeyStoreJson = json.encode({
+          'keys': [
+            {
+              'kty': 'RSA',
+              'use': 'sig',
+              'kid': rsaJwkKid,
+              'n': nB64,
+              'e': eB64,
+            },
+          ],
+        });
+      });
+
+      setUp(() {
+        keyStoreResponseBody = rsaJwkKeyStoreJson;
+      });
+
+      test('can verify a valid jwt', () async {
+        final time = DateTime(2024, 6, 1, 0, 15);
+        await withClock(Clock.fixed(time), () async {
+          final jwt = await verify(
+            rsaJwkToken,
+            audience: {rsaJwkAudience},
+            issuer: rsaJwkIssuer,
+            publicKeysUrl: rsaJwkPublicKeysUrl,
+            jwksFormat: JwksFormat.rsaJwk,
+          );
+          expect(jwt, isA<Jwt>());
+          expect(jwt.payload.sub, equals('test-user-123'));
+          expect(jwt.payload.iss, equals(rsaJwkIssuer));
+          expect(jwt.payload.aud, equals(rsaJwkAudience));
+        });
+      });
+
+      test('rejects a jwt signed with a different key', () async {
+        // Provide a different public key in the JWKS so signature won't match.
+        final wrongKeyPair = _generateRsaKeyPair();
+        final wrongPublic = wrongKeyPair.publicKey;
+        keyStoreResponseBody = json.encode({
+          'keys': [
+            {
+              'kty': 'RSA',
+              'use': 'sig',
+              'kid': rsaJwkKid,
+              'n': _encodeBigInt(wrongPublic.modulus!),
+              'e': _encodeBigInt(wrongPublic.exponent!),
+            },
+          ],
+        });
+        publicKeyStores.clear();
+
+        final time = DateTime(2024, 6, 1, 0, 15);
+        await withClock(Clock.fixed(time), () async {
+          await expectLater(
+            () => verify(
+              rsaJwkToken,
+              audience: {rsaJwkAudience},
+              issuer: rsaJwkIssuer,
+              publicKeysUrl: rsaJwkPublicKeysUrl,
+              jwksFormat: JwksFormat.rsaJwk,
+            ),
+            throwsA(
+              isA<JwtVerificationFailure>().having(
+                (e) => e.reason,
+                'reason',
+                'Invalid signature.',
+              ),
+            ),
+          );
         });
       });
     });

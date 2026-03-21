@@ -4,16 +4,19 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/iterable.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
@@ -54,6 +57,34 @@ More info: ${troubleshootingUrl.toLink()}.
   /// The target script to run, if any.
   final String? target;
 
+  /// The path to the obfuscation map downloaded from the release, if any.
+  /// Set by the patch command after downloading the map. Used by Apple
+  /// patchers to pass obfuscation flags to gen_snapshot and the linker.
+  String? obfuscationMapPath;
+
+  /// Extra build arguments injected by the patch command. These are included
+  /// in the Flutter build command args by patchers. Currently used to inject
+  /// obfuscation flags when the release was built with obfuscation.
+  List<String> extraBuildArgs = const [];
+
+  /// Additional gen_snapshot arguments needed to match the release's
+  /// obfuscation flags. Used by Apple patchers for [buildElfAotSnapshot]
+  /// and linker calls.
+  List<String> get obfuscationGenSnapshotArgs => [
+    if (obfuscationMapPath != null) ...[
+      '--obfuscate',
+      '--load-obfuscation-map=$obfuscationMapPath',
+      // --dwarf-stack-traces must match the release build so the patch
+      // produces the same stack trace format for correct symbolication.
+      // --split-debug-info already implies --dwarf-stack-traces, so we only
+      // need to pass it as a standalone flag when split debug info isn't used.
+      if (splitDebugInfoPath == null) '--dwarf-stack-traces',
+      // Strip DWARF debug info so obfuscated snapshots don't leak the
+      // identifiers that obfuscation was meant to hide.
+      '--strip',
+    ],
+  ];
+
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;
 
@@ -93,7 +124,7 @@ More info: ${troubleshootingUrl.toLink()}.
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   });
 
   /// Updates the provided metadata to include patcher-specific fields.
@@ -126,6 +157,90 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => argResults['allow-native-diffs'] == true;
+
+  /// Returns a function that signs data, or null if no signing is configured.
+  Future<String> Function(String)? _resolveSigner() {
+    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
+    if (privateKeyFile != null) {
+      return (hash) async =>
+          codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile);
+    }
+
+    final signCmd = argResults[CommonArguments.signCmd.name] as String?;
+    if (signCmd != null) {
+      return (hash) async {
+        try {
+          return await codeSigner.signWithCmd(data: hash, command: signCmd);
+        } on ProcessException catch (e) {
+          logger.err(
+            'Failed to run --${CommonArguments.signCmd.name}: ${e.message}',
+          );
+          throw ProcessExit(ExitCode.software.code);
+        } on FormatException catch (e) {
+          logger.err(
+            '--${CommonArguments.signCmd.name} produced invalid output: '
+            '${e.message}',
+          );
+          throw ProcessExit(ExitCode.software.code);
+        }
+      };
+    }
+
+    return null;
+  }
+
+  /// Returns the public key PEM from the configured source, or null.
+  Future<String?> _resolvePublicKeyPem() async {
+    try {
+      return await argResults.resolvePublicKeyPem();
+    } on ProcessException catch (e) {
+      logger.err(
+        'Failed to run '
+        '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    } on FormatException catch (e) {
+      logger.err(
+        '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
+        '${e.message}',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+  }
+
+  /// Signs a hash using the configured signing method.
+  ///
+  /// Returns null if no signing is configured.
+  Future<String?> signHash(String hash) async {
+    final signer = _resolveSigner();
+    if (signer == null) return null;
+
+    final signature = await signer(hash);
+    final publicKeyPem = await _resolvePublicKeyPem();
+
+    if (publicKeyPem == null) {
+      logger.err(
+        'A public key is required for code signing. '
+        'Provide --${CommonArguments.publicKeyArg.name} or '
+        '--${CommonArguments.publicKeyCmd.name}.',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    if (!codeSigner.verify(
+      message: hash,
+      signature: signature,
+      publicKeyPem: publicKeyPem,
+    )) {
+      logger.err(
+        'Signature verification failed. The signature does not match '
+        'the provided public key.',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+
+    return signature;
+  }
 
   /// The link percentage for the generated patch artifact if applicable.
   /// Returns `null` if the platform does not use a linker or if the linking

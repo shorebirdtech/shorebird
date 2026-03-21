@@ -4,7 +4,10 @@ enum AuthProvider {
   google('Google'),
 
   /// The user authenticated with their Azure/Entra account.
-  microsoft('Microsoft');
+  microsoft('Microsoft'),
+
+  /// The user authenticated via Shorebird's own auth service.
+  shorebird('Shorebird');
 
   const AuthProvider(this.displayName);
 

@@ -33,6 +33,12 @@ class WindowsReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.windows;
 
   @override
+  String get supplementPlatformSubdir => 'windows';
+
+  @override
+  String get supplementArtifactArch => 'windows_supplement';
+
+  @override
   String get artifactDisplayName => 'Windows app';
 
   @override
@@ -41,11 +47,13 @@ class WindowsReleaser extends Releaser {
       logger.err(
         '''
 The "--release-version" flag is only supported for aar and ios-framework releases.
-        
+
 To change the version of this release, change your app's version in your pubspec.yaml.''',
       );
       throw ProcessExit(ExitCode.usage.code);
     }
+
+    await assertObfuscationIsSupported();
   }
 
   @override
@@ -66,12 +74,18 @@ To change the version of this release, change your app's version in your pubspec
   }
 
   @override
-  Future<FileSystemEntity> buildReleaseArtifacts() {
-    return artifactBuilder.buildWindowsApp(
+  Future<FileSystemEntity> buildReleaseArtifacts() async {
+    final base64PublicKey = await getEncodedPublicKey();
+    final buildArgs = [...argResults.forwardedArgs];
+    addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
+    final result = await artifactBuilder.buildWindowsApp(
       target: target,
-      args: argResults.forwardedArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      args: buildArgs,
+      base64PublicKey: base64PublicKey,
     );
+    verifyObfuscationMap();
+    return result;
   }
 
   @override
@@ -106,6 +120,8 @@ To change the version of this release, change your app's version in your pubspec
       projectRoot: projectRoot.path,
       releaseZipPath: zippedRelease.path,
     );
+
+    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

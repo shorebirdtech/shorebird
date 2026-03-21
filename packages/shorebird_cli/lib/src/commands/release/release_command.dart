@@ -124,10 +124,11 @@ Defaults to "latest" which builds using the latest stable Flutter version.''',
         hide: true,
         negatable: false,
       )
+      // Added for https://github.com/shorebirdtech/shorebird/issues/3223.
+      // Can be removed fall 2026 or later.
       ..addFlag(
-        CommonArguments.noConfirmArg.name,
-        help: CommonArguments.noConfirmArg.description,
-        negatable: false,
+        'confirm',
+        hide: true,
       )
       ..addOption(
         'release-version',
@@ -146,8 +147,17 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         help: CommonArguments.publicKeyArg.description,
       )
       ..addOption(
+        CommonArguments.publicKeyCmd.name,
+        help: CommonArguments.publicKeyCmd.description,
+      )
+      ..addOption(
         CommonArguments.splitDebugInfoArg.name,
         help: CommonArguments.splitDebugInfoArg.description,
+      )
+      ..addFlag(
+        CommonArguments.obfuscateArg.name,
+        help: CommonArguments.obfuscateArg.description,
+        negatable: false,
       );
   }
 
@@ -220,6 +230,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         );
     }
   }
+
+  /// Whether to prompt for confirmation before creating the release.
+  bool get confirm => results['confirm'] == true;
 
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
@@ -367,14 +380,18 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   /// Validates arguments that are common to all release types.
   Future<void> assertArgsAreValid(Releaser releaser) async {
-    results.assertAbsentOrValidPublicKey();
+    results.assertAbsentOrValidPublicKeyOrCmd();
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
-    if (shorebirdYaml?.patchVerification != null &&
-        !results.wasParsed(CommonArguments.publicKeyArg.name)) {
+    final hasPublicKey =
+        results.wasParsed(CommonArguments.publicKeyArg.name) ||
+        results.wasParsed(CommonArguments.publicKeyCmd.name);
+    if (shorebirdYaml?.patchVerification != null && !hasPublicKey) {
       logger.warn(
         'patch_verification is set in shorebird.yaml but '
-        '--${CommonArguments.publicKeyArg.name} was not provided.\n'
+        'no public key was provided '
+        '(--${CommonArguments.publicKeyArg.name} '
+        'or --${CommonArguments.publicKeyCmd.name}).\n'
         'patch_verification configuration will have no effect.',
       );
     }
@@ -516,6 +533,13 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to create a new release!'))}
 
 ${summary.join('\n')}
 ''');
+
+    if (confirm && shorebirdEnv.canAcceptUserInput) {
+      if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
+        logger.info('Aborting.');
+        throw ProcessExit(ExitCode.success.code);
+      }
+    }
   }
 
   /// Fetches the release with version [version] from the server or creates a
@@ -554,10 +578,13 @@ ${summary.join('\n')}
     required Release release,
     required Releaser releaser,
   }) async {
+    final hasPublicKey =
+        results.wasParsed(CommonArguments.publicKeyArg.name) ||
+        results.wasParsed(CommonArguments.publicKeyCmd.name);
     final baseMetadata = UpdateReleaseMetadata(
       releasePlatform: releaser.releaseType.releasePlatform,
       flutterVersionOverride: flutterVersionArg,
-      includesPublicKey: results.wasParsed(CommonArguments.publicKeyArg.name),
+      includesPublicKey: hasPublicKey,
       environment: BuildEnvironmentMetadata(
         flutterRevision: shorebirdEnv.flutterRevision,
         operatingSystem: platform.operatingSystem,

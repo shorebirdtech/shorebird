@@ -10,9 +10,7 @@ import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
@@ -106,8 +104,9 @@ class IosFrameworkPatcher extends Patcher {
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
+    final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     final buildResult = await artifactBuilder.buildIosFramework(
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 
@@ -118,7 +117,10 @@ class IosFrameworkPatcher extends Patcher {
       appDillPath: buildResult.kernelFile.path,
       outFilePath: _aotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
-      additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+      additionalArgs: [
+        ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        ...obfuscationGenSnapshotArgs,
+      ],
     );
 
     // Copy the kernel file to the build directory so that it can be used
@@ -138,7 +140,7 @@ class IosFrameworkPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
     late final String releaseXcframeworkPath;
@@ -151,13 +153,8 @@ class IosFrameworkPatcher extends Patcher {
       releaseXcframeworkPath = tempDir.path;
     }
 
-    final releaseSupplementDir = Directory.systemTemp.createTempSync();
-    if (supplementArtifact != null) {
-      await artifactManager.extractZip(
-        zipFile: supplementArtifact,
-        outputDirectory: releaseSupplementDir,
-      );
-    }
+    final releaseSupplementDir =
+        supplementDirectory ?? Directory.systemTemp.createTempSync();
 
     unzipProgress.complete(
       'Extracted release artifact to $releaseXcframeworkPath',
@@ -182,7 +179,10 @@ class IosFrameworkPatcher extends Patcher {
       final result = await apple.runLinker(
         kernelFile: File(_appDillCopyPath),
         releaseArtifact: releaseArtifactFile,
-        splitDebugInfoArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        splitDebugInfoArgs: [
+          ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+          ...obfuscationGenSnapshotArgs,
+        ],
         aotOutputFile: File(_aotOutputPath),
         vmCodeFile: File(_vmcodeOutputPath),
       );
@@ -232,11 +232,8 @@ class IosFrameworkPatcher extends Patcher {
     }
 
     final patchFileSize = patchFile.statSync().size;
-    final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);
     final hash = sha256.convert(patchBuildFile.readAsBytesSync()).toString();
-    final hashSignature = privateKeyFile != null
-        ? codeSigner.sign(message: hash, privateKeyPemFile: privateKeyFile)
-        : null;
+    final hashSignature = await signHash(hash);
 
     return {
       Arch.arm64: PatchArtifactBundle(

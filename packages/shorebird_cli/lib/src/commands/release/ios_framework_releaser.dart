@@ -11,9 +11,9 @@ import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
-import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -43,11 +43,19 @@ class IosFrameworkReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.iosFramework;
 
   @override
+  String get supplementPlatformSubdir => 'ios';
+
+  @override
+  String get supplementArtifactArch => 'ios_framework_supplement';
+
+  @override
   Future<void> assertArgsAreValid() async {
     if (!argResults.wasParsed('release-version')) {
       logger.err('Missing required argument: --release-version');
       throw ProcessExit(ExitCode.usage.code);
     }
+
+    await assertObfuscationIsSupported();
   }
 
   @override
@@ -78,10 +86,15 @@ class IosFrameworkReleaser extends Releaser {
       shorebirdSupplementDir!.deleteSync(recursive: true);
     }
 
+    final base64PublicKey = await getEncodedPublicKey();
+    final buildArgs = [...argResults.forwardedArgs];
+    addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
     await artifactBuilder.buildIosFramework(
-      args: argResults.forwardedArgs,
-      base64PublicKey: argResults.encodedPublicKey,
+      args: buildArgs,
+      base64PublicKey: base64PublicKey,
     );
+    verifyObfuscationMap();
 
     // Copy release xcframework to a new directory to avoid overwriting with
     // subsequent patch builds.
@@ -116,13 +129,14 @@ class IosFrameworkReleaser extends Releaser {
   Future<void> uploadReleaseArtifacts({
     required Release release,
     required String appId,
-  }) {
-    return codePushClientWrapper.createIosFrameworkReleaseArtifacts(
+  }) async {
+    await codePushClientWrapper.createIosFrameworkReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
       appFrameworkPath: p.join(releaseDirectory.path, 'App.xcframework'),
-      supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,
     );
+
+    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

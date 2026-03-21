@@ -110,12 +110,41 @@ The path for a private key .pem file that will be used to sign the patch artifac
 ''',
   );
 
+  /// An argument that allows the user to specify a command that outputs a
+  /// PEM-encoded public key to stdout.
+  static const publicKeyCmd = ArgumentDescriber(
+    name: 'public-key-cmd',
+    description: '''
+Command that outputs a PEM-encoded public key to stdout for patch signature validation.
+''',
+  );
+
+  /// An argument that allows the user to specify a command that signs data.
+  /// The command reads data from stdin and outputs a base64 signature to
+  /// stdout.
+  static const signCmd = ArgumentDescriber(
+    name: 'sign-cmd',
+    description: '''
+Command that reads data from stdin and outputs a base64 signature to stdout.
+''',
+  );
+
   /// An argument that allows the user to specify a release version. You will
   /// most likely want to provide a custom description for this argument that
   /// more thoroughly explains what the release version is used for.
   static const releaseVersionArg = ArgumentDescriber(
     name: 'release-version',
     description: 'The version of the release (e.g. "1.0.0").',
+  );
+
+  /// The Flutter --obfuscate argument.
+  static const obfuscateArg = ArgumentDescriber(
+    name: 'obfuscate',
+    description:
+        'In a release build, this flag removes identifiers and replaces '
+        'them with randomized values for the purposes of source code '
+        'obfuscation. This flag must always be combined with '
+        '"--split-debug-info" command, to not break crash reports.',
   );
 
   /// An argument that allows the user to specify a directory where program

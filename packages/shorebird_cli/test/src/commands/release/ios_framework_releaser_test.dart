@@ -157,6 +157,58 @@ void main() {
           );
         });
       });
+
+      group('when --obfuscate is passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        });
+
+        group('when Flutter version supports obfuscation', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 2));
+          });
+
+          test('returns normally', () async {
+            await expectLater(
+              runWithOverrides(iosFrameworkReleaser.assertArgsAreValid),
+              completes,
+            );
+          });
+        });
+
+        group('when Flutter version does not support obfuscation', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 27, 4));
+          });
+
+          test('logs error and exits', () async {
+            await expectLater(
+              () => runWithOverrides(iosFrameworkReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.unavailable),
+            );
+          });
+        });
+      });
+
+      group('when --obfuscate is not passed', () {
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+        });
+
+        test('returns normally', () async {
+          await expectLater(
+            runWithOverrides(iosFrameworkReleaser.assertArgsAreValid),
+            completes,
+          );
+        });
+      });
     });
 
     group('assertPreconditions', () {
@@ -293,6 +345,9 @@ void main() {
           when(
             () => argResults[CommonArguments.publicKeyArg.name],
           ).thenReturn(patchSigningPublicKeyFile.path);
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyArg.name),
+          ).thenReturn(true);
 
           when(
             () => artifactBuilder.buildIosFramework(
@@ -304,7 +359,7 @@ void main() {
                 AppleBuildResult(kernelFile: File('/path/to/app.dill')),
           );
           when(
-            () => codeSigner.base64PublicKey(any()),
+            () => codeSigner.base64PublicKeyFromPem(any()),
           ).thenReturn(base64PublicKey);
         });
 
@@ -316,6 +371,59 @@ void main() {
               () => iosFrameworkReleaser.buildReleaseArtifacts(),
             );
 
+            verify(
+              () => artifactBuilder.buildIosFramework(
+                args: any(named: 'args'),
+                base64PublicKey: base64PublicKey,
+              ),
+            ).called(1);
+          },
+        );
+      });
+
+      group('when a public-key-cmd is provided', () {
+        const base64PublicKey = 'base64PublicKeyFromCmd';
+
+        setUp(() {
+          when(
+            () => argResults[CommonArguments.publicKeyCmd.name],
+          ).thenReturn('get-key-cmd');
+          when(
+            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
+          ).thenReturn(true);
+
+          when(
+            () => artifactBuilder.buildIosFramework(
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+            ),
+          ).thenAnswer(
+            (_) async =>
+                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
+          );
+
+          when(
+            () => codeSigner.runPublicKeyCmd(any()),
+          ).thenAnswer((_) async => 'pem-public-key');
+          when(
+            () => codeSigner.base64PublicKeyFromPem(any()),
+          ).thenReturn(base64PublicKey);
+        });
+
+        test(
+          'runs public key cmd and forwards encoded key to '
+          'buildIosFramework',
+          () async {
+            await runWithOverrides(
+              () => iosFrameworkReleaser.buildReleaseArtifacts(),
+            );
+
+            verify(
+              () => codeSigner.runPublicKeyCmd('get-key-cmd'),
+            ).called(1);
+            verify(
+              () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
+            ).called(1);
             verify(
               () => artifactBuilder.buildIosFramework(
                 args: any(named: 'args'),
@@ -370,6 +478,93 @@ void main() {
         expect(xcframework.path, p.join(projectRoot.path, 'release'));
         verify(() => artifactBuilder.buildIosFramework(args: [])).called(1);
       });
+
+      group('when --obfuscate is passed', () {
+        setUp(() {
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          // Simulate the build creating the obfuscation map.
+          when(
+            () => artifactBuilder.buildIosFramework(
+              args: any(named: 'args'),
+            ),
+          ).thenAnswer((_) async {
+            final mapPath = p.join(
+              projectRoot.path,
+              'build',
+              'shorebird',
+              'obfuscation_map.json',
+            );
+            File(mapPath)
+              ..createSync(recursive: true)
+              ..writeAsStringSync('{}');
+            return AppleBuildResult(kernelFile: File('/path/to/app.dill'));
+          });
+        });
+
+        test('injects --save-obfuscation-map into build args', () async {
+          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+          final captured = verify(
+            () => artifactBuilder.buildIosFramework(
+              args: captureAny(named: 'args'),
+            ),
+          ).captured;
+
+          final args = captured.last as List<String>;
+          expect(
+            args.any(
+              (a) => a.startsWith(
+                '--extra-gen-snapshot-options=--save-obfuscation-map=',
+              ),
+            ),
+            isTrue,
+          );
+        });
+
+        test('logs detail about map location', () async {
+          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+          verify(
+            () => logger.detail(
+              any(that: startsWith('Obfuscation map saved to')),
+            ),
+          ).called(1);
+        });
+
+        group('when obfuscation map is not generated', () {
+          setUp(() {
+            // Override to NOT create the map file.
+            when(
+              () => artifactBuilder.buildIosFramework(
+                args: any(named: 'args'),
+              ),
+            ).thenAnswer(
+              (_) async =>
+                  AppleBuildResult(kernelFile: File('/path/to/app.dill')),
+            );
+          });
+
+          test('logs error and exits', () async {
+            await expectLater(
+              () => runWithOverrides(
+                iosFrameworkReleaser.buildReleaseArtifacts,
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => logger.err(
+                any(
+                  that: contains(
+                    'Obfuscation was enabled but the obfuscation map was not',
+                  ),
+                ),
+              ),
+            ).called(1);
+          });
+        });
+      });
     });
 
     group('getReleaseVersion', () {
@@ -412,7 +607,6 @@ void main() {
             appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
             appFrameworkPath: any(named: 'appFrameworkPath'),
-            supplementPath: any(named: 'supplementPath'),
           ),
         ).thenAnswer((_) async {});
       });
@@ -434,7 +628,6 @@ void main() {
               'release',
               ArtifactManager.appXcframeworkName,
             ),
-            supplementPath: null,
           ),
         ).called(1);
       });

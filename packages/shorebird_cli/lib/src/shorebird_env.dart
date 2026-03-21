@@ -228,6 +228,20 @@ class ShorebirdEnv {
     return module?['androidPackage'] as String?;
   }
 
+  /// The base URL for the Shorebird auth service. Can be overridden with the
+  /// `AUTH_SERVICE_URL` environment variable. Defaults to
+  /// `https://auth.shorebird.dev`.
+  Uri get authServiceUri => Uri.parse(
+    platform.environment['AUTH_SERVICE_URL'] ?? 'https://auth.shorebird.dev',
+  );
+
+  /// The expected JWT issuer for Shorebird-issued tokens. Can be overridden
+  /// with the `SHOREBIRD_JWT_ISSUER` environment variable. Defaults to
+  /// `https://auth.shorebird.dev`.
+  String get jwtIssuer =>
+      platform.environment['SHOREBIRD_JWT_ISSUER'] ??
+      'https://auth.shorebird.dev';
+
   /// The base URL for the Shorebird code push server that overrides the default
   /// used by [CodePushClient]. If none is provided, [CodePushClient] will use
   /// its default.
