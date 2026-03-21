@@ -38,7 +38,7 @@ void main() {
     });
 
     group('GitHub outage detection', () {
-      test('throws GitHubOutageException on HTTP 500', () async {
+      test('throws GitHubUnreachableException on HTTP 500', () async {
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
           // URL split across lines for line length.
@@ -54,7 +54,7 @@ void main() {
             ),
           ),
           throwsA(
-            isA<GitHubOutageException>().having(
+            isA<GitHubUnreachableException>().having(
               (e) => e.toString(),
               'message',
               contains('githubstatus.com'),
@@ -63,7 +63,7 @@ void main() {
         );
       });
 
-      test('throws GitHubOutageException on HTTP 502', () async {
+      test('throws GitHubUnreachableException on HTTP 502', () async {
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
           // URL split across lines for line length.
@@ -75,11 +75,11 @@ void main() {
           () => runWithOverrides(
             () => git.fetch(directory: 'repo'),
           ),
-          throwsA(isA<GitHubOutageException>()),
+          throwsA(isA<GitHubUnreachableException>()),
         );
       });
 
-      test('throws GitHubOutageException on HTTP 503', () async {
+      test('throws GitHubUnreachableException on HTTP 503', () async {
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
           // URL split across lines for line length.
@@ -91,11 +91,12 @@ void main() {
           () => runWithOverrides(
             () => git.fetch(directory: 'repo'),
           ),
-          throwsA(isA<GitHubOutageException>()),
+          throwsA(isA<GitHubUnreachableException>()),
         );
       });
 
-      test('throws GitHubOutageException on Internal Server Error', () async {
+      test('throws GitHubUnreachableException on Internal Server Error',
+          () async {
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
           'remote: Internal Server Error',
@@ -104,7 +105,7 @@ void main() {
           () => runWithOverrides(
             () => git.fetch(directory: 'repo'),
           ),
-          throwsA(isA<GitHubOutageException>()),
+          throwsA(isA<GitHubUnreachableException>()),
         );
       });
 

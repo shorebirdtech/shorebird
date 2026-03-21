@@ -10,12 +10,12 @@ final gitRef = create(Git.new);
 /// The [Git] instance available in the current zone.
 Git get git => read(gitRef);
 
-/// {@template github_outage_exception}
-/// Exception thrown when a git command fails due to a GitHub outage.
+/// {@template github_unreachable_exception}
+/// Exception thrown when a git command fails because GitHub is unreachable.
 /// {@endtemplate}
-class GitHubOutageException implements Exception {
-  /// {@macro github_outage_exception}
-  const GitHubOutageException(this.message);
+class GitHubUnreachableException implements Exception {
+  /// {@macro github_unreachable_exception}
+  const GitHubUnreachableException(this.message);
 
   /// The error message.
   final String message;
@@ -26,7 +26,7 @@ class GitHubOutageException implements Exception {
 
 /// Pattern that matches GitHub HTTP server errors (500, 502, 503) in git
 /// output.
-final _githubOutagePattern = RegExp(
+final _githubServerErrorPattern = RegExp(
   'The requested URL returned error: (500|502|503)|Internal Server Error',
 );
 
@@ -51,10 +51,12 @@ class Git {
       // (we only clone/fetch shorebirdtech/flutter and shorebirdtech/shorebird).
       // If we ever add non-GitHub remotes, this detection should be scoped to
       // GitHub URLs only.
-      if (_githubOutagePattern.hasMatch(stderr)) {
-        throw const GitHubOutageException(
-          'GitHub appears to be experiencing an outage. '
-          'Please check https://www.githubstatus.com and try again later.',
+      if (_githubServerErrorPattern.hasMatch(stderr)) {
+        throw const GitHubUnreachableException(
+          'Unable to reach GitHub. This could be a network issue '
+          'or a GitHub outage.\n'
+          'If your network connection is working, check '
+          'https://www.githubstatus.com for service status.',
         );
       }
       throw ProcessException(
