@@ -916,10 +916,16 @@ To change the version of this release, change your app's version in your pubspec
       test('prints xcarchive upload steps', () {
         expect(
           runWithOverrides(() => releaser.postReleaseInstructions),
-          equals('''
+          contains('macOS app created at ${appDirectory.path}.'),
+        );
+      });
 
-macOS app created at ${appDirectory.path}.
-'''),
+      test('includes .pkg distribution warning', () {
+        expect(
+          runWithOverrides(() => releaser.postReleaseInstructions),
+          contains(
+            'https://github.com/shorebirdtech/shorebird/issues/3223',
+          ),
         );
       });
     });

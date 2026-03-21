@@ -1,3 +1,4 @@
+// cspell:words Dorg
 import 'dart:io' hide Platform;
 
 import 'package:mason_logger/mason_logger.dart';
@@ -585,7 +586,7 @@ No daemons are running.
         verify(
           () => process.stream(
             p.join(projectRoot.path, 'android', 'gradlew'),
-            ['--daemon'],
+            ['--daemon', '-Dorg.gradle.welcome=never'],
             runInShell: false,
             workingDirectory: p.join(projectRoot.path, 'android'),
             environment: {'JAVA_HOME': javaHome},

@@ -1,3 +1,5 @@
+export 'package:shorebird_cli/src/flutter_version_constraints.dart';
+
 export 'android/android.dart';
 export 'apple/apple.dart';
 export 'linux/linux.dart';
