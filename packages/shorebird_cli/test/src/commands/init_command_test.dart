@@ -522,6 +522,37 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           ).called(1);
         },
       );
+
+      group('when not interactive', () {
+        setUp(() {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+        });
+
+        test(
+          'lists organizations and exits with usage code',
+          () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                'Multiple organizations found. '
+                'Use --organization-id to specify one:',
+              ),
+            ).called(1);
+            verify(() => logger.err('  ${org1.name} (id: ${org1.id})'))
+                .called(1);
+            verify(() => logger.err('  ${org2.name} (id: ${org2.id})'))
+                .called(1);
+            verifyNever(
+              () => logger.chooseOne<Organization>(
+                any(),
+                choices: any(named: 'choices'),
+                display: any(named: 'display'),
+              ),
+            );
+          },
+        );
+      });
     });
 
     group('on non MacOS', () {

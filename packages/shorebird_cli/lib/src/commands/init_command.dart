@@ -91,6 +91,17 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       }
       organization = organizationMembership.organization;
     } else if (organizationMemberships.length > 1) {
+      if (!shorebirdEnv.canAcceptUserInput) {
+        logger.err(
+          'Multiple organizations found. '
+          'Use --organization-id to specify one:',
+        );
+        for (final membership in organizationMemberships) {
+          final org = membership.organization;
+          logger.err('  ${org.name} (id: ${org.id})');
+        }
+        return ExitCode.usage.code;
+      }
       organization = logger.chooseOne(
         'Which organization should this app belong to?',
         choices: organizationMemberships.map((o) => o.organization).toList(),
