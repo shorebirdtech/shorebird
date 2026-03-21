@@ -1,3 +1,4 @@
+// cspell:words githubstatus
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -35,6 +36,82 @@ void main() {
         ),
       ).thenAnswer((_) async => processResult);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
+    });
+
+    group('server error detection', () {
+      test('includes github.com and status link for GitHub URLs', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(() => processResult.stderr).thenReturn(
+          "fatal: unable to access 'https://github.com/"
+          "shorebirdtech/flutter.git/': "
+          'The requested URL returned error: 500',
+        );
+        expect(
+          () => runWithOverrides(
+            () => git.clone(
+              url: 'https://github.com/shorebirdtech/flutter.git',
+              outputDirectory: './output',
+            ),
+          ),
+          throwsA(
+            isA<GitServerUnreachableException>().having(
+              (e) => e.message,
+              'message',
+              allOf(contains('github.com'), contains('githubstatus.com')),
+            ),
+          ),
+        );
+      });
+
+      test('includes host name for non-GitHub URLs', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(() => processResult.stderr).thenReturn(
+          "fatal: unable to access 'https://gitlab.com/"
+          "org/repo.git/': "
+          'The requested URL returned error: 502',
+        );
+        expect(
+          () => runWithOverrides(() => git.fetch(directory: 'repo')),
+          throwsA(
+            isA<GitServerUnreachableException>().having(
+              (e) => e.message,
+              'message',
+              allOf(
+                contains('gitlab.com'),
+                isNot(contains('githubstatus.com')),
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('falls back to generic message when no URL in stderr', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(
+          () => processResult.stderr,
+        ).thenReturn('remote: Internal Server Error');
+        expect(
+          () => runWithOverrides(() => git.fetch(directory: 'repo')),
+          throwsA(
+            isA<GitServerUnreachableException>().having(
+              (e) => e.message,
+              'message',
+              contains('the remote git server'),
+            ),
+          ),
+        );
+      });
+
+      test('throws ProcessException for non-server errors', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(
+          () => processResult.stderr,
+        ).thenReturn('fatal: repository not found');
+        expect(
+          () => runWithOverrides(() => git.fetch(directory: 'repo')),
+          throwsA(isA<ProcessException>()),
+        );
+      });
     });
 
     group('clone', () {
