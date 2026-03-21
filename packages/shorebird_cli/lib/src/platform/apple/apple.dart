@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
-import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
@@ -22,12 +21,6 @@ export 'link_result.dart';
 export 'macho.dart';
 export 'missing_xcode_project_exception.dart';
 export 'plist.dart';
-
-/// The minimum allowed Flutter version for creating iOS releases.
-final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
-
-/// The minimum allowed Flutter version for creating macOS releases.
-final minimumSupportedMacosFlutterVersion = Version(3, 27, 4);
 
 /// A reference to a [Apple] instance.
 final appleRef = create(Apple.new);

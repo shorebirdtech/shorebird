@@ -47,6 +47,7 @@ void main() {
 
     test('exits with code 0 when logged out successfully', () async {
       when(() => auth.isAuthenticated).thenReturn(true);
+      when(() => auth.logout()).thenAnswer((_) async {});
 
       final progress = MockProgress();
       when(() => progress.complete(any())).thenAnswer((invocation) {});
