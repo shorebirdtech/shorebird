@@ -1,4 +1,4 @@
-// cspell:words unmatch
+// cspell:words unmatch githubstatus
 import 'dart:io';
 
 import 'package:scoped_deps/scoped_deps.dart';
