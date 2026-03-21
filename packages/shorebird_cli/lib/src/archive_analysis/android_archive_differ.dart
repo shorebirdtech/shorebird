@@ -35,16 +35,6 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
   /// {@macro android_archive_differ}
   const AndroidArchiveDiffer();
 
-  /// DEX diff results for breaking changes, keyed by file path.
-  ///
-  /// Populated after [changedFiles] is called.
-  static final Map<String, DexDiffResult> _dexDiffResults = {};
-
-  /// Returns the [DexDiffResult] for a breaking DEX change at [path],
-  /// or `null` if no result is available.
-  static DexDiffResult? dexDiffResultForPath(String path) =>
-      _dexDiffResults[path];
-
   @override
   Future<FileSetDiff> changedFiles(
     String oldArchivePath,
@@ -68,7 +58,7 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
     const parser = DexParser();
     const differ = DexDiffer();
     final safePaths = <String>{};
-    _dexDiffResults.clear();
+    final dexDiffResults = <String, DexDiffResult>{};
 
     for (final path in dexPaths) {
       final oldBytes = oldDexBytes[path];
@@ -83,7 +73,7 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
         if (result.isSafe) {
           safePaths.add(path);
         } else {
-          _dexDiffResults[path] = result;
+          dexDiffResults[path] = result;
         }
         // Catch all exceptions so unparseable DEX files are conservatively
         // treated as changed rather than crashing the diff.
@@ -93,12 +83,13 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
       }
     }
 
-    if (safePaths.isEmpty) return fileSetDiff;
+    if (safePaths.isEmpty && dexDiffResults.isEmpty) return fileSetDiff;
 
     return FileSetDiff(
       addedPaths: fileSetDiff.addedPaths,
       removedPaths: fileSetDiff.removedPaths,
       changedPaths: fileSetDiff.changedPaths.difference(safePaths),
+      dexDiffResults: dexDiffResults,
     );
   }
 

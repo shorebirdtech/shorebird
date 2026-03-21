@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:dex/dex.dart';
 import 'package:equatable/equatable.dart';
 
 /// Maps file paths to SHA-256 hash digests.
@@ -11,6 +12,7 @@ class FileSetDiff extends Equatable {
     required this.addedPaths,
     required this.removedPaths,
     required this.changedPaths,
+    this.dexDiffResults = const {},
   });
 
   /// Creates a [FileSetDiff] showing added, changed, and removed file sets
@@ -31,7 +33,11 @@ class FileSetDiff extends Equatable {
   }
 
   /// Creates an empty FileSetDiff.
-  FileSetDiff.empty() : addedPaths = {}, removedPaths = {}, changedPaths = {};
+  FileSetDiff.empty()
+    : addedPaths = {},
+      removedPaths = {},
+      changedPaths = {},
+      dexDiffResults = {};
 
   /// File paths that were added.
   final Set<String> addedPaths;
@@ -41,6 +47,12 @@ class FileSetDiff extends Equatable {
 
   /// File paths that were changed.
   final Set<String> changedPaths;
+
+  /// DEX diff results for breaking changes, keyed by file path.
+  ///
+  /// Populated by [AndroidArchiveDiffer] when semantic DEX diffing detects
+  /// structural changes.
+  final Map<String, DexDiffResult> dexDiffResults;
 
   /// Whether all path sets are empty.
   bool get isEmpty => !isNotEmpty;
@@ -72,5 +84,10 @@ ${paths.sorted().map((p) => '${padding * 2}$p').join('\n')}''';
   }
 
   @override
-  List<Object> get props => [addedPaths, removedPaths, changedPaths];
+  List<Object> get props => [
+    addedPaths,
+    removedPaths,
+    changedPaths,
+    dexDiffResults,
+  ];
 }
