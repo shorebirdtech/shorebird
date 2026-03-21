@@ -7,6 +7,20 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 
+/// A [FileSetDiff] that also carries semantic DEX diff results.
+class AndroidFileSetDiff extends FileSetDiff {
+  /// Creates an [AndroidFileSetDiff] with DEX diff results.
+  const AndroidFileSetDiff({
+    required super.addedPaths,
+    required super.removedPaths,
+    required super.changedPaths,
+    this.dexDiffResults = const {},
+  });
+
+  /// DEX diff results for breaking changes, keyed by file path.
+  final Map<String, DexDiffResult> dexDiffResults;
+}
+
 /// {@template android_archive_differ}
 /// Finds differences between two Android archives (either AABs or AARs).
 ///
@@ -36,7 +50,7 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
   const AndroidArchiveDiffer();
 
   @override
-  Future<FileSetDiff> changedFiles(
+  Future<AndroidFileSetDiff> changedFiles(
     String oldArchivePath,
     String newArchivePath,
   ) async {
@@ -49,7 +63,13 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
         .where((p) => p.endsWith('.dex'))
         .toList();
 
-    if (dexPaths.isEmpty) return fileSetDiff;
+    if (dexPaths.isEmpty) {
+      return AndroidFileSetDiff(
+        addedPaths: fileSetDiff.addedPaths,
+        removedPaths: fileSetDiff.removedPaths,
+        changedPaths: fileSetDiff.changedPaths,
+      );
+    }
 
     // Extract DEX file bytes from both archives.
     final oldDexBytes = _extractDexFiles(oldArchivePath, dexPaths);
@@ -83,9 +103,7 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
       }
     }
 
-    if (safePaths.isEmpty && dexDiffResults.isEmpty) return fileSetDiff;
-
-    return FileSetDiff(
+    return AndroidFileSetDiff(
       addedPaths: fileSetDiff.addedPaths,
       removedPaths: fileSetDiff.removedPaths,
       changedPaths: fileSetDiff.changedPaths.difference(safePaths),
