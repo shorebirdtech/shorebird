@@ -37,14 +37,14 @@ void main() {
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
     });
 
-    group('GitHub outage detection', () {
-      test('throws GitHubUnreachableException on HTTP 500', () async {
+    group('server error detection', () {
+      test('includes github.com and status link for GitHub URLs',
+          () async {
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
-          // URL split across lines for line length.
-          // ignore: missing_whitespace_between_adjacent_strings
-          "fatal: unable to access 'https://github.com/shorebirdtech/"
-          "flutter.git/': The requested URL returned error: 500",
+          "fatal: unable to access 'https://github.com/"
+          "shorebirdtech/flutter.git/': "
+          'The requested URL returned error: 500',
         );
         expect(
           () => runWithOverrides(
@@ -54,48 +54,43 @@ void main() {
             ),
           ),
           throwsA(
-            isA<GitHubUnreachableException>().having(
+            isA<GitServerUnreachableException>().having(
               (e) => e.toString(),
               'message',
-              contains('githubstatus.com'),
+              allOf(
+                contains('github.com'),
+                contains('githubstatus.com'),
+              ),
             ),
           ),
         );
       });
 
-      test('throws GitHubUnreachableException on HTTP 502', () async {
+      test('includes host name for non-GitHub URLs', () async {
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
-          // URL split across lines for line length.
-          // ignore: missing_whitespace_between_adjacent_strings
-          "fatal: unable to access 'https://github.com/shorebirdtech/"
-          "shorebird.git/': The requested URL returned error: 502",
+          "fatal: unable to access 'https://gitlab.com/"
+          "org/repo.git/': "
+          'The requested URL returned error: 502',
         );
         expect(
           () => runWithOverrides(
             () => git.fetch(directory: 'repo'),
           ),
-          throwsA(isA<GitHubUnreachableException>()),
-        );
-      });
-
-      test('throws GitHubUnreachableException on HTTP 503', () async {
-        when(() => processResult.exitCode).thenReturn(128);
-        when(() => processResult.stderr).thenReturn(
-          // URL split across lines for line length.
-          // ignore: missing_whitespace_between_adjacent_strings
-          "fatal: unable to access 'https://github.com/shorebirdtech/"
-          "shorebird.git/': The requested URL returned error: 503",
-        );
-        expect(
-          () => runWithOverrides(
-            () => git.fetch(directory: 'repo'),
+          throwsA(
+            isA<GitServerUnreachableException>().having(
+              (e) => e.toString(),
+              'message',
+              allOf(
+                contains('gitlab.com'),
+                isNot(contains('githubstatus.com')),
+              ),
+            ),
           ),
-          throwsA(isA<GitHubUnreachableException>()),
         );
       });
 
-      test('throws GitHubUnreachableException on Internal Server Error',
+      test('falls back to generic message when no URL in stderr',
           () async {
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
@@ -105,11 +100,18 @@ void main() {
           () => runWithOverrides(
             () => git.fetch(directory: 'repo'),
           ),
-          throwsA(isA<GitHubUnreachableException>()),
+          throwsA(
+            isA<GitServerUnreachableException>().having(
+              (e) => e.toString(),
+              'message',
+              contains('the remote git server'),
+            ),
+          ),
         );
       });
 
-      test('throws ProcessException for non-outage errors', () async {
+      test('throws ProcessException for non-server errors',
+          () async {
         when(() => processResult.exitCode).thenReturn(128);
         when(() => processResult.stderr).thenReturn(
           'fatal: repository not found',

@@ -10,12 +10,12 @@ final gitRef = create(Git.new);
 /// The [Git] instance available in the current zone.
 Git get git => read(gitRef);
 
-/// {@template github_unreachable_exception}
-/// Exception thrown when a git command fails because GitHub is unreachable.
+/// {@template git_server_unreachable_exception}
+/// Exception thrown when a git command fails due to a server error.
 /// {@endtemplate}
-class GitHubUnreachableException implements Exception {
-  /// {@macro github_unreachable_exception}
-  const GitHubUnreachableException(this.message);
+class GitServerUnreachableException implements Exception {
+  /// {@macro git_server_unreachable_exception}
+  const GitServerUnreachableException(this.message);
 
   /// The error message.
   final String message;
@@ -24,11 +24,30 @@ class GitHubUnreachableException implements Exception {
   String toString() => message;
 }
 
-/// Pattern that matches GitHub HTTP server errors (500, 502, 503) in git
-/// output.
-final _githubServerErrorPattern = RegExp(
+/// Pattern that matches HTTP server errors (500, 502, 503) or "Internal Server
+/// Error" in git output.
+final _serverErrorPattern = RegExp(
   'The requested URL returned error: (500|502|503)|Internal Server Error',
 );
+
+/// Pattern that extracts the hostname from a git remote URL in stderr.
+/// Matches URLs like `https://github.com/org/repo.git/`.
+final _remoteHostPattern = RegExp(r"https?://([^/']+)");
+
+String _buildServerErrorMessage(String stderr) {
+  final hostMatch = _remoteHostPattern.firstMatch(stderr);
+  final host = hostMatch?.group(1);
+  final serverName = host ?? 'the remote git server';
+
+  final buffer = StringBuffer('Unable to reach $serverName.');
+  if (host == 'github.com') {
+    buffer.write(
+      '\nIf your network connection is working, check '
+      'https://www.githubstatus.com for service status.',
+    );
+  }
+  return buffer.toString();
+}
 
 /// A wrapper around all git related functionality.
 class Git {
@@ -47,16 +66,9 @@ class Git {
     );
     if (result.exitCode != 0) {
       final stderr = '${result.stderr}';
-      // This assumes all git remotes are on GitHub, which is currently true
-      // (we only clone/fetch shorebirdtech/flutter and shorebirdtech/shorebird).
-      // If we ever add non-GitHub remotes, this detection should be scoped to
-      // GitHub URLs only.
-      if (_githubServerErrorPattern.hasMatch(stderr)) {
-        throw const GitHubUnreachableException(
-          'Unable to reach GitHub. This could be a network issue '
-          'or a GitHub outage.\n'
-          'If your network connection is working, check '
-          'https://www.githubstatus.com for service status.',
+      if (_serverErrorPattern.hasMatch(stderr)) {
+        throw GitServerUnreachableException(
+          _buildServerErrorMessage(stderr),
         );
       }
       throw ProcessException(
