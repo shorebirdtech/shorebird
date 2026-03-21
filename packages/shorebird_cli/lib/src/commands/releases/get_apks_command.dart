@@ -145,7 +145,7 @@ class GetApksCommand extends ShorebirdCommand {
     await extractFileToDisk(apksZipFile.path, outputDirectory.path);
 
     final apks = outputDirectory
-        .listSync()
+        .listSync(recursive: true)
         .whereType<File>()
         .where((file) => file.path.endsWith('.apk'))
         .toList();

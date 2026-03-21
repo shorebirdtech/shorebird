@@ -430,6 +430,65 @@ void main() {
       });
     });
 
+    group('when apks contain nested subdirectories', () {
+      late Directory outDirectory;
+
+      setUp(() {
+        outDirectory = Directory.systemTemp.createTempSync();
+        // Delete to ensure the command creates the directory if needed.
+        // ignore: cascade_invocations
+        outDirectory.deleteSync();
+        when(() => argResults['out']).thenReturn(outDirectory.path);
+        when(() => argResults.wasParsed('out')).thenReturn(true);
+
+        /// Creates a zip with APKs in a subdirectory, like bundletool does
+        /// in universal mode (standalones/standalone.apk).
+        Future<File> createNestedApksFile() async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          final apksDir = Directory(
+            p.join(tempDir.path, 'temp.apks'),
+          )..createSync(recursive: true);
+          final subsDir = Directory(
+            p.join(apksDir.path, 'standalones'),
+          )..createSync();
+          File(p.join(subsDir.path, apkFileName))
+            ..createSync()
+            ..writeAsStringSync('hello');
+          final apksFile = File(p.join(tempDir.path, 'test.apks'));
+          await ZipFileEncoder().zipDirectory(
+            apksDir,
+            filename: apksFile.path,
+          );
+          return apksFile;
+        }
+
+        when(
+          () => bundletool.buildApks(
+            bundle: any(named: 'bundle'),
+            output: any(named: 'output'),
+            universal: any(named: 'universal'),
+          ),
+        ).thenAnswer((invocation) async {
+          final apksFile = await createNestedApksFile();
+          final outputPath =
+              invocation.namedArguments[#output] as String;
+          apksFile.renameSync(outputPath);
+        });
+      });
+
+      test('finds apks in subdirectories', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          completion(ExitCode.success.code),
+        );
+        verify(
+          () => logger.info(
+            'apk(s) generated at ${lightCyan.wrap(outDirectory.path)}',
+          ),
+        ).called(1);
+      });
+    });
+
     group('when apks extraction fails', () {
       late Directory outDirectory;
       late String apksFilePath;
