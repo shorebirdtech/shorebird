@@ -689,6 +689,9 @@ This is only applicable when previewing Android releases.''',
       return ExitCode.software.code;
     }
 
+    logger.info(
+      'This will reinstall the app and clear its data on the device.',
+    );
     final installApksProgress = logger.progress('Installing apks');
     try {
       await bundletool.installApks(apks: apksPath, deviceId: deviceId);
@@ -811,6 +814,9 @@ This is only applicable when previewing Android releases.''',
           : '''No iOS 17+ device found, looking for devices running iOS 16 or lower''';
       deviceLocateProgress.complete(progressCompleteMessage);
 
+      logger.info(
+        'This will reinstall the app and clear its data on the device.',
+      );
       final int installExitCode;
       if (shouldUseDeviceCtl) {
         logger.detail(
