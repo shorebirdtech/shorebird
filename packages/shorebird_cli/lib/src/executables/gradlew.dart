@@ -185,9 +185,12 @@ class Gradlew {
   }
 
   /// Starts the daemon if not running at [projectRoot].
-  /// Command: `./gradlew --daemon`
+  /// Command: `./gradlew --daemon -Dorg.gradle.welcome=never`
   Future<void> startDaemon(String projectRoot) async {
-    final exitCode = await _stream(['--daemon'], projectRoot);
+    final exitCode = await _stream([
+      '--daemon',
+      '-Dorg.gradle.welcome=never',
+    ], projectRoot);
     if (exitCode != 0) {
       throw Exception('Unable to start gradle daemon');
     }
