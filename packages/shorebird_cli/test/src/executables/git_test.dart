@@ -37,6 +37,91 @@ void main() {
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
     });
 
+    group('GitHub outage detection', () {
+      test('throws GitHubOutageException on HTTP 500', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(() => processResult.stderr).thenReturn(
+          // URL split across lines for line length.
+          // ignore: missing_whitespace_between_adjacent_strings
+          "fatal: unable to access 'https://github.com/shorebirdtech/"
+          "flutter.git/': The requested URL returned error: 500",
+        );
+        expect(
+          () => runWithOverrides(
+            () => git.clone(
+              url: 'https://github.com/shorebirdtech/flutter.git',
+              outputDirectory: './output',
+            ),
+          ),
+          throwsA(
+            isA<GitHubOutageException>().having(
+              (e) => e.toString(),
+              'message',
+              contains('githubstatus.com'),
+            ),
+          ),
+        );
+      });
+
+      test('throws GitHubOutageException on HTTP 502', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(() => processResult.stderr).thenReturn(
+          // URL split across lines for line length.
+          // ignore: missing_whitespace_between_adjacent_strings
+          "fatal: unable to access 'https://github.com/shorebirdtech/"
+          "shorebird.git/': The requested URL returned error: 502",
+        );
+        expect(
+          () => runWithOverrides(
+            () => git.fetch(directory: 'repo'),
+          ),
+          throwsA(isA<GitHubOutageException>()),
+        );
+      });
+
+      test('throws GitHubOutageException on HTTP 503', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(() => processResult.stderr).thenReturn(
+          // URL split across lines for line length.
+          // ignore: missing_whitespace_between_adjacent_strings
+          "fatal: unable to access 'https://github.com/shorebirdtech/"
+          "shorebird.git/': The requested URL returned error: 503",
+        );
+        expect(
+          () => runWithOverrides(
+            () => git.fetch(directory: 'repo'),
+          ),
+          throwsA(isA<GitHubOutageException>()),
+        );
+      });
+
+      test('throws GitHubOutageException on Internal Server Error', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(() => processResult.stderr).thenReturn(
+          'remote: Internal Server Error',
+        );
+        expect(
+          () => runWithOverrides(
+            () => git.fetch(directory: 'repo'),
+          ),
+          throwsA(isA<GitHubOutageException>()),
+        );
+      });
+
+      test('throws ProcessException for non-outage errors', () async {
+        when(() => processResult.exitCode).thenReturn(128);
+        when(() => processResult.stderr).thenReturn(
+          'fatal: repository not found',
+        );
+        expect(
+          () => runWithOverrides(
+            () => git.fetch(directory: 'repo'),
+          ),
+          throwsA(isA<ProcessException>()),
+        );
+      });
+    });
+
     group('clone', () {
       const url = 'https://github.com/shorebirdtech/shorebird';
       const outputDirectory = './output';

@@ -10,6 +10,26 @@ final gitRef = create(Git.new);
 /// The [Git] instance available in the current zone.
 Git get git => read(gitRef);
 
+/// {@template github_outage_exception}
+/// Exception thrown when a git command fails due to a GitHub outage.
+/// {@endtemplate}
+class GitHubOutageException implements Exception {
+  /// {@macro github_outage_exception}
+  const GitHubOutageException(this.message);
+
+  /// The error message.
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// Pattern that matches GitHub HTTP server errors (500, 502, 503) in git
+/// output.
+final _githubOutagePattern = RegExp(
+  'The requested URL returned error: (500|502|503)|Internal Server Error',
+);
+
 /// A wrapper around all git related functionality.
 class Git {
   /// Name of the git executable.
@@ -26,10 +46,17 @@ class Git {
       workingDirectory: workingDirectory,
     );
     if (result.exitCode != 0) {
+      final stderr = '${result.stderr}';
+      if (_githubOutagePattern.hasMatch(stderr)) {
+        throw const GitHubOutageException(
+          'GitHub appears to be experiencing an outage. '
+          'Please check https://www.githubstatus.com and try again later.',
+        );
+      }
       throw ProcessException(
         executable,
         arguments,
-        '${result.stderr}',
+        stderr,
         result.exitCode,
       );
     }
