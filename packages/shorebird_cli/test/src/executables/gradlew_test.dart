@@ -585,7 +585,7 @@ No daemons are running.
         verify(
           () => process.stream(
             p.join(projectRoot.path, 'android', 'gradlew'),
-            ['--daemon'],
+            ['--daemon', '-Dorg.gradle.welcome=never'],
             runInShell: false,
             workingDirectory: p.join(projectRoot.path, 'android'),
             environment: {'JAVA_HOME': javaHome},
