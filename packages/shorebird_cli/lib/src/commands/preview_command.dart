@@ -326,6 +326,9 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Downloads and runs the given [release] the given [appId] on Linux.
+  // TODO(eseidel): Unlike mobile, desktop preview doesn't clear app state
+  // or previously downloaded patches. Consider clearing state to match
+  // the mobile behavior.
   Future<int> installAndLaunchLinux({
     required String appId,
     required Release release,
@@ -398,6 +401,9 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Downloads and runs the given [release] the given [appId] on Windows.
+  // TODO(eseidel): Unlike mobile, desktop preview doesn't clear app state
+  // or previously downloaded patches. Consider clearing state to match
+  // the mobile behavior.
   Future<int> installAndLaunchWindows({
     required String appId,
     required Release release,
@@ -464,6 +470,9 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Installs and launches the release on macOS.
+  // TODO(eseidel): Unlike mobile, desktop preview doesn't clear app state
+  // or previously downloaded patches. Consider clearing state to match
+  // the mobile behavior.
   Future<int> installAndLaunchMacos({
     required String appId,
     required Release release,
