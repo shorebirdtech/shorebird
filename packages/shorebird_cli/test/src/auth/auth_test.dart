@@ -1115,6 +1115,12 @@ void main() {
         );
         expect(File(auth.credentialsFilePath).existsSync(), isTrue);
 
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('{"ok":true}', 200),
+        );
+
         await runWithOverrides(() => auth.logout());
         expect(File(auth.credentialsFilePath).existsSync(), isFalse);
       });
