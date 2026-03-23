@@ -4,6 +4,19 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.89 (March 18, 2026)
+
+- 🐛 Fix: roll back Flutter 3.41.4 to address increased link times
+- 🍎 Add `.pkg` distribution warning to macOS post-release instructions
+- 🧹 Remove Plan model from protocol package
+
+## 1.6.88 (March 13, 2026)
+
+- 📉 Link percentage improvements (for Flutter 3.41.4)
+- 🔍 Improved debug dumps for obfuscated patches (for Flutter 3.41.4)
+- 🐛 Fix: invalidate bootstrap stamp when Flutter version changes
+- 🐛 Fix: clean stale obfuscation map from supplement directory
+
 ## 1.6.87 (March 5, 2026)
 
 - 🔐 `shorebird login` now uses the new Shorebird auth service.

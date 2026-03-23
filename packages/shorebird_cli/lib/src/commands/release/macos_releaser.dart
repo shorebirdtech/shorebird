@@ -182,5 +182,7 @@ To change the version of this release, change your app's version in your pubspec
       '''
 
 macOS app created at ${artifactManager.getMacOSAppDirectory(flavor: flavor)!.path}.
+
+${styleBold.wrap('Note:')} If you distribute your app via the Mac App Store using a .pkg installer, the packaging process may modify the binary and cause patch failures. See ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/3223'))} for more information.
 ''';
 }
