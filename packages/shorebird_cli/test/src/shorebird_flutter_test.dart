@@ -59,6 +59,12 @@ void main() {
       shorebirdFlutter = runWithOverrides(ShorebirdFlutter.new);
 
       when(
+        () => git.fetch(
+          directory: any(named: 'directory'),
+          args: any(named: 'args'),
+        ),
+      ).thenAnswer((_) async => {});
+      when(
         () => git.clone(
           url: any(named: 'url'),
           outputDirectory: any(named: 'outputDirectory'),
@@ -770,15 +776,21 @@ origin/flutter_release/3.10.6''';
     group('installRevision', () {
       const revision = 'test-revision';
 
-      test('does nothing if the revision is already installed', () async {
-        Directory(
+      test('fetches tags if the revision is already installed', () async {
+        final targetDirectory = Directory(
           p.join(flutterDirectory.parent.path, revision),
-        ).createSync(recursive: true);
+        )..createSync(recursive: true);
 
         await runWithOverrides(
           () => shorebirdFlutter.installRevision(revision: revision),
         );
 
+        verify(
+          () => git.fetch(
+            directory: targetDirectory.path,
+            args: ['--tags'],
+          ),
+        ).called(1);
         verifyNever(
           () => git.clone(
             url: any(named: 'url'),

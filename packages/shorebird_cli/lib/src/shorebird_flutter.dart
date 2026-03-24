@@ -43,7 +43,11 @@ class ShorebirdFlutter {
   /// Install the provided Flutter [revision].
   Future<void> installRevision({required String revision}) async {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
-    if (targetDirectory.existsSync()) return;
+    if (targetDirectory.existsSync()) {
+      // Ensure tags are up to date for Flutter's version detection.
+      await git.fetch(directory: targetDirectory.path, args: ['--tags']);
+      return;
+    }
 
     final version = await getVersionForRevision(flutterRevision: revision);
 
