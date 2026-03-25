@@ -4,6 +4,19 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.90 (March 24, 2026)
+
+- 🐦 Support for Flutter 3.41.5 & Dart 3.11.3
+- ✨ Add semantic DEX diffing to suppress false native change warnings
+- ✨ Suggest cache clean in build failure recommendations
+- 🔐 Revoke sessions on CLI logout
+- ⚠️ Warn that preview reinstalls the app on mobile
+- 🤫 Suppress Gradle welcome message during init
+- 🐛 Fix: select correct executable in Windows preview
+- 🐛 Fix: show friendly error message when GitHub is down
+- 🐛 Fix: list orgs and exit gracefully when init is non-interactive
+- 🐛 Fix: resolve JWT issuer from ShorebirdEnv instead of from Auth URL
+
 ## 1.6.89 (March 18, 2026)
 
 - 🐛 Fix: roll back Flutter 3.41.4 to address increased link times
