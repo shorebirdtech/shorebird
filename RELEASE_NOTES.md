@@ -4,6 +4,12 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.91 (March 25, 2026)
+
+- 🔐 Support API keys for authentication ([docs](https://docs.shorebird.dev/account/api-keys/))
+  - `login:ci` command has been deprecated
+  - Create API keys through the [web console](https://console.shorebird.dev)
+
 ## 1.6.90 (March 24, 2026)
 
 - 🐦 Support for Flutter 3.41.5 & Dart 3.11.3
