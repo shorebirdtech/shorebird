@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.92 (March 26, 2026)
+
+- 🐦 Support for Flutter 3.41.6 & Dart 3.11.4
+
 ## 1.6.91 (March 25, 2026)
 
 - 🔐 Support API keys for authentication ([docs](https://docs.shorebird.dev/account/api-keys/))
