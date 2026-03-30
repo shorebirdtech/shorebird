@@ -81,7 +81,12 @@ class ShorebirdUpdaterImpl implements ShorebirdUpdater {
     // If no new update is available for download, see if a new patch exists
     // on disk that requires a restart.
     final (current, next) = await (readCurrentPatch(), readNextPatch()).wait;
-    return next != null && current?.number != next.number
+    // A restart is required when the current and next patches differ. This
+    // covers both the "new patch downloaded" case (next differs from current)
+    // and the "current patch was rolled back" case (current is non-null but
+    // next is null, meaning the app needs to restart to revert to the base
+    // release).
+    return current?.number != next?.number
         ? UpdateStatus.restartRequired
         : UpdateStatus.upToDate;
   }

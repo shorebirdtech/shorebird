@@ -270,6 +270,22 @@ void main() {
         });
       });
 
+      group('when no patches are installed and none available', () {
+        setUp(() {
+          when(updater.currentPatchNumber).thenReturn(0);
+          when(updater.nextPatchNumber).thenReturn(0);
+          when(updater.checkForDownloadableUpdate).thenReturn(false);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
+        });
+
+        test('returns UpdateStatus.upToDate', () async {
+          await expectLater(
+            shorebirdUpdater.checkForUpdate(),
+            completion(equals(UpdateStatus.upToDate)),
+          );
+        });
+      });
+
       group('when updater installed an update and is up to date', () {
         setUp(() {
           when(updater.currentPatchNumber).thenReturn(1);
@@ -282,6 +298,24 @@ void main() {
           await expectLater(
             shorebirdUpdater.checkForUpdate(),
             completion(equals(UpdateStatus.upToDate)),
+          );
+        });
+      });
+
+      group('when current patch has been rolled back', () {
+        setUp(() {
+          // The app is currently running patch 1, but checkForDownloadableUpdate
+          // triggered a rollback which set next_boot_patch to None (0).
+          when(updater.currentPatchNumber).thenReturn(1);
+          when(updater.nextPatchNumber).thenReturn(0);
+          when(updater.checkForDownloadableUpdate).thenReturn(false);
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
+        });
+
+        test('returns UpdateStatus.restartRequired', () async {
+          await expectLater(
+            shorebirdUpdater.checkForUpdate(),
+            completion(equals(UpdateStatus.restartRequired)),
           );
         });
       });
