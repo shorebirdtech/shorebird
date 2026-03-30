@@ -56,6 +56,9 @@ class Apple {
       'App.field_table.json',
       'App.dt.link',
       'App.dispatch_table.json',
+      // DD table files for cascade limiter (produced by 2-pass release build).
+      'App.dd.link',
+      'App.dd_callers.link',
     ];
 
     // This uses maybeCopy because not all versions of gen_snapshot/aot_tools

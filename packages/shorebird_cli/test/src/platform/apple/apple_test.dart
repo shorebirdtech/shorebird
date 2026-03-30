@@ -125,6 +125,8 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
             'App.ct.link',
             'App.dt.link',
             'App.ft.link',
+            'App.dd.link',
+            'App.dd_callers.link',
           ];
 
           void createFiles(Directory dir) {
@@ -148,8 +150,8 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
               patchSnapshotDir: patchSnapshotDir,
             ),
           );
-          expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(6));
-          expect(Directory(patchSnapshotDir.path).listSync(), hasLength(6));
+          expect(Directory(releaseSnapshotDir.path).listSync(), hasLength(8));
+          expect(Directory(patchSnapshotDir.path).listSync(), hasLength(8));
         });
 
         test('copies only some files next to snapshots', () {
