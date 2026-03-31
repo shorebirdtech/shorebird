@@ -181,9 +181,8 @@ class Apple {
 
       // Copy snapshots into the debug dump for offline diagnosis.
       // 1 release snapshot + 3 patch compilation stages.
-      final snapshotsDir =
-          Directory(p.join(dumpDebugInfoDir.path, 'snapshots'))
-            ..createSync();
+      final snapshotsDir = Directory(p.join(dumpDebugInfoDir.path, 'snapshots'))
+        ..createSync();
       void maybeCopySnapshot(File file, {String? destName}) {
         if (file.existsSync()) {
           file.copySync(
@@ -196,8 +195,7 @@ class Apple {
       maybeCopySnapshot(aotOutputFile);
       // Intermediate snapshots created by aot_tools during linking.
       final patchDir = aotOutputFile.parent.path;
-      final patchBaseName =
-          p.basenameWithoutExtension(aotOutputFile.path);
+      final patchBaseName = p.basenameWithoutExtension(aotOutputFile.path);
       maybeCopySnapshot(
         File(p.join(patchDir, '$patchBaseName.ct.aot')),
       );

@@ -622,8 +622,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           );
 
           expect(capturedDebugInfoPath, isNotNull);
-          final snapshotsDir =
-              Directory(p.join(capturedDebugInfoPath!, 'snapshots'));
+          final snapshotsDir = Directory(
+            p.join(capturedDebugInfoPath!, 'snapshots'),
+          );
           expect(snapshotsDir.existsSync(), isTrue);
 
           final snapshotFiles = snapshotsDir
@@ -677,8 +678,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
             ),
           );
 
-          final snapshotsDir =
-              Directory(p.join(capturedDebugInfoPath!, 'snapshots'));
+          final snapshotsDir = Directory(
+            p.join(capturedDebugInfoPath!, 'snapshots'),
+          );
           final snapshotFiles = snapshotsDir
               .listSync()
               .whereType<File>()
