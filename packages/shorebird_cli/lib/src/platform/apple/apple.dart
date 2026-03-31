@@ -182,7 +182,7 @@ class Apple {
       // Copy snapshots into the debug dump for offline diagnosis.
       // 1 release snapshot + 3 patch compilation stages.
       final snapshotsDir = Directory(p.join(dumpDebugInfoDir.path, 'snapshots'))
-        ..createSync();
+        ..createSync(recursive: true);
       void maybeCopySnapshot(File file, {String? destName}) {
         if (file.existsSync()) {
           file.copySync(
