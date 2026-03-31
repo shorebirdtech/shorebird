@@ -579,6 +579,115 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           ).called(1);
         });
 
+        test('copies existing snapshots into debug dump', () async {
+          // Create a release artifact in a temp directory.
+          final releaseDir = Directory.systemTemp.createTempSync();
+          final releaseArtifactFile = File(p.join(releaseDir.path, 'App'))
+            ..writeAsStringSync('release');
+
+          // Create intermediate patch snapshots alongside out.aot.
+          File(p.join(buildDirectory.path, 'out.ct.aot'))
+            ..writeAsStringSync('ct');
+          File(p.join(buildDirectory.path, 'out.optimized.aot'))
+            ..writeAsStringSync('optimized');
+
+          // Capture the dumpDebugInfoPath so we can inspect it.
+          String? capturedDebugInfoPath;
+          when(
+            () => aotTools.link(
+              base: any(named: 'base'),
+              patch: any(named: 'patch'),
+              analyzeSnapshot: any(named: 'analyzeSnapshot'),
+              genSnapshot: any(named: 'genSnapshot'),
+              kernel: any(named: 'kernel'),
+              outputPath: any(named: 'outputPath'),
+              workingDirectory: any(named: 'workingDirectory'),
+              additionalArgs: any(named: 'additionalArgs'),
+              dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+            ),
+          ).thenAnswer((invocation) async {
+            capturedDebugInfoPath =
+                invocation.namedArguments[#dumpDebugInfoPath] as String?;
+            return linkPercentage;
+          });
+
+          await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: releaseArtifactFile,
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+            ),
+          );
+
+          expect(capturedDebugInfoPath, isNotNull);
+          final snapshotsDir =
+              Directory(p.join(capturedDebugInfoPath!, 'snapshots'));
+          expect(snapshotsDir.existsSync(), isTrue);
+
+          final snapshotFiles = snapshotsDir
+              .listSync()
+              .whereType<File>()
+              .map((f) => p.basename(f.path))
+              .toSet();
+          expect(
+            snapshotFiles,
+            containsAll(<String>[
+              'App',
+              'out.aot',
+              'out.ct.aot',
+              'out.optimized.aot',
+            ]),
+          );
+        });
+
+        test('skips missing intermediate snapshots', () async {
+          // Release artifact exists but intermediate snapshots do not.
+          final releaseDir = Directory.systemTemp.createTempSync();
+          final releaseArtifactFile = File(p.join(releaseDir.path, 'App'))
+            ..writeAsStringSync('release');
+
+          String? capturedDebugInfoPath;
+          when(
+            () => aotTools.link(
+              base: any(named: 'base'),
+              patch: any(named: 'patch'),
+              analyzeSnapshot: any(named: 'analyzeSnapshot'),
+              genSnapshot: any(named: 'genSnapshot'),
+              kernel: any(named: 'kernel'),
+              outputPath: any(named: 'outputPath'),
+              workingDirectory: any(named: 'workingDirectory'),
+              additionalArgs: any(named: 'additionalArgs'),
+              dumpDebugInfoPath: any(named: 'dumpDebugInfoPath'),
+            ),
+          ).thenAnswer((invocation) async {
+            capturedDebugInfoPath =
+                invocation.namedArguments[#dumpDebugInfoPath] as String?;
+            return linkPercentage;
+          });
+
+          await runWithOverrides(
+            () => apple.runLinker(
+              aotOutputFile: aotOutputFile,
+              kernelFile: File('missing'),
+              releaseArtifact: releaseArtifactFile,
+              vmCodeFile: File('missing'),
+              splitDebugInfoArgs: [],
+            ),
+          );
+
+          final snapshotsDir =
+              Directory(p.join(capturedDebugInfoPath!, 'snapshots'));
+          final snapshotFiles = snapshotsDir
+              .listSync()
+              .whereType<File>()
+              .map((f) => p.basename(f.path))
+              .toSet();
+          // Only release + patch should be present (no ct/optimized).
+          expect(snapshotFiles, equals(<String>{'App', 'out.aot'}));
+        });
+
         group('when running in codemagic', () {
           late Directory codemagicExportDir;
 
