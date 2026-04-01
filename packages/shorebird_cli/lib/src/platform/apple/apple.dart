@@ -179,6 +179,30 @@ class Apple {
     Future<void> dumpDebugInfo() async {
       if (dumpDebugInfoDir == null) return;
 
+      // Copy snapshots into the debug dump for offline diagnosis.
+      // 1 release snapshot + 3 patch compilation stages.
+      final snapshotsDir = Directory(p.join(dumpDebugInfoDir.path, 'snapshots'))
+        ..createSync(recursive: true);
+      void maybeCopySnapshot(File file, {String? destName}) {
+        if (file.existsSync()) {
+          file.copySync(
+            p.join(snapshotsDir.path, destName ?? p.basename(file.path)),
+          );
+        }
+      }
+
+      maybeCopySnapshot(releaseArtifact, destName: 'App');
+      maybeCopySnapshot(aotOutputFile);
+      // Intermediate snapshots created by aot_tools during linking.
+      final patchDir = aotOutputFile.parent.path;
+      final patchBaseName = p.basenameWithoutExtension(aotOutputFile.path);
+      maybeCopySnapshot(
+        File(p.join(patchDir, '$patchBaseName.ct.aot')),
+      );
+      maybeCopySnapshot(
+        File(p.join(patchDir, '$patchBaseName.optimized.aot')),
+      );
+
       final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
       debugInfoZip.copySync(p.join('build', Patcher.debugInfoFile.path));
       logger.detail('Link debug info saved to ${Patcher.debugInfoFile.path}');
