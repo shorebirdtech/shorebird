@@ -633,7 +633,7 @@ class _TestPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) {
     throw UnimplementedError();
   }

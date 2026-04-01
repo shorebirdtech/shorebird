@@ -17,10 +17,12 @@ words:
   - armeabi
   - Azul
   - backboardd
+  - bdero
   - bintools
   - bitcode
   - bryanoltman
   - bundletool
+  - Dalvik # Android Dalvik VM / DEX file format
   - canvaskit
   - carryforward
   - cipd
@@ -89,6 +91,7 @@ words:
   - PRNG
   - propertylistserialization
   - propertylistserialization
+  - protos # Protocol buffer generated files
   - pubspec
   - pwsh
   - quantiles
@@ -105,10 +108,12 @@ words:
   - sideload
   - sideloadable
   - sideloaded
+  - sideloading
   - signup
   - SIGSTOP
   - storepass # From .github/workflows/e2e.yaml
   - storyboardc
+  - symbolication
   - syskeys # From adb.dart
   - subosito # From .github dir, doesn't show up in "**" check?
   - swiftshader # From .github dir, doesn't show up in "**" check?
@@ -119,6 +124,8 @@ words:
   - udid # Unique Device Identifier
   - unawaited
   - unmockable
+  - unobfuscated
+  - unpadded
   - Unpatchable
   - unsets
   - unskipped

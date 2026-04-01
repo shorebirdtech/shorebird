@@ -9,7 +9,6 @@ export 'organization_membership.dart';
 export 'organization_user.dart';
 export 'patch.dart';
 export 'patch_artifact.dart';
-export 'plan.dart';
 export 'private_user.dart';
 export 'public_user.dart';
 export 'release.dart';

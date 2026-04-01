@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
-import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
@@ -22,12 +21,6 @@ export 'link_result.dart';
 export 'macho.dart';
 export 'missing_xcode_project_exception.dart';
 export 'plist.dart';
-
-/// The minimum allowed Flutter version for creating iOS releases.
-final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
-
-/// The minimum allowed Flutter version for creating macOS releases.
-final minimumSupportedMacosFlutterVersion = Version(3, 27, 4);
 
 /// A reference to a [Apple] instance.
 final appleRef = create(Apple.new);
@@ -185,6 +178,30 @@ class Apple {
 
     Future<void> dumpDebugInfo() async {
       if (dumpDebugInfoDir == null) return;
+
+      // Copy snapshots into the debug dump for offline diagnosis.
+      // 1 release snapshot + 3 patch compilation stages.
+      final snapshotsDir = Directory(p.join(dumpDebugInfoDir.path, 'snapshots'))
+        ..createSync(recursive: true);
+      void maybeCopySnapshot(File file, {String? destName}) {
+        if (file.existsSync()) {
+          file.copySync(
+            p.join(snapshotsDir.path, destName ?? p.basename(file.path)),
+          );
+        }
+      }
+
+      maybeCopySnapshot(releaseArtifact, destName: 'App');
+      maybeCopySnapshot(aotOutputFile);
+      // Intermediate snapshots created by aot_tools during linking.
+      final patchDir = aotOutputFile.parent.path;
+      final patchBaseName = p.basenameWithoutExtension(aotOutputFile.path);
+      maybeCopySnapshot(
+        File(p.join(patchDir, '$patchBaseName.ct.aot')),
+      );
+      maybeCopySnapshot(
+        File(p.join(patchDir, '$patchBaseName.optimized.aot')),
+      );
 
       final debugInfoZip = await dumpDebugInfoDir.zipToTempFile();
       debugInfoZip.copySync(p.join('build', Patcher.debugInfoFile.path));

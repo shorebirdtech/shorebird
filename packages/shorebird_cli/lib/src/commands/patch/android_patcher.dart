@@ -52,6 +52,9 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
   String get primaryReleaseArtifactArch => 'aab';
 
   @override
+  String? get supplementaryReleaseArtifactArch => 'android_supplement';
+
+  @override
   Future<DiffStatus> assertUnpatchableDiffs({
     required ReleaseArtifact releaseArtifact,
     required File releaseArchive,
@@ -87,12 +90,15 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       logger.warn(updaterPatchErrorWarning);
     }
 
+    final buildArgs = [
+      ...argResults.forwardedArgs,
+      ...extraBuildArgs,
+      ...buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+    ];
     final aabFile = await artifactBuilder.buildAppBundle(
       flavor: flavor,
       target: target,
-      args:
-          argResults.forwardedArgs +
-          buildNameAndNumberArgsFromReleaseVersion(releaseVersion),
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 
@@ -123,7 +129,7 @@ Looked in:
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
     Duration downloadMessageTimeout = const Duration(minutes: 1),
   }) async {
     final releaseArtifacts = await codePushClientWrapper.getReleaseArtifacts(

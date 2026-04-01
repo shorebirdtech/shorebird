@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:pub_semver/pub_semver.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/platform/linux/linux.dart';
 import 'package:test/test.dart';
 

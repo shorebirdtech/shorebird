@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/apple/apple.dart';
@@ -38,6 +39,12 @@ class IosReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.ios;
 
   @override
+  String get supplementPlatformSubdir => 'ios';
+
+  @override
+  String get supplementArtifactArch => 'ios_supplement';
+
+  @override
   String get artifactDisplayName => 'iOS app';
 
   @override
@@ -46,22 +53,13 @@ class IosReleaser extends Releaser {
       logger.err(
         '''
 The "--release-version" flag is only supported for aar and ios-framework releases.
-        
+
 To change the version of this release, change your app's version in your pubspec.yaml.''',
       );
       throw ProcessExit(ExitCode.usage.code);
     }
 
-    if (argResults.rest.contains('--obfuscate')) {
-      // Obfuscated releases break patching, so we don't support them.
-      // See https://github.com/shorebirdtech/shorebird/issues/1619
-      logger
-        ..err('Shorebird does not currently support obfuscation on iOS.')
-        ..info(
-          '''We hope to support obfuscation in the future. We are tracking this work at ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/1619'))}.''',
-        );
-      throw ProcessExit(ExitCode.unavailable.code);
-    }
+    await assertObfuscationIsSupported();
   }
 
   @override
@@ -103,13 +101,20 @@ To change the version of this release, change your app's version in your pubspec
     }
 
     final base64PublicKey = await getEncodedPublicKey();
+
+    final buildArgs = [...argResults.forwardedArgs];
+    addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
+
     await artifactBuilder.buildIpa(
       codesign: codesign,
       flavor: flavor,
       target: target,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
+
+    verifyObfuscationMap();
 
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory();
     if (xcarchiveDirectory == null) {
@@ -172,8 +177,9 @@ To change the version of this release, change your app's version in your pubspec
           .path,
       isCodesigned: codesign,
       podfileLockHash: podfileLockHash,
-      supplementPath: artifactManager.getIosReleaseSupplementDirectory()?.path,
     );
+
+    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
   @override

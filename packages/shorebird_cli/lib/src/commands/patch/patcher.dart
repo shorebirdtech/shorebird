@@ -57,6 +57,34 @@ More info: ${troubleshootingUrl.toLink()}.
   /// The target script to run, if any.
   final String? target;
 
+  /// The path to the obfuscation map downloaded from the release, if any.
+  /// Set by the patch command after downloading the map. Used by Apple
+  /// patchers to pass obfuscation flags to gen_snapshot and the linker.
+  String? obfuscationMapPath;
+
+  /// Extra build arguments injected by the patch command. These are included
+  /// in the Flutter build command args by patchers. Currently used to inject
+  /// obfuscation flags when the release was built with obfuscation.
+  List<String> extraBuildArgs = const [];
+
+  /// Additional gen_snapshot arguments needed to match the release's
+  /// obfuscation flags. Used by Apple patchers for [buildElfAotSnapshot]
+  /// and linker calls.
+  List<String> get obfuscationGenSnapshotArgs => [
+    if (obfuscationMapPath != null) ...[
+      '--obfuscate',
+      '--load-obfuscation-map=$obfuscationMapPath',
+      // --dwarf-stack-traces must match the release build so the patch
+      // produces the same stack trace format for correct symbolication.
+      // --split-debug-info already implies --dwarf-stack-traces, so we only
+      // need to pass it as a standalone flag when split debug info isn't used.
+      if (splitDebugInfoPath == null) '--dwarf-stack-traces',
+      // Strip DWARF debug info so obfuscated snapshots don't leak the
+      // identifiers that obfuscation was meant to hide.
+      '--strip',
+    ],
+  ];
+
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;
 
@@ -96,7 +124,7 @@ More info: ${troubleshootingUrl.toLink()}.
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   });
 
   /// Updates the provided metadata to include patcher-specific fields.

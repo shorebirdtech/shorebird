@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -103,10 +104,11 @@ To target the latest release (e.g. the release that was most recently updated) u
 [DEPRECATED] Whether to publish the patch to the staging environment. Use --track=staging instead.''',
         hide: true,
       )
+      // Added for https://github.com/shorebirdtech/shorebird/issues/3223.
+      // Can be removed fall 2026 or later.
       ..addFlag(
-        CommonArguments.noConfirmArg.name,
-        help: CommonArguments.noConfirmArg.description,
-        negatable: false,
+        'confirm',
+        hide: true,
       )
       ..addOption(
         CommonArguments.exportOptionsPlistArg.name,
@@ -152,6 +154,12 @@ To target the latest release (e.g. the release that was most recently updated) u
         CommonArguments.splitDebugInfoArg.name,
         help: CommonArguments.splitDebugInfoArg.description,
       )
+      ..addFlag(
+        CommonArguments.obfuscateArg.name,
+        help: CommonArguments.obfuscateArg.description,
+        negatable: false,
+        hide: true,
+      )
       ..addOption(
         CommonArguments.minLinkPercentage.name,
         help: CommonArguments.minLinkPercentage.description,
@@ -187,6 +195,9 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   /// The target script, if provided.
   late String? target = results.findOption('target', argParser: argParser);
+
+  /// Whether to prompt for confirmation before creating the patch.
+  bool get confirm => results['confirm'] == true;
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
   bool get allowAssetDiffs => results['allow-asset-diffs'] == true;
@@ -397,6 +408,83 @@ Building with Flutter $flutterVersionString to determine the release version...
         ? await downloadReleaseArtifact(releaseArtifact: supplementalArtifact)
         : null;
 
+    // Download and extract the supplement archive (if present).
+    Directory? supplementDirectory;
+    File? obfuscationMapFile;
+    if (supplementArchive != null) {
+      supplementDirectory = Directory.systemTemp.createTempSync();
+      await artifactManager.extractZip(
+        zipFile: supplementArchive,
+        outputDirectory: supplementDirectory,
+      );
+      final candidateMapFile = File(
+        p.join(supplementDirectory.path, 'obfuscation_map.json'),
+      );
+      if (candidateMapFile.existsSync()) {
+        obfuscationMapFile = candidateMapFile;
+        logger.info(
+          'Release was built with obfuscation. '
+          'Applying obfuscation map to patch build.',
+        );
+      }
+    }
+
+    // If the user explicitly passed --obfuscate but the release has no
+    // obfuscation map, the patch would be obfuscated against a non-obfuscated
+    // release, producing a broken patch.
+    // Also check rest for `-- --obfuscate`, which bypasses the parser but
+    // still flows through forwardedArgs to the Flutter build command.
+    final userPassedObfuscate =
+        (results.wasParsed('obfuscate') && results['obfuscate'] == true) ||
+        results.rest.any((a) => a == '--obfuscate');
+    if (userPassedObfuscate && obfuscationMapFile == null) {
+      logger.err(
+        '--obfuscate was passed, but the release was not built with '
+        'obfuscation. A patch cannot change the obfuscation mode of a '
+        'release.',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+    if (userPassedObfuscate && obfuscationMapFile != null) {
+      logger.info(
+        '--obfuscate is not needed for patching. Obfuscation is applied '
+        'automatically when the release was built with --obfuscate.',
+      );
+    }
+
+    patcher.obfuscationMapPath = obfuscationMapFile?.path;
+
+    // Build extra args to inject into the Flutter build command. These use
+    // --extra-gen-snapshot-options= because they're passed through Flutter's
+    // build system, which forwards them to gen_snapshot. This is distinct from
+    // patcher.obfuscationGenSnapshotArgs, which produces bare gen_snapshot
+    // flags (e.g. --load-obfuscation-map=...) for direct gen_snapshot/linker
+    // calls made by Apple patchers outside the Flutter build.
+    final extraBuildArgs = <String>[];
+    if (obfuscationMapFile != null) {
+      extraBuildArgs.addAll([
+        '--obfuscate',
+        '--extra-gen-snapshot-options='
+            '--load-obfuscation-map=${obfuscationMapFile.path}',
+        // Strip unobfuscated DWARF debug info from the compiled snapshot so
+        // it doesn't leak identifiers that obfuscation was meant to hide.
+        '--extra-gen-snapshot-options=--strip',
+      ]);
+    }
+    // Flutter requires --split-debug-info with --obfuscate. Auto-add it
+    // if --obfuscate will be in the build args (from the user or from
+    // the obfuscation map injection above) but --split-debug-info is not.
+    final hasObfuscate =
+        (results.wasParsed('obfuscate') && results['obfuscate'] == true) ||
+        extraBuildArgs.contains('--obfuscate');
+    final hasSplitDebugInfo = results.wasParsed('split-debug-info');
+    if (hasObfuscate && !hasSplitDebugInfo) {
+      extraBuildArgs.add(
+        '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
+      );
+    }
+    patcher.extraBuildArgs = extraBuildArgs;
+
     final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
       flutterRevisionOverride: release.flutterRevision,
     );
@@ -413,7 +501,9 @@ Building with Flutter $flutterVersionString to determine the release version...
 Building patch with Flutter $flutterVersionString
 ''');
           patchArtifactFile = await _tryBuildingArtifact<File>(
-            () => patcher.buildPatchArtifact(releaseVersion: release.version),
+            () => patcher.buildPatchArtifact(
+              releaseVersion: release.version,
+            ),
           );
         }
 
@@ -427,7 +517,7 @@ Building patch with Flutter $flutterVersionString
           appId: appId,
           releaseId: release.id,
           releaseArtifact: releaseArchive,
-          supplementArtifact: supplementArchive,
+          supplementDirectory: supplementDirectory,
         );
 
         final dryRun = results['dry-run'] == true;
@@ -608,6 +698,13 @@ ${styleBold.wrap(lightGreen.wrap('🚀 Ready to publish a new patch!'))}
 
 ${summary.join('\n')}
 ''');
+
+    if (confirm && shorebirdEnv.canAcceptUserInput) {
+      if (!logger.confirm('Would you like to continue?', defaultValue: true)) {
+        logger.info('Aborting.');
+        throw ProcessExit(ExitCode.success.code);
+      }
+    }
   }
 
   /// Downloads the given [releaseArtifact].

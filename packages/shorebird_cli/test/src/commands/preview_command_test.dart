@@ -139,6 +139,18 @@ void main() {
         ..createSync(recursive: true)
         ..writeAsStringSync(yamlContents);
 
+      // Include AndroidManifest.xml to match real AAB structure.
+      File(
+          p.join(
+            aabDirectory.path,
+            'base',
+            'manifest',
+            'AndroidManifest.xml',
+          ),
+        )
+        ..createSync(recursive: true)
+        ..writeAsStringSync('<manifest />');
+
       await ZipFileEncoder().zipDirectory(aabDirectory, filename: aabPath());
 
       return File(aabPath());
@@ -801,6 +813,29 @@ channel: ${track.channel}
 app_id: $appId
 channel: ${track.channel}
 ''');
+          });
+
+          test('re-zipped AAB uses forward slashes in entry names', () async {
+            aabFile = await createAabFile(channel: 'dev');
+            await runWithOverrides(
+              () => command.setChannelOnAab(
+                aabFile: aabFile,
+                channel: track.channel,
+              ),
+            );
+
+            // Verify all ZIP entry names use forward slashes per the
+            // ZIP spec. On Windows, without normalization, entries would
+            // contain backslashes which breaks bundletool.
+            final bytes = aabFile.readAsBytesSync();
+            final archive = ZipDecoder().decodeBytes(bytes);
+            for (final file in archive.files) {
+              expect(
+                file.name,
+                isNot(contains(r'\')),
+                reason: 'ZIP entry "${file.name}" contains backslash',
+              );
+            }
           });
         });
       });
@@ -2353,6 +2388,7 @@ channel: ${DeploymentTrack.staging.channel}
       late ShorebirdProcess shorebirdProcess;
       late Process process;
       late Directory windowsReleaseDirectory;
+      late Windows windowsMock;
 
       R runWithOverrides<R>(R Function() body) {
         return HttpOverrides.runZoned(
@@ -2371,6 +2407,7 @@ channel: ${DeploymentTrack.staging.channel}
               processRef.overrideWith(() => shorebirdProcess),
               shorebirdEnvRef.overrideWith(() => shorebirdEnv),
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+              windowsRef.overrideWith(() => windowsMock),
             },
           ),
         );
@@ -2400,6 +2437,18 @@ channel: ${DeploymentTrack.staging.channel}
       setUp(() {
         shorebirdProcess = MockShorebirdProcess();
         process = MockProcess();
+        windowsMock = MockWindows();
+        when(
+          () => windowsMock.findExecutable(
+            releaseDirectory: any(named: 'releaseDirectory'),
+            projectName: any(named: 'projectName'),
+          ),
+        ).thenAnswer((invocation) {
+          final dir = invocation.namedArguments[#releaseDirectory] as Directory;
+          return dir.listSync().whereType<File>().firstWhere(
+            (f) => f.path.endsWith('.exe'),
+          );
+        });
         windowsReleaseArtifact = MockReleaseArtifact();
 
         final tempDir = Directory.systemTemp.createTempSync();

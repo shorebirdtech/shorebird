@@ -11,6 +11,21 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+/// Exception thrown when a required file in the Shorebird cache is missing or
+/// unreadable, indicating a corrupted installation.
+class CacheCorruptedException implements Exception {
+  /// Creates a [CacheCorruptedException] for the given [filePath].
+  const CacheCorruptedException(this.filePath);
+
+  /// The path to the missing or unreadable file.
+  final String filePath;
+
+  @override
+  String toString() =>
+      'Could not read $filePath. Your Shorebird installation may be '
+      "corrupted. Try running 'shorebird cache clean' and retrying.";
+}
+
 /// A reference to a [ShorebirdEnv] instance.
 final shorebirdEnvRef = create(ShorebirdEnv.new);
 
@@ -56,17 +71,27 @@ class ShorebirdEnv {
 
   /// The Shorebird engine revision.
   String get shorebirdEngineRevision {
-    return File(
+    final file = File(
       p.join(flutterDirectory.path, 'bin', 'internal', 'engine.version'),
-    ).readAsStringSync().trim();
+    );
+    try {
+      return file.readAsStringSync().trim();
+    } on FileSystemException {
+      throw CacheCorruptedException(file.path);
+    }
   }
 
   /// Get the Shorebird Flutter revision.
   String get flutterRevision {
-    return _flutterRevisionOverride ??
-        File(
-          p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
-        ).readAsStringSync().trim();
+    if (_flutterRevisionOverride != null) return _flutterRevisionOverride;
+    final file = File(
+      p.join(shorebirdRoot.path, 'bin', 'internal', 'flutter.version'),
+    );
+    try {
+      return file.readAsStringSync().trim();
+    } on FileSystemException {
+      throw CacheCorruptedException(file.path);
+    }
   }
 
   /// Whether the project uses package:shorebird_code_push.
@@ -227,6 +252,20 @@ class ShorebirdEnv {
     final module = pubspec?.flutter?['module'] as Map?;
     return module?['androidPackage'] as String?;
   }
+
+  /// The base URL for the Shorebird auth service. Can be overridden with the
+  /// `AUTH_SERVICE_URL` environment variable. Defaults to
+  /// `https://auth.shorebird.dev`.
+  Uri get authServiceUri => Uri.parse(
+    platform.environment['AUTH_SERVICE_URL'] ?? 'https://auth.shorebird.dev',
+  );
+
+  /// The expected JWT issuer for Shorebird-issued tokens. Can be overridden
+  /// with the `SHOREBIRD_JWT_ISSUER` environment variable. Defaults to
+  /// `https://auth.shorebird.dev`.
+  String get jwtIssuer =>
+      platform.environment['SHOREBIRD_JWT_ISSUER'] ??
+      'https://auth.shorebird.dev';
 
   /// The base URL for the Shorebird code push server that overrides the default
   /// used by [CodePushClient]. If none is provided, [CodePushClient] will use

@@ -10,6 +10,15 @@ PROG_NAME="$BIN_DIR/$(basename "$BASH_SOURCE")"
 OS="$(uname -s)"
 
 FLUTTER_VERSION=`cat "$BIN_DIR/internal/flutter.version"`
+
+# If the Flutter SDK for the requested version hasn't been downloaded yet,
+# clear the bootstrap stamp so that shared.sh triggers a re-bootstrap.
+# shared.sh keys the stamp on the Shorebird git revision alone, so changing
+# flutter.version without a new commit would otherwise be ignored.
+if [[ ! -d "$BIN_DIR/cache/flutter/$FLUTTER_VERSION/bin" ]]; then
+  rm -f "$BIN_DIR/cache/shorebird.stamp"
+fi
+
 source "$BIN_DIR/../third_party/flutter/bin/internal/shared.sh"
 
 # We currently depend on a forked (3.7.8 stable) Flutter shared.sh script

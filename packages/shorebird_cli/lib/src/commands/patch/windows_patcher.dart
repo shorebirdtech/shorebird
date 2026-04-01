@@ -38,6 +38,9 @@ class WindowsPatcher extends Patcher {
   String get primaryReleaseArtifactArch => primaryWindowsReleaseArtifactArch;
 
   @override
+  String? get supplementaryReleaseArtifactArch => 'windows_supplement';
+
+  @override
   ReleaseType get releaseType => ReleaseType.windows;
 
   @override
@@ -71,9 +74,10 @@ class WindowsPatcher extends Patcher {
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
+    final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     final releaseDir = await artifactBuilder.buildWindowsApp(
       target: target,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
     return releaseDir.zipToTempFile();
@@ -84,7 +88,7 @@ class WindowsPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     final createDiffProgress = logger.progress('Creating patch artifacts');
     final patchArtifactPath = p.join(

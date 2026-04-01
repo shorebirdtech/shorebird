@@ -405,12 +405,75 @@ void main() {
     // but we do accept a --no-confirm argument for backwards compatibility.
     group('when --no-confirm is specified', () {
       setUp(() {
-        when(() => argResults['no-confirm']).thenReturn(true);
+        when(() => argResults['confirm']).thenReturn(false);
       });
 
       test('does not prompt for confirmation', () async {
         await runWithOverrides(command.run);
         verifyNever(() => logger.confirm(any()));
+      });
+    });
+
+    group('when --confirm is passed', () {
+      setUp(() {
+        when(() => argResults['confirm']).thenReturn(true);
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+      });
+
+      group('when user confirms', () {
+        setUp(() {
+          when(
+            () => logger.confirm(
+              any(),
+              defaultValue: any(named: 'defaultValue'),
+            ),
+          ).thenReturn(true);
+        });
+
+        test('continues', () async {
+          await runWithOverrides(command.run);
+          verify(
+            () => logger.confirm(
+              'Would you like to continue?',
+              defaultValue: true,
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when user declines', () {
+        setUp(() {
+          when(
+            () => logger.confirm(
+              any(),
+              defaultValue: any(named: 'defaultValue'),
+            ),
+          ).thenReturn(false);
+        });
+
+        test('exits with success and prints Aborting.', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            exitsWithCode(ExitCode.success),
+          );
+          verify(() => logger.info('Aborting.')).called(1);
+        });
+      });
+    });
+
+    group('when --confirm is not passed', () {
+      setUp(() {
+        when(() => argResults['confirm']).thenReturn(false);
+      });
+
+      test('does not prompt for confirmation', () async {
+        await runWithOverrides(command.run);
+        verifyNever(
+          () => logger.confirm(
+            any(),
+            defaultValue: any(named: 'defaultValue'),
+          ),
+        );
       });
     });
 

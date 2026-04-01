@@ -30,6 +30,12 @@ class LinuxReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.linux;
 
   @override
+  String get supplementPlatformSubdir => 'linux';
+
+  @override
+  String get supplementArtifactArch => 'linux_supplement';
+
+  @override
   String get artifactDisplayName => 'Linux app';
 
   @override
@@ -43,6 +49,8 @@ To change the version of this release, change your app's version in your pubspec
       );
       throw ProcessExit(ExitCode.usage.code);
     }
+
+    await assertObfuscationIsSupported();
   }
 
   @override
@@ -65,11 +73,15 @@ To change the version of this release, change your app's version in your pubspec
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     final base64PublicKey = await getEncodedPublicKey();
+    final buildArgs = [...argResults.forwardedArgs];
+    addSplitDebugInfoDefault(buildArgs);
+    addObfuscationMapArgs(buildArgs);
     await artifactBuilder.buildLinuxApp(
       target: target,
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: base64PublicKey,
     );
+    verifyObfuscationMap();
 
     return artifactManager.linuxBundleDirectory;
   }
@@ -92,9 +104,13 @@ Linux release created at ${artifactManager.linuxBundleDirectory.path}.
   Future<void> uploadReleaseArtifacts({
     required Release release,
     required String appId,
-  }) => codePushClientWrapper.createLinuxReleaseArtifacts(
-    appId: appId,
-    releaseId: release.id,
-    bundle: artifactManager.linuxBundleDirectory,
-  );
+  }) async {
+    await codePushClientWrapper.createLinuxReleaseArtifacts(
+      appId: appId,
+      releaseId: release.id,
+      bundle: artifactManager.linuxBundleDirectory,
+    );
+
+    await uploadSupplementArtifact(appId: appId, releaseId: release.id);
+  }
 }

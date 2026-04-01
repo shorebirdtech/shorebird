@@ -104,8 +104,9 @@ class IosFrameworkPatcher extends Patcher {
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
+    final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     final buildResult = await artifactBuilder.buildIosFramework(
-      args: argResults.forwardedArgs,
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
 
@@ -116,7 +117,10 @@ class IosFrameworkPatcher extends Patcher {
       appDillPath: buildResult.kernelFile.path,
       outFilePath: _aotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
-      additionalArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+      additionalArgs: [
+        ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        ...obfuscationGenSnapshotArgs,
+      ],
     );
 
     // Copy the kernel file to the build directory so that it can be used
@@ -136,7 +140,7 @@ class IosFrameworkPatcher extends Patcher {
     required String appId,
     required int releaseId,
     required File releaseArtifact,
-    File? supplementArtifact,
+    Directory? supplementDirectory,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
     late final String releaseXcframeworkPath;
@@ -149,13 +153,8 @@ class IosFrameworkPatcher extends Patcher {
       releaseXcframeworkPath = tempDir.path;
     }
 
-    final releaseSupplementDir = Directory.systemTemp.createTempSync();
-    if (supplementArtifact != null) {
-      await artifactManager.extractZip(
-        zipFile: supplementArtifact,
-        outputDirectory: releaseSupplementDir,
-      );
-    }
+    final releaseSupplementDir =
+        supplementDirectory ?? Directory.systemTemp.createTempSync();
 
     unzipProgress.complete(
       'Extracted release artifact to $releaseXcframeworkPath',
@@ -180,7 +179,10 @@ class IosFrameworkPatcher extends Patcher {
       final result = await apple.runLinker(
         kernelFile: File(_appDillCopyPath),
         releaseArtifact: releaseArtifactFile,
-        splitDebugInfoArgs: IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        splitDebugInfoArgs: [
+          ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+          ...obfuscationGenSnapshotArgs,
+        ],
         aotOutputFile: File(_aotOutputPath),
         vmCodeFile: File(_vmcodeOutputPath),
       );

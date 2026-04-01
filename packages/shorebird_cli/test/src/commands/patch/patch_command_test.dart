@@ -200,6 +200,7 @@ void main() {
       when(
         () => argResults.wasParsed(CommonArguments.signCmd.name),
       ).thenReturn(false);
+      when(() => argResults.rest).thenReturn([]);
 
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
@@ -209,6 +210,12 @@ void main() {
           message: any(named: 'message'),
         ),
       ).thenAnswer((_) async => File(''));
+      when(
+        () => artifactManager.extractZip(
+          zipFile: any(named: 'zipFile'),
+          outputDirectory: any(named: 'outputDirectory'),
+        ),
+      ).thenAnswer((_) async {});
 
       when(() => cache.updateAll()).thenAnswer((_) async => {});
 
@@ -291,7 +298,7 @@ void main() {
           appId: any(named: 'appId'),
           releaseId: any(named: 'releaseId'),
           releaseArtifact: any(named: 'releaseArtifact'),
-          supplementArtifact: any(named: 'supplementArtifact'),
+          supplementDirectory: any(named: 'supplementDirectory'),
         ),
       ).thenAnswer((_) async => patchArtifactBundles);
       when(
@@ -541,7 +548,7 @@ void main() {
                 appId: appId,
                 releaseId: release.id,
                 releaseArtifact: any(named: 'releaseArtifact'),
-                supplementArtifact: any(named: 'supplementArtifact'),
+                supplementDirectory: any(named: 'supplementDirectory'),
               ),
             ).called(1);
           });
@@ -565,12 +572,36 @@ void main() {
                   appId: appId,
                   releaseId: release.id,
                   releaseArtifact: any(named: 'releaseArtifact'),
-                  supplementArtifact: any(named: 'supplementArtifact'),
+                  supplementDirectory: any(named: 'supplementDirectory'),
                 ),
               ).called(1);
             });
           });
         });
+
+        group(
+          'when --obfuscate is passed but release has no obfuscation map',
+          () {
+            setUp(() {
+              when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+              when(() => argResults['obfuscate']).thenReturn(true);
+            });
+
+            test('logs error and exits', () async {
+              await expectLater(
+                () => runWithOverrides(() => command.createPatch(patcher)),
+                exitsWithCode(ExitCode.software),
+              );
+              verify(
+                () => logger.err(
+                  '--obfuscate was passed, but the release was not built with '
+                  'obfuscation. A patch cannot change the obfuscation mode of '
+                  'a release.',
+                ),
+              ).called(1);
+            });
+          },
+        );
       });
     });
 
@@ -813,6 +844,94 @@ void main() {
               ).called(1);
             });
           });
+        });
+      });
+
+      group('when --confirm is passed', () {
+        setUp(() {
+          when(() => argResults['confirm']).thenReturn(true);
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+        });
+
+        group('when user confirms', () {
+          setUp(() {
+            when(
+              () => logger.confirm(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+              ),
+            ).thenReturn(true);
+          });
+
+          test('continues', () async {
+            await expectLater(
+              runWithOverrides(
+                () => command.logPatchSummary(
+                  app: appMetadata,
+                  releaseVersion: releaseVersion,
+                  patcher: patcher,
+                  patchArtifactBundles: patchArtifactBundles,
+                ),
+              ),
+              completes,
+            );
+            verify(
+              () => logger.confirm(
+                'Would you like to continue?',
+                defaultValue: true,
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when user declines', () {
+          setUp(() {
+            when(
+              () => logger.confirm(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+              ),
+            ).thenReturn(false);
+          });
+
+          test('exits with success and prints Aborting.', () async {
+            await expectLater(
+              runWithOverrides(
+                () => command.logPatchSummary(
+                  app: appMetadata,
+                  releaseVersion: releaseVersion,
+                  patcher: patcher,
+                  patchArtifactBundles: patchArtifactBundles,
+                ),
+              ),
+              exitsWithCode(ExitCode.success),
+            );
+            verify(() => logger.info('Aborting.')).called(1);
+          });
+        });
+      });
+
+      group('when --confirm is not passed', () {
+        setUp(() {
+          when(() => argResults['confirm']).thenReturn(false);
+        });
+
+        test('does not prompt for confirmation', () async {
+          await expectLater(
+            runWithOverrides(
+              () => command.logPatchSummary(
+                app: appMetadata,
+                releaseVersion: releaseVersion,
+                patcher: patcher,
+                patchArtifactBundles: patchArtifactBundles,
+              ),
+            ),
+            completes,
+          );
+          verifyNever(
+            () =>
+                logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+          );
         });
       });
     });
@@ -1298,7 +1417,7 @@ void main() {
 
     group('when --no-confirm is specified', () {
       setUp(() {
-        when(() => argResults['no-confirm']).thenReturn(true);
+        when(() => argResults['confirm']).thenReturn(false);
       });
 
       test('does not prompt for confirmation', () async {
