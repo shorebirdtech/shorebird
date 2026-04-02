@@ -112,6 +112,7 @@ To change the version of this release, change your app's version in your pubspec
       target: target,
       args: buildArgs,
       base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
     );
 
     verifyObfuscationMap();
