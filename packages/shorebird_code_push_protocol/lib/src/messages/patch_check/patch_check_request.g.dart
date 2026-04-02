@@ -26,8 +26,7 @@ PatchCheckRequest _$PatchCheckRequestFromJson(
       appId: $checkedConvert('app_id', (v) => v as String),
       channel: $checkedConvert('channel', (v) => v as String),
       clientId: $checkedConvert('client_id', (v) => v as String?),
-      moduleVersion:
-          $checkedConvert('module_version', (v) => v as String?),
+      moduleVersion: $checkedConvert('module_version', (v) => v as String?),
     );
     return val;
   },
