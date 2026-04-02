@@ -263,13 +263,13 @@ void main() {
             when(
               () => shorebirdProcess.run(
                 'git',
-                ['rev-parse', '--short', 'HEAD'],
+                ['rev-parse', 'HEAD'],
                 workingDirectory: any(named: 'workingDirectory'),
               ),
             ).thenAnswer(
               (_) async => const ShorebirdProcessResult(
                 exitCode: 0,
-                stdout: 'abc1234\n',
+                stdout: 'abc1234abc1234abc1234abc1234abc1234abc12\n',
                 stderr: '',
               ),
             );
@@ -345,13 +345,13 @@ void main() {
             when(
               () => shorebirdProcess.run(
                 'git',
-                ['rev-parse', '--short', 'HEAD'],
+                ['rev-parse', 'HEAD'],
                 workingDirectory: any(named: 'workingDirectory'),
               ),
             ).thenAnswer(
               (_) async => const ShorebirdProcessResult(
                 exitCode: 0,
-                stdout: 'abc1234\n',
+                stdout: 'abc1234abc1234abc1234abc1234abc1234abc12\n',
                 stderr: '',
               ),
             );
@@ -360,14 +360,17 @@ void main() {
                 any(),
                 defaultValue: any(named: 'defaultValue'),
               ),
-            ).thenReturn('abc1234');
+            ).thenReturn('abc1234abc1234abc1234abc1234abc1234abc12');
           });
 
           test('prompts for module version with git hash default', () async {
             await runWithOverrides(aarReleaser.assertArgsAreValid);
 
             verify(
-              () => logger.prompt('Module version', defaultValue: 'abc1234'),
+              () => logger.prompt(
+                'Module version',
+                defaultValue: 'abc1234abc1234abc1234abc1234abc1234abc12',
+              ),
             ).called(1);
           });
         });
@@ -850,13 +853,13 @@ void main() {
           when(
             () => shorebirdProcess.run(
               'git',
-              ['rev-parse', '--short', 'HEAD'],
+              ['rev-parse', 'HEAD'],
               workingDirectory: any(named: 'workingDirectory'),
             ),
           ).thenAnswer(
             (_) async => const ShorebirdProcessResult(
               exitCode: 0,
-              stdout: 'abc1234\n',
+              stdout: 'abc1234abc1234abc1234abc1234abc1234abc12\n',
               stderr: '',
             ),
           );
@@ -869,7 +872,7 @@ void main() {
               releaseArtifactRoot: Directory(''),
             ),
           );
-          expect(result, 'abc1234');
+          expect(result, 'abc1234abc1234abc1234abc1234abc1234abc12');
         });
       });
     });

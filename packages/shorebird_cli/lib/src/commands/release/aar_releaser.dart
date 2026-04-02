@@ -84,7 +84,7 @@ class AarReleaser extends Releaser {
   Future<String> _getGitHash() async {
     final result = await process.run(
       'git',
-      ['rev-parse', '--short', 'HEAD'],
+      ['rev-parse', 'HEAD'],
       workingDirectory: projectRoot.path,
     );
     if (result.exitCode != 0) {
