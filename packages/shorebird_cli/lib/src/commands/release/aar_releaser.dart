@@ -83,10 +83,9 @@ class AarReleaser extends Releaser {
       if (flutterVersion != null &&
           flutterVersion < minimumModuleVersionFlutterVersion) {
         logger.err(
-          'Omitting --release-version for AAR releases requires '
-          'Flutter $minimumModuleVersionFlutterVersion or later '
-          '(current: $flutterVersion). '
-          'Either upgrade Flutter or pass --release-version explicitly.',
+          'Versions of Flutter before $minimumModuleVersionFlutterVersion '
+          'require passing --release-version explicitly for AAR releases '
+          '(current: $flutterVersion).',
         );
         throw ProcessExit(ExitCode.unavailable.code);
       }
