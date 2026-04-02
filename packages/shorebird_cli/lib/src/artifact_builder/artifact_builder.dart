@@ -257,8 +257,7 @@ Reason: Exited with code $exitCode.''',
         arguments,
         environment: {
           ...?base64PublicKey?.toPublicKeyEnv(),
-          if (moduleVersion != null)
-            'SHOREBIRD_MODULE_VERSION': moduleVersion,
+          if (moduleVersion != null) 'SHOREBIRD_MODULE_VERSION': moduleVersion,
         },
         // Never run in shell because we always have a fully resolved
         // executable path.

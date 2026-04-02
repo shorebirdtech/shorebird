@@ -35,8 +35,7 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
         'patch_verification',
         (v) => $enumDecodeNullable(_$PatchVerificationEnumMap, v),
       ),
-      moduleVersion:
-          $checkedConvert('module_version', (v) => v as String?),
+      moduleVersion: $checkedConvert('module_version', (v) => v as String?),
     );
     return val;
   },
