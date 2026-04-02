@@ -103,6 +103,7 @@ class AarReleaser extends Releaser {
       final result = await process.run(
         'git',
         ['rev-parse', '--short', 'HEAD'],
+        workingDirectory: projectRoot.path,
       );
       if (result.exitCode != 0) {
         logger.err(
