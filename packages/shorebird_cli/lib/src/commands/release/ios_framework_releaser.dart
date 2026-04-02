@@ -151,7 +151,7 @@ class IosFrameworkReleaser extends Releaser {
     ),
   );
 
-  /// Writes a podspec file that wraps the release xcframeworks, enabling
+  /// Writes a podspec that wraps the release xcframework output, enabling
   /// CocoaPods-based integration as an alternative to manual Xcode embedding.
   void _writePodspec(Directory releaseDir) {
     final podspecPath = p.join(
