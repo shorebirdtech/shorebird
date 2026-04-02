@@ -93,6 +93,7 @@ class IosFrameworkReleaser extends Releaser {
     await artifactBuilder.buildIosFramework(
       args: buildArgs,
       base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
     );
     verifyObfuscationMap();
 
