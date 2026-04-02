@@ -75,7 +75,7 @@ class AarReleaser extends Releaser {
   @override
   Future<void> assertArgsAreValid() async {
     // When --release-version is omitted, we use the new env var flow which
-    // requires a Flutter version that supports SHOREBIRD_RELEASE_VERSION.
+    // requires a Flutter version that supports SHOREBIRD_MODULE_VERSION.
     if (!argResults.wasParsed('release-version')) {
       final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
         shorebirdEnv.flutterRevision,
@@ -136,7 +136,7 @@ class AarReleaser extends Releaser {
       targetPlatforms: architectures,
       args: buildArgs,
       base64PublicKey: base64PublicKey,
-      releaseVersion: _releaseVersion,
+      moduleVersion: _releaseVersion,
     );
 
     verifyObfuscationMap();

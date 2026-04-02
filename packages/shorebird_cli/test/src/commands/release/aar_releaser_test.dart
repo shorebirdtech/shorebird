@@ -221,7 +221,7 @@ void main() {
           when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
         });
 
-        group('when Flutter version supports release_version env var', () {
+        group('when Flutter version supports module_version env var', () {
           setUp(() {
             when(
               () => shorebirdFlutter.resolveFlutterVersion(any()),
@@ -354,7 +354,7 @@ void main() {
             buildNumber: any(named: 'buildNumber'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
-            releaseVersion: any(named: 'releaseVersion'),
+            moduleVersion: any(named: 'moduleVersion'),
           ),
         ).thenAnswer((_) async => File(''));
 
@@ -421,7 +421,7 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                releaseVersion: any(named: 'releaseVersion'),
+                moduleVersion: any(named: 'moduleVersion'),
               ),
             ).thenAnswer((_) async => File(''));
 
@@ -464,7 +464,7 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
-                releaseVersion: any(named: 'releaseVersion'),
+                moduleVersion: any(named: 'moduleVersion'),
               ),
             ).thenAnswer((_) async => File(''));
 
@@ -509,7 +509,7 @@ void main() {
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
-                releaseVersion: any(named: 'releaseVersion'),
+                moduleVersion: any(named: 'moduleVersion'),
               ),
             ).thenAnswer((_) async {
               final mapPath = p.join(
@@ -532,7 +532,7 @@ void main() {
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: captureAny(named: 'args'),
-                releaseVersion: any(named: 'releaseVersion'),
+                moduleVersion: any(named: 'moduleVersion'),
               ),
             ).captured;
 
@@ -565,7 +565,7 @@ void main() {
                   buildNumber: any(named: 'buildNumber'),
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
-                  releaseVersion: any(named: 'releaseVersion'),
+                  moduleVersion: any(named: 'moduleVersion'),
                 ),
               ).thenAnswer((_) async {});
             });

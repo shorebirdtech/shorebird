@@ -84,7 +84,7 @@ class AarPatcher extends Patcher {
       buildNumber: buildNumber,
       args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
-      releaseVersion: releaseVersion,
+      moduleVersion: releaseVersion,
     );
 
     return File(
