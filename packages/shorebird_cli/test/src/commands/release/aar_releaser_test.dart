@@ -122,11 +122,8 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is 3.41.4', () {
-        expect(
-          aarReleaser.minimumFlutterVersion,
-          equals(Version(3, 41, 4)),
-        );
+      test('is null (checked conditionally in assertArgsAreValid)', () {
+        expect(aarReleaser.minimumFlutterVersion, isNull);
       });
     });
 
@@ -221,13 +218,37 @@ void main() {
       group('when release-version was not provided', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(false);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
         });
 
-        test('returns normally (release-version is optional for AAR)', () {
-          expect(
-            () => runWithOverrides(aarReleaser.assertArgsAreValid),
-            returnsNormally,
-          );
+        group('when Flutter version supports release_version env var', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 4));
+          });
+
+          test('returns normally', () async {
+            await expectLater(
+              runWithOverrides(aarReleaser.assertArgsAreValid),
+              completes,
+            );
+          });
+        });
+
+        group('when Flutter version is too old', () {
+          setUp(() {
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 2));
+          });
+
+          test('logs error and exits', () async {
+            await expectLater(
+              () => runWithOverrides(aarReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.unavailable),
+            );
+          });
         });
       });
 

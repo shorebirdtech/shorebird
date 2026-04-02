@@ -44,10 +44,6 @@ class AarReleaser extends Releaser {
       .toSet();
 
   @override
-  Version? get minimumFlutterVersion =>
-      minimumAarReleaseVersionFlutterVersion;
-
-  @override
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
@@ -78,8 +74,23 @@ class AarReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    // --release-version is optional for AAR releases. If omitted, we default
-    // to the current git commit hash (short form).
+    // When --release-version is omitted, we use the new env var flow which
+    // requires a Flutter version that supports SHOREBIRD_RELEASE_VERSION.
+    if (!argResults.wasParsed('release-version')) {
+      final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
+        shorebirdEnv.flutterRevision,
+      );
+      if (flutterVersion != null &&
+          flutterVersion < minimumAarReleaseVersionFlutterVersion) {
+        logger.err(
+          'Omitting --release-version for AAR releases requires '
+          'Flutter $minimumAarReleaseVersionFlutterVersion or later '
+          '(current: $flutterVersion). '
+          'Either upgrade Flutter or pass --release-version explicitly.',
+        );
+        throw ProcessExit(ExitCode.unavailable.code);
+      }
+    }
     await assertObfuscationIsSupported();
   }
 
