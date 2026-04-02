@@ -122,6 +122,31 @@ patch_verification: invalid_value
       );
     });
 
+    test('can be deserialized without release_version', () {
+      const yaml = '''
+app_id: test_app_id
+''';
+      final shorebirdYaml = checkedYamlDecode(
+        yaml,
+        (m) => ShorebirdYaml.fromJson(m!),
+      );
+      expect(shorebirdYaml.appId, 'test_app_id');
+      expect(shorebirdYaml.releaseVersion, isNull);
+    });
+
+    test('can be deserialized with release_version', () {
+      const yaml = '''
+app_id: test_app_id
+release_version: abc1234
+''';
+      final shorebirdYaml = checkedYamlDecode(
+        yaml,
+        (m) => ShorebirdYaml.fromJson(m!),
+      );
+      expect(shorebirdYaml.appId, 'test_app_id');
+      expect(shorebirdYaml.releaseVersion, 'abc1234');
+    });
+
     group('AppIdExtension', () {
       test('getAppId returns base app id when no flavor is provided', () {
         const shorebirdYaml = ShorebirdYaml(appId: 'test_app_id');

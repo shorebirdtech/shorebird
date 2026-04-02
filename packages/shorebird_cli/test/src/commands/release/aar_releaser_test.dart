@@ -222,10 +222,10 @@ void main() {
           when(() => argResults.wasParsed('release-version')).thenReturn(false);
         });
 
-        test('exits with code 64', () async {
-          await expectLater(
+        test('returns normally (release-version is optional for AAR)', () {
+          expect(
             () => runWithOverrides(aarReleaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
+            returnsNormally,
           );
         });
       });
@@ -245,7 +245,6 @@ void main() {
 
       group('when --obfuscate is passed', () {
         setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(true);
           when(() => argResults['obfuscate']).thenReturn(true);
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
           when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
@@ -297,6 +296,8 @@ void main() {
     });
 
     group('buildReleaseArtifacts', () {
+      late File shorebirdYamlFile;
+
       void setUpProjectRootArtifacts() {
         final aarDir = p.join(
           projectRoot.path,
@@ -325,7 +326,16 @@ void main() {
       }
 
       setUp(() {
+        // Create a real shorebird.yaml in the project root for injection.
+        shorebirdYamlFile = File(p.join(projectRoot.path, 'shorebird.yaml'))
+          ..writeAsStringSync('app_id: test-app-id');
+        when(
+          () => shorebirdEnv.getShorebirdYamlFile(cwd: any(named: 'cwd')),
+        ).thenReturn(shorebirdYamlFile);
+
         when(() => argResults['artifact']).thenReturn('apk');
+        when(() => argResults.wasParsed('release-version')).thenReturn(true);
+        when(() => argResults['release-version']).thenReturn('1.0.0');
         when(
           () => artifactBuilder.buildAar(
             buildNumber: any(named: 'buildNumber'),
@@ -678,17 +688,75 @@ void main() {
     });
 
     group('getReleaseVersion', () {
-      const releaseVersion = '1.0.0';
-      setUp(() {
-        when(() => argResults['release-version']).thenReturn(releaseVersion);
+      group('when --release-version is provided', () {
+        const releaseVersion = '1.0.0';
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn(releaseVersion);
+        });
+
+        test('returns value from argResults', () async {
+          final result = await runWithOverrides(
+            () => aarReleaser.getReleaseVersion(
+              releaseArtifactRoot: Directory(''),
+            ),
+          );
+          expect(result, releaseVersion);
+        });
       });
 
-      test('returns value from argResults', () async {
-        final result = await runWithOverrides(
-          () =>
-              aarReleaser.getReleaseVersion(releaseArtifactRoot: Directory('')),
-        );
-        expect(result, releaseVersion);
+      group('when --release-version is not provided', () {
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(false);
+        });
+
+        group('when git rev-parse succeeds', () {
+          setUp(() {
+            when(
+              () => shorebirdProcess.run('git', ['rev-parse', '--short', 'HEAD']),
+            ).thenAnswer(
+              (_) async => const ShorebirdProcessResult(
+                exitCode: 0,
+                stdout: 'abc1234\n',
+                stderr: '',
+              ),
+            );
+          });
+
+          test('returns git short hash', () async {
+            final result = await runWithOverrides(
+              () => aarReleaser.getReleaseVersion(
+                releaseArtifactRoot: Directory(''),
+              ),
+            );
+            expect(result, 'abc1234');
+          });
+        });
+
+        group('when git rev-parse fails', () {
+          setUp(() {
+            when(
+              () => shorebirdProcess.run('git', ['rev-parse', '--short', 'HEAD']),
+            ).thenAnswer(
+              (_) async => const ShorebirdProcessResult(
+                exitCode: 1,
+                stdout: '',
+                stderr: 'not a git repo',
+              ),
+            );
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => aarReleaser.getReleaseVersion(
+                  releaseArtifactRoot: Directory(''),
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+          });
+        });
       });
     });
 

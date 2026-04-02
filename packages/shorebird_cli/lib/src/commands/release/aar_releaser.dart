@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -72,26 +73,83 @@ class AarReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    if (!argResults.wasParsed('release-version')) {
-      logger.err('Missing required argument: --release-version');
-      throw ProcessExit(ExitCode.usage.code);
-    }
-
+    // --release-version is optional for AAR releases. If omitted, we default
+    // to the current git commit hash (short form).
     await assertObfuscationIsSupported();
   }
 
+  /// Returns the release version to use. If --release-version was provided,
+  /// uses that. Otherwise defaults to the current git commit short hash.
+  Future<String> _resolveReleaseVersion() async {
+    if (argResults.wasParsed('release-version')) {
+      return argResults['release-version'] as String;
+    }
+
+    final result = await process.run('git', ['rev-parse', '--short', 'HEAD']);
+    if (result.exitCode != 0) {
+      logger.err(
+        'Failed to determine git revision. '
+        'Provide --release-version explicitly or run from a git repository.',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+    final gitHash = (result.stdout as String).trim();
+    logger.info(
+      'No --release-version provided, using git hash: '
+      '${lightCyan.wrap(gitHash)}',
+    );
+    return gitHash;
+  }
+
+  /// Temporarily injects `release_version` into the project's shorebird.yaml
+  /// so that it gets baked into the AAR's flutter_assets. Returns the original
+  /// file contents for restoration.
+  String _injectReleaseVersion(String releaseVersion) {
+    final yamlFile = shorebirdEnv.getShorebirdYamlFile(
+      cwd: shorebirdEnv.getShorebirdProjectRoot()!,
+    );
+    final original = yamlFile.readAsStringSync();
+    final modified = '$original\nrelease_version: $releaseVersion\n';
+    yamlFile.writeAsStringSync(modified);
+    return original;
+  }
+
+  /// Restores the original shorebird.yaml contents.
+  void _restoreYaml(String original) {
+    final yamlFile = shorebirdEnv.getShorebirdYamlFile(
+      cwd: shorebirdEnv.getShorebirdProjectRoot()!,
+    );
+    yamlFile.writeAsStringSync(original);
+  }
+
+  /// The resolved release version, cached after first resolution.
+  String? _releaseVersion;
+
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
+    // Resolve release version before building so we can bake it into the yaml.
+    _releaseVersion ??= await _resolveReleaseVersion();
+
     final base64PublicKey = await getEncodedPublicKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
     addObfuscationMapArgs(buildArgs);
-    await artifactBuilder.buildAar(
-      buildNumber: buildNumber,
-      targetPlatforms: architectures,
-      args: buildArgs,
-      base64PublicKey: base64PublicKey,
-    );
+
+    // Inject release_version into shorebird.yaml before building so it gets
+    // baked into the AAR's flutter_assets/shorebird.yaml. This allows the
+    // engine to identify the release independently of the host app's version.
+    final originalYaml = _injectReleaseVersion(_releaseVersion!);
+    try {
+      await artifactBuilder.buildAar(
+        buildNumber: buildNumber,
+        targetPlatforms: architectures,
+        args: buildArgs,
+        base64PublicKey: base64PublicKey,
+      );
+    } finally {
+      _restoreYaml(originalYaml);
+    }
+
     verifyObfuscationMap();
 
     // Copy release AAR to a new directory to avoid overwriting with
@@ -111,7 +169,8 @@ class AarReleaser extends Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    return argResults['release-version'] as String;
+    _releaseVersion ??= await _resolveReleaseVersion();
+    return _releaseVersion!;
   }
 
   @override
