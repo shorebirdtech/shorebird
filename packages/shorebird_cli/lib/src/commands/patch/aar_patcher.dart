@@ -76,44 +76,16 @@ class AarPatcher extends Patcher {
     allowNativeChanges: allowNativeDiffs,
   );
 
-  /// Temporarily injects `release_version` into the project's shorebird.yaml
-  /// so that it gets baked into the AAR's flutter_assets. Returns the original
-  /// file contents for restoration.
-  String _injectReleaseVersion(String releaseVersion) {
-    final yamlFile = shorebirdEnv.getShorebirdYamlFile(
-      cwd: shorebirdEnv.getShorebirdProjectRoot()!,
-    );
-    final original = yamlFile.readAsStringSync();
-    final modified = '$original\nrelease_version: $releaseVersion\n';
-    yamlFile.writeAsStringSync(modified);
-    return original;
-  }
-
-  /// Restores the original shorebird.yaml contents.
-  void _restoreYaml(String original) {
-    final yamlFile = shorebirdEnv.getShorebirdYamlFile(
-      cwd: shorebirdEnv.getShorebirdProjectRoot()!,
-    );
-    yamlFile.writeAsStringSync(original);
-  }
-
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
 
-    // Inject release_version into shorebird.yaml before building so the
-    // patched AAR identifies itself with the correct release version.
-    final originalYaml =
-        releaseVersion != null ? _injectReleaseVersion(releaseVersion) : null;
-    try {
-      await artifactBuilder.buildAar(
-        buildNumber: buildNumber,
-        args: buildArgs,
-        base64PublicKey: argResults.encodedPublicKey,
-      );
-    } finally {
-      if (originalYaml != null) _restoreYaml(originalYaml);
-    }
+    await artifactBuilder.buildAar(
+      buildNumber: buildNumber,
+      args: buildArgs,
+      base64PublicKey: argResults.encodedPublicKey,
+      releaseVersion: releaseVersion,
+    );
 
     return File(
       ShorebirdAndroidArtifacts.aarArtifactPath(

@@ -75,6 +75,12 @@ class AarReleaser extends Releaser {
   Future<void> assertArgsAreValid() async {
     // --release-version is optional for AAR releases. If omitted, we default
     // to the current git commit hash (short form).
+    //
+    // TODO(eseidel): Add a minimum Flutter version check here once we know
+    // which Flutter version first supports SHOREBIRD_RELEASE_VERSION. The
+    // env var is silently ignored by older Flutter versions, so the version
+    // won't be baked into the yaml and the updater will fall back to the
+    // host app's version — which defeats the purpose for add-to-app users.
     await assertObfuscationIsSupported();
   }
 
@@ -101,33 +107,13 @@ class AarReleaser extends Releaser {
     return gitHash;
   }
 
-  /// Temporarily injects `release_version` into the project's shorebird.yaml
-  /// so that it gets baked into the AAR's flutter_assets. Returns the original
-  /// file contents for restoration.
-  String _injectReleaseVersion(String releaseVersion) {
-    final yamlFile = shorebirdEnv.getShorebirdYamlFile(
-      cwd: shorebirdEnv.getShorebirdProjectRoot()!,
-    );
-    final original = yamlFile.readAsStringSync();
-    final modified = '$original\nrelease_version: $releaseVersion\n';
-    yamlFile.writeAsStringSync(modified);
-    return original;
-  }
-
-  /// Restores the original shorebird.yaml contents.
-  void _restoreYaml(String original) {
-    final yamlFile = shorebirdEnv.getShorebirdYamlFile(
-      cwd: shorebirdEnv.getShorebirdProjectRoot()!,
-    );
-    yamlFile.writeAsStringSync(original);
-  }
-
   /// The resolved release version, cached after first resolution.
   String? _releaseVersion;
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    // Resolve release version before building so we can bake it into the yaml.
+    // Resolve release version before building so we can pass it to Flutter
+    // via the SHOREBIRD_RELEASE_VERSION environment variable.
     _releaseVersion ??= await _resolveReleaseVersion();
 
     final base64PublicKey = await getEncodedPublicKey();
@@ -135,20 +121,13 @@ class AarReleaser extends Releaser {
     addSplitDebugInfoDefault(buildArgs);
     addObfuscationMapArgs(buildArgs);
 
-    // Inject release_version into shorebird.yaml before building so it gets
-    // baked into the AAR's flutter_assets/shorebird.yaml. This allows the
-    // engine to identify the release independently of the host app's version.
-    final originalYaml = _injectReleaseVersion(_releaseVersion!);
-    try {
-      await artifactBuilder.buildAar(
-        buildNumber: buildNumber,
-        targetPlatforms: architectures,
-        args: buildArgs,
-        base64PublicKey: base64PublicKey,
-      );
-    } finally {
-      _restoreYaml(originalYaml);
-    }
+    await artifactBuilder.buildAar(
+      buildNumber: buildNumber,
+      targetPlatforms: architectures,
+      args: buildArgs,
+      base64PublicKey: base64PublicKey,
+      releaseVersion: _releaseVersion,
+    );
 
     verifyObfuscationMap();
 

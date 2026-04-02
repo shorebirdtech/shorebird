@@ -296,8 +296,6 @@ void main() {
     });
 
     group('buildReleaseArtifacts', () {
-      late File shorebirdYamlFile;
-
       void setUpProjectRootArtifacts() {
         final aarDir = p.join(
           projectRoot.path,
@@ -326,13 +324,6 @@ void main() {
       }
 
       setUp(() {
-        // Create a real shorebird.yaml in the project root for injection.
-        shorebirdYamlFile = File(p.join(projectRoot.path, 'shorebird.yaml'))
-          ..writeAsStringSync('app_id: test-app-id');
-        when(
-          () => shorebirdEnv.getShorebirdYamlFile(cwd: any(named: 'cwd')),
-        ).thenReturn(shorebirdYamlFile);
-
         when(() => argResults['artifact']).thenReturn('apk');
         when(() => argResults.wasParsed('release-version')).thenReturn(true);
         when(() => argResults['release-version']).thenReturn('1.0.0');
@@ -341,6 +332,7 @@ void main() {
             buildNumber: any(named: 'buildNumber'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
+            releaseVersion: any(named: 'releaseVersion'),
           ),
         ).thenAnswer((_) async => File(''));
 
@@ -407,6 +399,7 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                releaseVersion: any(named: 'releaseVersion'),
               ),
             ).thenAnswer((_) async => File(''));
 
@@ -449,6 +442,7 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                releaseVersion: any(named: 'releaseVersion'),
               ),
             ).thenAnswer((_) async => File(''));
 
@@ -493,6 +487,7 @@ void main() {
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
+                releaseVersion: any(named: 'releaseVersion'),
               ),
             ).thenAnswer((_) async {
               final mapPath = p.join(
@@ -515,6 +510,7 @@ void main() {
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: captureAny(named: 'args'),
+                releaseVersion: any(named: 'releaseVersion'),
               ),
             ).captured;
 
@@ -547,6 +543,7 @@ void main() {
                   buildNumber: any(named: 'buildNumber'),
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
+                  releaseVersion: any(named: 'releaseVersion'),
                 ),
               ).thenAnswer((_) async {});
             });

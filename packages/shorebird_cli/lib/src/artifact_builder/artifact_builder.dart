@@ -237,6 +237,7 @@ Reason: Exited with code $exitCode.''',
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
+    String? releaseVersion,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -254,7 +255,11 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: {
+          ...?base64PublicKey?.toPublicKeyEnv(),
+          if (releaseVersion != null)
+            'SHOREBIRD_RELEASE_VERSION': releaseVersion,
+        },
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
