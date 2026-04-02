@@ -72,15 +72,27 @@ class AarReleaser extends Releaser {
     }
   }
 
+  /// Whether this is a module-version release (no explicit --release-version).
+  bool get _isModuleVersionRelease => !argResults.wasParsed('release-version');
+
+  /// The module version baked into the AAR via SHOREBIRD_MODULE_VERSION.
+  /// Null for legacy releases where --release-version is provided.
+  /// Resolved during [assertArgsAreValid].
+  String? _moduleVersion;
+
+  /// The server-side release version. For module-version releases this is
+  /// the git hash; for legacy releases it's the --release-version value.
+  /// Resolved during [assertArgsAreValid].
+  late final String _releaseVersion;
+
   @override
   Future<void> assertArgsAreValid() async {
-    // When --release-version is omitted, we use the new env var flow which
-    // requires a Flutter version that supports SHOREBIRD_MODULE_VERSION.
-    if (!argResults.wasParsed('release-version')) {
+    if (_isModuleVersionRelease) {
+      // Module-version flow: resolve git hash and check Flutter version.
       final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
         shorebirdEnv.flutterRevision,
       );
-      if (flutterVersion != null &&
+      if (flutterVersion == null ||
           flutterVersion < minimumModuleVersionFlutterVersion) {
         logger.err(
           'Versions of Flutter before $minimumModuleVersionFlutterVersion '
@@ -89,42 +101,35 @@ class AarReleaser extends Releaser {
         );
         throw ProcessExit(ExitCode.unavailable.code);
       }
+
+      final result = await process.run(
+        'git',
+        ['rev-parse', '--short', 'HEAD'],
+      );
+      if (result.exitCode != 0) {
+        logger.err(
+          'Failed to determine git revision. '
+          'Provide --release-version explicitly or run from a git repository.',
+        );
+        throw ProcessExit(ExitCode.software.code);
+      }
+      final gitHash = (result.stdout as String).trim();
+      logger.info(
+        'No --release-version provided, using git hash: '
+        '${lightCyan.wrap(gitHash)}',
+      );
+      _moduleVersion = gitHash;
+      _releaseVersion = gitHash;
+    } else {
+      // Legacy flow: use explicit --release-version, no module version.
+      _releaseVersion = argResults['release-version'] as String;
     }
+
     await assertObfuscationIsSupported();
   }
 
-  /// Resolves the module version from the current git commit hash.
-  ///
-  /// The module version is baked into the AAR's shorebird.yaml via the
-  /// SHOREBIRD_MODULE_VERSION env var, allowing the engine to identify
-  /// the release independently of the host app's version.
-  Future<String> _resolveModuleVersion() async {
-    final result = await process.run('git', ['rev-parse', '--short', 'HEAD']);
-    if (result.exitCode != 0) {
-      logger.err(
-        'Failed to determine git revision. '
-        'Provide --release-version explicitly or run from a git repository.',
-      );
-      throw ProcessExit(ExitCode.software.code);
-    }
-    final gitHash = (result.stdout as String).trim();
-    logger.info(
-      'No --release-version provided, using git hash: '
-      '${lightCyan.wrap(gitHash)}',
-    );
-    return gitHash;
-  }
-
-  /// The module version baked into the AAR. Null when --release-version is
-  /// provided (old flow where the host app's version is used at runtime).
-  String? _moduleVersion;
-
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
-    if (!argResults.wasParsed('release-version')) {
-      _moduleVersion ??= await _resolveModuleVersion();
-    }
-
     final base64PublicKey = await getEncodedPublicKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
@@ -157,13 +162,7 @@ class AarReleaser extends Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    // When --release-version is provided, use it as the server-side release
-    // version (old flow). Otherwise use the module version (git hash).
-    if (argResults.wasParsed('release-version')) {
-      return argResults['release-version'] as String;
-    }
-    _moduleVersion ??= await _resolveModuleVersion();
-    return _moduleVersion!;
+    return _releaseVersion;
   }
 
   @override
