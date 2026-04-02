@@ -79,9 +79,8 @@ class AarReleaser extends Releaser {
   /// Null when --release-version is provided (legacy flow).
   String? _moduleVersion;
 
-  /// The version string used to identify this release. Either the explicit
-  /// --release-version value or the git hash when omitted.
-  late final String _releaseVersion;
+  /// The explicit --release-version value. Null in the module-version flow.
+  String? _releaseVersion;
 
   @override
   Future<void> assertArgsAreValid() async {
@@ -117,7 +116,6 @@ class AarReleaser extends Releaser {
         '${lightCyan.wrap(gitHash)}',
       );
       _moduleVersion = gitHash;
-      _releaseVersion = gitHash;
     } else {
       // Legacy flow: use explicit --release-version, no module version.
       _releaseVersion = argResults['release-version'] as String;
@@ -160,7 +158,10 @@ class AarReleaser extends Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    return _releaseVersion;
+    // In the module-version flow, the release on the server is identified
+    // by the module version. In the legacy flow, it's the explicit
+    // --release-version value.
+    return _moduleVersion ?? _releaseVersion!;
   }
 
   @override
