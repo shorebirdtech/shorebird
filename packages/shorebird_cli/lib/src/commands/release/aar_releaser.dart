@@ -9,12 +9,12 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -73,54 +73,111 @@ class AarReleaser extends Releaser {
     }
   }
 
-  /// Whether this is a module-version release (no explicit --release-version).
-  bool get _isModuleVersionRelease => !argResults.wasParsed('release-version');
-
   /// The module version baked into the AAR via SHOREBIRD_MODULE_VERSION.
-  /// Null when --release-version is provided explicitly.
+  /// Null when using --release-version (no module version baked in).
   String? _moduleVersion;
 
   /// The explicit --release-version value. Null in the module-version flow.
   String? _releaseVersion;
 
+  /// Resolves the git commit short hash for the project.
+  Future<String> _getGitHash() async {
+    final result = await process.run(
+      'git',
+      ['rev-parse', '--short', 'HEAD'],
+      workingDirectory: projectRoot.path,
+    );
+    if (result.exitCode != 0) {
+      logger.err('Failed to determine git revision.');
+      throw ProcessExit(ExitCode.software.code);
+    }
+    return (result.stdout as String).trim();
+  }
+
+  /// Checks that the current Flutter version supports module versions.
+  Future<void> _assertFlutterSupportsModuleVersion() async {
+    final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
+      shorebirdEnv.flutterRevision,
+    );
+    if (flutterVersion == null ||
+        flutterVersion < minimumModuleVersionFlutterVersion) {
+      logger.err(
+        'Module versions require '
+        'Flutter $minimumModuleVersionFlutterVersion or later '
+        '(current: $flutterVersion).',
+      );
+      throw ProcessExit(ExitCode.unavailable.code);
+    }
+  }
+
   @override
   Future<void> assertArgsAreValid() async {
-    if (_isModuleVersionRelease) {
-      // Module-version flow: resolve git hash and check Flutter version.
-      final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
-        shorebirdEnv.flutterRevision,
+    final hasReleaseVersion = argResults.wasParsed('release-version');
+    final hasModuleVersion = argResults.wasParsed('module-version');
+
+    if (hasReleaseVersion && hasModuleVersion) {
+      logger.err(
+        '--release-version and --module-version cannot be used together.',
       );
-      if (flutterVersion == null ||
-          flutterVersion < minimumModuleVersionFlutterVersion) {
-        logger.err(
-          'Versions of Flutter before $minimumModuleVersionFlutterVersion '
-          'require passing --release-version explicitly for AAR releases '
-          '(current: $flutterVersion).',
-        );
-        throw ProcessExit(ExitCode.unavailable.code);
+      throw ProcessExit(ExitCode.usage.code);
+    }
+
+    if (hasReleaseVersion) {
+      // Explicit --release-version: no module version baked in.
+      _releaseVersion = argResults['release-version'] as String;
+    } else if (hasModuleVersion) {
+      // Explicit --module-version: resolve "git" or use as-is.
+      await _assertFlutterSupportsModuleVersion();
+
+      final moduleVersionArg = argResults['module-version'] as String;
+      if (moduleVersionArg == 'git') {
+        _moduleVersion = await _getGitHash();
+      } else {
+        _moduleVersion = moduleVersionArg;
       }
 
-      final result = await process.run(
-        'git',
-        ['rev-parse', '--short', 'HEAD'],
-        workingDirectory: projectRoot.path,
-      );
-      if (result.exitCode != 0) {
-        logger.err(
-          'Failed to determine git revision. '
-          'Provide --release-version explicitly or run from a git repository.',
-        );
-        throw ProcessExit(ExitCode.software.code);
-      }
-      final gitHash = (result.stdout as String).trim();
       logger.info(
-        'No --release-version provided, using git hash: '
-        '${lightCyan.wrap(gitHash)}',
+        'This AAR will embed module version '
+        '${lightCyan.wrap(_moduleVersion)}, allowing it to work across '
+        'host apps with different version numbers.',
       );
-      _moduleVersion = gitHash;
+      logger.warn(
+        'Module versions are not enforced to be unique by an app store. '
+        'If you rebuild your module with different native dependencies and '
+        'reuse the same module version, patches may have unexpected behavior '
+        'at runtime. We recommend using the git commit hash as the module '
+        'version (--module-version=git).',
+      );
     } else {
-      // Explicit --release-version flow: no module version baked in.
-      _releaseVersion = argResults['release-version'] as String;
+      // Neither flag: prompt interactively or error in CI.
+      if (!shorebirdEnv.canAcceptUserInput) {
+        logger.err(
+          'No --release-version or --module-version provided. '
+          'In non-interactive mode, one of these is required.\n'
+          'Use --module-version=git to use the git commit hash.',
+        );
+        throw ProcessExit(ExitCode.usage.code);
+      }
+
+      await _assertFlutterSupportsModuleVersion();
+
+      final gitHash = await _getGitHash();
+
+      logger.info('''
+
+This AAR release will embed a module version, allowing it to work
+across host apps with different version numbers.
+
+Module versions are not enforced to be unique by an app store. If you
+rebuild your module with different native dependencies and reuse the
+same module version, patches may have unexpected behavior at runtime.
+We recommend using the git commit hash as the module version.
+''');
+
+      _moduleVersion = logger.prompt(
+        'Module version',
+        defaultValue: gitHash,
+      );
     }
 
     await assertObfuscationIsSupported();
@@ -160,8 +217,8 @@ class AarReleaser extends Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    // When --release-version is omitted, the release is identified by the
-    // module version. Otherwise, it's the explicit --release-version value.
+    // When using module version, the release is identified by the module
+    // version. Otherwise, it's the explicit --release-version value.
     return _moduleVersion ?? _releaseVersion!;
   }
 

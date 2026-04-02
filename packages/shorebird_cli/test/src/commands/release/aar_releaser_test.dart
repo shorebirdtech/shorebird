@@ -215,96 +215,24 @@ void main() {
     });
 
     group('assertArgsAreValid', () {
-      group('when release-version was not provided', () {
-        setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(false);
-          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
-        });
-
-        group('when Flutter version supports module_version env var', () {
+      group(
+        'when both --release-version and --module-version are provided',
+        () {
           setUp(() {
             when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 41, 4));
-            when(
-              () => shorebirdProcess.run(
-                'git',
-                ['rev-parse', '--short', 'HEAD'],
-              ),
-            ).thenAnswer(
-              (_) async => const ShorebirdProcessResult(
-                exitCode: 0,
-                stdout: 'abc1234\n',
-                stderr: '',
-              ),
-            );
+              () => argResults.wasParsed('release-version'),
+            ).thenReturn(true);
+            when(() => argResults.wasParsed('module-version')).thenReturn(true);
           });
 
-          test('resolves module version and completes', () async {
-            await expectLater(
-              runWithOverrides(aarReleaser.assertArgsAreValid),
-              completes,
-            );
-          });
-        });
-
-        group('when Flutter version is null', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => null);
-          });
-
-          test('logs error and exits', () async {
+          test('exits with usage error', () async {
             await expectLater(
               () => runWithOverrides(aarReleaser.assertArgsAreValid),
-              exitsWithCode(ExitCode.unavailable),
+              exitsWithCode(ExitCode.usage),
             );
           });
-        });
-
-        group('when Flutter version is too old', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 41, 2));
-          });
-
-          test('logs error and exits', () async {
-            await expectLater(
-              () => runWithOverrides(aarReleaser.assertArgsAreValid),
-              exitsWithCode(ExitCode.unavailable),
-            );
-          });
-        });
-
-        group('when git rev-parse fails', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 41, 4));
-            when(
-              () => shorebirdProcess.run(
-                'git',
-                ['rev-parse', '--short', 'HEAD'],
-              ),
-            ).thenAnswer(
-              (_) async => const ShorebirdProcessResult(
-                exitCode: 1,
-                stdout: '',
-                stderr: 'not a git repo',
-              ),
-            );
-          });
-
-          test('logs error and exits', () async {
-            await expectLater(
-              () => runWithOverrides(aarReleaser.assertArgsAreValid),
-              exitsWithCode(ExitCode.software),
-            );
-          });
-        });
-      });
+        },
+      );
 
       group('when --release-version is provided', () {
         setUp(() {
@@ -317,6 +245,131 @@ void main() {
             () => runWithOverrides(aarReleaser.assertArgsAreValid),
             returnsNormally,
           );
+        });
+      });
+
+      group('when --module-version is provided', () {
+        setUp(() {
+          when(() => argResults.wasParsed('module-version')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        });
+
+        group('with value "git"', () {
+          setUp(() {
+            when(() => argResults['module-version']).thenReturn('git');
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 4));
+            when(
+              () => shorebirdProcess.run(
+                'git',
+                ['rev-parse', '--short', 'HEAD'],
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer(
+              (_) async => const ShorebirdProcessResult(
+                exitCode: 0,
+                stdout: 'abc1234\n',
+                stderr: '',
+              ),
+            );
+          });
+
+          test('resolves git hash as module version', () async {
+            await expectLater(
+              runWithOverrides(aarReleaser.assertArgsAreValid),
+              completes,
+            );
+          });
+        });
+
+        group('with explicit value', () {
+          setUp(() {
+            when(() => argResults['module-version']).thenReturn('v2.0.0');
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 4));
+          });
+
+          test('uses provided value', () async {
+            await expectLater(
+              runWithOverrides(aarReleaser.assertArgsAreValid),
+              completes,
+            );
+          });
+        });
+
+        group('when Flutter version is too old', () {
+          setUp(() {
+            when(() => argResults['module-version']).thenReturn('git');
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 2));
+          });
+
+          test('exits with unavailable', () async {
+            await expectLater(
+              () => runWithOverrides(aarReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.unavailable),
+            );
+          });
+        });
+      });
+
+      group('when neither flag is provided', () {
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(false);
+          when(() => argResults.wasParsed('module-version')).thenReturn(false);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        });
+
+        group('in non-interactive mode', () {
+          setUp(() {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+          });
+
+          test('exits with usage error', () async {
+            await expectLater(
+              () => runWithOverrides(aarReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+          });
+        });
+
+        group('in interactive mode', () {
+          setUp(() {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 4));
+            when(
+              () => shorebirdProcess.run(
+                'git',
+                ['rev-parse', '--short', 'HEAD'],
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer(
+              (_) async => const ShorebirdProcessResult(
+                exitCode: 0,
+                stdout: 'abc1234\n',
+                stderr: '',
+              ),
+            );
+            when(
+              () => logger.prompt(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+              ),
+            ).thenReturn('abc1234');
+          });
+
+          test('prompts for module version with git hash default', () async {
+            await runWithOverrides(aarReleaser.assertArgsAreValid);
+
+            verify(
+              () => logger.prompt('Module version', defaultValue: 'abc1234'),
+            ).called(1);
+          });
         });
       });
 
@@ -682,16 +735,17 @@ void main() {
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
 
           // Create the obfuscation map at the expected build output location.
-          final mapFile = File(
-            p.join(
-              projectRoot.path,
-              'build',
-              'shorebird',
-              'obfuscation_map.json',
-            ),
-          )
-            ..createSync(recursive: true)
-            ..writeAsStringSync('{"key": "value"}');
+          final mapFile =
+              File(
+                  p.join(
+                    projectRoot.path,
+                    'build',
+                    'shorebird',
+                    'obfuscation_map.json',
+                  ),
+                )
+                ..createSync(recursive: true)
+                ..writeAsStringSync('{"key": "value"}');
         });
 
         test('copies map into supplement directory and returns it', () {
@@ -775,7 +829,6 @@ void main() {
         });
 
         test('returns the explicit release version', () async {
-          // assertArgsAreValid must be called first to resolve versions.
           await runWithOverrides(aarReleaser.assertArgsAreValid);
           final result = await runWithOverrides(
             () => aarReleaser.getReleaseVersion(
@@ -786,9 +839,10 @@ void main() {
         });
       });
 
-      group('when --release-version is not provided', () {
+      group('when --module-version=git is provided', () {
         setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(false);
+          when(() => argResults.wasParsed('module-version')).thenReturn(true);
+          when(() => argResults['module-version']).thenReturn('git');
           when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
@@ -797,6 +851,7 @@ void main() {
             () => shorebirdProcess.run(
               'git',
               ['rev-parse', '--short', 'HEAD'],
+              workingDirectory: any(named: 'workingDirectory'),
             ),
           ).thenAnswer(
             (_) async => const ShorebirdProcessResult(
@@ -807,7 +862,7 @@ void main() {
           );
         });
 
-        test('returns git short hash', () async {
+        test('returns git hash as release version', () async {
           await runWithOverrides(aarReleaser.assertArgsAreValid);
           final result = await runWithOverrides(
             () => aarReleaser.getReleaseVersion(
