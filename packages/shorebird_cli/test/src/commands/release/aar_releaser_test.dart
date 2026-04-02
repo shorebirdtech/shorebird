@@ -122,10 +122,11 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is null', () {
-        // Shorebird has always had aar support, so we don't need to
-        // specify a minimum Flutter version.
-        expect(aarReleaser.minimumFlutterVersion, isNull);
+      test('is 3.41.4', () {
+        expect(
+          aarReleaser.minimumFlutterVersion,
+          equals(Version(3, 41, 4)),
+        );
       });
     });
 

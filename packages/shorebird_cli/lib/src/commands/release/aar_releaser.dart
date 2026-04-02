@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
@@ -43,6 +44,10 @@ class AarReleaser extends Releaser {
       .toSet();
 
   @override
+  Version? get minimumFlutterVersion =>
+      minimumAarReleaseVersionFlutterVersion;
+
+  @override
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
@@ -75,12 +80,6 @@ class AarReleaser extends Releaser {
   Future<void> assertArgsAreValid() async {
     // --release-version is optional for AAR releases. If omitted, we default
     // to the current git commit hash (short form).
-    //
-    // TODO(eseidel): Add a minimum Flutter version check here once we know
-    // which Flutter version first supports SHOREBIRD_RELEASE_VERSION. The
-    // env var is silently ignored by older Flutter versions, so the version
-    // won't be baked into the yaml and the updater will fall back to the
-    // host app's version — which defeats the purpose for add-to-app users.
     await assertObfuscationIsSupported();
   }
 
