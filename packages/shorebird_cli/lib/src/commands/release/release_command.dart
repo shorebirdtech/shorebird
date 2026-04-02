@@ -143,7 +143,7 @@ Cannot be used with --module-version.''',
 The module version to embed in the artifact. This version identifies the module
 independently of the host app's version, enabling add-to-app use cases.
 Use "git" to automatically use the current git commit hash.
-Cannot be used with --release-version.''',
+Cannot be used with --release-version. (aar and ios-framework only)''',
       )
       ..addMultiOption(
         'target-platform',
