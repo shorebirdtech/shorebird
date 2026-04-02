@@ -164,7 +164,7 @@ Pod::Spec.new do |s|
   s.version      = '0.0.1'
   s.summary      = 'Shorebird Flutter framework for add-to-app integration.'
   s.homepage     = 'https://shorebird.dev'
-  s.license      = { :type => 'Proprietary' }
+  s.license      = { :type => 'BSD-3-Clause' }
   s.author       = 'Shorebird'
   s.source       = { :path => '.' }
   s.platform     = :ios, '12.0'
