@@ -76,13 +76,11 @@ class AarReleaser extends Releaser {
   bool get _isModuleVersionRelease => !argResults.wasParsed('release-version');
 
   /// The module version baked into the AAR via SHOREBIRD_MODULE_VERSION.
-  /// Null for legacy releases where --release-version is provided.
-  /// Resolved during [assertArgsAreValid].
+  /// Null when --release-version is provided (legacy flow).
   String? _moduleVersion;
 
-  /// The server-side release version. For module-version releases this is
-  /// the git hash; for legacy releases it's the --release-version value.
-  /// Resolved during [assertArgsAreValid].
+  /// The version string used to identify this release. Either the explicit
+  /// --release-version value or the git hash when omitted.
   late final String _releaseVersion;
 
   @override
