@@ -140,7 +140,7 @@ For AAR, cannot be used with --module-version.''',
       ..addOption(
         'module-version',
         help: '''
-The module version to embed in the AAR. This version identifies the module
+The module version to embed in the artifact. This version identifies the module
 independently of the host app's version, enabling add-to-app use cases.
 Use "git" to automatically use the current git commit hash.
 Cannot be used with --release-version. (aar and ios-framework only)''',
