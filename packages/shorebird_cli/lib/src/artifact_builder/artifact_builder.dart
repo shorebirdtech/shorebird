@@ -60,15 +60,27 @@ final artifactBuilderRef = create(ArtifactBuilder.new);
 /// The [ArtifactBuilder] instance available in the current zone.
 ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 
-extension on String {
-  /// Converts this base64-encoded public key into the `Map<String, String>`:
-  ///   {'SHOREBIRD_PUBLIC_KEY': this}
-  ///
-  /// SHOREBIRD_PUBLIC_KEY is the name expected by the Shorebird's Flutter tool
-  ///
-  /// This allow us to just call var?.toPublicKeyEnv() instead of doing
-  /// a ternary operation to check if the value is null.
-  Map<String, String> toPublicKeyEnv() => {'SHOREBIRD_PUBLIC_KEY': this};
+/// Builds the environment map for Flutter build subprocesses.
+///
+/// Merges the public key (if present) with any additional environment
+/// variables (e.g. DD table configuration).
+///
+/// Environment variables are used (rather than command-line flags) for
+/// backwards compatibility: older Flutter builds that don't recognize a
+/// variable will silently ignore it, whereas an unknown flag would cause
+/// a build failure.
+Map<String, String>? buildEnvironment({
+  String? base64PublicKey,
+  int? ddMaxBytes,
+}) {
+  final env = <String, String>{};
+  if (base64PublicKey != null) {
+    env['SHOREBIRD_PUBLIC_KEY'] = base64PublicKey;
+  }
+  if (ddMaxBytes != null) {
+    env['SHOREBIRD_DD_MAX_BYTES'] = ddMaxBytes.toString();
+  }
+  return env.isEmpty ? null : env;
 }
 
 /// @{template artifact_builder}
@@ -150,6 +162,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -168,7 +181,10 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -217,6 +233,7 @@ Reason: Exited with code $exitCode.''',
     bool splitPerAbi = false,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -240,7 +257,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -286,6 +306,7 @@ Reason: Exited with code $exitCode.''',
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -304,7 +325,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -331,6 +355,7 @@ Reason: Exited with code $exitCode.''',
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -346,7 +371,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -376,6 +404,7 @@ Reason: Exited with code $exitCode.''',
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt. This
@@ -401,7 +430,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -442,6 +474,7 @@ Reason: Exited with code $exitCode.''',
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt. This
@@ -469,7 +502,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -506,6 +542,7 @@ Reason: Exited with code $exitCode.''',
   Future<AppleBuildResult> buildIosFramework({
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt. This
@@ -530,7 +567,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -790,6 +830,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -805,7 +846,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
