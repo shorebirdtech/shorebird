@@ -122,7 +122,7 @@ patch_verification: invalid_value
       );
     });
 
-    test('can be deserialized without release_version', () {
+    test('can be deserialized without module_version', () {
       const yaml = '''
 app_id: test_app_id
 ''';
@@ -131,20 +131,20 @@ app_id: test_app_id
         (m) => ShorebirdYaml.fromJson(m!),
       );
       expect(shorebirdYaml.appId, 'test_app_id');
-      expect(shorebirdYaml.releaseVersion, isNull);
+      expect(shorebirdYaml.moduleVersion, isNull);
     });
 
-    test('can be deserialized with release_version', () {
+    test('can be deserialized with module_version', () {
       const yaml = '''
 app_id: test_app_id
-release_version: abc1234
+module_version: abc1234
 ''';
       final shorebirdYaml = checkedYamlDecode(
         yaml,
         (m) => ShorebirdYaml.fromJson(m!),
       );
       expect(shorebirdYaml.appId, 'test_app_id');
-      expect(shorebirdYaml.releaseVersion, 'abc1234');
+      expect(shorebirdYaml.moduleVersion, 'abc1234');
     });
 
     group('AppIdExtension', () {

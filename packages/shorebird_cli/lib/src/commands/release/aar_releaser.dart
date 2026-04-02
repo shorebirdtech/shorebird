@@ -81,10 +81,10 @@ class AarReleaser extends Releaser {
         shorebirdEnv.flutterRevision,
       );
       if (flutterVersion != null &&
-          flutterVersion < minimumAarReleaseVersionFlutterVersion) {
+          flutterVersion < minimumModuleVersionFlutterVersion) {
         logger.err(
           'Omitting --release-version for AAR releases requires '
-          'Flutter $minimumAarReleaseVersionFlutterVersion or later '
+          'Flutter $minimumModuleVersionFlutterVersion or later '
           '(current: $flutterVersion). '
           'Either upgrade Flutter or pass --release-version explicitly.',
         );
