@@ -137,19 +137,6 @@ class AarReleaser extends Releaser {
       } else {
         _moduleVersion = moduleVersionArg;
       }
-
-      logger.info(
-        'This AAR will embed module version '
-        '${lightCyan.wrap(_moduleVersion)}, allowing it to work across '
-        'host apps with different version numbers.',
-      );
-      logger.warn(
-        'Module versions are not enforced to be unique by an app store. '
-        'If you rebuild your module with different native dependencies and '
-        'reuse the same module version, patches may have unexpected behavior '
-        'at runtime. We recommend using the git commit hash as the module '
-        'version (--module-version=git).',
-      );
     } else {
       // Neither flag: prompt interactively or error in CI.
       if (!shorebirdEnv.canAcceptUserInput) {
@@ -165,20 +152,22 @@ class AarReleaser extends Releaser {
 
       final gitHash = await _getGitHash();
 
-      logger.info('''
-
-This AAR release will embed a module version, allowing it to work
-across host apps with different version numbers.
-
-Module versions are not enforced to be unique by an app store. If you
-rebuild your module with different native dependencies and reuse the
-same module version, patches may have unexpected behavior at runtime.
-We recommend using the git commit hash as the module version.
-''');
-
       _moduleVersion = logger.prompt(
         'Module version',
         defaultValue: gitHash,
+      );
+    }
+
+    if (_moduleVersion != null) {
+      logger.info(
+        'This AAR will embed module version '
+        '${lightCyan.wrap(_moduleVersion)}, allowing it to work across '
+        'host apps with different version numbers.\n'
+        'Module versions are not enforced to be unique by an app store. '
+        'If you rebuild your module with different native dependencies and '
+        'reuse the same module version, patches may have unexpected '
+        'behavior at runtime. We recommend using the git commit hash as '
+        'the module version (--module-version=git).',
       );
     }
 
