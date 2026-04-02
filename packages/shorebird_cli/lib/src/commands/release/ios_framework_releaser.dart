@@ -50,11 +50,7 @@ class IosFrameworkReleaser extends Releaser {
 
   @override
   Future<void> assertArgsAreValid() async {
-    if (!argResults.wasParsed('release-version')) {
-      logger.err('Missing required argument: --release-version');
-      throw ProcessExit(ExitCode.usage.code);
-    }
-
+    await resolveModuleReleaseVersionArgs();
     await assertObfuscationIsSupported();
   }
 
@@ -93,6 +89,7 @@ class IosFrameworkReleaser extends Releaser {
     await artifactBuilder.buildIosFramework(
       args: buildArgs,
       base64PublicKey: base64PublicKey,
+      moduleVersion: moduleVersion,
     );
     verifyObfuscationMap();
 
@@ -122,7 +119,7 @@ class IosFrameworkReleaser extends Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    return argResults['release-version'] as String;
+    return moduleReleaseVersion;
   }
 
   @override

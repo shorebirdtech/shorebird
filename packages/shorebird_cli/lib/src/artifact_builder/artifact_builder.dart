@@ -453,6 +453,7 @@ Reason: Exited with code $exitCode.''',
   Future<AppleBuildResult> buildIosFramework({
     List<String> args = const [],
     String? base64PublicKey,
+    String? moduleVersion,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt. This
@@ -476,7 +477,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: {
+          ...?base64PublicKey?.toPublicKeyEnv(),
+          if (moduleVersion != null) 'SHOREBIRD_MODULE_VERSION': moduleVersion,
+        },
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
