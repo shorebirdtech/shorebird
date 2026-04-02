@@ -19,6 +19,7 @@ class PatchCheckRequest extends Equatable {
     required this.appId,
     required this.channel,
     this.clientId,
+    this.moduleVersion,
   });
 
   /// Converts a `Map<String, dynamic>` to a [PatchCheckRequest]
@@ -28,7 +29,7 @@ class PatchCheckRequest extends Equatable {
   /// Converts a [PatchCheckRequest] to a `Map<String, dynamic>`
   Map<String, dynamic> toJson() => _$PatchCheckRequestToJson(this);
 
-  /// The release version of the app.
+  /// The release version of the host app (e.g. "1.0.0+1").
   final String releaseVersion;
 
   /// The highest patch number that the client has downloaded.
@@ -59,6 +60,13 @@ class PatchCheckRequest extends Equatable {
   /// 2025. We should eventually make it non-nullable.
   final String? clientId;
 
+  /// The module version for add-to-app releases (AAR/iOS framework).
+  ///
+  /// When present, the server uses this instead of [releaseVersion] for patch
+  /// lookup. The [releaseVersion] still contains the host app's version for
+  /// analytics purposes.
+  final String? moduleVersion;
+
   @override
   List<Object?> get props => [
     releaseVersion,
@@ -69,5 +77,6 @@ class PatchCheckRequest extends Equatable {
     appId,
     channel,
     clientId,
+    moduleVersion,
   ];
 }
