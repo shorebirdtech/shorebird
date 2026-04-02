@@ -76,7 +76,7 @@ class AarReleaser extends Releaser {
   bool get _isModuleVersionRelease => !argResults.wasParsed('release-version');
 
   /// The module version baked into the AAR via SHOREBIRD_MODULE_VERSION.
-  /// Null when --release-version is provided (legacy flow).
+  /// Null when --release-version is provided explicitly.
   String? _moduleVersion;
 
   /// The explicit --release-version value. Null in the module-version flow.
@@ -117,7 +117,7 @@ class AarReleaser extends Releaser {
       );
       _moduleVersion = gitHash;
     } else {
-      // Legacy flow: use explicit --release-version, no module version.
+      // Explicit --release-version flow: no module version baked in.
       _releaseVersion = argResults['release-version'] as String;
     }
 
@@ -158,9 +158,8 @@ class AarReleaser extends Releaser {
   Future<String> getReleaseVersion({
     required FileSystemEntity releaseArtifactRoot,
   }) async {
-    // In the module-version flow, the release on the server is identified
-    // by the module version. In the legacy flow, it's the explicit
-    // --release-version value.
+    // When --release-version is omitted, the release is identified by the
+    // module version. Otherwise, it's the explicit --release-version value.
     return _moduleVersion ?? _releaseVersion!;
   }
 
