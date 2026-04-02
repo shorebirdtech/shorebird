@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/aar_releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
+import 'package:shorebird_cli/src/executables/git.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -40,6 +41,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late CodeSigner codeSigner;
     late Directory projectRoot;
+    late Git gitClient;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late Progress progress;
@@ -59,6 +61,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           codeSignerRef.overrideWith(() => codeSigner),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          gitRef.overrideWith(() => gitClient),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
@@ -84,6 +87,7 @@ void main() {
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      gitClient = MockGit();
       operatingSystemInterface = MockOperatingSystemInterface();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -261,17 +265,12 @@ void main() {
               () => shorebirdFlutter.resolveFlutterVersion(any()),
             ).thenAnswer((_) async => Version(3, 41, 4));
             when(
-              () => shorebirdProcess.run(
-                'git',
-                ['rev-parse', 'HEAD'],
-                workingDirectory: any(named: 'workingDirectory'),
+              () => gitClient.revParse(
+                revision: any(named: 'revision'),
+                directory: any(named: 'directory'),
               ),
             ).thenAnswer(
-              (_) async => const ShorebirdProcessResult(
-                exitCode: 0,
-                stdout: 'abc1234abc1234abc1234abc1234abc1234abc12\n',
-                stderr: '',
-              ),
+              (_) async => 'abc1234abc1234abc1234abc1234abc1234abc12',
             );
           });
 
@@ -343,17 +342,12 @@ void main() {
               () => shorebirdFlutter.resolveFlutterVersion(any()),
             ).thenAnswer((_) async => Version(3, 41, 4));
             when(
-              () => shorebirdProcess.run(
-                'git',
-                ['rev-parse', 'HEAD'],
-                workingDirectory: any(named: 'workingDirectory'),
+              () => gitClient.revParse(
+                revision: any(named: 'revision'),
+                directory: any(named: 'directory'),
               ),
             ).thenAnswer(
-              (_) async => const ShorebirdProcessResult(
-                exitCode: 0,
-                stdout: 'abc1234abc1234abc1234abc1234abc1234abc12\n',
-                stderr: '',
-              ),
+              (_) async => 'abc1234abc1234abc1234abc1234abc1234abc12',
             );
             when(
               () => logger.prompt(

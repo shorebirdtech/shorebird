@@ -13,9 +13,9 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
+import 'package:shorebird_cli/src/executables/git.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -80,18 +80,20 @@ class AarReleaser extends Releaser {
   /// The explicit --release-version value. Null in the module-version flow.
   String? _releaseVersion;
 
-  /// Resolves the git commit short hash for the project.
+  /// Resolves the full git commit hash for the project.
   Future<String> _getGitHash() async {
-    final result = await process.run(
-      'git',
-      ['rev-parse', 'HEAD'],
-      workingDirectory: projectRoot.path,
-    );
-    if (result.exitCode != 0) {
-      logger.err('Failed to determine git revision.');
+    try {
+      return await git.revParse(
+        revision: 'HEAD',
+        directory: projectRoot.path,
+      );
+    } on ProcessException {
+      logger.err(
+        'Failed to determine git revision. '
+        'Provide --module-version explicitly or run from a git repository.',
+      );
       throw ProcessExit(ExitCode.software.code);
     }
-    return (result.stdout as String).trim();
   }
 
   /// Checks that the current Flutter version supports module versions.
