@@ -64,8 +64,9 @@ extension on String {
   Map<String, String> toPublicKeyEnv() => {'SHOREBIRD_PUBLIC_KEY': this};
 
   /// Returns a map with the SHOREBIRD_MODULE_VERSION environment variable.
-  Map<String, String> toModuleVersionEnv() =>
-      {'SHOREBIRD_MODULE_VERSION': this};
+  Map<String, String> toModuleVersionEnv() => {
+    'SHOREBIRD_MODULE_VERSION': this,
+  };
 }
 
 /// @{template artifact_builder}
