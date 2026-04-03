@@ -413,6 +413,7 @@ void main() {
       group('when --obfuscate is not passed', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0');
         });
 
         test('returns normally', () async {
@@ -845,17 +846,12 @@ void main() {
             () => shorebirdFlutter.resolveFlutterVersion(any()),
           ).thenAnswer((_) async => Version(3, 41, 4));
           when(
-            () => shorebirdProcess.run(
-              'git',
-              ['rev-parse', 'HEAD'],
-              workingDirectory: any(named: 'workingDirectory'),
+            () => gitClient.revParse(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
             ),
           ).thenAnswer(
-            (_) async => const ShorebirdProcessResult(
-              exitCode: 0,
-              stdout: 'abc1234abc1234abc1234abc1234abc1234abc12\n',
-              stderr: '',
-            ),
+            (_) async => 'abc1234abc1234abc1234abc1234abc1234abc12',
           );
         });
 

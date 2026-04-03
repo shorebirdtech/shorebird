@@ -62,6 +62,10 @@ extension on String {
   /// This allow us to just call var?.toPublicKeyEnv() instead of doing
   /// a ternary operation to check if the value is null.
   Map<String, String> toPublicKeyEnv() => {'SHOREBIRD_PUBLIC_KEY': this};
+
+  /// Returns a map with the SHOREBIRD_MODULE_VERSION environment variable.
+  Map<String, String> toModuleVersionEnv() =>
+      {'SHOREBIRD_MODULE_VERSION': this};
 }
 
 /// @{template artifact_builder}
@@ -257,7 +261,7 @@ Reason: Exited with code $exitCode.''',
         arguments,
         environment: {
           ...?base64PublicKey?.toPublicKeyEnv(),
-          if (moduleVersion != null) 'SHOREBIRD_MODULE_VERSION': moduleVersion,
+          ...?moduleVersion?.toModuleVersionEnv(),
         },
         // Never run in shell because we always have a fully resolved
         // executable path.
@@ -479,7 +483,7 @@ Reason: Exited with code $exitCode.''',
         arguments,
         environment: {
           ...?base64PublicKey?.toPublicKeyEnv(),
-          if (moduleVersion != null) 'SHOREBIRD_MODULE_VERSION': moduleVersion,
+          ...?moduleVersion?.toModuleVersionEnv(),
         },
         // Never run in shell because we always have a fully resolved
         // executable path.
