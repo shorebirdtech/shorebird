@@ -103,8 +103,11 @@ class Plist {
 /// ships to App Store Connect will not match the build number Shorebird
 /// recorded for the release. Patches will then fail to match the release.
 ///
-/// Throws [PlistParseException] if the file cannot be parsed.
+/// Throws [PlistParseException] if the file cannot be parsed. Returns
+/// without doing anything if the file does not exist; flutter will surface
+/// a clearer error when it fails to read it.
 void assertValidExportOptionsPlist(File file) {
+  if (!file.existsSync()) return;
   final plist = Plist(file: file);
   final value = plist.properties[Plist.manageAppVersionAndBuildNumberKey];
   if (value == true) {

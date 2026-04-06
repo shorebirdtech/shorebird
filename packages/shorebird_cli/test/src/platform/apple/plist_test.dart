@@ -131,6 +131,11 @@ $body
 ''');
     }
 
+    test('does not throw when file does not exist', () {
+      final file = File(p.join(tempDir.path, 'missing.plist'));
+      expect(() => assertValidExportOptionsPlist(file), returnsNormally);
+    });
+
     test('does not throw when key is absent', () {
       final file = writePlist('<key>method</key><string>app-store</string>');
       expect(() => assertValidExportOptionsPlist(file), returnsNormally);
