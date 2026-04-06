@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -101,6 +102,21 @@ class IosPatcher extends Patcher {
       );
     } on PreconditionFailedException catch (error) {
       throw ProcessExit(error.exitCode.code);
+    }
+  }
+
+  @override
+  Future<void> assertArgsAreValid() async {
+    final exportOptionsPlistFile = argResults.file(
+      CommonArguments.exportOptionsPlistArg.name,
+    );
+    if (exportOptionsPlistFile != null) {
+      try {
+        assertValidExportOptionsPlist(exportOptionsPlistFile);
+      } on InvalidExportOptionsPlistException catch (error) {
+        logger.err(error.message);
+        throw ProcessExit(ExitCode.usage.code);
+      }
     }
   }
 

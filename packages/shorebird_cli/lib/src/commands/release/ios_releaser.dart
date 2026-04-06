@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -60,6 +61,18 @@ To change the version of this release, change your app's version in your pubspec
     }
 
     await assertObfuscationIsSupported();
+
+    final exportOptionsPlistFile = argResults.file(
+      CommonArguments.exportOptionsPlistArg.name,
+    );
+    if (exportOptionsPlistFile != null) {
+      try {
+        assertValidExportOptionsPlist(exportOptionsPlistFile);
+      } on InvalidExportOptionsPlistException catch (error) {
+        logger.err(error.message);
+        throw ProcessExit(ExitCode.usage.code);
+      }
+    }
   }
 
   @override
@@ -88,6 +101,12 @@ To change the version of this release, change your app's version in your pubspec
         )
         ..warn(
           '''shorebird preview will not work for releases created with "--no-codesign". However, you can still preview your app by signing the generated .xcarchive in Xcode.''',
+        )
+        ..warn(
+          '''
+When you distribute the .xcarchive in Xcode, you MUST uncheck "Manage Version and Build Number" in the Distribute App dialog.
+
+If left checked, Xcode will rewrite the build number in the uploaded IPA, so the version that ships to App Store Connect will not match the version Shorebird recorded for this release. Patches will then fail to apply.''',
         );
     }
 
@@ -216,7 +235,8 @@ Your next step is to submit the archive at ${lightCyan.wrap(relativeArchivePath)
 You can open the archive in Xcode by running:
     ${lightCyan.wrap('open $relativeArchivePath')}
 
-${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
+${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number" in the Distribute App dialog.')}
+If left checked, Xcode will rewrite the build number in the uploaded IPA, so the version that ships will not match the one Shorebird recorded for this release, and patches will fail to apply.
 ''';
     }
   }
