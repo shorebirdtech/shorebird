@@ -285,10 +285,10 @@ packages:
     dependency: transitive
     description:
       name: googleapis_auth
-      sha256: "2e8edbfff4fc0f0c99c9ff72353d72c355a96b8686de4b26f63c86e22696d7b9"
+      sha256: "0e24e0f892974b30f513efa1c26280f9acea8bca84a88aadf00e4046beb0e931"
       url: "https://pub.dev"
     source: hosted
-    version: "2.2.0"
+    version: "2.2.1"
   graphs:
     dependency: transitive
     description:
