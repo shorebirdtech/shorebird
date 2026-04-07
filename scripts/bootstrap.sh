@@ -6,5 +6,5 @@
 # export PATH=$HOME/.pub-cache/bin:$PATH
 
 # Fetch dart dependencies
-dart pub global activate very_good_cli 0.20.0
+dart pub global activate very_good_cli
 very_good packages get -r ./packages
