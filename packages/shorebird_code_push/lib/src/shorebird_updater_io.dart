@@ -117,12 +117,15 @@ class ShorebirdUpdaterImpl implements ShorebirdUpdater {
 
       final status = result.ref.status;
 
-      // SHOREBIRD_UPDATE_INSTALLED is the success case. SHOREBIRD_NO_UPDATE
-      // (the app is already up to date) is also a successful outcome of a call
-      // to update() and must not throw — previously it surfaced as a confusing
-      // `UpdateException: No update (noUpdate)` in customer telemetry.
+      // Successful outcomes of update():
+      // - SHOREBIRD_UPDATE_INSTALLED: a new patch was downloaded and installed.
+      // - SHOREBIRD_NO_UPDATE: the app is already running the latest patch.
+      // - SHOREBIRD_UPDATE_IN_PROGRESS: another update (typically the automatic
+      //   updater thread) was already running; the caller did not start a new
+      //   one. This is benign and must not surface as an exception.
       if (status == SHOREBIRD_UPDATE_INSTALLED ||
-          status == SHOREBIRD_NO_UPDATE) {
+          status == SHOREBIRD_NO_UPDATE ||
+          status == SHOREBIRD_UPDATE_IN_PROGRESS) {
         return;
       }
 
