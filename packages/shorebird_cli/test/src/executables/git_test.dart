@@ -537,6 +537,136 @@ refs/heads/main
       });
     });
 
+    group('cloneBare', () {
+      const url = 'https://github.com/shorebirdtech/shorebird';
+      const outputDirectory = './output';
+
+      test('executes correct command (no args)', () async {
+        await runWithOverrides(
+          () => git.cloneBare(url: url, outputDirectory: outputDirectory),
+        );
+        verify(
+          () => process.run(
+            'git',
+            ['clone', '--bare', url, outputDirectory],
+          ),
+        ).called(1);
+      });
+
+      test('executes correct command (with args)', () async {
+        const args = <String>['--filter=tree:0'];
+        await runWithOverrides(
+          () => git.cloneBare(
+            url: url,
+            args: args,
+            outputDirectory: outputDirectory,
+          ),
+        );
+        verify(
+          () => process.run(
+            'git',
+            ['clone', '--bare', url, ...args, outputDirectory],
+          ),
+        ).called(1);
+      });
+
+      test('throws ProcessException if process exits with error', () async {
+        const error = 'oops';
+        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+        when(() => processResult.stderr).thenReturn(error);
+        expect(
+          () => runWithOverrides(
+            () => git.cloneBare(url: url, outputDirectory: outputDirectory),
+          ),
+          throwsA(
+            isA<ProcessException>().having((e) => e.message, 'message', error),
+          ),
+        );
+      });
+    });
+
+    group('worktreeAdd', () {
+      const directory = './worktree';
+      const revision = 'abc123';
+      const repoDirectory = './repo';
+
+      test('executes correct command', () async {
+        await runWithOverrides(
+          () => git.worktreeAdd(
+            directory: directory,
+            revision: revision,
+            repoDirectory: repoDirectory,
+          ),
+        );
+        verify(
+          () => process.run('git', [
+            'worktree',
+            'add',
+            '--detach',
+            directory,
+            revision,
+          ], workingDirectory: repoDirectory),
+        ).called(1);
+      });
+
+      test('throws ProcessException if process exits with error', () async {
+        const error = 'oops';
+        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+        when(() => processResult.stderr).thenReturn(error);
+        expect(
+          () => runWithOverrides(
+            () => git.worktreeAdd(
+              directory: directory,
+              revision: revision,
+              repoDirectory: repoDirectory,
+            ),
+          ),
+          throwsA(
+            isA<ProcessException>().having((e) => e.message, 'message', error),
+          ),
+        );
+      });
+    });
+
+    group('worktreeRemove', () {
+      const directory = './worktree';
+      const repoDirectory = './repo';
+
+      test('executes correct command', () async {
+        await runWithOverrides(
+          () => git.worktreeRemove(
+            directory: directory,
+            repoDirectory: repoDirectory,
+          ),
+        );
+        verify(
+          () => process.run('git', [
+            'worktree',
+            'remove',
+            '--force',
+            directory,
+          ], workingDirectory: repoDirectory),
+        ).called(1);
+      });
+
+      test('throws ProcessException if process exits with error', () async {
+        const error = 'oops';
+        when(() => processResult.exitCode).thenReturn(ExitCode.software.code);
+        when(() => processResult.stderr).thenReturn(error);
+        expect(
+          () => runWithOverrides(
+            () => git.worktreeRemove(
+              directory: directory,
+              repoDirectory: repoDirectory,
+            ),
+          ),
+          throwsA(
+            isA<ProcessException>().having((e) => e.message, 'message', error),
+          ),
+        );
+      });
+    });
+
     group('isGitRepo', () {
       group('when git exits with code 0', () {
         setUp(() {
