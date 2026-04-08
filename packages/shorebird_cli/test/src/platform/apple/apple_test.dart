@@ -590,6 +590,8 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           // Create intermediate patch snapshots alongside out.aot.
           File(p.join(buildDirectory.path, 'out.ct.aot'))
             ..writeAsStringSync('ct');
+          File(p.join(buildDirectory.path, 'out.preDdOptimized.aot'))
+            ..writeAsStringSync('preDdOptimized');
           File(p.join(buildDirectory.path, 'out.optimized.aot'))
             ..writeAsStringSync('optimized');
 
@@ -640,6 +642,7 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
               'App',
               'out.aot',
               'out.ct.aot',
+              'out.preDdOptimized.aot',
               'out.optimized.aot',
             ]),
           );

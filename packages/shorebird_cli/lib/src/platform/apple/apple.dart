@@ -184,7 +184,11 @@ class Apple {
       if (dumpDebugInfoDir == null) return;
 
       // Copy snapshots into the debug dump for offline diagnosis.
-      // 1 release snapshot + 3 patch compilation stages.
+      // 1 release snapshot + 4 patch compilation stages:
+      //   - out.aot:                 initial patch gen_snapshot output
+      //   - out.ct.aot:              CT-sorted intermediate
+      //   - out.preDdOptimized.aot:  CT + OP sort, no DD activation (voted on)
+      //   - out.optimized.aot:       final CT + OP sort + DD activation
       final snapshotsDir = Directory(p.join(dumpDebugInfoDir.path, 'snapshots'))
         ..createSync(recursive: true);
       void maybeCopySnapshot(File file, {String? destName}) {
@@ -202,6 +206,9 @@ class Apple {
       final patchBaseName = p.basenameWithoutExtension(aotOutputFile.path);
       maybeCopySnapshot(
         File(p.join(patchDir, '$patchBaseName.ct.aot')),
+      );
+      maybeCopySnapshot(
+        File(p.join(patchDir, '$patchBaseName.preDdOptimized.aot')),
       );
       maybeCopySnapshot(
         File(p.join(patchDir, '$patchBaseName.optimized.aot')),
