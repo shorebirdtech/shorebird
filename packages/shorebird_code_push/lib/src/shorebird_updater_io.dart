@@ -117,7 +117,14 @@ class ShorebirdUpdaterImpl implements ShorebirdUpdater {
 
       final status = result.ref.status;
 
-      if (status == SHOREBIRD_UPDATE_INSTALLED) return;
+      // SHOREBIRD_UPDATE_INSTALLED is the success case. SHOREBIRD_NO_UPDATE
+      // (the app is already up to date) is also a successful outcome of a call
+      // to update() and must not throw — previously it surfaced as a confusing
+      // `UpdateException: No update (noUpdate)` in customer telemetry.
+      if (status == SHOREBIRD_UPDATE_INSTALLED ||
+          status == SHOREBIRD_NO_UPDATE) {
+        return;
+      }
 
       final reason = status.toFailureReason();
       final message = result.ref.message != nullptr

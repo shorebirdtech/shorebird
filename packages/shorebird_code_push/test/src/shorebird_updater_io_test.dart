@@ -402,23 +402,10 @@ void main() {
           shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
         });
 
-        test('throws $UpdateException', () async {
-          await expectLater(
-            shorebirdUpdater.update,
-            throwsA(
-              isA<UpdateException>()
-                  .having(
-                    (e) => e.message,
-                    'message',
-                    'oops',
-                  )
-                  .having(
-                    (e) => e.reason,
-                    'reason',
-                    UpdateFailureReason.noUpdate,
-                  ),
-            ),
-          );
+        test('returns normally and does not throw', () async {
+          // SHOREBIRD_NO_UPDATE is a successful outcome of update() — the app
+          // is already running the latest patch. It must not throw.
+          await expectLater(shorebirdUpdater.update(), completes);
           verify(updater.update).called(1);
           verify(() => updater.freeUpdateResult(any())).called(1);
         });
