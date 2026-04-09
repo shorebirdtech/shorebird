@@ -79,10 +79,12 @@ class AarPatcher extends Patcher {
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
+
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
       args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
+      moduleVersion: releaseVersion,
     );
 
     return File(

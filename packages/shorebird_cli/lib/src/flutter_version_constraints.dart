@@ -24,6 +24,13 @@ final minimumSupportedLinuxFlutterVersion = Version(3, 27, 4);
 /// available in this version.
 final minimumSupportedWindowsFlutterVersion = Version(3, 32, 6);
 
+/// Minimum Flutter version for module version support.
+///
+/// This version introduced SHOREBIRD_MODULE_VERSION env var support in the
+/// Flutter tool, which allows AAR releases to embed a version identity
+/// independent of the host app's version.
+final minimumModuleVersionFlutterVersion = Version(3, 41, 4);
+
 /// Minimum Flutter version for obfuscation support across all platforms.
 ///
 /// Obfuscation requires gen_snapshot changes (--save-obfuscation-map and

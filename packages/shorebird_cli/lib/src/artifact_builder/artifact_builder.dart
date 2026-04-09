@@ -62,6 +62,11 @@ extension on String {
   /// This allow us to just call var?.toPublicKeyEnv() instead of doing
   /// a ternary operation to check if the value is null.
   Map<String, String> toPublicKeyEnv() => {'SHOREBIRD_PUBLIC_KEY': this};
+
+  /// Returns a map with the SHOREBIRD_MODULE_VERSION environment variable.
+  Map<String, String> toModuleVersionEnv() => {
+    'SHOREBIRD_MODULE_VERSION': this,
+  };
 }
 
 /// @{template artifact_builder}
@@ -237,6 +242,7 @@ Reason: Exited with code $exitCode.''',
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
+    String? moduleVersion,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -254,7 +260,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: {
+          ...?base64PublicKey?.toPublicKeyEnv(),
+          ...?moduleVersion?.toModuleVersionEnv(),
+        },
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -449,6 +458,7 @@ Reason: Exited with code $exitCode.''',
   Future<AppleBuildResult> buildIosFramework({
     List<String> args = const [],
     String? base64PublicKey,
+    String? moduleVersion,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt. This
@@ -472,7 +482,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: {
+          ...?base64PublicKey?.toPublicKeyEnv(),
+          ...?moduleVersion?.toModuleVersionEnv(),
+        },
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,

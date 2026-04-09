@@ -134,7 +134,16 @@ Defaults to "latest" which builds using the latest stable Flutter version.''',
         'release-version',
         help: '''
 The version of the associated release (e.g. "1.0.0"). This should be the version
-of the iOS app that is using this module. (aar and ios-framework only)''',
+of the host app that is using this module. (aar and ios-framework only)
+Cannot be used with --module-version.''',
+      )
+      ..addOption(
+        'module-version',
+        help: '''
+The module version to embed in the artifact. This version identifies the module
+independently of the host app's version, enabling add-to-app use cases.
+Use "git" to automatically use the current git commit hash.
+Cannot be used with --release-version. (aar and ios-framework only)''',
       )
       ..addMultiOption(
         'target-platform',
