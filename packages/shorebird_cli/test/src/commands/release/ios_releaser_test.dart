@@ -290,6 +290,72 @@ To change the version of this release, change your app's version in your pubspec
           );
         });
       });
+
+      group('when --export-options-plist is provided', () {
+        late Directory tempDir;
+
+        setUp(() {
+          tempDir = Directory.systemTemp.createTempSync(
+            'export_options_releaser_',
+          );
+        });
+
+        tearDown(() {
+          tempDir.deleteSync(recursive: true);
+        });
+
+        File writePlist(String body) {
+          return File(p.join(tempDir.path, 'ExportOptions.plist'))
+            ..writeAsStringSync('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+$body
+</dict>
+</plist>
+''');
+        }
+
+        test(
+          'returns normally when manageAppVersionAndBuildNumber is absent',
+          () async {
+            final file = writePlist(
+              '<key>method</key><string>app-store</string>',
+            );
+            when(
+              () => argResults[CommonArguments.exportOptionsPlistArg.name],
+            ).thenReturn(file.path);
+
+            await expectLater(
+              runWithOverrides(iosReleaser.assertArgsAreValid),
+              completes,
+            );
+          },
+        );
+
+        test(
+          '''logs error and exits with usage when manageAppVersionAndBuildNumber is true''',
+          () async {
+            final file = writePlist(
+              '<key>manageAppVersionAndBuildNumber</key><true/>',
+            );
+            when(
+              () => argResults[CommonArguments.exportOptionsPlistArg.name],
+            ).thenReturn(file.path);
+
+            await expectLater(
+              () => runWithOverrides(iosReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+            verify(
+              () => logger.err(
+                any(that: contains('manageAppVersionAndBuildNumber')),
+              ),
+            ).called(1);
+          },
+        );
+      });
     });
 
     group('buildReleaseArtifacts', () {
@@ -452,6 +518,16 @@ To change the version of this release, change your app's version in your pubspec
           verify(
             () => logger.warn(
               '''shorebird preview will not work for releases created with "--no-codesign". However, you can still preview your app by signing the generated .xcarchive in Xcode.''',
+            ),
+          ).called(1);
+          verify(
+            () => logger.warn(
+              any(
+                that: allOf(
+                  contains('Manage Version and Build Number'),
+                  contains('Patches will then fail to apply'),
+                ),
+              ),
             ),
           ).called(1);
         });
@@ -1033,7 +1109,8 @@ Your next step is to submit the archive at ${lightCyan.wrap(p.relative(xcarchive
 You can open the archive in Xcode by running:
     ${lightCyan.wrap('open ${p.relative(xcarchiveDirectory.path)}')}
 
-${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
+${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number" in the Distribute App dialog.')}
+If left checked, Xcode will rewrite the build number in the uploaded IPA, so the version that ships will not match the one Shorebird recorded for this release, and patches will fail to apply.
 '''),
           );
         });

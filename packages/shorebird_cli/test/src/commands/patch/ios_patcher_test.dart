@@ -267,6 +267,81 @@ void main() {
       });
     });
 
+    group('assertArgsAreValid', () {
+      test('returns normally when --export-options-plist is absent', () async {
+        await expectLater(
+          runWithOverrides(patcher.assertArgsAreValid),
+          completes,
+        );
+      });
+
+      group('when --export-options-plist is provided', () {
+        late Directory tempDir;
+
+        setUp(() {
+          tempDir = Directory.systemTemp.createTempSync(
+            'export_options_patcher_',
+          );
+        });
+
+        tearDown(() {
+          tempDir.deleteSync(recursive: true);
+        });
+
+        File writePlist(String body) {
+          return File(p.join(tempDir.path, 'ExportOptions.plist'))
+            ..writeAsStringSync('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+$body
+</dict>
+</plist>
+''');
+        }
+
+        test(
+          'returns normally when manageAppVersionAndBuildNumber is absent',
+          () async {
+            final file = writePlist(
+              '<key>method</key><string>app-store</string>',
+            );
+            when(
+              () => argResults[CommonArguments.exportOptionsPlistArg.name],
+            ).thenReturn(file.path);
+
+            await expectLater(
+              runWithOverrides(patcher.assertArgsAreValid),
+              completes,
+            );
+          },
+        );
+
+        test(
+          '''logs error and exits with usage when manageAppVersionAndBuildNumber is true''',
+          () async {
+            final file = writePlist(
+              '<key>manageAppVersionAndBuildNumber</key><true/>',
+            );
+            when(
+              () => argResults[CommonArguments.exportOptionsPlistArg.name],
+            ).thenReturn(file.path);
+
+            await expectLater(
+              () => runWithOverrides(patcher.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+            verify(
+              () => logger.err(
+                any(that: contains('manageAppVersionAndBuildNumber')),
+              ),
+            ).called(1);
+          },
+        );
+      });
+    });
+
     group('assertUnpatchableDiffs', () {
       group('when no native changes are detected', () {
         const noChangeDiffStatus = DiffStatus(
