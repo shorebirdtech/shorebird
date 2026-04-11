@@ -99,6 +99,17 @@ abstract class Releaser {
   /// Whether the user is building with obfuscation.
   bool get useObfuscation => argResults['obfuscate'] == true;
 
+  /// Optional override for the DD table cascade byte threshold.
+  ///
+  /// Passed to Flutter tools via the SHOREBIRD_DD_MAX_BYTES environment
+  /// variable for backwards compatibility: older Flutter builds that don't
+  /// recognize the variable will silently ignore it, whereas an unknown
+  /// command-line flag would cause a build failure.
+  int? get ddMaxBytes {
+    final value = argResults['dd-max-bytes'] as String?;
+    return value != null ? int.tryParse(value) : null;
+  }
+
   /// Path where the obfuscation map is saved during obfuscated builds.
   String get obfuscationMapPath => p.join(
     projectRoot.path,

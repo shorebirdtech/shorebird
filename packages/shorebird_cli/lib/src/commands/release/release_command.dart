@@ -158,6 +158,13 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         CommonArguments.obfuscateArg.name,
         help: CommonArguments.obfuscateArg.description,
         negatable: false,
+      )
+      ..addOption(
+        'dd-max-bytes',
+        help: 'Override the Dynamic Dispatch table cascade byte threshold. '
+            'Functions whose transitive caller tree exceeds this many bytes '
+            'are routed through the indirect dispatch table. '
+            'Defaults to 10000 if not specified.',
       );
   }
 
