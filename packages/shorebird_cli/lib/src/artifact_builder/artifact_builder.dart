@@ -122,7 +122,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        if (traceFile != null) '--trace=${traceFile.path}',
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -196,7 +196,7 @@ Reason: Exited with code $exitCode.''',
         // coverage:ignore-start
         if (splitPerAbi) '--split-per-abi',
         // coverage:ignore-end
-        if (traceFile != null) '--trace=${traceFile.path}',
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -420,7 +420,7 @@ Reason: Exited with code $exitCode.''',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        if (traceFile != null) '--trace=${traceFile.path}',
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -523,8 +523,8 @@ Reason: Exited with code $exitCode.''',
   /// Prepares build tracing for a `flutter build` invocation.
   ///
   /// Returns the trace file path (if tracing is supported on the pinned
-  /// Flutter) so the caller can both inject `--trace=<path>` and, after the
-  /// build succeeds, emit a privacy-safe summary next to it.
+  /// Flutter) so the caller can both inject `--shorebird-trace=<path>` and,
+  /// after the build succeeds, emit a privacy-safe summary next to it.
   Future<File?> _prepareBuildTrace({required String platform}) async {
     final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
       shorebirdEnv.flutterRevision,

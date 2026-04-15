@@ -244,7 +244,12 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         verify(
           () => shorebirdProcess.stream(
             'flutter',
-            ['build', 'appbundle', '--release', '--trace=$expectedTracePath'],
+            [
+              'build',
+              'appbundle',
+              '--release',
+              '--shorebird-trace=$expectedTracePath',
+            ],
             environment: any(named: 'environment'),
             runInShell: false,
           ),
@@ -474,7 +479,12 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           verify(
             () => shorebirdProcess.stream(
               'flutter',
-              ['build', 'apk', '--release', '--trace=$expectedTracePath'],
+              [
+                'build',
+                'apk',
+                '--release',
+                '--shorebird-trace=$expectedTracePath',
+              ],
               environment: any(named: 'environment'),
               runInShell: false,
             ),
@@ -1297,7 +1307,12 @@ Reason: Exited with code 70.'''),
           verify(
             () => shorebirdProcess.stream(
               'flutter',
-              ['build', 'ipa', '--release', '--trace=$expectedTracePath'],
+              [
+                'build',
+                'ipa',
+                '--release',
+                '--shorebird-trace=$expectedTracePath',
+              ],
               environment: any(named: 'environment'),
               runInShell: false,
             ),

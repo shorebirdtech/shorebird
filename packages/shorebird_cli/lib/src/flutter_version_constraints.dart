@@ -30,7 +30,7 @@ final minimumSupportedWindowsFlutterVersion = Version(3, 32, 6);
 /// --strip flags) that were first available in this Flutter version.
 final minimumObfuscationFlutterVersion = Version(3, 41, 2);
 
-/// Minimum Flutter version that supports `flutter build --trace=<path>`
+/// Minimum Flutter version that supports `flutter build --shorebird-trace=<path>`
 /// for emitting Chrome Trace Event Format build traces.
 ///
 /// Added in shorebirdtech/flutter#116.

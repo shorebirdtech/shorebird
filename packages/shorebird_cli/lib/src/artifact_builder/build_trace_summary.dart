@@ -43,6 +43,7 @@ class BuildTraceSummary {
     this.aidlMs = 0,
     this.nativeLinkMs = 0,
     this.gradleScaffoldMs = 0,
+    this.podInstallMs = 0,
   });
 
   /// Build a summary from the raw list of trace events written by Flutter.
@@ -83,6 +84,7 @@ class BuildTraceSummary {
     var aidlUs = 0;
     var nativeLinkUs = 0;
     var gradleScaffoldUs = 0;
+    var podInstallUs = 0;
     final gradleTaskDurationsUs = <int>[];
 
     for (final e in events) {
@@ -99,6 +101,13 @@ class BuildTraceSummary {
       if (tid == 1) {
         if (name.startsWith('flutter build ')) {
           flutterBuildUs = dur;
+        } else if (cat == 'subprocess') {
+          // Subprocess events on tid 1 are nested inside the pre-xcode /
+          // pre-gradle setup span. Track them by name instead of summing
+          // into flutterToolMs so we don't double-count wall clock.
+          if (name == 'pod install') {
+            podInstallUs += dur;
+          }
         } else {
           flutterToolUs += dur;
         }
@@ -194,6 +203,7 @@ class BuildTraceSummary {
       aidlMs: aidlUs ~/ 1000,
       nativeLinkMs: nativeLinkUs ~/ 1000,
       gradleScaffoldMs: gradleScaffoldUs ~/ 1000,
+      podInstallMs: podInstallUs ~/ 1000,
     );
   }
 
@@ -393,6 +403,11 @@ class BuildTraceSummary {
   /// specific bucket. Individually small but adds up on plugin-heavy apps.
   final int gradleScaffoldMs;
 
+  /// Time spent running `pod install`, emitted as a subprocess span by
+  /// mac.dart so it's visible on iOS builds instead of being absorbed into
+  /// the pre-xcode setup gap.
+  final int podInstallMs;
+
   /// Dart-compile total (kernel snapshot + gen_snapshot). `dartBuildMs`
   /// (build-time Dart script execution) is tracked separately.
   int get dartMs => kernelSnapshotMs + genSnapshotMs;
@@ -472,6 +487,7 @@ class BuildTraceSummary {
     'aidlMs': aidlMs,
     'nativeLinkMs': nativeLinkMs,
     'gradleScaffoldMs': gradleScaffoldMs,
+    'podInstallMs': podInstallMs,
   };
 }
 

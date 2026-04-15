@@ -330,6 +330,7 @@ void main() {
         'aidlMs': 0,
         'nativeLinkMs': 0,
         'gradleScaffoldMs': 0,
+        'podInstallMs': 0,
       });
       expect(
         json.keys.any(
