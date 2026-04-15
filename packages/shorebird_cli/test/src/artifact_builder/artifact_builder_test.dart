@@ -8,6 +8,7 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -53,6 +54,7 @@ void main() {
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          shorebirdTracerRef.overrideWith(ShorebirdTracer.new),
           shorebirdAndroidArtifactsRef.overrideWith(
             () => shorebirdAndroidArtifacts,
           ),
@@ -569,7 +571,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           final summary = jsonDecode(summaryFile.readAsStringSync())
               as Map<String, Object?>;
           expect(summary['platform'], 'android');
-          expect(summary['version'], 3);
+          expect(summary['version'], 4);
           // 500ms kernel + 200ms aot
           expect(summary['dartMs'], 700);
           expect(summary['flutterBuildMs'], 3000);

@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -93,6 +94,7 @@ Command: shorebird ${args.join(' ')}
           shorebirdArtifactsRef,
           shorebirdEnvRef,
           shorebirdFlutterRef,
+          shorebirdTracerRef,
           shorebirdToolsRef,
           shorebirdValidatorRef,
           shorebirdVersionRef,

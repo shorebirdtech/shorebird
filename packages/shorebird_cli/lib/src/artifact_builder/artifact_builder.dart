@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -555,6 +556,12 @@ Reason: Exited with code $exitCode.''',
   /// reported total (the "flutter build X" umbrella event).
   void _writeBuildTraceSummary(File? traceFile, {required String platform}) {
     if (traceFile == null) return;
+
+    // Merge Shorebird-side events (HTTP calls, subprocess spans, phase
+    // markers accumulated since `main()`) into Flutter's trace file so
+    // both local Perfetto viewing and the aggregate summary see the
+    // complete picture.
+    shorebirdTracer.mergeInto(traceFile);
 
     final preSummary = BuildTraceSummary.tryFromFile(
       traceFile,

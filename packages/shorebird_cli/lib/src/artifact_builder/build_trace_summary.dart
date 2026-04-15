@@ -23,6 +23,26 @@ class BuildTraceSummary {
     required this.assembleTargetCount,
     required this.skippedAssembleTargetCount,
     this.shorebirdOverheadMs,
+    this.networkMs = 0,
+    this.networkCallCount = 0,
+    this.gradleTaskCount = 0,
+    this.gradleTaskSumMs = 0,
+    this.gradleTaskP50Ms = 0,
+    this.gradleTaskP90Ms = 0,
+    this.gradleTaskMaxMs = 0,
+    this.kotlinCompileMs = 0,
+    this.javaCompileMs = 0,
+    this.dexMs = 0,
+    this.resourcesMs = 0,
+    this.transformMs = 0,
+    this.r8MinifyMs = 0,
+    this.lintMs = 0,
+    this.flutterGradlePluginMs = 0,
+    this.bundleMs = 0,
+    this.packagingMs = 0,
+    this.aidlMs = 0,
+    this.nativeLinkMs = 0,
+    this.gradleScaffoldMs = 0,
   });
 
   /// Build a summary from the raw list of trace events written by Flutter.
@@ -48,16 +68,34 @@ class BuildTraceSummary {
     var otherAssembleUs = 0;
     var assembleCount = 0;
     var skippedCount = 0;
+    var networkUs = 0;
+    var networkCount = 0;
+    var kotlinCompileUs = 0;
+    var javaCompileUs = 0;
+    var dexUs = 0;
+    var resourcesUs = 0;
+    var transformUs = 0;
+    var r8MinifyUs = 0;
+    var lintUs = 0;
+    var flutterGradlePluginUs = 0;
+    var bundleUs = 0;
+    var packagingUs = 0;
+    var aidlUs = 0;
+    var nativeLinkUs = 0;
+    var gradleScaffoldUs = 0;
+    final gradleTaskDurationsUs = <int>[];
 
     for (final e in events) {
       final dur = (e['dur'] as num?)?.toInt() ?? 0;
       final tid = (e['tid'] as num?)?.toInt() ?? 0;
       final name = (e['name'] as String?) ?? '';
+      final cat = (e['cat'] as String?) ?? '';
       final args = (e['args'] as Map?) ?? const {};
       final skipped = args['skipped'] == true;
 
       // Per PR 116: tid 1 = flutter tool, tid 2 = native build system
-      // (gradle/xcode), tid 3 = flutter assemble targets.
+      // (gradle/xcode), tid 3 = flutter assemble targets. tid 4 = per-
+      // Gradle-task events (flutter_trace_init.gradle). tid 5 = Shorebird.
       if (tid == 1) {
         if (name.startsWith('flutter build ')) {
           flutterBuildUs = dur;
@@ -83,8 +121,44 @@ class BuildTraceSummary {
           case _AssembleCategory.other:
             otherAssembleUs += dur;
         }
+      } else if (tid == 4 && cat == 'gradle_task') {
+        gradleTaskDurationsUs.add(dur);
+        switch (args['kind']) {
+          case 'kotlin_compile':
+            kotlinCompileUs += dur;
+          case 'java_compile':
+            javaCompileUs += dur;
+          case 'dex':
+            dexUs += dur;
+          case 'resources':
+            resourcesUs += dur;
+          case 'transform':
+            transformUs += dur;
+          case 'r8_minify':
+            r8MinifyUs += dur;
+          case 'lint':
+            lintUs += dur;
+          case 'flutter_gradle_plugin':
+            flutterGradlePluginUs += dur;
+          case 'bundle':
+            bundleUs += dur;
+          case 'packaging':
+            packagingUs += dur;
+          case 'aidl':
+            aidlUs += dur;
+          case 'native_link':
+            nativeLinkUs += dur;
+          case 'gradle_scaffold':
+            gradleScaffoldUs += dur;
+        }
+      } else if (cat == 'network') {
+        networkUs += dur;
+        networkCount++;
       }
     }
+
+    final (p50, p90, max) = _percentiles(gradleTaskDurationsUs);
+    final sumGradleUs = gradleTaskDurationsUs.fold<int>(0, (a, b) => a + b);
 
     return BuildTraceSummary(
       platform: platform,
@@ -100,7 +174,40 @@ class BuildTraceSummary {
       assembleTargetCount: assembleCount,
       skippedAssembleTargetCount: skippedCount,
       shorebirdOverheadMs: shorebirdOverhead?.inMilliseconds,
+      networkMs: networkUs ~/ 1000,
+      networkCallCount: networkCount,
+      gradleTaskCount: gradleTaskDurationsUs.length,
+      gradleTaskSumMs: sumGradleUs ~/ 1000,
+      gradleTaskP50Ms: p50 ~/ 1000,
+      gradleTaskP90Ms: p90 ~/ 1000,
+      gradleTaskMaxMs: max ~/ 1000,
+      kotlinCompileMs: kotlinCompileUs ~/ 1000,
+      javaCompileMs: javaCompileUs ~/ 1000,
+      dexMs: dexUs ~/ 1000,
+      resourcesMs: resourcesUs ~/ 1000,
+      transformMs: transformUs ~/ 1000,
+      r8MinifyMs: r8MinifyUs ~/ 1000,
+      lintMs: lintUs ~/ 1000,
+      flutterGradlePluginMs: flutterGradlePluginUs ~/ 1000,
+      bundleMs: bundleUs ~/ 1000,
+      packagingMs: packagingUs ~/ 1000,
+      aidlMs: aidlUs ~/ 1000,
+      nativeLinkMs: nativeLinkUs ~/ 1000,
+      gradleScaffoldMs: gradleScaffoldUs ~/ 1000,
     );
+  }
+
+  /// Returns (p50, p90, max) in the same units as the input. (0, 0, 0) for
+  /// empty input.
+  static (int, int, int) _percentiles(List<int> values) {
+    if (values.isEmpty) return (0, 0, 0);
+    final sorted = [...values]..sort();
+    int at(double q) {
+      final idx = (sorted.length * q).floor().clamp(0, sorted.length - 1);
+      return sorted[idx];
+    }
+
+    return (at(0.5), at(0.9), sorted.last);
   }
 
   /// Parse [traceFile] and return a summary, or null if the file is missing
@@ -211,6 +318,81 @@ class BuildTraceSummary {
   /// compute it.
   final int? shorebirdOverheadMs;
 
+  /// Total time spent waiting on network I/O, summed across every HTTP
+  /// request Shorebird made during the command.
+  final int networkMs;
+
+  /// Number of HTTP requests Shorebird made.
+  final int networkCallCount;
+
+  /// Number of distinct Gradle tasks that ran (only populated when the
+  /// Flutter-side init script emitted per-task events).
+  final int gradleTaskCount;
+
+  /// Sum of durations across all Gradle tasks (serial-equivalent).
+  final int gradleTaskSumMs;
+
+  /// 50th/90th/max percentile of Gradle task durations. Useful for spotting
+  /// tail latency — is the long build dominated by one slow task, or many
+  /// moderately slow ones?
+  final int gradleTaskP50Ms;
+
+  /// See [gradleTaskP50Ms].
+  final int gradleTaskP90Ms;
+
+  /// See [gradleTaskP50Ms].
+  final int gradleTaskMaxMs;
+
+  /// Time spent in Kotlin-compile Gradle tasks.
+  final int kotlinCompileMs;
+
+  /// Time spent in Java-compile Gradle tasks.
+  final int javaCompileMs;
+
+  /// Time spent in dex (D8/R8) Gradle tasks.
+  final int dexMs;
+
+  /// Time spent in resource-processing Gradle tasks (merging resources,
+  /// processing manifests, etc.).
+  final int resourcesMs;
+
+  /// Time spent in Gradle "transform" tasks (AAR transforms, jetifier,
+  /// desugaring, etc.).
+  final int transformMs;
+
+  /// Time spent in R8 / minification / shrinking tasks. Often the single
+  /// slowest Gradle task on release builds.
+  final int r8MinifyMs;
+
+  /// Time spent in Android lint tasks (`lintVitalAnalyzeRelease` etc.). AGP
+  /// runs these on every release build by default and they can dominate
+  /// per-plugin compile time — useful to surface distinctly.
+  final int lintMs;
+
+  /// Time spent in the Flutter Gradle plugin's own tasks (e.g.
+  /// `compileFlutterBuildRelease`, which orchestrates flutter assemble from
+  /// Gradle's side). Already partly accounted for by tid=3 events.
+  final int flutterGradlePluginMs;
+
+  /// Time spent in bundle-related Gradle tasks (AAB packaging pipeline,
+  /// dynamic feature bundling, etc.).
+  final int bundleMs;
+
+  /// Time spent in APK packaging tasks.
+  final int packagingMs;
+
+  /// Time spent in AIDL interface compilation.
+  final int aidlMs;
+
+  /// Time spent merging / linking native libraries (`mergeReleaseNativeLibs`,
+  /// `copyReleaseJniLibs*`).
+  final int nativeLinkMs;
+
+  /// Gradle's per-plugin scaffolding — AAR metadata, proguard rule export,
+  /// validate/check tasks, `prepare*`, `copy*`, `generate*` without a more
+  /// specific bucket. Individually small but adds up on plugin-heavy apps.
+  final int gradleScaffoldMs;
+
   /// Dart-compile total (kernel snapshot + gen_snapshot). `dartBuildMs`
   /// (build-time Dart script execution) is tracked separately.
   int get dartMs => kernelSnapshotMs + genSnapshotMs;
@@ -252,11 +434,13 @@ class BuildTraceSummary {
   /// JSON representation suitable for writing alongside the raw trace.
   /// Field names are stable and safe to upload — no paths or identifiers.
   Map<String, Object?> toJson() => {
-    'version': 3,
+    'version': 4,
     'platform': platform,
     'totalMs': totalMs,
     'flutterBuildMs': flutterBuildMs,
     'shorebirdOverheadMs': shorebirdOverheadMs,
+    'networkMs': networkMs,
+    'networkCallCount': networkCallCount,
     'dartMs': dartMs,
     'nonDartMs': nonDartMs,
     'nativeCompileMs': nativeCompileMs,
@@ -270,6 +454,24 @@ class BuildTraceSummary {
     'nativeBuildMs': nativeBuildMs,
     'assembleTargetCount': assembleTargetCount,
     'skippedAssembleTargetCount': skippedAssembleTargetCount,
+    'gradleTaskCount': gradleTaskCount,
+    'gradleTaskSumMs': gradleTaskSumMs,
+    'gradleTaskP50Ms': gradleTaskP50Ms,
+    'gradleTaskP90Ms': gradleTaskP90Ms,
+    'gradleTaskMaxMs': gradleTaskMaxMs,
+    'kotlinCompileMs': kotlinCompileMs,
+    'javaCompileMs': javaCompileMs,
+    'dexMs': dexMs,
+    'resourcesMs': resourcesMs,
+    'transformMs': transformMs,
+    'r8MinifyMs': r8MinifyMs,
+    'lintMs': lintMs,
+    'flutterGradlePluginMs': flutterGradlePluginMs,
+    'bundleMs': bundleMs,
+    'packagingMs': packagingMs,
+    'aidlMs': aidlMs,
+    'nativeLinkMs': nativeLinkMs,
+    'gradleScaffoldMs': gradleScaffoldMs,
   };
 }
 

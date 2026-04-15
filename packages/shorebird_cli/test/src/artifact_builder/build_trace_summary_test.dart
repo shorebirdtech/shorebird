@@ -133,6 +133,82 @@ void main() {
       expect(s.totalMs, 3505);
     });
 
+    test('sums per-gradle-task and network buckets', () {
+      final events = [
+        // gradle outer span
+        _event(
+          name: 'gradle assembleRelease',
+          cat: 'gradle',
+          ts: 0,
+          dur: 100_000_000,
+          tid: 2,
+        ),
+        // per-task events on tid=4 (from init script)
+        for (final dur in const [1_000_000, 2_000_000, 5_000_000, 500_000])
+          _event(
+            name: ':some_plugin:compileReleaseKotlin',
+            cat: 'gradle_task',
+            ts: 0,
+            dur: dur,
+            tid: 4,
+            args: {'kind': 'kotlin_compile', 'owner': 'some_plugin'},
+          ),
+        _event(
+          name: ':app:dexBuilderRelease',
+          cat: 'gradle_task',
+          ts: 0,
+          dur: 3_000_000,
+          tid: 4,
+          args: {'kind': 'dex', 'owner': 'app'},
+        ),
+        _event(
+          name: ':app:mergeReleaseResources',
+          cat: 'gradle_task',
+          ts: 0,
+          dur: 700_000,
+          tid: 4,
+          args: {'kind': 'resources', 'owner': 'app'},
+        ),
+        // network events on any tid, category=network
+        _event(
+          name: 'GET api.shorebird.dev',
+          cat: 'network',
+          ts: 0,
+          dur: 120_000,
+          tid: 5,
+        ),
+        _event(
+          name: 'GET download.shorebird.dev',
+          cat: 'network',
+          ts: 0,
+          dur: 3_500_000,
+          tid: 5,
+        ),
+        _event(
+          name: 'flutter build apk',
+          cat: 'flutter',
+          ts: 0,
+          dur: 100_000_000,
+          tid: 1,
+        ),
+      ];
+      final s = BuildTraceSummary.fromEvents(events, platform: 'android');
+      expect(s.networkMs, 3620); // 120 + 3500
+      expect(s.networkCallCount, 2);
+      // kotlin durations: 1+2+5+0.5 = 8.5s
+      expect(s.kotlinCompileMs, 8500);
+      expect(s.dexMs, 3000);
+      expect(s.resourcesMs, 700);
+      expect(s.gradleTaskCount, 6);
+      // Sum: 1+2+5+0.5+3+0.7 = 12.2s
+      expect(s.gradleTaskSumMs, 12200);
+      expect(s.gradleTaskMaxMs, 5000);
+      // Sorted us: [500k, 700k, 1M, 2M, 3M, 5M]
+      // index floor(6*0.5)=3 → 2M, index floor(6*0.9)=5 → 5M
+      expect(s.gradleTaskP50Ms, 2000);
+      expect(s.gradleTaskP90Ms, 5000);
+    });
+
     test('categorizes iOS-specific target names', () {
       final events = [
         _event(
@@ -196,7 +272,7 @@ void main() {
       expect(s.nativeCompileMs, 23800);
     });
 
-    test('toJson has the v3 fields, no identifiers', () {
+    test('toJson has the v4 fields, no identifiers', () {
       final s = BuildTraceSummary(
         platform: 'ios',
         flutterBuildMs: 10,
@@ -211,14 +287,18 @@ void main() {
         assembleTargetCount: 5,
         skippedAssembleTargetCount: 1,
         shorebirdOverheadMs: 4,
+        networkMs: 2,
+        networkCallCount: 3,
       );
       final json = s.toJson();
       expect(json, {
-        'version': 3,
+        'version': 4,
         'platform': 'ios',
         'totalMs': 14,
         'flutterBuildMs': 10,
         'shorebirdOverheadMs': 4,
+        'networkMs': 2,
+        'networkCallCount': 3,
         'dartMs': 5,
         'nonDartMs': 5,
         'nativeCompileMs': 2, // 9 - (2+3+0+1+1+0) = 2
@@ -232,6 +312,24 @@ void main() {
         'nativeBuildMs': 9,
         'assembleTargetCount': 5,
         'skippedAssembleTargetCount': 1,
+        'gradleTaskCount': 0,
+        'gradleTaskSumMs': 0,
+        'gradleTaskP50Ms': 0,
+        'gradleTaskP90Ms': 0,
+        'gradleTaskMaxMs': 0,
+        'kotlinCompileMs': 0,
+        'javaCompileMs': 0,
+        'dexMs': 0,
+        'resourcesMs': 0,
+        'transformMs': 0,
+        'r8MinifyMs': 0,
+        'lintMs': 0,
+        'flutterGradlePluginMs': 0,
+        'bundleMs': 0,
+        'packagingMs': 0,
+        'aidlMs': 0,
+        'nativeLinkMs': 0,
+        'gradleScaffoldMs': 0,
       });
       expect(
         json.keys.any(
