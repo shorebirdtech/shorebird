@@ -73,14 +73,13 @@ class BuildTraceSummary {
     var podDownloadUs = 0;
     var podGenerateUs = 0;
     var podIntegrateUs = 0;
-    // Xcode phase stats (ios).
-    var xcodePhaseCount = 0;
-    var xcodeCompileCUs = 0;
-    var xcodeSwiftCompileUs = 0;
-    var xcodeLdUs = 0;
-    var xcodePhaseScriptUs = 0;
-    var xcodeCodeSignUs = 0;
-    var xcodeOtherPhasesUs = 0;
+    // Xcode subsection stats (ios). Populated from xcresulttool-derived
+    // per-subsection events. Subsection titles are high-variance ("Build
+    // target <name>", "Archive target <name>", etc.) so the summary keeps
+    // aggregates and a histogram rather than name-keyed totals.
+    var xcodeSubsectionCount = 0;
+    var xcodeSubsectionSumUs = 0;
+    final xcodeSubsectionDurationsUs = <int>[];
 
     for (final e in events) {
       final dur = (e['dur'] as num?)?.toInt() ?? 0;
@@ -161,22 +160,10 @@ class BuildTraceSummary {
             case 'gradle_scaffold':
               gradleScaffoldUs += dur;
           }
-        } else if (cat == 'xcode_phase') {
-          xcodePhaseCount++;
-          switch (name) {
-            case 'CompileC':
-              xcodeCompileCUs += dur;
-            case 'SwiftCompile':
-              xcodeSwiftCompileUs += dur;
-            case 'Ld':
-              xcodeLdUs += dur;
-            case 'PhaseScriptExecution':
-              xcodePhaseScriptUs += dur;
-            case 'CodeSign':
-              xcodeCodeSignUs += dur;
-            default:
-              xcodeOtherPhasesUs += dur;
-          }
+        } else if (cat == 'xcode_subsection') {
+          xcodeSubsectionCount++;
+          xcodeSubsectionSumUs += dur;
+          xcodeSubsectionDurationsUs.add(dur);
         }
       } else if (cat == 'network') {
         networkUs += dur;
@@ -186,6 +173,9 @@ class BuildTraceSummary {
 
     final (p50, p90, max) = _percentiles(gradleTaskDurationsUs);
     final gradleSumUs = gradleTaskDurationsUs.fold<int>(0, (a, b) => a + b);
+    final (xcodeP50, xcodeP90, xcodeMax) = _percentiles(
+      xcodeSubsectionDurationsUs,
+    );
 
     // Dart-compile total (the "dart vs non-dart" signal lives inside
     // [DartStats]).
@@ -256,13 +246,11 @@ class BuildTraceSummary {
           integrateMs: podIntegrateUs ~/ 1000,
         ),
         xcode: XcodeStats(
-          phaseCount: xcodePhaseCount,
-          compileCMs: xcodeCompileCUs ~/ 1000,
-          swiftCompileMs: xcodeSwiftCompileUs ~/ 1000,
-          ldMs: xcodeLdUs ~/ 1000,
-          phaseScriptMs: xcodePhaseScriptUs ~/ 1000,
-          codeSignMs: xcodeCodeSignUs ~/ 1000,
-          otherPhasesMs: xcodeOtherPhasesUs ~/ 1000,
+          subsectionCount: xcodeSubsectionCount,
+          subsectionSumMs: xcodeSubsectionSumUs ~/ 1000,
+          subsectionP50Ms: xcodeP50 ~/ 1000,
+          subsectionP90Ms: xcodeP90 ~/ 1000,
+          subsectionMaxMs: xcodeMax ~/ 1000,
         ),
       );
     }
@@ -698,48 +686,46 @@ class PodInstallStats {
 }
 
 /// Xcode per-phase totals parsed from the `-showBuildTimingSummary` block.
+/// Xcode per-subsection aggregates from the structured build log emitted
+/// by `xcrun xcresulttool get log --type build`. Each top-level
+/// subsection is a target or build action ("Build target X", "Archive
+/// target Y", "Compile Swift module Z", ...); subsection titles are
+/// high-variance and potentially identifying, so we keep a histogram
+/// rather than per-title totals.
 class XcodeStats {
   /// Creates an [XcodeStats].
   XcodeStats({
-    required this.phaseCount,
-    required this.compileCMs,
-    required this.swiftCompileMs,
-    required this.ldMs,
-    required this.phaseScriptMs,
-    required this.codeSignMs,
-    required this.otherPhasesMs,
+    required this.subsectionCount,
+    required this.subsectionSumMs,
+    required this.subsectionP50Ms,
+    required this.subsectionP90Ms,
+    required this.subsectionMaxMs,
   });
 
-  /// Total distinct phases Xcode reported.
-  final int phaseCount;
+  /// Number of top-level subsections Xcode reported (roughly, per-target
+  /// build actions).
+  final int subsectionCount;
 
-  /// C / Objective-C compilation.
-  final int compileCMs;
+  /// Sum of all subsection durations. Often much larger than the
+  /// `xcode archive` wall clock because Xcode runs targets in parallel.
+  final int subsectionSumMs;
 
-  /// Swift compilation.
-  final int swiftCompileMs;
+  /// Median of individual subsection durations in milliseconds.
+  final int subsectionP50Ms;
 
-  /// Linking.
-  final int ldMs;
+  /// 90th-percentile subsection duration.
+  final int subsectionP90Ms;
 
-  /// Script phase execution (including Flutter's build phase script).
-  final int phaseScriptMs;
-
-  /// Code signing.
-  final int codeSignMs;
-
-  /// Any phase not covered above (resources, copy, strip, etc.).
-  final int otherPhasesMs;
+  /// Longest subsection duration.
+  final int subsectionMaxMs;
 
   /// JSON form.
   Map<String, Object?> toJson() => {
-    'phaseCount': phaseCount,
-    'compileCMs': compileCMs,
-    'swiftCompileMs': swiftCompileMs,
-    'ldMs': ldMs,
-    'phaseScriptMs': phaseScriptMs,
-    'codeSignMs': codeSignMs,
-    'otherPhasesMs': otherPhasesMs,
+    'subsectionCount': subsectionCount,
+    'subsectionSumMs': subsectionSumMs,
+    'subsectionP50Ms': subsectionP50Ms,
+    'subsectionP90Ms': subsectionP90Ms,
+    'subsectionMaxMs': subsectionMaxMs,
   };
 }
 

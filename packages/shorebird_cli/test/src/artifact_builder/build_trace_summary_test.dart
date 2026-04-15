@@ -196,32 +196,38 @@ void main() {
           dur: 100_000_000,
           tid: 2,
         ),
-        // xcode phases on tid=4 cat=xcode_phase
+        // xcode subsections on tid=4 cat=xcode_subsection
         _event(
-          name: 'CompileC',
-          cat: 'xcode_phase',
+          name: 'Build target A',
+          cat: 'xcode_subsection',
           ts: 0,
           dur: 30_000_000,
           tid: 4,
         ),
         _event(
-          name: 'SwiftCompile',
-          cat: 'xcode_phase',
+          name: 'Build target B',
+          cat: 'xcode_subsection',
           ts: 0,
           dur: 25_000_000,
           tid: 4,
         ),
-        _event(name: 'Ld', cat: 'xcode_phase', ts: 0, dur: 5_000_000, tid: 4),
         _event(
-          name: 'CodeSign',
-          cat: 'xcode_phase',
+          name: 'Build target C',
+          cat: 'xcode_subsection',
+          ts: 0,
+          dur: 5_000_000,
+          tid: 4,
+        ),
+        _event(
+          name: 'Build target D',
+          cat: 'xcode_subsection',
           ts: 0,
           dur: 2_000_000,
           tid: 4,
         ),
         _event(
-          name: 'CopyPlistFile',
-          cat: 'xcode_phase',
+          name: 'Build target E',
+          cat: 'xcode_subsection',
           ts: 0,
           dur: 1_000_000,
           tid: 4,
@@ -243,12 +249,14 @@ void main() {
       expect(s.ios!.podInstall.downloadMs, 30000);
       expect(s.ios!.podInstall.generateMs, 20000);
       expect(s.ios!.podInstall.integrateMs, 5000);
-      expect(s.ios!.xcode.phaseCount, 5);
-      expect(s.ios!.xcode.compileCMs, 30000);
-      expect(s.ios!.xcode.swiftCompileMs, 25000);
-      expect(s.ios!.xcode.ldMs, 5000);
-      expect(s.ios!.xcode.codeSignMs, 2000);
-      expect(s.ios!.xcode.otherPhasesMs, 1000);
+      expect(s.ios!.xcode.subsectionCount, 5);
+      // Sum: 30+25+5+2+1 = 63s
+      expect(s.ios!.xcode.subsectionSumMs, 63000);
+      expect(s.ios!.xcode.subsectionMaxMs, 30000);
+      // Sorted us: [1M, 2M, 5M, 25M, 30M]
+      // floor(5*0.5)=2 → 5M; floor(5*0.9)=4 → 30M
+      expect(s.ios!.xcode.subsectionP50Ms, 5000);
+      expect(s.ios!.xcode.subsectionP90Ms, 30000);
     });
 
     test('toJson shape is nested and omits the other platform', () {
