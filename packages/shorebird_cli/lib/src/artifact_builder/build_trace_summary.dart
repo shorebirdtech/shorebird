@@ -7,52 +7,33 @@ import 'dart:io';
 /// no target names, file paths, user identifiers, or other free-form fields
 /// that could identify the project. This is the data we're willing to upload
 /// to Shorebird servers to understand slow builds in the wild.
+///
+/// Schema version 5. Bumped when the on-wire JSON shape changes.
 class BuildTraceSummary {
-  /// {@macro build_trace_summary}
+  /// Creates a [BuildTraceSummary] directly from pre-computed fields.
+  /// Most callers should use [BuildTraceSummary.fromEvents] or
+  /// [BuildTraceSummary.tryFromFile].
   BuildTraceSummary({
     required this.platform,
+    required this.totalMs,
     required this.flutterBuildMs,
+    required this.shorebirdOverheadMs,
+    required this.network,
+    required this.dart,
+    required this.flutterAssemble,
+    required this.native,
     required this.flutterToolMs,
-    required this.nativeBuildMs,
-    required this.kernelSnapshotMs,
-    required this.genSnapshotMs,
-    required this.dartBuildMs,
-    required this.assetsMs,
-    required this.codegenMs,
-    required this.otherAssembleMs,
-    required this.assembleTargetCount,
-    required this.skippedAssembleTargetCount,
-    this.shorebirdOverheadMs,
-    this.networkMs = 0,
-    this.networkCallCount = 0,
-    this.gradleTaskCount = 0,
-    this.gradleTaskSumMs = 0,
-    this.gradleTaskP50Ms = 0,
-    this.gradleTaskP90Ms = 0,
-    this.gradleTaskMaxMs = 0,
-    this.kotlinCompileMs = 0,
-    this.javaCompileMs = 0,
-    this.dexMs = 0,
-    this.resourcesMs = 0,
-    this.transformMs = 0,
-    this.r8MinifyMs = 0,
-    this.lintMs = 0,
-    this.flutterGradlePluginMs = 0,
-    this.bundleMs = 0,
-    this.packagingMs = 0,
-    this.aidlMs = 0,
-    this.nativeLinkMs = 0,
-    this.gradleScaffoldMs = 0,
-    this.podInstallMs = 0,
+    this.android,
+    this.ios,
   });
 
-  /// Build a summary from the raw list of trace events written by Flutter.
+  /// Build a summary from the raw list of trace events written by Flutter
+  /// (and merged with Shorebird-side events).
   ///
-  /// [events] is the top-level list in the Chrome Trace Event Format file.
-  /// [platform] is a short tag identifying the build (e.g. `android`, `ios`).
-  /// [shorebirdOverhead] captures Shorebird's own wall-clock time around the
-  /// `flutter build` invocation (everything the CLI does before/after Flutter
-  /// runs). When null, the summary reports Flutter-side numbers only.
+  /// [platform] is `android` or `ios`. Platform-specific stats ([android] /
+  /// [ios]) are only populated for the matching platform.
+  /// [shorebirdOverhead] captures Shorebird's own wall-clock time around
+  /// `flutter build` — null when the caller can't compute it.
   factory BuildTraceSummary.fromEvents(
     List<Map<String, Object?>> events, {
     required String platform,
@@ -68,9 +49,10 @@ class BuildTraceSummary {
     var codegenUs = 0;
     var otherAssembleUs = 0;
     var assembleCount = 0;
-    var skippedCount = 0;
+    var skippedAssembleCount = 0;
     var networkUs = 0;
     var networkCount = 0;
+    // Gradle per-task stats (android).
     var kotlinCompileUs = 0;
     var javaCompileUs = 0;
     var dexUs = 0;
@@ -84,8 +66,21 @@ class BuildTraceSummary {
     var aidlUs = 0;
     var nativeLinkUs = 0;
     var gradleScaffoldUs = 0;
-    var podInstallUs = 0;
     final gradleTaskDurationsUs = <int>[];
+    // Pod install phase stats (ios).
+    var podInstallUs = 0;
+    var podAnalyzeUs = 0;
+    var podDownloadUs = 0;
+    var podGenerateUs = 0;
+    var podIntegrateUs = 0;
+    // Xcode phase stats (ios).
+    var xcodePhaseCount = 0;
+    var xcodeCompileCUs = 0;
+    var xcodeSwiftCompileUs = 0;
+    var xcodeLdUs = 0;
+    var xcodePhaseScriptUs = 0;
+    var xcodeCodeSignUs = 0;
+    var xcodeOtherPhasesUs = 0;
 
     for (final e in events) {
       final dur = (e['dur'] as num?)?.toInt() ?? 0;
@@ -95,18 +90,23 @@ class BuildTraceSummary {
       final args = (e['args'] as Map?) ?? const {};
       final skipped = args['skipped'] == true;
 
-      // Per PR 116: tid 1 = flutter tool, tid 2 = native build system
-      // (gradle/xcode), tid 3 = flutter assemble targets. tid 4 = per-
-      // Gradle-task events (flutter_trace_init.gradle). tid 5 = Shorebird.
+      // tid 1 = flutter tool, tid 2 = native build system (gradle/xcode),
+      // tid 3 = flutter assemble targets, tid 4 = per-task spans (gradle
+      // on Android, xcode phases on iOS), tid 5 = Shorebird + HTTP.
       if (tid == 1) {
         if (name.startsWith('flutter build ')) {
           flutterBuildUs = dur;
         } else if (cat == 'subprocess') {
-          // Subprocess events on tid 1 are nested inside the pre-xcode /
-          // pre-gradle setup span. Track them by name instead of summing
-          // into flutterToolMs so we don't double-count wall clock.
           if (name == 'pod install') {
             podInstallUs += dur;
+          } else if (name == 'pod install: analyzing') {
+            podAnalyzeUs += dur;
+          } else if (name == 'pod install: downloading') {
+            podDownloadUs += dur;
+          } else if (name == 'pod install: generating') {
+            podGenerateUs += dur;
+          } else if (name == 'pod install: integrating') {
+            podIntegrateUs += dur;
           }
         } else {
           flutterToolUs += dur;
@@ -115,7 +115,7 @@ class BuildTraceSummary {
         nativeBuildUs += dur;
       } else if (tid == 3) {
         assembleCount++;
-        if (skipped) skippedCount++;
+        if (skipped) skippedAssembleCount++;
         switch (_categorize(name)) {
           case _AssembleCategory.kernelSnapshot:
             kernelSnapshotUs += dur;
@@ -130,35 +130,53 @@ class BuildTraceSummary {
           case _AssembleCategory.other:
             otherAssembleUs += dur;
         }
-      } else if (tid == 4 && cat == 'gradle_task') {
-        gradleTaskDurationsUs.add(dur);
-        switch (args['kind']) {
-          case 'kotlin_compile':
-            kotlinCompileUs += dur;
-          case 'java_compile':
-            javaCompileUs += dur;
-          case 'dex':
-            dexUs += dur;
-          case 'resources':
-            resourcesUs += dur;
-          case 'transform':
-            transformUs += dur;
-          case 'r8_minify':
-            r8MinifyUs += dur;
-          case 'lint':
-            lintUs += dur;
-          case 'flutter_gradle_plugin':
-            flutterGradlePluginUs += dur;
-          case 'bundle':
-            bundleUs += dur;
-          case 'packaging':
-            packagingUs += dur;
-          case 'aidl':
-            aidlUs += dur;
-          case 'native_link':
-            nativeLinkUs += dur;
-          case 'gradle_scaffold':
-            gradleScaffoldUs += dur;
+      } else if (tid == 4) {
+        if (cat == 'gradle_task') {
+          gradleTaskDurationsUs.add(dur);
+          switch (args['kind']) {
+            case 'kotlin_compile':
+              kotlinCompileUs += dur;
+            case 'java_compile':
+              javaCompileUs += dur;
+            case 'dex':
+              dexUs += dur;
+            case 'resources':
+              resourcesUs += dur;
+            case 'transform':
+              transformUs += dur;
+            case 'r8_minify':
+              r8MinifyUs += dur;
+            case 'lint':
+              lintUs += dur;
+            case 'flutter_gradle_plugin':
+              flutterGradlePluginUs += dur;
+            case 'bundle':
+              bundleUs += dur;
+            case 'packaging':
+              packagingUs += dur;
+            case 'aidl':
+              aidlUs += dur;
+            case 'native_link':
+              nativeLinkUs += dur;
+            case 'gradle_scaffold':
+              gradleScaffoldUs += dur;
+          }
+        } else if (cat == 'xcode_phase') {
+          xcodePhaseCount++;
+          switch (name) {
+            case 'CompileC':
+              xcodeCompileCUs += dur;
+            case 'SwiftCompile':
+              xcodeSwiftCompileUs += dur;
+            case 'Ld':
+              xcodeLdUs += dur;
+            case 'PhaseScriptExecution':
+              xcodePhaseScriptUs += dur;
+            case 'CodeSign':
+              xcodeCodeSignUs += dur;
+            default:
+              xcodeOtherPhasesUs += dur;
+          }
         }
       } else if (cat == 'network') {
         networkUs += dur;
@@ -167,57 +185,106 @@ class BuildTraceSummary {
     }
 
     final (p50, p90, max) = _percentiles(gradleTaskDurationsUs);
-    final sumGradleUs = gradleTaskDurationsUs.fold<int>(0, (a, b) => a + b);
+    final gradleSumUs = gradleTaskDurationsUs.fold<int>(0, (a, b) => a + b);
 
-    return BuildTraceSummary(
-      platform: platform,
-      flutterBuildMs: flutterBuildUs ~/ 1000,
-      flutterToolMs: flutterToolUs ~/ 1000,
-      nativeBuildMs: nativeBuildUs ~/ 1000,
+    // Dart-compile total (the "dart vs non-dart" signal lives inside
+    // [DartStats]).
+    final dart = DartStats(
+      totalMs: (kernelSnapshotUs + genSnapshotUs) ~/ 1000,
       kernelSnapshotMs: kernelSnapshotUs ~/ 1000,
       genSnapshotMs: genSnapshotUs ~/ 1000,
-      dartBuildMs: dartBuildUs ~/ 1000,
+      buildMs: dartBuildUs ~/ 1000,
+    );
+    final flutterAssemble = FlutterAssembleStats(
       assetsMs: assetsUs ~/ 1000,
       codegenMs: codegenUs ~/ 1000,
-      otherAssembleMs: otherAssembleUs ~/ 1000,
-      assembleTargetCount: assembleCount,
-      skippedAssembleTargetCount: skippedCount,
-      shorebirdOverheadMs: shorebirdOverhead?.inMilliseconds,
-      networkMs: networkUs ~/ 1000,
-      networkCallCount: networkCount,
-      gradleTaskCount: gradleTaskDurationsUs.length,
-      gradleTaskSumMs: sumGradleUs ~/ 1000,
-      gradleTaskP50Ms: p50 ~/ 1000,
-      gradleTaskP90Ms: p90 ~/ 1000,
-      gradleTaskMaxMs: max ~/ 1000,
-      kotlinCompileMs: kotlinCompileUs ~/ 1000,
-      javaCompileMs: javaCompileUs ~/ 1000,
-      dexMs: dexUs ~/ 1000,
-      resourcesMs: resourcesUs ~/ 1000,
-      transformMs: transformUs ~/ 1000,
-      r8MinifyMs: r8MinifyUs ~/ 1000,
-      lintMs: lintUs ~/ 1000,
-      flutterGradlePluginMs: flutterGradlePluginUs ~/ 1000,
-      bundleMs: bundleUs ~/ 1000,
-      packagingMs: packagingUs ~/ 1000,
-      aidlMs: aidlUs ~/ 1000,
-      nativeLinkMs: nativeLinkUs ~/ 1000,
-      gradleScaffoldMs: gradleScaffoldUs ~/ 1000,
-      podInstallMs: podInstallUs ~/ 1000,
+      otherMs: otherAssembleUs ~/ 1000,
+      targetCount: assembleCount,
+      skippedCount: skippedAssembleCount,
     );
-  }
+    // "Native compile only" = native outer minus everything flutter
+    // assemble reported running inside it. Clamped at 0 because the sum
+    // can exceed nativeBuildUs in edge cases.
+    final assembleTotalUs =
+        kernelSnapshotUs +
+        genSnapshotUs +
+        dartBuildUs +
+        assetsUs +
+        codegenUs +
+        otherAssembleUs;
+    final nativeCompileUs = (nativeBuildUs - assembleTotalUs).clamp(
+      0,
+      1 << 62,
+    );
+    final native = NativeBuildStats(
+      buildMs: nativeBuildUs ~/ 1000,
+      compileMs: nativeCompileUs ~/ 1000,
+    );
 
-  /// Returns (p50, p90, max) in the same units as the input. (0, 0, 0) for
-  /// empty input.
-  static (int, int, int) _percentiles(List<int> values) {
-    if (values.isEmpty) return (0, 0, 0);
-    final sorted = [...values]..sort();
-    int at(double q) {
-      final idx = (sorted.length * q).floor().clamp(0, sorted.length - 1);
-      return sorted[idx];
+    AndroidStats? android;
+    IosStats? ios;
+    if (platform == 'android') {
+      android = AndroidStats(
+        gradle: GradleStats(
+          taskCount: gradleTaskDurationsUs.length,
+          taskSumMs: gradleSumUs ~/ 1000,
+          taskP50Ms: p50 ~/ 1000,
+          taskP90Ms: p90 ~/ 1000,
+          taskMaxMs: max ~/ 1000,
+          kotlinCompileMs: kotlinCompileUs ~/ 1000,
+          javaCompileMs: javaCompileUs ~/ 1000,
+          dexMs: dexUs ~/ 1000,
+          resourcesMs: resourcesUs ~/ 1000,
+          transformMs: transformUs ~/ 1000,
+          r8MinifyMs: r8MinifyUs ~/ 1000,
+          lintMs: lintUs ~/ 1000,
+          flutterGradlePluginMs: flutterGradlePluginUs ~/ 1000,
+          bundleMs: bundleUs ~/ 1000,
+          packagingMs: packagingUs ~/ 1000,
+          aidlMs: aidlUs ~/ 1000,
+          nativeLinkMs: nativeLinkUs ~/ 1000,
+          gradleScaffoldMs: gradleScaffoldUs ~/ 1000,
+        ),
+      );
+    } else if (platform == 'ios') {
+      ios = IosStats(
+        podInstall: PodInstallStats(
+          ms: podInstallUs ~/ 1000,
+          analyzeMs: podAnalyzeUs ~/ 1000,
+          downloadMs: podDownloadUs ~/ 1000,
+          generateMs: podGenerateUs ~/ 1000,
+          integrateMs: podIntegrateUs ~/ 1000,
+        ),
+        xcode: XcodeStats(
+          phaseCount: xcodePhaseCount,
+          compileCMs: xcodeCompileCUs ~/ 1000,
+          swiftCompileMs: xcodeSwiftCompileUs ~/ 1000,
+          ldMs: xcodeLdUs ~/ 1000,
+          phaseScriptMs: xcodePhaseScriptUs ~/ 1000,
+          codeSignMs: xcodeCodeSignUs ~/ 1000,
+          otherPhasesMs: xcodeOtherPhasesUs ~/ 1000,
+        ),
+      );
     }
 
-    return (at(0.5), at(0.9), sorted.last);
+    final flutterBuildMs = flutterBuildUs ~/ 1000;
+    final shorebirdOverheadMs = shorebirdOverhead?.inMilliseconds;
+    return BuildTraceSummary(
+      platform: platform,
+      totalMs: flutterBuildMs + (shorebirdOverheadMs ?? 0),
+      flutterBuildMs: flutterBuildMs,
+      shorebirdOverheadMs: shorebirdOverheadMs,
+      network: NetworkStats(
+        ms: networkUs ~/ 1000,
+        callCount: networkCount,
+      ),
+      dart: dart,
+      flutterAssemble: flutterAssemble,
+      native: native,
+      flutterToolMs: flutterToolUs ~/ 1000,
+      android: android,
+      ios: ios,
+    );
   }
 
   /// Parse [traceFile] and return a summary, or null if the file is missing
@@ -247,12 +314,9 @@ class BuildTraceSummary {
 
   static _AssembleCategory _categorize(String name) {
     final n = name.toLowerCase();
-    // Dart frontend: source → kernel (.dill).
     if (n.contains('kernel_snapshot') || n == 'kernel') {
       return _AssembleCategory.kernelSnapshot;
     }
-    // AOT via gen_snapshot: kernel → native code. Covers Android per-arch
-    // targets, iOS `ios_aot`, and the older `aot_elf_*` / `aot_assembly_*`.
     if (n.startsWith('android_aot') ||
         n.contains('aot_assembly') ||
         n.contains('aot_elf') ||
@@ -260,18 +324,12 @@ class BuildTraceSummary {
         n.contains('aot_bundle')) {
       return _AssembleCategory.genSnapshot;
     }
-    // Dart build scripts (`dart_build`) — user-authored build-time code
-    // execution. Kept separate from codegen since it can dominate (~10s on
-    // plugin-heavy apps) and is semantically "run Dart code", not "compile".
     if (n == 'dart_build') {
       return _AssembleCategory.dartBuild;
     }
-    // Code generation: gen_dart_plugin_registrant, gen_localizations, etc.
     if (n.startsWith('gen_')) {
       return _AssembleCategory.codegen;
     }
-    // Asset bundling and framework unpacking (copies prebuilt artifacts,
-    // not compilation).
     if (n.contains('asset_bundle') ||
         n.contains('bundle_flutter_assets') ||
         n.contains('install_code_assets') ||
@@ -283,197 +341,292 @@ class BuildTraceSummary {
     return _AssembleCategory.other;
   }
 
-  /// Short tag identifying the build (e.g. `android`, `ios`).
-  final String platform;
+  static (int, int, int) _percentiles(List<int> values) {
+    if (values.isEmpty) return (0, 0, 0);
+    final sorted = [...values]..sort();
+    int at(double q) {
+      final idx = (sorted.length * q).floor().clamp(0, sorted.length - 1);
+      return sorted[idx];
+    }
 
-  /// Flutter's own reported wall-clock duration (the "flutter build apk/ipa"
-  /// umbrella event in the trace), in milliseconds.
-  final int flutterBuildMs;
-
-  /// Time spent in the flutter tool itself (pre/post-gradle setup), excluding
-  /// the umbrella "flutter build X" span.
-  final int flutterToolMs;
-
-  /// Gradle (Android) or Xcode (iOS) outer span duration.
-  final int nativeBuildMs;
-
-  /// Dart frontend compilation (source → kernel).
-  final int kernelSnapshotMs;
-
-  /// gen_snapshot AOT compilation (kernel → native code), summed across
-  /// architectures.
-  final int genSnapshotMs;
-
-  /// Time spent running user-authored Dart build scripts (the `dart_build`
-  /// assemble target). Distinct from `genSnapshot` compilation of app code.
-  final int dartBuildMs;
-
-  /// Asset bundling and copying.
-  final int assetsMs;
-
-  /// Code-generation targets (plugin registrant, localizations, etc.).
-  final int codegenMs;
-
-  /// Any flutter assemble target that didn't fit the categories above.
-  final int otherAssembleMs;
-
-  /// Number of flutter assemble targets that ran during the build.
-  final int assembleTargetCount;
-
-  /// Number of those targets that were cache hits.
-  final int skippedAssembleTargetCount;
-
-  /// Wall-clock time the Shorebird CLI spent around Flutter — everything
-  /// except the time Flutter itself reports. Null if the caller couldn't
-  /// compute it.
-  final int? shorebirdOverheadMs;
-
-  /// Total time spent waiting on network I/O, summed across every HTTP
-  /// request Shorebird made during the command.
-  final int networkMs;
-
-  /// Number of HTTP requests Shorebird made.
-  final int networkCallCount;
-
-  /// Number of distinct Gradle tasks that ran (only populated when the
-  /// Flutter-side init script emitted per-task events).
-  final int gradleTaskCount;
-
-  /// Sum of durations across all Gradle tasks (serial-equivalent).
-  final int gradleTaskSumMs;
-
-  /// 50th/90th/max percentile of Gradle task durations. Useful for spotting
-  /// tail latency — is the long build dominated by one slow task, or many
-  /// moderately slow ones?
-  final int gradleTaskP50Ms;
-
-  /// See [gradleTaskP50Ms].
-  final int gradleTaskP90Ms;
-
-  /// See [gradleTaskP50Ms].
-  final int gradleTaskMaxMs;
-
-  /// Time spent in Kotlin-compile Gradle tasks.
-  final int kotlinCompileMs;
-
-  /// Time spent in Java-compile Gradle tasks.
-  final int javaCompileMs;
-
-  /// Time spent in dex (D8/R8) Gradle tasks.
-  final int dexMs;
-
-  /// Time spent in resource-processing Gradle tasks (merging resources,
-  /// processing manifests, etc.).
-  final int resourcesMs;
-
-  /// Time spent in Gradle "transform" tasks (AAR transforms, jetifier,
-  /// desugaring, etc.).
-  final int transformMs;
-
-  /// Time spent in R8 / minification / shrinking tasks. Often the single
-  /// slowest Gradle task on release builds.
-  final int r8MinifyMs;
-
-  /// Time spent in Android lint tasks (`lintVitalAnalyzeRelease` etc.). AGP
-  /// runs these on every release build by default and they can dominate
-  /// per-plugin compile time — useful to surface distinctly.
-  final int lintMs;
-
-  /// Time spent in the Flutter Gradle plugin's own tasks (e.g.
-  /// `compileFlutterBuildRelease`, which orchestrates flutter assemble from
-  /// Gradle's side). Already partly accounted for by tid=3 events.
-  final int flutterGradlePluginMs;
-
-  /// Time spent in bundle-related Gradle tasks (AAB packaging pipeline,
-  /// dynamic feature bundling, etc.).
-  final int bundleMs;
-
-  /// Time spent in APK packaging tasks.
-  final int packagingMs;
-
-  /// Time spent in AIDL interface compilation.
-  final int aidlMs;
-
-  /// Time spent merging / linking native libraries (`mergeReleaseNativeLibs`,
-  /// `copyReleaseJniLibs*`).
-  final int nativeLinkMs;
-
-  /// Gradle's per-plugin scaffolding — AAR metadata, proguard rule export,
-  /// validate/check tasks, `prepare*`, `copy*`, `generate*` without a more
-  /// specific bucket. Individually small but adds up on plugin-heavy apps.
-  final int gradleScaffoldMs;
-
-  /// Time spent running `pod install`, emitted as a subprocess span by
-  /// mac.dart so it's visible on iOS builds instead of being absorbed into
-  /// the pre-xcode setup gap.
-  final int podInstallMs;
-
-  /// Dart-compile total (kernel snapshot + gen_snapshot). `dartBuildMs`
-  /// (build-time Dart script execution) is tracked separately.
-  int get dartMs => kernelSnapshotMs + genSnapshotMs;
-
-  /// Approximate time the native toolchain (Gradle/Xcode) spent on native
-  /// compilation, excluding the Flutter assemble sub-invocation that runs
-  /// inside it. This is the clearest upper-bound for "time a Flutter-aware
-  /// native build cache could save" — plugin AARs, pod compilation, Swift/
-  /// Kotlin/ObjC/Java builds, linking, dex/app packaging.
-  ///
-  /// Computed as `nativeBuildMs - (sum of all flutter assemble target
-  /// durations)`, clamped at 0. Not perfect (Xcode/Gradle can run flutter
-  /// assemble and native compile in parallel on multi-core machines) but
-  /// useful as an order-of-magnitude signal.
-  int get nativeCompileMs {
-    final assembleTotal =
-        kernelSnapshotMs +
-        genSnapshotMs +
-        dartBuildMs +
-        assetsMs +
-        codegenMs +
-        otherAssembleMs;
-    final v = nativeBuildMs - assembleTotal;
-    return v < 0 ? 0 : v;
+    return (at(0.5), at(0.9), sorted.last);
   }
 
-  /// `flutterBuildMs - dartMs`, clamped at 0. The "everything except Dart
-  /// compilation" bucket inside Flutter's build. For caching analysis,
-  /// prefer [nativeCompileMs] which isolates the native-toolchain portion.
+  /// `android` or `ios`.
+  final String platform;
+
+  /// Total command wall-clock (Flutter build + Shorebird overhead).
+  final int totalMs;
+
+  /// Flutter's own reported wall-clock duration (the `flutter build *`
+  /// umbrella event in the trace).
+  final int flutterBuildMs;
+
+  /// Wall-clock time the Shorebird CLI spent around Flutter. Null when
+  /// the caller couldn't compute it.
+  final int? shorebirdOverheadMs;
+
+  /// Network I/O time and request counts, summed across Shorebird-side
+  /// HTTP (auth, artifact upload) and Flutter-side HTTP (artifact
+  /// downloads when the cache is cold).
+  final NetworkStats network;
+
+  /// Dart-compilation breakdown (kernel snapshot + gen_snapshot) plus the
+  /// `dart_build` user script target, which is tracked separately.
+  final DartStats dart;
+
+  /// Flutter assemble sub-invocation durations by bucket.
+  final FlutterAssembleStats flutterAssemble;
+
+  /// Native (Gradle/Xcode) outer span and derived "native-only compile"
+  /// approximation.
+  final NativeBuildStats native;
+
+  /// Time in the flutter tool itself (pre/post setup), excluding the
+  /// umbrella span.
+  final int flutterToolMs;
+
+  /// Android-specific stats. Only non-null when `platform == 'android'`.
+  final AndroidStats? android;
+
+  /// iOS-specific stats. Only non-null when `platform == 'ios'`.
+  final IosStats? ios;
+
+  /// "Dart vs non-Dart" quick access: equivalent to `dart.totalMs`.
+  int get dartMs => dart.totalMs;
+
+  /// `flutterBuildMs - dartMs`, clamped at 0. The "everything except
+  /// Dart compilation" bucket.
   int get nonDartMs {
     final v = flutterBuildMs - dartMs;
     return v < 0 ? 0 : v;
   }
 
-  /// Total command wall-clock (Flutter build + Shorebird overhead), when the
-  /// overhead is known; otherwise just [flutterBuildMs].
-  int get totalMs => flutterBuildMs + (shorebirdOverheadMs ?? 0);
-
   /// JSON representation suitable for writing alongside the raw trace.
   /// Field names are stable and safe to upload — no paths or identifiers.
-  Map<String, Object?> toJson() => {
-    'version': 4,
+  /// Platform-specific sections are omitted (not nulled) on the other
+  /// platform.
+  Map<String, Object?> toJson() => <String, Object?>{
+    'version': 5,
     'platform': platform,
     'totalMs': totalMs,
     'flutterBuildMs': flutterBuildMs,
     'shorebirdOverheadMs': shorebirdOverheadMs,
-    'networkMs': networkMs,
-    'networkCallCount': networkCallCount,
     'dartMs': dartMs,
     'nonDartMs': nonDartMs,
-    'nativeCompileMs': nativeCompileMs,
+    'network': network.toJson(),
+    'dart': dart.toJson(),
+    'flutterAssemble': flutterAssemble.toJson(),
+    'native': native.toJson(),
+    'flutterTool': <String, Object?>{'ms': flutterToolMs},
+    if (android != null) 'android': android!.toJson(),
+    if (ios != null) 'ios': ios!.toJson(),
+  };
+}
+
+/// Network I/O totals. Combined across Shorebird-side (auth, artifact
+/// upload, etc.) and Flutter-side (artifact downloads) HTTP.
+class NetworkStats {
+  /// Creates a [NetworkStats].
+  NetworkStats({required this.ms, required this.callCount});
+
+  /// Total time across all HTTP requests, in milliseconds.
+  final int ms;
+
+  /// Number of HTTP requests.
+  final int callCount;
+  /// JSON form.
+  Map<String, Object?> toJson() => {'ms': ms, 'callCount': callCount};
+}
+
+/// Dart compilation: source → kernel, kernel → native AOT, plus `dart_build`
+/// user-script execution.
+class DartStats {
+  /// Creates a [DartStats].
+  DartStats({
+    required this.totalMs,
+    required this.kernelSnapshotMs,
+    required this.genSnapshotMs,
+    required this.buildMs,
+  });
+
+  /// `kernelSnapshotMs + genSnapshotMs` — the pure Dart-compile total.
+  final int totalMs;
+
+  /// Dart frontend (source → kernel `.dill`).
+  final int kernelSnapshotMs;
+
+  /// gen_snapshot AOT (kernel → native code), summed across architectures.
+  final int genSnapshotMs;
+
+  /// `dart_build` target — runs user-authored `build.dart` scripts.
+  /// Reported separately because it's Dart work, but not *compilation*.
+  final int buildMs;
+
+  /// JSON form.
+  Map<String, Object?> toJson() => {
+    'totalMs': totalMs,
     'kernelSnapshotMs': kernelSnapshotMs,
     'genSnapshotMs': genSnapshotMs,
-    'dartBuildMs': dartBuildMs,
+    'buildMs': buildMs,
+  };
+}
+
+/// Flutter-assemble internal targets excluding the dart-compile ones.
+class FlutterAssembleStats {
+  /// Creates a [FlutterAssembleStats].
+  FlutterAssembleStats({
+    required this.assetsMs,
+    required this.codegenMs,
+    required this.otherMs,
+    required this.targetCount,
+    required this.skippedCount,
+  });
+
+  /// Asset bundling and framework unpacking.
+  final int assetsMs;
+
+  /// `gen_*` code generation.
+  final int codegenMs;
+
+  /// Residual assemble targets not matching any other bucket.
+  final int otherMs;
+
+  /// Total flutter assemble targets that appeared in the trace.
+  final int targetCount;
+
+  /// Targets that reported `skipped: true` (cache hits).
+  final int skippedCount;
+
+  /// JSON form.
+  Map<String, Object?> toJson() => {
     'assetsMs': assetsMs,
     'codegenMs': codegenMs,
-    'otherAssembleMs': otherAssembleMs,
-    'flutterToolMs': flutterToolMs,
-    'nativeBuildMs': nativeBuildMs,
-    'assembleTargetCount': assembleTargetCount,
-    'skippedAssembleTargetCount': skippedAssembleTargetCount,
-    'gradleTaskCount': gradleTaskCount,
-    'gradleTaskSumMs': gradleTaskSumMs,
-    'gradleTaskP50Ms': gradleTaskP50Ms,
-    'gradleTaskP90Ms': gradleTaskP90Ms,
-    'gradleTaskMaxMs': gradleTaskMaxMs,
+    'otherMs': otherMs,
+    'targetCount': targetCount,
+    'skippedCount': skippedCount,
+  };
+}
+
+/// Native toolchain outer span + derived "pure native compile" estimate.
+class NativeBuildStats {
+  /// Creates a [NativeBuildStats].
+  NativeBuildStats({required this.buildMs, required this.compileMs});
+
+  /// Gradle (Android) or Xcode (iOS) outer span duration.
+  final int buildMs;
+
+  /// Upper-bound for time a Flutter-aware native build cache could save:
+  /// `buildMs` minus every flutter assemble target summed together.
+  final int compileMs;
+
+  /// JSON form.
+  Map<String, Object?> toJson() => {'buildMs': buildMs, 'compileMs': compileMs};
+}
+
+/// Platform-specific Android stats.
+class AndroidStats {
+  /// Creates an [AndroidStats].
+  AndroidStats({required this.gradle});
+
+  /// Per-task Gradle breakdown.
+  final GradleStats gradle;
+  /// JSON form.
+  Map<String, Object?> toJson() => {'gradle': gradle.toJson()};
+}
+
+/// Gradle task histogram + per-kind totals. Populated from the
+/// `shorebird_trace_init.gradle` TaskExecutionListener.
+class GradleStats {
+  /// Creates a [GradleStats].
+  GradleStats({
+    required this.taskCount,
+    required this.taskSumMs,
+    required this.taskP50Ms,
+    required this.taskP90Ms,
+    required this.taskMaxMs,
+    required this.kotlinCompileMs,
+    required this.javaCompileMs,
+    required this.dexMs,
+    required this.resourcesMs,
+    required this.transformMs,
+    required this.r8MinifyMs,
+    required this.lintMs,
+    required this.flutterGradlePluginMs,
+    required this.bundleMs,
+    required this.packagingMs,
+    required this.aidlMs,
+    required this.nativeLinkMs,
+    required this.gradleScaffoldMs,
+  });
+
+  /// Total number of Gradle tasks observed.
+  final int taskCount;
+
+  /// Sum of all task durations. Typically much larger than gradle wall
+  /// clock because Gradle runs tasks in parallel.
+  final int taskSumMs;
+
+  /// p50 (median) of individual task durations in milliseconds.
+  final int taskP50Ms;
+
+  /// p90 of individual task durations in milliseconds.
+  final int taskP90Ms;
+
+  /// Max of individual task durations in milliseconds.
+  final int taskMaxMs;
+
+  /// Kotlin compilation time across plugins.
+  final int kotlinCompileMs;
+
+  /// Java compilation time across plugins.
+  final int javaCompileMs;
+
+  /// Dex (D8/R8 output) time.
+  final int dexMs;
+
+  /// Resource merging / processing time.
+  final int resourcesMs;
+
+  /// AAR / jetifier / desugar transform time.
+  final int transformMs;
+
+  /// R8 / minify / shrinking. Often the single slowest task on release
+  /// builds.
+  final int r8MinifyMs;
+
+  /// Android lint (`lintVitalAnalyzeRelease` etc.). AGP runs these on
+  /// every release build by default and they can dominate.
+  final int lintMs;
+
+  /// The Flutter Gradle plugin's own orchestration tasks (e.g.
+  /// `compileFlutterBuildRelease`).
+  final int flutterGradlePluginMs;
+
+  /// Bundle-related Gradle tasks (AAB packaging etc.).
+  final int bundleMs;
+
+  /// APK packaging tasks.
+  final int packagingMs;
+
+  /// AIDL interface compilation.
+  final int aidlMs;
+
+  /// Merging / linking native libraries.
+  final int nativeLinkMs;
+
+  /// Per-plugin scaffolding — AAR metadata, proguard rule export,
+  /// validate/check tasks, misc. `prepare*` / `copy*` / `generate*` not
+  /// claimed by a more specific bucket.
+  final int gradleScaffoldMs;
+
+  /// JSON form.
+  Map<String, Object?> toJson() => <String, Object?>{
+    'taskCount': taskCount,
+    'taskSumMs': taskSumMs,
+    'taskP50Ms': taskP50Ms,
+    'taskP90Ms': taskP90Ms,
+    'taskMaxMs': taskMaxMs,
     'kotlinCompileMs': kotlinCompileMs,
     'javaCompileMs': javaCompileMs,
     'dexMs': dexMs,
@@ -487,7 +640,106 @@ class BuildTraceSummary {
     'aidlMs': aidlMs,
     'nativeLinkMs': nativeLinkMs,
     'gradleScaffoldMs': gradleScaffoldMs,
-    'podInstallMs': podInstallMs,
+  };
+}
+
+/// Platform-specific iOS stats.
+class IosStats {
+  /// Creates an [IosStats].
+  IosStats({required this.podInstall, required this.xcode});
+
+  /// CocoaPods `pod install` timing, split into phases.
+  final PodInstallStats podInstall;
+
+  /// Xcode per-phase breakdown from `-showBuildTimingSummary`.
+  final XcodeStats xcode;
+  /// JSON form.
+  Map<String, Object?> toJson() => {
+    'podInstall': podInstall.toJson(),
+    'xcode': xcode.toJson(),
+  };
+}
+
+/// CocoaPods `pod install` timing, split into phases parsed from the
+/// `--verbose` output: analyze, download, generate project, integrate.
+class PodInstallStats {
+  /// Creates a [PodInstallStats].
+  PodInstallStats({
+    required this.ms,
+    required this.analyzeMs,
+    required this.downloadMs,
+    required this.generateMs,
+    required this.integrateMs,
+  });
+
+  /// Total `pod install` wall-clock time.
+  final int ms;
+
+  /// Dependency analysis phase.
+  final int analyzeMs;
+
+  /// Downloading pods / dependencies phase.
+  final int downloadMs;
+
+  /// Generating the Pods Xcode project phase.
+  final int generateMs;
+
+  /// Integrating pods into the client Xcode project phase.
+  final int integrateMs;
+
+  /// JSON form.
+  Map<String, Object?> toJson() => {
+    'ms': ms,
+    'analyzeMs': analyzeMs,
+    'downloadMs': downloadMs,
+    'generateMs': generateMs,
+    'integrateMs': integrateMs,
+  };
+}
+
+/// Xcode per-phase totals parsed from the `-showBuildTimingSummary` block.
+class XcodeStats {
+  /// Creates an [XcodeStats].
+  XcodeStats({
+    required this.phaseCount,
+    required this.compileCMs,
+    required this.swiftCompileMs,
+    required this.ldMs,
+    required this.phaseScriptMs,
+    required this.codeSignMs,
+    required this.otherPhasesMs,
+  });
+
+  /// Total distinct phases Xcode reported.
+  final int phaseCount;
+
+  /// C / Objective-C compilation.
+  final int compileCMs;
+
+  /// Swift compilation.
+  final int swiftCompileMs;
+
+  /// Linking.
+  final int ldMs;
+
+  /// Script phase execution (including Flutter's build phase script).
+  final int phaseScriptMs;
+
+  /// Code signing.
+  final int codeSignMs;
+
+  /// Any phase not covered above (resources, copy, strip, etc.).
+  final int otherPhasesMs;
+
+  /// JSON form.
+  Map<String, Object?> toJson() => {
+    'phaseCount': phaseCount,
+    'compileCMs': compileCMs,
+    'swiftCompileMs': swiftCompileMs,
+    'ldMs': ldMs,
+    'phaseScriptMs': phaseScriptMs,
+    'codeSignMs': codeSignMs,
+    'otherPhasesMs': otherPhasesMs,
   };
 }
 
