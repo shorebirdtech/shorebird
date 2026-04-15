@@ -8,6 +8,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
@@ -548,6 +549,15 @@ Reason: Exited with code $exitCode.''',
     return traceFile;
   }
 
+  /// Returns the user's home directory as understood by the OS, or null if
+  /// neither `HOME` nor `USERPROFILE` is set.
+  Directory? _homeDirectory() {
+    final env = Platform.environment;
+    final h = env['HOME'] ?? env['USERPROFILE'];
+    if (h == null || h.isEmpty) return null;
+    return Directory(h);
+  }
+
   /// Writes a privacy-safe summary JSON (`build-trace-<platform>-summary.json`)
   /// next to [traceFile]. Best-effort: logs at detail level on failure.
   ///
@@ -579,6 +589,14 @@ Reason: Exited with code $exitCode.''',
     );
     final flutterElapsed = Duration(milliseconds: preSummary.flutterBuildMs);
     final shorebirdOverhead = totalElapsed - flutterElapsed;
+    // Snapshot the build environment (caching config, CI provider, ...).
+    // This is what lets us tell, in field data, whether a slow build is
+    // "no caching configured" vs "slow despite caching being on".
+    final environment = BuildEnvironment.detect(
+      environment: Platform.environment,
+      homeDir: _homeDirectory(),
+      projectRoot: shorebirdEnv.getShorebirdProjectRoot(),
+    );
     // If the trace reports a longer build than the command has been running
     // (clock skew, malformed trace), treat overhead as zero rather than
     // negative.
@@ -588,6 +606,7 @@ Reason: Exited with code $exitCode.''',
       shorebirdOverhead: shorebirdOverhead.isNegative
           ? Duration.zero
           : shorebirdOverhead,
+      environment: environment,
     );
     if (summary == null) return;
 

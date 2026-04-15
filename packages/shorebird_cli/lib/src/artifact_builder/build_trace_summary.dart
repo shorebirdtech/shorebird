@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
+
 /// A privacy-safe summary of a Chrome Trace Event Format build trace.
 ///
 /// Contains only aggregate millisecond timings and small integer counters —
@@ -25,6 +27,7 @@ class BuildTraceSummary {
     required this.flutterToolMs,
     this.android,
     this.ios,
+    this.environment,
   });
 
   /// Build a summary from the raw list of trace events written by Flutter
@@ -38,6 +41,7 @@ class BuildTraceSummary {
     List<Map<String, Object?>> events, {
     required String platform,
     Duration? shorebirdOverhead,
+    BuildEnvironment? environment,
   }) {
     var flutterBuildUs = 0;
     var flutterToolUs = 0;
@@ -66,6 +70,9 @@ class BuildTraceSummary {
     var aidlUs = 0;
     var nativeLinkUs = 0;
     var gradleScaffoldUs = 0;
+    var gradleTaskFromCacheCount = 0;
+    var gradleTaskUpToDateCount = 0;
+    var gradleTaskExecutedCount = 0;
     final gradleTaskDurationsUs = <int>[];
     // Pod install phase stats (ios).
     var podInstallUs = 0;
@@ -132,6 +139,16 @@ class BuildTraceSummary {
       } else if (tid == 4) {
         if (cat == 'gradle_task') {
           gradleTaskDurationsUs.add(dur);
+          // Per-task cache outcome from the init script. Mutually
+          // exclusive in practice: a task either ran, was up-to-date
+          // (incremental skip), or was restored from the build cache.
+          if (args['fromCache'] == true) {
+            gradleTaskFromCacheCount++;
+          } else if (args['upToDate'] == true) {
+            gradleTaskUpToDateCount++;
+          } else {
+            gradleTaskExecutedCount++;
+          }
           switch (args['kind']) {
             case 'kotlin_compile':
               kotlinCompileUs += dur;
@@ -221,6 +238,9 @@ class BuildTraceSummary {
           taskP50Ms: p50 ~/ 1000,
           taskP90Ms: p90 ~/ 1000,
           taskMaxMs: max ~/ 1000,
+          taskFromCacheCount: gradleTaskFromCacheCount,
+          taskUpToDateCount: gradleTaskUpToDateCount,
+          taskExecutedCount: gradleTaskExecutedCount,
           kotlinCompileMs: kotlinCompileUs ~/ 1000,
           javaCompileMs: javaCompileUs ~/ 1000,
           dexMs: dexUs ~/ 1000,
@@ -272,6 +292,7 @@ class BuildTraceSummary {
       flutterToolMs: flutterToolUs ~/ 1000,
       android: android,
       ios: ios,
+      environment: environment,
     );
   }
 
@@ -281,6 +302,7 @@ class BuildTraceSummary {
     File traceFile, {
     required String platform,
     Duration? shorebirdOverhead,
+    BuildEnvironment? environment,
   }) {
     if (!traceFile.existsSync()) return null;
     try {
@@ -294,6 +316,7 @@ class BuildTraceSummary {
         events,
         platform: platform,
         shorebirdOverhead: shorebirdOverhead,
+        environment: environment,
       );
     } on FormatException {
       return null;
@@ -380,6 +403,11 @@ class BuildTraceSummary {
   /// iOS-specific stats. Only non-null when `platform == 'ios'`.
   final IosStats? ios;
 
+  /// Build-environment snapshot — caching configuration, CI provider,
+  /// etc. Lets us tell apart "slow because nothing's configured" from
+  /// "slow despite caching being on" in field data.
+  final BuildEnvironment? environment;
+
   /// "Dart vs non-Dart" quick access: equivalent to `dart.totalMs`.
   int get dartMs => dart.totalMs;
 
@@ -395,7 +423,7 @@ class BuildTraceSummary {
   /// Platform-specific sections are omitted (not nulled) on the other
   /// platform.
   Map<String, Object?> toJson() => <String, Object?>{
-    'version': 5,
+    'version': 6,
     'platform': platform,
     'totalMs': totalMs,
     'flutterBuildMs': flutterBuildMs,
@@ -409,6 +437,7 @@ class BuildTraceSummary {
     'flutterTool': <String, Object?>{'ms': flutterToolMs},
     if (android != null) 'android': android!.toJson(),
     if (ios != null) 'ios': ios!.toJson(),
+    if (environment != null) 'environment': environment!.toJson(),
   };
 }
 
@@ -533,6 +562,9 @@ class GradleStats {
     required this.taskP50Ms,
     required this.taskP90Ms,
     required this.taskMaxMs,
+    required this.taskFromCacheCount,
+    required this.taskUpToDateCount,
+    required this.taskExecutedCount,
     required this.kotlinCompileMs,
     required this.javaCompileMs,
     required this.dexMs,
@@ -563,6 +595,17 @@ class GradleStats {
 
   /// Max of individual task durations in milliseconds.
   final int taskMaxMs;
+
+  /// Tasks restored from Gradle's build cache (FROM-CACHE skip message).
+  /// Non-zero indicates `org.gradle.caching=true` is doing real work.
+  final int taskFromCacheCount;
+
+  /// Tasks that Gradle saw as up-to-date and skipped without running.
+  /// Incremental-build hits.
+  final int taskUpToDateCount;
+
+  /// Tasks that actually executed (cache miss + not up-to-date).
+  final int taskExecutedCount;
 
   /// Kotlin compilation time across plugins.
   final int kotlinCompileMs;
@@ -615,6 +658,9 @@ class GradleStats {
     'taskP50Ms': taskP50Ms,
     'taskP90Ms': taskP90Ms,
     'taskMaxMs': taskMaxMs,
+    'taskFromCacheCount': taskFromCacheCount,
+    'taskUpToDateCount': taskUpToDateCount,
+    'taskExecutedCount': taskExecutedCount,
     'kotlinCompileMs': kotlinCompileMs,
     'javaCompileMs': javaCompileMs,
     'dexMs': dexMs,
