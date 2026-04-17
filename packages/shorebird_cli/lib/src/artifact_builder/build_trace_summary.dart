@@ -447,9 +447,9 @@ class BuildTraceSummary {
     'flutterAssemble': flutterAssemble.toJson(),
     'native': native.toJson(),
     'flutterTool': <String, Object?>{'ms': flutterToolMs},
-    if (android != null) 'android': android!.toJson(),
-    if (ios != null) 'ios': ios!.toJson(),
-    if (environment != null) 'environment': environment!.toJson(),
+    'android': ?android?.toJson(),
+    'ios': ?ios?.toJson(),
+    'environment': ?environment?.toJson(),
   };
 }
 

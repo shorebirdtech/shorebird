@@ -6,6 +6,14 @@ import 'package:scoped_deps/scoped_deps.dart';
 /// A single event in the Chrome Trace Event Format, written by Shorebird
 /// itself (not Flutter). Accumulated in memory during a CLI invocation and
 /// merged into the Flutter-written trace file at summary-write time.
+///
+/// Format doc: https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU
+///
+/// Lookalike classes live in `flutter/packages/flutter_tools/lib/src/
+/// build_system/build_trace.dart` and `dart-sdk/pkg/aot_tools/lib/src/
+/// build_tracer.dart`; they all serialize to the same wire format so
+/// traces merge cleanly. Keep field names and ph/ts/dur/pid/tid shape
+/// in sync when editing.
 class ShorebirdTraceEvent {
   /// {@macro shorebird_trace_event}
   ShorebirdTraceEvent({
