@@ -264,6 +264,53 @@ class BuildTracer {
     }
   }
 
+  /// Spawns [executable] via [Process.start], waits for it, and emits
+  /// metadata + subprocess span on the child's real OS pid — each
+  /// subprocess shows up as its own process in Perfetto, not a row
+  /// inside the parent.
+  ///
+  /// Returns a [ProcessResult] with the same shape [Process.run] would
+  /// have produced (stdout and stderr decoded via [systemEncoding]) so
+  /// callers can swap `Process.run` → this helper without changing the
+  /// surrounding code.
+  ///
+  /// [workingDirectory] and [environment] are forwarded to
+  /// [Process.start].
+  Future<ProcessResult> startAndTraceSubprocess({
+    required String executable,
+    required List<String> arguments,
+    String? workingDirectory,
+    Map<String, String>? environment,
+  }) async {
+    final startMicros = DateTime.now().microsecondsSinceEpoch;
+    final process = await Process.start(
+      executable,
+      arguments,
+      workingDirectory: workingDirectory,
+      environment: environment,
+    );
+    final childPid = process.pid;
+    final stdoutF = process.stdout.transform(systemEncoding.decoder).join();
+    final stderrF = process.stderr.transform(systemEncoding.decoder).join();
+    final exitCode = await process.exitCode;
+    final streams = await Future.wait([stdoutF, stderrF]);
+    final endMicros = DateTime.now().microsecondsSinceEpoch;
+
+    final name = _basename(executable);
+    addProcessNameMetadata(pid: childPid, name: name);
+    addThreadNameMetadata(pid: childPid, tid: 1, name: name);
+    addSubprocessEvent(
+      executable: executable,
+      arguments: arguments,
+      pid: childPid,
+      tid: 1,
+      startMicros: startMicros,
+      endMicros: endMicros,
+    );
+
+    return ProcessResult(childPid, exitCode, streams[0], streams[1]);
+  }
+
   /// Records an HTTP request span. Name is "METHOD host" so requests to
   /// the same host collapse visually in Perfetto. [args] augments the
   /// standard `{method, host}` with optional `status`, `contentLength`,
