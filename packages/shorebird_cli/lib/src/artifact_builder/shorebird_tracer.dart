@@ -1,24 +1,14 @@
 import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:scoped_deps/scoped_deps.dart';
 
-/// Returns the OS process id of the current Dart process.
+/// The OS process id of the current Dart process.
 ///
-/// `dart:io` exposes pids for spawned subprocesses but not for the current
-/// process; FFI into libc `getpid()` (or `GetCurrentProcessId` on Windows)
-/// is the standard workaround.
-int currentProcessId() => _getpid();
-
-final DynamicLibrary _currentProcess = Platform.isWindows
-    ? DynamicLibrary.open('kernel32.dll')
-    : DynamicLibrary.process();
-
-final int Function() _getpid = _currentProcess
-    .lookupFunction<Int32 Function(), int Function()>(
-      Platform.isWindows ? 'GetCurrentProcessId' : 'getpid',
-    );
+/// Trivial re-export of `dart:io`'s top-level [pid] getter so call sites
+/// read as "the thing that tagged this span" rather than reaching into
+/// `dart:io` for one name.
+int currentProcessId() => pid;
 
 /// Perfetto row id for network (HTTP) spans within the shorebird_cli
 /// process. Local tid; no cross-repo coordination.
