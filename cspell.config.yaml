@@ -146,7 +146,8 @@ words:
   - xcframework
   - xcodebuild
   - xcodeproj
-  - xcresulttool # xcrun tool for parsing .xcresult bundles
+  - xcresult
+  - xcresulttool
   - xcrun
   - xcscheme
   - xcschemes
