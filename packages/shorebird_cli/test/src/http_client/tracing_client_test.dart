@@ -22,8 +22,10 @@ void main() {
     late ShorebirdTracer tracer;
     late TracingClient client;
 
-    R runWithTracer<R>(R Function() body) =>
-        runScoped(body, values: {shorebirdTracerRef.overrideWith(() => tracer)});
+    R runWithTracer<R>(R Function() body) => runScoped(
+      body,
+      values: {shorebirdTracerRef.overrideWith(() => tracer)},
+    );
 
     setUp(() {
       inner = _MockHttpClient();
@@ -43,7 +45,10 @@ void main() {
       when(() => inner.send(any())).thenAnswer((_) async => streamed());
 
       await runWithTracer(() async {
-        final req = http.Request('GET', Uri.parse('https://api.example.com/v1'));
+        final req = http.Request(
+          'GET',
+          Uri.parse('https://api.example.com/v1'),
+        );
         final response = await client.send(req);
         await response.stream.drain<void>();
       });
@@ -65,7 +70,10 @@ void main() {
           'POST',
           Uri.parse('https://api.example.com/v1'),
         );
-        await expectLater(client.send(req), throwsA(isA<http.ClientException>()));
+        await expectLater(
+          client.send(req),
+          throwsA(isA<http.ClientException>()),
+        );
       });
 
       expect(tracer.events, hasLength(1));

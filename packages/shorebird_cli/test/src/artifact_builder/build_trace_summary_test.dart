@@ -332,6 +332,306 @@ void main() {
         expect(s.dart.kernelSnapshotMs, 1000);
         expect(s.dartMs, 1000);
       });
+
+      test('parses a {"traceEvents": [...]} object shape', () {
+        final f = File(p.join(tempDir.path, 'trace.json'))
+          ..writeAsStringSync(
+            jsonEncode({
+              'traceEvents': [
+                _event(
+                  name: 'flutter build apk',
+                  cat: 'flutter',
+                  ts: 0,
+                  dur: 500_000,
+                  tid: 1,
+                ),
+              ],
+            }),
+          );
+        final s = BuildTraceSummary.tryFromFile(f, platform: 'android');
+        expect(s, isNotNull);
+        expect(s!.flutterBuildMs, 500);
+      });
+
+      test('returns null when the JSON root is not a list or known object', () {
+        final f = File(p.join(tempDir.path, 'weird.json'))
+          ..writeAsStringSync(jsonEncode({'unexpected': true}));
+        expect(
+          BuildTraceSummary.tryFromFile(f, platform: 'android'),
+          isNull,
+        );
+      });
+    });
+
+    group('assemble category classification', () {
+      test('aot_assembly / aot_elf / ios_aot → genSnapshot bucket', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'aot_assembly_release',
+            cat: 'assemble',
+            ts: 0,
+            dur: 1_000_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'aot_elf_release',
+            cat: 'assemble',
+            ts: 0,
+            dur: 2_000_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'ios_aot',
+            cat: 'assemble',
+            ts: 0,
+            dur: 3_000_000,
+            tid: 3,
+          ),
+        ], platform: 'android');
+        expect(s.dart.genSnapshotMs, 6000);
+      });
+
+      test('dart_build → DartStats.buildMs', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'dart_build',
+            cat: 'assemble',
+            ts: 0,
+            dur: 500_000,
+            tid: 3,
+          ),
+        ], platform: 'android');
+        expect(s.dart.buildMs, 500);
+      });
+
+      test('gen_* → FlutterAssembleStats.codegenMs', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'gen_localizations',
+            cat: 'assemble',
+            ts: 0,
+            dur: 600_000,
+            tid: 3,
+          ),
+        ], platform: 'android');
+        expect(s.flutterAssemble.codegenMs, 600);
+      });
+
+      test('various asset-like names → assets bucket', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'bundle_flutter_assets_release',
+            cat: 'assemble',
+            ts: 0,
+            dur: 100_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'install_code_assets',
+            cat: 'assemble',
+            ts: 0,
+            dur: 200_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'unpack_macos',
+            cat: 'assemble',
+            ts: 0,
+            dur: 300_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'copy_framework',
+            cat: 'assemble',
+            ts: 0,
+            dur: 400_000,
+            tid: 3,
+          ),
+        ], platform: 'android');
+        expect(s.flutterAssemble.assetsMs, 1000);
+      });
+
+      test('unknown name → other bucket', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'some_random_target',
+            cat: 'assemble',
+            ts: 0,
+            dur: 700_000,
+            tid: 3,
+          ),
+        ], platform: 'android');
+        expect(s.flutterAssemble.otherMs, 700);
+      });
+
+      test('skipped:true bumps the skippedCount', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'copy_framework',
+            cat: 'assemble',
+            ts: 0,
+            dur: 1000,
+            tid: 3,
+            args: {'skipped': true},
+          ),
+        ], platform: 'android');
+        expect(s.flutterAssemble.skippedCount, 1);
+        expect(s.flutterAssemble.targetCount, 1);
+      });
+    });
+
+    group('gradle task kinds', () {
+      Map<String, Object?> _gradle(String kind, int durMs) => _event(
+        name: kind,
+        cat: 'gradle_task',
+        ts: 0,
+        dur: durMs * 1000,
+        tid: 4,
+        args: {'kind': kind},
+      );
+
+      test('all kinds populate their respective buckets', () {
+        final s = BuildTraceSummary.fromEvents([
+          _gradle('kotlin_compile', 10),
+          _gradle('java_compile', 20),
+          _gradle('dex', 30),
+          _gradle('resources', 40),
+          _gradle('transform', 50),
+          _gradle('r8_minify', 60),
+          _gradle('lint', 70),
+          _gradle('flutter_gradle_plugin', 80),
+          _gradle('bundle', 90),
+          _gradle('packaging', 100),
+          _gradle('aidl', 110),
+          _gradle('native_link', 120),
+          _gradle('gradle_scaffold', 130),
+        ], platform: 'android');
+
+        final g = s.android!.gradle;
+        expect(g.kotlinCompileMs, 10);
+        expect(g.javaCompileMs, 20);
+        expect(g.dexMs, 30);
+        expect(g.resourcesMs, 40);
+        expect(g.transformMs, 50);
+        expect(g.r8MinifyMs, 60);
+        expect(g.lintMs, 70);
+        expect(g.flutterGradlePluginMs, 80);
+        expect(g.bundleMs, 90);
+        expect(g.packagingMs, 100);
+        expect(g.aidlMs, 110);
+        expect(g.nativeLinkMs, 120);
+        expect(g.gradleScaffoldMs, 130);
+      });
+
+      test('cache / up-to-date / executed task counters increment', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'a',
+            cat: 'gradle_task',
+            ts: 0,
+            dur: 1000,
+            tid: 4,
+            args: {'kind': 'kotlin_compile', 'fromCache': true},
+          ),
+          _event(
+            name: 'b',
+            cat: 'gradle_task',
+            ts: 0,
+            dur: 1000,
+            tid: 4,
+            args: {'kind': 'kotlin_compile', 'upToDate': true},
+          ),
+          _event(
+            name: 'c',
+            cat: 'gradle_task',
+            ts: 0,
+            dur: 1000,
+            tid: 4,
+            args: {'kind': 'kotlin_compile'},
+          ),
+        ], platform: 'android');
+
+        final g = s.android!.gradle;
+        expect(g.taskFromCacheCount, 1);
+        expect(g.taskUpToDateCount, 1);
+        expect(g.taskExecutedCount, 1);
+      });
+    });
+
+    group('iOS stats', () {
+      test('xcode_subsection events populate XcodeStats histogram', () {
+        final s = BuildTraceSummary.fromEvents([
+          for (final dur in const [100, 200, 300, 1000])
+            _event(
+              name: 'Build target Foo',
+              cat: 'xcode_subsection',
+              ts: 0,
+              dur: dur * 1000,
+              tid: 4,
+            ),
+        ], platform: 'ios');
+
+        final xcode = s.ios!.xcode;
+        expect(xcode.subsectionCount, 4);
+        expect(xcode.subsectionSumMs, 1600);
+        expect(xcode.subsectionMaxMs, 1000);
+        expect(xcode.subsectionP50Ms, greaterThanOrEqualTo(100));
+      });
+
+      test('XcodeStats.toJson serializes all fields', () {
+        final xcode = XcodeStats(
+          subsectionCount: 1,
+          subsectionSumMs: 2,
+          subsectionP50Ms: 3,
+          subsectionP90Ms: 4,
+          subsectionMaxMs: 5,
+        );
+        expect(xcode.toJson(), {
+          'subsectionCount': 1,
+          'subsectionSumMs': 2,
+          'subsectionP50Ms': 3,
+          'subsectionP90Ms': 4,
+          'subsectionMaxMs': 5,
+        });
+      });
+
+      test('PodInstallStats.toJson serializes all fields', () {
+        final stats = PodInstallStats(
+          ms: 1,
+          analyzeMs: 2,
+          downloadMs: 3,
+          generateMs: 4,
+          integrateMs: 5,
+        );
+        expect(stats.toJson(), {
+          'ms': 1,
+          'analyzeMs': 2,
+          'downloadMs': 3,
+          'generateMs': 4,
+          'integrateMs': 5,
+        });
+      });
+
+      test('IosStats.toJson nests pod + xcode', () {
+        final iosStats = IosStats(
+          podInstall: PodInstallStats(
+            ms: 0,
+            analyzeMs: 0,
+            downloadMs: 0,
+            generateMs: 0,
+            integrateMs: 0,
+          ),
+          xcode: XcodeStats(
+            subsectionCount: 0,
+            subsectionSumMs: 0,
+            subsectionP50Ms: 0,
+            subsectionP90Ms: 0,
+            subsectionMaxMs: 0,
+          ),
+        );
+        final json = iosStats.toJson();
+        expect(json.keys, containsAll(<String>['podInstall', 'xcode']));
+      });
     });
   });
 }

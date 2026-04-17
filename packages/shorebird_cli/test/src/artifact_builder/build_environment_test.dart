@@ -89,6 +89,62 @@ org.gradle.configuration-cache=true
       expect(env.gradleInitScriptCount, 1);
     });
 
+    test('detects legacy com.gradle.enterprise marker', () {
+      final home = makeHome(
+        initScript: 'apply(plugin: "com.gradle.enterprise")',
+      );
+      final env = BuildEnvironment.detect(
+        environment: const <String, String>{},
+        homeDir: home,
+        projectRoot: tmp,
+      );
+      expect(env.gradleDevelocityDetected, isTrue);
+    });
+
+    test('detects develocity { ... } block in project settings.gradle.kts', () {
+      final root = Directory(p.join(tmp.path, 'proj'))..createSync();
+      Directory(p.join(root.path, 'android')).createSync();
+      File(
+        p.join(root.path, 'android', 'settings.gradle.kts'),
+      ).writeAsStringSync('develocity {\n  server = "..."\n}\n');
+      final env = BuildEnvironment.detect(
+        environment: const <String, String>{},
+        homeDir: tmp,
+        projectRoot: root,
+      );
+      expect(env.gradleDevelocityDetected, isTrue);
+    });
+
+    test('detects gradleEnterprise { ... } block in settings.gradle', () {
+      final root = Directory(p.join(tmp.path, 'proj2'))..createSync();
+      Directory(p.join(root.path, 'android')).createSync();
+      File(
+        p.join(root.path, 'android', 'settings.gradle'),
+      ).writeAsStringSync('gradleEnterprise {\n}\n');
+      final env = BuildEnvironment.detect(
+        environment: const <String, String>{},
+        homeDir: tmp,
+        projectRoot: root,
+      );
+      expect(env.gradleDevelocityDetected, isTrue);
+    });
+
+    test('recognizes .gradle.kts init scripts under ~/.gradle/init.d', () {
+      final home = Directory(p.join(tmp.path, 'home2'))..createSync();
+      final initDir = Directory(p.join(home.path, '.gradle', 'init.d'))
+        ..createSync(recursive: true);
+      File(
+        p.join(initDir.path, 'develocity.gradle.kts'),
+      ).writeAsStringSync('develocity {\n}\n');
+      final env = BuildEnvironment.detect(
+        environment: const <String, String>{},
+        homeDir: home,
+        projectRoot: tmp,
+      );
+      expect(env.gradleDevelocityDetected, isTrue);
+      expect(env.gradleInitScriptCount, 1);
+    });
+
     test('classifies common CI providers', () {
       expect(
         BuildEnvironment.detect(

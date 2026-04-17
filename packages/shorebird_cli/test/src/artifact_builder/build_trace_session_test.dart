@@ -22,11 +22,15 @@ void main() {
 
       expect(session, isA<BuildTraceSession>());
       expect(
-        session.commandStartedAt.isAfter(before.subtract(const Duration(seconds: 1))),
+        session.commandStartedAt.isAfter(
+          before.subtract(const Duration(seconds: 1)),
+        ),
         isTrue,
       );
       expect(
-        session.commandStartedAt.isBefore(after.add(const Duration(seconds: 1))),
+        session.commandStartedAt.isBefore(
+          after.add(const Duration(seconds: 1)),
+        ),
         isTrue,
       );
     });
