@@ -189,6 +189,31 @@ class BuildTracer {
     }
   }
 
+  /// Adds a span describing a subprocess invocation whose timing the
+  /// caller already measured. Span name is the [executable] basename;
+  /// the full argv lands in `args.argv`. Prefer [timeSubprocess] /
+  /// [timeSubprocessAsync] when you're *about* to run the process;
+  /// this helper is for call sites that already have start/end micros
+  /// (e.g. an existing stopwatch-around-run pattern).
+  void addSubprocessEvent({
+    required String executable,
+    required List<String> arguments,
+    required int pid,
+    required int tid,
+    required int startMicros,
+    required int endMicros,
+  }) {
+    addCompleteEvent(
+      name: _basename(executable),
+      cat: 'subprocess',
+      pid: pid,
+      tid: tid,
+      startMicros: startMicros,
+      endMicros: endMicros,
+      args: <String, Object?>{'argv': arguments},
+    );
+  }
+
   /// Emits a span that covers a subprocess invocation. [runner] should
   /// invoke [Process.runSync] (or equivalent) with [executable] and
   /// [arguments]; the span wraps it with start/end micros, and the
