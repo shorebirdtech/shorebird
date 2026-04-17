@@ -36,7 +36,9 @@ class BuildEnvironment {
     Directory? projectRoot,
   }) {
     final ciProvider = _detectCiProvider(environment);
-    final isCi = ciProvider != null || environment['CI'] == 'true';
+    // `_detectCiProvider` already falls through to 'other' when CI=true
+    // without a more specific provider match, so provider ⇒ isCi covers it.
+    final isCi = ciProvider != null;
 
     // Gradle properties: user-global first, project-local overrides last.
     File? prop(String? base, List<String> rest) {

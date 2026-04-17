@@ -304,6 +304,24 @@ class BuildTraceSummary {
     Duration? shorebirdOverhead,
     BuildEnvironment? environment,
   }) {
+    final events = tryReadEvents(traceFile);
+    if (events == null) return null;
+    return BuildTraceSummary.fromEvents(
+      events,
+      platform: platform,
+      shorebirdOverhead: shorebirdOverhead,
+      environment: environment,
+    );
+  }
+
+  /// Parse [traceFile] once as a Chrome Trace Event Format JSON array and
+  /// return the raw event list. Returns null if the file is missing or
+  /// malformed. Callers that need to build more than one summary from the
+  /// same trace (e.g. once to measure flutter wall clock, again with
+  /// Shorebird overhead computed from it) should parse once and pass the
+  /// list to [fromEvents] — parsing a multi-megabyte trace twice is wasted
+  /// work on plugin-heavy apps.
+  static List<Map<String, Object?>>? tryReadEvents(File traceFile) {
     if (!traceFile.existsSync()) return null;
     try {
       final decoded = jsonDecode(traceFile.readAsStringSync());
@@ -311,13 +329,7 @@ class BuildTraceSummary {
           ? decoded
           : (decoded is Map ? decoded['traceEvents'] as List? : null);
       if (list == null) return null;
-      final events = list.cast<Map<String, Object?>>();
-      return BuildTraceSummary.fromEvents(
-        events,
-        platform: platform,
-        shorebirdOverhead: shorebirdOverhead,
-        environment: environment,
-      );
+      return list.cast<Map<String, Object?>>();
     } on FormatException {
       return null;
     }

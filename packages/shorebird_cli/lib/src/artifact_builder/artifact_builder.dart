@@ -573,22 +573,26 @@ Reason: Exited with code $exitCode.''',
     // complete picture.
     shorebirdTracer.mergeInto(traceFile);
 
-    final preSummary = BuildTraceSummary.tryFromFile(
-      traceFile,
-      platform: platform,
-    );
-    if (preSummary == null) {
+    final events = BuildTraceSummary.tryReadEvents(traceFile);
+    if (events == null) {
       logger.detail(
         'Skipping build trace summary: ${traceFile.path} missing or malformed.',
       );
       return;
     }
 
+    // First pass: measure Flutter's reported build wall clock so we can
+    // derive Shorebird's overhead. Second pass (below) then bakes overhead
+    // and environment into the final summary. Parsed events are reused so
+    // the (often multi-megabyte) trace file is only read once.
+    final flutterMs = BuildTraceSummary.fromEvents(
+      events,
+      platform: platform,
+    ).flutterBuildMs;
     final totalElapsed = DateTime.now().difference(
       buildTraceSession.commandStartedAt,
     );
-    final flutterElapsed = Duration(milliseconds: preSummary.flutterBuildMs);
-    final shorebirdOverhead = totalElapsed - flutterElapsed;
+    final shorebirdOverhead = totalElapsed - Duration(milliseconds: flutterMs);
     // Snapshot the build environment (caching config, CI provider, ...).
     // This is what lets us tell, in field data, whether a slow build is
     // "no caching configured" vs "slow despite caching being on".
@@ -600,15 +604,14 @@ Reason: Exited with code $exitCode.''',
     // If the trace reports a longer build than the command has been running
     // (clock skew, malformed trace), treat overhead as zero rather than
     // negative.
-    final summary = BuildTraceSummary.tryFromFile(
-      traceFile,
+    final summary = BuildTraceSummary.fromEvents(
+      events,
       platform: platform,
       shorebirdOverhead: shorebirdOverhead.isNegative
           ? Duration.zero
           : shorebirdOverhead,
       environment: environment,
     );
-    if (summary == null) return;
 
     final summaryPath = p.join(
       p.dirname(traceFile.path),
