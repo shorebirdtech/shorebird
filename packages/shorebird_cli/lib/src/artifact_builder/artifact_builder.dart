@@ -134,6 +134,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -208,6 +209,7 @@ Reason: Exited with code $exitCode.''',
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -433,6 +435,7 @@ Reason: Exited with code $exitCode.''',
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -547,6 +550,18 @@ Reason: Exited with code $exitCode.''',
     );
     traceFile.parent.createSync(recursive: true);
     return traceFile;
+  }
+
+  /// Emits a flow-start event (`ph: "s"`) on the shorebird_cli tracer
+  /// tied to the spawned flutter process's real pid. When flutter builds
+  /// with `--shorebird-trace`, it records a flow-end with its own pid as
+  /// the flow id — Perfetto draws an arrow from our spawn point into
+  /// flutter's first span.
+  void _emitFlutterSpawnFlow(Process flutter) {
+    shorebirdTracer.addSpawnFlowStart(
+      id: flutter.pid,
+      atMicros: DateTime.now().microsecondsSinceEpoch,
+    );
   }
 
   /// Returns the user's home directory as understood by the OS, or null if

@@ -55,11 +55,11 @@ void main() {
 
       expect(tracer.events, hasLength(1));
       final event = tracer.events.single;
-      expect(event.name, 'GET api.example.com');
-      expect(event.category, 'network');
-      expect(event.args?['method'], 'GET');
-      expect(event.args?['host'], 'api.example.com');
-      expect(event.args?['status'], 200);
+      expect(event['name'], 'GET api.example.com');
+      expect(event['cat'], 'network');
+      expect((event['args']! as Map)['method'], 'GET');
+      expect((event['args']! as Map)['host'], 'api.example.com');
+      expect((event['args']! as Map)['status'], 200);
     });
 
     test('records a network event even when inner throws', () async {
@@ -78,11 +78,11 @@ void main() {
 
       expect(tracer.events, hasLength(1));
       final event = tracer.events.single;
-      expect(event.name, 'POST api.example.com');
-      expect(event.category, 'network');
+      expect(event['name'], 'POST api.example.com');
+      expect(event['cat'], 'network');
       // Status is omitted when the request didn't complete.
-      expect(event.args?.containsKey('status'), isFalse);
-      expect(event.args?['method'], 'POST');
+      expect((event['args']! as Map).containsKey('status'), isFalse);
+      expect((event['args']! as Map)['method'], 'POST');
     });
 
     test(
@@ -99,7 +99,10 @@ void main() {
           await response.stream.drain<void>();
         });
 
-        expect(tracer.events.single.args?['contentLength'], 5);
+        expect(
+          (tracer.events.single['args']! as Map)['contentLength'],
+          5,
+        );
       },
     );
   });

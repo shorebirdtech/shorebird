@@ -1,7 +1,32 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:scoped_deps/scoped_deps.dart';
+
+/// Returns the OS process id of the current Dart process.
+///
+/// `dart:io` exposes pids for spawned subprocesses but not for the current
+/// process; FFI into libc `getpid()` (or `GetCurrentProcessId` on Windows)
+/// is the standard workaround.
+int currentProcessId() => _getpid();
+
+final DynamicLibrary _currentProcess = Platform.isWindows
+    ? DynamicLibrary.open('kernel32.dll')
+    : DynamicLibrary.process();
+
+final int Function() _getpid = _currentProcess
+    .lookupFunction<Int32 Function(), int Function()>(
+      Platform.isWindows ? 'GetCurrentProcessId' : 'getpid',
+    );
+
+/// Perfetto row id for network (HTTP) spans within the shorebird_cli
+/// process. Local tid; no cross-repo coordination.
+const int _networkTid = 1;
+
+/// Perfetto row id for shorebird_cli's own command-level phase spans
+/// (the ones recorded via [ShorebirdTracer.span]).
+const int _shorebirdTid = 2;
 
 /// A single event in the Chrome Trace Event Format, written by Shorebird
 /// itself (not Flutter). Accumulated in memory during a CLI invocation and
@@ -21,7 +46,8 @@ class ShorebirdTraceEvent {
     required this.category,
     required this.startMicros,
     required this.durationMicros,
-    this.threadId = 5,
+    required this.pid,
+    this.threadId = _shorebirdTid,
     this.args,
   });
 
@@ -39,9 +65,10 @@ class ShorebirdTraceEvent {
   /// Duration in microseconds.
   final int durationMicros;
 
-  /// Thread id used by Perfetto to lay out events in swimlanes. We reserve
-  /// `5` for Shorebird so it doesn't collide with flutter tool (1), native
-  /// outer (2), flutter assemble (3), or gradle tasks (4).
+  /// Real OS pid of the process emitting the event (shorebird_cli's own).
+  final int pid;
+
+  /// Perfetto row within [pid].
   final int threadId;
 
   /// Optional free-form args. Keys must be safe to upload — no paths, user
@@ -56,37 +83,66 @@ class ShorebirdTraceEvent {
     'ph': 'X',
     'ts': startMicros,
     'dur': durationMicros,
-    'pid': 1,
+    'pid': pid,
     'tid': threadId,
     'args': ?args,
   };
 }
 
-/// Collects Shorebird-side trace events during a CLI invocation.
+/// Collects Shorebird-side trace events during a CLI invocation and
+/// emits them as Chrome Trace Event Format entries (complete spans,
+/// process/thread name metadata, and flow-start events at subprocess
+/// spawn sites) into the Flutter-written trace file.
 ///
 /// Scope-held so all layers (HTTP client, subprocess wrapper, command-level
 /// phases) can write into the same collector, and the summary writer in
 /// `ArtifactBuilder` can merge the accumulated events into Flutter's trace
 /// file before parsing it.
 class ShorebirdTracer {
-  final List<ShorebirdTraceEvent> _events = [];
+  /// Raw JSON maps so complete spans, metadata (`ph: "M"`), and flow
+  /// events (`ph: "s"`) share the buffer without fighting a stricter
+  /// typed API.
+  final List<Map<String, Object?>> _events = [];
+
+  /// Real pid of the shorebird_cli process — captured at construction
+  /// so every event emitted through this tracer is tagged with it.
+  final int _pid = currentProcessId();
 
   /// Unmodifiable view of the events recorded so far.
-  List<ShorebirdTraceEvent> get events => List.unmodifiable(_events);
+  List<Map<String, Object?>> get events => List.unmodifiable(_events);
 
-  /// Record a single completed event. Prefer [span] for measuring the
-  /// duration of a block of code.
-  void addEvent(ShorebirdTraceEvent event) => _events.add(event);
+  /// Record a single completed network span on the shorebird_cli row.
+  void addNetworkEvent({
+    required String name,
+    required int startMicros,
+    required int durationMicros,
+    Map<String, Object?>? args,
+  }) {
+    _events.add(
+      ShorebirdTraceEvent(
+        name: name,
+        category: 'network',
+        startMicros: startMicros,
+        durationMicros: durationMicros,
+        pid: _pid,
+        threadId: _networkTid,
+        args: args,
+      ).toJson(),
+    );
+  }
+
+  /// Record a completed span via a pre-built [ShorebirdTraceEvent]. Used
+  /// by tests; production code should prefer [addNetworkEvent] or [span].
+  void addEvent(ShorebirdTraceEvent event) => _events.add(event.toJson());
 
   /// Run [body], timing it, and record a [ShorebirdTraceEvent] for the
-  /// duration. Always returns [body]'s result (rethrows on exception; the
-  /// event is still recorded).
+  /// duration on the shorebird_cli row. Always returns [body]'s result
+  /// (rethrows on exception; the event is still recorded).
   Future<T> span<T>({
     required String name,
     required String category,
     required Future<T> Function() body,
     Map<String, Object?>? args,
-    int threadId = 5,
   }) async {
     final start = DateTime.now().microsecondsSinceEpoch;
     try {
@@ -99,22 +155,67 @@ class ShorebirdTracer {
           category: category,
           startMicros: start,
           durationMicros: end - start,
-          threadId: threadId,
+          pid: _pid,
           args: args,
-        ),
+        ).toJson(),
       );
     }
   }
 
-  /// Append all accumulated events to [traceFile] (which must already be a
-  /// JSON array of Chrome Trace Event Format events, as written by Flutter).
-  /// No-op if the file doesn't exist or is malformed.
+  /// Emits a flow-start event (`ph: "s"`) at [atMicros] on
+  /// ([_pid], [fromTid]) with id = [id]. Shorebird convention uses the
+  /// child process's real pid as the flow id so the child emits the
+  /// matching `ph: "f"` with the same id without any plumbing.
+  void addSpawnFlowStart({
+    required int id,
+    required int atMicros,
+    int fromTid = _shorebirdTid,
+  }) {
+    _events.add(<String, Object?>{
+      'ph': 's',
+      'name': 'spawn',
+      'cat': 'flow',
+      'id': id,
+      'ts': atMicros,
+      'pid': _pid,
+      'tid': fromTid,
+      'bp': 'e',
+    });
+  }
+
+  /// Append all accumulated events to [traceFile] (which must already be
+  /// a JSON array of Chrome Trace Event Format events, as written by
+  /// Flutter). Also emits `process_name` / `thread_name` metadata events
+  /// so Perfetto labels our rows. No-op if the file doesn't exist or is
+  /// malformed.
   void mergeInto(File traceFile) {
     if (!traceFile.existsSync()) return;
     try {
       final decoded = jsonDecode(traceFile.readAsStringSync());
       if (decoded is! List) return;
-      final merged = [...decoded, ..._events.map((e) => e.toJson())];
+      final metadata = <Map<String, Object?>>[
+        {
+          'name': 'process_name',
+          'ph': 'M',
+          'pid': _pid,
+          'args': <String, Object?>{'name': 'shorebird_cli'},
+        },
+        {
+          'name': 'thread_name',
+          'ph': 'M',
+          'pid': _pid,
+          'tid': _networkTid,
+          'args': <String, Object?>{'name': 'network'},
+        },
+        {
+          'name': 'thread_name',
+          'ph': 'M',
+          'pid': _pid,
+          'tid': _shorebirdTid,
+          'args': <String, Object?>{'name': 'shorebird_cli'},
+        },
+      ];
+      final merged = [...decoded, ...metadata, ..._events];
       traceFile.writeAsStringSync(jsonEncode(merged));
     } on FormatException {
       // Malformed trace — leave it alone rather than overwriting useful

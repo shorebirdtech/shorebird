@@ -21,19 +21,16 @@ class TracingClient extends http.BaseClient {
       return response;
     } finally {
       final end = DateTime.now().microsecondsSinceEpoch;
-      shorebirdTracer.addEvent(
-        ShorebirdTraceEvent(
-          name: '${request.method} ${request.url.host}',
-          category: 'network',
-          startMicros: start,
-          durationMicros: end - start,
-          args: {
-            'method': request.method,
-            'host': request.url.host,
-            'status': ?statusCode,
-            'contentLength': ?request.contentLength,
-          },
-        ),
+      shorebirdTracer.addNetworkEvent(
+        name: '${request.method} ${request.url.host}',
+        startMicros: start,
+        durationMicros: end - start,
+        args: {
+          'method': request.method,
+          'host': request.url.host,
+          'status': ?statusCode,
+          'contentLength': ?request.contentLength,
+        },
       );
     }
   }

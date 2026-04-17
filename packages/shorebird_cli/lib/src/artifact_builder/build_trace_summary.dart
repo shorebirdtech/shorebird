@@ -89,20 +89,28 @@ class BuildTraceSummary {
     final xcodeSubsectionDurationsUs = <int>[];
 
     for (final e in events) {
+      // Skip metadata (`ph: "M"`) and flow (`ph: "s"`/`"f"`) events —
+      // they don't carry a duration to bucket, they just label the
+      // producer / draw causality arrows in Perfetto.
+      if (e['ph'] != 'X') continue;
+
       final dur = (e['dur'] as num?)?.toInt() ?? 0;
-      final tid = (e['tid'] as num?)?.toInt() ?? 0;
       final name = (e['name'] as String?) ?? '';
       final cat = (e['cat'] as String?) ?? '';
       final args = (e['args'] as Map?) ?? const {};
       final skipped = args['skipped'] == true;
 
-      // tid 1 = flutter tool, tid 2 = native build system (gradle/xcode),
-      // tid 3 = flutter assemble targets, tid 4 = per-task spans (gradle
-      // on Android, xcode phases on iOS), tid 5 = Shorebird + HTTP.
-      if (tid == 1) {
-        if (name.startsWith('flutter build ')) {
-          flutterBuildUs = dur;
-        } else if (cat == 'subprocess') {
+      // Classify by cat (and name where the cat is ambiguous). pid/tid
+      // are purely for Perfetto display; producers own their own id
+      // spaces so we don't key off them.
+      switch (cat) {
+        case 'flutter':
+          if (name.startsWith('flutter build ')) {
+            flutterBuildUs = dur;
+          } else {
+            flutterToolUs += dur;
+          }
+        case 'subprocess':
           if (name == 'pod install') {
             podInstallUs += dur;
           } else if (name == 'pod install: analyzing') {
@@ -114,30 +122,27 @@ class BuildTraceSummary {
           } else if (name == 'pod install: integrating') {
             podIntegrateUs += dur;
           }
-        } else {
-          flutterToolUs += dur;
-        }
-      } else if (tid == 2) {
-        nativeBuildUs += dur;
-      } else if (tid == 3) {
-        assembleCount++;
-        if (skipped) skippedAssembleCount++;
-        switch (_categorize(name)) {
-          case _AssembleCategory.kernelSnapshot:
-            kernelSnapshotUs += dur;
-          case _AssembleCategory.genSnapshot:
-            genSnapshotUs += dur;
-          case _AssembleCategory.dartBuild:
-            dartBuildUs += dur;
-          case _AssembleCategory.assets:
-            assetsUs += dur;
-          case _AssembleCategory.codegen:
-            codegenUs += dur;
-          case _AssembleCategory.other:
-            otherAssembleUs += dur;
-        }
-      } else if (tid == 4) {
-        if (cat == 'gradle_task') {
+        case 'gradle':
+        case 'xcode':
+          nativeBuildUs += dur;
+        case 'assemble':
+          assembleCount++;
+          if (skipped) skippedAssembleCount++;
+          switch (_categorize(name)) {
+            case _AssembleCategory.kernelSnapshot:
+              kernelSnapshotUs += dur;
+            case _AssembleCategory.genSnapshot:
+              genSnapshotUs += dur;
+            case _AssembleCategory.dartBuild:
+              dartBuildUs += dur;
+            case _AssembleCategory.assets:
+              assetsUs += dur;
+            case _AssembleCategory.codegen:
+              codegenUs += dur;
+            case _AssembleCategory.other:
+              otherAssembleUs += dur;
+          }
+        case 'gradle_task':
           gradleTaskDurationsUs.add(dur);
           // Per-task cache outcome from the init script. Mutually
           // exclusive in practice: a task either ran, was up-to-date
@@ -177,14 +182,13 @@ class BuildTraceSummary {
             case 'gradle_scaffold':
               gradleScaffoldUs += dur;
           }
-        } else if (cat == 'xcode_subsection') {
+        case 'xcode_subsection':
           xcodeSubsectionCount++;
           xcodeSubsectionSumUs += dur;
           xcodeSubsectionDurationsUs.add(dur);
-        }
-      } else if (cat == 'network') {
-        networkUs += dur;
-        networkCount++;
+        case 'network':
+          networkUs += dur;
+          networkCount++;
       }
     }
 
