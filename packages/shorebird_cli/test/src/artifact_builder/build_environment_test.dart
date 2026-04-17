@@ -14,8 +14,9 @@ void main() {
       final root = Directory(p.join(tmp.path, 'app'))..createSync();
       Directory(p.join(root.path, 'android')).createSync();
       if (gradleProperties != null) {
-        File(p.join(root.path, 'android', 'gradle.properties'))
-            .writeAsStringSync(gradleProperties);
+        File(
+          p.join(root.path, 'android', 'gradle.properties'),
+        ).writeAsStringSync(gradleProperties);
       }
       return root;
     }
@@ -24,13 +25,15 @@ void main() {
       final home = Directory(p.join(tmp.path, 'home'))..createSync();
       final gradleDir = Directory(p.join(home.path, '.gradle'))..createSync();
       if (gradleProperties != null) {
-        File(p.join(gradleDir.path, 'gradle.properties'))
-            .writeAsStringSync(gradleProperties);
+        File(
+          p.join(gradleDir.path, 'gradle.properties'),
+        ).writeAsStringSync(gradleProperties);
       }
       if (initScript != null) {
         Directory(p.join(gradleDir.path, 'init.d')).createSync();
-        File(p.join(gradleDir.path, 'init.d', 'develocity.gradle'))
-            .writeAsStringSync(initScript);
+        File(
+          p.join(gradleDir.path, 'init.d', 'develocity.gradle'),
+        ).writeAsStringSync(initScript);
       }
       return home;
     }
@@ -53,13 +56,15 @@ void main() {
     });
 
     test('reads project gradle.properties for cache + parallel', () {
-      final root = makeProjectRoot(gradleProperties: '''
+      final root = makeProjectRoot(
+        gradleProperties: '''
 # Comment line, ignored
 org.gradle.caching=true
 org.gradle.parallel=true
 org.gradle.daemon=false
 org.gradle.configuration-cache=true
-''');
+''',
+      );
       final env = BuildEnvironment.detect(
         environment: const <String, String>{},
         homeDir: tmp,

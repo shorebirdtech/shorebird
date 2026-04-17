@@ -213,8 +213,7 @@ class BuildEnvironment {
         .listSync()
         .whereType<File>()
         .where(
-          (f) =>
-              f.path.endsWith('.gradle') || f.path.endsWith('.gradle.kts'),
+          (f) => f.path.endsWith('.gradle') || f.path.endsWith('.gradle.kts'),
         )
         .length;
   }

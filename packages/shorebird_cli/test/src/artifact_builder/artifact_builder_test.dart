@@ -465,136 +465,142 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           ).thenAnswer((_) async => Version(3, 41, 7));
         });
 
-        test('passes --trace with a path under build/shorebird/debug',
-            () async {
-          await runWithOverrides(() => builder.buildApk());
+        test(
+          'passes --trace with a path under build/shorebird/debug',
+          () async {
+            await runWithOverrides(() => builder.buildApk());
 
-          final expectedTracePath = p.join(
-            projectRoot.path,
-            'build',
-            'shorebird',
-            'debug',
-            'build-trace-android.json',
-          );
-          verify(
-            () => shorebirdProcess.stream(
-              'flutter',
-              [
-                'build',
-                'apk',
-                '--release',
-                '--shorebird-trace=$expectedTracePath',
-              ],
-              environment: any(named: 'environment'),
-              runInShell: false,
-            ),
-          ).called(1);
-          expect(
-            Directory(p.dirname(expectedTracePath)).existsSync(),
-            isTrue,
-          );
-        });
-
-        test('writes a summary JSON next to a trace file Flutter produced',
-            () async {
-          final traceFile = File(
-            p.join(
+            final expectedTracePath = p.join(
               projectRoot.path,
               'build',
               'shorebird',
               'debug',
               'build-trace-android.json',
-            ),
-          );
-          // Simulate Flutter writing the trace: create the file just before
-          // the build command would return.
-          when(
-            () => shorebirdProcess.stream(
-              any(),
-              any(),
-              environment: any(named: 'environment'),
-              runInShell: any(named: 'runInShell'),
-            ),
-          ).thenAnswer((_) async {
-            traceFile.parent.createSync(recursive: true);
-            traceFile.writeAsStringSync(
-              jsonEncode([
-                {
-                  'ph': 'X',
-                  'name': 'pre-gradle setup',
-                  'cat': 'flutter',
-                  'ts': 1000,
-                  'dur': 100,
-                  'pid': 1,
-                  'tid': 1,
-                },
-                {
-                  'ph': 'X',
-                  'name': 'gradle assembleRelease',
-                  'cat': 'gradle',
-                  'ts': 1100,
-                  'dur': 3_000_000,
-                  'pid': 1,
-                  'tid': 2,
-                },
-                {
-                  'ph': 'X',
-                  'name': 'kernel_snapshot_program',
-                  'cat': 'assemble',
-                  'ts': 2000,
-                  'dur': 500_000,
-                  'pid': 1,
-                  'tid': 3,
-                },
-                {
-                  'ph': 'X',
-                  'name': 'android_aot',
-                  'cat': 'assemble',
-                  'ts': 500000,
-                  'dur': 200_000,
-                  'pid': 1,
-                  'tid': 3,
-                },
-                {
-                  'ph': 'X',
-                  'name': 'flutter build apk',
-                  'cat': 'flutter',
-                  'ts': 1000,
-                  'dur': 3_000_100,
-                  'pid': 1,
-                  'tid': 1,
-                },
-              ]),
             );
-            return ExitCode.success.code;
-          });
+            verify(
+              () => shorebirdProcess.stream(
+                'flutter',
+                [
+                  'build',
+                  'apk',
+                  '--release',
+                  '--shorebird-trace=$expectedTracePath',
+                ],
+                environment: any(named: 'environment'),
+                runInShell: false,
+              ),
+            ).called(1);
+            expect(
+              Directory(p.dirname(expectedTracePath)).existsSync(),
+              isTrue,
+            );
+          },
+        );
 
-          await runWithOverrides(() => builder.buildApk());
+        test(
+          'writes a summary JSON next to a trace file Flutter produced',
+          () async {
+            final traceFile = File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'shorebird',
+                'debug',
+                'build-trace-android.json',
+              ),
+            );
+            // Simulate Flutter writing the trace: create the file just before
+            // the build command would return.
+            when(
+              () => shorebirdProcess.stream(
+                any(),
+                any(),
+                environment: any(named: 'environment'),
+                runInShell: any(named: 'runInShell'),
+              ),
+            ).thenAnswer((_) async {
+              traceFile.parent.createSync(recursive: true);
+              traceFile.writeAsStringSync(
+                jsonEncode([
+                  {
+                    'ph': 'X',
+                    'name': 'pre-gradle setup',
+                    'cat': 'flutter',
+                    'ts': 1000,
+                    'dur': 100,
+                    'pid': 1,
+                    'tid': 1,
+                  },
+                  {
+                    'ph': 'X',
+                    'name': 'gradle assembleRelease',
+                    'cat': 'gradle',
+                    'ts': 1100,
+                    'dur': 3_000_000,
+                    'pid': 1,
+                    'tid': 2,
+                  },
+                  {
+                    'ph': 'X',
+                    'name': 'kernel_snapshot_program',
+                    'cat': 'assemble',
+                    'ts': 2000,
+                    'dur': 500_000,
+                    'pid': 1,
+                    'tid': 3,
+                  },
+                  {
+                    'ph': 'X',
+                    'name': 'android_aot',
+                    'cat': 'assemble',
+                    'ts': 500000,
+                    'dur': 200_000,
+                    'pid': 1,
+                    'tid': 3,
+                  },
+                  {
+                    'ph': 'X',
+                    'name': 'flutter build apk',
+                    'cat': 'flutter',
+                    'ts': 1000,
+                    'dur': 3_000_100,
+                    'pid': 1,
+                    'tid': 1,
+                  },
+                ]),
+              );
+              return ExitCode.success.code;
+            });
 
-          final summaryFile = File(
-            p.join(
-              p.dirname(traceFile.path),
-              'build-trace-android-summary.json',
-            ),
-          );
-          expect(summaryFile.existsSync(), isTrue);
-          final summary = jsonDecode(summaryFile.readAsStringSync())
-              as Map<String, Object?>;
-          expect(summary['platform'], 'android');
-          expect(summary['version'], 6);
-          // 500ms kernel + 200ms aot
-          expect(summary['dartMs'], 700);
-          expect(summary['flutterBuildMs'], 3000);
-          expect(summary['nonDartMs'], 2300);
-          expect(summary['shorebirdOverheadMs'], isNonNegative);
-          final dart = summary['dart']! as Map<String, Object?>;
-          expect(dart['kernelSnapshotMs'], 500);
-          expect(dart['genSnapshotMs'], 200);
-          final assemble = summary['flutterAssemble']! as Map<String, Object?>;
-          expect(assemble['targetCount'], 2);
-          expect(summary['android'], isA<Map<String, Object?>>());
-          expect(summary.containsKey('ios'), isFalse);
-        });
+            await runWithOverrides(() => builder.buildApk());
+
+            final summaryFile = File(
+              p.join(
+                p.dirname(traceFile.path),
+                'build-trace-android-summary.json',
+              ),
+            );
+            expect(summaryFile.existsSync(), isTrue);
+            final summary =
+                jsonDecode(summaryFile.readAsStringSync())
+                    as Map<String, Object?>;
+            expect(summary['platform'], 'android');
+            expect(summary['version'], 6);
+            // 500ms kernel + 200ms aot
+            expect(summary['dartMs'], 700);
+            expect(summary['flutterBuildMs'], 3000);
+            expect(summary['nonDartMs'], 2300);
+            expect(summary['shorebirdOverheadMs'], isNonNegative);
+            final dart = summary['dart']! as Map<String, Object?>;
+            expect(dart['kernelSnapshotMs'], 500);
+            expect(dart['genSnapshotMs'], 200);
+            final assemble =
+                summary['flutterAssemble']! as Map<String, Object?>;
+            expect(assemble['targetCount'], 2);
+            expect(summary['android'], isA<Map<String, Object?>>());
+            expect(summary.containsKey('ios'), isFalse);
+          },
+        );
       });
 
       group('when base64PublicKey is not null', () {
@@ -1297,35 +1303,37 @@ Reason: Exited with code 70.'''),
           ).thenAnswer((_) async => Version(3, 41, 7));
         });
 
-        test('passes --trace with a path under build/shorebird/debug',
-            () async {
-          await runWithOverrides(() => builder.buildIpa());
+        test(
+          'passes --trace with a path under build/shorebird/debug',
+          () async {
+            await runWithOverrides(() => builder.buildIpa());
 
-          final expectedTracePath = p.join(
-            projectRoot.path,
-            'build',
-            'shorebird',
-            'debug',
-            'build-trace-ios.json',
-          );
-          verify(
-            () => shorebirdProcess.stream(
-              'flutter',
-              [
-                'build',
-                'ipa',
-                '--release',
-                '--shorebird-trace=$expectedTracePath',
-              ],
-              environment: any(named: 'environment'),
-              runInShell: false,
-            ),
-          ).called(1);
-          expect(
-            Directory(p.dirname(expectedTracePath)).existsSync(),
-            isTrue,
-          );
-        });
+            final expectedTracePath = p.join(
+              projectRoot.path,
+              'build',
+              'shorebird',
+              'debug',
+              'build-trace-ios.json',
+            );
+            verify(
+              () => shorebirdProcess.stream(
+                'flutter',
+                [
+                  'build',
+                  'ipa',
+                  '--release',
+                  '--shorebird-trace=$expectedTracePath',
+                ],
+                environment: any(named: 'environment'),
+                runInShell: false,
+              ),
+            ).called(1);
+            expect(
+              Directory(p.dirname(expectedTracePath)).existsSync(),
+              isTrue,
+            );
+          },
+        );
       });
 
       group('when the build fails', () {

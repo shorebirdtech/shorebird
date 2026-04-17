@@ -7,6 +7,7 @@ words:
   - aapt
   - aarch
   - aars # Android Archive
+  - aidl # Android AIDL interface definition files
   - allprojects # From gradle files
   - altool
   - ANDROIDD
@@ -20,6 +21,7 @@ words:
   - bdero
   - bintools
   - bitcode
+  - bitrise # Bitrise CI platform
   - bryanoltman
   - bundletool
   - Dalvik # Android Dalvik VM / DEX file format
@@ -89,6 +91,7 @@ words:
   - precache
   - previewable
   - PRNG
+  - proguard # Android ProGuard shrinker/obfuscator
   - propertylistserialization
   - propertylistserialization
   - protos # Protocol buffer generated files
@@ -120,6 +123,7 @@ words:
   - sysroot
   - tdigest
   - temurin # From .github dir, doesn't show up in "**" check?
+  - timebase # Mach timebase (mach_timebase_info)
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
   - unawaited
@@ -142,6 +146,7 @@ words:
   - xcframework
   - xcodebuild
   - xcodeproj
+  - xcresulttool # xcrun tool for parsing .xcresult bundles
   - xcrun
   - xcscheme
   - xcschemes

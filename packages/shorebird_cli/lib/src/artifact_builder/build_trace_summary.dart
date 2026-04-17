@@ -452,6 +452,7 @@ class NetworkStats {
 
   /// Number of HTTP requests.
   final int callCount;
+
   /// JSON form.
   Map<String, Object?> toJson() => {'ms': ms, 'callCount': callCount};
 }
@@ -548,6 +549,7 @@ class AndroidStats {
 
   /// Per-task Gradle breakdown.
   final GradleStats gradle;
+
   /// JSON form.
   Map<String, Object?> toJson() => {'gradle': gradle.toJson()};
 }
@@ -687,6 +689,7 @@ class IosStats {
 
   /// Xcode per-phase breakdown from `-showBuildTimingSummary`.
   final XcodeStats xcode;
+
   /// JSON form.
   Map<String, Object?> toJson() => {
     'podInstall': podInstall.toJson(),
