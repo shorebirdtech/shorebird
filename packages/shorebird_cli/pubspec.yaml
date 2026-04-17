@@ -40,6 +40,8 @@ dependencies:
   pubspec_parse: ^1.5.0
   retry: ^3.1.2
   scoped_deps: ^0.1.0
+  shorebird_build_trace:
+    path: ../shorebird_build_trace
   shorebird_code_push_client:
     path: ../shorebird_code_push_client
   shorebird_code_push_protocol:

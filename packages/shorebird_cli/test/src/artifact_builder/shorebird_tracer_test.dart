@@ -6,63 +6,6 @@ import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group(ShorebirdTraceEvent, () {
-    test('toJson emits a Chrome Trace Event Format complete event', () {
-      final event = ShorebirdTraceEvent(
-        name: 'POST api.shorebird.dev',
-        category: 'network',
-        startMicros: 100,
-        durationMicros: 250,
-        pid: 42,
-        threadId: 1,
-        args: {'method': 'POST'},
-      );
-
-      expect(event.toJson(), {
-        'name': 'POST api.shorebird.dev',
-        'cat': 'network',
-        'ph': 'X',
-        'ts': 100,
-        'dur': 250,
-        'pid': 42,
-        'tid': 1,
-        'args': {'method': 'POST'},
-      });
-    });
-
-    test('toJson omits args when null', () {
-      final event = ShorebirdTraceEvent(
-        name: 'x',
-        category: 'shorebird',
-        startMicros: 0,
-        durationMicros: 1,
-        pid: 1,
-      );
-      expect(event.toJson().containsKey('args'), isFalse);
-    });
-
-    test('threadId defaults to 2 and is overridable', () {
-      final defaultTid = ShorebirdTraceEvent(
-        name: 'x',
-        category: 'c',
-        startMicros: 0,
-        durationMicros: 1,
-        pid: 1,
-      );
-      expect(defaultTid.threadId, 2);
-
-      final customTid = ShorebirdTraceEvent(
-        name: 'x',
-        category: 'c',
-        startMicros: 0,
-        durationMicros: 1,
-        pid: 1,
-        threadId: 42,
-      );
-      expect(customTid.threadId, 42);
-    });
-  });
-
   group(ShorebirdTracer, () {
     late ShorebirdTracer tracer;
 
@@ -70,40 +13,20 @@ void main() {
       tracer = ShorebirdTracer();
     });
 
-    test('addEvent appends to events', () {
-      expect(tracer.events, isEmpty);
-      tracer.addEvent(
-        ShorebirdTraceEvent(
-          name: 'x',
-          category: 'c',
-          startMicros: 0,
-          durationMicros: 1,
-          pid: 1,
-        ),
-      );
-      expect(tracer.events, hasLength(1));
-    });
-
-    test('events is unmodifiable', () {
-      expect(
-        () => tracer.events.add(<String, Object?>{'foo': 'bar'}),
-        throwsUnsupportedError,
-      );
-    });
-
-    test('addNetworkEvent tags span with network category and tid=1', () {
+    test('addNetworkEvent writes a cat=network span on network tid', () {
       tracer.addNetworkEvent(
         name: 'GET api.shorebird.dev',
         startMicros: 0,
         durationMicros: 1,
       );
       expect(tracer.events, hasLength(1));
-      expect(tracer.events.single['cat'], 'network');
-      expect(tracer.events.single['tid'], 1);
-      expect(tracer.events.single['pid'], isA<int>());
+      final e = tracer.events.single;
+      expect(e['cat'], 'network');
+      expect(e['tid'], 1);
+      expect(e['pid'], isA<int>());
     });
 
-    test('span records an event for a successful body', () async {
+    test('span records a completed event for a successful body', () async {
       final result = await tracer.span<int>(
         name: 'unit-test',
         category: 'shorebird',
@@ -111,9 +34,9 @@ void main() {
       );
       expect(result, 42);
       expect(tracer.events, hasLength(1));
-      final event = tracer.events.single;
-      expect(event['name'], 'unit-test');
-      expect(event['cat'], 'shorebird');
+      final e = tracer.events.single;
+      expect(e['name'], 'unit-test');
+      expect(e['cat'], 'shorebird');
     });
 
     test('span records an event even when body throws', () async {
@@ -188,16 +111,15 @@ void main() {
           tracer.mergeInto(traceFile);
 
           final decoded = jsonDecode(traceFile.readAsStringSync()) as List;
-          // 1 pre-existing flutter span + 3 metadata (process_name +
-          // 2 thread_name) + 1 network span.
+          // 1 pre-existing flutter span + 1 shorebird network span +
+          // 3 metadata (process_name + 2 thread_name) = 5 events.
           expect(decoded, hasLength(5));
           expect((decoded[0] as Map)['name'], 'flutter build');
-          // Metadata events order: process_name, thread_name(network),
-          // thread_name(shorebird_cli).
-          expect((decoded[1] as Map)['name'], 'process_name');
-          expect((decoded[2] as Map)['name'], 'thread_name');
+          expect((decoded[1] as Map)['name'], 'POST api.shorebird.dev');
+          // Metadata events come after the spans when written.
+          expect((decoded[2] as Map)['name'], 'process_name');
           expect((decoded[3] as Map)['name'], 'thread_name');
-          expect((decoded[4] as Map)['name'], 'POST api.shorebird.dev');
+          expect((decoded[4] as Map)['name'], 'thread_name');
         },
       );
 
@@ -242,14 +164,6 @@ void main() {
         values: {shorebirdTracerRef},
       );
       expect(tracer, isA<ShorebirdTracer>());
-    });
-  });
-
-  group('currentProcessId', () {
-    test('returns a positive int and is stable within a process', () {
-      final first = currentProcessId();
-      expect(first, greaterThan(0));
-      expect(currentProcessId(), first);
     });
   });
 }
