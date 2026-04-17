@@ -420,6 +420,10 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
   Future<String> resolveTargetFlutterRevision() async {
     if (flutterVersionArg == 'latest') return shorebirdEnv.flutterRevision;
 
+    // Fetch the latest remote refs so that release branch pointers
+    // (e.g. flutter_release/3.38.5) are up to date.
+    await shorebirdFlutter.fetchRemoteRefs();
+
     final String? revision;
     try {
       revision = await shorebirdFlutter.resolveFlutterRevision(
