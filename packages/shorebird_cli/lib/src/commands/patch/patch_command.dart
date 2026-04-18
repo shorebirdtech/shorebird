@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -554,6 +555,11 @@ Building patch with Flutter $flutterVersionString
             usesShorebirdCodePushPackage:
                 shorebirdEnv.usesShorebirdCodePushPackage,
           ),
+          // Attach the build-trace summary if the build produced one.
+          // Null for older Flutter pins without the --shorebird-trace
+          // flag or when trace parsing failed; uploader sends
+          // null-as-omitted.
+          buildTraceSummary: buildTraceSession.summary?.toJson(),
         );
         final updateMetadata = await patcher.updatedCreatePatchMetadata(
           baseMetadata,

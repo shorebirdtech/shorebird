@@ -24,6 +24,7 @@ class UpdateReleaseMetadata extends Equatable {
     required this.environment,
     required this.includesPublicKey,
     this.generatedApks,
+    this.buildTraceSummary,
   });
 
   // coverage:ignore-start
@@ -35,12 +36,14 @@ class UpdateReleaseMetadata extends Equatable {
     bool? generatedApks = false,
     bool includesPublicKey = false,
     BuildEnvironmentMetadata? environment,
+    Json? buildTraceSummary,
   }) => UpdateReleaseMetadata(
     releasePlatform: releasePlatform,
     flutterVersionOverride: flutterVersionOverride,
     generatedApks: generatedApks,
     environment: environment ?? BuildEnvironmentMetadata.forTest(),
     includesPublicKey: includesPublicKey,
+    buildTraceSummary: buildTraceSummary,
   );
   // coverage:ignore-end
 
@@ -59,6 +62,7 @@ class UpdateReleaseMetadata extends Equatable {
     bool? generatedApks,
     BuildEnvironmentMetadata? environment,
     bool? includesPublicKey,
+    Json? buildTraceSummary,
   }) => UpdateReleaseMetadata(
     releasePlatform: releasePlatform ?? this.releasePlatform,
     flutterVersionOverride:
@@ -66,6 +70,7 @@ class UpdateReleaseMetadata extends Equatable {
     generatedApks: generatedApks ?? this.generatedApks,
     environment: environment ?? this.environment,
     includesPublicKey: includesPublicKey ?? this.includesPublicKey,
+    buildTraceSummary: buildTraceSummary ?? this.buildTraceSummary,
   );
 
   /// The platform for which the patch was created.
@@ -97,6 +102,15 @@ class UpdateReleaseMetadata extends Equatable {
   /// Reason: see [BuildEnvironmentMetadata].
   final BuildEnvironmentMetadata environment;
 
+  /// Privacy-safe aggregate timings from the Flutter build, produced by
+  /// `BuildTraceSummary.toJson()`. Shape: integer millisecond counters +
+  /// small categorical fields; see `BuildTraceSummary` for the schema.
+  /// Null when no trace was captured (older Flutter pin, user opted out,
+  /// trace file malformed). Stored as [Json] here to avoid this class
+  /// having a compile-time dep on `BuildTraceSummary`'s type — the
+  /// server consumes the blob as-is.
+  final Json? buildTraceSummary;
+
   @override
   List<Object?> get props => [
     releasePlatform,
@@ -104,5 +118,6 @@ class UpdateReleaseMetadata extends Equatable {
     generatedApks,
     includesPublicKey,
     environment,
+    buildTraceSummary,
   ];
 }

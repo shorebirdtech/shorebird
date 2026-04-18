@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
@@ -593,6 +594,10 @@ ${summary.join('\n')}
         shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
         usesShorebirdCodePushPackage: shorebirdEnv.usesShorebirdCodePushPackage,
       ),
+      // Attach the build-trace summary if the build produced one.
+      // Null for older Flutter pins without the --shorebird-trace flag
+      // or when trace parsing failed; uploader sends null-as-omitted.
+      buildTraceSummary: buildTraceSession.summary?.toJson(),
     );
     final updatedMetadata = await releaser.updatedReleaseMetadata(baseMetadata);
     await codePushClientWrapper.updateReleaseStatus(

@@ -632,6 +632,10 @@ Reason: Exited with code $exitCode.''',
       environment: environment,
     );
 
+    // Cache for the release/patch metadata uploader to read without
+    // re-parsing the trace file.
+    buildTraceSession.summary = summary;
+
     final summaryPath = p.join(
       p.dirname(traceFile.path),
       'build-trace-$buildPlatform-summary.json',
