@@ -607,14 +607,14 @@ Reason: Exited with code $exitCode.''',
     // derive Shorebird's overhead. Second pass (below) then bakes overhead
     // and environment into the final summary. Parsed events are reused so
     // the (often multi-megabyte) trace file is only read once.
-    final flutterMs = BuildTraceSummary.fromEvents(
+    final flutterBuild = BuildTraceSummary.fromEvents(
       events,
       platform: buildPlatform,
-    ).flutterBuildMs;
+    ).flutterBuild;
     final totalElapsed = DateTime.now().difference(
       buildTraceSession.commandStartedAt,
     );
-    final shorebirdOverhead = totalElapsed - Duration(milliseconds: flutterMs);
+    final shorebirdOverhead = totalElapsed - flutterBuild;
     // Snapshot the build environment (caching config, CI provider, ...).
     // This is what lets us tell, in field data, whether a slow build is
     // "no caching configured" vs "slow despite caching being on".

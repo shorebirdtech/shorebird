@@ -27,11 +27,11 @@ void main() {
   group(BuildTraceSummary, () {
     test('empty events → zero summary', () {
       final s = BuildTraceSummary.fromEvents([], platform: 'android');
-      expect(s.flutterBuildMs, 0);
-      expect(s.dartMs, 0);
-      expect(s.nonDartMs, 0);
+      expect(s.flutterBuild, Duration.zero);
+      expect(s.dartTotal, Duration.zero);
+      expect(s.nonDart, Duration.zero);
       expect(s.flutterAssemble.targetCount, 0);
-      expect(s.shorebirdOverheadMs, isNull);
+      expect(s.shorebirdOverhead, isNull);
       // Platform is android → android populated, ios null.
       expect(s.android, isNotNull);
       expect(s.ios, isNull);
@@ -115,39 +115,39 @@ void main() {
       );
 
       // Top level
-      expect(s.flutterBuildMs, 3005);
-      expect(s.shorebirdOverheadMs, 500);
-      expect(s.totalMs, 3505);
+      expect(s.flutterBuild, const Duration(milliseconds: 3005));
+      expect(s.shorebirdOverhead, const Duration(milliseconds: 500));
+      expect(s.total, const Duration(milliseconds: 3505));
 
       // Network
-      expect(s.network.ms, 300);
+      expect(s.network.duration, const Duration(milliseconds: 300));
       expect(s.network.callCount, 1);
 
       // Dart
-      expect(s.dart.totalMs, 700);
-      expect(s.dart.kernelSnapshotMs, 500);
-      expect(s.dart.genSnapshotMs, 200);
-      expect(s.dart.buildMs, 100);
-      expect(s.dartMs, 700);
+      expect(s.dart.total, const Duration(milliseconds: 700));
+      expect(s.dart.kernelSnapshot, const Duration(milliseconds: 500));
+      expect(s.dart.genSnapshot, const Duration(milliseconds: 200));
+      expect(s.dart.build, const Duration(milliseconds: 100));
+      expect(s.dartTotal, const Duration(milliseconds: 700));
 
       // Native (outer 3000ms − sum of assemble 800ms = 2200ms)
-      expect(s.native.buildMs, 3000);
-      expect(s.native.compileMs, 2200);
+      expect(s.native.build, const Duration(milliseconds: 3000));
+      expect(s.native.compile, const Duration(milliseconds: 2200));
 
       // Flutter tool
-      expect(s.flutterToolMs, 2);
+      expect(s.flutterTool, const Duration(milliseconds: 2));
 
       // Android-specific
       expect(s.android, isNotNull);
       final g = s.android!.gradle;
       expect(g.taskCount, 4);
       // Kotlin sum: 1+2+5 = 8s
-      expect(g.kotlinCompileMs, 8000);
-      expect(g.r8MinifyMs, 20000);
-      expect(g.taskMaxMs, 20000);
+      expect(g.kotlinCompile, const Duration(milliseconds: 8000));
+      expect(g.r8Minify, const Duration(milliseconds: 20000));
+      expect(g.taskMax, const Duration(milliseconds: 20000));
       // Sorted us: [1M, 2M, 5M, 20M]; floor(4*0.5)=2 → 5M; floor(4*0.9)=3 → 20M
-      expect(g.taskP50Ms, 5000);
-      expect(g.taskP90Ms, 20000);
+      expect(g.taskP50, const Duration(milliseconds: 5000));
+      expect(g.taskP90, const Duration(milliseconds: 20000));
 
       expect(s.ios, isNull);
     });
@@ -244,19 +244,31 @@ void main() {
 
       expect(s.ios, isNotNull);
       expect(s.android, isNull);
-      expect(s.ios!.podInstall.ms, 60000);
-      expect(s.ios!.podInstall.analyzeMs, 5000);
-      expect(s.ios!.podInstall.downloadMs, 30000);
-      expect(s.ios!.podInstall.generateMs, 20000);
-      expect(s.ios!.podInstall.integrateMs, 5000);
+      expect(s.ios!.podInstall.duration, const Duration(milliseconds: 60000));
+      expect(s.ios!.podInstall.analyze, const Duration(milliseconds: 5000));
+      expect(s.ios!.podInstall.download, const Duration(milliseconds: 30000));
+      expect(s.ios!.podInstall.generate, const Duration(milliseconds: 20000));
+      expect(s.ios!.podInstall.integrate, const Duration(milliseconds: 5000));
       expect(s.ios!.xcode.subsectionCount, 5);
       // Sum: 30+25+5+2+1 = 63s
-      expect(s.ios!.xcode.subsectionSumMs, 63000);
-      expect(s.ios!.xcode.subsectionMaxMs, 30000);
+      expect(
+        s.ios!.xcode.subsectionSum,
+        const Duration(milliseconds: 63000),
+      );
+      expect(
+        s.ios!.xcode.subsectionMax,
+        const Duration(milliseconds: 30000),
+      );
       // Sorted us: [1M, 2M, 5M, 25M, 30M]
       // floor(5*0.5)=2 → 5M; floor(5*0.9)=4 → 30M
-      expect(s.ios!.xcode.subsectionP50Ms, 5000);
-      expect(s.ios!.xcode.subsectionP90Ms, 30000);
+      expect(
+        s.ios!.xcode.subsectionP50,
+        const Duration(milliseconds: 5000),
+      );
+      expect(
+        s.ios!.xcode.subsectionP90,
+        const Duration(milliseconds: 30000),
+      );
     });
 
     test('toJson shape is nested and omits the other platform', () {
@@ -328,9 +340,9 @@ void main() {
           );
         final s = BuildTraceSummary.tryFromFile(f, platform: 'android');
         expect(s, isNotNull);
-        expect(s!.flutterBuildMs, 1500);
-        expect(s.dart.kernelSnapshotMs, 1000);
-        expect(s.dartMs, 1000);
+        expect(s!.flutterBuild, const Duration(milliseconds: 1500));
+        expect(s.dart.kernelSnapshot, const Duration(milliseconds: 1000));
+        expect(s.dartTotal, const Duration(milliseconds: 1000));
       });
 
       test('parses a {"traceEvents": [...]} object shape', () {
@@ -350,7 +362,7 @@ void main() {
           );
         final s = BuildTraceSummary.tryFromFile(f, platform: 'android');
         expect(s, isNotNull);
-        expect(s!.flutterBuildMs, 500);
+        expect(s!.flutterBuild, const Duration(milliseconds: 500));
       });
 
       test('returns null when the JSON root is not a list or known object', () {
@@ -388,10 +400,10 @@ void main() {
             tid: 3,
           ),
         ], platform: 'android');
-        expect(s.dart.genSnapshotMs, 6000);
+        expect(s.dart.genSnapshot, const Duration(milliseconds: 6000));
       });
 
-      test('dart_build → DartStats.buildMs', () {
+      test('dart_build → DartStats.build', () {
         final s = BuildTraceSummary.fromEvents([
           _event(
             name: 'dart_build',
@@ -401,10 +413,10 @@ void main() {
             tid: 3,
           ),
         ], platform: 'android');
-        expect(s.dart.buildMs, 500);
+        expect(s.dart.build, const Duration(milliseconds: 500));
       });
 
-      test('gen_* → FlutterAssembleStats.codegenMs', () {
+      test('gen_* → FlutterAssembleStats.codegen', () {
         final s = BuildTraceSummary.fromEvents([
           _event(
             name: 'gen_localizations',
@@ -414,7 +426,7 @@ void main() {
             tid: 3,
           ),
         ], platform: 'android');
-        expect(s.flutterAssemble.codegenMs, 600);
+        expect(s.flutterAssemble.codegen, const Duration(milliseconds: 600));
       });
 
       test('various asset-like names → assets bucket', () {
@@ -448,7 +460,7 @@ void main() {
             tid: 3,
           ),
         ], platform: 'android');
-        expect(s.flutterAssemble.assetsMs, 1000);
+        expect(s.flutterAssemble.assets, const Duration(milliseconds: 1000));
       });
 
       test('unknown name → other bucket', () {
@@ -461,7 +473,7 @@ void main() {
             tid: 3,
           ),
         ], platform: 'android');
-        expect(s.flutterAssemble.otherMs, 700);
+        expect(s.flutterAssemble.other, const Duration(milliseconds: 700));
       });
 
       test('skipped:true bumps the skippedCount', () {
@@ -508,19 +520,19 @@ void main() {
         ], platform: 'android');
 
         final g = s.android!.gradle;
-        expect(g.kotlinCompileMs, 10);
-        expect(g.javaCompileMs, 20);
-        expect(g.dexMs, 30);
-        expect(g.resourcesMs, 40);
-        expect(g.transformMs, 50);
-        expect(g.r8MinifyMs, 60);
-        expect(g.lintMs, 70);
-        expect(g.flutterGradlePluginMs, 80);
-        expect(g.bundleMs, 90);
-        expect(g.packagingMs, 100);
-        expect(g.aidlMs, 110);
-        expect(g.nativeLinkMs, 120);
-        expect(g.gradleScaffoldMs, 130);
+        expect(g.kotlinCompile, const Duration(milliseconds: 10));
+        expect(g.javaCompile, const Duration(milliseconds: 20));
+        expect(g.dex, const Duration(milliseconds: 30));
+        expect(g.resources, const Duration(milliseconds: 40));
+        expect(g.transform, const Duration(milliseconds: 50));
+        expect(g.r8Minify, const Duration(milliseconds: 60));
+        expect(g.lint, const Duration(milliseconds: 70));
+        expect(g.flutterGradlePlugin, const Duration(milliseconds: 80));
+        expect(g.bundle, const Duration(milliseconds: 90));
+        expect(g.packaging, const Duration(milliseconds: 100));
+        expect(g.aidl, const Duration(milliseconds: 110));
+        expect(g.nativeLink, const Duration(milliseconds: 120));
+        expect(g.gradleScaffold, const Duration(milliseconds: 130));
       });
 
       test('cache / up-to-date / executed task counters increment', () {
@@ -573,18 +585,21 @@ void main() {
 
         final xcode = s.ios!.xcode;
         expect(xcode.subsectionCount, 4);
-        expect(xcode.subsectionSumMs, 1600);
-        expect(xcode.subsectionMaxMs, 1000);
-        expect(xcode.subsectionP50Ms, greaterThanOrEqualTo(100));
+        expect(xcode.subsectionSum, const Duration(milliseconds: 1600));
+        expect(xcode.subsectionMax, const Duration(milliseconds: 1000));
+        expect(
+          xcode.subsectionP50,
+          greaterThanOrEqualTo(const Duration(milliseconds: 100)),
+        );
       });
 
       test('XcodeStats.toJson serializes all fields', () {
         final xcode = XcodeStats(
           subsectionCount: 1,
-          subsectionSumMs: 2,
-          subsectionP50Ms: 3,
-          subsectionP90Ms: 4,
-          subsectionMaxMs: 5,
+          subsectionSum: const Duration(milliseconds: 2),
+          subsectionP50: const Duration(milliseconds: 3),
+          subsectionP90: const Duration(milliseconds: 4),
+          subsectionMax: const Duration(milliseconds: 5),
         );
         expect(xcode.toJson(), {
           'subsectionCount': 1,
@@ -597,11 +612,11 @@ void main() {
 
       test('PodInstallStats.toJson serializes all fields', () {
         final stats = PodInstallStats(
-          ms: 1,
-          analyzeMs: 2,
-          downloadMs: 3,
-          generateMs: 4,
-          integrateMs: 5,
+          duration: const Duration(milliseconds: 1),
+          analyze: const Duration(milliseconds: 2),
+          download: const Duration(milliseconds: 3),
+          generate: const Duration(milliseconds: 4),
+          integrate: const Duration(milliseconds: 5),
         );
         expect(stats.toJson(), {
           'ms': 1,
@@ -615,18 +630,18 @@ void main() {
       test('IosStats.toJson nests pod + xcode', () {
         final iosStats = IosStats(
           podInstall: PodInstallStats(
-            ms: 0,
-            analyzeMs: 0,
-            downloadMs: 0,
-            generateMs: 0,
-            integrateMs: 0,
+            duration: Duration.zero,
+            analyze: Duration.zero,
+            download: Duration.zero,
+            generate: Duration.zero,
+            integrate: Duration.zero,
           ),
           xcode: XcodeStats(
             subsectionCount: 0,
-            subsectionSumMs: 0,
-            subsectionP50Ms: 0,
-            subsectionP90Ms: 0,
-            subsectionMaxMs: 0,
+            subsectionSum: Duration.zero,
+            subsectionP50: Duration.zero,
+            subsectionP90: Duration.zero,
+            subsectionMax: Duration.zero,
           ),
         );
         final json = iosStats.toJson();
