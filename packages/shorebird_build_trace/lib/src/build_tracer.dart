@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -25,11 +26,30 @@ import 'package:shorebird_build_trace/src/process_id.dart';
 /// See also [PhaseTracker] for the `transitionTo(nextPhase)` pattern
 /// used when parsing a subprocess's verbose output.
 class BuildTracer {
-  /// The tracer for the in-progress build, if any. Set by the producer's
-  /// entry point when tracing is enabled so deep layers (network, subprocess
-  /// wrappers) can record spans without plumbing a parameter through every
-  /// signature. Null when tracing is off.
-  static BuildTracer? current;
+  /// Zone key under which the in-progress [BuildTracer] is stored.
+  /// Private so [current] is the only read path and [runAsync] is the
+  /// only write path.
+  static final Object _zoneKey = Object();
+
+  /// The tracer for the in-progress build, if any. Installed for the
+  /// duration of a [runAsync] callback so deep layers (network,
+  /// subprocess wrappers) can record spans without plumbing a parameter
+  /// through every signature. Null when no [runAsync] frame is active.
+  static BuildTracer? get current {
+    final Object? value = Zone.current[_zoneKey];
+    return value is BuildTracer ? value : null;
+  }
+
+  /// Runs [body] with [tracer] installed as [current] for its duration
+  /// (including any async work it awaits). Unwinds on return or throw
+  /// so [current] is guaranteed cleared — producers don't have to pair
+  /// set/clear calls themselves.
+  static Future<T> runAsync<T>(
+    BuildTracer tracer,
+    Future<T> Function() body,
+  ) {
+    return runZoned(body, zoneValues: <Object, Object?>{_zoneKey: tracer});
+  }
 
   /// Raw JSON maps: complete spans (ph:"X"), metadata (ph:"M"), and flow
   /// events (ph:"s"/"f") share the buffer so each consumer can emit any
