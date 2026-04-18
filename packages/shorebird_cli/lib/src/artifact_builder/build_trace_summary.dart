@@ -120,12 +120,10 @@ class BuildTraceSummary {
     required String name,
     required Duration dur,
   }) {
-    if (name == TraceNames.podInstallSpanName) {
-      acc.podInstall += dur;
-      return;
-    }
     const prefix = '${TraceNames.podInstallNamePrefix}: ';
-    if (name.startsWith(prefix)) {
+    if (name == TraceNames.podInstallSpanName) {
+      acc.podInstall = acc.podInstall + dur;
+    } else if (name.startsWith(prefix)) {
       acc.podPhase.add(
         PodInstallPhase.parse(name.substring(prefix.length)),
         dur,

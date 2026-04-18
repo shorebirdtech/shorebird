@@ -37,6 +37,25 @@ void main() {
       expect(s.ios, isNull);
     });
 
+    test('unknown cat is dropped — does not contribute to any bucket', () {
+      // A future producer emits a category this consumer doesn't know yet.
+      // Forward-compat contract: parse to TraceCategory.unknown and skip.
+      final events = [
+        _event(
+          name: 'mystery-event',
+          cat: 'brand-new-future-category',
+          ts: 0,
+          dur: 9_999_999,
+          tid: 1,
+        ),
+      ];
+      final s = BuildTraceSummary.fromEvents(events, platform: 'android');
+      expect(s.flutterBuild, Duration.zero);
+      expect(s.native.build, Duration.zero);
+      expect(s.network.duration, Duration.zero);
+      expect(s.flutterAssemble.targetCount, 0);
+    });
+
     test('android trace → nested gradle + android stats', () {
       final events = [
         _event(

@@ -2133,5 +2133,44 @@ Reason: Exited with code 70.'''),
         });
       });
     });
+
+    group('prepareBuildTrace', () {
+      test(
+        'leaves traceFile null when Flutter pin does not support tracing',
+        () async {
+          // shorebirdFlutter.resolveFlutterVersion default in setUp is 3.0.0,
+          // which is below minimumBuildTraceFlutterVersion.
+          await runWithOverrides(() async {
+            await builder.prepareBuildTrace(platform: 'android');
+            expect(buildTraceSession.traceFile, isNull);
+            expect(buildTraceSession.platform, 'android');
+          });
+        },
+      );
+    });
+
+    group('writeBuildTraceSummary', () {
+      test('logs detail and returns when trace file is missing', () async {
+        when(
+          () => shorebirdFlutter.resolveFlutterVersion(any()),
+        ).thenAnswer((_) async => Version(3, 41, 7));
+
+        await runWithOverrides(() async {
+          await builder.prepareBuildTrace(platform: 'android');
+          // Simulate a build that never produced a trace file (e.g. an
+          // older Flutter that accepts --shorebird-trace but silently
+          // drops the flag, or a build that failed before writing).
+          expect(buildTraceSession.traceFile!.existsSync(), isFalse);
+          builder.writeBuildTraceSummary();
+          expect(buildTraceSession.summary, isNull);
+        });
+
+        verify(
+          () => logger.detail(
+            any(that: contains('Skipping build trace summary')),
+          ),
+        ).called(1);
+      });
+    });
   });
 }
