@@ -16,8 +16,8 @@ void main() {
     test('addNetworkEvent writes a cat=network span on network tid', () {
       tracer.addNetworkEvent(
         name: 'GET api.shorebird.dev',
-        startMicros: 0,
-        durationMicros: 1,
+        start: DateTime.fromMicrosecondsSinceEpoch(0),
+        duration: const Duration(microseconds: 1),
       );
       expect(tracer.events, hasLength(1));
       final e = tracer.events.single;
@@ -63,7 +63,10 @@ void main() {
     });
 
     test('addSpawnFlowStart emits ph:s flow event', () {
-      tracer.addSpawnFlowStart(id: 4242, atMicros: 1000);
+      tracer.addSpawnFlowStart(
+        id: 4242,
+        at: DateTime.fromMicrosecondsSinceEpoch(1000),
+      );
       final event = tracer.events.single;
       expect(event['ph'], 's');
       expect(event['id'], 4242);
@@ -104,8 +107,8 @@ void main() {
           );
           tracer.addNetworkEvent(
             name: 'POST api.shorebird.dev',
-            startMicros: 200,
-            durationMicros: 50,
+            start: DateTime.fromMicrosecondsSinceEpoch(200),
+            duration: const Duration(microseconds: 50),
           );
 
           tracer.mergeInto(traceFile);
@@ -126,8 +129,8 @@ void main() {
       test('no-op when the trace file does not exist', () {
         tracer.addNetworkEvent(
           name: 'x',
-          startMicros: 0,
-          durationMicros: 1,
+          start: DateTime.fromMicrosecondsSinceEpoch(0),
+          duration: const Duration(microseconds: 1),
         );
         tracer.mergeInto(traceFile);
         expect(traceFile.existsSync(), isFalse);
@@ -137,8 +140,8 @@ void main() {
         traceFile.writeAsStringSync('{"not":"an array"}');
         tracer.addNetworkEvent(
           name: 'x',
-          startMicros: 0,
-          durationMicros: 1,
+          start: DateTime.fromMicrosecondsSinceEpoch(0),
+          duration: const Duration(microseconds: 1),
         );
         tracer.mergeInto(traceFile);
         expect(traceFile.readAsStringSync(), '{"not":"an array"}');
@@ -148,8 +151,8 @@ void main() {
         traceFile.writeAsStringSync('not json');
         tracer.addNetworkEvent(
           name: 'x',
-          startMicros: 0,
-          durationMicros: 1,
+          start: DateTime.fromMicrosecondsSinceEpoch(0),
+          duration: const Duration(microseconds: 1),
         );
         tracer.mergeInto(traceFile);
         expect(traceFile.readAsStringSync(), 'not json');

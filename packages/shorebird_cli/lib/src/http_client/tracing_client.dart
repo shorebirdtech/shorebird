@@ -13,18 +13,17 @@ class TracingClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    final start = DateTime.now().microsecondsSinceEpoch;
+    final start = DateTime.now();
     int? statusCode;
     try {
       final response = await _baseClient.send(request);
       statusCode = response.statusCode;
       return response;
     } finally {
-      final end = DateTime.now().microsecondsSinceEpoch;
       shorebirdTracer.addNetworkEvent(
         name: '${request.method} ${request.url.host}',
-        startMicros: start,
-        durationMicros: end - start,
+        start: start,
+        duration: DateTime.now().difference(start),
         args: {
           'method': request.method,
           'host': request.url.host,

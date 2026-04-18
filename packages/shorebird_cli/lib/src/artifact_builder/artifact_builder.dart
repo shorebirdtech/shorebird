@@ -559,10 +559,7 @@ Reason: Exited with code $exitCode.''',
   /// the flow id — Perfetto draws an arrow from our spawn point into
   /// flutter's first span.
   void _emitFlutterSpawnFlow(Process flutter) {
-    shorebirdTracer.addSpawnFlowStart(
-      id: flutter.pid,
-      atMicros: DateTime.now().microsecondsSinceEpoch,
-    );
+    shorebirdTracer.addSpawnFlowStart(id: flutter.pid, at: DateTime.now());
   }
 
   /// Returns the user's home directory as understood by the OS, or

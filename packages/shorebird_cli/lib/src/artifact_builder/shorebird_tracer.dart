@@ -38,8 +38,8 @@ class ShorebirdTracer {
   /// Record a completed network span on the shorebird_cli row.
   void addNetworkEvent({
     required String name,
-    required int startMicros,
-    required int durationMicros,
+    required DateTime start,
+    required Duration duration,
     Map<String, Object?>? args,
   }) {
     _tracer.addCompleteEvent(
@@ -47,8 +47,8 @@ class ShorebirdTracer {
       cat: 'network',
       pid: _pid,
       tid: _networkTid,
-      startMicros: startMicros,
-      endMicros: startMicros + durationMicros,
+      start: start,
+      end: start.add(duration),
       args: args,
     );
   }
@@ -70,21 +70,16 @@ class ShorebirdTracer {
     args: args,
   );
 
-  /// Emits a flow-start event at [atMicros] with id = [id]. Shorebird
+  /// Emits a flow-start event at [at] with id = [id]. Shorebird
   /// convention uses the child process's real pid as the flow id so
   /// the child emits the matching `ph: "f"` with the same id without
   /// any plumbing.
   void addSpawnFlowStart({
     required int id,
-    required int atMicros,
+    required DateTime at,
     int fromTid = _shorebirdTid,
   }) {
-    _tracer.addFlowStart(
-      id: id,
-      pid: _pid,
-      tid: fromTid,
-      atMicros: atMicros,
-    );
+    _tracer.addFlowStart(id: id, pid: _pid, tid: fromTid, at: at);
   }
 
   /// Append accumulated events to [traceFile] (a Chrome Trace Event
