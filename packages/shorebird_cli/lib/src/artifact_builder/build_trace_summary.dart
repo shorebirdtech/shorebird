@@ -72,9 +72,7 @@ class BuildTraceSummary {
     final name = (e['name'] as String?) ?? '';
     final args =
         (e['args'] as Map<Object?, Object?>?) ?? const <Object?, Object?>{};
-    final cat =
-        TraceCategory.tryParse(e['cat'] as String?) ?? TraceCategory.unknown;
-    switch (cat) {
+    switch (TraceCategory.parse(e['cat'] as String?)) {
       case TraceCategory.flutter:
         _processFlutterEvent(acc, name: name, dur: dur);
       case TraceCategory.subprocess:
@@ -83,7 +81,9 @@ class BuildTraceSummary {
       case TraceCategory.xcode:
         acc.nativeBuildUs += dur;
       case TraceCategory.assemble:
-        _processAssembleEvent(acc, name: name, dur: dur, args: args);
+        acc.assembleCount++;
+        if (args['skipped'] == true) acc.skippedAssembleCount++;
+        acc.assembleCategoryUs.add(_categorize(name), dur);
       case TraceCategory.gradleTask:
         _processGradleTaskEvent(acc, dur: dur, args: args);
       case TraceCategory.xcodeSubsection:
@@ -122,44 +122,9 @@ class BuildTraceSummary {
       return;
     }
     const prefix = '${TraceNames.podInstallNamePrefix}: ';
-    for (final phase in PodInstallPhase.values) {
-      if (name == '$prefix${phase.wireName}') {
-        switch (phase) {
-          case PodInstallPhase.analyzing:
-            acc.podAnalyzeUs += dur;
-          case PodInstallPhase.downloading:
-            acc.podDownloadUs += dur;
-          case PodInstallPhase.generating:
-            acc.podGenerateUs += dur;
-          case PodInstallPhase.integrating:
-            acc.podIntegrateUs += dur;
-        }
-        return;
-      }
-    }
-  }
-
-  static void _processAssembleEvent(
-    _Accumulator acc, {
-    required String name,
-    required int dur,
-    required Map<Object?, Object?> args,
-  }) {
-    acc.assembleCount++;
-    if (args['skipped'] == true) acc.skippedAssembleCount++;
-    switch (_categorize(name)) {
-      case _AssembleCategory.kernelSnapshot:
-        acc.kernelSnapshotUs += dur;
-      case _AssembleCategory.genSnapshot:
-        acc.genSnapshotUs += dur;
-      case _AssembleCategory.dartBuild:
-        acc.dartBuildUs += dur;
-      case _AssembleCategory.assets:
-        acc.assetsUs += dur;
-      case _AssembleCategory.codegen:
-        acc.codegenUs += dur;
-      case _AssembleCategory.other:
-        acc.otherAssembleUs += dur;
+    if (name.startsWith(prefix)) {
+      final phase = PodInstallPhase.tryParse(name.substring(prefix.length));
+      if (phase != null) acc.podPhaseUs.add(phase, dur);
     }
   }
 
@@ -179,41 +144,10 @@ class BuildTraceSummary {
     } else {
       acc.gradleTaskExecutedCount++;
     }
-    final kind =
-        GradleTaskKind.tryParse(args['kind'] as String?) ??
-        GradleTaskKind.other;
-    switch (kind) {
-      case GradleTaskKind.kotlinCompile:
-        acc.kotlinCompileUs += dur;
-      case GradleTaskKind.javaCompile:
-        acc.javaCompileUs += dur;
-      case GradleTaskKind.dex:
-        acc.dexUs += dur;
-      case GradleTaskKind.resources:
-        acc.resourcesUs += dur;
-      case GradleTaskKind.transform:
-        acc.transformUs += dur;
-      case GradleTaskKind.r8Minify:
-        acc.r8MinifyUs += dur;
-      case GradleTaskKind.lint:
-        acc.lintUs += dur;
-      case GradleTaskKind.flutterGradlePlugin:
-        acc.flutterGradlePluginUs += dur;
-      case GradleTaskKind.bundle:
-        acc.bundleUs += dur;
-      case GradleTaskKind.packaging:
-        acc.packagingUs += dur;
-      case GradleTaskKind.aidl:
-        acc.aidlUs += dur;
-      case GradleTaskKind.nativeLink:
-        acc.nativeLinkUs += dur;
-      case GradleTaskKind.gradleScaffold:
-        acc.gradleScaffoldUs += dur;
-      case GradleTaskKind.other:
-        // Unclassified (or unknown to this consumer) — counted in the
-        // task histogram above but not in any per-kind bucket.
-        break;
-    }
+    acc.gradleKindUs.add(
+      GradleTaskKind.parse(args['kind'] as String?),
+      dur,
+    );
   }
 
   static BuildTraceSummary _buildSummary(
@@ -222,96 +156,6 @@ class BuildTraceSummary {
     Duration? shorebirdOverhead,
     BuildEnvironment? environment,
   }) {
-    final (p50, p90, max) = _percentiles(acc.gradleTaskDurationsUs);
-    final gradleSumUs = acc.gradleTaskDurationsUs.fold<int>(
-      0,
-      (a, b) => a + b,
-    );
-    final (xcodeP50, xcodeP90, xcodeMax) = _percentiles(
-      acc.xcodeSubsectionDurationsUs,
-    );
-
-    // Dart-compile total (the "dart vs non-dart" signal lives inside
-    // [DartStats]).
-    final dart = DartStats(
-      totalMs: _usToMs(acc.kernelSnapshotUs + acc.genSnapshotUs),
-      kernelSnapshotMs: _usToMs(acc.kernelSnapshotUs),
-      genSnapshotMs: _usToMs(acc.genSnapshotUs),
-      buildMs: _usToMs(acc.dartBuildUs),
-    );
-    final flutterAssemble = FlutterAssembleStats(
-      assetsMs: _usToMs(acc.assetsUs),
-      codegenMs: _usToMs(acc.codegenUs),
-      otherMs: _usToMs(acc.otherAssembleUs),
-      targetCount: acc.assembleCount,
-      skippedCount: acc.skippedAssembleCount,
-    );
-    // "Native compile only" = native outer minus everything flutter
-    // assemble reported running inside it. Clamped at 0 because the sum
-    // can exceed nativeBuildUs in edge cases.
-    final assembleTotalUs =
-        acc.kernelSnapshotUs +
-        acc.genSnapshotUs +
-        acc.dartBuildUs +
-        acc.assetsUs +
-        acc.codegenUs +
-        acc.otherAssembleUs;
-    final nativeCompileUs = (acc.nativeBuildUs - assembleTotalUs).clamp(
-      0,
-      1 << 62,
-    );
-    final native = NativeBuildStats(
-      buildMs: _usToMs(acc.nativeBuildUs),
-      compileMs: _usToMs(nativeCompileUs),
-    );
-
-    AndroidStats? android;
-    IosStats? ios;
-    if (platform == 'android') {
-      android = AndroidStats(
-        gradle: GradleStats(
-          taskCount: acc.gradleTaskDurationsUs.length,
-          taskSumMs: _usToMs(gradleSumUs),
-          taskP50Ms: _usToMs(p50),
-          taskP90Ms: _usToMs(p90),
-          taskMaxMs: _usToMs(max),
-          taskFromCacheCount: acc.gradleTaskFromCacheCount,
-          taskUpToDateCount: acc.gradleTaskUpToDateCount,
-          taskExecutedCount: acc.gradleTaskExecutedCount,
-          kotlinCompileMs: _usToMs(acc.kotlinCompileUs),
-          javaCompileMs: _usToMs(acc.javaCompileUs),
-          dexMs: _usToMs(acc.dexUs),
-          resourcesMs: _usToMs(acc.resourcesUs),
-          transformMs: _usToMs(acc.transformUs),
-          r8MinifyMs: _usToMs(acc.r8MinifyUs),
-          lintMs: _usToMs(acc.lintUs),
-          flutterGradlePluginMs: _usToMs(acc.flutterGradlePluginUs),
-          bundleMs: _usToMs(acc.bundleUs),
-          packagingMs: _usToMs(acc.packagingUs),
-          aidlMs: _usToMs(acc.aidlUs),
-          nativeLinkMs: _usToMs(acc.nativeLinkUs),
-          gradleScaffoldMs: _usToMs(acc.gradleScaffoldUs),
-        ),
-      );
-    } else if (platform == 'ios') {
-      ios = IosStats(
-        podInstall: PodInstallStats(
-          ms: _usToMs(acc.podInstallUs),
-          analyzeMs: _usToMs(acc.podAnalyzeUs),
-          downloadMs: _usToMs(acc.podDownloadUs),
-          generateMs: _usToMs(acc.podGenerateUs),
-          integrateMs: _usToMs(acc.podIntegrateUs),
-        ),
-        xcode: XcodeStats(
-          subsectionCount: acc.xcodeSubsectionCount,
-          subsectionSumMs: _usToMs(acc.xcodeSubsectionSumUs),
-          subsectionP50Ms: _usToMs(xcodeP50),
-          subsectionP90Ms: _usToMs(xcodeP90),
-          subsectionMaxMs: _usToMs(xcodeMax),
-        ),
-      );
-    }
-
     final flutterBuildMs = _usToMs(acc.flutterBuildUs);
     final shorebirdOverheadMs = shorebirdOverhead?.inMilliseconds;
     return BuildTraceSummary(
@@ -323,13 +167,109 @@ class BuildTraceSummary {
         ms: _usToMs(acc.networkUs),
         callCount: acc.networkCount,
       ),
-      dart: dart,
-      flutterAssemble: flutterAssemble,
-      native: native,
+      dart: _dartStats(acc),
+      flutterAssemble: _flutterAssembleStats(acc),
+      native: _nativeStats(acc),
       flutterToolMs: _usToMs(acc.flutterToolUs),
-      android: android,
-      ios: ios,
+      android: platform == 'android' ? _androidStats(acc) : null,
+      ios: platform == 'ios' ? _iosStats(acc) : null,
       environment: environment,
+    );
+  }
+
+  static DartStats _dartStats(_Accumulator acc) {
+    final kernel = acc.assembleCategoryUs.of(_AssembleCategory.kernelSnapshot);
+    final gen = acc.assembleCategoryUs.of(_AssembleCategory.genSnapshot);
+    return DartStats(
+      totalMs: _usToMs(kernel + gen),
+      kernelSnapshotMs: _usToMs(kernel),
+      genSnapshotMs: _usToMs(gen),
+      buildMs: _usToMs(acc.assembleCategoryUs.of(_AssembleCategory.dartBuild)),
+    );
+  }
+
+  static FlutterAssembleStats _flutterAssembleStats(_Accumulator acc) {
+    return FlutterAssembleStats(
+      assetsMs: _usToMs(acc.assembleCategoryUs.of(_AssembleCategory.assets)),
+      codegenMs: _usToMs(acc.assembleCategoryUs.of(_AssembleCategory.codegen)),
+      otherMs: _usToMs(acc.assembleCategoryUs.of(_AssembleCategory.other)),
+      targetCount: acc.assembleCount,
+      skippedCount: acc.skippedAssembleCount,
+    );
+  }
+
+  static NativeBuildStats _nativeStats(_Accumulator acc) {
+    // "Native compile only" = native outer minus everything flutter
+    // assemble reported running inside it. Clamped at 0 because the
+    // sum can exceed nativeBuildUs in edge cases.
+    final assembleTotalUs = acc.assembleCategoryUs.values.fold<int>(
+      0,
+      (a, b) => a + b,
+    );
+    final nativeCompileUs = (acc.nativeBuildUs - assembleTotalUs).clamp(
+      0,
+      1 << 62,
+    );
+    return NativeBuildStats(
+      buildMs: _usToMs(acc.nativeBuildUs),
+      compileMs: _usToMs(nativeCompileUs),
+    );
+  }
+
+  static AndroidStats _androidStats(_Accumulator acc) {
+    final (p50, p90, max) = _percentiles(acc.gradleTaskDurationsUs);
+    final gradleSumUs = acc.gradleTaskDurationsUs.fold<int>(
+      0,
+      (a, b) => a + b,
+    );
+    int kindMs(GradleTaskKind k) => _usToMs(acc.gradleKindUs.of(k));
+    return AndroidStats(
+      gradle: GradleStats(
+        taskCount: acc.gradleTaskDurationsUs.length,
+        taskSumMs: _usToMs(gradleSumUs),
+        taskP50Ms: _usToMs(p50),
+        taskP90Ms: _usToMs(p90),
+        taskMaxMs: _usToMs(max),
+        taskFromCacheCount: acc.gradleTaskFromCacheCount,
+        taskUpToDateCount: acc.gradleTaskUpToDateCount,
+        taskExecutedCount: acc.gradleTaskExecutedCount,
+        kotlinCompileMs: kindMs(GradleTaskKind.kotlinCompile),
+        javaCompileMs: kindMs(GradleTaskKind.javaCompile),
+        dexMs: kindMs(GradleTaskKind.dex),
+        resourcesMs: kindMs(GradleTaskKind.resources),
+        transformMs: kindMs(GradleTaskKind.transform),
+        r8MinifyMs: kindMs(GradleTaskKind.r8Minify),
+        lintMs: kindMs(GradleTaskKind.lint),
+        flutterGradlePluginMs: kindMs(GradleTaskKind.flutterGradlePlugin),
+        bundleMs: kindMs(GradleTaskKind.bundle),
+        packagingMs: kindMs(GradleTaskKind.packaging),
+        aidlMs: kindMs(GradleTaskKind.aidl),
+        nativeLinkMs: kindMs(GradleTaskKind.nativeLink),
+        gradleScaffoldMs: kindMs(GradleTaskKind.gradleScaffold),
+      ),
+    );
+  }
+
+  static IosStats _iosStats(_Accumulator acc) {
+    final (xcodeP50, xcodeP90, xcodeMax) = _percentiles(
+      acc.xcodeSubsectionDurationsUs,
+    );
+    int phaseMs(PodInstallPhase p) => _usToMs(acc.podPhaseUs.of(p));
+    return IosStats(
+      podInstall: PodInstallStats(
+        ms: _usToMs(acc.podInstallUs),
+        analyzeMs: phaseMs(PodInstallPhase.analyzing),
+        downloadMs: phaseMs(PodInstallPhase.downloading),
+        generateMs: phaseMs(PodInstallPhase.generating),
+        integrateMs: phaseMs(PodInstallPhase.integrating),
+      ),
+      xcode: XcodeStats(
+        subsectionCount: acc.xcodeSubsectionCount,
+        subsectionSumMs: _usToMs(acc.xcodeSubsectionSumUs),
+        subsectionP50Ms: _usToMs(xcodeP50),
+        subsectionP90Ms: _usToMs(xcodeP90),
+        subsectionMaxMs: _usToMs(xcodeMax),
+      ),
     );
   }
 
@@ -849,47 +789,39 @@ class _Accumulator {
   int flutterBuildUs = 0;
   int flutterToolUs = 0;
   int nativeBuildUs = 0;
-  // flutter assemble targets (bucketed by _AssembleCategory).
-  int kernelSnapshotUs = 0;
-  int genSnapshotUs = 0;
-  int dartBuildUs = 0;
-  int assetsUs = 0;
-  int codegenUs = 0;
-  int otherAssembleUs = 0;
   int assembleCount = 0;
   int skippedAssembleCount = 0;
-  // network.
   int networkUs = 0;
   int networkCount = 0;
-  // Gradle per-task stats (android).
-  int kotlinCompileUs = 0;
-  int javaCompileUs = 0;
-  int dexUs = 0;
-  int resourcesUs = 0;
-  int transformUs = 0;
-  int r8MinifyUs = 0;
-  int lintUs = 0;
-  int flutterGradlePluginUs = 0;
-  int bundleUs = 0;
-  int packagingUs = 0;
-  int aidlUs = 0;
-  int nativeLinkUs = 0;
-  int gradleScaffoldUs = 0;
+  int podInstallUs = 0;
+  int xcodeSubsectionCount = 0;
+  int xcodeSubsectionSumUs = 0;
+
+  /// Per-bucket totals, keyed by the enum/category that classified the
+  /// event. Read via [Map.operator[]] with a null-coalesce to 0 —
+  /// unpopulated buckets (e.g. gradle kinds on an iOS build) never
+  /// allocate an entry.
+  final assembleCategoryUs = <_AssembleCategory, int>{};
+  final gradleKindUs = <GradleTaskKind, int>{};
+  final podPhaseUs = <PodInstallPhase, int>{};
+
   int gradleTaskFromCacheCount = 0;
   int gradleTaskUpToDateCount = 0;
   int gradleTaskExecutedCount = 0;
   final gradleTaskDurationsUs = <int>[];
-  // Pod install phase stats (ios).
-  int podInstallUs = 0;
-  int podAnalyzeUs = 0;
-  int podDownloadUs = 0;
-  int podGenerateUs = 0;
-  int podIntegrateUs = 0;
-  // Xcode subsection stats (ios). Populated from xcresulttool-derived
-  // per-subsection events. Subsection titles are high-variance ("Build
-  // target <name>", "Archive target <name>", etc.) so the summary keeps
-  // aggregates and a histogram rather than name-keyed totals.
-  int xcodeSubsectionCount = 0;
-  int xcodeSubsectionSumUs = 0;
+  // Xcode subsection titles are high-variance ("Build target <name>",
+  // "Archive target <name>", etc.) so the summary keeps aggregates and
+  // a histogram rather than name-keyed totals.
   final xcodeSubsectionDurationsUs = <int>[];
+}
+
+extension on Map<dynamic, int> {
+  /// Adds [value] to the counter keyed by [key], initializing from 0.
+  void add<K>(K key, int value) {
+    this[key] = (this[key] ?? 0) + value;
+  }
+
+  /// Reads the counter keyed by [key], returning 0 if unset. Sugar for
+  /// `map[key] ?? 0` that keeps [_buildSummary]'s field list flat.
+  int of<K>(K key) => this[key] ?? 0;
 }

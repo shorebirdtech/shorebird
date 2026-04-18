@@ -62,14 +62,14 @@ enum TraceCategory {
   /// consumers via [tryParse].
   final String wireName;
 
-  /// Returns the [TraceCategory] for a wire value, or null if
-  /// unrecognized. Callers typically coerce null to [unknown].
-  static TraceCategory? tryParse(String? wire) {
-    if (wire == null) return null;
+  /// Total parse: returns [unknown] for a null or unrecognized wire
+  /// value so consumers can switch exhaustively without coercing.
+  static TraceCategory parse(String? wire) {
+    if (wire == null) return unknown;
     for (final c in values) {
       if (c != unknown && c.wireName == wire) return c;
     }
-    return null;
+    return unknown;
   }
 }
 
@@ -127,14 +127,14 @@ enum GradleTaskKind {
   /// The exact string the init script emits on `args["kind"]`.
   final String wireName;
 
-  /// Returns the [GradleTaskKind] for a wire value, or null if
-  /// unrecognized. Consumers typically coerce null to [other].
-  static GradleTaskKind? tryParse(String? wire) {
-    if (wire == null) return null;
+  /// Total parse: returns [other] for a null or unrecognized wire
+  /// value so consumers can switch exhaustively without coercing.
+  static GradleTaskKind parse(String? wire) {
+    if (wire == null) return other;
     for (final k in values) {
       if (k.wireName == wire) return k;
     }
-    return null;
+    return other;
   }
 }
 
@@ -189,4 +189,15 @@ enum PodInstallPhase {
 
   /// The phase name used in the emitted span (`"pod install: <wireName>"`).
   final String wireName;
+
+  /// Returns the [PodInstallPhase] for a wire value, or null if
+  /// unrecognized. Consumers parsing the part of a `pod install:
+  /// <phase>` span name that follows the colon can use this directly.
+  static PodInstallPhase? tryParse(String? wire) {
+    if (wire == null) return null;
+    for (final p in values) {
+      if (p.wireName == wire) return p;
+    }
+    return null;
+  }
 }
