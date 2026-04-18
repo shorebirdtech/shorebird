@@ -143,7 +143,11 @@ enum GradleTaskKind {
 /// values, so they stay as constants; see [TraceCategory] /
 /// [GradleTaskKind] for the enumerated vocabularies.
 class TraceNames {
+  // coverage:ignore-start
+  /// Private constructor — [TraceNames] only holds static members, so an
+  /// instance is never created (and this line is never run).
   TraceNames._();
+  // coverage:ignore-end
 
   /// Prefix for the outer flutter build span. Span name is
   /// `"flutter build <target>"` (target = apk / appbundle / ios / ipa).

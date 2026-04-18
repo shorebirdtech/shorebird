@@ -335,6 +335,20 @@ void main() {
       expect(decoded, isEmpty);
     });
 
+    test('mergeEventsFromFile swallows FormatException on corrupt JSON', () {
+      final src = File('${tempDir.path}/src.json')
+        ..writeAsStringSync('{not valid json[');
+      final t = BuildTracer()..mergeEventsFromFile(src);
+      expect(t.eventCount, 0);
+    });
+
+    test('mergeEventsFromFile skips when root is not a list', () {
+      final src = File('${tempDir.path}/src.json')
+        ..writeAsStringSync('{"not": "an array"}');
+      final t = BuildTracer()..mergeEventsFromFile(src);
+      expect(t.eventCount, 0);
+    });
+
     group('start / stop / current', () {
       // `current` is process-global; make sure tests don't leak into each
       // other if one throws mid-way.
