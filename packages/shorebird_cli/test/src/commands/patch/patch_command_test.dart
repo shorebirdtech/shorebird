@@ -171,6 +171,12 @@ void main() {
       aotTools = MockAotTools();
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
+      when(
+        () => artifactBuilder.prepareBuildTrace(
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async {});
+      when(artifactBuilder.writeBuildTraceSummary).thenReturn(null);
       artifactManager = MockArtifactManager();
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();

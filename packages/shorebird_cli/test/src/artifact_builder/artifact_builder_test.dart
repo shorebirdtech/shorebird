@@ -239,7 +239,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           () => shorebirdFlutter.resolveFlutterVersion(any()),
         ).thenAnswer((_) async => Version(3, 41, 7));
 
-        await runWithOverrides(() => builder.buildAppBundle());
+        await runWithOverrides(() async {
+          await builder.prepareBuildTrace(platform: 'android');
+          await builder.buildAppBundle();
+        });
 
         final expectedTracePath = p.join(
           projectRoot.path,
@@ -486,7 +489,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         test(
           'passes --trace with a path under build/shorebird/debug',
           () async {
-            await runWithOverrides(() => builder.buildApk());
+            await runWithOverrides(() async {
+              await builder.prepareBuildTrace(platform: 'android');
+              await builder.buildApk();
+            });
 
             final expectedTracePath = p.join(
               projectRoot.path,
@@ -592,7 +598,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               return ExitCode.success.code;
             });
 
-            await runWithOverrides(() => builder.buildApk());
+            await runWithOverrides(() async {
+              await builder.prepareBuildTrace(platform: 'android');
+              await builder.buildApk();
+              builder.writeBuildTraceSummary();
+            });
 
             final summaryFile = File(
               p.join(
@@ -605,7 +615,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 jsonDecode(summaryFile.readAsStringSync())
                     as Map<String, Object?>;
             expect(summary['platform'], 'android');
-            expect(summary['version'], 7);
+            expect(summary['version'], 8);
             // 500ms kernel + 200ms aot
             expect((summary['dart'] as Map)['totalMs'], 700);
             expect(summary['flutterBuildMs'], 3000);
@@ -784,6 +794,44 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     group('buildAar', () {
       const buildNumber = '1.0';
 
+      test(
+        'passes --shorebird-trace when Flutter supports build tracing',
+        () async {
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => Version(3, 41, 7));
+
+          await runWithOverrides(() async {
+            await builder.prepareBuildTrace(platform: 'android');
+            await builder.buildAar(buildNumber: buildNumber);
+          });
+
+          final expectedTracePath = p.join(
+            projectRoot.path,
+            'build',
+            'shorebird',
+            'debug',
+            'build-trace-android.json',
+          );
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              [
+                'build',
+                'aar',
+                '--no-debug',
+                '--no-profile',
+                '--build-number=1.0',
+                '--shorebird-trace=$expectedTracePath',
+              ],
+              environment: any(named: 'environment'),
+              runInShell: false,
+              onStart: any(named: 'onStart'),
+            ),
+          ).called(1);
+        },
+      );
+
       test('invokes the correct flutter build command', () async {
         await runWithOverrides(
           () => builder.buildAar(buildNumber: buildNumber),
@@ -943,6 +991,42 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         ).thenAnswer((_) async => ExitCode.success.code);
       });
 
+      test(
+        'passes --shorebird-trace when Flutter supports build tracing',
+        () async {
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => Version(3, 41, 7));
+
+          await runWithOverrides(() async {
+            await builder.prepareBuildTrace(platform: 'linux');
+            await builder.buildLinuxApp();
+          });
+
+          final expectedTracePath = p.join(
+            projectRoot.path,
+            'build',
+            'shorebird',
+            'debug',
+            'build-trace-linux.json',
+          );
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              [
+                'build',
+                'linux',
+                '--release',
+                '--shorebird-trace=$expectedTracePath',
+              ],
+              environment: any(named: 'environment'),
+              runInShell: false,
+              onStart: any(named: 'onStart'),
+            ),
+          ).called(1);
+        },
+      );
+
       group('when flutter build fails', () {
         setUp(() {
           when(
@@ -1078,6 +1162,42 @@ Reason: Exited with code 70.'''),
           return ExitCode.success.code;
         });
       });
+
+      test(
+        'passes --shorebird-trace when Flutter supports build tracing',
+        () async {
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => Version(3, 41, 7));
+
+          await runWithOverrides(() async {
+            await builder.prepareBuildTrace(platform: 'macos');
+            await builder.buildMacos();
+          });
+
+          final expectedTracePath = p.join(
+            projectRoot.path,
+            'build',
+            'shorebird',
+            'debug',
+            'build-trace-macos.json',
+          );
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              [
+                'build',
+                'macos',
+                '--release',
+                '--shorebird-trace=$expectedTracePath',
+              ],
+              environment: any(named: 'environment'),
+              runInShell: false,
+              onStart: any(named: 'onStart'),
+            ),
+          ).called(1);
+        },
+      );
 
       group('when .dart_tool directory exists', () {
         late File foo;
@@ -1366,7 +1486,10 @@ Reason: Exited with code 70.'''),
         test(
           'passes --trace with a path under build/shorebird/debug',
           () async {
-            await runWithOverrides(() => builder.buildIpa());
+            await runWithOverrides(() async {
+              await builder.prepareBuildTrace(platform: 'ios');
+              await builder.buildIpa();
+            });
 
             final expectedTracePath = p.join(
               projectRoot.path,
@@ -1523,6 +1646,43 @@ Reason: Exited with code 70.'''),
           return ExitCode.success.code;
         });
       });
+
+      test(
+        'passes --shorebird-trace when Flutter supports build tracing',
+        () async {
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => Version(3, 41, 7));
+
+          await runWithOverrides(() async {
+            await builder.prepareBuildTrace(platform: 'ios');
+            await builder.buildIosFramework();
+          });
+
+          final expectedTracePath = p.join(
+            projectRoot.path,
+            'build',
+            'shorebird',
+            'debug',
+            'build-trace-ios.json',
+          );
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              [
+                'build',
+                'ios-framework',
+                '--no-debug',
+                '--no-profile',
+                '--shorebird-trace=$expectedTracePath',
+              ],
+              environment: any(named: 'environment'),
+              runInShell: false,
+              onStart: any(named: 'onStart'),
+            ),
+          ).called(1);
+        },
+      );
 
       group('when .dart_tool directory exists', () {
         late File foo;
@@ -1773,6 +1933,42 @@ Reason: Exited with code 70.'''),
           ),
         ).thenAnswer((_) async => ExitCode.success.code);
       });
+
+      test(
+        'passes --shorebird-trace when Flutter supports build tracing',
+        () async {
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => Version(3, 41, 7));
+
+          await runWithOverrides(() async {
+            await builder.prepareBuildTrace(platform: 'windows');
+            await builder.buildWindowsApp();
+          });
+
+          final expectedTracePath = p.join(
+            projectRoot.path,
+            'build',
+            'shorebird',
+            'debug',
+            'build-trace-windows.json',
+          );
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              [
+                'build',
+                'windows',
+                '--release',
+                '--shorebird-trace=$expectedTracePath',
+              ],
+              environment: any(named: 'environment'),
+              runInShell: false,
+              onStart: any(named: 'onStart'),
+            ),
+          ).called(1);
+        },
+      );
 
       group('when target is provided', () {
         test('forwards target to flutter command', () async {

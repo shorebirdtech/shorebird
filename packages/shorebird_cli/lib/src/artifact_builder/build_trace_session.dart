@@ -1,10 +1,13 @@
+import 'dart:io';
+
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
 
-/// Process-wide state captured once at `main()` entry so that later code
-/// (e.g. the build trace summarizer) can attribute wall-clock time to
-/// Shorebird versus Flutter without plumbing a start-time parameter
-/// through every layer.
+/// Process-wide state for the build-trace feature. Populated by
+/// `release_command` / `patch_command` at the start of a build so that
+/// `ArtifactBuilder`, `AotTools`, and the HTTP client can emit events
+/// into the same trace without threading a trace-file path through
+/// every API.
 class BuildTraceSession {
   /// {@macro build_trace_session}
   BuildTraceSession({required this.commandStartedAt});
@@ -12,13 +15,26 @@ class BuildTraceSession {
   /// The wall-clock time at which the current `shorebird` invocation began.
   final DateTime commandStartedAt;
 
-  /// The most recent [BuildTraceSummary] produced for this invocation, or
-  /// null if no build trace was produced (older Flutter versions, trace
-  /// file malformed, user flag off, etc.). Populated by
-  /// `ArtifactBuilder._writeBuildTraceSummary` after each build; read by
-  /// `release_command` / `patch_command` to attach to the metadata
-  /// blob that goes up with the create-patch / update-release-status
-  /// API call.
+  /// The Chrome Trace Event Format JSON file that producers
+  /// (`flutter build --shorebird-trace`, `aot_tools --trace`, and
+  /// shorebird_cli's own spans) append to. Null when tracing is not
+  /// supported on the pinned Flutter or hasn't been set up yet.
+  ///
+  /// Set once by `ArtifactBuilder.prepareBuildTrace`; read by build
+  /// methods, `AotTools._exec`, and `ArtifactBuilder.writeBuildTraceSummary`.
+  File? traceFile;
+
+  /// Platform identifier ("android", "ios", "linux", "macos", "windows")
+  /// used to name the trace and summary files and to pick
+  /// platform-specific accumulators in the summary.
+  String? platform;
+
+  /// The [BuildTraceSummary] produced by the most recent
+  /// `writeBuildTraceSummary` call, or null if no summary was written
+  /// (unsupported Flutter pin, trace file malformed, etc.).
+  ///
+  /// Read by `release_command.finalizeRelease` / `patch_command.createPatch`
+  /// to attach the summary to the outgoing metadata blob.
   BuildTraceSummary? summary;
 }
 

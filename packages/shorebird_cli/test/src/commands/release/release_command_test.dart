@@ -56,6 +56,7 @@ void main() {
     );
 
     late ArgResults argResults;
+    late ArtifactBuilder artifactBuilder;
     late Cache cache;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
@@ -73,6 +74,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          artifactBuilderRef.overrideWith(() => artifactBuilder),
           buildTraceSessionRef.overrideWith(
             () => BuildTraceSession(commandStartedAt: DateTime(2023)),
           ),
@@ -96,6 +98,13 @@ void main() {
 
     setUp(() {
       argResults = MockArgResults();
+      artifactBuilder = MockArtifactBuilder();
+      when(
+        () => artifactBuilder.prepareBuildTrace(
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async {});
+      when(artifactBuilder.writeBuildTraceSummary).thenReturn(null);
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();

@@ -378,6 +378,22 @@ class BuildTraceSummary {
   /// "slow despite caching being on" in field data.
   final BuildEnvironment? environment;
 
+  /// Shorebird CLI's wall-clock time around Flutter with network I/O
+  /// subtracted — i.e. what Shorebird spent doing local work (file I/O,
+  /// hashing, archive assembly, aot_tools link/gen_snapshot bookkeeping
+  /// outside their own spans). Null when [shorebirdOverhead] is null.
+  ///
+  /// Clamped to zero if the network tally exceeds overhead (can happen
+  /// when flutter's own downloads are counted in network but executed
+  /// inside the flutterBuild span, which is already subtracted from
+  /// overhead).
+  Duration? get shorebirdLocal {
+    final overhead = shorebirdOverhead;
+    if (overhead == null) return null;
+    final local = overhead - network.duration;
+    return local.isNegative ? Duration.zero : local;
+  }
+
   /// JSON representation suitable for writing alongside the raw trace.
   /// Field names are stable and safe to upload — no paths or identifiers.
   /// Platform-specific sections are omitted (not nulled) on the other
@@ -388,11 +404,12 @@ class BuildTraceSummary {
   /// subtraction (`flutterBuildMs - dart.totalMs`) — kept out of the
   /// on-wire shape so there's exactly one way to read each value.
   Map<String, Object?> toJson() => <String, Object?>{
-    'version': 7,
+    'version': 8,
     'platform': platform,
     'totalMs': total.inMilliseconds,
     'flutterBuildMs': flutterBuild.inMilliseconds,
     'shorebirdOverheadMs': shorebirdOverhead?.inMilliseconds,
+    'shorebirdLocalMs': shorebirdLocal?.inMilliseconds,
     'network': network.toJson(),
     'dart': dart.toJson(),
     'flutterAssemble': flutterAssemble.toJson(),

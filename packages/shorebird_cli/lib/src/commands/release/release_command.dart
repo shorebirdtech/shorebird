@@ -308,6 +308,15 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       () async {
         await cache.updateAll();
 
+        // Set up build tracing for this platform before any flutter build /
+        // aot_tools / gen_snapshot call runs. Version-gated inside
+        // prepareBuildTrace — a no-op on older Flutter pins. Finalized at
+        // the end of finalizeRelease, after upload, so uploaded metadata
+        // reflects the whole command.
+        await artifactBuilder.prepareBuildTrace(
+          platform: releaser.releaseType.releasePlatform.name,
+        );
+
         final flutterVersionString = await shorebirdFlutter
             .getVersionAndRevision();
         logger.info(
@@ -579,6 +588,11 @@ ${summary.join('\n')}
     required Release release,
     required Releaser releaser,
   }) async {
+    // Write the build-trace summary now, after the release artifact has been
+    // uploaded, so aggregate timings reflect the full command. No-op when
+    // tracing wasn't set up (older Flutter pin).
+    artifactBuilder.writeBuildTraceSummary();
+
     final hasPublicKey =
         results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);

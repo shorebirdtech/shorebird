@@ -118,6 +118,8 @@ void main() {
       expect(s.flutterBuild, const Duration(milliseconds: 3005));
       expect(s.shorebirdOverhead, const Duration(milliseconds: 500));
       expect(s.total, const Duration(milliseconds: 3505));
+      // shorebirdLocal = overhead 500 − network 300 = 200
+      expect(s.shorebirdLocal, const Duration(milliseconds: 200));
 
       // Network
       expect(s.network.duration, const Duration(milliseconds: 300));
@@ -282,7 +284,7 @@ void main() {
       ];
       final s = BuildTraceSummary.fromEvents(events, platform: 'android');
       final j = s.toJson();
-      expect(j['version'], 7);
+      expect(j['version'], 8);
       expect(j['platform'], 'android');
       expect(j['android'], isA<Map<String, Object?>>());
       expect(j.containsKey('ios'), isFalse);
