@@ -105,8 +105,12 @@ class BuildTraceSummary {
     required String name,
     required int dur,
   }) {
+    // Flutter emits exactly one `flutter build <target>` umbrella span
+    // per invocation and zero-or-more flutter-tool sub-spans
+    // (pre-build setup, post-build processing). `+=` works for both
+    // since "exactly one" is a special case of "sum".
     if (name.startsWith(TraceNames.flutterBuildSpanPrefix)) {
-      acc.flutterBuildUs = dur;
+      acc.flutterBuildUs += dur;
     } else {
       acc.flutterToolUs += dur;
     }
