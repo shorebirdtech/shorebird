@@ -123,8 +123,10 @@ class BuildTraceSummary {
     }
     const prefix = '${TraceNames.podInstallNamePrefix}: ';
     if (name.startsWith(prefix)) {
-      final phase = PodInstallPhase.tryParse(name.substring(prefix.length));
-      if (phase != null) acc.podPhaseUs.add(phase, dur);
+      acc.podPhaseUs.add(
+        PodInstallPhase.parse(name.substring(prefix.length)),
+        dur,
+      );
     }
   }
 

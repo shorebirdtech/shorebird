@@ -183,21 +183,25 @@ enum PodInstallPhase {
   generating('generating'),
 
   /// Seen when `pod install` logs `Integrating client project`.
-  integrating('integrating');
+  integrating('integrating'),
+
+  /// Consumer-side fallback for a phase name a future producer
+  /// version might emit but this consumer doesn't recognize. Never
+  /// emitted on the wire.
+  other('');
 
   const PodInstallPhase(this.wireName);
 
   /// The phase name used in the emitted span (`"pod install: <wireName>"`).
   final String wireName;
 
-  /// Returns the [PodInstallPhase] for a wire value, or null if
-  /// unrecognized. Consumers parsing the part of a `pod install:
-  /// <phase>` span name that follows the colon can use this directly.
-  static PodInstallPhase? tryParse(String? wire) {
-    if (wire == null) return null;
+  /// Total parse: returns [other] for a null or unrecognized wire
+  /// value so consumers can bucket uniformly without coercing.
+  static PodInstallPhase parse(String? wire) {
+    if (wire == null) return other;
     for (final p in values) {
-      if (p.wireName == wire) return p;
+      if (p != other && p.wireName == wire) return p;
     }
-    return null;
+    return other;
   }
 }
