@@ -378,28 +378,21 @@ class BuildTraceSummary {
   /// "slow despite caching being on" in field data.
   final BuildEnvironment? environment;
 
-  /// "Dart vs non-Dart" quick access: equivalent to `dart.total`.
-  Duration get dartTotal => dart.total;
-
-  /// `flutterBuild - dartTotal`, clamped at 0. The "everything except
-  /// Dart compilation" bucket.
-  Duration get nonDart {
-    final v = flutterBuild - dartTotal;
-    return v < Duration.zero ? Duration.zero : v;
-  }
-
   /// JSON representation suitable for writing alongside the raw trace.
   /// Field names are stable and safe to upload — no paths or identifiers.
   /// Platform-specific sections are omitted (not nulled) on the other
   /// platform.
+  ///
+  /// `dart`'s total lives inside the `dart` sub-object (`dart.totalMs`);
+  /// no redundant top-level `dartMs`. `nonDart` is a consumer-side
+  /// subtraction (`flutterBuildMs - dart.totalMs`) — kept out of the
+  /// on-wire shape so there's exactly one way to read each value.
   Map<String, Object?> toJson() => <String, Object?>{
-    'version': 6,
+    'version': 7,
     'platform': platform,
     'totalMs': total.inMilliseconds,
     'flutterBuildMs': flutterBuild.inMilliseconds,
     'shorebirdOverheadMs': shorebirdOverhead?.inMilliseconds,
-    'dartMs': dartTotal.inMilliseconds,
-    'nonDartMs': nonDart.inMilliseconds,
     'network': network.toJson(),
     'dart': dart.toJson(),
     'flutterAssemble': flutterAssemble.toJson(),

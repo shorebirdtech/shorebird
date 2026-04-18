@@ -29,8 +29,7 @@ void main() {
     test('empty events → zero summary', () {
       final s = BuildTraceSummary.fromEvents([], platform: 'android');
       expect(s.flutterBuild, Duration.zero);
-      expect(s.dartTotal, Duration.zero);
-      expect(s.nonDart, Duration.zero);
+      expect(s.dart.total, Duration.zero);
       expect(s.flutterAssemble.targetCount, 0);
       expect(s.shorebirdOverhead, isNull);
       // Platform is android → android populated, ios null.
@@ -129,7 +128,6 @@ void main() {
       expect(s.dart.kernelSnapshot, const Duration(milliseconds: 500));
       expect(s.dart.genSnapshot, const Duration(milliseconds: 200));
       expect(s.dart.build, const Duration(milliseconds: 100));
-      expect(s.dartTotal, const Duration(milliseconds: 700));
 
       // Native (outer 3000ms − sum of assemble 800ms = 2200ms)
       expect(s.native.build, const Duration(milliseconds: 3000));
@@ -284,7 +282,7 @@ void main() {
       ];
       final s = BuildTraceSummary.fromEvents(events, platform: 'android');
       final j = s.toJson();
-      expect(j['version'], 6);
+      expect(j['version'], 7);
       expect(j['platform'], 'android');
       expect(j['android'], isA<Map<String, Object?>>());
       expect(j.containsKey('ios'), isFalse);
@@ -343,7 +341,7 @@ void main() {
         expect(s, isNotNull);
         expect(s!.flutterBuild, const Duration(milliseconds: 1500));
         expect(s.dart.kernelSnapshot, const Duration(milliseconds: 1000));
-        expect(s.dartTotal, const Duration(milliseconds: 1000));
+        expect(s.dart.total, const Duration(milliseconds: 1000));
       });
 
       test('parses a {"traceEvents": [...]} object shape', () {

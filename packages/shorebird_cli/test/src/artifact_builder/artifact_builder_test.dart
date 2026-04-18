@@ -605,11 +605,10 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 jsonDecode(summaryFile.readAsStringSync())
                     as Map<String, Object?>;
             expect(summary['platform'], 'android');
-            expect(summary['version'], 6);
+            expect(summary['version'], 7);
             // 500ms kernel + 200ms aot
-            expect(summary['dartMs'], 700);
+            expect((summary['dart'] as Map)['totalMs'], 700);
             expect(summary['flutterBuildMs'], 3000);
-            expect(summary['nonDartMs'], 2300);
             expect(summary['shorebirdOverheadMs'], isNonNegative);
             final dart = summary['dart']! as Map<String, Object?>;
             expect(dart['kernelSnapshotMs'], 500);
