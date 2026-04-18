@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -26,29 +25,60 @@ import 'package:shorebird_build_trace/src/process_id.dart';
 /// See also [PhaseTracker] for the `transitionTo(nextPhase)` pattern
 /// used when parsing a subprocess's verbose output.
 class BuildTracer {
-  /// Zone key under which the in-progress [BuildTracer] is stored.
-  /// Private so [current] is the only read path and [runAsync] is the
-  /// only write path.
-  static final Object _zoneKey = Object();
+  /// Private backing field for [current]. Producers never touch this
+  /// directly — [start] / [stop] manage it, and [runAsync] wraps the
+  /// two in a try/finally for callers that can afford a closure.
+  static BuildTracer? _current;
 
-  /// The tracer for the in-progress build, if any. Installed for the
-  /// duration of a [runAsync] callback so deep layers (network,
-  /// subprocess wrappers) can record spans without plumbing a parameter
-  /// through every signature. Null when no [runAsync] frame is active.
-  static BuildTracer? get current {
-    final Object? value = Zone.current[_zoneKey];
-    return value is BuildTracer ? value : null;
+  /// The tracer for the in-progress build, if any. Set by [start] (or
+  /// by the [runAsync] wrapper around it) so deep layers (network,
+  /// subprocess wrappers) can record spans without plumbing a
+  /// parameter through every signature. Null when no producer has a
+  /// build in progress.
+  static BuildTracer? get current => _current;
+
+  /// Installs [tracer] as [current]. Producers that can wrap a body
+  /// in a closure should prefer [runAsync] — it pairs [start] with
+  /// [stop] in a try/finally. Call [stop] when the build finishes.
+  ///
+  /// Throws [StateError] if a tracer is already installed: there's
+  /// only one [current] at a time and overlapping producers would
+  /// overwrite each other's spans. Use [runAsync] if you need nested
+  /// installs (it saves/restores the prior value).
+  static void start(BuildTracer tracer) {
+    if (_current != null) {
+      throw StateError(
+        'BuildTracer already installed; call stop() before starting a new one '
+        'or use runAsync() for nested installs.',
+      );
+    }
+    _current = tracer;
+  }
+
+  /// Clears [current]. Idempotent — safe to call when nothing is
+  /// installed, so error paths can invoke it unconditionally. Pair
+  /// with [start].
+  static void stop() {
+    _current = null;
   }
 
   /// Runs [body] with [tracer] installed as [current] for its duration
   /// (including any async work it awaits). Unwinds on return or throw
   /// so [current] is guaranteed cleared — producers don't have to pair
-  /// set/clear calls themselves.
+  /// [start] / [stop] calls themselves.
+  ///
+  /// Saves and restores the prior [current] so nested calls compose.
   static Future<T> runAsync<T>(
     BuildTracer tracer,
     Future<T> Function() body,
-  ) {
-    return runZoned(body, zoneValues: <Object, Object?>{_zoneKey: tracer});
+  ) async {
+    final prev = _current;
+    _current = tracer;
+    try {
+      return await body();
+    } finally {
+      _current = prev;
+    }
   }
 
   /// Raw JSON maps: complete spans (ph:"X"), metadata (ph:"M"), and flow
