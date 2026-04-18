@@ -141,18 +141,45 @@ class BuildEnvironment {
     'ios': <String, Object?>{'ccacheAvailable': iosCcacheAvailable},
   };
 
+  /// Each CI vendor documents its own "am I running on CI?" marker;
+  /// links below. We presence-check rather than value-check to stay
+  /// robust against case/quoting variation across vendors (e.g.
+  /// Azure's `TF_BUILD` is documented as "True" with a capital T,
+  /// GitHub's `GITHUB_ACTIONS` as "true" lowercase — presence check
+  /// sidesteps the inconsistency).
+  ///
+  /// More specific providers win over the generic `CI` fallback,
+  /// which is why it's last. Order among the specific providers
+  /// doesn't matter — they're mutually exclusive in practice.
   static String? _detectCiProvider(Map<String, String> env) {
-    if (env['GITHUB_ACTIONS'] == 'true') return 'github';
-    if (env['GITLAB_CI'] == 'true') return 'gitlab';
-    if (env['CIRCLECI'] == 'true') return 'circle';
-    if (env['BITRISE_IO'] == 'true') return 'bitrise';
+    // https://docs.github.com/actions/learn-github-actions/variables#default-environment-variables
+    if (env['GITHUB_ACTIONS'] != null) return 'github';
+    // https://docs.gitlab.com/ci/variables/predefined_variables/
+    if (env['GITLAB_CI'] != null) return 'gitlab';
+    // https://circleci.com/docs/variables/
+    if (env['CIRCLECI'] != null) return 'circle';
+    // https://devcenter.bitrise.io/en/references/available-environment-variables.html
+    if (env['BITRISE_IO'] != null) return 'bitrise';
+    // https://www.jenkins.io/doc/book/pipeline/jenkinsfile/#using-environment-variables
     if (env['JENKINS_URL'] != null) return 'jenkins';
-    if (env['BUILDKITE'] == 'true') return 'buildkite';
-    if (env['TF_BUILD'] == 'True') return 'azure';
+    // https://buildkite.com/docs/pipelines/environment-variables
+    if (env['BUILDKITE'] != null) return 'buildkite';
+    // https://learn.microsoft.com/azure/devops/pipelines/build/variables
+    if (env['TF_BUILD'] != null) return 'azure';
+    // https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-env-vars.html
     if (env['CODEBUILD_BUILD_ID'] != null) return 'codebuild';
+    // https://support.atlassian.com/bitbucket-cloud/docs/variables-and-secrets/
     if (env['BITBUCKET_BUILD_NUMBER'] != null) return 'bitbucket';
+    // https://www.jetbrains.com/help/teamcity/predefined-build-parameters.html
     if (env['TEAMCITY_VERSION'] != null) return 'teamcity';
-    if (env['CI'] == 'true') return 'other';
+    // https://docs.travis-ci.com/user/environment-variables#default-environment-variables
+    if (env['TRAVIS'] != null) return 'travis';
+    // https://www.appveyor.com/docs/environment-variables/
+    if (env['APPVEYOR'] != null) return 'appveyor';
+    // Generic CI indicator set by GitHub Actions, GitLab, CircleCI,
+    // Travis, Bitbucket, Buildkite, Drone, and others — catches the
+    // long tail without enumerating every vendor.
+    if (env['CI'] != null) return 'other';
     return null;
   }
 

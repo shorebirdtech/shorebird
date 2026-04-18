@@ -20,3 +20,4 @@ export 'src/build_tracer.dart';
 export 'src/phase_tracker.dart';
 export 'src/process_id.dart';
 export 'src/run_subprocess.dart';
+export 'src/trace_schema.dart';

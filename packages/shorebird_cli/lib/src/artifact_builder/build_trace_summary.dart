@@ -1,16 +1,20 @@
+// This file is the consumer end of a string-level contract shared with
+// the trace producers (flutter_tools, aot_tools, the Gradle init
+// script, the CocoaPods wrapper). Event category names, gradle task
+// `kind` values, and span-name prefixes live in
+// `shorebird_build_trace`'s `TraceSchema`; if you add a new bucket
+// here, add the matching producer-side constant there.
+
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:shorebird_build_trace/shorebird_build_trace.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
 
-/// A privacy-safe summary of a Chrome Trace Event Format build trace.
+/// Summary of a Chrome Trace Event Format build trace.
 ///
-/// Contains only aggregate millisecond timings and small integer counters —
-/// no target names, file paths, user identifiers, or other free-form fields
-/// that could identify the project. This is the data we're willing to upload
-/// to Shorebird servers to understand slow builds in the wild.
-///
-/// Schema version 5. Bumped when the on-wire JSON shape changes.
+/// Aggregate millisecond timings and small integer counters, suitable
+/// for uploading to Shorebird's servers as part of release telemetry.
 class BuildTraceSummary {
   /// Creates a [BuildTraceSummary] directly from pre-computed fields.
   /// Most callers should use [BuildTraceSummary.fromEvents] or
@@ -104,28 +108,36 @@ class BuildTraceSummary {
       // are purely for Perfetto display; producers own their own id
       // spaces so we don't key off them.
       switch (cat) {
-        case 'flutter':
-          if (name.startsWith('flutter build ')) {
+        case TraceSchema.catFlutter:
+          if (name.startsWith(TraceSchema.flutterBuildSpanPrefix)) {
             flutterBuildUs = dur;
           } else {
             flutterToolUs += dur;
           }
-        case 'subprocess':
-          if (name == 'pod install') {
+        case TraceSchema.catSubprocess:
+          if (name == TraceSchema.podInstallSpanName) {
             podInstallUs += dur;
-          } else if (name == 'pod install: analyzing') {
+          } else if (name ==
+              '${TraceSchema.podInstallNamePrefix}: '
+                  '${TraceSchema.podPhaseAnalyzing}') {
             podAnalyzeUs += dur;
-          } else if (name == 'pod install: downloading') {
+          } else if (name ==
+              '${TraceSchema.podInstallNamePrefix}: '
+                  '${TraceSchema.podPhaseDownloading}') {
             podDownloadUs += dur;
-          } else if (name == 'pod install: generating') {
+          } else if (name ==
+              '${TraceSchema.podInstallNamePrefix}: '
+                  '${TraceSchema.podPhaseGenerating}') {
             podGenerateUs += dur;
-          } else if (name == 'pod install: integrating') {
+          } else if (name ==
+              '${TraceSchema.podInstallNamePrefix}: '
+                  '${TraceSchema.podPhaseIntegrating}') {
             podIntegrateUs += dur;
           }
-        case 'gradle':
-        case 'xcode':
+        case TraceSchema.catGradle:
+        case TraceSchema.catXcode:
           nativeBuildUs += dur;
-        case 'assemble':
+        case TraceSchema.catAssemble:
           assembleCount++;
           if (skipped) skippedAssembleCount++;
           switch (_categorize(name)) {
@@ -142,7 +154,7 @@ class BuildTraceSummary {
             case _AssembleCategory.other:
               otherAssembleUs += dur;
           }
-        case 'gradle_task':
+        case TraceSchema.catGradleTask:
           gradleTaskDurationsUs.add(dur);
           // Per-task cache outcome from the init script. Mutually
           // exclusive in practice: a task either ran, was up-to-date
@@ -155,38 +167,38 @@ class BuildTraceSummary {
             gradleTaskExecutedCount++;
           }
           switch (args['kind']) {
-            case 'kotlin_compile':
+            case TraceSchema.gradleKindKotlinCompile:
               kotlinCompileUs += dur;
-            case 'java_compile':
+            case TraceSchema.gradleKindJavaCompile:
               javaCompileUs += dur;
-            case 'dex':
+            case TraceSchema.gradleKindDex:
               dexUs += dur;
-            case 'resources':
+            case TraceSchema.gradleKindResources:
               resourcesUs += dur;
-            case 'transform':
+            case TraceSchema.gradleKindTransform:
               transformUs += dur;
-            case 'r8_minify':
+            case TraceSchema.gradleKindR8Minify:
               r8MinifyUs += dur;
-            case 'lint':
+            case TraceSchema.gradleKindLint:
               lintUs += dur;
-            case 'flutter_gradle_plugin':
+            case TraceSchema.gradleKindFlutterGradlePlugin:
               flutterGradlePluginUs += dur;
-            case 'bundle':
+            case TraceSchema.gradleKindBundle:
               bundleUs += dur;
-            case 'packaging':
+            case TraceSchema.gradleKindPackaging:
               packagingUs += dur;
-            case 'aidl':
+            case TraceSchema.gradleKindAidl:
               aidlUs += dur;
-            case 'native_link':
+            case TraceSchema.gradleKindNativeLink:
               nativeLinkUs += dur;
-            case 'gradle_scaffold':
+            case TraceSchema.gradleKindGradleScaffold:
               gradleScaffoldUs += dur;
           }
-        case 'xcode_subsection':
+        case TraceSchema.catXcodeSubsection:
           xcodeSubsectionCount++;
           xcodeSubsectionSumUs += dur;
           xcodeSubsectionDurationsUs.add(dur);
-        case 'network':
+        case TraceSchema.catNetwork:
           networkUs += dur;
           networkCount++;
       }
@@ -201,15 +213,15 @@ class BuildTraceSummary {
     // Dart-compile total (the "dart vs non-dart" signal lives inside
     // [DartStats]).
     final dart = DartStats(
-      totalMs: (kernelSnapshotUs + genSnapshotUs) ~/ 1000,
-      kernelSnapshotMs: kernelSnapshotUs ~/ 1000,
-      genSnapshotMs: genSnapshotUs ~/ 1000,
-      buildMs: dartBuildUs ~/ 1000,
+      totalMs: _usToMs(kernelSnapshotUs + genSnapshotUs),
+      kernelSnapshotMs: _usToMs(kernelSnapshotUs),
+      genSnapshotMs: _usToMs(genSnapshotUs),
+      buildMs: _usToMs(dartBuildUs),
     );
     final flutterAssemble = FlutterAssembleStats(
-      assetsMs: assetsUs ~/ 1000,
-      codegenMs: codegenUs ~/ 1000,
-      otherMs: otherAssembleUs ~/ 1000,
+      assetsMs: _usToMs(assetsUs),
+      codegenMs: _usToMs(codegenUs),
+      otherMs: _usToMs(otherAssembleUs),
       targetCount: assembleCount,
       skippedCount: skippedAssembleCount,
     );
@@ -228,8 +240,8 @@ class BuildTraceSummary {
       1 << 62,
     );
     final native = NativeBuildStats(
-      buildMs: nativeBuildUs ~/ 1000,
-      compileMs: nativeCompileUs ~/ 1000,
+      buildMs: _usToMs(nativeBuildUs),
+      compileMs: _usToMs(nativeCompileUs),
     );
 
     AndroidStats? android;
@@ -238,48 +250,48 @@ class BuildTraceSummary {
       android = AndroidStats(
         gradle: GradleStats(
           taskCount: gradleTaskDurationsUs.length,
-          taskSumMs: gradleSumUs ~/ 1000,
-          taskP50Ms: p50 ~/ 1000,
-          taskP90Ms: p90 ~/ 1000,
-          taskMaxMs: max ~/ 1000,
+          taskSumMs: _usToMs(gradleSumUs),
+          taskP50Ms: _usToMs(p50),
+          taskP90Ms: _usToMs(p90),
+          taskMaxMs: _usToMs(max),
           taskFromCacheCount: gradleTaskFromCacheCount,
           taskUpToDateCount: gradleTaskUpToDateCount,
           taskExecutedCount: gradleTaskExecutedCount,
-          kotlinCompileMs: kotlinCompileUs ~/ 1000,
-          javaCompileMs: javaCompileUs ~/ 1000,
-          dexMs: dexUs ~/ 1000,
-          resourcesMs: resourcesUs ~/ 1000,
-          transformMs: transformUs ~/ 1000,
-          r8MinifyMs: r8MinifyUs ~/ 1000,
-          lintMs: lintUs ~/ 1000,
-          flutterGradlePluginMs: flutterGradlePluginUs ~/ 1000,
-          bundleMs: bundleUs ~/ 1000,
-          packagingMs: packagingUs ~/ 1000,
-          aidlMs: aidlUs ~/ 1000,
-          nativeLinkMs: nativeLinkUs ~/ 1000,
-          gradleScaffoldMs: gradleScaffoldUs ~/ 1000,
+          kotlinCompileMs: _usToMs(kotlinCompileUs),
+          javaCompileMs: _usToMs(javaCompileUs),
+          dexMs: _usToMs(dexUs),
+          resourcesMs: _usToMs(resourcesUs),
+          transformMs: _usToMs(transformUs),
+          r8MinifyMs: _usToMs(r8MinifyUs),
+          lintMs: _usToMs(lintUs),
+          flutterGradlePluginMs: _usToMs(flutterGradlePluginUs),
+          bundleMs: _usToMs(bundleUs),
+          packagingMs: _usToMs(packagingUs),
+          aidlMs: _usToMs(aidlUs),
+          nativeLinkMs: _usToMs(nativeLinkUs),
+          gradleScaffoldMs: _usToMs(gradleScaffoldUs),
         ),
       );
     } else if (platform == 'ios') {
       ios = IosStats(
         podInstall: PodInstallStats(
-          ms: podInstallUs ~/ 1000,
-          analyzeMs: podAnalyzeUs ~/ 1000,
-          downloadMs: podDownloadUs ~/ 1000,
-          generateMs: podGenerateUs ~/ 1000,
-          integrateMs: podIntegrateUs ~/ 1000,
+          ms: _usToMs(podInstallUs),
+          analyzeMs: _usToMs(podAnalyzeUs),
+          downloadMs: _usToMs(podDownloadUs),
+          generateMs: _usToMs(podGenerateUs),
+          integrateMs: _usToMs(podIntegrateUs),
         ),
         xcode: XcodeStats(
           subsectionCount: xcodeSubsectionCount,
-          subsectionSumMs: xcodeSubsectionSumUs ~/ 1000,
-          subsectionP50Ms: xcodeP50 ~/ 1000,
-          subsectionP90Ms: xcodeP90 ~/ 1000,
-          subsectionMaxMs: xcodeMax ~/ 1000,
+          subsectionSumMs: _usToMs(xcodeSubsectionSumUs),
+          subsectionP50Ms: _usToMs(xcodeP50),
+          subsectionP90Ms: _usToMs(xcodeP90),
+          subsectionMaxMs: _usToMs(xcodeMax),
         ),
       );
     }
 
-    final flutterBuildMs = flutterBuildUs ~/ 1000;
+    final flutterBuildMs = _usToMs(flutterBuildUs);
     final shorebirdOverheadMs = shorebirdOverhead?.inMilliseconds;
     return BuildTraceSummary(
       platform: platform,
@@ -287,13 +299,13 @@ class BuildTraceSummary {
       flutterBuildMs: flutterBuildMs,
       shorebirdOverheadMs: shorebirdOverheadMs,
       network: NetworkStats(
-        ms: networkUs ~/ 1000,
+        ms: _usToMs(networkUs),
         callCount: networkCount,
       ),
       dart: dart,
       flutterAssemble: flutterAssemble,
       native: native,
-      flutterToolMs: flutterToolUs ~/ 1000,
+      flutterToolMs: _usToMs(flutterToolUs),
       android: android,
       ios: ios,
       environment: environment,
@@ -802,3 +814,8 @@ enum _AssembleCategory {
   codegen,
   other,
 }
+
+/// Truncating microseconds → milliseconds. Chrome Trace Event Format
+/// timestamps are in microseconds; this summary reports in milliseconds
+/// to keep the JSON shape compact for telemetry.
+int _usToMs(int us) => us ~/ 1000;
