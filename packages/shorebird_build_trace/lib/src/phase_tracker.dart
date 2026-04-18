@@ -37,29 +37,29 @@ class PhaseTracker {
   final String cat;
 
   String? _currentPhase;
-  int? _currentStartMicros;
+  DateTime? _currentStart;
 
   /// Moves to [nextPhase]. If a previous phase was in progress, its span
   /// is recorded first. Pass null to close the current phase without
   /// starting a new one.
   void transitionTo(String? nextPhase) {
-    final now = DateTime.now().microsecondsSinceEpoch;
+    final now = DateTime.now();
     // Pull into locals so flow analysis promotes them to non-null; the
     // outer variables don't promote inside a closure context.
     final previousPhase = _currentPhase;
-    final previousStart = _currentStartMicros;
+    final previousStart = _currentStart;
     if (previousPhase != null && previousStart != null) {
       tracer.addCompleteEvent(
         name: '$namePrefix: $previousPhase',
         cat: cat,
         pid: pid,
         tid: tid,
-        startMicros: previousStart,
-        endMicros: now,
+        start: previousStart,
+        end: now,
       );
     }
     _currentPhase = nextPhase;
-    _currentStartMicros = nextPhase == null ? null : now;
+    _currentStart = nextPhase == null ? null : now;
   }
 
   /// Closes the current phase (if any). Shorthand for

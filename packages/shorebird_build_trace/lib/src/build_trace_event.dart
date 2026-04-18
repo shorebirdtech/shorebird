@@ -6,8 +6,8 @@ class BuildTraceEvent {
   BuildTraceEvent({
     required this.name,
     required this.cat,
-    required this.ts,
-    required this.dur,
+    required this.start,
+    required this.duration,
     required this.pid,
     required this.tid,
     this.args,
@@ -21,8 +21,8 @@ class BuildTraceEvent {
     return BuildTraceEvent(
       name: json['name']! as String,
       cat: json['cat']! as String,
-      ts: json['ts']! as int,
-      dur: json['dur']! as int,
+      start: DateTime.fromMicrosecondsSinceEpoch(json['ts']! as int),
+      duration: Duration(microseconds: json['dur']! as int),
       pid: json['pid']! as int,
       tid: json['tid']! as int,
       args: json['args'] as Map<String, Object?>?,
@@ -35,12 +35,13 @@ class BuildTraceEvent {
   /// Event category (Perfetto filter / color).
   final String cat;
 
-  /// Wall-clock start of the span in microseconds since epoch (matches
-  /// Perfetto's clock).
-  final int ts;
+  /// Wall-clock start of the span (matches Perfetto's clock; serialized
+  /// as microseconds since epoch on the `ts` wire field).
+  final DateTime start;
 
-  /// Duration of the span in microseconds.
-  final int dur;
+  /// Duration of the span (serialized as microseconds on the `dur` wire
+  /// field).
+  final Duration duration;
 
   /// OS process id of the process that produced the event.
   final int pid;
@@ -57,8 +58,8 @@ class BuildTraceEvent {
     'ph': 'X',
     'name': name,
     'cat': cat,
-    'ts': ts,
-    'dur': dur,
+    'ts': start.microsecondsSinceEpoch,
+    'dur': duration.inMicroseconds,
     'pid': pid,
     'tid': tid,
     if (args != null) 'args': args,

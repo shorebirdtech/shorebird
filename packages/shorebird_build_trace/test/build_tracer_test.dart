@@ -10,8 +10,8 @@ void main() {
       final event = BuildTraceEvent(
         name: 'gen_snapshot',
         cat: 'subprocess',
-        ts: 100,
-        dur: 200,
+        start: DateTime.fromMicrosecondsSinceEpoch(100),
+        duration: const Duration(microseconds: 200),
         pid: 42,
         tid: 1,
         args: {
@@ -37,8 +37,8 @@ void main() {
       final event = BuildTraceEvent(
         name: 'x',
         cat: 'c',
-        ts: 0,
-        dur: 1,
+        start: DateTime.fromMicrosecondsSinceEpoch(0),
+        duration: const Duration(microseconds: 1),
         pid: 1,
         tid: 1,
       );
@@ -49,8 +49,8 @@ void main() {
       final event = BuildTraceEvent(
         name: 'n',
         cat: 'c',
-        ts: 10,
-        dur: 20,
+        start: DateTime.fromMicrosecondsSinceEpoch(10),
+        duration: const Duration(microseconds: 20),
         pid: 7,
         tid: 1,
         args: {'a': 1},
@@ -58,8 +58,8 @@ void main() {
       final parsed = BuildTraceEvent.fromJson(event.toJson());
       expect(parsed.name, 'n');
       expect(parsed.cat, 'c');
-      expect(parsed.ts, 10);
-      expect(parsed.dur, 20);
+      expect(parsed.start, DateTime.fromMicrosecondsSinceEpoch(10));
+      expect(parsed.duration, const Duration(microseconds: 20));
       expect(parsed.pid, 7);
       expect(parsed.tid, 1);
       expect(parsed.args, {'a': 1});
@@ -86,8 +86,8 @@ void main() {
           cat: 'c',
           pid: 1,
           tid: 1,
-          startMicros: 100,
-          endMicros: 500,
+          start: DateTime.fromMicrosecondsSinceEpoch(100),
+          end: DateTime.fromMicrosecondsSinceEpoch(500),
         )
         ..writeToFile(traceFile);
       final decoded = jsonDecode(traceFile.readAsStringSync()) as List;
@@ -124,8 +124,18 @@ void main() {
 
     test('addFlowStart / addFlowEnd emit ph:s / ph:f with bp=e', () {
       final t = BuildTracer()
-        ..addFlowStart(id: 99, pid: 1, tid: 1, atMicros: 10)
-        ..addFlowEnd(id: 99, pid: 2, tid: 1, atMicros: 50);
+        ..addFlowStart(
+          id: 99,
+          pid: 1,
+          tid: 1,
+          at: DateTime.fromMicrosecondsSinceEpoch(10),
+        )
+        ..addFlowEnd(
+          id: 99,
+          pid: 2,
+          tid: 1,
+          at: DateTime.fromMicrosecondsSinceEpoch(50),
+        );
       t.writeToFile(traceFile);
       final events = jsonDecode(traceFile.readAsStringSync()) as List;
       expect((events[0] as Map)['ph'], 's');
@@ -219,8 +229,8 @@ void main() {
           host: 'api.example.com',
           pid: 1,
           tid: 3,
-          startMicros: 0,
-          endMicros: 1000,
+          start: DateTime.fromMicrosecondsSinceEpoch(0),
+          end: DateTime.fromMicrosecondsSinceEpoch(1000),
           status: 200,
           contentLength: 42,
         )
@@ -257,8 +267,8 @@ void main() {
           cat: 'c',
           pid: 1,
           tid: 1,
-          startMicros: 0,
-          endMicros: 1,
+          start: DateTime.fromMicrosecondsSinceEpoch(0),
+          end: DateTime.fromMicrosecondsSinceEpoch(1),
         )
         ..writeToFile(traceFile);
       final decoded = jsonDecode(traceFile.readAsStringSync()) as List;
@@ -275,8 +285,8 @@ void main() {
           cat: 'c',
           pid: 1,
           tid: 1,
-          startMicros: 0,
-          endMicros: 1,
+          start: DateTime.fromMicrosecondsSinceEpoch(0),
+          end: DateTime.fromMicrosecondsSinceEpoch(1),
         )
         ..writeToFile(traceFile);
       final decoded = jsonDecode(traceFile.readAsStringSync()) as List;
@@ -291,8 +301,8 @@ void main() {
           cat: 'c',
           pid: 1,
           tid: 1,
-          startMicros: 0,
-          endMicros: 1,
+          start: DateTime.fromMicrosecondsSinceEpoch(0),
+          end: DateTime.fromMicrosecondsSinceEpoch(1),
         )
         ..writeToFile(nested);
       expect(nested.existsSync(), isTrue);

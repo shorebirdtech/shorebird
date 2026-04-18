@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:shorebird_build_trace/src/build_trace_event.dart';
-import 'package:shorebird_build_trace/src/process_id.dart';
 
 /// Shorebird convention: all events from one producer share a single pid
 /// (the OS pid of the producing process), plus `process_name` metadata
@@ -99,8 +98,8 @@ class BuildTracer {
     required String cat,
     required int pid,
     required int tid,
-    required int startMicros,
-    required int endMicros,
+    required DateTime start,
+    required DateTime end,
     Map<String, Object?>? args,
   }) {
     _events.add(
@@ -109,8 +108,8 @@ class BuildTracer {
         cat: cat,
         pid: pid,
         tid: tid,
-        ts: startMicros,
-        dur: endMicros - startMicros,
+        start: start,
+        duration: end.difference(start),
         args: args,
       ).toJson(),
     );
@@ -144,7 +143,7 @@ class BuildTracer {
   }
 
   /// Emits a flow-start event (`ph: "s"`) tying the enclosing span at
-  /// ([pid], [tid], [atMicros]) to a flow-end event a spawned child will
+  /// ([pid], [tid], [at]) to a flow-end event a spawned child will
   /// emit with the same [id]. Shorebird convention uses the child's pid
   /// as the flow id so spawner and spawnee agree on the id without
   /// passing it through env vars.
@@ -152,14 +151,14 @@ class BuildTracer {
     required int id,
     required int pid,
     required int tid,
-    required int atMicros,
+    required DateTime at,
   }) {
     _events.add(<String, Object?>{
       'ph': 's',
       'name': 'spawn',
       'cat': 'flow',
       'id': id,
-      'ts': atMicros,
+      'ts': at.microsecondsSinceEpoch,
       'pid': pid,
       'tid': tid,
       'bp': 'e',
@@ -172,14 +171,14 @@ class BuildTracer {
     required int id,
     required int pid,
     required int tid,
-    required int atMicros,
+    required DateTime at,
   }) {
     _events.add(<String, Object?>{
       'ph': 'f',
       'name': 'spawn',
       'cat': 'flow',
       'id': id,
-      'ts': atMicros,
+      'ts': at.microsecondsSinceEpoch,
       'pid': pid,
       'tid': tid,
       'bp': 'e',
@@ -197,7 +196,7 @@ class BuildTracer {
     required T Function() body,
     Map<String, Object?>? args,
   }) {
-    final startMicros = DateTime.now().microsecondsSinceEpoch;
+    final start = DateTime.now();
     try {
       return body();
     } finally {
@@ -206,8 +205,8 @@ class BuildTracer {
         cat: cat,
         pid: pid,
         tid: tid,
-        startMicros: startMicros,
-        endMicros: DateTime.now().microsecondsSinceEpoch,
+        start: start,
+        end: DateTime.now(),
         args: args,
       );
     }
@@ -223,7 +222,7 @@ class BuildTracer {
     required Future<T> Function() body,
     Map<String, Object?>? args,
   }) async {
-    final startMicros = DateTime.now().microsecondsSinceEpoch;
+    final start = DateTime.now();
     try {
       return await body();
     } finally {
@@ -232,8 +231,8 @@ class BuildTracer {
         cat: cat,
         pid: pid,
         tid: tid,
-        startMicros: startMicros,
-        endMicros: DateTime.now().microsecondsSinceEpoch,
+        start: start,
+        end: DateTime.now(),
         args: args,
       );
     }
@@ -243,30 +242,30 @@ class BuildTracer {
   /// caller already measured. Span name is the [executable] basename;
   /// the full argv lands in `args.argv`. Prefer [timeSubprocess] /
   /// [timeSubprocessAsync] when you're *about* to run the process;
-  /// this helper is for call sites that already have start/end micros
-  /// (e.g. an existing stopwatch-around-run pattern).
+  /// this helper is for call sites that already have start/end
+  /// timestamps (e.g. an existing stopwatch-around-run pattern).
   void addSubprocessEvent({
     required String executable,
     required List<String> arguments,
     required int pid,
     required int tid,
-    required int startMicros,
-    required int endMicros,
+    required DateTime start,
+    required DateTime end,
   }) {
     addCompleteEvent(
       name: _basename(executable),
       cat: 'subprocess',
       pid: pid,
       tid: tid,
-      startMicros: startMicros,
-      endMicros: endMicros,
+      start: start,
+      end: end,
       args: <String, Object?>{'argv': arguments},
     );
   }
 
   /// Emits a span that covers a subprocess invocation. [runner] should
   /// invoke [Process.runSync] (or equivalent) with [executable] and
-  /// [arguments]; the span wraps it with start/end micros, and the
+  /// [arguments]; the span wraps it with start/end timestamps, and the
   /// executable basename + full argv end up in the Perfetto span pane.
   ProcessResult timeSubprocess({
     required String executable,
@@ -275,15 +274,15 @@ class BuildTracer {
     required int tid,
     required ProcessResult Function() runner,
   }) {
-    final startMicros = DateTime.now().microsecondsSinceEpoch;
+    final start = DateTime.now();
     final result = runner();
     addCompleteEvent(
       name: _basename(executable),
       cat: 'subprocess',
       pid: pid,
       tid: tid,
-      startMicros: startMicros,
-      endMicros: DateTime.now().microsecondsSinceEpoch,
+      start: start,
+      end: DateTime.now(),
       args: <String, Object?>{'argv': arguments},
     );
     return result;
@@ -298,7 +297,7 @@ class BuildTracer {
     required int tid,
     required Future<ProcessResult> Function() runner,
   }) async {
-    final startMicros = DateTime.now().microsecondsSinceEpoch;
+    final start = DateTime.now();
     try {
       return await runner();
     } finally {
@@ -307,8 +306,8 @@ class BuildTracer {
         cat: 'subprocess',
         pid: pid,
         tid: tid,
-        startMicros: startMicros,
-        endMicros: DateTime.now().microsecondsSinceEpoch,
+        start: start,
+        end: DateTime.now(),
         args: <String, Object?>{'argv': arguments},
       );
     }
@@ -332,7 +331,7 @@ class BuildTracer {
     String? workingDirectory,
     Map<String, String>? environment,
   }) async {
-    final startMicros = DateTime.now().microsecondsSinceEpoch;
+    final start = DateTime.now();
     final process = await Process.start(
       executable,
       arguments,
@@ -344,7 +343,7 @@ class BuildTracer {
     final stderrF = process.stderr.transform(systemEncoding.decoder).join();
     final exitCode = await process.exitCode;
     final streams = await Future.wait([stdoutF, stderrF]);
-    final endMicros = DateTime.now().microsecondsSinceEpoch;
+    final end = DateTime.now();
 
     final name = _basename(executable);
     addProcessNameMetadata(pid: childPid, name: name);
@@ -354,8 +353,8 @@ class BuildTracer {
       arguments: arguments,
       pid: childPid,
       tid: 1,
-      startMicros: startMicros,
-      endMicros: endMicros,
+      start: start,
+      end: end,
     );
 
     return ProcessResult(childPid, exitCode, streams[0], streams[1]);
@@ -370,8 +369,8 @@ class BuildTracer {
     required String host,
     required int pid,
     required int tid,
-    required int startMicros,
-    required int endMicros,
+    required DateTime start,
+    required DateTime end,
     int? status,
     int? contentLength,
     String? error,
@@ -381,8 +380,8 @@ class BuildTracer {
       cat: 'network',
       pid: pid,
       tid: tid,
-      startMicros: startMicros,
-      endMicros: endMicros,
+      start: start,
+      end: end,
       args: <String, Object?>{
         'method': method,
         'host': host,
