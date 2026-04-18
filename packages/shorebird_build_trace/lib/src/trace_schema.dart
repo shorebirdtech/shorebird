@@ -1,139 +1,192 @@
-/// String-level API contract between the trace *producers* (flutter_tools,
+/// String-level API contract between the trace producers (flutter_tools,
 /// aot_tools, CocoaPods wrapper, the Gradle init script) and the trace
-/// *consumer* (shorebird_cli's `build_trace_summary.dart`).
+/// consumer (shorebird_cli's `build_trace_summary.dart`).
 ///
 /// Once a name lands in a shipped flutter or aot_tools, shorebird_cli
-/// has to understand it across every version pin that ships with that
-/// release — shorebird_cli runs against many flutter versions at once.
-/// So:
+/// has to understand it across every version pin that ships with a
+/// Shorebird release. So:
 ///
 /// * **Never rename** a constant here. Add a new one and have shorebird
 ///   recognize both.
 /// * **Don't reuse** a removed constant's value for a different meaning
 ///   for the same reason.
-/// * The Groovy init script (`shorebird_trace_init.gradle` in the flutter
-///   fork) can't import Dart — its literals must be hand-kept in sync
-///   with this file. The init script carries a comment pointing here.
-class TraceSchema {
-  TraceSchema._();
+/// * The Groovy init script (`shorebird_trace_init.gradle` in the
+///   flutter fork) can't import Dart — its literals are hand-kept in
+///   sync with this file. The init script carries a comment pointing
+///   here.
+library;
 
-  // --- Chrome Trace Event "cat" values ---------------------------------
-
+/// Chrome Trace Event `cat` values emitted by the producers.
+///
+/// Producers emit via [wireName]. Consumers (shorebird_cli) parse via
+/// [tryParse], which returns null for unknown values so callers can
+/// map them to [TraceCategory.unknown] and the switch stays
+/// exhaustive. Adding a new category here is safe: older consumers
+/// see it as `unknown` (dropped), newer consumers bucket it.
+enum TraceCategory {
   /// Flutter-tool setup / teardown and outer `flutter build <target>`
   /// spans.
-  static const String catFlutter = 'flutter';
+  flutter('flutter'),
 
   /// Native build system (Gradle, Xcode) outer spans.
-  static const String catGradle = 'gradle';
+  gradle('gradle'),
 
-  /// See [catGradle].
-  static const String catXcode = 'xcode';
+  /// See [gradle].
+  xcode('xcode'),
 
   /// Per-task events emitted by `shorebird_trace_init.gradle`.
-  static const String catGradleTask = 'gradle_task';
+  gradleTask('gradle_task'),
 
   /// Per-subsection events parsed from xcresulttool's structured log.
-  static const String catXcodeSubsection = 'xcode_subsection';
+  xcodeSubsection('xcode_subsection'),
 
   /// `flutter assemble` target spans.
-  static const String catAssemble = 'assemble';
+  assemble('assemble'),
 
-  /// Child processes traced via [BuildTracer.startAndTraceSubprocess] or
-  /// [BuildTracer.timeSubprocess] — also the category the CocoaPods
-  /// wrapper emits phase spans under.
-  static const String catSubprocess = 'subprocess';
+  /// Child processes traced via `BuildTracer.startAndTraceSubprocess`
+  /// or `BuildTracer.timeSubprocess` — also the category the
+  /// CocoaPods wrapper emits phase spans under.
+  subprocess('subprocess'),
 
   /// HTTP request spans (artifact fetches + auth/upload).
-  static const String catNetwork = 'network';
+  network('network'),
 
-  // --- Span name prefixes / literals -----------------------------------
+  /// Consumer-side fallback for a category emitted by a future
+  /// producer version that this consumer doesn't yet recognize. Never
+  /// emitted on the wire.
+  unknown('');
+
+  const TraceCategory(this.wireName);
+
+  /// The exact string a producer emits on the `cat` field. Read by
+  /// consumers via [tryParse].
+  final String wireName;
+
+  /// Returns the [TraceCategory] for a wire value, or null if
+  /// unrecognized. Callers typically coerce null to [unknown].
+  static TraceCategory? tryParse(String? wire) {
+    if (wire == null) return null;
+    for (final c in values) {
+      if (c != unknown && c.wireName == wire) return c;
+    }
+    return null;
+  }
+}
+
+/// Classification of Gradle task names performed by
+/// `shorebird_trace_init.gradle`, emitted in each gradle_task event's
+/// `args["kind"]`. Consumer-side enum with the same forward-compat
+/// rules as [TraceCategory].
+enum GradleTaskKind {
+  /// Kotlin compilation tasks.
+  kotlinCompile('kotlin_compile'),
+
+  /// Java compilation tasks (including AGP's precompile scaffolding).
+  javaCompile('java_compile'),
+
+  /// DEX conversion.
+  dex('dex'),
+
+  /// Resource processing / manifest merging / R-file generation.
+  resources('resources'),
+
+  /// AGP artifact transforms.
+  transform('transform'),
+
+  /// R8 / minification.
+  r8Minify('r8_minify'),
+
+  /// Android lint.
+  lint('lint'),
+
+  /// Native library linking.
+  nativeLink('native_link'),
+
+  /// Flutter gradle plugin's own tasks.
+  flutterGradlePlugin('flutter_gradle_plugin'),
+
+  /// `bundle*` tasks.
+  bundle('bundle'),
+
+  /// `package*` tasks (non-plugin).
+  packaging('packaging'),
+
+  /// AIDL.
+  aidl('aidl'),
+
+  /// Gradle's per-plugin / per-variant scaffolding (metadata, proguard
+  /// rule export, pre-/post-compile bookkeeping).
+  gradleScaffold('gradle_scaffold'),
+
+  /// Catch-all for tasks the init script's classifier didn't match.
+  /// Also the consumer-side fallback for unrecognized wire values.
+  other('other');
+
+  const GradleTaskKind(this.wireName);
+
+  /// The exact string the init script emits on `args["kind"]`.
+  final String wireName;
+
+  /// Returns the [GradleTaskKind] for a wire value, or null if
+  /// unrecognized. Consumers typically coerce null to [other].
+  static GradleTaskKind? tryParse(String? wire) {
+    if (wire == null) return null;
+    for (final k in values) {
+      if (k.wireName == wire) return k;
+    }
+    return null;
+  }
+}
+
+/// Span name prefixes emitted by the producers. These are format
+/// strings ("gradle " then the task name) rather than enumerated
+/// values, so they stay as constants; see [TraceCategory] /
+/// [GradleTaskKind] for the enumerated vocabularies.
+class TraceNames {
+  TraceNames._();
 
   /// Prefix for the outer flutter build span. Span name is
-  /// `"flutter build <target>"` where `<target>` is apk / appbundle /
-  /// ios / ipa. shorebird matches with `startsWith`.
+  /// `"flutter build <target>"` (target = apk / appbundle / ios / ipa).
+  /// shorebird matches with `startsWith`.
   static const String flutterBuildSpanPrefix = 'flutter build ';
 
   /// Prefix for the outer gradle span. Span name is
-  /// `"gradle <assembleTask>"` where `<assembleTask>` is the variant-
-  /// specific task (e.g. `assembleRelease`, `bundleFooRelease`).
-  /// shorebird buckets by the `gradle` category rather than parsing
-  /// this prefix, but it's kept here for documentation.
+  /// `"gradle <assembleTask>"`.
   static const String gradleSpanPrefix = 'gradle ';
 
   /// Prefix for the outer xcode span. Span name is
   /// `"xcode <action>"` (build / archive / install).
   static const String xcodeSpanPrefix = 'xcode ';
 
-  /// `pod install` namePrefix used by the CocoaPods phase tracker.
-  /// Spans emitted are `"pod install: <phase>"` using [PhaseTracker].
+  /// Name prefix the CocoaPods phase tracker emits phase spans under.
+  /// Full span name shorebird matches is `"pod install: <phase>"`.
   static const String podInstallNamePrefix = 'pod install';
 
-  /// Name of the outer `pod install` span itself (emitted separately
-  /// from phase sub-spans).
+  /// Name of the outer `pod install` span (emitted separately from
+  /// phase sub-spans).
   static const String podInstallSpanName = 'pod install';
+}
 
-  /// Phase name used by [PhaseTracker] when the `Analyzing
-  /// dependencies` line is seen in `pod install --verbose` stdout.
-  /// The full span name shorebird matches is
-  /// `"pod install: analyzing"` etc.
-  static const String podPhaseAnalyzing = 'analyzing';
+/// Phases identified by the CocoaPods verbose-output parser. Producer
+/// side (flutter_tools) picks the value, [PhaseTracker] stringifies it
+/// with [TraceNames.podInstallNamePrefix] as prefix. Consumer side
+/// (shorebird_cli) matches the assembled span name against this enum's
+/// [wireName]s.
+enum PodInstallPhase {
+  /// Seen when `pod install` logs `Analyzing dependencies`.
+  analyzing('analyzing'),
 
-  /// See [podPhaseAnalyzing].
-  static const String podPhaseDownloading = 'downloading';
+  /// Seen when `pod install` logs `Downloading dependencies`.
+  downloading('downloading'),
 
-  /// See [podPhaseAnalyzing].
-  static const String podPhaseGenerating = 'generating';
+  /// Seen when `pod install` logs `Generating Pods project`.
+  generating('generating'),
 
-  /// See [podPhaseAnalyzing].
-  static const String podPhaseIntegrating = 'integrating';
+  /// Seen when `pod install` logs `Integrating client project`.
+  integrating('integrating');
 
-  // --- Gradle task kinds -----------------------------------------------
+  const PodInstallPhase(this.wireName);
 
-  /// Value of `args["kind"]` on per-Gradle-task events. Produced by
-  /// `shorebird_trace_init.gradle`'s classifier and consumed by
-  /// shorebird_cli's summary. If the init script adds a new kind, it
-  /// must also land here AND shorebird_cli must recognize it or it'll
-  /// silently fall into the `other` bucket.
-  static const String gradleKindKotlinCompile = 'kotlin_compile';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindJavaCompile = 'java_compile';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindDex = 'dex';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindResources = 'resources';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindTransform = 'transform';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindR8Minify = 'r8_minify';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindLint = 'lint';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindFlutterGradlePlugin = 'flutter_gradle_plugin';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindBundle = 'bundle';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindPackaging = 'packaging';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindAidl = 'aidl';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindNativeLink = 'native_link';
-
-  /// See [gradleKindKotlinCompile].
-  static const String gradleKindGradleScaffold = 'gradle_scaffold';
-
-  /// Catch-all for unmatched Gradle tasks. Not emitted by the init
-  /// script (which writes one of the named kinds above), but used by
-  /// consumers for a safety bucket when [args['kind']] is unknown.
-  static const String gradleKindOther = 'other';
+  /// The phase name used in the emitted span (`"pod install: <wireName>"`).
+  final String wireName;
 }

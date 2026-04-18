@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/platform.dart' as scoped_platform;
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -149,7 +150,7 @@ Reason: Exited with code $exitCode.''',
         );
       }
 
-      _writeBuildTraceSummary(traceFile, platform: 'android');
+      _writeBuildTraceSummary(traceFile, buildPlatform: 'android');
     });
 
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
@@ -224,7 +225,7 @@ Reason: Exited with code $exitCode.''',
         );
       }
 
-      _writeBuildTraceSummary(traceFile, platform: 'android');
+      _writeBuildTraceSummary(traceFile, buildPlatform: 'android');
     });
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     try {
@@ -450,7 +451,7 @@ Reason: Exited with code $exitCode.''',
         );
       }
 
-      _writeBuildTraceSummary(traceFile, platform: 'ios');
+      _writeBuildTraceSummary(traceFile, buildPlatform: 'ios');
       appDillPath = _findAppDill(projectRoot: projectRoot, after: buildStart);
     });
 
@@ -564,10 +565,13 @@ Reason: Exited with code $exitCode.''',
     );
   }
 
-  /// Returns the user's home directory as understood by the OS, or null if
-  /// neither `HOME` nor `USERPROFILE` is set.
+  /// Returns the user's home directory as understood by the OS, or
+  /// null if neither `HOME` nor `USERPROFILE` is set. Reads from the
+  /// scoped [platform] (same pattern as e.g. `android_studio.dart`)
+  /// rather than static `Platform.environment` so tests can inject a
+  /// fake environment.
   Directory? _homeDirectory() {
-    final env = Platform.environment;
+    final env = scoped_platform.platform.environment;
     final h = env['HOME'] ?? env['USERPROFILE'];
     if (h == null || h.isEmpty) return null;
     return Directory(h);
@@ -579,7 +583,10 @@ Reason: Exited with code $exitCode.''',
   /// Uses [BuildTraceSession.commandStartedAt] to derive the wall-clock time
   /// Shorebird itself spent around the Flutter build, subtracting Flutter's
   /// reported total (the "flutter build X" umbrella event).
-  void _writeBuildTraceSummary(File? traceFile, {required String platform}) {
+  void _writeBuildTraceSummary(
+    File? traceFile, {
+    required String buildPlatform,
+  }) {
     if (traceFile == null) return;
 
     // Merge Shorebird-side events (HTTP calls, subprocess spans, phase
@@ -602,7 +609,7 @@ Reason: Exited with code $exitCode.''',
     // the (often multi-megabyte) trace file is only read once.
     final flutterMs = BuildTraceSummary.fromEvents(
       events,
-      platform: platform,
+      platform: buildPlatform,
     ).flutterBuildMs;
     final totalElapsed = DateTime.now().difference(
       buildTraceSession.commandStartedAt,
@@ -612,7 +619,7 @@ Reason: Exited with code $exitCode.''',
     // This is what lets us tell, in field data, whether a slow build is
     // "no caching configured" vs "slow despite caching being on".
     final environment = BuildEnvironment.detect(
-      environment: Platform.environment,
+      environment: scoped_platform.platform.environment,
       homeDir: _homeDirectory(),
       projectRoot: shorebirdEnv.getShorebirdProjectRoot(),
     );
@@ -621,7 +628,7 @@ Reason: Exited with code $exitCode.''',
     // negative.
     final summary = BuildTraceSummary.fromEvents(
       events,
-      platform: platform,
+      platform: buildPlatform,
       shorebirdOverhead: shorebirdOverhead.isNegative
           ? Duration.zero
           : shorebirdOverhead,
@@ -630,7 +637,7 @@ Reason: Exited with code $exitCode.''',
 
     final summaryPath = p.join(
       p.dirname(traceFile.path),
-      'build-trace-$platform-summary.json',
+      'build-trace-$buildPlatform-summary.json',
     );
     File(summaryPath).writeAsStringSync(
       const JsonEncoder.withIndent('  ').convert(summary.toJson()),
