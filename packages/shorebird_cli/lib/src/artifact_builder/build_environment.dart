@@ -136,8 +136,8 @@ class BuildEnvironment {
   /// CI vendor → presence-indicator env var, ordered by specificity.
   /// Presence-check (rather than value-compare) to stay robust against
   /// case/quoting variation across vendors — e.g. Azure's `TF_BUILD`
-  /// is documented as "True" (uppercased), GitHub's `GITHUB_ACTIONS`
-  /// as "true" lowercase; presence sidesteps the inconsistency.
+  /// is documented as "True" with a leading capital, GitHub's
+  /// `GITHUB_ACTIONS` as "true"; presence sidesteps the inconsistency.
   ///
   /// Specific providers come first; the generic `CI` marker is last
   /// so it only matches when no vendor-specific var is set. Order
