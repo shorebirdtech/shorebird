@@ -234,6 +234,52 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         ).called(1);
       });
 
+      test(
+        'onStart callback records a flow-start keyed to the child pid',
+        () async {
+          // Flutter needs to advertise trace support so the onStart
+          // callback is wired in the first place.
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => Version(3, 41, 7));
+
+          // Capture the onStart callback the builder hands to
+          // process.stream so we can invoke it with a fake child Process
+          // carrying a known pid.
+          void Function(Process)? capturedOnStart;
+          when(
+            () => shorebirdProcess.stream(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              runInShell: any(named: 'runInShell'),
+              onStart: any(named: 'onStart'),
+            ),
+          ).thenAnswer((invocation) async {
+            capturedOnStart =
+                invocation.namedArguments[#onStart] as void Function(Process)?;
+            return ExitCode.success.code;
+          });
+
+          final child = MockProcess();
+          when(() => child.pid).thenReturn(12345);
+
+          await runWithOverrides(() async {
+            await builder.prepareBuildTrace(platform: 'android');
+            await builder.buildAppBundle();
+            expect(capturedOnStart, isNotNull);
+            capturedOnStart!(child);
+
+            final flowStarts = shorebirdTracer.events
+                .where((e) => e['ph'] == 's')
+                .toList();
+            expect(flowStarts, hasLength(1));
+            expect(flowStarts.single['id'], 12345);
+            expect(flowStarts.single['cat'], 'flow');
+          });
+        },
+      );
+
       test('adds --trace when Flutter supports build tracing', () async {
         when(
           () => shorebirdFlutter.resolveFlutterVersion(any()),

@@ -334,6 +334,150 @@ void main() {
       final decoded = jsonDecode(traceFile.readAsStringSync()) as List;
       expect(decoded, isEmpty);
     });
+
+    group('start / stop / current', () {
+      // `current` is process-global; make sure tests don't leak into each
+      // other if one throws mid-way.
+      tearDown(BuildTracer.stop);
+
+      test('current is null before any start', () {
+        expect(BuildTracer.current, isNull);
+      });
+
+      test('start installs, stop clears', () {
+        final t = BuildTracer();
+        BuildTracer.start(t);
+        expect(identical(BuildTracer.current, t), isTrue);
+        BuildTracer.stop();
+        expect(BuildTracer.current, isNull);
+      });
+
+      test('start throws StateError when a tracer is already installed', () {
+        BuildTracer.start(BuildTracer());
+        expect(
+          () => BuildTracer.start(BuildTracer()),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('stop is idempotent', () {
+        BuildTracer.stop();
+        BuildTracer.stop();
+        expect(BuildTracer.current, isNull);
+      });
+    });
+
+    group('runAsync', () {
+      tearDown(BuildTracer.stop);
+
+      test('installs tracer for duration of body, clears after', () async {
+        final t = BuildTracer();
+        expect(BuildTracer.current, isNull);
+        await BuildTracer.runAsync(t, () async {
+          expect(identical(BuildTracer.current, t), isTrue);
+        });
+        expect(BuildTracer.current, isNull);
+      });
+
+      test('clears tracer even when body throws', () async {
+        final t = BuildTracer();
+        await expectLater(
+          BuildTracer.runAsync<void>(t, () async {
+            throw StateError('boom');
+          }),
+          throwsA(isA<StateError>()),
+        );
+        expect(BuildTracer.current, isNull);
+      });
+
+      test('nested calls save and restore the prior current', () async {
+        final outer = BuildTracer();
+        final inner = BuildTracer();
+        await BuildTracer.runAsync(outer, () async {
+          expect(identical(BuildTracer.current, outer), isTrue);
+          await BuildTracer.runAsync(inner, () async {
+            expect(identical(BuildTracer.current, inner), isTrue);
+          });
+          expect(identical(BuildTracer.current, outer), isTrue);
+        });
+        expect(BuildTracer.current, isNull);
+      });
+    });
+
+    test(
+      'addSubprocessEvent emits subprocess span with executable basename',
+      () {
+        BuildTracer()
+          ..addSubprocessEvent(
+            executable:
+                '${Platform.pathSeparator}usr'
+                '${Platform.pathSeparator}bin'
+                '${Platform.pathSeparator}diff',
+            arguments: const ['-u', 'a', 'b'],
+            pid: 1,
+            tid: 1,
+            start: DateTime.fromMicrosecondsSinceEpoch(0),
+            end: DateTime.fromMicrosecondsSinceEpoch(500),
+          )
+          ..writeToFile(traceFile);
+        final e =
+            (jsonDecode(traceFile.readAsStringSync()) as List).single
+                as Map<String, Object?>;
+        expect(e['name'], 'diff');
+        expect(e['cat'], 'subprocess');
+        expect(e['dur'], 500);
+        expect((e['args']! as Map)['argv'], ['-u', 'a', 'b']);
+      },
+    );
+
+    test('recordNetworkSpan includes error when provided', () {
+      BuildTracer()
+        ..recordNetworkSpan(
+          method: 'POST',
+          host: 'api.example.com',
+          pid: 1,
+          tid: 3,
+          start: DateTime.fromMicrosecondsSinceEpoch(0),
+          end: DateTime.fromMicrosecondsSinceEpoch(100),
+          error: 'SocketException',
+        )
+        ..writeToFile(traceFile);
+      final e =
+          (jsonDecode(traceFile.readAsStringSync()) as List).single
+              as Map<String, Object?>;
+      final args = e['args']! as Map;
+      expect(args['error'], 'SocketException');
+      expect(args.containsKey('status'), isFalse);
+      expect(args.containsKey('contentLength'), isFalse);
+    });
+
+    test(
+      'startAndTraceSubprocess spawns a real child and records a span on '
+      'its OS pid',
+      () async {
+        final t = BuildTracer();
+        final result = await t.startAndTraceSubprocess(
+          executable: Platform.resolvedExecutable,
+          arguments: const ['--version'],
+        );
+        expect(result.exitCode, 0);
+        expect(result.pid, greaterThan(0));
+
+        // Expect three events for the child: process_name + thread_name
+        // metadata, plus the subprocess span itself. All on the child's
+        // real OS pid (which matches result.pid).
+        final byPh = <String, List<Map<String, Object?>>>{};
+        for (final e in t.events) {
+          (byPh[e['ph']! as String] ??= []).add(e);
+        }
+        expect(byPh['M'], hasLength(2));
+        expect(byPh['X'], hasLength(1));
+        for (final e in t.events) {
+          expect(e['pid'], result.pid);
+        }
+        expect(byPh['X']!.single['cat'], 'subprocess');
+      },
+    );
   });
 
   group(PhaseTracker, () {
