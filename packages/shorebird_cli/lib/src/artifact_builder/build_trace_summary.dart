@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:shorebird_build_trace/shorebird_build_trace.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
+import 'package:shorebird_cli/src/artifact_builder/duration_distribution.dart';
 
 /// Summary of a Chrome Trace Event Format build trace.
 ///
@@ -87,8 +88,6 @@ class BuildTraceSummary {
       case TraceCategory.gradleTask:
         _processGradleTaskEvent(acc, dur: dur, args: args);
       case TraceCategory.xcodeSubsection:
-        acc.xcodeSubsectionCount++;
-        acc.xcodeSubsectionSum += dur;
         acc.xcodeSubsectionDurations.add(dur);
       case TraceCategory.network:
         acc.network += dur;
@@ -222,19 +221,12 @@ class BuildTraceSummary {
   }
 
   static AndroidStats _androidStats(_Accumulator acc) {
-    final (p50, p90, max) = _percentiles(acc.gradleTaskDurations);
-    final gradleSum = acc.gradleTaskDurations.fold(
-      Duration.zero,
-      (a, b) => a + b,
-    );
     Duration kindDur(GradleTaskKind k) => acc.gradleKind.of(k);
     return AndroidStats(
       gradle: GradleStats(
-        taskCount: acc.gradleTaskDurations.length,
-        taskSum: gradleSum,
-        taskP50: p50,
-        taskP90: p90,
-        taskMax: max,
+        taskDistribution: DurationDistribution.fromDurations(
+          acc.gradleTaskDurations,
+        ),
         taskFromCacheCount: acc.gradleTaskFromCacheCount,
         taskUpToDateCount: acc.gradleTaskUpToDateCount,
         taskExecutedCount: acc.gradleTaskExecutedCount,
@@ -256,9 +248,6 @@ class BuildTraceSummary {
   }
 
   static IosStats _iosStats(_Accumulator acc) {
-    final (xcodeP50, xcodeP90, xcodeMax) = _percentiles(
-      acc.xcodeSubsectionDurations,
-    );
     Duration phaseDur(PodInstallPhase p) => acc.podPhase.of(p);
     return IosStats(
       podInstall: PodInstallStats(
@@ -269,11 +258,9 @@ class BuildTraceSummary {
         integrate: phaseDur(PodInstallPhase.integrating),
       ),
       xcode: XcodeStats(
-        subsectionCount: acc.xcodeSubsectionCount,
-        subsectionSum: acc.xcodeSubsectionSum,
-        subsectionP50: xcodeP50,
-        subsectionP90: xcodeP90,
-        subsectionMax: xcodeMax,
+        subsectionDistribution: DurationDistribution.fromDurations(
+          acc.xcodeSubsectionDurations,
+        ),
       ),
     );
   }
@@ -344,19 +331,6 @@ class BuildTraceSummary {
       return _AssembleCategory.assets;
     }
     return _AssembleCategory.other;
-  }
-
-  static (Duration, Duration, Duration) _percentiles(List<Duration> values) {
-    if (values.isEmpty) {
-      return (Duration.zero, Duration.zero, Duration.zero);
-    }
-    final sorted = [...values]..sort();
-    Duration at(double q) {
-      final idx = (sorted.length * q).floor().clamp(0, sorted.length - 1);
-      return sorted[idx];
-    }
-
-    return (at(0.5), at(0.9), sorted.last);
   }
 
   /// `android` or `ios`.
@@ -561,11 +535,7 @@ class AndroidStats {
 class GradleStats {
   /// Creates a [GradleStats].
   GradleStats({
-    required this.taskCount,
-    required this.taskSum,
-    required this.taskP50,
-    required this.taskP90,
-    required this.taskMax,
+    required this.taskDistribution,
     required this.taskFromCacheCount,
     required this.taskUpToDateCount,
     required this.taskExecutedCount,
@@ -584,21 +554,10 @@ class GradleStats {
     required this.gradleScaffold,
   });
 
-  /// Total number of Gradle tasks observed.
-  final int taskCount;
-
-  /// Sum of all task durations. Typically much larger than gradle wall
-  /// clock because Gradle runs tasks in parallel.
-  final Duration taskSum;
-
-  /// p50 (median) of individual task durations.
-  final Duration taskP50;
-
-  /// p90 of individual task durations.
-  final Duration taskP90;
-
-  /// Max of individual task durations.
-  final Duration taskMax;
+  /// Distribution of per-task durations (count, sum, p50, p90, max).
+  /// Sum is typically much larger than gradle wall clock because Gradle
+  /// runs tasks in parallel.
+  final DurationDistribution taskDistribution;
 
   /// Tasks restored from Gradle's build cache (FROM-CACHE skip message).
   /// Non-zero indicates `org.gradle.caching=true` is doing real work.
@@ -657,11 +616,7 @@ class GradleStats {
 
   /// JSON form.
   Map<String, Object?> toJson() => <String, Object?>{
-    'taskCount': taskCount,
-    'taskSumMs': taskSum.inMilliseconds,
-    'taskP50Ms': taskP50.inMilliseconds,
-    'taskP90Ms': taskP90.inMilliseconds,
-    'taskMaxMs': taskMax.inMilliseconds,
+    'taskDistribution': taskDistribution.toJson(),
     'taskFromCacheCount': taskFromCacheCount,
     'taskUpToDateCount': taskUpToDateCount,
     'taskExecutedCount': taskExecutedCount,
@@ -745,38 +700,16 @@ class PodInstallStats {
 /// rather than per-title totals.
 class XcodeStats {
   /// Creates an [XcodeStats].
-  XcodeStats({
-    required this.subsectionCount,
-    required this.subsectionSum,
-    required this.subsectionP50,
-    required this.subsectionP90,
-    required this.subsectionMax,
-  });
+  XcodeStats({required this.subsectionDistribution});
 
-  /// Number of top-level subsections Xcode reported (roughly, per-target
-  /// build actions).
-  final int subsectionCount;
-
-  /// Sum of all subsection durations. Often much larger than the
-  /// `xcode archive` wall clock because Xcode runs targets in parallel.
-  final Duration subsectionSum;
-
-  /// Median of individual subsection durations.
-  final Duration subsectionP50;
-
-  /// 90th-percentile subsection duration.
-  final Duration subsectionP90;
-
-  /// Longest subsection duration.
-  final Duration subsectionMax;
+  /// Distribution of per-subsection durations (count, sum, p50, p90,
+  /// max). Sum is often much larger than the `xcode archive` wall clock
+  /// because Xcode runs targets in parallel.
+  final DurationDistribution subsectionDistribution;
 
   /// JSON form.
   Map<String, Object?> toJson() => {
-    'subsectionCount': subsectionCount,
-    'subsectionSumMs': subsectionSum.inMilliseconds,
-    'subsectionP50Ms': subsectionP50.inMilliseconds,
-    'subsectionP90Ms': subsectionP90.inMilliseconds,
-    'subsectionMaxMs': subsectionMax.inMilliseconds,
+    'subsectionDistribution': subsectionDistribution.toJson(),
   };
 }
 
@@ -802,8 +735,6 @@ class _Accumulator {
   Duration network = Duration.zero;
   int networkCount = 0;
   Duration podInstall = Duration.zero;
-  int xcodeSubsectionCount = 0;
-  Duration xcodeSubsectionSum = Duration.zero;
 
   /// Per-bucket totals, keyed by the enum/category that classified the
   /// event. Read via [Map.operator[]] with a null-coalesce to

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
+import 'package:shorebird_cli/src/artifact_builder/duration_distribution.dart';
 import 'package:test/test.dart';
 
 Map<String, Object?> _event({
@@ -140,14 +141,14 @@ void main() {
       // Android-specific
       expect(s.android, isNotNull);
       final g = s.android!.gradle;
-      expect(g.taskCount, 4);
+      expect(g.taskDistribution.count, 4);
       // Kotlin sum: 1+2+5 = 8s
       expect(g.kotlinCompile, const Duration(milliseconds: 8000));
       expect(g.r8Minify, const Duration(milliseconds: 20000));
-      expect(g.taskMax, const Duration(milliseconds: 20000));
+      expect(g.taskDistribution.max, const Duration(milliseconds: 20000));
       // Sorted us: [1M, 2M, 5M, 20M]; floor(4*0.5)=2 → 5M; floor(4*0.9)=3 → 20M
-      expect(g.taskP50, const Duration(milliseconds: 5000));
-      expect(g.taskP90, const Duration(milliseconds: 20000));
+      expect(g.taskDistribution.p50, const Duration(milliseconds: 5000));
+      expect(g.taskDistribution.p90, const Duration(milliseconds: 20000));
 
       expect(s.ios, isNull);
     });
@@ -249,24 +250,24 @@ void main() {
       expect(s.ios!.podInstall.download, const Duration(milliseconds: 30000));
       expect(s.ios!.podInstall.generate, const Duration(milliseconds: 20000));
       expect(s.ios!.podInstall.integrate, const Duration(milliseconds: 5000));
-      expect(s.ios!.xcode.subsectionCount, 5);
+      expect(s.ios!.xcode.subsectionDistribution.count, 5);
       // Sum: 30+25+5+2+1 = 63s
       expect(
-        s.ios!.xcode.subsectionSum,
+        s.ios!.xcode.subsectionDistribution.sum,
         const Duration(milliseconds: 63000),
       );
       expect(
-        s.ios!.xcode.subsectionMax,
+        s.ios!.xcode.subsectionDistribution.max,
         const Duration(milliseconds: 30000),
       );
       // Sorted us: [1M, 2M, 5M, 25M, 30M]
       // floor(5*0.5)=2 → 5M; floor(5*0.9)=4 → 30M
       expect(
-        s.ios!.xcode.subsectionP50,
+        s.ios!.xcode.subsectionDistribution.p50,
         const Duration(milliseconds: 5000),
       );
       expect(
-        s.ios!.xcode.subsectionP90,
+        s.ios!.xcode.subsectionDistribution.p90,
         const Duration(milliseconds: 30000),
       );
     });
@@ -584,29 +585,39 @@ void main() {
         ], platform: 'ios');
 
         final xcode = s.ios!.xcode;
-        expect(xcode.subsectionCount, 4);
-        expect(xcode.subsectionSum, const Duration(milliseconds: 1600));
-        expect(xcode.subsectionMax, const Duration(milliseconds: 1000));
+        expect(xcode.subsectionDistribution.count, 4);
         expect(
-          xcode.subsectionP50,
+          xcode.subsectionDistribution.sum,
+          const Duration(milliseconds: 1600),
+        );
+        expect(
+          xcode.subsectionDistribution.max,
+          const Duration(milliseconds: 1000),
+        );
+        expect(
+          xcode.subsectionDistribution.p50,
           greaterThanOrEqualTo(const Duration(milliseconds: 100)),
         );
       });
 
       test('XcodeStats.toJson serializes all fields', () {
         final xcode = XcodeStats(
-          subsectionCount: 1,
-          subsectionSum: const Duration(milliseconds: 2),
-          subsectionP50: const Duration(milliseconds: 3),
-          subsectionP90: const Duration(milliseconds: 4),
-          subsectionMax: const Duration(milliseconds: 5),
+          subsectionDistribution: DurationDistribution(
+            count: 1,
+            sum: const Duration(milliseconds: 2),
+            p50: const Duration(milliseconds: 3),
+            p90: const Duration(milliseconds: 4),
+            max: const Duration(milliseconds: 5),
+          ),
         );
         expect(xcode.toJson(), {
-          'subsectionCount': 1,
-          'subsectionSumMs': 2,
-          'subsectionP50Ms': 3,
-          'subsectionP90Ms': 4,
-          'subsectionMaxMs': 5,
+          'subsectionDistribution': {
+            'count': 1,
+            'sumMs': 2,
+            'p50Ms': 3,
+            'p90Ms': 4,
+            'maxMs': 5,
+          },
         });
       });
 
@@ -637,11 +648,7 @@ void main() {
             integrate: Duration.zero,
           ),
           xcode: XcodeStats(
-            subsectionCount: 0,
-            subsectionSum: Duration.zero,
-            subsectionP50: Duration.zero,
-            subsectionP90: Duration.zero,
-            subsectionMax: Duration.zero,
+            subsectionDistribution: DurationDistribution.empty(),
           ),
         );
         final json = iosStats.toJson();
