@@ -58,9 +58,12 @@ class BuildEnvironment {
       ),
     };
 
-    bool propBool(String key, {required bool defaultValue}) {
+    // Returns null when the property isn't set (caller applies its own
+    // default via `?? <value>`); Gradle's own defaults differ across
+    // properties so there's no single fallback that fits all callers.
+    bool? propBool(String key) {
       final v = gradleProps[key];
-      if (v == null) return defaultValue;
+      if (v == null) return null;
       return v.trim().toLowerCase() == 'true';
     }
 
@@ -68,25 +71,14 @@ class BuildEnvironment {
       isCi: isCi,
       ciProvider: ciProvider,
       // Gradle build cache: opt-in, default off in vanilla Gradle.
-      gradleBuildCacheEnabled: propBool(
-        'org.gradle.caching',
-        defaultValue: false,
-      ),
+      gradleBuildCacheEnabled: propBool('org.gradle.caching') ?? false,
       // Gradle configuration cache: opt-in.
-      gradleConfigurationCacheEnabled: propBool(
-        'org.gradle.configuration-cache',
-        defaultValue: false,
-      ),
+      gradleConfigurationCacheEnabled:
+          propBool('org.gradle.configuration-cache') ?? false,
       // Parallel project execution: default off.
-      gradleParallelEnabled: propBool(
-        'org.gradle.parallel',
-        defaultValue: false,
-      ),
+      gradleParallelEnabled: propBool('org.gradle.parallel') ?? false,
       // Daemon: default ON (skip false-positive when explicitly disabled).
-      gradleDaemonEnabled: propBool(
-        'org.gradle.daemon',
-        defaultValue: true,
-      ),
+      gradleDaemonEnabled: propBool('org.gradle.daemon') ?? true,
       gradleDevelocityDetected: _detectDevelocity(projectRoot, homeDir),
       gradleInitScriptCount: _countInitScripts(homeDir),
       iosCcacheAvailable: _detectCcache(environment),
