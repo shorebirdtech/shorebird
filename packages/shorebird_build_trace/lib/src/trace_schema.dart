@@ -56,7 +56,7 @@ class TraceSchema {
   /// Prefix for the outer gradle span. Span name is
   /// `"gradle <assembleTask>"` where `<assembleTask>` is the variant-
   /// specific task (e.g. `assembleRelease`, `bundleFooRelease`).
-  /// shorebird bucketizes by the `gradle` category rather than parsing
+  /// shorebird buckets by the `gradle` category rather than parsing
   /// this prefix, but it's kept here for documentation.
   static const String gradleSpanPrefix = 'gradle ';
 

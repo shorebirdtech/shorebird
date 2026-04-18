@@ -106,8 +106,10 @@ words:
   - rdata
   - reactivecircus # From .github dir, doesn't show up in "**" check?
   - readlink
+  - reimplementation
   - reinit
   - requirepass # From .github dir, doesn't show up in "**" check?
+  - spawnee
   - Retryable
   - RSAPKCS
   - sdcard # From .github/workflows/e2e.yaml
