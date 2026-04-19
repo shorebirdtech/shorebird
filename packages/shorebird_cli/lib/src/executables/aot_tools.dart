@@ -125,11 +125,12 @@ class LinkFailureException implements Exception {
     final details = linkFailure['details'];
     if (details is! Map) return null;
     final dataHash = details['vm_data_hash'];
-    final insnHash = details['vm_instructions_hash'];
-    if (dataHash is! Map || insnHash is! Map) return null;
+    final instructionsHash = details['vm_instructions_hash'];
+    if (dataHash is! Map || instructionsHash is! Map) return null;
     final dataDiffers = dataHash['base'] != dataHash['patch'];
-    final insnMatches = insnHash['base'] == insnHash['patch'];
-    if (dataDiffers && insnMatches) {
+    final instructionsMatch =
+        instructionsHash['base'] == instructionsHash['patch'];
+    if (dataDiffers && instructionsMatch) {
       return '''
 The VM data section differs between the release and the patch, while the
 instruction section matches. This typically means the release and patch were
@@ -363,7 +364,7 @@ class AotTools {
   }
 
   /// Returns the first `link_failure` event in the link JSONL output, or
-  /// null if the file is missing, unparseable, or contains no such event.
+  /// null if the file is missing, malformed, or contains no such event.
   Map<String, dynamic>? _extractLinkFailure(File file) {
     if (!file.existsSync()) return null;
     try {
