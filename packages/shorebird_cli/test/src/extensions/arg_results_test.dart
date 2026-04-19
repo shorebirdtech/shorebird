@@ -99,6 +99,84 @@ void main() {
         });
       });
     });
+
+    group('flagPresent', () {
+      late ArgParser flagParser;
+
+      setUp(() {
+        flagParser = ArgParser()..addFlag('obfuscate');
+      });
+
+      test('returns true when flag is parsed as true', () {
+        final results = flagParser.parse(['--obfuscate']);
+        expect(results.flagPresent('obfuscate'), isTrue);
+      });
+
+      test('returns false when flag is parsed as false', () {
+        final results = flagParser.parse(['--no-obfuscate']);
+        expect(results.flagPresent('obfuscate'), isFalse);
+      });
+
+      test('returns false when flag is absent', () {
+        final results = flagParser.parse([]);
+        expect(results.flagPresent('obfuscate'), isFalse);
+      });
+
+      test('returns true when flag appears after -- in rest', () {
+        final results = flagParser.parse(['--', '--obfuscate']);
+        expect(results.flagPresent('obfuscate'), isTrue);
+      });
+
+      test('returns true when flag is both parsed and in rest', () {
+        final results = flagParser.parse(['--obfuscate', '--', '--obfuscate']);
+        expect(results.flagPresent('obfuscate'), isTrue);
+      });
+
+      test(
+        'returns false when a different flag is in rest but not --name',
+        () {
+          final results = flagParser.parse(['--', '--no-obfuscate']);
+          expect(results.flagPresent('obfuscate'), isFalse);
+        },
+      );
+    });
+
+    group('optionPresent', () {
+      late ArgParser optionParser;
+
+      setUp(() {
+        optionParser = ArgParser()..addOption('split-debug-info');
+      });
+
+      test('returns true when option is parsed with a value', () {
+        final results = optionParser.parse(['--split-debug-info=foo']);
+        expect(results.optionPresent('split-debug-info'), isTrue);
+      });
+
+      test('returns false when option is absent', () {
+        final results = optionParser.parse([]);
+        expect(results.optionPresent('split-debug-info'), isFalse);
+      });
+
+      test('returns true for --name=value after --', () {
+        final results = optionParser.parse(['--', '--split-debug-info=foo']);
+        expect(results.optionPresent('split-debug-info'), isTrue);
+      });
+
+      test('returns true for bare --name after -- (space-separated value)', () {
+        final results = optionParser.parse([
+          '--',
+          '--split-debug-info',
+          'foo',
+        ]);
+        expect(results.optionPresent('split-debug-info'), isTrue);
+      });
+
+      test('does not match a similarly-prefixed flag in rest', () {
+        final results = optionParser.parse(['--', '--split-debug-info-extra']);
+        expect(results.optionPresent('split-debug-info'), isFalse);
+      });
+    });
   });
 
   group('forwardedArgs', () {
