@@ -19,6 +19,10 @@ extension OptionFinder on ArgResults {
   /// Use this for flags that Shorebird and Flutter both understand
   /// (e.g. `--obfuscate`), so users can pass them either before or after
   /// `--` without changing behavior.
+  ///
+  /// Does not handle negation in [rest]: `--no-$name` after `--` is ignored,
+  /// and `-- --$name --no-$name` would incorrectly report the flag as set.
+  /// Safe for non-negatable flags; use a smarter scan if negation matters.
   bool flagPresent(String name) =>
       (wasParsed(name) && this[name] == true) ||
       rest.any((a) => a == '--$name');
