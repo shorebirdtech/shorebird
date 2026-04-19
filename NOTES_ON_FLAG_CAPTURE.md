@@ -61,13 +61,18 @@ only presence.
 
 - Values of `--dart-define=KEY=VALUE` are constant-folded into the AOT snapshot
   (`String.fromEnvironment('KEY')` returns the value as a compile-time const).
-  Any shipped binary already contains every define value. Recording them
-  server-side is not a net new disclosure.
-- Dart-define *keys* usually do NOT survive into the binary — `String.
-  fromEnvironment` is evaluated by the front-end compiler, which substitutes
-  the value and drops the key. So recording keys is a mild new disclosure, but
-  the customer passed the key on the command line at release time knowing it
-  would drive the build — the expectation is low.
+  Any shipped binary contains every define value. Recording them server-side
+  is not a net new disclosure.
+- Dart-define *keys* are stripped when used in a `const` context (the front
+  end fully evaluates the call and the key literal has no other reference),
+  but DO survive into the binary when used in a non-const context (e.g.
+  `var x = String.fromEnvironment('KEY');`). Idiomatic Dart uses const
+  (`static const X = String.fromEnvironment('KEY');`), so in practice keys
+  are usually stripped — but not guaranteed. We treat keys as "already in the
+  binary in the common case," which under our rule makes them recordable, but
+  it's worth being explicit that this is a mild additional disclosure in the
+  minority non-const case. Verified empirically by compiling a small test
+  program and grepping the AOT output.
 - Paths (`--split-debug-info`, `--target`, `--export-options-plist`,
   `--dart-define-from-file`, `--public-key-path`, `--private-key-path`) leak
   local workspace layout and occasionally sensitive filenames. **Do not
@@ -75,50 +80,90 @@ only presence.
 - Secrets (private key material, `--sign-cmd`) are obviously off-limits and do
   not affect the snapshot anyway.
 
-We deliberately do not hash values to avoid the complexity — the argument for
-hashing is "don't store the plaintext," but per the rule above, plaintext of
-binary-embedded values is already public, and plaintext of path/secret values
-shouldn't be stored at all.
+We deliberately do not hash values:
+
+- For values already in the binary (dart-define values), hashing buys no
+  privacy and only adds complexity.
+- For paths and other not-in-binary values, hashing would also be useless for
+  verification — the same release rebuilt on a different machine (different
+  `$HOME`, workspace layout, CI runner) produces different path hashes
+  without anything meaningful having changed. The comparison would be pure
+  noise. What's actually useful for paths is *presence* ("was
+  --split-debug-info used at all?"), not value equality.
+
+So: record plaintext where it's safe and meaningful, record presence where
+it isn't, don't hash.
 
 ## Flag taxonomy
 
-Three buckets. Each known shorebird-recognized flag is classified.
+The scope here is the AOT snapshot specifically — i.e. what ends up in the
+`__snapshot_data` / `__snapshot_instructions` sections that the linker
+compares. A flag belongs in this document only if it changes those bytes.
 
-### Record value (safe; affects snapshot)
+The AOT snapshot is produced by `gen_snapshot`, whose inputs are:
 
-| Flag | Source | Notes |
+1. The kernel (.dill) compiled from the Dart source, which bakes in every
+   `String.fromEnvironment` / `int.fromEnvironment` / `bool.fromEnvironment`
+   value evaluated at compile time, and is rooted at the user's entry point.
+2. `gen_snapshot` flags like `--obfuscate`, `--save-obfuscation-map`, and
+   `--strip`.
+
+So the flags that materially affect snapshot bytes are a small set:
+
+- `--obfuscate` — drives identifier renaming in VM data and changes
+  `gen_snapshot`'s argv via `addObfuscationMapArgs`.
+- `--dart-define=K=V` and `--dart-define-from-file=<path>` — values are
+  constant-folded into the kernel → into VM data.
+- `--target=<path>` — selects the entry point, which roots tree-shaking and
+  determines what's in the kernel.
+- `--split-debug-info=<path>` — required companion to `--obfuscate` (Flutter
+  rejects obfuscation without it). Controls whether `gen_snapshot` strips
+  DWARF. It primarily changes DWARF sections rather than the VM snapshot
+  sections, but its presence correlates with obfuscation's strip-behavior, so
+  we track it for completeness and to auto-apply alongside `--obfuscate`.
+
+Everything else is out of scope for this doc. Notable exclusions:
+
+- **`--build-name`, `--build-number`** — land in `AndroidManifest.xml` /
+  `Info.plist`, not in the AOT snapshot. Patch-time consistency is already
+  handled by `Patcher.buildNameAndNumberArgsFromReleaseVersion`
+  (`patcher.dart:279`), which auto-injects them from the stored
+  `releaseVersion`.
+- **`--flavor`** — selects an Android product flavor / iOS scheme. Only
+  affects the snapshot transitively, via whatever `--target` and
+  `--dart-define`s the flavor implies — both of which we already capture.
+- **`--tree-shake-icons`** — changes the bundled icon font bytes (asset), not
+  the AOT snapshot. Asset diffs are checked separately by `PatchDiffChecker`.
+- **`--split-per-abi`** — chooses which architectures are emitted; each arch
+  already has its own independent snapshot.
+- **`--export-method`, `--export-options-plist`** — iOS IPA packaging,
+  post-snapshot.
+- **`--codesign`, `--dry-run`, `--confirm`, `--no-confirm`, `--staging`,
+  `--track`, `--release-version`, `--platforms`, signing keys
+  (`--public-key-path`, `--private-key-path`, `--public-key-cmd`,
+  `--sign-cmd`), `--allow-native-diffs`, `--allow-asset-diffs`,
+  `--min-link-percentage`** — CLI behavior, lookup keys, signing, or gating,
+  not snapshot inputs.
+
+### Classification
+
+| Flag | Bucket | Rationale |
 |---|---|---|
-| `--obfuscate` | shorebird | Bool. Already effectively tracked via the obfuscation-map supplement; this makes it explicit. |
-| `--tree-shake-icons` / `--no-tree-shake-icons` | flutter (passed via `rest`) | Bool. Changes asset manifest. |
-| `--split-per-abi` | shorebird (Android) | Bool. Determines output shape; not strictly a snapshot attribute but changes patch-output expectations. |
-| `--dart-define=K=V` | shorebird | Both key and value. Per privacy rule: values are already in the binary. |
-| `--dart-define-from-file=<path>` | shorebird | Expand at release time to k=v pairs and record both. The path is a local detail; the file *contents* are binary-embedded and therefore already public. (Open question: file contents can contain entries the user considered file-private — see Open Questions.) |
-| `--build-name` | shorebird | String. Bakes into app version. |
-| `--build-number` | shorebird | String. Bakes into app version. |
-| `--flavor` | shorebird | String. Determines build variant. |
-| `--export-method` | shorebird (iOS) | Enum (`app-store` / `ad-hoc` / `development` / `enterprise`). Not a snapshot attribute but affects produced IPA. |
-
-### Record presence only (value is a path or otherwise not-in-binary)
-
-| Flag | Source | Notes |
-|---|---|---|
-| `--split-debug-info=<path>` | shorebird | Presence means "release was built with split-debug-info" — the patch must also split. We can auto-add `--split-debug-info` at patch time, but with a *new* temp path. |
-| `--target=<path>` | shorebird | Entry-point path. Different entry = different snapshot. Presence alone can't tell us the entry — so this bucket means "release used a non-default target; patch must specify one too, and we cannot auto-imply". |
-| `--export-options-plist=<path>` | shorebird (iOS) | Presence. |
-
-### Don't record (irrelevant to snapshot identity)
-
-`--codesign`, `--dry-run`, `--confirm`, `--no-confirm`, `--staging`, `--track`,
-`--release-version`, `--platforms`, `--public-key-path`, `--private-key-path`,
-`--public-key-cmd`, `--sign-cmd`, `--allow-native-diffs`, `--allow-asset-diffs`,
-`--min-link-percentage`.
+| `--obfuscate` | Record value (bool) | Drives gen_snapshot identifier renaming; values in VM data. |
+| `--dart-define=K=V` | Record value (map of k→v) | Per privacy rule, values are already const-folded into the shipped binary. |
+| `--dart-define-from-file=<path>` | Record value (expand file to k→v, merge with `--dart-define`) | Same as above after expansion; path itself not recorded. |
+| `--target=<path>` | Record presence | Different entry = different snapshot; path is local, can't auto-imply. |
+| `--split-debug-info=<path>` | Record presence | Required companion to `--obfuscate`; auto-apply at patch time with a new temp path when release had it. |
 
 ### Unknown flags in `rest`
 
-Everything after `--` that we don't recognize is forwarded to `flutter build`.
-We don't know the semantics of arbitrary flutter flags, so conservatively
-**record presence only** under a separate `rest_presence` list. That lets us detect drift
-without leaking potentially-sensitive values.
+Everything after `--` that shorebird doesn't recognize is forwarded to
+`flutter build`. For v1 we **do not** attempt to capture unknown rest flags
+— we don't know whether they affect the snapshot, and the conservative
+privacy stance (don't record paths or unknown-shape values) means presence-
+only tracking is the most we could do, which is weak signal. If a specific
+flutter flag turns out to matter in practice we'll classify it explicitly
+and move it into the known set.
 
 ## Captured record shape (draft)
 
@@ -129,19 +174,13 @@ One top-level record per release, keyed by release + platform. Draft JSON:
   "version": 1,
   "flags": {
     "obfuscate": {"kind": "bool", "value": true},
-    "tree-shake-icons": {"kind": "bool", "value": true},
     "split-debug-info": {"kind": "presence"},
     "target": {"kind": "presence"},
-    "flavor": {"kind": "value", "value": "production"},
-    "build-name": {"kind": "value", "value": "1.2.3"},
-    "build-number": {"kind": "value", "value": "45"},
-    "export-method": {"kind": "value", "value": "app-store"},
     "dart-define": {
       "kind": "key-value-map",
       "entries": {"SERVER_URL": "https://…", "DISABLE_AUTH": "false"}
     }
-  },
-  "rest_presence": ["--some-flutter-flag"]
+  }
 }
 ```
 
@@ -157,14 +196,12 @@ BuildFlagRecord captureBuildFlags(ArgResults results);
 ```
 
 - Classifier table maps flag name → (bucket, extractor). Extractors are small:
-  `bool` → read `results[name]`; `value` → read `results[name]` or
-  `findOption(..., rest)`; `presence` → `flagPresent(...)` or `optionPresent(...)`
-  from the helpers landed in #3698.
+  `bool` → `flagPresent(name)`; `presence` → `optionPresent(name)`; dart-defines
+  → read multi-option values plus `findOption(..., rest)` for post-`--` entries.
+  All helpers live on the `ArgResults` extension (landed in #3698).
 - `dart-define-from-file` is expanded inline at release time by reading the
-  referenced .json/.env file and merging with `--dart-define` entries (with
-  --dart-define winning on key conflict, matching Flutter).
-- Unknown `rest` entries are captured as presence-only tokens (stripping
-  `=<value>` suffixes before storage).
+  referenced .json/.env file and merging with `--dart-define` entries, with
+  `--dart-define` winning on key conflict (matching Flutter's behavior).
 
 Upload: TBD, see Storage below.
 
@@ -173,51 +210,51 @@ Upload: TBD, see Storage below.
 Implemented as a pure function over `BuildFlagRecord` (from the release) plus
 the current `ArgResults`. Three outcome classes:
 
-### 1. Flag with recorded value — auto-imply when missing
+### 1. `--obfuscate` — auto-imply when missing
 
-If the release had `--obfuscate`, `--flavor=foo`, `--build-name=1.2.3`, etc.,
-and the user's current `shorebird patch` invocation doesn't pass the same
-value, the patch command synthesizes the flag and passes it through to
-flutter. The user sees an info-level log:
+If the release recorded `obfuscate: true`:
 
-```
-Applying --flavor=production from release (captured at release time).
-```
+- Patch passed `--obfuscate` too: silent no-op.
+- Patch didn't pass `--obfuscate`: auto-apply it, log at info level
+  (`Applying --obfuscate from release`). Also auto-add a `--split-debug-info`
+  pointing at a fresh temp directory, since Flutter requires the two together
+  and we recorded only the *presence* of `--split-debug-info`, not its path.
+- Patch passed `--no-obfuscate` (or shorebird registered `--obfuscate` as
+  `negatable: false` today, in which case this is unreachable): fail. Do not
+  silently override user intent.
 
-Exceptions:
-- If the user passed the same flag with a **different** value, fail — we do
-  not silently override the user's explicit intent.
-- If the user passed the same flag with the **same** value, silent no-op.
+If the release recorded `obfuscate: false` but the patch invocation passed
+`--obfuscate`: fail (the existing check at `patch_command.dart:440` already
+does this via the obfuscation-map supplement; post-implementation we can fold
+both checks into the flag-capture path).
 
-### 2. Flag with recorded value — `--dart-define` diff
+### 2. `--dart-define` diff
 
-Compare the recorded dart-define map to the patch invocation's map
-(`--dart-define` + `--dart-define-from-file`). Diff:
+Compare the recorded dart-define map to the patch invocation's combined map
+(`--dart-define` + `--dart-define-from-file`). Diff, in precedence order:
 
-- Release had key `X`, patch missing: auto-add `--dart-define=X=<captured>`,
+- Release had key `X=a`, patch has `X=b`: **fail** with message listing the
+  key and both values, exit before building.
+- Patch has key `Y`, release didn't: **fail** (the new define would produce
+  VM-data constants present in patch but not in base).
+- Release had key `X`, patch missing: **auto-add** `--dart-define=X=<captured>`,
   info log.
-- Release had key `X=a`, patch has `X=b`: fail with message listing the key
-  and both values, exit before building.
-- Patch has key `Y`, release didn't: fail (new define wasn't in the baseline;
-  its constants would appear in patch VM data but not base).
 
-### 3. Flag with recorded presence — must be present, value is user-supplied
+### 3. `--target` — require presence, don't auto-imply
 
-`--split-debug-info` and friends. At patch time:
+If the release recorded `target: presence`:
 
-- If the user passed the flag: fine, use their value.
-- If they didn't: fail with a specific message naming the flag, e.g.
-  `--split-debug-info was used at release time; pass it to this patch too`.
+- Patch passed `--target=<something>`: accept the user's path; we can't
+  validate it matches because we didn't record the value.
+- Patch didn't pass `--target`: fail with a specific message —
+  `the release was built with a non-default --target; pass --target to this
+  patch as well.`
 
-`--target` is the same shape. We can't auto-imply because we didn't record
-the path.
+### 4. `--split-debug-info` — follow from `--obfuscate` behavior
 
-### Rest presence
-
-If the release's `rest_presence` contains a token the patch's rest doesn't,
-surface a warning (not an error — these are flags we don't understand the
-semantics of, so we'd rather be loud than block). Conversely, a new unknown
-flag in the patch is also a warning.
+If the release recorded `split-debug-info: presence` (which in practice means
+the release was obfuscated; the flag is a required companion), the
+auto-apply path under case (1) handles it. No separate verification needed.
 
 ## Storage (deferred)
 
