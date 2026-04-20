@@ -88,9 +88,11 @@ class ShorebirdTracer {
   /// No-op if the file doesn't exist or isn't a JSON array.
   void mergeInto(File traceFile) {
     if (!traceFile.existsSync()) return;
+    final List<Map<String, Object?>> existingEvents;
     try {
       final decoded = jsonDecode(traceFile.readAsStringSync());
       if (decoded is! List) return;
+      existingEvents = decoded.whereType<Map<String, Object?>>().toList();
     } on FormatException {
       return;
     }
@@ -101,8 +103,8 @@ class ShorebirdTracer {
         pid: _pid,
         tid: _shorebirdTid,
         name: 'shorebird_cli',
-      );
-    _tracer.writeToFile(traceFile);
+      )
+      ..writeToFile(traceFile, existingEvents: existingEvents);
   }
 }
 

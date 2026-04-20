@@ -414,9 +414,19 @@ class BuildTracer {
   /// Writes events to [file] as a JSON array, merging with any events
   /// already there. Existing non-list / unreadable content is
   /// overwritten; missing parent directories are created.
-  void writeToFile(File file) {
+  ///
+  /// If [existingEvents] is provided, it is used in place of re-reading
+  /// [file]. Callers that have already parsed [file] (e.g. to decide
+  /// whether to merge at all) can pass the parsed events here to avoid
+  /// a redundant read-and-parse.
+  void writeToFile(
+    File file, {
+    List<Map<String, Object?>>? existingEvents,
+  }) {
     final merged = <Map<String, Object?>>[];
-    if (file.existsSync()) {
+    if (existingEvents != null) {
+      merged.addAll(existingEvents);
+    } else if (file.existsSync()) {
       try {
         final decoded = json.decode(file.readAsStringSync());
         if (decoded is List) {

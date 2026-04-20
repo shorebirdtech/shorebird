@@ -277,6 +277,40 @@ void main() {
       expect((decoded[1] as Map)['name'], 'new');
     });
 
+    test('writeToFile uses existingEvents instead of re-reading file', () {
+      // Write something to the file that, if read, would corrupt the
+      // merge output. Passing existingEvents should make writeToFile
+      // ignore the file contents entirely.
+      traceFile.writeAsStringSync('garbage that would fail to parse');
+      BuildTracer()
+        ..addCompleteEvent(
+          name: 'new',
+          cat: 'c',
+          pid: 1,
+          tid: 1,
+          start: DateTime.fromMicrosecondsSinceEpoch(0),
+          end: DateTime.fromMicrosecondsSinceEpoch(1),
+        )
+        ..writeToFile(
+          traceFile,
+          existingEvents: [
+            {
+              'ph': 'X',
+              'name': 'preparsed',
+              'cat': 'c',
+              'ts': 0,
+              'dur': 1,
+              'pid': 1,
+              'tid': 1,
+            },
+          ],
+        );
+      final decoded = jsonDecode(traceFile.readAsStringSync()) as List;
+      expect(decoded, hasLength(2));
+      expect((decoded[0] as Map)['name'], 'preparsed');
+      expect((decoded[1] as Map)['name'], 'new');
+    });
+
     test('writeToFile overwrites corrupt existing file', () {
       traceFile.writeAsStringSync('not json');
       BuildTracer()
