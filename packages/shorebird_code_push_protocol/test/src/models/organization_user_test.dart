@@ -5,7 +5,7 @@ void main() {
   group(OrganizationUser, () {
     test('can be (de)serialized', () {
       final organizationUser = OrganizationUser(
-        user: PublicUser.fromPrivateUser(PrivateUser.forTest()),
+        user: publicUserFromPrivateUser(privateUserForTest()),
         role: Role.developer,
       );
       expect(

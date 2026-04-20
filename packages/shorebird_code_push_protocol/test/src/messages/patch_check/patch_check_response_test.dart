@@ -6,11 +6,9 @@ void main() {
     test('uses value equality', () {
       expect(
         // Ignoring for value quality testing.
-        // ignore: prefer_const_constructors
-        PatchCheckResponse(patchAvailable: true),
+        const PatchCheckResponse(patchAvailable: true),
         // Ignoring for value quality testing.
-        // ignore: prefer_const_constructors
-        equals(PatchCheckResponse(patchAvailable: true)),
+        equals(const PatchCheckResponse(patchAvailable: true)),
       );
     });
 
@@ -34,21 +32,17 @@ void main() {
     test('PatchCheckMetadata uses value equality', () {
       expect(
         // Ignoring for value quality testing.
-        // ignore: prefer_const_constructors
-        PatchCheckMetadata(
+        const PatchCheckMetadata(
           number: 1,
           downloadUrl: 'https://download.com',
           hash: '1234',
-          hashSignature: null,
         ),
         equals(
           // Ignoring for value quality testing.
-          // ignore: prefer_const_constructors
-          PatchCheckMetadata(
+          const PatchCheckMetadata(
             number: 1,
             downloadUrl: 'https://download.com',
             hash: '1234',
-            hashSignature: null,
           ),
         ),
       );
@@ -59,7 +53,6 @@ void main() {
         number: 1,
         downloadUrl: 'https://download.com',
         hash: '1234',
-        hashSignature: null,
       );
       expect(
         PatchCheckMetadata.fromJson(metadata.toJson()).toJson(),
@@ -74,15 +67,18 @@ void main() {
           number: 1,
           downloadUrl: 'https://download.com',
           hash: '1234',
-          hashSignature: null,
         ),
       );
+      // Generated code always emits nullable fields as `null` rather than
+      // dropping them. Wire-equivalent for JSON consumers that treat
+      // absent == null.
       expect(response.toJson(), {
         'patch_available': true,
         'patch': {
           'number': 1,
           'download_url': 'https://download.com',
           'hash': '1234',
+          'hash_signature': null,
         },
         'rolled_back_patch_numbers': null,
       });

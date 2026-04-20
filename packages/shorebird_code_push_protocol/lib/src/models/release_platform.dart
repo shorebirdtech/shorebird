@@ -1,29 +1,48 @@
 /// A platform to which a Shorebird release can be deployed.
 enum ReleasePlatform {
-  /// Android
-  android('Android'),
+  /// Android.
+  android._('android'),
 
-  /// iOS
-  ios('iOS'),
+  /// iOS.
+  ios._('ios'),
 
-  /// Linux
-  linux('Linux'),
+  /// Linux.
+  linux._('linux'),
 
-  /// macOS
-  macos('macOS'),
+  /// macOS.
+  macos._('macos'),
 
-  /// Windows
-  windows('Windows');
+  /// Windows.
+  windows._('windows');
 
-  const ReleasePlatform(this.displayName);
+  const ReleasePlatform._(this.value);
 
-  /// The display name of the platform.
-  final String displayName;
+  /// Creates a ReleasePlatform from a json string.
+  factory ReleasePlatform.fromJson(String json) {
+    return ReleasePlatform.values.firstWhere(
+      (value) => value.value == json,
+      orElse: () =>
+          throw FormatException('Unknown ReleasePlatform value: $json'),
+    );
+  }
 
-  /// Whether the platform supports flavors.
-  bool get supportsFlavors => {
-    ReleasePlatform.android,
-    ReleasePlatform.ios,
-    ReleasePlatform.macos,
-  }.contains(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static ReleasePlatform? maybeFromJson(String? json) {
+    if (json == null) {
+      return null;
+    }
+    return ReleasePlatform.fromJson(json);
+  }
+
+  /// The value of the enum, as a string.  This is the exact value
+  /// from the OpenAPI spec and will be used for network transport.
+  final String value;
+
+  /// Converts the enum to a json string.
+  String toJson() => value;
+
+  /// Returns the string value of the enum.
+  @override
+  String toString() => value;
 }

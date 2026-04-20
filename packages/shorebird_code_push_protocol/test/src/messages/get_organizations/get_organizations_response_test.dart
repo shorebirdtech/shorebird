@@ -7,7 +7,7 @@ void main() {
       final getOrganizationsResponse = GetOrganizationsResponse(
         organizations: [
           OrganizationMembership(
-            organization: Organization.forTest(),
+            organization: organizationForTest(),
             role: Role.developer,
           ),
         ],
