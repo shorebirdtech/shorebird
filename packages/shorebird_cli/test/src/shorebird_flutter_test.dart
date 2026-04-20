@@ -78,6 +78,9 @@ void main() {
         ),
       ).thenAnswer((_) async => '');
       when(
+        () => git.fetch(directory: any(named: 'directory')),
+      ).thenAnswer((_) async {});
+      when(
         () => git.revParse(
           revision: any(named: 'revision'),
           directory: any(named: 'directory'),
@@ -448,6 +451,40 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
             () => shorebirdFlutter.resolveFlutterVersion('deadbeef'),
           );
           expect(revision, equals(Version(1, 2, 3)));
+        });
+      });
+    });
+
+    group('fetchRemoteRefs', () {
+      test('fetches from remote', () async {
+        when(
+          () => git.fetch(directory: any(named: 'directory')),
+        ).thenAnswer((_) async {});
+
+        await runWithOverrides(
+          () => shorebirdFlutter.fetchRemoteRefs(),
+        );
+
+        verify(
+          () => git.fetch(directory: any(named: 'directory')),
+        ).called(1);
+      });
+
+      group('when fetch fails', () {
+        setUp(() {
+          when(
+            () => git.fetch(directory: any(named: 'directory')),
+          ).thenThrow(Exception('no network'));
+        });
+
+        test('logs a warning', () async {
+          await runWithOverrides(
+            () => shorebirdFlutter.fetchRemoteRefs(),
+          );
+
+          verify(
+            () => logger.warn(any(that: contains('stale'))),
+          ).called(1);
         });
       });
     });
