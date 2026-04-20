@@ -241,7 +241,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           // callback is wired in the first place.
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 41, 8));
+          ).thenAnswer((_) async => Version(3, 41, 7));
 
           // Capture the onStart callback the builder hands to
           // process.stream so we can invoke it with a fake child Process
@@ -283,7 +283,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       test('adds --trace when Flutter supports build tracing', () async {
         when(
           () => shorebirdFlutter.resolveFlutterVersion(any()),
-        ).thenAnswer((_) async => Version(3, 41, 8));
+        ).thenAnswer((_) async => Version(3, 41, 7));
 
         await runWithOverrides(() async {
           await builder.prepareBuildTrace(platform: 'android');
@@ -529,7 +529,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         setUp(() {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 41, 8));
+          ).thenAnswer((_) async => Version(3, 41, 7));
         });
 
         test(
@@ -845,7 +845,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 41, 8));
+          ).thenAnswer((_) async => Version(3, 41, 7));
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'android');
@@ -1042,7 +1042,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 41, 8));
+          ).thenAnswer((_) async => Version(3, 41, 7));
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'linux');
@@ -1214,7 +1214,7 @@ Reason: Exited with code 70.'''),
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 41, 8));
+          ).thenAnswer((_) async => Version(3, 41, 7));
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'macos');
@@ -1526,7 +1526,7 @@ Reason: Exited with code 70.'''),
         setUp(() {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 41, 8));
+          ).thenAnswer((_) async => Version(3, 41, 7));
         });
 
         test(
@@ -1698,7 +1698,7 @@ Reason: Exited with code 70.'''),
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 41, 8));
+          ).thenAnswer((_) async => Version(3, 41, 7));
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'ios');
@@ -1985,7 +1985,7 @@ Reason: Exited with code 70.'''),
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 41, 8));
+          ).thenAnswer((_) async => Version(3, 41, 7));
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'windows');
@@ -2152,13 +2152,11 @@ Reason: Exited with code 70.'''),
       test(
         'sets traceFile for an allowlisted revision below the floor',
         () async {
-          // Version is below the min floor, but the revision is in the
-          // allowlist — covers the bridge window where Shorebird has
-          // shipped tracing under the current Flutter version and
-          // upstream hasn't bumped yet.
+          // Version is strictly below the min floor, so only the
+          // allowlist can admit this combination.
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 41, 7));
+          ).thenAnswer((_) async => Version(3, 41, 6));
           when(() => shorebirdEnv.flutterRevision).thenReturn(
             buildTraceSupportConstraint.allowedRevisions.first,
           );
@@ -2175,7 +2173,7 @@ Reason: Exited with code 70.'''),
       test('logs detail and returns when trace file is missing', () async {
         when(
           () => shorebirdFlutter.resolveFlutterVersion(any()),
-        ).thenAnswer((_) async => Version(3, 41, 8));
+        ).thenAnswer((_) async => Version(3, 41, 7));
 
         await runWithOverrides(() async {
           await builder.prepareBuildTrace(platform: 'android');

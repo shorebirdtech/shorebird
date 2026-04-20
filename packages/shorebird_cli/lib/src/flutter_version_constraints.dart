@@ -69,14 +69,16 @@ class FlutterSupportConstraint {
 /// Chrome Trace Event Format build traces.
 ///
 /// Added in shorebirdtech/flutter#116. `minVersion` is set to the next
-/// Flutter revision past the current Shorebird Flutter pin; the allowlist
-/// covers the current pin so users on it get tracing today.
+/// minor past the latest Shorebird Flutter release (currently 3.41.6), so
+/// whenever that PR gets cut as 3.41.7 the floor covers it cleanly. Until
+/// then, the allowlist covers the current pin hash so users on it get
+/// tracing today.
 final buildTraceSupportConstraint = FlutterSupportConstraint(
-  minVersion: Version(3, 41, 8),
+  minVersion: Version(3, 41, 7),
   allowedRevisions: {
-    // Current Shorebird Flutter pin (bin/internal/flutter.version).
-    // Append a new entry here whenever the pin is rolled to another
-    // 3.41.7 revision before upstream Flutter produces 3.41.8+.
+    // Current Shorebird Flutter pin (bin/internal/flutter.version). Can
+    // be removed once a flutter_release/3.41.7 branch ships with this
+    // (or a later tracing-enabled) commit at its tip.
     '3b10eecea184bb381f1045a878eeff36548ed11e',
   },
 );
