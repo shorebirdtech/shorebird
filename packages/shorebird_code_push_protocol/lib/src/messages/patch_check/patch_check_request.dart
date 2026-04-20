@@ -77,8 +77,10 @@ class PatchCheckRequest {
 
   /// The number of the patch currently running on the device, if any.
   ///
-  /// Reported by newer updaters for analytics (e.g. MAU breakdowns by patch).
-  /// Unlike [patchNumber], this does not affect the server's response.
+  /// Supersedes [patchNumber] for newer updater clients. Unlike
+  /// [patchNumber], this does not affect the server's response;
+  /// [patchNumber] is retained for compatibility with legacy clients that
+  /// rely on the server's short-circuit path.
   final int? currentPatchNumber;
 
   /// Converts a [PatchCheckRequest] to a `Map<String, dynamic>`.
