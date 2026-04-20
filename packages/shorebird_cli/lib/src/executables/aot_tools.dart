@@ -265,6 +265,7 @@ class AotTools {
     required String outputPath,
     String? workingDirectory,
     String? dumpDebugInfoPath,
+    int? ddMaxBytes,
     List<String> additionalArgs = const [],
   }) async {
     // We use the json lines format. https://jsonlines.org
@@ -284,6 +285,7 @@ class AotTools {
         '--reporter=json',
         '--redirect-to=${p.join(outputDir, linkJson)}',
       ],
+      if (ddMaxBytes != null) '--dd-max-bytes=$ddMaxBytes',
       if (dumpDebugInfoPath != null) '--dump-debug-info=$dumpDebugInfoPath',
       if (additionalArgs.isNotEmpty) ...['--', ...additionalArgs],
     ], workingDirectory: workingDirectory);
