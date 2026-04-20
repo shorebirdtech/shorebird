@@ -193,6 +193,9 @@ void main() {
             shorebirdFlutter.installRevision(revision: any(named: 'revision')),
       ).thenAnswer((_) async => {});
       when(
+        () => shorebirdFlutter.fetchRemoteRefs(),
+      ).thenAnswer((_) async {});
+      when(
         () => shorebirdFlutter.resolveFlutterVersion(any()),
       ).thenAnswer((_) async => flutterVersion);
 
@@ -610,6 +613,17 @@ void main() {
       const flutterVersion = '3.16.3';
       setUp(() {
         when(() => argResults['flutter-version']).thenReturn(flutterVersion);
+      });
+
+      test('fetches remote refs before resolving', () async {
+        const revision = '771d07b2cf';
+        when(
+          () => shorebirdFlutter.resolveFlutterRevision(any()),
+        ).thenAnswer((_) async => revision);
+
+        await runWithOverrides(command.run);
+
+        verify(() => shorebirdFlutter.fetchRemoteRefs()).called(1);
       });
 
       group('when unable to determine flutter revision', () {
