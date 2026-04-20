@@ -547,14 +547,16 @@ Reason: Exited with code $exitCode.''',
   /// (leaves session fields null → builders emit no tracing args).
   Future<void> prepareBuildTrace({required String platform}) async {
     buildTraceSession.platform = platform;
+    final revision = shorebirdEnv.flutterRevision;
     final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
-      shorebirdEnv.flutterRevision,
+      revision,
     );
     // Treat an unknown version (e.g. a pinned dev revision) as new enough,
     // matching the pattern used for other version-gated features.
-    final supportsTrace =
-        (flutterVersion ?? minimumBuildTraceFlutterVersion) >=
-        minimumBuildTraceFlutterVersion;
+    final supportsTrace = buildTraceSupportConstraint.isSatisfiedBy(
+      version: flutterVersion ?? buildTraceSupportConstraint.minVersion,
+      revision: revision,
+    );
     if (!supportsTrace) {
       buildTraceSession.traceFile = null;
       return;
