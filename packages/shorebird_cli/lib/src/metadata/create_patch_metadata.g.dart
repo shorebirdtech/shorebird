@@ -17,7 +17,7 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(
     final val = CreatePatchMetadata(
       releasePlatform: $checkedConvert(
         'release_platform',
-        (v) => $enumDecode(_$ReleasePlatformEnumMap, v),
+        (v) => ReleasePlatform.fromJson(v as String),
       ),
       usedIgnoreAssetChangesFlag: $checkedConvert(
         'used_ignore_asset_changes_flag',
@@ -70,7 +70,7 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(
 Map<String, dynamic> _$CreatePatchMetadataToJson(
   CreatePatchMetadata instance,
 ) => <String, dynamic>{
-  'release_platform': _$ReleasePlatformEnumMap[instance.releasePlatform]!,
+  'release_platform': instance.releasePlatform.toJson(),
   'used_ignore_asset_changes_flag': instance.usedIgnoreAssetChangesFlag,
   'has_asset_changes': instance.hasAssetChanges,
   'used_ignore_native_changes_flag': instance.usedIgnoreNativeChangesFlag,
@@ -81,12 +81,4 @@ Map<String, dynamic> _$CreatePatchMetadataToJson(
   'is_signed': instance.isSigned,
   'environment': instance.environment.toJson(),
   'build_trace_summary': instance.buildTraceSummary,
-};
-
-const _$ReleasePlatformEnumMap = {
-  ReleasePlatform.android: 'android',
-  ReleasePlatform.ios: 'ios',
-  ReleasePlatform.linux: 'linux',
-  ReleasePlatform.macos: 'macos',
-  ReleasePlatform.windows: 'windows',
 };

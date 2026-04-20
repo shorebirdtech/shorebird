@@ -297,11 +297,11 @@ void main() {
         test('returns organization memberships on success', () async {
           final expectedMemberships = [
             OrganizationMembership(
-              organization: Organization.forTest(),
+              organization: organizationForTest(),
               role: Role.admin,
             ),
             OrganizationMembership(
-              organization: Organization.forTest(),
+              organization: organizationForTest(),
               role: Role.developer,
             ),
           ];
