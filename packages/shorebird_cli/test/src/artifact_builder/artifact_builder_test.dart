@@ -2167,6 +2167,23 @@ Reason: Exited with code 70.'''),
           });
         },
       );
+
+      test(
+        'treats unresolved Flutter version as new enough (dev pin)',
+        () async {
+          // resolveFlutterVersion returns null for revisions not on a
+          // flutter_release branch (e.g. a pinned dev revision). The
+          // minVersion fallback admits these.
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => null);
+
+          await runWithOverrides(() async {
+            await builder.prepareBuildTrace(platform: 'android');
+            expect(buildTraceSession.traceFile, isNotNull);
+          });
+        },
+      );
     });
 
     group('writeBuildTraceSummary', () {

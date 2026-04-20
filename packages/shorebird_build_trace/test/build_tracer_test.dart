@@ -296,7 +296,7 @@ void main() {
           existingEvents: [
             {
               'ph': 'X',
-              'name': 'preparsed',
+              'name': 'provided',
               'cat': 'c',
               'ts': 0,
               'dur': 1,
@@ -307,7 +307,7 @@ void main() {
         );
       final decoded = jsonDecode(traceFile.readAsStringSync()) as List;
       expect(decoded, hasLength(2));
-      expect((decoded[0] as Map)['name'], 'preparsed');
+      expect((decoded[0] as Map)['name'], 'provided');
       expect((decoded[1] as Map)['name'], 'new');
     });
 
