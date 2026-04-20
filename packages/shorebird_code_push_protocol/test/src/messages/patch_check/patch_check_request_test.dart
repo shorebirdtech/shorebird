@@ -13,6 +13,7 @@ void main() {
         appId: 'app_123',
         channel: 'channel_123',
         clientId: 'client_123',
+        currentPatchNumber: 4,
       );
       expect(
         PatchCheckRequest.fromJson(request.toJson()).toJson(),
