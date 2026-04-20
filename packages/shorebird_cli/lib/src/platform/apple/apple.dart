@@ -150,6 +150,7 @@ class Apple {
     required List<String> splitDebugInfoArgs,
     required File aotOutputFile,
     required File vmCodeFile,
+    int? ddMaxBytes,
   }) async {
     final patch = aotOutputFile;
     final buildDirectory = shorebirdEnv.buildDirectory;
@@ -253,6 +254,7 @@ $error''');
         workingDirectory: buildDirectory.path,
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
+        ddMaxBytes: ddMaxBytes,
         additionalArgs: splitDebugInfoArgs,
       );
     } on Exception catch (error) {
