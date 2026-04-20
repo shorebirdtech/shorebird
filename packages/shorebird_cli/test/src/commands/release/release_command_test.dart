@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
@@ -55,6 +56,7 @@ void main() {
     );
 
     late ArgResults argResults;
+    late ArtifactBuilder artifactBuilder;
     late Cache cache;
     late CodePushClientWrapper codePushClientWrapper;
     late Directory shorebirdRoot;
@@ -72,6 +74,10 @@ void main() {
       return runScoped(
         body,
         values: {
+          artifactBuilderRef.overrideWith(() => artifactBuilder),
+          buildTraceSessionRef.overrideWith(
+            () => BuildTraceSession(commandStartedAt: DateTime(2023)),
+          ),
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
@@ -92,6 +98,13 @@ void main() {
 
     setUp(() {
       argResults = MockArgResults();
+      artifactBuilder = MockArtifactBuilder();
+      when(
+        () => artifactBuilder.prepareBuildTrace(
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async {});
+      when(artifactBuilder.writeBuildTraceSummary).thenReturn(null);
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();

@@ -454,6 +454,20 @@ void main() {
           ),
         ).called(1);
       });
+
+      test('invokes onStart with the spawned process', () async {
+        Process? received;
+        final exit = await runWithOverrides(
+          () => shorebirdProcess.stream(
+            'git',
+            ['pull'],
+            onStart: (p) => received = p,
+          ),
+        );
+
+        expect(exit, ExitCode.success.code);
+        expect(identical(received, streamProcess), isTrue);
+      });
     });
 
     group('start', () {

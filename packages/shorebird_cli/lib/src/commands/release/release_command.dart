@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
@@ -307,6 +308,15 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       () async {
         await cache.updateAll();
 
+        // Set up build tracing for this platform before any flutter build /
+        // aot_tools / gen_snapshot call runs. Version-gated inside
+        // prepareBuildTrace — a no-op on older Flutter pins. Finalized at
+        // the end of finalizeRelease, after upload, so uploaded metadata
+        // reflects the whole command.
+        await artifactBuilder.prepareBuildTrace(
+          platform: releaser.releaseType.releasePlatform.name,
+        );
+
         final flutterVersionString = await shorebirdFlutter
             .getVersionAndRevision();
         logger.info(
@@ -582,6 +592,11 @@ ${summary.join('\n')}
     required Release release,
     required Releaser releaser,
   }) async {
+    // Write the build-trace summary now, after the release artifact has been
+    // uploaded, so aggregate timings reflect the full command. No-op when
+    // tracing wasn't set up (older Flutter pin).
+    artifactBuilder.writeBuildTraceSummary();
+
     final hasPublicKey =
         results.wasParsed(CommonArguments.publicKeyArg.name) ||
         results.wasParsed(CommonArguments.publicKeyCmd.name);
@@ -597,6 +612,10 @@ ${summary.join('\n')}
         shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
         usesShorebirdCodePushPackage: shorebirdEnv.usesShorebirdCodePushPackage,
       ),
+      // Attach the build-trace summary if the build produced one.
+      // Null for older Flutter pins without the --shorebird-trace flag
+      // or when trace parsing failed; uploader sends null-as-omitted.
+      buildTraceSummary: buildTraceSession.summary?.toJson(),
     );
     final updatedMetadata = await releaser.updatedReleaseMetadata(baseMetadata);
     await codePushClientWrapper.updateReleaseStatus(

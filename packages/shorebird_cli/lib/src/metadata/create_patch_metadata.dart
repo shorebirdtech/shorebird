@@ -29,6 +29,7 @@ class CreatePatchMetadata extends Equatable {
     required this.isSigned,
     this.linkPercentage,
     this.linkMetadata,
+    this.buildTraceSummary,
   });
 
   // coverage:ignore-start
@@ -44,6 +45,7 @@ class CreatePatchMetadata extends Equatable {
     bool isSigned = false,
     double? linkPercentage,
     Json? linkMetadata,
+    Json? buildTraceSummary,
     BuildEnvironmentMetadata? environment,
   }) => CreatePatchMetadata(
     releasePlatform: releasePlatform,
@@ -55,6 +57,7 @@ class CreatePatchMetadata extends Equatable {
     inferredReleaseVersion: inferredReleaseVersion,
     linkPercentage: linkPercentage,
     linkMetadata: linkMetadata,
+    buildTraceSummary: buildTraceSummary,
     environment: environment ?? BuildEnvironmentMetadata.forTest(),
   );
   // coverage:ignore-end
@@ -78,6 +81,7 @@ class CreatePatchMetadata extends Equatable {
     bool? isSigned,
     double? linkPercentage,
     Json? linkMetadata,
+    Json? buildTraceSummary,
     BuildEnvironmentMetadata? environment,
   }) => CreatePatchMetadata(
     releasePlatform: releasePlatform ?? this.releasePlatform,
@@ -92,6 +96,7 @@ class CreatePatchMetadata extends Equatable {
     isSigned: isSigned ?? this.isSigned,
     linkPercentage: linkPercentage ?? this.linkPercentage,
     linkMetadata: linkMetadata ?? this.linkMetadata,
+    buildTraceSummary: buildTraceSummary ?? this.buildTraceSummary,
     environment: environment ?? this.environment,
   );
 
@@ -149,6 +154,15 @@ class CreatePatchMetadata extends Equatable {
   /// Reason: see [BuildEnvironmentMetadata].
   final BuildEnvironmentMetadata environment;
 
+  /// Privacy-safe aggregate timings from the Flutter build, produced by
+  /// `BuildTraceSummary.toJson()`. Shape: integer millisecond counters +
+  /// small categorical fields; see `BuildTraceSummary` for the schema.
+  /// Null when no trace was captured (older Flutter pin, user opted out,
+  /// trace file malformed). Stored as [Json] here to avoid this class
+  /// having a compile-time dep on `BuildTraceSummary`'s type — the
+  /// server consumes the blob as-is.
+  final Json? buildTraceSummary;
+
   @override
   List<Object?> get props => [
     releasePlatform,
@@ -161,5 +175,6 @@ class CreatePatchMetadata extends Equatable {
     inferredReleaseVersion,
     isSigned,
     environment,
+    buildTraceSummary,
   ];
 }
