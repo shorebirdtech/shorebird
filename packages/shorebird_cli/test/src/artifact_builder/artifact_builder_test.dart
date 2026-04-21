@@ -98,6 +98,25 @@ void main() {
       when(
         () => pubGetProcessResult.exitCode,
       ).thenReturn(ExitCode.success.code);
+      // Default stub for the `flutter build <command> -h` probe used by
+      // `_supportsTraceFlag`. Returns help text that includes
+      // `--shorebird-trace` so that trace tests pass when tracing is enabled.
+      // Tests that need to verify the flag is NOT passed should either use a
+      // Flutter version below the trace threshold (the default 3.0.0) or
+      // override this stub.
+      when(
+        () => shorebirdProcess.run(
+          'flutter',
+          any(),
+          runInShell: false,
+        ),
+      ).thenAnswer(
+        (_) async => ShorebirdProcessResult(
+          exitCode: ExitCode.success.code,
+          stdout: '--shorebird-trace',
+          stderr: '',
+        ),
+      );
       when(
         () => shorebirdProcess.stream(
           any(),
@@ -841,11 +860,24 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       const buildNumber = '1.0';
 
       test(
-        'does not pass --shorebird-trace (unsupported by flutter build aar)',
+        'skips --shorebird-trace when help probe shows no support',
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
           ).thenAnswer((_) async => Version(3, 41, 7));
+          when(
+            () => shorebirdProcess.run(
+              'flutter',
+              ['build', 'aar', '-h'],
+              runInShell: false,
+            ),
+          ).thenAnswer(
+            (_) async => ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: 'no trace flag here',
+              stderr: '',
+            ),
+          );
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'android');
@@ -1030,11 +1062,24 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       });
 
       test(
-        'does not pass --shorebird-trace (unsupported by flutter build linux)',
+        'skips --shorebird-trace when help probe shows no support',
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
           ).thenAnswer((_) async => Version(3, 41, 7));
+          when(
+            () => shorebirdProcess.run(
+              'flutter',
+              ['build', 'linux', '-h'],
+              runInShell: false,
+            ),
+          ).thenAnswer(
+            (_) async => ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: 'no trace flag here',
+              stderr: '',
+            ),
+          );
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'linux');
@@ -1194,11 +1239,24 @@ Reason: Exited with code 70.'''),
       });
 
       test(
-        'does not pass --shorebird-trace (unsupported by flutter build macos)',
+        'skips --shorebird-trace when help probe shows no support',
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
           ).thenAnswer((_) async => Version(3, 41, 7));
+          when(
+            () => shorebirdProcess.run(
+              'flutter',
+              ['build', 'macos', '-h'],
+              runInShell: false,
+            ),
+          ).thenAnswer(
+            (_) async => ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: 'no trace flag here',
+              stderr: '',
+            ),
+          );
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'macos');
@@ -1670,11 +1728,24 @@ Reason: Exited with code 70.'''),
       });
 
       test(
-        'does not pass --shorebird-trace (unsupported by flutter build ios-framework)',
+        'skips --shorebird-trace when help probe shows no support',
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
           ).thenAnswer((_) async => Version(3, 41, 7));
+          when(
+            () => shorebirdProcess.run(
+              'flutter',
+              ['build', 'ios-framework', '-h'],
+              runInShell: false,
+            ),
+          ).thenAnswer(
+            (_) async => ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: 'no trace flag here',
+              stderr: '',
+            ),
+          );
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'ios');
@@ -1949,11 +2020,24 @@ Reason: Exited with code 70.'''),
       });
 
       test(
-        'does not pass --shorebird-trace (unsupported by flutter build windows)',
+        'skips --shorebird-trace when help probe shows no support',
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
           ).thenAnswer((_) async => Version(3, 41, 7));
+          when(
+            () => shorebirdProcess.run(
+              'flutter',
+              ['build', 'windows', '-h'],
+              runInShell: false,
+            ),
+          ).thenAnswer(
+            (_) async => ShorebirdProcessResult(
+              exitCode: 0,
+              stdout: 'no trace flag here',
+              stderr: '',
+            ),
+          );
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'windows');
