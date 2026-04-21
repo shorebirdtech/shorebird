@@ -46,6 +46,10 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(
         'link_metadata',
         (v) => v as Map<String, dynamic>?,
       ),
+      buildTraceSummary: $checkedConvert(
+        'build_trace_summary',
+        (v) => v as Map<String, dynamic>?,
+      ),
     );
     return val;
   },
@@ -59,6 +63,7 @@ CreatePatchMetadata _$CreatePatchMetadataFromJson(
     'isSigned': 'is_signed',
     'linkPercentage': 'link_percentage',
     'linkMetadata': 'link_metadata',
+    'buildTraceSummary': 'build_trace_summary',
   },
 );
 
@@ -75,6 +80,7 @@ Map<String, dynamic> _$CreatePatchMetadataToJson(
   'link_metadata': instance.linkMetadata,
   'is_signed': instance.isSigned,
   'environment': instance.environment.toJson(),
+  'build_trace_summary': instance.buildTraceSummary,
 };
 
 const _$ReleasePlatformEnumMap = {

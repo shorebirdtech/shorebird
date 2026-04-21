@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -26,10 +27,18 @@ void main() {
     late File dartBinaryFile;
     late AotTools aotTools;
 
-    R runWithOverrides<R>(R Function() body) {
+    R runWithOverrides<R>(
+      R Function() body, {
+      BuildTraceSession? traceSession,
+    }) {
       return runScoped(
         body,
         values: {
+          buildTraceSessionRef.overrideWith(
+            () =>
+                traceSession ??
+                BuildTraceSession(commandStartedAt: DateTime(2023)),
+          ),
           cacheRef.overrideWith(() => cache),
           processRef.overrideWith(() => process),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
@@ -1296,6 +1305,97 @@ Run "aot_tools help <command>" for more information about a command.
         final result = await runWithOverrides(() => aotTools.getVersion());
         expect(result, Version(1, 2, 3));
       });
+    });
+
+    group('build trace wiring', () {
+      test(
+        'prepends --trace=<path> to the subcommand when session has a '
+        'trace file set',
+        () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          addTearDown(() => tempDir.deleteSync(recursive: true));
+          final traceFile = File(p.join(tempDir.path, 'trace.json'));
+
+          when(
+            () => process.start(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((_) async {
+            final mockProcess = MockProcess();
+            when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+            when(
+              () => mockProcess.stdout,
+            ).thenAnswer((_) => Stream.value(utf8.encode('1.2.3')));
+            when(
+              () => mockProcess.stderr,
+            ).thenAnswer((_) => const Stream<List<int>>.empty());
+            return mockProcess;
+          });
+
+          final session = BuildTraceSession(
+            commandStartedAt: DateTime(2023),
+          )..traceFile = traceFile;
+
+          await runWithOverrides(
+            () => aotTools.getVersion(),
+            traceSession: session,
+          );
+
+          final captured =
+              verify(
+                    () => process.start(
+                      dartBinaryFile.path,
+                      captureAny(),
+                      workingDirectory: any(named: 'workingDirectory'),
+                    ),
+                  ).captured.single
+                  as List<String>;
+          // Expect: dart run <aotTools> --trace=<path> --version
+          expect(captured.length, 4);
+          expect(captured[0], 'run');
+          expect(captured[1], 'aot-tools.dill');
+          expect(captured[2], '--trace=${traceFile.path}');
+          expect(captured[3], '--version');
+        },
+      );
+
+      test(
+        'omits --trace when session has no trace file set',
+        () async {
+          when(
+            () => process.start(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((_) async {
+            final mockProcess = MockProcess();
+            when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+            when(
+              () => mockProcess.stdout,
+            ).thenAnswer((_) => Stream.value(utf8.encode('1.2.3')));
+            when(
+              () => mockProcess.stderr,
+            ).thenAnswer((_) => const Stream<List<int>>.empty());
+            return mockProcess;
+          });
+
+          await runWithOverrides(() => aotTools.getVersion());
+
+          final captured =
+              verify(
+                    () => process.start(
+                      dartBinaryFile.path,
+                      captureAny(),
+                      workingDirectory: any(named: 'workingDirectory'),
+                    ),
+                  ).captured.single
+                  as List<String>;
+          expect(captured.any((a) => a.startsWith('--trace=')), isFalse);
+        },
+      );
     });
   });
 

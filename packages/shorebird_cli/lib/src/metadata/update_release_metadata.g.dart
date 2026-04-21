@@ -32,6 +32,10 @@ UpdateReleaseMetadata _$UpdateReleaseMetadataFromJson(
         (v) => v as bool?,
       ),
       generatedApks: $checkedConvert('generated_apks', (v) => v as bool?),
+      buildTraceSummary: $checkedConvert(
+        'build_trace_summary',
+        (v) => v as Map<String, dynamic>?,
+      ),
     );
     return val;
   },
@@ -40,6 +44,7 @@ UpdateReleaseMetadata _$UpdateReleaseMetadataFromJson(
     'flutterVersionOverride': 'flutter_version_override',
     'includesPublicKey': 'includes_public_key',
     'generatedApks': 'generated_apks',
+    'buildTraceSummary': 'build_trace_summary',
   },
 );
 
@@ -51,6 +56,7 @@ Map<String, dynamic> _$UpdateReleaseMetadataToJson(
   'generated_apks': instance.generatedApks,
   'includes_public_key': instance.includesPublicKey,
   'environment': instance.environment.toJson(),
+  'build_trace_summary': instance.buildTraceSummary,
 };
 
 const _$ReleasePlatformEnumMap = {

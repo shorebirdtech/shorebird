@@ -1,5 +1,6 @@
 // cspell:words endtemplate aabs ipas appbundle bryanoltman codesign xcarchive
 // cspell:words xcframework
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:clock/clock.dart';
@@ -7,14 +8,20 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
+import 'package:shorebird_cli/src/platform.dart' as scoped_platform;
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/shorebird_android_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// {@template artifact_build_exception}
@@ -109,6 +116,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'appbundle',
@@ -116,6 +124,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -126,6 +135,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -174,6 +184,7 @@ Reason: Exited with code $exitCode.''',
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'apk',
@@ -186,6 +197,7 @@ Reason: Exited with code $exitCode.''',
         // coverage:ignore-start
         if (splitPerAbi) '--split-per-abi',
         // coverage:ignore-end
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -196,6 +208,7 @@ Reason: Exited with code $exitCode.''',
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -241,6 +254,7 @@ Reason: Exited with code $exitCode.''',
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'aar',
@@ -248,6 +262,7 @@ Reason: Exited with code $exitCode.''',
         '--no-profile',
         '--build-number=$buildNumber',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -258,6 +273,7 @@ Reason: Exited with code $exitCode.''',
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -283,11 +299,13 @@ Reason: Exited with code $exitCode.''',
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'linux',
         '--release',
         if (target != null) '--target=$target',
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -298,6 +316,7 @@ Reason: Exited with code $exitCode.''',
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -334,6 +353,7 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'macos',
@@ -341,6 +361,7 @@ Reason: Exited with code $exitCode.''',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
       final buildStart = clock.now();
@@ -351,6 +372,7 @@ Reason: Exited with code $exitCode.''',
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -399,6 +421,7 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'ipa',
@@ -406,6 +429,7 @@ Reason: Exited with code $exitCode.''',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -417,6 +441,7 @@ Reason: Exited with code $exitCode.''',
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -460,11 +485,13 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'ios-framework',
         '--no-debug',
         '--no-profile',
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -476,6 +503,7 @@ Reason: Exited with code $exitCode.''',
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {
@@ -502,6 +530,147 @@ Reason: Exited with code $exitCode.''',
     }
 
     return AppleBuildResult(kernelFile: File(appDillPath!));
+  }
+
+  /// Prepares build tracing for the current command invocation. Populates
+  /// [BuildTraceSession.traceFile] and [BuildTraceSession.platform] so that
+  /// downstream `flutter build`, `aot_tools`, and gen_snapshot calls can
+  /// emit into the same trace file — and so [writeBuildTraceSummary] can
+  /// pick up the right platform later.
+  ///
+  /// Call from the outer `release_command` / `patch_command` once per
+  /// platform, *after* the target Flutter revision has been installed and
+  /// the `shorebirdEnv` override is active so the version gate checks the
+  /// correct revision.
+  ///
+  /// No-op on older Flutter pins that don't support `--shorebird-trace`
+  /// (leaves session fields null → builders emit no tracing args).
+  Future<void> prepareBuildTrace({required String platform}) async {
+    buildTraceSession.platform = platform;
+    final revision = shorebirdEnv.flutterRevision;
+    final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
+      revision,
+    );
+    // Treat an unknown version (e.g. a pinned dev revision) as new enough,
+    // matching the pattern used for other version-gated features.
+    final supportsTrace = buildTraceSupportConstraint.isSatisfiedBy(
+      version: flutterVersion ?? buildTraceSupportConstraint.minVersion,
+      revision: revision,
+    );
+    if (!supportsTrace) {
+      buildTraceSession.traceFile = null;
+      return;
+    }
+
+    final traceFile = File(
+      p.join(
+        shorebirdEnv.buildDirectory.path,
+        'shorebird',
+        'debug',
+        'build-trace-$platform.json',
+      ),
+    );
+    traceFile.parent.createSync(recursive: true);
+    buildTraceSession.traceFile = traceFile;
+  }
+
+  /// Emits a flow-start event (`ph: "s"`) on the shorebird_cli tracer
+  /// tied to the spawned flutter process's real pid. When flutter builds
+  /// with `--shorebird-trace`, it records a flow-end with its own pid as
+  /// the flow id — Perfetto draws an arrow from our spawn point into
+  /// flutter's first span.
+  void _emitFlutterSpawnFlow(Process flutter) {
+    shorebirdTracer.addSpawnFlowStart(id: flutter.pid, at: clock.now());
+  }
+
+  /// Returns the user's home directory as understood by the OS, or
+  /// null if neither `HOME` nor `USERPROFILE` is set. Reads from the
+  /// scoped [platform] (same pattern as e.g. `android_studio.dart`)
+  /// rather than static `Platform.environment` so tests can inject a
+  /// fake environment.
+  Directory? _homeDirectory() {
+    final env = scoped_platform.platform.environment;
+    final h = env['HOME'] ?? env['USERPROFILE'];
+    if (h == null || h.isEmpty) return null;
+    return Directory(h);
+  }
+
+  /// Writes a privacy-safe summary JSON (`build-trace-<platform>-summary.json`)
+  /// next to [BuildTraceSession.traceFile]. Best-effort: logs at detail level
+  /// on failure. Caches the parsed summary on [BuildTraceSession.summary] so
+  /// `release_command` / `patch_command` can attach it to the outgoing
+  /// metadata blob without re-parsing the trace file.
+  ///
+  /// Uses [BuildTraceSession.commandStartedAt] to derive the wall-clock time
+  /// Shorebird itself spent around the Flutter build, subtracting Flutter's
+  /// reported total (the "flutter build X" umbrella event).
+  ///
+  /// Call from the outer `release_command` / `patch_command` *after* all
+  /// post-flutter-build work (aot_tools, gen_snapshot, artifact uploads) has
+  /// completed, so their events are included in the aggregates.
+  void writeBuildTraceSummary() {
+    final traceFile = buildTraceSession.traceFile;
+    final buildPlatform = buildTraceSession.platform;
+    if (traceFile == null || buildPlatform == null) return;
+
+    // Merge Shorebird-side events (HTTP calls, subprocess spans, phase
+    // markers accumulated since `main()`) into Flutter's trace file so
+    // both local Perfetto viewing and the aggregate summary see the
+    // complete picture.
+    shorebirdTracer.mergeInto(traceFile);
+
+    final events = BuildTraceSummary.tryReadEvents(traceFile);
+    if (events == null) {
+      logger.detail(
+        'Skipping build trace summary: ${traceFile.path} missing or malformed.',
+      );
+      return;
+    }
+
+    // First pass: measure Flutter's reported build wall clock so we can
+    // derive Shorebird's overhead. Second pass (below) then bakes overhead
+    // and environment into the final summary. Parsed events are reused so
+    // the (often multi-megabyte) trace file is only read once.
+    final flutterBuild = BuildTraceSummary.fromEvents(
+      events,
+      platform: buildPlatform,
+    ).flutterBuild;
+    final totalElapsed = DateTime.now().difference(
+      buildTraceSession.commandStartedAt,
+    );
+    final shorebirdOverhead = totalElapsed - flutterBuild;
+    // Snapshot the build environment (caching config, CI provider, ...).
+    // This is what lets us tell, in field data, whether a slow build is
+    // "no caching configured" vs "slow despite caching being on".
+    final environment = BuildEnvironment.detect(
+      environment: scoped_platform.platform.environment,
+      homeDir: _homeDirectory(),
+      projectRoot: shorebirdEnv.getShorebirdProjectRoot(),
+    );
+    // If the trace reports a longer build than the command has been running
+    // (clock skew, malformed trace), treat overhead as zero rather than
+    // negative.
+    final summary = BuildTraceSummary.fromEvents(
+      events,
+      platform: buildPlatform,
+      shorebirdOverhead: shorebirdOverhead.isNegative
+          ? Duration.zero
+          : shorebirdOverhead,
+      environment: environment,
+    );
+
+    // Cache for the release/patch metadata uploader to read without
+    // re-parsing the trace file.
+    buildTraceSession.summary = summary;
+
+    final summaryPath = p.join(
+      p.dirname(traceFile.path),
+      'build-trace-$buildPlatform-summary.json',
+    );
+    File(summaryPath).writeAsStringSync(
+      const JsonEncoder.withIndent('  ').convert(summary.toJson()),
+    );
+    logger.detail('Build trace summary written to $summaryPath');
   }
 
   /// A wrapper around [command] (which runs a `flutter build` command with
@@ -562,12 +731,20 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       appDillPath,
     ];
 
-    final exitCode = await process.stream(
-      shorebirdArtifacts.getArtifactPath(artifact: genSnapshotArtifact),
-      arguments,
-      // Never run in shell because we always have a fully resolved
-      // executable path.
-      runInShell: false,
+    // Record a span on the shorebird_cli row so gen_snapshot time shows up
+    // in Perfetto and rolls into the trace summary's subprocess bucket.
+    // gen_snapshot itself doesn't emit a trace; this is the best signal we
+    // have for how long native codegen took during patching.
+    final exitCode = await shorebirdTracer.span<int>(
+      name: 'gen_snapshot',
+      category: 'subprocess',
+      body: () => process.stream(
+        shorebirdArtifacts.getArtifactPath(artifact: genSnapshotArtifact),
+        arguments,
+        // Never run in shell because we always have a fully resolved
+        // executable path.
+        runInShell: false,
+      ),
     );
 
     if (exitCode != ExitCode.success.code) {
@@ -585,11 +762,13 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'windows',
         '--release',
         if (target != null) '--target=$target',
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -600,6 +779,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
+        onStart: _emitFlutterSpawnFlow,
       );
 
       if (exitCode != ExitCode.success.code) {

@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -493,6 +494,14 @@ Building with Flutter $flutterVersionString to determine the release version...
       () async {
         await cache.updateAll();
 
+        // Set up build tracing before any flutter build / aot_tools /
+        // gen_snapshot call runs. Version-gated inside prepareBuildTrace —
+        // a no-op on older Flutter pins. Summary is written at the very
+        // end of createPatch, after aot_tools link and artifact uploads.
+        await artifactBuilder.prepareBuildTrace(
+          platform: patcher.releaseType.releasePlatform.name,
+        );
+
         // Don't built the patch artifact twice with the same Flutter revision.
         if (lastBuiltFlutterRevision != release.flutterRevision) {
           final flutterVersionString = await shorebirdFlutter
@@ -535,6 +544,12 @@ Building patch with Flutter $flutterVersionString
           patchArtifactBundles: patchArtifactBundles,
         );
 
+        // Write the build-trace summary after all compile/link work has
+        // finished — the metadata upload is the last step and it carries
+        // this summary, so we finalize immediately before it. No-op when
+        // tracing wasn't set up (older Flutter pin).
+        artifactBuilder.writeBuildTraceSummary();
+
         final baseMetadata = CreatePatchMetadata(
           releasePlatform: patcher.releaseType.releasePlatform,
           usedIgnoreAssetChangesFlag: allowAssetDiffs,
@@ -554,6 +569,11 @@ Building patch with Flutter $flutterVersionString
             usesShorebirdCodePushPackage:
                 shorebirdEnv.usesShorebirdCodePushPackage,
           ),
+          // Attach the build-trace summary if the build produced one.
+          // Null for older Flutter pins without the --shorebird-trace
+          // flag or when trace parsing failed; uploader sends
+          // null-as-omitted.
+          buildTraceSummary: buildTraceSession.summary?.toJson(),
         );
         final updateMetadata = await patcher.updatedCreatePatchMetadata(
           baseMetadata,

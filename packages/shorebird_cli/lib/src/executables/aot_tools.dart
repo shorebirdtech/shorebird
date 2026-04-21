@@ -7,6 +7,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
@@ -187,6 +188,17 @@ class AotTools {
   }) async {
     await cache.updateAll();
 
+    // Thread the build-trace file through to aot_tools via its global
+    // --trace flag so its subprocess spans (and sub-subprocess spans like
+    // gen_snapshot invoked by the linker) merge into the same Chrome
+    // Trace Event Format file as Flutter and shorebird_cli. Prepended
+    // because --trace is global (must precede the subcommand).
+    final traceFile = buildTraceSession.traceFile;
+    final tracedCommand = <String>[
+      if (traceFile != null) '--trace=${traceFile.path}',
+      ...command,
+    ];
+
     // This will be a path to either a kernel (.dill) file or a Dart script if
     // we're running with a local engine.
     final artifactPath = shorebirdArtifacts.getArtifactPath(
@@ -243,7 +255,7 @@ class AotTools {
     if (extension != '.dill' && extension != '.dart') {
       result = await execute(
         artifactPath,
-        command,
+        tracedCommand,
         workingDirectory: workingDirectory,
       );
     } else {
@@ -251,7 +263,7 @@ class AotTools {
       result = await execute(shorebirdEnv.dartBinaryFile.path, [
         'run',
         artifactPath,
-        ...command,
+        ...tracedCommand,
       ], workingDirectory: workingDirectory);
     }
 
@@ -260,7 +272,7 @@ class AotTools {
         exitCode: result.exitCode,
         stdout: result.stdout.toString(),
         stderr: result.stderr.toString(),
-        command: ['aot_tools', ...command].join(' '),
+        command: ['aot_tools', ...tracedCommand].join(' '),
       );
     }
 
