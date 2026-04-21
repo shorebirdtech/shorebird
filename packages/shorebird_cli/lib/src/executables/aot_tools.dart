@@ -102,6 +102,64 @@ stderr: $stderr''';
   }
 }
 
+/// {@template link_failure_exception}
+/// Exception thrown when `aot_tools link` reports a structured `link_failure`
+/// in its JSON output. Wraps the underlying [execFailure] and augments it
+/// with a remediation hint when the failure has a recognizable signature.
+/// {@endtemplate}
+class LinkFailureException implements Exception {
+  /// {@macro link_failure_exception}
+  const LinkFailureException({
+    required this.execFailure,
+    required this.linkFailure,
+  });
+
+  /// The underlying non-zero-exit failure from aot_tools.
+  final AotToolsExecutionFailure execFailure;
+
+  /// The parsed `link_failure` event from the link JSONL output.
+  final Map<String, dynamic> linkFailure;
+
+  /// Returns a remediation hint when the failure matches a known pattern,
+  /// or null otherwise.
+  String? get hint {
+    final details = linkFailure['details'];
+    if (details is! Map) return null;
+    final dataHash = details['vm_data_hash'];
+    final instructionsHash = details['vm_instructions_hash'];
+    if (dataHash is! Map || instructionsHash is! Map) return null;
+    final dataDiffers = dataHash['base'] != dataHash['patch'];
+    final instructionsMatch =
+        instructionsHash['base'] == instructionsHash['patch'];
+    if (dataDiffers && instructionsMatch) {
+      return '''
+The VM data section differs between the release and the patch, while the
+instruction section matches. This typically means the release and patch were
+built with different --dart-define values or a different --obfuscate setting,
+since those affect compile-time constants that live in the VM data section.
+
+Verify that `shorebird patch` was invoked with the exact same --dart-define
+(and --dart-define-from-file) flags as `shorebird release`, and that the
+--obfuscate setting matches.''';
+    }
+    return null;
+  }
+
+  @override
+  String toString() {
+    final reason = linkFailure['reason'] ?? 'aot_tools link reported a failure';
+    final buffer = StringBuffer('$reason')..writeln();
+    final hint = this.hint;
+    if (hint != null) {
+      buffer
+        ..writeln()
+        ..writeln(hint);
+    }
+    buffer.write(execFailure);
+    return buffer.toString();
+  }
+}
+
 /// Wrapper around the shorebird `aot-tools` executable.
 class AotTools {
   /// Returns true if the linker should be used for the given Flutter revision.
@@ -283,26 +341,54 @@ class AotTools {
     const linkJson = 'link.jsonl';
     final outputDir = p.dirname(outputPath);
     final linkerUsesGenSnapshot = await _linkerUsesGenSnapshot();
-    await _exec([
-      'link',
-      '--base=$base',
-      '--patch=$patch',
-      '--analyze-snapshot=$analyzeSnapshot',
-      '--output=$outputPath',
-      '--verbose',
-      if (linkerUsesGenSnapshot) ...[
-        '--gen-snapshot=$genSnapshot',
-        '--kernel=$kernel',
-        '--reporter=json',
-        '--redirect-to=${p.join(outputDir, linkJson)}',
-      ],
-      if (dumpDebugInfoPath != null) '--dump-debug-info=$dumpDebugInfoPath',
-      if (additionalArgs.isNotEmpty) ...['--', ...additionalArgs],
-    ], workingDirectory: workingDirectory);
+    try {
+      await _exec([
+        'link',
+        '--base=$base',
+        '--patch=$patch',
+        '--analyze-snapshot=$analyzeSnapshot',
+        '--output=$outputPath',
+        '--verbose',
+        if (linkerUsesGenSnapshot) ...[
+          '--gen-snapshot=$genSnapshot',
+          '--kernel=$kernel',
+          '--reporter=json',
+          '--redirect-to=${p.join(outputDir, linkJson)}',
+        ],
+        if (dumpDebugInfoPath != null) '--dump-debug-info=$dumpDebugInfoPath',
+        if (additionalArgs.isNotEmpty) ...['--', ...additionalArgs],
+      ], workingDirectory: workingDirectory);
+    } on AotToolsExecutionFailure catch (e) {
+      if (linkerUsesGenSnapshot && workingDirectory != null) {
+        final linkFailure = _extractLinkFailure(
+          File(p.join(workingDirectory, linkJson)),
+        );
+        if (linkFailure != null) {
+          throw LinkFailureException(execFailure: e, linkFailure: linkFailure);
+        }
+      }
+      rethrow;
+    }
 
     return linkerUsesGenSnapshot
         ? _extractLinkPercentage(File(p.join(workingDirectory!, linkJson)))
         : null;
+  }
+
+  /// Returns the first `link_failure` event in the link JSONL output, or
+  /// null if the file is missing, malformed, or contains no such event.
+  Map<String, dynamic>? _extractLinkFailure(File file) {
+    if (!file.existsSync()) return null;
+    try {
+      return const LineSplitter()
+          .convert(file.readAsStringSync())
+          .where((line) => line.isNotEmpty)
+          .map(json.decode)
+          .cast<Map<String, dynamic>>()
+          .firstWhereOrNull((line) => line['type'] == 'link_failure');
+    } on FormatException {
+      return null;
+    }
   }
 
   double? _extractLinkPercentage(File file) {
