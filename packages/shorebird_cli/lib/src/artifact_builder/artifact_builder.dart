@@ -122,8 +122,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         ['build', command, '-h'],
         runInShell: false,
       );
-      final supported =
-          result.stdout.toString().contains('--shorebird-trace');
+      final supported = result.stdout.toString().contains('--shorebird-trace');
       _traceSupport[command] = supported;
       return supported;
     } on Exception {
