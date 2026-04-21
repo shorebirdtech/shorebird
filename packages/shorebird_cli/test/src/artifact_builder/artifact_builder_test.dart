@@ -332,6 +332,59 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         ).called(1);
       });
 
+      test('caches trace flag probe result across calls', () async {
+        when(
+          () => shorebirdFlutter.resolveFlutterVersion(any()),
+        ).thenAnswer((_) async => Version(3, 41, 7));
+
+        await runWithOverrides(() async {
+          await builder.prepareBuildTrace(platform: 'android');
+          await builder.buildAppBundle();
+          await builder.buildAppBundle();
+        });
+
+        // The help probe should only be called once despite two builds.
+        verify(
+          () => shorebirdProcess.run(
+            'flutter',
+            ['build', 'appbundle', '-h'],
+            runInShell: false,
+          ),
+        ).called(1);
+      });
+
+      test('skips trace when help probe throws', () async {
+        when(
+          () => shorebirdFlutter.resolveFlutterVersion(any()),
+        ).thenAnswer((_) async => Version(3, 41, 7));
+        when(
+          () => shorebirdProcess.run(
+            'flutter',
+            ['build', 'appbundle', '-h'],
+            runInShell: false,
+          ),
+        ).thenThrow(Exception('process failed'));
+
+        await runWithOverrides(() async {
+          await builder.prepareBuildTrace(platform: 'android');
+          await builder.buildAppBundle();
+        });
+
+        verify(
+          () => shorebirdProcess.stream(
+            'flutter',
+            [
+              'build',
+              'appbundle',
+              '--release',
+            ],
+            environment: any(named: 'environment'),
+            runInShell: false,
+            onStart: any(named: 'onStart'),
+          ),
+        ).called(1);
+      });
+
       group('when base64PublicKey is not null', () {
         const base64PublicKey = 'base64PublicKey';
 
