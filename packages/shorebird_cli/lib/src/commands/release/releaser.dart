@@ -96,8 +96,10 @@ abstract class Releaser {
   /// Returns null if no public key is configured.
   Future<String?> getEncodedPublicKey() => argResults.getEncodedPublicKey();
 
-  /// Whether the user is building with obfuscation.
-  bool get useObfuscation => argResults['obfuscate'] == true;
+  /// Whether the user is building with obfuscation. Checks for `--obfuscate`
+  /// both as a parsed flag and after the `--` separator, since it can be
+  /// passed either to Shorebird directly or forwarded to Flutter.
+  bool get useObfuscation => argResults.flagPresent('obfuscate');
 
   /// Path where the obfuscation map is saved during obfuscated builds.
   String get obfuscationMapPath => p.join(

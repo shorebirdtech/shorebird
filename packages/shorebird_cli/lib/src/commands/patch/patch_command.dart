@@ -433,11 +433,7 @@ Building with Flutter $flutterVersionString to determine the release version...
     // If the user explicitly passed --obfuscate but the release has no
     // obfuscation map, the patch would be obfuscated against a non-obfuscated
     // release, producing a broken patch.
-    // Also check rest for `-- --obfuscate`, which bypasses the parser but
-    // still flows through forwardedArgs to the Flutter build command.
-    final userPassedObfuscate =
-        (results.wasParsed('obfuscate') && results['obfuscate'] == true) ||
-        results.rest.any((a) => a == '--obfuscate');
+    final userPassedObfuscate = results.flagPresent('obfuscate');
     if (userPassedObfuscate && obfuscationMapFile == null) {
       logger.err(
         '--obfuscate was passed, but the release was not built with '
@@ -476,9 +472,9 @@ Building with Flutter $flutterVersionString to determine the release version...
     // if --obfuscate will be in the build args (from the user or from
     // the obfuscation map injection above) but --split-debug-info is not.
     final hasObfuscate =
-        (results.wasParsed('obfuscate') && results['obfuscate'] == true) ||
+        results.flagPresent('obfuscate') ||
         extraBuildArgs.contains('--obfuscate');
-    final hasSplitDebugInfo = results.wasParsed('split-debug-info');
+    final hasSplitDebugInfo = results.optionPresent('split-debug-info');
     if (hasObfuscate && !hasSplitDebugInfo) {
       extraBuildArgs.add(
         '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
