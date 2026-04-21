@@ -17,6 +17,7 @@ import 'package:xml/xml.dart';
 
 export 'apple_platform.dart';
 export 'export_method.dart';
+export 'invalid_export_options_plist_exception.dart';
 export 'link_result.dart';
 export 'macho.dart';
 export 'missing_xcode_project_exception.dart';
