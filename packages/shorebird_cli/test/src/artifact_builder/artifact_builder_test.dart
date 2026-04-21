@@ -841,7 +841,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       const buildNumber = '1.0';
 
       test(
-        'passes --shorebird-trace when Flutter supports build tracing',
+        'does not pass --shorebird-trace (unsupported by flutter build aar)',
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
@@ -852,13 +852,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             await builder.buildAar(buildNumber: buildNumber);
           });
 
-          final expectedTracePath = p.join(
-            projectRoot.path,
-            'build',
-            'shorebird',
-            'debug',
-            'build-trace-android.json',
-          );
           verify(
             () => shorebirdProcess.stream(
               'flutter',
@@ -868,7 +861,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 '--no-debug',
                 '--no-profile',
                 '--build-number=1.0',
-                '--shorebird-trace=$expectedTracePath',
               ],
               environment: any(named: 'environment'),
               runInShell: false,
@@ -1038,7 +1030,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       });
 
       test(
-        'passes --shorebird-trace when Flutter supports build tracing',
+        'does not pass --shorebird-trace (unsupported by flutter build linux)',
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
@@ -1049,13 +1041,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             await builder.buildLinuxApp();
           });
 
-          final expectedTracePath = p.join(
-            projectRoot.path,
-            'build',
-            'shorebird',
-            'debug',
-            'build-trace-linux.json',
-          );
           verify(
             () => shorebirdProcess.stream(
               'flutter',
@@ -1063,7 +1048,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 'build',
                 'linux',
                 '--release',
-                '--shorebird-trace=$expectedTracePath',
               ],
               environment: any(named: 'environment'),
               runInShell: false,
@@ -1210,7 +1194,7 @@ Reason: Exited with code 70.'''),
       });
 
       test(
-        'passes --shorebird-trace when Flutter supports build tracing',
+        'does not pass --shorebird-trace (unsupported by flutter build macos)',
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
@@ -1221,13 +1205,6 @@ Reason: Exited with code 70.'''),
             await builder.buildMacos();
           });
 
-          final expectedTracePath = p.join(
-            projectRoot.path,
-            'build',
-            'shorebird',
-            'debug',
-            'build-trace-macos.json',
-          );
           verify(
             () => shorebirdProcess.stream(
               'flutter',
@@ -1235,7 +1212,6 @@ Reason: Exited with code 70.'''),
                 'build',
                 'macos',
                 '--release',
-                '--shorebird-trace=$expectedTracePath',
               ],
               environment: any(named: 'environment'),
               runInShell: false,
@@ -1694,7 +1670,7 @@ Reason: Exited with code 70.'''),
       });
 
       test(
-        'passes --shorebird-trace when Flutter supports build tracing',
+        'does not pass --shorebird-trace (unsupported by flutter build ios-framework)',
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
@@ -1705,13 +1681,6 @@ Reason: Exited with code 70.'''),
             await builder.buildIosFramework();
           });
 
-          final expectedTracePath = p.join(
-            projectRoot.path,
-            'build',
-            'shorebird',
-            'debug',
-            'build-trace-ios.json',
-          );
           verify(
             () => shorebirdProcess.stream(
               'flutter',
@@ -1720,7 +1689,6 @@ Reason: Exited with code 70.'''),
                 'ios-framework',
                 '--no-debug',
                 '--no-profile',
-                '--shorebird-trace=$expectedTracePath',
               ],
               environment: any(named: 'environment'),
               runInShell: false,
@@ -1981,7 +1949,7 @@ Reason: Exited with code 70.'''),
       });
 
       test(
-        'passes --shorebird-trace when Flutter supports build tracing',
+        'does not pass --shorebird-trace (unsupported by flutter build windows)',
         () async {
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
@@ -1992,13 +1960,6 @@ Reason: Exited with code 70.'''),
             await builder.buildWindowsApp();
           });
 
-          final expectedTracePath = p.join(
-            projectRoot.path,
-            'build',
-            'shorebird',
-            'debug',
-            'build-trace-windows.json',
-          );
           verify(
             () => shorebirdProcess.stream(
               'flutter',
@@ -2006,7 +1967,6 @@ Reason: Exited with code 70.'''),
                 'build',
                 'windows',
                 '--release',
-                '--shorebird-trace=$expectedTracePath',
               ],
               environment: any(named: 'environment'),
               runInShell: false,

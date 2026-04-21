@@ -262,7 +262,6 @@ Reason: Exited with code $exitCode.''',
         '--no-profile',
         '--build-number=$buildNumber',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -305,7 +304,6 @@ Reason: Exited with code $exitCode.''',
         'linux',
         '--release',
         if (target != null) '--target=$target',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -361,7 +359,6 @@ Reason: Exited with code $exitCode.''',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
       final buildStart = clock.now();
@@ -491,7 +488,6 @@ Reason: Exited with code $exitCode.''',
         'ios-framework',
         '--no-debug',
         '--no-profile',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -768,7 +764,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         'windows',
         '--release',
         if (target != null) '--target=$target',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
