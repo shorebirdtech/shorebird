@@ -21,5 +21,17 @@ void main() {
         throwsFormatException,
       );
     });
+
+    test('toString matches toJson for every value', () {
+      for (final value in ReleasePlatform.values) {
+        expect(value.toString(), equals(value.toJson()));
+      }
+    });
+
+    test('fromJson round-trips every value', () {
+      for (final value in ReleasePlatform.values) {
+        expect(ReleasePlatform.fromJson(value.toJson()), equals(value));
+      }
+    });
   });
 }

@@ -685,8 +685,8 @@ packages:
     dependency: transitive
     description:
       path: "."
-      ref: "696dd75fb459778953c0d874e7ed1e6338da5598"
-      resolved-ref: "696dd75fb459778953c0d874e7ed1e6338da5598"
+      ref: "58b4410a9b25bf58e3f76a4ae979cad52d4909cc"
+      resolved-ref: "58b4410a9b25bf58e3f76a4ae979cad52d4909cc"
       url: "https://github.com/eseidel/space_gen.git"
     source: git
     version: "1.0.1"
