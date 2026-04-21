@@ -222,16 +222,6 @@ void main() {
           buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
-          obtainAccessCredentials:
-              (
-                clientId,
-                scopes,
-                client,
-                userPrompt, {
-                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-              }) async {
-                return accessCredentials;
-              },
           obtainCredentialsViaLoopbackLogin:
               ({
                 required http.Client httpClient,
@@ -833,7 +823,7 @@ void main() {
               http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
         );
         await runWithOverrides(
-          () => auth.login(AuthProvider.google, prompt: (_) {}),
+          () => auth.login(prompt: (_) {}),
         );
         final client = auth.client;
         expect(client, isA<http.Client>());
@@ -849,6 +839,71 @@ void main() {
         expect(request.headers['Authorization'], equals('Bearer $idToken'));
       });
 
+      group('when SHOREBIRD_TOKEN is an API key', () {
+        setUp(() {
+          when(() => platform.environment).thenReturn(<String, String>{
+            shorebirdTokenEnvVar: 'sb_api_abc123',
+          });
+        });
+
+        test('parses as API key and sets isAuthenticated', () {
+          auth = buildAuth();
+          expect(auth.isAuthenticated, isTrue);
+          expect(auth.email, isNull);
+          verify(
+            () => logger.detail('[env] $shorebirdTokenEnvVar detected'),
+          ).called(1);
+          verify(
+            () => logger.detail(
+              '[env] $shorebirdTokenEnvVar parsed as API key',
+            ),
+          ).called(1);
+        });
+
+        test('trims whitespace from API key', () {
+          when(() => platform.environment).thenReturn(<String, String>{
+            shorebirdTokenEnvVar: '  sb_api_abc123  \n',
+          });
+          auth = buildAuth();
+          expect(auth.isAuthenticated, isTrue);
+        });
+
+        test('returns an ApiKeyClient from client getter', () {
+          auth = buildAuth();
+          final client = auth.client;
+          expect(client, isA<ApiKeyClient>());
+        });
+
+        test('ApiKeyClient sends correct Authorization header', () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+          );
+          auth = buildAuth();
+          final client = auth.client;
+
+          await runWithOverrides(
+            () => client.get(Uri.parse('https://example.com')),
+          );
+
+          final captured = verify(() => httpClient.send(captureAny())).captured;
+          expect(captured, hasLength(1));
+          final request = captured.first as http.BaseRequest;
+          expect(
+            request.headers['Authorization'],
+            equals('Bearer sb_api_abc123'),
+          );
+        });
+
+        test('takes priority over credentials file', () {
+          writeCredentials();
+          auth = buildAuth();
+          expect(auth.isAuthenticated, isTrue);
+          expect(auth.email, isNull);
+          expect(auth.client, isA<ApiKeyClient>());
+        });
+      });
+
       group('when token is invalid', () {
         setUp(() {
           when(() => platform.environment).thenReturn(<String, String>{
@@ -857,7 +912,7 @@ void main() {
         });
 
         test(
-          'logs and throws error when token string is not valid base64',
+          'logs and throws error when token string is not valid',
           () async {
             expect(buildAuth, throwsA(isFormatException));
             verify(
@@ -865,14 +920,14 @@ void main() {
             ).called(1);
             verify(
               () => logger.err(
-                '''
-Failed to parse CI token from environment. This likely means that your CI token is incorrectly formatted.
-
-Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar environment variable, and try again.''',
+                'Failed to parse $shorebirdTokenEnvVar. Expected an API key '
+                '(sb_api_...) or a legacy CI token.',
               ),
             ).called(1);
             verifyNever(
-              () => logger.detail('[env] $shorebirdTokenEnvVar parsed'),
+              () => logger.detail(
+                '[env] $shorebirdTokenEnvVar parsed as legacy CiToken',
+              ),
             );
           },
         );
@@ -914,7 +969,18 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
           () => logger.detail('[env] $shorebirdTokenEnvVar detected'),
         ).called(1);
         verify(
-          () => logger.detail('[env] $shorebirdTokenEnvVar parsed'),
+          () => logger.warn(
+            'SHOREBIRD_TOKEN contains a legacy CI token from '
+            '`shorebird login:ci`. '
+            'This format is deprecated and will stop working in a future '
+            'release. '
+            'Create an API key at https://console.shorebird.dev instead.',
+          ),
+        ).called(1);
+        verify(
+          () => logger.detail(
+            '[env] $shorebirdTokenEnvVar parsed as legacy CiToken',
+          ),
         ).called(1);
       });
 
@@ -933,7 +999,7 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
         'should set the email when claims are valid and current user exists',
         () async {
           await runWithOverrides(
-            () => auth.login(AuthProvider.google, prompt: (_) {}),
+            () => auth.login(prompt: (_) {}),
           );
           expect(auth.email, email);
           expect(auth.isAuthenticated, isTrue);
@@ -941,39 +1007,6 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
           expect(buildAuth().isAuthenticated, isTrue);
         },
       );
-
-      group('with custom auth provider', () {
-        test(
-          '''should set the email when claims are valid and current user exists''',
-          () async {
-            await runWithOverrides(
-              () => auth.login(AuthProvider.microsoft, prompt: (_) {}),
-            );
-            expect(auth.email, email);
-            expect(auth.isAuthenticated, isTrue);
-            expect(buildAuth().email, email);
-            expect(buildAuth().isAuthenticated, isTrue);
-          },
-        );
-      });
-
-      group('with Shorebird auth provider', () {
-        test(
-          'should set the email when login succeeds',
-          () async {
-            await runWithOverrides(
-              () => auth.login(
-                AuthProvider.shorebird,
-                prompt: (_) {},
-              ),
-            );
-            expect(auth.email, email);
-            expect(auth.isAuthenticated, isTrue);
-            expect(buildAuth().email, email);
-            expect(buildAuth().isAuthenticated, isTrue);
-          },
-        );
-      });
 
       test(
         'throws UserAlreadyLoggedInException if user is authenticated',
@@ -983,13 +1016,36 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
 
           await expectLater(
             runWithOverrides(
-              () => auth.login(AuthProvider.google, prompt: (_) {}),
+              () => auth.login(prompt: (_) {}),
             ),
             throwsA(isA<UserAlreadyLoggedInException>()),
           );
 
           expect(auth.email, isNotNull);
           expect(auth.isAuthenticated, isTrue);
+        },
+      );
+
+      test(
+        'throws UserAlreadyLoggedInException when authenticated via API key',
+        () async {
+          when(() => platform.environment).thenReturn(<String, String>{
+            shorebirdTokenEnvVar: 'sb_api_abc123',
+          });
+          auth = buildAuth();
+
+          await expectLater(
+            runWithOverrides(
+              () => auth.login(prompt: (_) {}),
+            ),
+            throwsA(
+              isA<UserAlreadyLoggedInException>().having(
+                (e) => e.email,
+                'email',
+                isNull,
+              ),
+            ),
+          );
         },
       );
 
@@ -1008,7 +1064,7 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
         test('proceeds with login', () async {
           expect(auth.email, isNull);
           await runWithOverrides(
-            () => auth.login(AuthProvider.google, prompt: (_) {}),
+            () => auth.login(prompt: (_) {}),
           );
           expect(auth.email, equals(email));
           expect(auth.isAuthenticated, isTrue);
@@ -1022,115 +1078,172 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
 
         await expectLater(
           runWithOverrides(
-            () => auth.login(AuthProvider.google, prompt: (_) {}),
+            () => auth.login(prompt: (_) {}),
           ),
           throwsA(isA<UserNotFoundException>()),
         );
 
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
-      });
-    });
-
-    group('loginCI', () {
-      setUp(() {
-        when(() => platform.environment).thenReturn(<String, String>{
-          shorebirdTokenEnvVar: ciToken.toBase64(),
-        });
-        auth = buildAuth();
-      });
-
-      test(
-        'returns a CI token and does not set the email or cache credentials',
-        () async {
-          final token = await runWithOverrides(
-            () => auth.loginCI(AuthProvider.google, prompt: (_) {}),
-          );
-          expect(token.authProvider, ciToken.authProvider);
-          expect(token.refreshToken, ciToken.refreshToken);
-          expect(auth.email, isNull);
-          expect(auth.isAuthenticated, isTrue);
-          expect(buildAuth().email, isNull);
-          expect(buildAuth().isAuthenticated, isTrue);
-          when(() => platform.environment).thenReturn({});
-          expect(buildAuth().isAuthenticated, isFalse);
-        },
-      );
-
-      group('with Shorebird auth provider', () {
-        test(
-          'returns a CI token with Shorebird provider',
-          () async {
-            final token = await runWithOverrides(
-              () => auth.loginCI(
-                AuthProvider.shorebird,
-                prompt: (_) {},
-              ),
-            );
-            expect(
-              token.authProvider,
-              AuthProvider.shorebird,
-            );
-            expect(token.refreshToken, refreshToken);
-          },
-        );
-      });
-
-      test('throws when user does not exist', () async {
-        when(
-          () => codePushClient.getCurrentUser(),
-        ).thenAnswer((_) async => null);
-
-        await expectLater(
-          runWithOverrides(
-            () => auth.loginCI(AuthProvider.google, prompt: (_) {}),
-          ),
-          throwsA(isA<UserNotFoundException>()),
-        );
-
-        expect(auth.email, isNull);
-      });
-
-      group('when credentials are missing a refresh token', () {
-        setUp(() {
-          accessCredentials = oauth2.AccessCredentials(
-            accessToken,
-            null,
-            scopes,
-            idToken: idToken,
-          );
-        });
-
-        test('throws if credentials are missing a refresh token', () async {
-          await expectLater(
-            runWithOverrides(
-              () => auth.loginCI(AuthProvider.google, prompt: (_) {}),
-            ),
-            throwsA(
-              isA<Exception>().having(
-                (e) => e.toString(),
-                'toString',
-                'Exception: No refresh token found.',
-              ),
-            ),
-          );
-        });
       });
     });
 
     group('logout', () {
       test('clears session and wipes state', () async {
         await runWithOverrides(
-          () => auth.login(AuthProvider.google, prompt: (_) {}),
+          () => auth.login(prompt: (_) {}),
         );
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
 
-        auth.logout();
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('{"ok":true}', 200),
+        );
+
+        await runWithOverrides(() => auth.logout());
         expect(auth.email, isNull);
         expect(auth.isAuthenticated, isFalse);
         expect(buildAuth().email, isNull);
         expect(buildAuth().isAuthenticated, isFalse);
+      });
+
+      test('clears credentials file when it exists', () async {
+        await runWithOverrides(
+          () => auth.login(prompt: (_) {}),
+        );
+        expect(File(auth.credentialsFilePath).existsSync(), isTrue);
+
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('{"ok":true}', 200),
+        );
+
+        await runWithOverrides(() => auth.logout());
+        expect(File(auth.credentialsFilePath).existsSync(), isFalse);
+      });
+
+      group('when authenticated via API key', () {
+        setUp(() {
+          when(() => platform.environment).thenReturn(<String, String>{
+            shorebirdTokenEnvVar: 'sb_api_abc123',
+          });
+          auth = buildAuth();
+        });
+
+        test('remains authenticated because env var is still set', () async {
+          expect(auth.isAuthenticated, isTrue);
+          await runWithOverrides(() => auth.logout());
+          // _apiKey is not cleared by _clearCredentials, so the instance
+          // still considers itself authenticated.
+          expect(auth.isAuthenticated, isTrue);
+        });
+      });
+
+      group('when authenticated via CI token', () {
+        setUp(() {
+          when(() => platform.environment).thenReturn(<String, String>{
+            shorebirdTokenEnvVar: ciToken.toBase64(),
+          });
+          auth = buildAuth();
+        });
+
+        test('remains authenticated because env var is still set', () async {
+          expect(auth.isAuthenticated, isTrue);
+          await runWithOverrides(() => auth.logout());
+          // _token is not cleared by _clearCredentials, so the instance
+          // still considers itself authenticated.
+          expect(auth.isAuthenticated, isTrue);
+        });
+      });
+
+      test('revokes server session with refresh token', () async {
+        await runWithOverrides(
+          () => auth.login(prompt: (_) {}),
+        );
+
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('{"ok":true}', 200),
+        );
+
+        await runWithOverrides(() => auth.logout());
+
+        final captured = verify(
+          () => httpClient.post(
+            captureAny(),
+            headers: captureAny(named: 'headers'),
+          ),
+        ).captured;
+
+        final uri = captured[0] as Uri;
+        expect(uri.path, contains('api/logout'));
+
+        final headers = captured[1] as Map<String, String>;
+        expect(headers['Authorization'], equals('Bearer $refreshToken'));
+      });
+
+      test('logs detail when server returns non-2xx', () async {
+        await runWithOverrides(
+          () => auth.login(prompt: (_) {}),
+        );
+
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('{"error":"gone"}', 500),
+        );
+
+        await runWithOverrides(() => auth.logout());
+        expect(auth.isAuthenticated, isFalse);
+
+        verify(
+          () => logger.detail(
+            any(that: contains('Session revocation returned 500')),
+          ),
+        ).called(1);
+      });
+
+      test('clears credentials even if server revocation fails', () async {
+        await runWithOverrides(
+          () => auth.login(prompt: (_) {}),
+        );
+        expect(auth.isAuthenticated, isTrue);
+
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenThrow(const SocketException('no internet'));
+
+        await runWithOverrides(() => auth.logout());
+        expect(auth.email, isNull);
+        expect(auth.isAuthenticated, isFalse);
+      });
+
+      test('skips revocation when no refresh token', () async {
+        accessCredentials = oauth2.AccessCredentials(
+          accessToken,
+          null, // no refresh token
+          scopes,
+          idToken: idToken,
+        );
+        auth = buildAuth();
+        writeCredentials();
+        auth = buildAuth();
+
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('{"ok":true}', 200),
+        );
+
+        await runWithOverrides(() => auth.logout());
+
+        verifyNever(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        );
       });
     });
 
@@ -1144,6 +1257,14 @@ Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar e
 
   group('OauthValues', () {
     group('clientId', () {
+      test('returns a ClientId for google', () {
+        expect(AuthProvider.google.clientId, isNotNull);
+      });
+
+      test('returns a ClientId for microsoft', () {
+        expect(AuthProvider.microsoft.clientId, isNotNull);
+      });
+
       test('throws UnsupportedError for shorebird', () {
         expect(
           () => AuthProvider.shorebird.clientId,

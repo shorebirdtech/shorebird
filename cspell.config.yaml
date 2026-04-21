@@ -7,6 +7,7 @@ words:
   - aapt
   - aarch
   - aars # Android Archive
+  - aidl # Android AIDL interface definition files
   - allprojects # From gradle files
   - altool
   - ANDROIDD
@@ -20,16 +21,21 @@ words:
   - bdero
   - bintools
   - bitcode
+  - bitrise # Bitrise CI platform
   - bryanoltman
   - bundletool
+  - Dalvik # Android Dalvik VM / DEX file format
   - canvaskit
   - carryforward
+  - ccache
   - cipd
+  - codegen
   - codemagic
   - codesign
   - codesigned
   - codesigning
   - deflavored
+  - develocity
   - devicectl
   - dorny # From .github dir, doesn't show up in "**" check?
   - dyld
@@ -47,6 +53,7 @@ words:
   - hotreload
   - idevicesyslog
   - incrbyfloat # From ./packages/redis_client
+  - ints
   - iokit
   - iphoneos
   - keyalg # From .github/workflows/e2e.yaml
@@ -81,6 +88,7 @@ words:
   - parseable
   - patchability
   - pana
+  - Perfetto # Chrome trace viewer at ui.perfetto.dev
   - pkcs
   - podfile
   - podspec
@@ -88,16 +96,20 @@ words:
   - precache
   - previewable
   - PRNG
+  - proguard # Android ProGuard shrinker/obfuscator
   - propertylistserialization
   - propertylistserialization
+  - protos # Protocol buffer generated files
   - pubspec
   - pwsh
   - quantiles
   - rdata
   - reactivecircus # From .github dir, doesn't show up in "**" check?
   - readlink
+  - reimplementation
   - reinit
   - requirepass # From .github dir, doesn't show up in "**" check?
+  - spawnee
   - Retryable
   - RSAPKCS
   - sdcard # From .github/workflows/e2e.yaml
@@ -118,6 +130,7 @@ words:
   - sysroot
   - tdigest
   - temurin # From .github dir, doesn't show up in "**" check?
+  - timebase # Mach timebase (mach_timebase_info)
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
   - unawaited
@@ -140,6 +153,8 @@ words:
   - xcframework
   - xcodebuild
   - xcodeproj
+  - xcresult
+  - xcresulttool
   - xcrun
   - xcscheme
   - xcschemes

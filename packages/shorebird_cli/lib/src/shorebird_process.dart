@@ -36,6 +36,7 @@ class ShorebirdProcess {
     Map<String, String>? environment,
     bool? runInShell,
     String? workingDirectory,
+    void Function(Process process)? onStart,
   }) async {
     final process = await start(
       executable,
@@ -45,6 +46,7 @@ class ShorebirdProcess {
       workingDirectory: workingDirectory,
       mode: ProcessStartMode.inheritStdio,
     );
+    onStart?.call(process);
     return process.exitCode;
   }
 

@@ -12,5 +12,5 @@ dependencies:
   meta: ^1.0.0
 
 dev_dependencies:
-  mocktail: ^1.0.0
-  test: ^1.26.3
+  mocktail: ^1.0.5
+  test: ^1.31.0

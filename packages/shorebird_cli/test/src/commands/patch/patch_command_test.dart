@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -140,6 +141,9 @@ void main() {
           aotToolsRef.overrideWith(() => aotTools),
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
+          buildTraceSessionRef.overrideWith(
+            () => BuildTraceSession(commandStartedAt: DateTime(2023)),
+          ),
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           loggerRef.overrideWith(() => logger),
@@ -167,6 +171,12 @@ void main() {
       aotTools = MockAotTools();
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
+      when(
+        () => artifactBuilder.prepareBuildTrace(
+          platform: any(named: 'platform'),
+        ),
+      ).thenAnswer((_) async {});
+      when(artifactBuilder.writeBuildTraceSummary).thenReturn(null);
       artifactManager = MockArtifactManager();
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();

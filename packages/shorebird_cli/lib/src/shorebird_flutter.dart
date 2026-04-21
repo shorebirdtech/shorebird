@@ -268,6 +268,19 @@ class ShorebirdFlutter {
     }
   }
 
+  /// Fetches the latest remote refs for the Flutter clone so that
+  /// release branch pointers (e.g. `flutter_release/3.38.5`) are up to date.
+  Future<void> fetchRemoteRefs() async {
+    try {
+      await git.fetch(directory: _workingDirectory());
+    } on Exception {
+      logger.warn(
+        'Failed to fetch latest Flutter versions. '
+        'Resolving with potentially stale data.',
+      );
+    }
+  }
+
   /// Returns the git revision for the provided [version].
   /// e.g. 3.16.3 -> b9b23902966504a9778f4c07e3a3487fa84dcb2a
   Future<String?> getRevisionForVersion(String version) async {

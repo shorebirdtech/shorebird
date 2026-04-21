@@ -1,91 +1,28 @@
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart'
-    as api;
 
 /// {@template login_ci_command}
 /// `shorebird login:ci`
-/// Login as a CI user.
+/// Deprecated — directs users to API keys instead.
 /// {@endtemplate}
 class LoginCiCommand extends ShorebirdCommand {
-  /// {@macro login_ci_command}
-  LoginCiCommand() {
-    argParser.addOption(
-      'provider',
-      abbr: 'p',
-      allowed: _supportedProviders.map((e) => e.name),
-      defaultsTo: api.AuthProvider.google.name,
-      help: 'The authentication provider to use. Defaults to Google.',
-    );
-  }
-
-  /// Providers supported for CI login. Shorebird auth tokens cannot be used
-  /// for CI authentication.
-  static final _supportedProviders = api.AuthProvider.values
-      .where((p) => p != api.AuthProvider.shorebird)
-      .toList();
-
   @override
-  String get description => 'Login as a CI user.';
+  String get description => 'Login as a CI user (deprecated).';
 
   @override
   String get name => 'login:ci';
 
   @override
   Future<int> run() async {
-    final api.AuthProvider provider;
-    if (results.wasParsed('provider')) {
-      provider = api.AuthProvider.values.byName(
-        results['provider'] as String,
-      );
-    } else {
-      provider = logger.chooseOne(
-        'Choose an auth provider',
-        choices: _supportedProviders,
-        display: (p) => p.displayName,
-      );
-    }
+    logger.info(
+      '''
+${lightYellow.wrap('⚠ shorebird login:ci is deprecated.')}
 
-    final CiToken ciToken;
-    try {
-      ciToken = await auth.loginCI(provider, prompt: prompt);
-    } on UserNotFoundException catch (error) {
-      logger
-        ..err('''
-We could not find a Shorebird account for ${error.email}.''')
-        ..info(
-          '''If you have not yet created an account, go to "${link(uri: Uri.parse('https://console.shorebird.dev'))}" to create one. If you believe this is an error, please reach out to us via Discord, we're happy to help!''',
-        );
-      return ExitCode.software.code;
-    } on Exception catch (error) {
-      logger.err(error.toString());
-      return ExitCode.software.code;
-    }
+To authenticate in CI, create an API key at ${link(uri: Uri.parse('https://console.shorebird.dev'))} and set it as your ${lightCyan.wrap('SHOREBIRD_TOKEN')} environment variable.
 
-    logger.info('''
-
-🎉 ${lightGreen.wrap('Success! Use the following token to login on a CI server:')}
-
-${lightCyan.wrap(ciToken.toBase64())}
-
-Example:
-  
-${lightCyan.wrap('export $shorebirdTokenEnvVar="\$SHOREBIRD_TOKEN" && shorebird patch android')}
-''');
+Existing tokens from login:ci will continue to work for now, but will stop working in a future release.''',
+    );
     return ExitCode.success.code;
-  }
-
-  /// Prompt the user to visit the provided [url] to authorize the CLI.
-  void prompt(String url) {
-    logger.info('''
-The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
-
-In a browser, visit this URL to log in:
-
-${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
-
-Waiting for your authorization...''');
   }
 }

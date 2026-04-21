@@ -4,6 +4,35 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
  -->
 
+## 1.6.92 (March 26, 2026)
+
+- 🐦 Support for Flutter 3.41.6 & Dart 3.11.4
+
+## 1.6.91 (March 25, 2026)
+
+- 🔐 Support API keys for authentication ([docs](https://docs.shorebird.dev/account/api-keys/))
+  - `login:ci` command has been deprecated
+  - Create API keys through the [web console](https://console.shorebird.dev)
+
+## 1.6.90 (March 24, 2026)
+
+- 🐦 Support for Flutter 3.41.5 & Dart 3.11.3
+- ✨ Add semantic DEX diffing to suppress false native change warnings
+- ✨ Suggest cache clean in build failure recommendations
+- 🔐 Revoke sessions on CLI logout
+- ⚠️ Warn that preview reinstalls the app on mobile
+- 🤫 Suppress Gradle welcome message during init
+- 🐛 Fix: select correct executable in Windows preview
+- 🐛 Fix: show friendly error message when GitHub is down
+- 🐛 Fix: list orgs and exit gracefully when init is non-interactive
+- 🐛 Fix: resolve JWT issuer from ShorebirdEnv instead of from Auth URL
+
+## 1.6.89 (March 18, 2026)
+
+- 🐛 Fix: roll back Flutter 3.41.4 to address increased link times
+- 🍎 Add `.pkg` distribution warning to macOS post-release instructions
+- 🧹 Remove Plan model from protocol package
+
 ## 1.6.88 (March 13, 2026)
 
 - 📉 Link percentage improvements (for Flutter 3.41.4)

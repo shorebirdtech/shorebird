@@ -81,7 +81,7 @@ runs:
       run: echo "package_name=${PACKAGE_PATH##*/}" >> $GITHUB_OUTPUT
 
     - name: 📊 Upload Coverage
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         flags: ${{ steps.split.outputs.package_name }}
         token: ${{ inputs.codecov_token }}

@@ -42,16 +42,6 @@ const microsoftJwtIssuerPrefix = 'https://login.microsoftonline.com/';
 /// The environment variable that holds the Shorebird CI token.
 const shorebirdTokenEnvVar = 'SHOREBIRD_TOKEN';
 
-/// Callback for obtaining access credentials.
-typedef ObtainAccessCredentials =
-    Future<oauth2.AccessCredentials> Function(
-      oauth2.ClientId clientId,
-      List<String> scopes,
-      http.Client client,
-      void Function(String) userPrompt, {
-      oauth2.AuthEndpoints authEndpoints,
-    });
-
 /// Callback for refreshing access credentials.
 typedef RefreshCredentials =
     Future<oauth2.AccessCredentials> Function(
@@ -196,6 +186,27 @@ class AuthenticatedClient extends http.BaseClient {
   }
 }
 
+/// An HTTP client that authenticates requests using an API key.
+///
+/// Unlike [AuthenticatedClient], this client does not perform any token
+/// refresh or exchange — the API key is sent directly in the Authorization
+/// header and the server handles validation.
+class ApiKeyClient extends http.BaseClient {
+  /// Creates a new [ApiKeyClient].
+  ApiKeyClient({required String apiKey, required http.Client httpClient})
+    : _apiKey = apiKey,
+      _baseClient = httpClient;
+
+  final String _apiKey;
+  final http.Client _baseClient;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    request.headers['Authorization'] = 'Bearer $_apiKey';
+    return _baseClient.send(request);
+  }
+}
+
 /// An OAuth 2.0 authentication provider.
 class Auth {
   /// Creates a new [Auth] instance.
@@ -203,16 +214,12 @@ class Auth {
     http.Client? httpClient,
     String? credentialsDir,
     Uri? authServiceUri,
-    ObtainAccessCredentials? obtainAccessCredentials,
     ObtainCredentialsViaLoopbackLogin? obtainCredentialsViaLoopbackLogin,
     CodePushClientBuilder? buildCodePushClient,
   }) : _httpClient = httpClient ?? _defaultHttpClient,
        _credentialsDir =
            credentialsDir ?? applicationConfigHome(executableName),
        _authServiceUri = authServiceUri ?? shorebirdEnv.authServiceUri,
-       _obtainAccessCredentials =
-           obtainAccessCredentials ??
-           oauth2.obtainAccessCredentialsViaUserConsent,
        _obtainCredentialsViaLoopbackLogin =
            obtainCredentialsViaLoopbackLogin ??
            shorebird_oauth.obtainCredentialsViaLoopbackLogin,
@@ -225,10 +232,10 @@ class Auth {
   final http.Client _httpClient;
   final String _credentialsDir;
   final Uri _authServiceUri;
-  final ObtainAccessCredentials _obtainAccessCredentials;
   final ObtainCredentialsViaLoopbackLogin _obtainCredentialsViaLoopbackLogin;
   final CodePushClientBuilder _buildCodePushClient;
   CiToken? _token;
+  String? _apiKey;
 
   /// The path to the credentials file.
   String get credentialsFilePath {
@@ -237,8 +244,8 @@ class Auth {
 
   /// The underlying HTTP client.
   http.Client get client {
-    if (_credentials == null && _token == null) {
-      return _httpClient;
+    if (_apiKey != null) {
+      return ApiKeyClient(apiKey: _apiKey!, httpClient: _httpClient);
     }
 
     if (_token != null) {
@@ -249,70 +256,30 @@ class Auth {
       );
     }
 
-    return AuthenticatedClient.credentials(
-      credentials: _credentials!,
-      httpClient: _httpClient,
-      authServiceUri: _authServiceUri,
-      onRefreshCredentials: _flushCredentials,
-    );
-  }
-
-  /// Gets a CI token for the current user.
-  Future<CiToken> loginCI(
-    AuthProvider authProvider, {
-    required void Function(String) prompt,
-  }) async {
-    final client = http.Client();
-    try {
-      final credentials = await _obtainCredentials(
-        authProvider,
-        client: client,
-        prompt: prompt,
+    if (_credentials != null) {
+      return AuthenticatedClient.credentials(
+        credentials: _credentials!,
+        httpClient: _httpClient,
+        authServiceUri: _authServiceUri,
+        onRefreshCredentials: _flushCredentials,
       );
-
-      final codePushClient = _buildCodePushClient(
-        httpClient: AuthenticatedClient.credentials(
-          credentials: credentials,
-          httpClient: _httpClient,
-          authServiceUri: _authServiceUri,
-        ),
-        hostedUri: shorebirdEnv.hostedUri,
-      );
-      final user = await codePushClient.getCurrentUser();
-      if (user == null) {
-        throw UserNotFoundException(email: credentials.email!);
-      }
-      if (credentials.refreshToken == null) {
-        throw Exception('No refresh token found.');
-      }
-
-      return CiToken(
-        refreshToken: credentials.refreshToken!,
-        authProvider: authProvider,
-      );
-    } finally {
-      client.close();
     }
+
+    return _httpClient;
   }
 
-  /// Logs in the user.
-  Future<void> login(
-    AuthProvider authProvider, {
-    required void Function(String) prompt,
-  }) async {
+  /// Logs in the user via the Shorebird loopback OAuth flow.
+  Future<void> login({required void Function(String) prompt}) async {
     if (isAuthenticated) {
-      // Because isAuthenticated is checks for the presence of either an email
-      // or a CI token, and because this method is for logging in without a CI
-      // token, we can safely assume that _email is not null.
-      throw UserAlreadyLoggedInException(email: _email!);
+      throw UserAlreadyLoggedInException(email: _email);
     }
 
     final client = http.Client();
     try {
-      _credentials = await _obtainCredentials(
-        authProvider,
-        client: client,
-        prompt: prompt,
+      _credentials = await _obtainCredentialsViaLoopbackLogin(
+        httpClient: client,
+        authBaseUrl: _authServiceUri,
+        userPrompt: prompt,
       );
 
       final codePushClient = _buildCodePushClient(
@@ -332,32 +299,42 @@ class Auth {
     }
   }
 
-  Future<oauth2.AccessCredentials> _obtainCredentials(
-    AuthProvider authProvider, {
-    required http.Client client,
-    required void Function(String) prompt,
-  }) async {
-    // Shorebird uses its own login flow; Google and Microsoft use the
-    // standard OAuth consent flow. This branching can be removed once the
-    // Google/Microsoft providers are fully removed from the CLI.
-    if (authProvider == AuthProvider.shorebird) {
-      return _obtainCredentialsViaLoopbackLogin(
-        httpClient: client,
-        authBaseUrl: _authServiceUri,
-        userPrompt: prompt,
-      );
-    }
-    return _obtainAccessCredentials(
-      authProvider.clientId,
-      authProvider.scopes,
-      client,
-      prompt,
-      authEndpoints: authProvider.authEndpoints,
-    );
+  /// Logs out the user.
+  ///
+  /// If a Shorebird refresh token is available, revokes the server-side
+  /// session before clearing local credentials. Local credentials are always
+  /// cleared even if the server call fails.
+  Future<void> logout() async {
+    await _revokeSession();
+    _clearCredentials();
   }
 
-  /// Logs out the user.
-  void logout() => _clearCredentials();
+  /// Sends the current refresh token to the auth service's logout endpoint
+  /// to revoke the server-side session. Failures are logged but swallowed
+  /// so that local logout always succeeds.
+  Future<void> _revokeSession() async {
+    final refreshToken = _credentials?.refreshToken;
+    if (refreshToken == null) return;
+
+    try {
+      final logoutUrl = _authServiceUri.replace(
+        path: p.url.join(_authServiceUri.path, 'api/logout'),
+      );
+      final response = await _httpClient.post(
+        logoutUrl,
+        headers: {'Authorization': 'Bearer $refreshToken'},
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        logger.detail(
+          'Session revocation returned ${response.statusCode}: '
+          '${response.body}',
+        );
+      }
+    } on Exception catch (e) {
+      // Best-effort — don't block logout if the server is unreachable.
+      logger.detail('Failed to revoke session: $e');
+    }
+  }
 
   oauth2.AccessCredentials? _credentials;
 
@@ -367,26 +344,43 @@ class Auth {
   String? get email => _email;
 
   /// Whether the user is authenticated.
-  bool get isAuthenticated => _email != null || _token != null;
+  bool get isAuthenticated =>
+      _email != null || _token != null || _apiKey != null;
 
   void _loadCredentials() {
     final envToken = platform.environment[shorebirdTokenEnvVar];
     if (envToken != null) {
+      final trimmed = envToken.trim();
       logger.detail('[env] $shorebirdTokenEnvVar detected');
 
+      // New API key format — pass through directly, no refresh needed.
+      if (trimmed.startsWith('sb_api_')) {
+        _apiKey = trimmed;
+        logger.detail('[env] $shorebirdTokenEnvVar parsed as API key');
+        return;
+      }
+
+      // Legacy CiToken format — still supported, but deprecated.
       try {
-        _token = CiToken.fromBase64(envToken.trim());
+        _token = CiToken.fromBase64(trimmed);
+        logger.warn(
+          'SHOREBIRD_TOKEN contains a legacy CI token from '
+          '`shorebird login:ci`. '
+          'This format is deprecated and will stop working in a future '
+          'release. '
+          'Create an API key at https://console.shorebird.dev instead.',
+        );
       } on FormatException catch (e) {
         logger
-          ..err('''
-Failed to parse CI token from environment. This likely means that your CI token is incorrectly formatted.
-
-Please regenerate using `shorebird login:ci`, update the $shorebirdTokenEnvVar environment variable, and try again.''')
+          ..err(
+            'Failed to parse $shorebirdTokenEnvVar. Expected an API key '
+            '(sb_api_...) or a legacy CI token.',
+          )
           ..detail(e.toString());
         rethrow;
       }
 
-      logger.detail('[env] $shorebirdTokenEnvVar parsed');
+      logger.detail('[env] $shorebirdTokenEnvVar parsed as legacy CiToken');
       return;
     }
 
@@ -448,11 +442,11 @@ extension JwtClaims on oauth2.AccessCredentials {
 /// Thrown when an already authenticated user attempts to log in or sign up.
 class UserAlreadyLoggedInException implements Exception {
   /// {@macro user_already_logged_in_exception}
-  UserAlreadyLoggedInException({required this.email});
+  UserAlreadyLoggedInException({this.email});
 
-  /// The email of the already authenticated user, as derived from the stored
-  /// auth credentials.
-  final String email;
+  /// The email of the already authenticated user, or `null` when
+  /// authenticated via an environment variable (API key / CI token).
+  final String? email;
 }
 
 /// {@template user_not_found_exception}
