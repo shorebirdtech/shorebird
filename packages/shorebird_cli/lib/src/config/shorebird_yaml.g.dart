@@ -20,6 +20,7 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
         'base_url',
         'auto_update',
         'patch_verification',
+        'module_version',
       ],
     );
     final val = ShorebirdYaml(
@@ -34,6 +35,7 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
         'patch_verification',
         (v) => $enumDecodeNullable(_$PatchVerificationEnumMap, v),
       ),
+      moduleVersion: $checkedConvert('module_version', (v) => v as String?),
     );
     return val;
   },
@@ -42,6 +44,7 @@ ShorebirdYaml _$ShorebirdYamlFromJson(Map json) => $checkedCreate(
     'baseUrl': 'base_url',
     'autoUpdate': 'auto_update',
     'patchVerification': 'patch_verification',
+    'moduleVersion': 'module_version',
   },
 );
 
@@ -53,6 +56,7 @@ Map<String, dynamic> _$ShorebirdYamlToJson(
   'base_url': instance.baseUrl,
   'auto_update': instance.autoUpdate,
   'patch_verification': _$PatchVerificationEnumMap[instance.patchVerification],
+  'module_version': instance.moduleVersion,
 };
 
 const _$PatchVerificationEnumMap = {
