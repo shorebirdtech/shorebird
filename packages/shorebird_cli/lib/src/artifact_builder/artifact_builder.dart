@@ -132,51 +132,6 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     return '${LegacyFlutterJarReference.recommendation(offenders)}\n$vanilla';
   }
 
-  /// Cache of `flutter build <command>` help output checks for
-  /// `--shorebird-trace` support. Populated lazily by
-  /// [_supportsTraceFlag].
-  final _traceSupport = <String, bool>{};
-
-  /// Returns whether `flutter build <command>` accepts `--shorebird-trace`.
-  ///
-  /// Probes the command's help output and caches the result per [command]
-  /// so that subsequent calls for the same command are free.
-  /// Returns `false` if the help check fails for any reason.
-  ///
-  /// The probe uses verbose help (`-h -v`): `--shorebird-trace` is registered
-  /// with `hide: !verboseHelp` in Flutter, so it does not appear in plain
-  /// `-h` output. Probing with `-h` alone therefore returned `false` even on
-  /// Flutter versions that fully support the flag, silently disabling build
-  /// tracing for everyone. `-h -v` lists hidden options so support is
-  /// detected correctly.
-  Future<bool> _supportsTraceFlag(String command) async {
-    if (_traceSupport.containsKey(command)) return _traceSupport[command]!;
-
-    try {
-      final result = await process.run(
-        'flutter',
-        ['build', command, '-h', '-v'],
-        runInShell: false,
-      );
-      final supported = result.stdout.toString().contains('--shorebird-trace');
-      _traceSupport[command] = supported;
-      return supported;
-    } on Exception {
-      _traceSupport[command] = false;
-      return false;
-    }
-  }
-
-  /// Returns the `--shorebird-trace` argument if the current
-  /// [BuildTraceSession] has a trace file and the given [command]
-  /// supports it, or an empty list otherwise.
-  Future<List<String>> _traceArgs(String command) async {
-    final traceFile = buildTraceSession.traceFile;
-    if (traceFile == null) return const [];
-    if (!await _supportsTraceFlag(command)) return const [];
-    return ['--shorebird-trace=${traceFile.path}'];
-  }
-
   /// Builds an aab using `flutter build appbundle`. Runs `flutter pub get` with
   /// the system installation of Flutter to reset
   /// `.dart_tool/package_config.json` after the build completes or fails.
@@ -191,6 +146,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'appbundle',
@@ -198,7 +154,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        ...await _traceArgs('appbundle'),
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -262,6 +218,7 @@ Reason: Exited with code $exitCode.''',
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'apk',
@@ -274,7 +231,7 @@ Reason: Exited with code $exitCode.''',
         // coverage:ignore-start
         if (splitPerAbi) '--split-per-abi',
         // coverage:ignore-end
-        ...await _traceArgs('apk'),
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -335,6 +292,7 @@ Reason: Exited with code $exitCode.''',
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'aar',
@@ -342,7 +300,7 @@ Reason: Exited with code $exitCode.''',
         '--no-profile',
         '--build-number=$buildNumber',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        ...await _traceArgs('aar'),
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -383,12 +341,13 @@ Reason: Exited with code $exitCode.''',
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'linux',
         '--release',
         if (target != null) '--target=$target',
-        ...await _traceArgs('linux'),
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -440,6 +399,7 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'macos',
@@ -447,7 +407,7 @@ Reason: Exited with code $exitCode.''',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        ...await _traceArgs('macos'),
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
       final buildStart = clock.now();
@@ -511,6 +471,7 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'ipa',
@@ -518,7 +479,7 @@ Reason: Exited with code $exitCode.''',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        ...await _traceArgs('ipa'),
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -578,12 +539,13 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'ios-framework',
         '--no-debug',
         '--no-profile',
-        ...await _traceArgs('ios-framework'),
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
@@ -861,12 +823,13 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
+      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'windows',
         '--release',
         if (target != null) '--target=$target',
-        ...await _traceArgs('windows'),
+        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
         ...args,
       ];
 
