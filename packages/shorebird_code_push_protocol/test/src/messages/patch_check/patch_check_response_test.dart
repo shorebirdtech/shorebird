@@ -120,6 +120,14 @@ void main() {
           'rolled_back_patch_numbers': [1, 2, 3],
         });
       });
+
+      test('parses the rolled back patch numbers from json', () {
+        final response = PatchCheckResponse.fromJson(const {
+          'patch_available': true,
+          'rolled_back_patch_numbers': [1, 2, 3],
+        });
+        expect(response.rolledBackPatchNumbers, equals([1, 2, 3]));
+      });
     });
   });
 }

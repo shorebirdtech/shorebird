@@ -22,5 +22,27 @@ void main() {
     test('windows does not support flavors', () {
       expect(ReleasePlatform.windows.supportsFlavors, isFalse);
     });
+
+    group('displayName', () {
+      test('android', () {
+        expect(ReleasePlatform.android.displayName, 'Android');
+      });
+
+      test('ios', () {
+        expect(ReleasePlatform.ios.displayName, 'iOS');
+      });
+
+      test('linux', () {
+        expect(ReleasePlatform.linux.displayName, 'Linux');
+      });
+
+      test('macos', () {
+        expect(ReleasePlatform.macos.displayName, 'macOS');
+      });
+
+      test('windows', () {
+        expect(ReleasePlatform.windows.displayName, 'Windows');
+      });
+    });
   });
 }
