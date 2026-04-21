@@ -21,7 +21,7 @@ dependencies:
   dex:
     path: ../dex
   equatable: ^2.0.8
-  googleapis_auth: ^2.2.0
+  googleapis_auth: ^2.3.0
   http: ^1.5.0
   intl: ^0.20.2
   io: ^1.0.5
@@ -40,6 +40,8 @@ dependencies:
   pubspec_parse: ^1.5.0
   retry: ^3.1.2
   scoped_deps: ^0.1.0
+  shorebird_build_trace:
+    path: ../shorebird_build_trace
   shorebird_code_push_client:
     path: ../shorebird_code_push_client
   shorebird_code_push_protocol:
@@ -55,7 +57,7 @@ dev_dependencies:
   build_verify: ^3.1.1
   build_version: ^2.1.1
   json_serializable: ^6.13.1
-  mocktail: ^1.0.3
+  mocktail: ^1.0.5
   test: ^1.31.0
 
 executables:

@@ -5,6 +5,8 @@ import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
+import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -32,6 +34,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 
 Future<void> main(List<String> args) async {
+  final commandStartedAt = DateTime.now();
   final loggingStdout = runScoped(
     () => LoggingStdout(baseStdOut: stdout, logFile: currentRunLogFile),
     values: {shorebirdEnvRef},
@@ -56,6 +59,9 @@ Command: shorebird ${args.join(' ')}
           appleRef,
           artifactBuilderRef,
           artifactManagerRef,
+          buildTraceSessionRef.overrideWith(
+            () => BuildTraceSession(commandStartedAt: commandStartedAt),
+          ),
           authRef,
           bundletoolRef,
           cacheRef,
@@ -88,6 +94,7 @@ Command: shorebird ${args.join(' ')}
           shorebirdArtifactsRef,
           shorebirdEnvRef,
           shorebirdFlutterRef,
+          shorebirdTracerRef,
           shorebirdToolsRef,
           shorebirdValidatorRef,
           shorebirdVersionRef,
