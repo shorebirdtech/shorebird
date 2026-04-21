@@ -2266,14 +2266,36 @@ Reason: Exited with code 70.'''),
       );
 
       test(
-        'treats unresolved Flutter version as new enough (dev pin)',
+        'leaves traceFile null when version is unresolved and revision is not '
+        'allowlisted',
         () async {
           // resolveFlutterVersion returns null for revisions not on a
-          // flutter_release branch (e.g. a pinned dev revision). The
-          // minVersion fallback admits these.
+          // flutter_release branch (e.g. a pinned dev revision predating
+          // the tracing PR). Those must not opt into tracing, or flutter
+          // build will fail on an unknown --shorebird-trace option.
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
           ).thenAnswer((_) async => null);
+
+          await runWithOverrides(() async {
+            await builder.prepareBuildTrace(platform: 'android');
+            expect(buildTraceSession.traceFile, isNull);
+          });
+        },
+      );
+
+      test(
+        'sets traceFile when version is unresolved but revision is allowlisted',
+        () async {
+          // A current Shorebird dev pin that does include the tracing PR
+          // typically has no parseable version (not on a flutter_release
+          // branch) — the allowlist is the bridge that admits it.
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => null);
+          when(() => shorebirdEnv.flutterRevision).thenReturn(
+            buildTraceSupportConstraint.allowedRevisions.first,
+          );
 
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'android');

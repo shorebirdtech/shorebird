@@ -582,10 +582,13 @@ Reason: Exited with code $exitCode.''',
     final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
       revision,
     );
-    // Treat an unknown version (e.g. a pinned dev revision) as new enough,
-    // matching the pattern used for other version-gated features.
+    // When resolveFlutterVersion returns null (dev revision not on any
+    // flutter_release/* branch), the gate falls through to the allowlist.
+    // That's intentional: a dev pin predating the tracing PR would otherwise
+    // get `--shorebird-trace` passed to a flutter build that doesn't know
+    // the flag, and fail hard.
     final supportsTrace = buildTraceSupportConstraint.isSatisfiedBy(
-      version: flutterVersion ?? buildTraceSupportConstraint.minVersion,
+      version: flutterVersion,
       revision: revision,
     );
     if (!supportsTrace) {
