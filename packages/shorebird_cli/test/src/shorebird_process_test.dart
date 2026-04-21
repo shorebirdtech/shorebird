@@ -1,6 +1,4 @@
 // cspell:ignore asdfasdf
-import 'dart:async';
-import 'dart:convert';
 import 'dart:io' hide Platform;
 
 import 'package:mason_logger/mason_logger.dart';
@@ -433,27 +431,27 @@ void main() {
             any(),
             any(),
             environment: any(named: 'environment'),
+            mode: ProcessStartMode.inheritStdio,
           ),
         ).thenAnswer((_) async => streamProcess);
-        when(
-          () => streamProcess.stdout,
-        ).thenAnswer((_) => const Stream<List<int>>.empty());
-        when(
-          () => streamProcess.stderr,
-        ).thenAnswer((_) => const Stream<List<int>>.empty());
         when(
           () => streamProcess.exitCode,
         ).thenAnswer((_) async => ExitCode.success.code);
       });
 
-      test('starts the process with default (pipe) stdio mode', () async {
+      test('proxies to start with correct mode', () async {
         await expectLater(
           runWithOverrides(() => shorebirdProcess.stream('git', ['pull'])),
           completion(equals(ExitCode.success.code)),
         );
 
         verify(
-          () => processWrapper.start('git', ['pull'], environment: {}),
+          () => processWrapper.start(
+            'git',
+            ['pull'],
+            environment: {},
+            mode: ProcessStartMode.inheritStdio,
+          ),
         ).called(1);
       });
 
@@ -469,33 +467,6 @@ void main() {
 
         expect(exit, ExitCode.success.code);
         expect(identical(received, streamProcess), isTrue);
-      });
-
-      test('forwards child stdout and stderr to parent sinks', () async {
-        // Forwarding through the parent's stdout/stderr sinks is what lets
-        // the LoggingStdout IOOverrides tee both streams into the shorebird
-        // log file (issue #3703). Assert the bytes actually flow through.
-        final collectedStdout = <int>[];
-        final collectedStderr = <int>[];
-        final stdoutSink = _CollectingStdout(sink: collectedStdout);
-        final stderrSink = _CollectingStdout(sink: collectedStderr);
-        when(() => streamProcess.stdout).thenAnswer(
-          (_) => Stream<List<int>>.fromIterable([utf8.encode('out')]),
-        );
-        when(() => streamProcess.stderr).thenAnswer(
-          (_) => Stream<List<int>>.fromIterable([utf8.encode('err')]),
-        );
-
-        await IOOverrides.runZoned(
-          () => runWithOverrides(
-            () => shorebirdProcess.stream('git', ['pull']),
-          ),
-          stdout: () => stdoutSink,
-          stderr: () => stderrSink,
-        );
-
-        expect(utf8.decode(collectedStdout), equals('out'));
-        expect(utf8.decode(collectedStderr), equals('err'));
       });
     });
 
@@ -627,21 +598,4 @@ void main() {
       );
     });
   });
-}
-
-/// Stdout test double that appends every `add()` byte list into [sink] and
-/// no-ops everything else. Lets us verify that `ShorebirdProcess.stream`
-/// forwards child stdio through `stdout.add` / `stderr.add` (so the real
-/// `LoggingStdout` override can tee into the shorebird log file) rather
-/// than bypassing Dart via inherited fds.
-class _CollectingStdout implements Stdout {
-  _CollectingStdout({required this.sink});
-
-  final List<int> sink;
-
-  @override
-  void add(List<int> data) => sink.addAll(data);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
