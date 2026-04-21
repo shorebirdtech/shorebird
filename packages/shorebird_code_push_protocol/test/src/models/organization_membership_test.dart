@@ -5,7 +5,7 @@ void main() {
   group(OrganizationMembership, () {
     test('can be (de)serialized', () {
       final membership = OrganizationMembership(
-        organization: Organization.forTest(),
+        organization: organizationForTest(),
         role: Role.developer,
       );
       expect(
@@ -20,14 +20,14 @@ void main() {
       group('when two instances are equal', () {
         test('returns true', () {
           final membership = OrganizationMembership(
-            organization: Organization.forTest(
+            organization: organizationForTest(
               createdAt: date,
               updatedAt: date,
             ),
             role: Role.developer,
           );
           final otherMembership = OrganizationMembership(
-            organization: Organization.forTest(
+            organization: organizationForTest(
               createdAt: date,
               updatedAt: date,
             ),
@@ -40,14 +40,14 @@ void main() {
       group('when two instances are not equal', () {
         test('returns false', () {
           final membership = OrganizationMembership(
-            organization: Organization.forTest(
+            organization: organizationForTest(
               createdAt: date,
               updatedAt: date,
             ),
             role: Role.developer,
           );
           final otherMembership = OrganizationMembership(
-            organization: Organization.forTest(
+            organization: organizationForTest(
               createdAt: date,
               updatedAt: date,
             ),

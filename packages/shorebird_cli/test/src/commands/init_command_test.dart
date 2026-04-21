@@ -99,7 +99,7 @@ environment:
         (_) async => [
           OrganizationMembership(
             role: Role.owner,
-            organization: Organization.forTest(id: organizationId),
+            organization: organizationForTest(id: organizationId),
           ),
         ],
       );
@@ -442,7 +442,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           (_) async => [
             OrganizationMembership(
               role: Role.owner,
-              organization: Organization.forTest(id: organizationId),
+              organization: organizationForTest(id: organizationId),
             ),
           ],
         );
@@ -470,8 +470,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     });
 
     group('when user has multiple organizations', () {
-      final org1 = Organization.forTest(name: 'org1', id: 1);
-      final org2 = Organization.forTest(
+      final org1 = organizationForTest(name: 'org1', id: 1);
+      final org2 = organizationForTest(
         name: 'org2',
         id: 2,
         organizationType: OrganizationType.team,

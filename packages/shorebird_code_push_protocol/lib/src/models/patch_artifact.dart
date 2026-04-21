@@ -1,13 +1,12 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-
-part 'patch_artifact.g.dart';
+import 'package:meta/meta.dart';
+import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template patch_artifact}
-/// An artifact contains metadata about the contents of a specific patch
-/// for a specific platform and architecture.
+/// Metadata about the contents of a specific patch for a specific
+/// platform and architecture.
 /// {@endtemplate}
-@JsonSerializable()
+@immutable
 class PatchArtifact {
   /// {@macro patch_artifact}
   const PatchArtifact({
@@ -20,14 +19,33 @@ class PatchArtifact {
     required this.createdAt,
   });
 
-  /// Converts a `Map<String, dynamic>` to a [PatchArtifact]
-  factory PatchArtifact.fromJson(Map<String, dynamic> json) =>
-      _$PatchArtifactFromJson(json);
+  /// Converts a `Map<String, dynamic>` to a [PatchArtifact].
+  factory PatchArtifact.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'PatchArtifact',
+      json,
+      () => PatchArtifact(
+        id: json['id'] as int,
+        patchId: json['patch_id'] as int,
+        arch: json['arch'] as String,
+        platform: ReleasePlatform.fromJson(json['platform'] as String),
+        hash: json['hash'] as String,
+        size: json['size'] as int,
+        createdAt: DateTime.parse(json['created_at'] as String),
+      ),
+    );
+  }
 
-  /// Converts a [PatchArtifact] to a `Map<String, dynamic>`
-  Map<String, dynamic> toJson() => _$PatchArtifactToJson(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static PatchArtifact? maybeFromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+    return PatchArtifact.fromJson(json);
+  }
 
-  /// The ID of the artifact;
+  /// The ID of the artifact.
   final int id;
 
   /// The ID of the patch.
@@ -36,7 +54,7 @@ class PatchArtifact {
   /// The arch of the artifact.
   final String arch;
 
-  /// The platform of the artifact.
+  /// A platform to which a Shorebird release can be deployed.
   final ReleasePlatform platform;
 
   /// The hash of the artifact.
@@ -47,4 +65,41 @@ class PatchArtifact {
 
   /// The date and time the artifact was created.
   final DateTime createdAt;
+
+  /// Converts a [PatchArtifact] to a `Map<String, dynamic>`.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'patch_id': patchId,
+      'arch': arch,
+      'platform': platform.toJson(),
+      'hash': hash,
+      'size': size,
+      'created_at': createdAt.toIso8601String(),
+    };
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    patchId,
+    arch,
+    platform,
+    hash,
+    size,
+    createdAt,
+  ]);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is PatchArtifact &&
+        id == other.id &&
+        patchId == other.patchId &&
+        arch == other.arch &&
+        platform == other.platform &&
+        hash == other.hash &&
+        size == other.size &&
+        createdAt == other.createdAt;
+  }
 }

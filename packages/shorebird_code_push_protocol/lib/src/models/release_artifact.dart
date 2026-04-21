@@ -1,13 +1,12 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-
-part 'release_artifact.g.dart';
+import 'package:meta/meta.dart';
+import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template release_artifact}
-/// An artifact contains metadata about the contents of a specific release
-/// for a specific platform and architecture.
+/// An artifact contains metadata about the contents of a specific
+/// release for a specific platform and architecture.
 /// {@endtemplate}
-@JsonSerializable()
+@immutable
 class ReleaseArtifact {
   /// {@macro release_artifact}
   const ReleaseArtifact({
@@ -18,18 +17,39 @@ class ReleaseArtifact {
     required this.hash,
     required this.size,
     required this.url,
-    required this.podfileLockHash,
     required this.canSideload,
+    this.podfileLockHash,
   });
 
-  /// Converts a `Map<String, dynamic>` to a [ReleaseArtifact]
-  factory ReleaseArtifact.fromJson(Map<String, dynamic> json) =>
-      _$ReleaseArtifactFromJson(json);
+  /// Converts a `Map<String, dynamic>` to a [ReleaseArtifact].
+  factory ReleaseArtifact.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'ReleaseArtifact',
+      json,
+      () => ReleaseArtifact(
+        id: json['id'] as int,
+        releaseId: json['release_id'] as int,
+        arch: json['arch'] as String,
+        platform: ReleasePlatform.fromJson(json['platform'] as String),
+        hash: json['hash'] as String,
+        size: json['size'] as int,
+        url: json['url'] as String,
+        podfileLockHash: json['podfile_lock_hash'] as String?,
+        canSideload: json['can_sideload'] as bool,
+      ),
+    );
+  }
 
-  /// Converts a [ReleaseArtifact] to a `Map<String, dynamic>`
-  Map<String, dynamic> toJson() => _$ReleaseArtifactToJson(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static ReleaseArtifact? maybeFromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+    return ReleaseArtifact.fromJson(json);
+  }
 
-  /// The ID of the artifact;
+  /// The ID of the artifact.
   final int id;
 
   /// The ID of the release.
@@ -38,7 +58,7 @@ class ReleaseArtifact {
   /// The arch of the artifact.
   final String arch;
 
-  /// The platform of the artifact.
+  /// A platform to which a Shorebird release can be deployed.
   final ReleasePlatform platform;
 
   /// The hash of the artifact.
@@ -50,13 +70,52 @@ class ReleaseArtifact {
   /// The url of the artifact.
   final String url;
 
-  /// The hash of the Podfile.lock file used to create the artifact (iOS only).
+  /// sha256 of the Podfile.lock used to create the artifact (iOS only).
   final String? podfileLockHash;
 
-  /// Whether the artifact can be sideloaded onto a device or not
-  /// (e.g. non signed iOS artifacts cannot be sideloaded).
+  /// Whether the artifact can be sideloaded onto a device.
   final bool canSideload;
 
+  /// Converts a [ReleaseArtifact] to a `Map<String, dynamic>`.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'release_id': releaseId,
+      'arch': arch,
+      'platform': platform.toJson(),
+      'hash': hash,
+      'size': size,
+      'url': url,
+      'podfile_lock_hash': podfileLockHash,
+      'can_sideload': canSideload,
+    };
+  }
+
   @override
-  String toString() => toJson().toString();
+  int get hashCode => Object.hashAll([
+    id,
+    releaseId,
+    arch,
+    platform,
+    hash,
+    size,
+    url,
+    podfileLockHash,
+    canSideload,
+  ]);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ReleaseArtifact &&
+        id == other.id &&
+        releaseId == other.releaseId &&
+        arch == other.arch &&
+        platform == other.platform &&
+        hash == other.hash &&
+        size == other.size &&
+        url == other.url &&
+        podfileLockHash == other.podfileLockHash &&
+        canSideload == other.canSideload;
+  }
 }

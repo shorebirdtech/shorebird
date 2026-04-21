@@ -1,25 +1,51 @@
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-
-/// {@template role}
-/// A role that a user can have relative to an [Organization] or [App].
-/// {@endtemplate}
+/// A role that a user can have relative to an Organization or App.
 enum Role {
   /// User that created the organization.
-  owner,
+  owner._('owner'),
 
   /// Users who have permissions to manage the organization.
-  admin,
+  admin._('admin'),
 
   /// Users who have permissions to manage an app.
-  appManager,
+  appManager._('appManager'),
 
   /// Users who are part of the organization but have limited permissions.
-  developer,
+  developer._('developer'),
 
   /// Users who have read-only access to the organization.
-  viewer,
+  viewer._('viewer'),
 
-  /// Users who are not part of the organization but have visibility into it via
-  /// app collaborator permissions.
-  none,
+  /// Users who are not part of the organization but have visibility into it
+  /// via app collaborator permissions.
+  none._('none');
+
+  const Role._(this.value);
+
+  /// Creates a Role from a json string.
+  factory Role.fromJson(String json) {
+    return Role.values.firstWhere(
+      (value) => value.value == json,
+      orElse: () => throw FormatException('Unknown Role value: $json'),
+    );
+  }
+
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static Role? maybeFromJson(String? json) {
+    if (json == null) {
+      return null;
+    }
+    return Role.fromJson(json);
+  }
+
+  /// The value of the enum, as a string.  This is the exact value
+  /// from the OpenAPI spec and will be used for network transport.
+  final String value;
+
+  /// Converts the enum to a json string.
+  String toJson() => value;
+
+  /// Returns the string value of the enum.
+  @override
+  String toString() => value;
 }

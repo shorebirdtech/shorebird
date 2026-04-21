@@ -1,27 +1,61 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/src/models/models.dart';
+import 'package:meta/meta.dart';
+import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/organization_user.dart';
 
-part 'get_organization_users_response.g.dart';
-
-/// {@template get_organization_users_request}
-/// A list of users that belong to an organization, as well as their roles in
-/// the organization.
-///
-/// The body of GET /api/v1/organizations/:organizationId/users
+/// {@template get_organization_users_response}
+/// The response body for GET /organizations/{organizationId}/users.
 /// {@endtemplate}
-@JsonSerializable()
+@immutable
 class GetOrganizationUsersResponse {
-  /// {@macro get_organization_users_request}
-  GetOrganizationUsersResponse({required this.users});
+  /// {@macro get_organization_users_response}
+  const GetOrganizationUsersResponse({
+    required this.users,
+  });
 
-  /// Deserializes the [GetOrganizationUsersResponse] from a JSON map.
-  factory GetOrganizationUsersResponse.fromJson(Map<String, dynamic> json) =>
-      _$GetOrganizationUsersResponseFromJson(json);
+  /// Converts a `Map<String, dynamic>` to a [GetOrganizationUsersResponse].
+  factory GetOrganizationUsersResponse.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'GetOrganizationUsersResponse',
+      json,
+      () => GetOrganizationUsersResponse(
+        users: (json['users'] as List)
+            .map<OrganizationUser>(
+              (e) => OrganizationUser.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+      ),
+    );
+  }
 
-  /// Converts this [GetOrganizationUsersResponse] to a JSON map.
-  Map<String, dynamic> toJson() => _$GetOrganizationUsersResponseToJson(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static GetOrganizationUsersResponse? maybeFromJson(
+    Map<String, dynamic>? json,
+  ) {
+    if (json == null) {
+      return null;
+    }
+    return GetOrganizationUsersResponse.fromJson(json);
+  }
 
-  /// The list of users that belong to the organization, as well as their roles
-  /// in the organization.
+  /// The list of users that belong to the organization, as well as their
+  /// roles in the organization.
   final List<OrganizationUser> users;
+
+  /// Converts a [GetOrganizationUsersResponse] to a `Map<String, dynamic>`.
+  Map<String, dynamic> toJson() {
+    return {
+      'users': users.map((e) => e.toJson()).toList(),
+    };
+  }
+
+  @override
+  int get hashCode => listHash(users).hashCode;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is GetOrganizationUsersResponse &&
+        listsEqual(users, other.users);
+  }
 }

@@ -6,23 +6,21 @@ void main() {
     test('is equatable', () {
       expect(
         // Ignoring const constructor for equality comparison.
-        // ignore: prefer_const_constructors
-        ReleasePatch(
+        const ReleasePatch(
           id: 0,
           number: 1,
           channel: 'channel',
           isRolledBack: false,
-          artifacts: const [],
+          artifacts: [],
         ),
         equals(
           // Ignoring const constructor for equality comparison.
-          // ignore: prefer_const_constructors
-          ReleasePatch(
+          const ReleasePatch(
             id: 0,
             number: 1,
             channel: 'channel',
             isRolledBack: false,
-            artifacts: const [],
+            artifacts: [],
           ),
         ),
       );

@@ -441,6 +441,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
+  mustache_template:
+    dependency: transitive
+    description:
+      name: mustache_template
+      sha256: "544ff0b837836f5ad6b351e7a676ff7c2cad4fa412c465908aeb9358caddb6fc"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.4"
   node_preamble:
     dependency: transitive
     description:
@@ -673,6 +681,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.10.2"
+  space_gen:
+    dependency: transitive
+    description:
+      path: "."
+      ref: "58b4410a9b25bf58e3f76a4ae979cad52d4909cc"
+      resolved-ref: "58b4410a9b25bf58e3f76a4ae979cad52d4909cc"
+      url: "https://github.com/eseidel/space_gen.git"
+    source: git
+    version: "1.0.1"
   stack_trace:
     dependency: transitive
     description:
@@ -761,6 +778,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.5.3"
+  version:
+    dependency: transitive
+    description:
+      name: version
+      sha256: "3d4140128e6ea10d83da32fef2fa4003fccbf6852217bb854845802f04191f94"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.2"
   very_good_analysis:
     dependency: "direct dev"
     description:

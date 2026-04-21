@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
@@ -468,21 +467,18 @@ void main() {
       const size = 5;
       const canSideload = true;
 
-      group('when podfileLockHash is provided', () {
+      // Multipart form fields are always strings on the wire, so the
+      // expected payloads are spelled out as Map<String, String>.
+      // CreateReleaseArtifactRequest.toJson() returns JSON types (bool,
+      // int, enum→string, etc.); the client stringifies at the multipart
+      // boundary and drops null-valued keys (see createReleaseArtifact
+      // in code_push_client.dart).
+      group('when podfileLockHash is null', () {
         test('makes the correct request', () async {
           final tempDir = Directory.systemTemp.createTempSync();
           final fixture = File(path.join(tempDir.path, 'release.txt'))
             ..createSync()
             ..writeAsStringSync('hello');
-          const expectedRequest = CreateReleaseArtifactRequest(
-            arch: arch,
-            platform: platform,
-            hash: hash,
-            size: size,
-            canSideload: canSideload,
-            filename: 'release.txt',
-            podfileLockHash: null,
-          );
 
           try {
             await codePushClient.createReleaseArtifact(
@@ -508,31 +504,24 @@ void main() {
             equals(v1('apps/$appId/releases/$releaseId/artifacts')),
           );
           expect(request.hasHeaders(expectedHeaders), isTrue);
-          expect(
-            const MapEquality<String, dynamic>().equals(
-              request.fields,
-              expectedRequest.toJson(),
-            ),
-            isTrue,
-          );
+          expect(request.fields, <String, String>{
+            'arch': arch,
+            'platform': platform.name,
+            'hash': hash,
+            'filename': 'release.txt',
+            'can_sideload': 'true',
+            'size': '$size',
+            // podfile_lock_hash absent.
+          });
         });
       });
 
-      group('when podfileLockHash is null', () {
+      group('when podfileLockHash is provided', () {
         test('makes the correct request', () async {
           final tempDir = Directory.systemTemp.createTempSync();
           final fixture = File(path.join(tempDir.path, 'release.txt'))
             ..createSync()
             ..writeAsStringSync('hello');
-          const expectedRequest = CreateReleaseArtifactRequest(
-            arch: arch,
-            platform: platform,
-            hash: hash,
-            size: size,
-            canSideload: canSideload,
-            filename: 'release.txt',
-            podfileLockHash: podfileLockHash,
-          );
 
           try {
             await codePushClient.createReleaseArtifact(
@@ -558,13 +547,15 @@ void main() {
             equals(v1('apps/$appId/releases/$releaseId/artifacts')),
           );
           expect(request.hasHeaders(expectedHeaders), isTrue);
-          expect(
-            const MapEquality<String, dynamic>().equals(
-              request.fields,
-              expectedRequest.toJson(),
-            ),
-            isTrue,
-          );
+          expect(request.fields, <String, String>{
+            'arch': arch,
+            'platform': platform.name,
+            'hash': hash,
+            'filename': 'release.txt',
+            'can_sideload': 'true',
+            'size': '$size',
+            'podfile_lock_hash': podfileLockHash,
+          });
         });
       });
 
@@ -2047,7 +2038,7 @@ void main() {
         setUp(() {
           membership = OrganizationMembership(
             role: Role.admin,
-            organization: Organization.forTest(),
+            organization: organizationForTest(),
           );
           response = GetOrganizationsResponse(organizations: [membership]);
           when(() => httpClient.send(any())).thenAnswer(

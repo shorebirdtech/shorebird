@@ -1,55 +1,49 @@
-import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
+import 'package:shorebird_code_push_protocol/model_helpers.dart';
 
-part 'private_user.g.dart';
-
-/// {@template user}
-/// A fully-detailed user object, possibly including sensitive information.
-/// This should only be used when querying the user's own information. For other
-/// users, use [PublicUser].
+/// {@template private_user}
+/// A fully-detailed user object, possibly including sensitive
+/// information. Should only be used when querying the user's own
+/// information.
 /// {@endtemplate}
-@JsonSerializable()
+@immutable
 class PrivateUser {
-  /// {@macro user}
+  /// {@macro private_user}
   const PrivateUser({
     required this.id,
     required this.email,
     required this.jwtIssuer,
-    this.hasActiveSubscription = false,
     this.displayName,
+    this.hasActiveSubscription = false,
     this.stripeCustomerId,
     this.patchOverageLimit,
   });
 
-  /// Converts a `Map<String, dynamic>` to a [PrivateUser]
-  factory PrivateUser.fromJson(Map<String, dynamic> json) =>
-      _$PrivateUserFromJson(json);
+  /// Converts a `Map<String, dynamic>` to a [PrivateUser].
+  factory PrivateUser.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'PrivateUser',
+      json,
+      () => PrivateUser(
+        id: json['id'] as int,
+        email: json['email'] as String,
+        displayName: json['display_name'] as String?,
+        hasActiveSubscription: json['has_active_subscription'] as bool?,
+        stripeCustomerId: json['stripe_customer_id'] as String?,
+        jwtIssuer: json['jwt_issuer'] as String,
+        patchOverageLimit: json['patch_overage_limit'] as int?,
+      ),
+    );
+  }
 
-  // coverage:ignore-start
-  /// Constructs a user with arbitrary default values for testing.
-  @visibleForTesting
-  factory PrivateUser.forTest({
-    int id = 42,
-    String email = 'test@shorebird.dev',
-    String jwtIssuer = 'https://accounts.google.com',
-    bool hasActiveSubscription = false,
-    String? displayName,
-    String? stripeCustomerId,
-    int? patchOverageLimit = 0,
-  }) => PrivateUser(
-    id: id,
-    email: email,
-    jwtIssuer: jwtIssuer,
-    hasActiveSubscription: hasActiveSubscription,
-    displayName: displayName,
-    stripeCustomerId: stripeCustomerId,
-    patchOverageLimit: patchOverageLimit,
-  );
-  // coverage:ignore-end
-
-  /// Converts a [PrivateUser] to a `Map<String, dynamic>`
-  Map<String, dynamic> toJson() => _$PrivateUserToJson(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static PrivateUser? maybeFromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+    return PrivateUser.fromJson(json);
+  }
 
   /// The unique user identifier.
   final int id;
@@ -61,7 +55,7 @@ class PrivateUser {
   final String? displayName;
 
   /// Whether the user is currently a paying customer.
-  final bool hasActiveSubscription;
+  final bool? hasActiveSubscription;
 
   /// The user's Stripe customer ID, if they have one.
   final String? stripeCustomerId;
@@ -69,7 +63,44 @@ class PrivateUser {
   /// The JWT issuer used to create the user.
   final String jwtIssuer;
 
-  /// The maximum number of patch installs that the user has agreed to pay for
-  /// as part of a pay-as-you-go plan.
+  /// The maximum number of patch installs the user has agreed to
+  /// pay for as part of a pay-as-you-go plan.
   final int? patchOverageLimit;
+
+  /// Converts a [PrivateUser] to a `Map<String, dynamic>`.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'email': email,
+      'display_name': displayName,
+      'has_active_subscription': hasActiveSubscription,
+      'stripe_customer_id': stripeCustomerId,
+      'jwt_issuer': jwtIssuer,
+      'patch_overage_limit': patchOverageLimit,
+    };
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    email,
+    displayName,
+    hasActiveSubscription,
+    stripeCustomerId,
+    jwtIssuer,
+    patchOverageLimit,
+  ]);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is PrivateUser &&
+        id == other.id &&
+        email == other.email &&
+        displayName == other.displayName &&
+        hasActiveSubscription == other.hasActiveSubscription &&
+        stripeCustomerId == other.stripeCustomerId &&
+        jwtIssuer == other.jwtIssuer &&
+        patchOverageLimit == other.patchOverageLimit;
+  }
 }

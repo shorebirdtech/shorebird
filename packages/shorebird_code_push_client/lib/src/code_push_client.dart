@@ -190,15 +190,22 @@ class CodePushClient {
     );
     final file = await http.MultipartFile.fromPath('file', artifactPath);
 
-    final payload = CreateReleaseArtifactRequest(
-      arch: arch,
-      platform: platform,
-      hash: hash,
-      size: file.length,
-      canSideload: canSideload,
-      filename: p.basename(artifactPath),
-      podfileLockHash: podfileLockHash,
-    ).toJson().map((key, value) => MapEntry(key, '$value'));
+    // `toJson` returns proper JSON types; multipart fields are always
+    // strings on the wire. Drop null-valued keys so absent-optional
+    // fields don't send the literal string "null" (previously handled
+    // by `@JsonKey(includeIfNull: false)` in the handwritten model).
+    final payload = <String, String>{
+      for (final entry in CreateReleaseArtifactRequest(
+        arch: arch,
+        platform: platform,
+        hash: hash,
+        size: file.length,
+        canSideload: canSideload,
+        filename: p.basename(artifactPath),
+        podfileLockHash: podfileLockHash,
+      ).toJson().entries)
+        if (entry.value != null) entry.key: '${entry.value}',
+    };
     request.fields.addAll(payload);
 
     final response = await _httpClient.send(request);

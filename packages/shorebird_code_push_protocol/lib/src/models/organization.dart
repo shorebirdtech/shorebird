@@ -1,28 +1,13 @@
-import 'package:equatable/equatable.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
-
-part 'organization.g.dart';
-
-/// {@template organization_type}
-/// Distinguishes between automatically created organizations that are limited
-/// to a single user and organizations that support multiple users.
-/// {@endtemplate}
-enum OrganizationType {
-  /// A personal organization is created for every user for their own apps.
-  personal,
-
-  /// A team organization is created for multiple users to collaborate on apps.
-  team,
-}
+import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/organization_type.dart';
 
 /// {@template organization}
-/// An Organization groups users and apps together. Organizations can be
-/// personal (single-user) or team (multi-user). Organizations have exactly one
-/// owner, but can have multiple admins and members.
+/// An organization groups users and apps together. Organizations
+/// can be personal (single-user) or team (multi-user).
 /// {@endtemplate}
-@JsonSerializable()
-class Organization extends Equatable {
+@immutable
+class Organization {
   /// {@macro organization}
   const Organization({
     required this.id,
@@ -32,30 +17,31 @@ class Organization extends Equatable {
     required this.updatedAt,
   });
 
-  /// Converts a [Map<String, dynamic>] to an [Organization].
-  factory Organization.fromJson(Map<String, dynamic> json) =>
-      _$OrganizationFromJson(json);
+  /// Converts a `Map<String, dynamic>` to an [Organization].
+  factory Organization.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'Organization',
+      json,
+      () => Organization(
+        id: json['id'] as int,
+        name: json['name'] as String,
+        organizationType: OrganizationType.fromJson(
+          json['organization_type'] as String,
+        ),
+        createdAt: DateTime.parse(json['created_at'] as String),
+        updatedAt: DateTime.parse(json['updated_at'] as String),
+      ),
+    );
+  }
 
-  // coverage:ignore-start
-  /// Constructs an organization with arbitrary default values for testing.
-  @visibleForTesting
-  factory Organization.forTest({
-    int id = 42,
-    String name = 'Test Organization',
-    OrganizationType organizationType = OrganizationType.personal,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) => Organization(
-    id: id,
-    name: name,
-    organizationType: organizationType,
-    createdAt: createdAt ?? DateTime.now(),
-    updatedAt: updatedAt ?? DateTime.now(),
-  );
-  // coverage:ignore-end
-
-  /// Converts this [Organization] to a JSON map
-  Map<String, dynamic> toJson() => _$OrganizationToJson(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static Organization? maybeFromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+    return Organization.fromJson(json);
+  }
 
   /// The unique identifier for the organization.
   final int id;
@@ -63,7 +49,8 @@ class Organization extends Equatable {
   /// The name of the organization.
   final String name;
 
-  /// The type of organization.
+  /// Distinguishes personal organizations (single-user) from team
+  /// organizations (multi-user).
   final OrganizationType organizationType;
 
   /// When this organization was created.
@@ -72,6 +59,34 @@ class Organization extends Equatable {
   /// When this organization was last updated.
   final DateTime updatedAt;
 
+  /// Converts an [Organization] to a `Map<String, dynamic>`.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'organization_type': organizationType.toJson(),
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
   @override
-  List<Object?> get props => [id, name, organizationType, createdAt, updatedAt];
+  int get hashCode => Object.hashAll([
+    id,
+    name,
+    organizationType,
+    createdAt,
+    updatedAt,
+  ]);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Organization &&
+        id == other.id &&
+        name == other.name &&
+        organizationType == other.organizationType &&
+        createdAt == other.createdAt &&
+        updatedAt == other.updatedAt;
+  }
 }

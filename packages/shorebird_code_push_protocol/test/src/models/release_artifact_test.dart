@@ -21,23 +21,9 @@ void main() {
       );
     });
 
-    test('toString prints a json representation of the object', () {
-      const artifact = ReleaseArtifact(
-        id: 1,
-        releaseId: 1,
-        arch: 'aarch64',
-        platform: ReleasePlatform.android,
-        url: 'https://example.com',
-        size: 42,
-        hash: 'sha256:1234567890',
-        podfileLockHash: 'podfile-lock-hash',
-        canSideload: true,
-      );
-      final artifactString = artifact.toString();
-      expect(
-        artifactString,
-        '{id: 1, release_id: 1, arch: aarch64, platform: android, hash: sha256:1234567890, size: 42, url: https://example.com, podfile_lock_hash: podfile-lock-hash, can_sideload: true}',
-      );
-    });
+    // Intentionally removed: the handwritten ReleaseArtifact overrode
+    // toString to return the JSON-encoded body. The generated class does
+    // not, which matches Dart defaults for data classes. Callers that
+    // want a JSON string should call `artifact.toJson().toString()`.
   });
 }
