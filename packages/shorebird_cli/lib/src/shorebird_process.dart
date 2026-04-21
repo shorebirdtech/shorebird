@@ -29,7 +29,11 @@ class ShorebirdProcess {
   final ProcessWrapper processWrapper;
 
   /// Starts a process, streams the output in real-time, and returns the exit
-  /// code.
+  /// code. The child's stdout/stderr are forwarded via Dart sinks (not
+  /// inherited fds) so the `LoggingStdout` `IOOverrides` in
+  /// `bin/shorebird.dart` tees both into the shorebird log file — without
+  /// this, a failing `flutter build`'s stderr never reached the log (see
+  /// https://github.com/shorebirdtech/shorebird/issues/3703).
   Future<int> stream(
     String executable,
     List<String> arguments, {
@@ -44,10 +48,13 @@ class ShorebirdProcess {
       environment: environment,
       runInShell: runInShell,
       workingDirectory: workingDirectory,
-      mode: ProcessStartMode.inheritStdio,
     );
     onStart?.call(process);
-    return process.exitCode;
+    final stdoutDrain = process.stdout.forEach(stdout.add);
+    final stderrDrain = process.stderr.forEach(stderr.add);
+    final exitCode = await process.exitCode;
+    await Future.wait([stdoutDrain, stderrDrain]);
+    return exitCode;
   }
 
   /// Runs the process and returns the result.
