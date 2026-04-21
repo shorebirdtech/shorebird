@@ -254,7 +254,6 @@ Reason: Exited with code $exitCode.''',
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'aar',
@@ -298,7 +297,6 @@ Reason: Exited with code $exitCode.''',
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'linux',
@@ -351,7 +349,6 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'macos',
@@ -482,7 +479,6 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'ios-framework',
@@ -758,7 +754,6 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'windows',
