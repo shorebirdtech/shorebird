@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ffi' show Abi;
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
@@ -8,6 +9,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
@@ -25,6 +27,7 @@ void main() {
   group(Cache, () {
     const shorebirdEngineRevision = 'test-revision';
 
+    late LocalAbi mockAbi;
     late ArtifactManager artifactManager;
     late Cache cache;
     late ChecksumChecker checksumChecker;
@@ -41,6 +44,7 @@ void main() {
       return runScoped(
         () => body(),
         values: {
+          abiRef.overrideWith(() => mockAbi),
           artifactManagerRef.overrideWith(() => artifactManager),
           cacheRef.overrideWith(() => cache),
           checksumCheckerRef.overrideWith(() => checksumChecker),
@@ -73,6 +77,7 @@ void main() {
     });
 
     setUp(() {
+      mockAbi = MockAbi();
       artifactManager = MockArtifactManager();
       chmodProcess = MockProcess();
       checksumChecker = MockChecksumChecker();
@@ -82,6 +87,8 @@ void main() {
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdProcess = MockShorebirdProcess();
+
+      when(() => mockAbi.current).thenReturn(Abi.macosX64);
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
       when(
@@ -200,6 +207,60 @@ void main() {
                 () => PatchArtifact(cache: cache, platform: platform).fileName,
               );
               expect(fileName, equals('patch'));
+            });
+          });
+        });
+
+        group('storageUrl', () {
+          group('when on macOS', () {
+            setUp(() {
+              setMockPlatform(Platform.macOS);
+            });
+
+            test('uses darwin-arm64 on Apple Silicon', () {
+              when(() => mockAbi.current).thenReturn(Abi.macosArm64);
+              final url = runWithOverrides(
+                () =>
+                    PatchArtifact(cache: cache, platform: platform).storageUrl,
+              );
+              expect(url, contains('patch-darwin-arm64.zip'));
+            });
+
+            test('uses darwin-x64 on Intel', () {
+              when(() => mockAbi.current).thenReturn(Abi.macosX64);
+              final url = runWithOverrides(
+                () =>
+                    PatchArtifact(cache: cache, platform: platform).storageUrl,
+              );
+              expect(url, contains('patch-darwin-x64.zip'));
+            });
+          });
+
+          group('when on Linux', () {
+            setUp(() {
+              setMockPlatform(Platform.linux);
+            });
+
+            test('uses linux-x64', () {
+              final url = runWithOverrides(
+                () =>
+                    PatchArtifact(cache: cache, platform: platform).storageUrl,
+              );
+              expect(url, contains('patch-linux-x64.zip'));
+            });
+          });
+
+          group('when on Windows', () {
+            setUp(() {
+              setMockPlatform(Platform.windows);
+            });
+
+            test('uses windows-x64', () {
+              final url = runWithOverrides(
+                () =>
+                    PatchArtifact(cache: cache, platform: platform).storageUrl,
+              );
+              expect(url, contains('patch-windows-x64.zip'));
             });
           });
         });

@@ -1,3 +1,4 @@
+import 'dart:ffi' show Abi;
 import 'dart:io' hide Platform;
 
 import 'package:http/http.dart' as http;
@@ -5,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:retry/retry.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -342,7 +344,8 @@ class PatchArtifact extends CachedArtifact {
   String get storageUrl {
     var artifactName = 'patch-';
     if (platform.isMacOS) {
-      artifactName += 'darwin-x64.zip';
+      final macArch = abi.current == Abi.macosArm64 ? 'arm64' : 'x64';
+      artifactName += 'darwin-$macArch.zip';
     } else if (platform.isLinux) {
       artifactName += 'linux-x64.zip';
     } else if (platform.isWindows) {
