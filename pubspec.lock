@@ -149,10 +149,10 @@ packages:
     dependency: transitive
     description:
       name: cli_util
-      sha256: ff6785f7e9e3c38ac98b2fb035701789de90154024a75b6cb926445e83197d1c
+      sha256: "53f32da4e0c381951938e2229e217f3568699e3113463daa382261e0c6fead9e"
       url: "https://pub.dev"
     source: hosted
-    version: "0.4.2"
+    version: "0.5.0"
   clock:
     dependency: transitive
     description:
