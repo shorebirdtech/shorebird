@@ -23,7 +23,7 @@ class Doctor {
 
   /// Validators that verify shorebird will work on iOS.
   final List<Validator> iosCommandValidators = [
-    XcodeprojFlutterRootValidator(),
+    XcodeprojFlutterOverrideValidator(),
   ];
 
   /// Validators that verify shorebird will work on Linux.
@@ -41,7 +41,7 @@ class Doctor {
   List<Validator> initAndDoctorValidators = [
     ShorebirdVersionValidator(),
     AndroidInternetPermissionValidator(),
-    XcodeprojFlutterRootValidator(),
+    XcodeprojFlutterOverrideValidator(),
     MacosEntitlementsValidator(),
     ShorebirdYamlAssetValidator(),
     TrackedLockFilesValidator(),

@@ -10,16 +10,15 @@ import 'package:test/test.dart';
 import '../mocks.dart';
 
 void main() {
-  group(XcodeprojFlutterRootValidator, () {
+  group(XcodeprojFlutterOverrideValidator, () {
     late Directory projectRoot;
     late ShorebirdEnv shorebirdEnv;
-    late XcodeprojFlutterRootValidator validator;
+    late XcodeprojFlutterOverrideValidator validator;
 
     void writePbxprojFile(String contents) {
       final xcodeprojDir = Directory(
         p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
-      );
-      xcodeprojDir.createSync(recursive: true);
+      )..createSync(recursive: true);
       File(
         p.join(xcodeprojDir.path, 'project.pbxproj'),
       ).writeAsStringSync(contents);
@@ -35,7 +34,7 @@ void main() {
     setUp(() {
       projectRoot = Directory.systemTemp.createTempSync();
       shorebirdEnv = MockShorebirdEnv();
-      validator = XcodeprojFlutterRootValidator();
+      validator = XcodeprojFlutterOverrideValidator();
 
       when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(projectRoot);
     });
@@ -44,7 +43,7 @@ void main() {
       expect(validator.description, isNotEmpty);
       expect(
         validator.description,
-        'Xcode project does not override FLUTTER_ROOT environment variable',
+        'Xcode project does not override FLUTTER_ build settings',
       );
     });
 
@@ -98,8 +97,12 @@ void main() {
       });
 
       test(
-        'returns successful result if project.pbxproj does not contain FLUTTER_ROOT',
+        'returns successful result if project.pbxproj has no FLUTTER_ '
+        'assignments',
         () async {
+          // The default Flutter iOS template only *references* FLUTTER_ROOT
+          // and FLUTTER_BUILD_NUMBER (via $FLUTTER_ROOT and
+          // $(FLUTTER_BUILD_NUMBER)); it never assigns them in project.pbxproj.
           const pbxprojContent = r'''
 // !$*UTF8*$!
 {
@@ -108,8 +111,12 @@ void main() {
 	};
 	objectVersion = 54;
 	objects = {
-		/* Begin PBXBuildFile section */
-		/* End PBXBuildFile section */
+		9740EEB61CF901F6004384FC /* Run Script */ = {
+			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
+		};
+	};
+	buildSettings = {
+		CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 	};
 	rootObject = 1234567890 /* Project object */;
 }
@@ -122,7 +129,7 @@ void main() {
         },
       );
 
-      group('when FLUTTER_ROOT override exists', () {
+      group('when a FLUTTER_ override exists', () {
         test('detects FLUTTER_ROOT with space around equals', () async {
           const pbxprojContent = r'''
 // !$*UTF8*$!
@@ -141,7 +148,7 @@ void main() {
           expect(results.first.severity, ValidationIssueSeverity.error);
           expect(
             results.first.message,
-            contains('contains a FLUTTER_ROOT override'),
+            contains('FLUTTER_ build setting(s): FLUTTER_ROOT'),
           );
         });
 
@@ -238,9 +245,64 @@ void main() {
           expect(results, hasLength(1));
           expect(results.first.severity, ValidationIssueSeverity.error);
         });
+
+        test('detects other FLUTTER_-prefixed overrides', () async {
+          const pbxprojContent = r'''
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	buildSettings = {
+		FLUTTER_BUILD_DIR = build;
+		FLUTTER_FRAMEWORK_DIR = /custom/Flutter;
+		PRODUCT_NAME = Runner;
+	};
+}
+''';
+          writePbxprojFile(pbxprojContent);
+
+          final results = await runWithOverrides(validator.validate);
+
+          expect(results, hasLength(1));
+          expect(results.first.severity, ValidationIssueSeverity.error);
+          expect(
+            results.first.message,
+            allOf(
+              contains('FLUTTER_BUILD_DIR'),
+              contains('FLUTTER_FRAMEWORK_DIR'),
+            ),
+          );
+        });
+
+        test('lists each overridden name only once', () async {
+          const pbxprojContent = r'''
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	buildSettings = {
+		FLUTTER_ROOT = /path/to/flutter;
+	};
+	otherSettings = {
+		FLUTTER_ROOT = /another/path;
+		FLUTTER_BUILD_DIR = build;
+	};
+}
+''';
+          writePbxprojFile(pbxprojContent);
+
+          final results = await runWithOverrides(validator.validate);
+
+          expect(results, hasLength(1));
+          final message = results.first.message;
+          expect(message, contains('FLUTTER_ROOT'));
+          expect(message, contains('FLUTTER_BUILD_DIR'));
+          expect(
+            RegExp('FLUTTER_ROOT').allMatches(message),
+            hasLength(1),
+          );
+        });
       });
 
-      group('when FLUTTER_ROOT does not exist', () {
+      group('when no FLUTTER_ override exists', () {
         test('does not detect FLUTTER_ROOT in comments', () async {
           const pbxprojContent = r'''
 // !$*UTF8*$!
@@ -258,14 +320,36 @@ void main() {
           expect(results, isEmpty);
         });
 
-        test('does not detect similar variable names', () async {
+        test('does not detect non-FLUTTER_-prefixed names', () async {
           const pbxprojContent = r'''
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	FLUTTER_BUILD_DIR = build;
-	FLUTTER_FRAMEWORK_DIR = Flutter;
+	PRODUCT_NAME = Runner;
+	ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 	classes = {
+	};
+}
+''';
+          writePbxprojFile(pbxprojContent);
+
+          final results = await runWithOverrides(validator.validate);
+
+          expect(results, isEmpty);
+        });
+
+        // Flutter's own template includes a Run Script phase that shells out
+        // to "$FLUTTER_ROOT/packages/...". That's a reference, not an
+        // assignment, and must not trigger the validator.
+        test('does not flag string-literal references', () async {
+          const pbxprojContent = r'''
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	objects = {
+		9740EEB61CF901F6004384FC /* Run Script */ = {
+			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
+		};
 	};
 }
 ''';

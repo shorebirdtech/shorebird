@@ -4,11 +4,13 @@ import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
-/// Checks that ios/Runner.xcodeproj/project.pbxproj does *not* contain
-/// FLUTTER_ROOT environment overrides.  Doing so could cause different
-/// versions of Flutter to be used during different parts of the build process
-/// potentially causing build failures.
-class XcodeprojFlutterRootValidator extends Validator {
+/// Checks that ios/Runner.xcodeproj/project.pbxproj does *not* assign any
+/// `FLUTTER_`-prefixed build setting. Flutter itself populates these at
+/// runtime or via the generated `ios/Flutter/Generated.xcconfig` (which we
+/// do not scan), so a hard-coded assignment in `project.pbxproj` can cause
+/// different versions of Flutter to be used during different parts of the
+/// build, potentially causing build failures.
+class XcodeprojFlutterOverrideValidator extends Validator {
   static final String _iosRunnerXCodeProjPath = p.join(
     'ios',
     'Runner.xcodeproj',
@@ -22,7 +24,7 @@ class XcodeprojFlutterRootValidator extends Validator {
 
   @override
   String get description =>
-      'Xcode project does not override FLUTTER_ROOT environment variable';
+      'Xcode project does not override FLUTTER_ build settings';
 
   @override
   bool canRunInCurrentContext() =>
@@ -54,16 +56,22 @@ The command you are running must be run within a Flutter app project that suppor
       ];
     }
 
-    if (_projectPbxprojHasFlutterRootOverride(pbxProjFile)) {
-      return [
-        ValidationIssue(
-          severity: ValidationIssueSeverity.error,
-          message: '$_projectPbxprojPath contains a FLUTTER_ROOT override.',
-        ),
-      ];
+    final overrides = _flutterOverridesIn(pbxProjFile);
+    if (overrides.isEmpty) {
+      return [];
     }
 
-    return [];
+    final names = overrides.join(', ');
+    return [
+      ValidationIssue(
+        severity: ValidationIssueSeverity.error,
+        message:
+            '$_projectPbxprojPath overrides FLUTTER_ build setting(s): $names. '
+            'FLUTTER_* variables are set by Flutter (at runtime or via '
+            'ios/Flutter/Generated.xcconfig) and should not be hard-coded '
+            'in the Xcode project.',
+      ),
+    ];
   }
 
   Directory? get _iosRunnerXcodeprojDirectory {
@@ -72,21 +80,25 @@ The command you are running must be run within a Flutter app project that suppor
     return Directory(p.join(root.path, 'ios', 'Runner.xcodeproj'));
   }
 
-  bool _projectPbxprojHasFlutterRootOverride(File pbxProjFile) {
+  /// Returns the distinct set of `FLUTTER_*` names that are *assigned* in the
+  /// given pbxproj contents (not merely referenced via `$(NAME)` or `$NAME`).
+  Set<String> _flutterOverridesIn(File pbxProjFile) {
     // We could consider using package:xcode_parser, but for now this should
     // be sufficient.
     final contents = pbxProjFile.readAsStringSync();
-    // Match FLUTTER_ROOT assignments in various formats:
-    // - FLUTTER_ROOT = value;
-    // - FLUTTER_ROOT = "value";
-    // - FLUTTER_ROOT = $(FLUTTER_ROOT);
-    // Allow for flexible spacing around the equals sign
-    // Use negative lookbehind to ensure it's not in a comment line
-    // and ensure semicolon is on the same line (not matching newlines)
+    // Match FLUTTER_<NAME> assignments in various formats:
+    // - FLUTTER_FOO = value;
+    // - FLUTTER_FOO = "value";
+    // - FLUTTER_FOO = $(FLUTTER_FOO);
+    // Allow flexible spacing around the equals sign.
+    // Use a negative lookbehind on `//` to avoid commented-out lines, and
+    // require the assignment to terminate with `;` on the same line.
     final matcher = RegExp(
-      r'^(?!\s*//).*FLUTTER_ROOT\s*=\s*[^;\n]+;',
+      r'^(?!\s*//).*?(FLUTTER_\w+)\s*=\s*[^;\n]+;',
       multiLine: true,
     );
-    return matcher.hasMatch(contents);
+    return {
+      for (final match in matcher.allMatches(contents)) match.group(1)!,
+    };
   }
 }
