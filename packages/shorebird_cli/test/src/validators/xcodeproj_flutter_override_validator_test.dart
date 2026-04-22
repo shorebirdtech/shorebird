@@ -326,7 +326,7 @@ void main() {
 {
 	archiveVersion = 1;
 	PRODUCT_NAME = Runner;
-	ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+	CURRENT_PROJECT_VERSION = 1;
 	classes = {
 	};
 }
