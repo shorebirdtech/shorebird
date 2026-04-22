@@ -1,3 +1,14 @@
+# 2.0.6
+
+- fix: `checkForUpdate` now reports `restartRequired` when the current patch
+  has been rolled back
+- fix: `update` no longer throws `UpdateException` when no new patch is
+  available to install
+- fix: `update` no longer throws `UpdateException` when another update is
+  already in progress
+- docs: warn that `checkForUpdate` and `update` make network calls and may
+  block app startup if awaited synchronously
+
 # 2.0.5
 
 - docs: fix Discord badge in `README.md`
