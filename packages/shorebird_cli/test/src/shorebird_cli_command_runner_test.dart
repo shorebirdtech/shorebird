@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -434,6 +435,105 @@ Engine • revision $shorebirdEngineRevision'''),
         });
       });
     });
+
+    group('--json', () {
+      late List<String> stdoutOutput;
+
+      setUp(() {
+        stdoutOutput = [];
+      });
+
+      /// Runs [body] while capturing stdout writes into [stdoutOutput].
+      Future<T> captureStdout<T>(Future<T> Function() body) async {
+        // Capture the real stdout before entering the override zone to
+        // avoid infinite recursion.
+        final realStdout = stdout;
+        return IOOverrides.runZoned(
+          body,
+          stdout: () => _CapturingStdout(
+            baseStdOut: realStdout,
+            captured: stdoutOutput,
+          ),
+        );
+      }
+
+      group('on ProcessExit with non-zero exit code', () {
+        test('emits JSON error envelope', () async {
+          commandRunner.addCommand(_TestCommand(ExitCode.unavailable));
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'test']),
+            ),
+          );
+          expect(result, equals(ExitCode.unavailable.code));
+
+          // Should have emitted JSON to stdout.
+          expect(stdoutOutput, isNotEmpty);
+          final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+          expect(json['status'], equals('error'));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('process_exit'));
+          final meta = json['meta'] as Map<String, dynamic>;
+          expect(meta['version'], equals(packageVersion));
+          expect(meta['command'], equals('test'));
+        });
+
+        test('suppresses "file an issue" message', () async {
+          commandRunner.addCommand(_TestCommand(ExitCode.unavailable));
+          await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'test']),
+            ),
+          );
+          verifyNever(
+            () => logger.info(
+              any(
+                that: contains(
+                  '''If you aren't sure why this command failed''',
+                ),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('on ProcessExit with zero exit code', () {
+        test('does not emit JSON error', () async {
+          commandRunner.addCommand(_TestCommand(ExitCode.success));
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'test']),
+            ),
+          );
+          expect(result, equals(ExitCode.success.code));
+          expect(
+            stdoutOutput.where((line) => line.contains('"status"')),
+            isEmpty,
+          );
+        });
+      });
+
+      group('on software error', () {
+        test('emits JSON error envelope', () async {
+          commandRunner.addCommand(_ThrowingCommand());
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'throwing']),
+            ),
+          );
+          expect(result, equals(ExitCode.software.code));
+
+          expect(stdoutOutput, isNotEmpty);
+          final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+          expect(json['status'], equals('error'));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('software_error'));
+          expect(error.containsKey('hint'), isFalse);
+          final meta = json['meta'] as Map<String, dynamic>;
+          expect(meta['command'], equals('throwing'));
+        });
+      });
+    });
   });
 }
 
@@ -451,5 +551,89 @@ class _TestCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     throw ProcessExit(exitCode.code);
+  }
+}
+
+class _ThrowingCommand extends ShorebirdCommand {
+  @override
+  String get name => 'throwing';
+
+  @override
+  String get description => 'A command that throws';
+
+  @override
+  Future<int> run() async {
+    throw StateError('something went wrong');
+  }
+}
+
+/// A minimal [Stdout] that captures [writeln] calls.
+class _CapturingStdout implements Stdout {
+  _CapturingStdout({required this.baseStdOut, required this.captured});
+
+  final Stdout baseStdOut;
+  final List<String> captured;
+
+  @override
+  Encoding get encoding => baseStdOut.encoding;
+
+  @override
+  set encoding(Encoding value) => baseStdOut.encoding = value;
+
+  @override
+  String get lineTerminator => baseStdOut.lineTerminator;
+
+  @override
+  set lineTerminator(String value) => baseStdOut.lineTerminator = value;
+
+  @override
+  Future<void> get done => baseStdOut.done;
+
+  @override
+  bool get hasTerminal => baseStdOut.hasTerminal;
+
+  @override
+  IOSink get nonBlocking => baseStdOut.nonBlocking;
+
+  @override
+  bool get supportsAnsiEscapes => baseStdOut.supportsAnsiEscapes;
+
+  @override
+  int get terminalColumns => baseStdOut.terminalColumns;
+
+  @override
+  int get terminalLines => baseStdOut.terminalLines;
+
+  @override
+  void add(List<int> data) => baseStdOut.add(data);
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) =>
+      baseStdOut.addError(error, stackTrace);
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) =>
+      baseStdOut.addStream(stream);
+
+  @override
+  Future<void> close() => baseStdOut.close();
+
+  @override
+  Future<void> flush() => baseStdOut.flush();
+
+  @override
+  void write(Object? object) => baseStdOut.write(object);
+
+  @override
+  void writeAll(Iterable<dynamic> objects, [String sep = '']) =>
+      baseStdOut.writeAll(objects, sep);
+
+  @override
+  void writeCharCode(int charCode) => baseStdOut.writeCharCode(charCode);
+
+  @override
+  void writeln([Object? object = '']) {
+    captured.add(object.toString());
+    baseStdOut.writeln(object);
   }
 }
