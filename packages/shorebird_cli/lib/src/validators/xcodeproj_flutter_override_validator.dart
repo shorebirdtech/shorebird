@@ -91,8 +91,11 @@ The command you are running must be run within a Flutter app project that suppor
     // - FLUTTER_FOO = "value";
     // - FLUTTER_FOO = $(FLUTTER_FOO);
     // Allow flexible spacing around the equals sign.
-    // Use a negative lookbehind on `//` to avoid commented-out lines, and
-    // require the assignment to terminate with `;` on the same line.
+    // Use a negative lookahead on `//` to avoid line comments, and require
+    // the assignment to terminate with `;` on the same line. Note: this does
+    // not strip pbxproj `/* ... */` block comments, so a commented-out
+    // assignment inside one would still be flagged. That's acceptable since
+    // it still represents an intent to set FLUTTER_*.
     final matcher = RegExp(
       r'^(?!\s*//).*?(FLUTTER_\w+)\s*=\s*[^;\n]+;',
       multiLine: true,

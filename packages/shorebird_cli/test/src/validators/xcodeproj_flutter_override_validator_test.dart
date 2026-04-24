@@ -80,6 +80,14 @@ void main() {
     });
 
     group('validate', () {
+      test('returns no issues if project root is null', () async {
+        when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(null);
+
+        final results = await runWithOverrides(validator.validate);
+
+        expect(results, isEmpty);
+      });
+
       test('returns error if project.pbxproj file does not exist', () async {
         Directory(
           p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
