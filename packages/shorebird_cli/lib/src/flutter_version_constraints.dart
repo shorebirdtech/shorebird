@@ -61,8 +61,15 @@ class FlutterSupportConstraint {
   final Set<String> allowedRevisions;
 
   /// Whether the given [version]/[revision] pair satisfies this constraint.
-  bool isSatisfiedBy({required Version version, required String revision}) =>
-      version >= minVersion || allowedRevisions.contains(revision);
+  ///
+  /// A null [version] (e.g. a Shorebird-fork dev revision that isn't on any
+  /// `flutter_release/*` branch and so has no parseable upstream version)
+  /// can only satisfy the constraint via [allowedRevisions]. Gating on
+  /// `version ?? minVersion` would treat every unknown revision as new
+  /// enough, silently opting pre-feature dev pins into feature behavior.
+  bool isSatisfiedBy({required Version? version, required String revision}) =>
+      (version != null && version >= minVersion) ||
+      allowedRevisions.contains(revision);
 }
 
 /// Flutter support for `flutter build --shorebird-trace=<path>` for emitting
@@ -76,9 +83,15 @@ class FlutterSupportConstraint {
 final buildTraceSupportConstraint = FlutterSupportConstraint(
   minVersion: Version(3, 41, 7),
   allowedRevisions: {
-    // Current Shorebird Flutter pin (bin/internal/flutter.version). Can
-    // be removed once a flutter_release/3.41.7 branch ships with this
-    // (or a later tracing-enabled) commit at its tip.
+    // Shorebird-fork Flutter pins that ship the tracing feature but
+    // still report upstream version 3.41.6, so `resolveFlutterVersion`
+    // can't satisfy the floor via the version path.
+    //
+    // Add a new entry here every time `bin/internal/flutter.version`
+    // is bumped to a revision that carries the tracing PRs; entries
+    // stop mattering once a `flutter_release/3.41.7` branch ships
+    // them and the floor can be satisfied directly.
     '3b10eecea184bb381f1045a878eeff36548ed11e',
+    'c2c56ab2d5483bdf86152725342f55ca6faed946',
   },
 );
