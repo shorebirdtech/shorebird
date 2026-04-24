@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 
 /// {@template clean_cache_command}
 /// `shorebird cache clean`
@@ -13,7 +14,13 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 /// {@endtemplate}
 class CleanCacheCommand extends ShorebirdCommand {
   /// {@macro clean_cache_command}
-  CleanCacheCommand();
+  CleanCacheCommand() {
+    argParser.addFlag(
+      'prune',
+      help: 'Only remove old, unused Flutter revisions instead of the '
+          'entire cache.',
+    );
+  }
 
   @override
   String get description => 'Clears the Shorebird cache directory.';
@@ -26,6 +33,10 @@ class CleanCacheCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
+    if (results['prune'] == true) {
+      return _pruneOldRevisions();
+    }
+
     final progress = logger.progress('Clearing cache');
     try {
       await cache.clear();
@@ -52,5 +63,21 @@ This could be because a program is using a file in the cache directory. To find 
 
     progress.complete('Cleared cache');
     return ExitCode.success.code;
+  }
+
+  Future<int> _pruneOldRevisions() async {
+    final progress = logger.progress('Pruning old Flutter revisions');
+    try {
+      final pruned = await shorebirdFlutter.pruneOldRevisions();
+      if (pruned == 0) {
+        progress.complete('No old Flutter revisions to prune');
+      } else {
+        progress.complete('Pruned $pruned old Flutter revision(s)');
+      }
+      return ExitCode.success.code;
+    } on Exception catch (error) {
+      progress.fail('Failed to prune old Flutter revisions: $error');
+      return ExitCode.software.code;
+    }
   }
 }
