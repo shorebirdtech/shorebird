@@ -88,6 +88,7 @@ words:
   - parseable
   - patchability
   - pana
+  - pbxproj
   - Perfetto # Chrome trace viewer at ui.perfetto.dev
   - pkcs
   - podfile
