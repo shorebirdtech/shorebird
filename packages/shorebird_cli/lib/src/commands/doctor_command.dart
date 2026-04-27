@@ -196,21 +196,21 @@ Android Toolchain
 
     Map<String, dynamic>? speedTest;
     if (results['verbose'] == true) {
-      double? uploadMbps;
-      double? downloadMbps;
+      double? uploadMbPerSec;
+      double? downloadMbPerSec;
       try {
-        uploadMbps = await networkChecker.performGCPUploadSpeedTest();
+        uploadMbPerSec = await networkChecker.performGCPUploadSpeedTest();
       } on Exception {
         // Report as null on failure.
       }
       try {
-        downloadMbps = await networkChecker.performGCPDownloadSpeedTest();
+        downloadMbPerSec = await networkChecker.performGCPDownloadSpeedTest();
       } on Exception {
         // Report as null on failure.
       }
       speedTest = {
-        'upload_mbps': uploadMbps,
-        'download_mbps': downloadMbps,
+        'upload_megabytes_per_sec': uploadMbPerSec,
+        'download_megabytes_per_sec': downloadMbPerSec,
       };
     }
 

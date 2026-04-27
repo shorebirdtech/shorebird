@@ -533,6 +533,63 @@ Engine • revision $shorebirdEngineRevision'''),
           expect(meta['command'], equals('throwing'));
         });
       });
+
+      group('on UsageException', () {
+        test('emits JSON error envelope with hint', () async {
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'nonexistent']),
+            ),
+          );
+          expect(result, equals(ExitCode.usage.code));
+
+          expect(stdoutOutput, isNotEmpty);
+          final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+          expect(json['status'], equals('error'));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('usage_error'));
+          expect(error.containsKey('hint'), isTrue);
+          verifyNever(() => logger.err(any()));
+        });
+      });
+
+      group('--version', () {
+        test('emits JSON success with version info', () async {
+          const flutterVersionString = '3.22.2';
+          when(
+            () => shorebirdFlutter.getVersionString(),
+          ).thenAnswer((_) async => flutterVersionString);
+
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', '--version']),
+            ),
+          );
+
+          expect(result, equals(ExitCode.success.code));
+          expect(stdoutOutput, isNotEmpty);
+          final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+          expect(json['status'], equals('success'));
+          final data = json['data'] as Map<String, dynamic>;
+          expect(data['shorebird_version'], equals(packageVersion));
+          expect(data['flutter_version'], equals(flutterVersionString));
+          expect(data['flutter_revision'], equals(flutterRevision));
+          expect(data['engine_revision'], equals(shorebirdEngineRevision));
+          verifyNever(() => logger.info(any()));
+        });
+      });
+
+      test('does not check for updates', () async {
+        commandRunner.addCommand(_TestCommand(ExitCode.success));
+        await captureStdout(
+          () => runWithOverrides(
+            () => commandRunner.run(['--json', 'test']),
+          ),
+        );
+
+        verifyNever(() => shorebirdVersion.isTrackingStable());
+        verifyNever(() => shorebirdVersion.isLatest());
+      });
     });
   });
 }

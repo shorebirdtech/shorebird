@@ -204,14 +204,26 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
     int? exitCode;
     if (topLevelResults['version'] == true) {
       final flutterVersion = await _tryGetFlutterVersion();
-      final shorebirdFlutterPrefix = StringBuffer('Flutter');
-      if (flutterVersion != null) {
-        shorebirdFlutterPrefix.write(' $flutterVersion');
-      }
-      logger.info('''
+      if (isJsonMode) {
+        JsonResult.success(
+          data: {
+            'shorebird_version': packageVersion,
+            'flutter_version': flutterVersion,
+            'flutter_revision': shorebirdEnv.flutterRevision,
+            'engine_revision': shorebirdEnv.shorebirdEngineRevision,
+          },
+          command: 'version',
+        ).write();
+      } else {
+        final shorebirdFlutterPrefix = StringBuffer('Flutter');
+        if (flutterVersion != null) {
+          shorebirdFlutterPrefix.write(' $flutterVersion');
+        }
+        logger.info('''
 Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 $shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
 Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
+      }
       exitCode = ExitCode.success.code;
     } else {
       try {
@@ -280,7 +292,8 @@ ${currentRunLogFile.absolute.path}
 ''');
     }
 
-    if (topLevelResults.command?.name != UpgradeCommand.commandName) {
+    if (!isJsonMode &&
+        topLevelResults.command?.name != UpgradeCommand.commandName) {
       await _checkForUpdates();
     }
 

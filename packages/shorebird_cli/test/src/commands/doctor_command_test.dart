@@ -643,8 +643,8 @@ Android Toolchain
         final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         final speedTest = data['speed_test'] as Map<String, dynamic>;
-        expect(speedTest['upload_mbps'], equals(1.23));
-        expect(speedTest['download_mbps'], equals(4.56));
+        expect(speedTest['upload_megabytes_per_sec'], equals(1.23));
+        expect(speedTest['download_megabytes_per_sec'], equals(4.56));
       });
 
       test('omits speed_test when --verbose is not passed', () async {
@@ -660,6 +660,48 @@ Android Toolchain
         final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         expect(data.containsKey('speed_test'), isFalse);
+      });
+
+      test('reports null speed_test values when tests fail', () async {
+        when(() => argResults['verbose']).thenReturn(true);
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '3.22.2');
+        when(
+          () => networkChecker.performGCPUploadSpeedTest(),
+        ).thenThrow(Exception('upload failed'));
+        when(
+          () => networkChecker.performGCPDownloadSpeedTest(),
+        ).thenThrow(Exception('download failed'));
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        final speedTest = data['speed_test'] as Map<String, dynamic>;
+        expect(speedTest['upload_megabytes_per_sec'], isNull);
+        expect(speedTest['download_megabytes_per_sec'], isNull);
+      });
+
+      test('reports null gradle_version when detection fails', () async {
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '3.22.2');
+        when(() => gradlew.exists(any())).thenReturn(true);
+        when(() => gradlew.version(any())).thenThrow(Exception('gradle fail'));
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        final toolchain = data['android_toolchain'] as Map<String, dynamic>;
+        expect(toolchain['gradle_version'], isNull);
       });
     });
   });
