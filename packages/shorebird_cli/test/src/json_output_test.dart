@@ -36,14 +36,14 @@ void main() {
     group('error', () {
       test('serializes correctly without hint', () {
         final result = JsonResult.error(
-          code: 'auth_required',
+          code: JsonErrorCode.softwareError,
           message: 'Not authenticated.',
           command: 'doctor',
         );
         final json = result.toJson();
         expect(json['status'], equals('error'));
         final error = json['error'] as Map<String, dynamic>;
-        expect(error['code'], equals('auth_required'));
+        expect(error['code'], equals('software_error'));
         expect(error['message'], equals('Not authenticated.'));
         expect(error.containsKey('hint'), isFalse);
         final meta = json['meta'] as Map<String, dynamic>;
@@ -54,7 +54,7 @@ void main() {
 
       test('serializes correctly with hint', () {
         final result = JsonResult.error(
-          code: 'auth_required',
+          code: JsonErrorCode.usageError,
           message: 'Not authenticated.',
           hint: 'Run: shorebird login:ci',
           command: 'doctor',
@@ -83,16 +83,19 @@ void main() {
 
   group(JsonError, () {
     test('serializes correctly without hint', () {
-      const error = JsonError(code: 'test', message: 'test message');
+      const error = JsonError(
+        code: JsonErrorCode.softwareError,
+        message: 'test message',
+      );
       final json = error.toJson();
-      expect(json['code'], equals('test'));
+      expect(json['code'], equals('software_error'));
       expect(json['message'], equals('test message'));
       expect(json.containsKey('hint'), isFalse);
     });
 
     test('serializes correctly with hint', () {
       const error = JsonError(
-        code: 'test',
+        code: JsonErrorCode.usageError,
         message: 'test message',
         hint: 'try this',
       );

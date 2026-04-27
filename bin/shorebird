@@ -19,6 +19,15 @@ if [[ ! -d "$BIN_DIR/cache/flutter/$FLUTTER_VERSION/bin" ]]; then
   rm -f "$BIN_DIR/cache/shorebird.stamp"
 fi
 
+# When --json is passed, tell shared.sh to redirect bootstrap output
+# (flutter --version, pub get, git) to stderr so stdout is pure JSON.
+for arg in "$@"; do
+  if [[ "$arg" == "--json" ]]; then
+    export SHOREBIRD_JSON_MODE=true
+    break
+  fi
+done
+
 source "$BIN_DIR/../third_party/flutter/bin/internal/shared.sh"
 
 # We currently depend on a forked (3.7.8 stable) Flutter shared.sh script

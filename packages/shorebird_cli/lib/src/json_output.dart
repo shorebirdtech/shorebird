@@ -24,6 +24,35 @@ String commandNameFromResults(ArgResults topLevelResults) {
   return parts.isEmpty ? 'shorebird' : parts.join(' ');
 }
 
+/// The status field in a JSON output envelope.
+enum JsonStatus {
+  /// The command completed successfully.
+  success,
+
+  /// The command failed.
+  error,
+}
+
+/// Machine-readable error codes for JSON output.
+enum JsonErrorCode {
+  /// A process exited with a non-zero exit code.
+  processExit('process_exit'),
+
+  /// The CLI was invoked with invalid arguments.
+  usageError('usage_error'),
+
+  /// An unhandled exception occurred.
+  softwareError('software_error'),
+
+  /// A network fetch or data retrieval failed.
+  fetchFailed('fetch_failed');
+
+  const JsonErrorCode(this.code);
+
+  /// The wire-format string (e.g. "process_exit").
+  final String code;
+}
+
 /// {@template json_meta}
 /// Metadata included in every JSON output envelope.
 /// {@endtemplate}
@@ -51,8 +80,8 @@ class JsonError {
   /// {@macro json_error}
   const JsonError({required this.code, required this.message, this.hint});
 
-  /// A machine-readable error code (e.g. "auth_required").
-  final String code;
+  /// A machine-readable error code.
+  final JsonErrorCode code;
 
   /// A human-readable error description.
   final String message;
@@ -63,7 +92,7 @@ class JsonError {
 
   /// Serializes this error to a JSON-compatible map.
   Map<String, dynamic> toJson() => {
-    'code': code,
+    'code': code.code,
     'message': message,
     if (hint != null) 'hint': hint,
   };
@@ -96,7 +125,7 @@ class JsonResult {
     final meta = JsonMeta(version: packageVersion, command: command);
     return JsonResult._(
       toJson: () => {
-        'status': 'success',
+        'status': JsonStatus.success.name,
         'data': data,
         'meta': meta.toJson(),
       },
@@ -105,12 +134,12 @@ class JsonResult {
 
   /// Creates an error result.
   ///
-  /// `code` is a machine-readable identifier (e.g. "auth_required").
+  /// [code] is a machine-readable [JsonErrorCode].
   /// `message` is a human-readable description.
   /// `hint` is an optional actionable recovery step.
   /// `command` is injected into the `meta` block automatically.
   factory JsonResult.error({
-    required String code,
+    required JsonErrorCode code,
     required String message,
     required String command,
     String? hint,
@@ -119,7 +148,7 @@ class JsonResult {
     final meta = JsonMeta(version: packageVersion, command: command);
     return JsonResult._(
       toJson: () => {
-        'status': 'error',
+        'status': JsonStatus.error.name,
         'error': error.toJson(),
         'meta': meta.toJson(),
       },

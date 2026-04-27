@@ -78,7 +78,7 @@ abstract class ShorebirdCommand extends Command<int> {
   ///
   /// Only call this when [isJsonMode] is true.
   void emitJsonError({
-    required String code,
+    required JsonErrorCode code,
     required String message,
     String? hint,
   }) {

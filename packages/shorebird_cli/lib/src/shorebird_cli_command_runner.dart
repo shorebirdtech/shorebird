@@ -48,11 +48,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         'verbose',
         abbr: 'v',
         help: 'Noisy logging, including all shell commands executed.',
-        callback: (verbose) {
-          if (verbose) {
-            logger.level = Level.verbose;
-          }
-        },
       )
       ..addOption(
         'local-engine-src-path',
@@ -131,6 +126,13 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
 
       final jsonMode = topLevelResults['json'] == true;
+
+      // In JSON mode, suppress verbose logging — it writes to stdout and
+      // would corrupt the JSON output. Verbose output still goes to the
+      // log file via ShorebirdLogger.detail.
+      if (!jsonMode && topLevelResults['verbose'] == true) {
+        logger.level = Level.verbose;
+      }
 
       final process = ShorebirdProcess();
       final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
@@ -218,7 +220,7 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         exitCode = error.exitCode;
         if (isJsonMode && error.exitCode != ExitCode.success.code) {
           JsonResult.error(
-            code: 'process_exit',
+            code: JsonErrorCode.processExit,
             message: 'Process exited with code ${error.exitCode}.',
             command: commandName,
           ).write();
@@ -226,7 +228,7 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
       } on UsageException catch (e) {
         if (isJsonMode) {
           JsonResult.error(
-            code: 'usage_error',
+            code: JsonErrorCode.usageError,
             message: e.message,
             hint: 'Run: shorebird $commandName --help',
             command: commandName,
@@ -246,7 +248,7 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
       } catch (error, stackTrace) {
         if (isJsonMode) {
           JsonResult.error(
-            code: 'software_error',
+            code: JsonErrorCode.softwareError,
             message: '$error',
             command: commandName,
           ).write();
