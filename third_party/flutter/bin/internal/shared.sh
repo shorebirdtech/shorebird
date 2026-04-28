@@ -20,7 +20,7 @@ function update_flutter {
   SHOREBIRD_ENGINE_VERSION=`cat "$FLUTTER_PATH/bin/internal/engine.version"`
   echo "Shorebird Engine • revision $SHOREBIRD_ENGINE_VERSION"
   # Install Shorebird Flutter Artifacts
-  FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev $FLUTTER_PATH/bin/flutter --version  
+  FLUTTER_STORAGE_BASE_URL=https://download.shorebird.dev $FLUTTER_PATH/bin/flutter --version
 }
 
 function pub_get_with_retry {
@@ -219,7 +219,12 @@ function shared::execute() {
     exit 1
   fi
 
-  upgrade_shorebird 7< "$PROG_NAME"
+  # In JSON mode, redirect bootstrap output to stderr so stdout is pure JSON.
+  if [[ "$SHOREBIRD_JSON_MODE" == "true" ]]; then
+    upgrade_shorebird 7< "$PROG_NAME" 1>&2
+  else
+    upgrade_shorebird 7< "$PROG_NAME"
+  fi
 
   BIN_NAME="$(basename "$PROG_NAME")"
   case "$BIN_NAME" in    

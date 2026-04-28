@@ -1,13 +1,16 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:test/test.dart';
 
+import '../../../helpers.dart';
 import '../../../mocks.dart';
 
 void main() {
@@ -21,6 +24,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          isJsonModeRef.overrideWith(() => false),
           loggerRef.overrideWith(() => logger),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
@@ -113,6 +117,108 @@ void main() {
         () => logger.info('  1.0.1'),
         () => logger.info(lightCyan.wrap('✓ 1.0.0')),
       ]);
+    });
+
+    group('when --json is passed', () {
+      late List<String> stdoutOutput;
+
+      R runJsonWithOverrides<R>(R Function() body) {
+        return runScoped(
+          body,
+          values: {
+            isJsonModeRef.overrideWith(() => true),
+            loggerRef.overrideWith(() => logger),
+            shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          },
+        );
+      }
+
+      setUp(() {
+        stdoutOutput = [];
+        command = runJsonWithOverrides(FlutterVersionsListCommand.new);
+      });
+
+      test('emits JSON success with versions and current_version', () async {
+        const versions = ['1.0.0', '1.0.1'];
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '1.0.0');
+        when(
+          () => shorebirdFlutter.getVersions(),
+        ).thenAnswer((_) async => versions);
+
+        final exitCode = await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(stdoutOutput, isNotEmpty);
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        expect(json['status'], equals('success'));
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['current_version'], equals('1.0.0'));
+        expect(data['versions'], equals(['1.0.1', '1.0.0']));
+        verifyNever(() => logger.info(any()));
+      });
+
+      test('emits null current_version when getVersionString throws', () async {
+        const versions = ['1.0.0', '1.0.1'];
+        when(() => shorebirdFlutter.getVersionString()).thenThrow(
+          const ProcessException('flutter', ['--version']),
+        );
+        when(
+          () => shorebirdFlutter.getVersions(),
+        ).thenAnswer((_) async => versions);
+
+        final exitCode = await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['current_version'], isNull);
+      });
+
+      test('emits JSON error when getVersions fails', () async {
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '1.0.0');
+        when(
+          () => shorebirdFlutter.getVersions(),
+        ).thenThrow(Exception('network error'));
+
+        final exitCode = await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        expect(exitCode, equals(ExitCode.software.code));
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        expect(json['status'], equals('error'));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], equals('fetch_failed'));
+        verifyNever(() => logger.info(any()));
+        verifyNever(() => logger.err(any()));
+      });
+
+      test('does not create a progress spinner', () async {
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '1.0.0');
+        when(
+          () => shorebirdFlutter.getVersions(),
+        ).thenAnswer((_) async => ['1.0.0']);
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        verifyNever(() => logger.progress(any()));
+      });
     });
   });
 }

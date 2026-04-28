@@ -4,6 +4,8 @@ import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
+import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -47,6 +49,46 @@ abstract class ShorebirdCommand extends Command<int> {
 
   /// [ArgResults] for the current command.
   ArgResults get results => testArgResults ?? argResults!;
+
+  /// Whether the `--json` global flag was passed.
+  ///
+  /// Reads from the [isJsonModeRef] scoped dependency, which is set by the
+  /// command runner based on the parsed `--json` flag.
+  bool get isJsonMode => read(isJsonModeRef);
+
+  /// The full command name including parent commands (e.g. "releases list").
+  String get fullCommandName {
+    final parts = <String>[];
+    Command<int>? current = this;
+    while (current != null) {
+      parts.insert(0, current.name);
+      current = current.parent;
+    }
+    return parts.join(' ');
+  }
+
+  /// Emits a JSON success envelope with the given [data] to stdout.
+  ///
+  /// Only call this when [isJsonMode] is true.
+  void emitJsonSuccess(Map<String, dynamic> data) {
+    JsonResult.success(data: data, command: fullCommandName).write();
+  }
+
+  /// Emits a JSON error envelope to stdout.
+  ///
+  /// Only call this when [isJsonMode] is true.
+  void emitJsonError({
+    required JsonErrorCode code,
+    required String message,
+    String? hint,
+  }) {
+    JsonResult.error(
+      code: code,
+      message: message,
+      hint: hint,
+      command: fullCommandName,
+    ).write();
+  }
 }
 
 /// {@template shorebird_proxy_command}

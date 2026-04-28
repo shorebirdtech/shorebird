@@ -1,7 +1,98 @@
+import 'dart:convert';
 import 'dart:io';
+
 import 'package:path/path.dart' as p;
 
 File createTempFile(String name) {
   return File(p.join(Directory.systemTemp.createTempSync().path, name))
     ..createSync();
+}
+
+/// Runs [body] while capturing stdout writes into [captured].
+///
+/// Used to verify JSON output from commands that write to stdout.
+Future<T> captureStdout<T>(
+  Future<T> Function() body, {
+  required List<String> captured,
+}) async {
+  final realStdout = stdout;
+  return IOOverrides.runZoned(
+    body,
+    stdout: () => CapturingStdout(baseStdOut: realStdout, captured: captured),
+  );
+}
+
+/// A [Stdout] wrapper that captures [writeln] calls into [captured].
+class CapturingStdout implements Stdout {
+  /// Creates a [CapturingStdout] that delegates to [baseStdOut].
+  CapturingStdout({required this.baseStdOut, required this.captured});
+
+  /// The underlying [Stdout] to delegate to.
+  final Stdout baseStdOut;
+
+  /// Lines captured from [writeln] calls.
+  final List<String> captured;
+
+  @override
+  Encoding get encoding => baseStdOut.encoding;
+
+  @override
+  set encoding(Encoding value) => baseStdOut.encoding = value;
+
+  @override
+  String get lineTerminator => baseStdOut.lineTerminator;
+
+  @override
+  set lineTerminator(String value) => baseStdOut.lineTerminator = value;
+
+  @override
+  Future<void> get done => baseStdOut.done;
+
+  @override
+  bool get hasTerminal => baseStdOut.hasTerminal;
+
+  @override
+  IOSink get nonBlocking => baseStdOut.nonBlocking;
+
+  @override
+  bool get supportsAnsiEscapes => baseStdOut.supportsAnsiEscapes;
+
+  @override
+  int get terminalColumns => baseStdOut.terminalColumns;
+
+  @override
+  int get terminalLines => baseStdOut.terminalLines;
+
+  @override
+  void add(List<int> data) => baseStdOut.add(data);
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) =>
+      baseStdOut.addError(error, stackTrace);
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) =>
+      baseStdOut.addStream(stream);
+
+  @override
+  Future<void> close() => baseStdOut.close();
+
+  @override
+  Future<void> flush() => baseStdOut.flush();
+
+  @override
+  void write(Object? object) => baseStdOut.write(object);
+
+  @override
+  void writeAll(Iterable<dynamic> objects, [String sep = '']) =>
+      baseStdOut.writeAll(objects, sep);
+
+  @override
+  void writeCharCode(int charCode) => baseStdOut.writeCharCode(charCode);
+
+  @override
+  void writeln([Object? object = '']) {
+    captured.add(object.toString());
+    baseStdOut.writeln(object);
+  }
 }

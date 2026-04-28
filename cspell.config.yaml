@@ -73,6 +73,7 @@ words:
   - longpaths
   - lproj
   - madd # From ./packages/redis_client
+  - mbps
   - mget # From ./packages/redis_client
   - metadatas
   - mktemp
