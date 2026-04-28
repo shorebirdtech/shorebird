@@ -287,6 +287,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).thenReturn(release);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -869,6 +870,7 @@ void main() {
               () => logger.confirm(
                 any(),
                 defaultValue: any(named: 'defaultValue'),
+                hint: any(named: 'hint'),
               ),
             ).thenReturn(true);
           });
@@ -889,6 +891,7 @@ void main() {
               () => logger.confirm(
                 'Would you like to continue?',
                 defaultValue: true,
+                hint: any(named: 'hint'),
               ),
             ).called(1);
           });
@@ -900,6 +903,7 @@ void main() {
               () => logger.confirm(
                 any(),
                 defaultValue: any(named: 'defaultValue'),
+                hint: any(named: 'hint'),
               ),
             ).thenReturn(false);
           });
@@ -939,8 +943,11 @@ void main() {
             completes,
           );
           verifyNever(
-            () =>
-                logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+            () => logger.confirm(
+              any(),
+              defaultValue: any(named: 'defaultValue'),
+              hint: any(named: 'hint'),
+            ),
           );
         });
       });
@@ -1202,6 +1209,7 @@ void main() {
               'Which release would you like to patch?',
               choices: any(named: 'choices'),
               display: captureAny(named: 'display'),
+              hint: any(named: 'hint'),
             ),
             () => codePushClientWrapper.getReleaseArtifact(
               appId: appId,
@@ -1412,7 +1420,13 @@ void main() {
 
         verify(() => logger.info('No issues detected.')).called(1);
 
-        verifyNever(() => logger.confirm(any()));
+        verifyNever(
+          () => logger.confirm(
+            any(),
+            defaultValue: any(named: 'defaultValue'),
+            hint: any(named: 'hint'),
+          ),
+        );
         verifyNever(
           () => patcher.uploadPatchArtifacts(
             appId: appId,
@@ -1432,7 +1446,13 @@ void main() {
 
       test('does not prompt for confirmation', () async {
         await runWithOverrides(command.run);
-        verifyNever(() => logger.confirm(any()));
+        verifyNever(
+          () => logger.confirm(
+            any(),
+            defaultValue: any(named: 'defaultValue'),
+            hint: any(named: 'hint'),
+          ),
+        );
       });
     });
 
@@ -1443,7 +1463,13 @@ void main() {
         final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
 
-        verifyNever(() => logger.confirm(any()));
+        verifyNever(
+          () => logger.confirm(
+            any(),
+            defaultValue: any(named: 'defaultValue'),
+            hint: any(named: 'hint'),
+          ),
+        );
       });
     });
 

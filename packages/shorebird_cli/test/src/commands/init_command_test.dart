@@ -130,7 +130,11 @@ environment:
         () => pubspecYamlFile.uri,
       ).thenReturn(File(p.join('pubspec.yaml')).uri);
       when(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+        () => logger.prompt(
+          any(),
+          defaultValue: any(named: 'defaultValue'),
+          hint: any(named: 'hint'),
+        ),
       ).thenReturn(appName);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
@@ -254,7 +258,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       await runWithOverrides(command.run);
       verifyNever(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+        () => logger.prompt(
+          any(),
+          defaultValue: any(named: 'defaultValue'),
+          hint: any(named: 'hint'),
+        ),
       );
       verify(
         () => codePushClientWrapper.createApp(
@@ -268,7 +276,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       when(() => argResults['force']).thenReturn(true);
       await runWithOverrides(command.run);
       verifyNever(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+        () => logger.prompt(
+          any(),
+          defaultValue: any(named: 'defaultValue'),
+          hint: any(named: 'hint'),
+        ),
       );
       verify(
         () => codePushClientWrapper.createApp(
@@ -358,7 +370,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       ).thenThrow(error);
       final exitCode = await runWithOverrides(command.run);
       verify(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+        () => logger.prompt(
+          any(),
+          defaultValue: any(named: 'defaultValue'),
+          hint: any(named: 'hint'),
+        ),
       ).called(1);
       verify(() => logger.err('$error')).called(1);
       expect(exitCode, ExitCode.software.code);
@@ -457,6 +473,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             () => logger.chooseOne(
               'Which organization should this app belong to?',
               choices: any(named: 'choices'),
+              hint: any(named: 'hint'),
             ),
           );
           verify(
@@ -497,6 +514,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             'Which organization should this app belong to?',
             choices: any(named: 'choices'),
             display: any(named: 'display'),
+            hint: any(named: 'hint'),
           ),
         ).thenReturn(org2);
       });
@@ -512,6 +530,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                       'Which organization should this app belong to?',
                       choices: [org1, org2],
                       display: captureAny(named: 'display'),
+                      hint: any(named: 'hint'),
                     ),
                   ).captured.single
                   as String Function(Organization);
@@ -556,6 +575,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                 any(),
                 choices: any(named: 'choices'),
                 display: any(named: 'display'),
+                hint: any(named: 'hint'),
               ),
             );
           },
@@ -621,7 +641,13 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                 any(that: contains('app_id: $appId')),
               ),
             ).called(1);
-            verifyNever(() => logger.prompt(any()));
+            verifyNever(
+              () => logger.prompt(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+                hint: any(named: 'hint'),
+              ),
+            );
             verify(
               () => codePushClientWrapper.createApp(
                 appName: displayName,

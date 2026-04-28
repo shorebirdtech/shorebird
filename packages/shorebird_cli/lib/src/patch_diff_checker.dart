@@ -117,7 +117,12 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
           throw UnpatchableChangeException();
         }
 
-        if (!logger.confirm('Continue anyway?')) {
+        if (!logger.confirm(
+          'Continue anyway?',
+          hint:
+              'Pass --allow-native-diffs to acknowledge native changes '
+              'without prompting.',
+        )) {
           throw UserCancelledException();
         }
       }
@@ -156,7 +161,12 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
           throw UnpatchableChangeException();
         }
 
-        if (!logger.confirm('Continue anyway?')) {
+        if (!logger.confirm(
+          'Continue anyway?',
+          hint:
+              'Pass --allow-asset-diffs to acknowledge asset changes '
+              'without prompting.',
+        )) {
           throw UserCancelledException();
         }
       }

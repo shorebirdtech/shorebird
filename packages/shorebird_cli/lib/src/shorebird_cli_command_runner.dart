@@ -263,6 +263,25 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         // When on an usage exception we don't need to show the "if you aren't
         // sure" message, so we do an early return here.
         return ExitCode.usage.code;
+      } on InteractivePromptRequiredException catch (e) {
+        if (isJsonMode) {
+          JsonResult.error(
+            code: JsonErrorCode.interactivePromptRequired,
+            message: e.promptText,
+            hint: e.hint,
+            command: commandName,
+          ).write();
+        } else {
+          logger
+            ..err(
+              'Input was required for the following prompt but the CLI is '
+              'running in a non-interactive context:',
+            )
+            ..err('  ${e.promptText}')
+            ..info('')
+            ..info('Hint: ${e.hint}');
+        }
+        return ExitCode.usage.code;
 
         // We explicitly want to catch all exceptions here to log them and show
         // the user a friendly message.

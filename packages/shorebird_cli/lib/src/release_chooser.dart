@@ -89,6 +89,9 @@ Release chooseRelease({
       prompt,
       choices: truncated,
       display: display,
+      hint:
+          'Pass --release-version=<version> to $action a specific release '
+          'without prompting.',
     );
 
     if (!identical(choice, showAllReleaseSentinel)) return choice;
@@ -98,5 +101,8 @@ Release chooseRelease({
     prompt,
     choices: sorted,
     display: display,
+    hint:
+        'Pass --release-version=<version> to $action a specific release '
+        'without prompting.',
   );
 }

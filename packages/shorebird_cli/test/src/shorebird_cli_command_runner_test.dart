@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart' hide logger;
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
@@ -585,6 +586,52 @@ Engine • revision $shorebirdEngineRevision'''),
       });
     });
 
+    group('on InteractivePromptRequiredException', () {
+      const exception = InteractivePromptRequiredException(
+        promptText: 'Continue?',
+        hint: 'Pass --force.',
+      );
+
+      test('emits JSON error envelope under --json', () async {
+        commandRunner.addCommand(
+          _PromptRequiredCommand(exception: exception),
+        );
+        final stdoutOutput = <String>[];
+        final result = await helpers.captureStdout<int?>(
+          () => runWithOverrides(
+            () => commandRunner.run(['--json', 'prompt-required']),
+          ),
+          captured: stdoutOutput,
+        );
+        expect(result, equals(ExitCode.usage.code));
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        expect(json['status'], equals('error'));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], equals('interactive_prompt_required'));
+        expect(error['message'], equals('Continue?'));
+        expect(error['hint'], equals('Pass --force.'));
+        final meta = json['meta'] as Map<String, dynamic>;
+        expect(meta['command'], equals('prompt-required'));
+      });
+
+      test('emits human-readable stderr without --json', () async {
+        commandRunner.addCommand(
+          _PromptRequiredCommand(exception: exception),
+        );
+        final result = await runWithOverrides(
+          () => commandRunner.run(['prompt-required']),
+        );
+        expect(result, equals(ExitCode.usage.code));
+        verify(() => logger.err(any(that: contains('non-interactive')))).called(
+          1,
+        );
+        verify(() => logger.err(any(that: contains('Continue?')))).called(1);
+        verify(() => logger.info(any(that: contains('Pass --force.')))).called(
+          1,
+        );
+      });
+    });
+
     group('interactive mode', () {
       late _CaptureModeCommand captureCommand;
       late List<String> stdoutOutput;
@@ -714,6 +761,25 @@ class _ThrowingCommand extends ShorebirdCommand {
   Future<int> run() async {
     throw StateError('something went wrong');
   }
+}
+
+/// A test command whose `run` throws [InteractivePromptRequiredException].
+///
+/// Used to verify the runner's translation of this exception to either a
+/// JSON envelope (under `--json`) or a stderr message.
+class _PromptRequiredCommand extends ShorebirdCommand {
+  _PromptRequiredCommand({required this.exception});
+
+  final InteractivePromptRequiredException exception;
+
+  @override
+  String get name => 'prompt-required';
+
+  @override
+  String get description => 'Throws InteractivePromptRequiredException.';
+
+  @override
+  Future<int> run() async => throw exception;
 }
 
 /// A test command that records the values of [isJsonMode], [isNoInputMode],

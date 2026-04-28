@@ -9,7 +9,11 @@ import 'package:shorebird_cli/src/version.dart';
 final isJsonModeRef = create(() => false);
 
 /// Whether JSON output mode is active in the current zone.
-bool get isJsonMode => read(isJsonModeRef);
+///
+/// Defaults to `false` outside of any scope that has overridden the ref --
+/// callers that read this from non-runner contexts (e.g. unit tests for
+/// `ShorebirdEnv`) should not be forced to set up the scoped value.
+bool get isJsonMode => read(isJsonModeRef, orElse: () => false);
 
 /// Builds the full command name from [ArgResults] by walking the command
 /// chain (e.g. "doctor" for `shorebird doctor`).
@@ -45,7 +49,11 @@ enum JsonErrorCode {
   softwareError('software_error'),
 
   /// A network fetch or data retrieval failed.
-  fetchFailed('fetch_failed');
+  fetchFailed('fetch_failed'),
+
+  /// The CLI required interactive input but no terminal/stdin was available
+  /// (or the user passed `--json` / `--no-input`).
+  interactivePromptRequired('interactive_prompt_required');
 
   const JsonErrorCode(this.code);
 

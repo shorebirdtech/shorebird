@@ -7,7 +7,11 @@ import 'package:shorebird_cli/src/json_output.dart';
 final isNoInputModeRef = create(() => false);
 
 /// Whether non-interactive mode (`--no-input`) is active in the current zone.
-bool get isNoInputMode => read(isNoInputModeRef);
+///
+/// Defaults to `false` outside of any scope that has overridden the ref --
+/// callers that read this from non-runner contexts should not be forced to
+/// set up the scoped value.
+bool get isNoInputMode => read(isNoInputModeRef, orElse: () => false);
 
 /// Whether the CLI is running in an interactive context.
 ///
@@ -21,3 +25,39 @@ bool get isNoInputMode => read(isNoInputModeRef);
 ///   * `--no-input` was passed (explicit non-interactive opt-in).
 bool get isInteractive =>
     io.stdout.hasTerminal && !isJsonMode && !isNoInputMode;
+
+/// The default hint emitted when an interactive prompt is reached in a
+/// non-interactive context and no per-site hint was provided.
+const String defaultInteractivePromptHint =
+    'Re-run with a TTY-attached stdout, or provide the required input via a '
+    'command-line flag. Pass --no-input to make this a hard error in scripts.';
+
+/// {@template interactive_prompt_required_exception}
+/// Thrown when a `confirm`/`chooseOne`/`prompt`/`promptAny` call is reached
+/// while the CLI is in a non-interactive context (no TTY, `--json`, or
+/// `--no-input`).
+///
+/// The runner catches this exception and emits either a JSON error envelope
+/// (under `--json`) or a verbose human-readable error to stderr.
+/// {@endtemplate}
+class InteractivePromptRequiredException implements Exception {
+  /// {@macro interactive_prompt_required_exception}
+  const InteractivePromptRequiredException({
+    required this.promptText,
+    required this.hint,
+  });
+
+  /// The text of the prompt that would have been shown to the user.
+  final String promptText;
+
+  /// An actionable recovery hint -- typically the flag the caller could pass
+  /// to provide the required input non-interactively.
+  final String hint;
+
+  @override
+  String toString() =>
+      'Interactive input was required but the CLI is running in a '
+      'non-interactive context.\n'
+      'Prompt: $promptText\n'
+      'Hint: $hint';
+}

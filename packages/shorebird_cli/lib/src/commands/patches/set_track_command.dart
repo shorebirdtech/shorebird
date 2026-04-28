@@ -98,6 +98,9 @@ class SetTrackCommand extends ShorebirdCommand {
     if (channel == null) {
       final shouldCreateChannel = logger.confirm(
         '''No channel named ${lightCyan.wrap(targetChannel)} found. Do you want to create it?''',
+        hint:
+            'Re-run after creating the channel manually, or pipe `yes` into '
+            'this command to confirm creation non-interactively.',
       );
       if (!shouldCreateChannel) {
         return ExitCode.success.code;

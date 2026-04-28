@@ -212,7 +212,9 @@ void main() {
             name: any(named: 'name'),
           ),
         ).thenAnswer((_) async => null);
-        when(() => logger.confirm(any())).thenReturn(false);
+        when(
+          () => logger.confirm(any(), hint: any(named: 'hint')),
+        ).thenReturn(false);
       });
 
       test('prompts to create the channel', () async {
@@ -221,13 +223,16 @@ void main() {
         verify(
           () => logger.confirm(
             '''No channel named ${lightCyan.wrap(newChannel.name)} found. Do you want to create it?''',
+            hint: any(named: 'hint'),
           ),
         ).called(1);
       });
 
       group('when user confirms to create the channel', () {
         setUp(() {
-          when(() => logger.confirm(any())).thenReturn(true);
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(true);
         });
 
         test('creates the channel', () async {
@@ -244,7 +249,9 @@ void main() {
 
       group('when user declines to create the channel', () {
         setUp(() {
-          when(() => logger.confirm(any())).thenReturn(false);
+          when(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          ).thenReturn(false);
         });
 
         test('exits with code 70', () async {

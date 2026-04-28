@@ -55,6 +55,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       );
     });
@@ -69,6 +70,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).thenReturn(newest);
 
@@ -85,6 +87,7 @@ void main() {
                   'Which release would you like to patch?',
                   choices: captureAny(named: 'choices'),
                   display: any(named: 'display'),
+                  hint: any(named: 'hint'),
                 ),
               ).captured.first
               as List<Release>;
@@ -102,6 +105,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).thenReturn(release);
 
@@ -117,6 +121,7 @@ void main() {
           'Which release would you like to preview?',
           choices: any(named: 'choices'),
           display: captureAny(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       );
       final displayFn = verification.captured.first as String Function(Release);
@@ -135,6 +140,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).thenAnswer((invocation) {
         final choices = invocation.namedArguments[#choices] as List<Release>;
@@ -177,6 +183,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).thenAnswer((invocation) {
         final choices = invocation.namedArguments[#choices] as List<Release>;
@@ -197,6 +204,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).called(1);
     });
@@ -214,6 +222,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).thenAnswer((invocation) {
         final choices = invocation.namedArguments[#choices] as List<Release>;
@@ -237,6 +246,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).called(1);
     });
@@ -252,6 +262,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).thenAnswer((invocation) {
         final choices = invocation.namedArguments[#choices] as List<Release>;
@@ -276,6 +287,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).called(1);
     });

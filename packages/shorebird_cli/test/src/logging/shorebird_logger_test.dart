@@ -5,10 +5,13 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
@@ -100,6 +103,173 @@ void main() {
             contains(message),
           );
         });
+      });
+    });
+
+    group('non-interactive prompt failure', () {
+      late List<String> stdoutOutput;
+
+      setUp(() {
+        stdoutOutput = [];
+      });
+
+      T runUnderScope<T>(
+        T Function() body, {
+        required bool canAcceptUserInput,
+        required bool hasTerminal,
+        bool jsonMode = false,
+        bool noInputMode = false,
+      }) {
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(
+          canAcceptUserInput,
+        );
+        final realStdout = stdout;
+        return IOOverrides.runZoned(
+          () => runScoped(
+            body,
+            values: {
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              isJsonModeRef.overrideWith(() => jsonMode),
+              isNoInputModeRef.overrideWith(() => noInputMode),
+            },
+          ),
+          stdout: () => CapturingStdout(
+            baseStdOut: realStdout,
+            captured: stdoutOutput,
+            hasTerminalOverride: hasTerminal,
+          ),
+        );
+      }
+
+      Matcher throwsPromptRequired({String? withHint, String? withPrompt}) {
+        return throwsA(
+          isA<InteractivePromptRequiredException>()
+              .having(
+                (e) => e.hint,
+                'hint',
+                withHint == null ? isNotEmpty : equals(withHint),
+              )
+              .having(
+                (e) => e.promptText,
+                'promptText',
+                withPrompt == null ? anything : equals(withPrompt),
+              ),
+        );
+      }
+
+      group('when stdin is not a terminal', () {
+        test('confirm throws with default hint', () {
+          expect(
+            () => runUnderScope(
+              () => logger.confirm('Continue?'),
+              canAcceptUserInput: false,
+              hasTerminal: true,
+            ),
+            throwsPromptRequired(
+              withHint: defaultInteractivePromptHint,
+              withPrompt: 'Continue?',
+            ),
+          );
+        });
+
+        test('confirm throws with per-site hint when provided', () {
+          expect(
+            () => runUnderScope(
+              () => logger.confirm('Continue?', hint: 'Pass --force.'),
+              canAcceptUserInput: false,
+              hasTerminal: true,
+            ),
+            throwsPromptRequired(withHint: 'Pass --force.'),
+          );
+        });
+
+        test('chooseOne throws with the per-site hint', () {
+          expect(
+            () => runUnderScope(
+              () => logger.chooseOne(
+                'Which?',
+                choices: const ['a', 'b'],
+                hint: 'Pass --choice=<a|b>.',
+              ),
+              canAcceptUserInput: false,
+              hasTerminal: true,
+            ),
+            throwsPromptRequired(withHint: 'Pass --choice=<a|b>.'),
+          );
+        });
+
+        test('prompt throws with the per-site hint', () {
+          expect(
+            () => runUnderScope(
+              () => logger.prompt('Name?', hint: 'Pass --name=<value>.'),
+              canAcceptUserInput: false,
+              hasTerminal: true,
+            ),
+            throwsPromptRequired(withHint: 'Pass --name=<value>.'),
+          );
+        });
+
+        test('promptAny throws with the per-site hint', () {
+          expect(
+            () => runUnderScope(
+              () => logger.promptAny('Tags?', hint: 'Pass --tags=<csv>.'),
+              canAcceptUserInput: false,
+              hasTerminal: true,
+            ),
+            throwsPromptRequired(withHint: 'Pass --tags=<csv>.'),
+          );
+        });
+      });
+
+      group('when stdout has no terminal', () {
+        test('confirm throws even though canAcceptUserInput is true', () {
+          expect(
+            () => runUnderScope(
+              () => logger.confirm('Continue?', hint: 'Pass --force.'),
+              canAcceptUserInput: true,
+              hasTerminal: false,
+            ),
+            throwsPromptRequired(withHint: 'Pass --force.'),
+          );
+        });
+      });
+
+      group('when --json is active', () {
+        test('confirm throws with the per-site hint', () {
+          expect(
+            () => runUnderScope(
+              () => logger.confirm('Continue?', hint: 'Pass --force.'),
+              canAcceptUserInput: false,
+              hasTerminal: true,
+              jsonMode: true,
+            ),
+            throwsPromptRequired(withHint: 'Pass --force.'),
+          );
+        });
+      });
+
+      group('when --no-input is active', () {
+        test('confirm throws with the per-site hint', () {
+          expect(
+            () => runUnderScope(
+              () => logger.confirm('Continue?', hint: 'Pass --force.'),
+              canAcceptUserInput: false,
+              hasTerminal: true,
+              noInputMode: true,
+            ),
+            throwsPromptRequired(withHint: 'Pass --force.'),
+          );
+        });
+      });
+
+      test('the exception toString surfaces both the prompt and the hint', () {
+        final exception = InteractivePromptRequiredException(
+          promptText: 'Continue?',
+          hint: 'Pass --force.',
+        );
+        final str = exception.toString();
+        expect(str, contains('Continue?'));
+        expect(str, contains('Pass --force.'));
       });
     });
   });

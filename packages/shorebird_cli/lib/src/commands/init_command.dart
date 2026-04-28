@@ -104,6 +104,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         'Which organization should this app belong to?',
         choices: organizationMemberships.map((o) => o.organization).toList(),
         display: (o) => o.name,
+        hint:
+            'Pass --organization-id=<id> to select an organization without '
+            'prompting.',
       );
     } else {
       organization = organizationMemberships.first.organization;
@@ -237,6 +240,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           ? logger.prompt(
               '${lightGreen.wrap('?')} How should we refer to this app?',
               defaultValue: pubspecName,
+              hint:
+                  'Pass --display-name=<name> to set the app name without '
+                  'prompting.',
             )
           : pubspecName;
       final hasNoFlavors = productFlavors.isEmpty;
