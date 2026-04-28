@@ -138,6 +138,7 @@ words:
   - unmockable
   - unobfuscated
   - unpadded
+  - unparseable
   - Unpatchable
   - unsets
   - unskipped
@@ -147,6 +148,7 @@ words:
   - VCRUNTIME
   - Verdana
   - vmcode
+  - worktree
   - writeln
   - WRONGPASS
   - xcarchive
