@@ -32,6 +32,7 @@ steps:
 
     test('leaves SHA pins alone', () async {
       // `@<40-char hash>` isn't a version tag we'd bump.
+      // cspell:disable-next-line
       const input = '''
 steps:
   - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

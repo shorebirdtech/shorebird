@@ -287,11 +287,11 @@ void main() {
 
       await runGenerate(tempDir);
 
-      final depbot = File(
+      final dependabotFile = File(
         p.join(tempDir.path, '.github', 'dependabot.yml'),
       );
-      expect(depbot.existsSync(), isTrue);
-      expect(depbot.readAsStringSync(), contains('github-actions'));
+      expect(dependabotFile.existsSync(), isTrue);
+      expect(dependabotFile.readAsStringSync(), contains('github-actions'));
     });
 
     test('exposes a non-empty description', () {
@@ -300,9 +300,9 @@ void main() {
 
     test('leaves existing dependabot.yml alone', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
-      final depbotDir = Directory(p.join(tempDir.path, '.github'))
+      final githubDir = Directory(p.join(tempDir.path, '.github'))
         ..createSync(recursive: true);
-      final existing = File(p.join(depbotDir.path, 'dependabot.yml'))
+      final existing = File(p.join(githubDir.path, 'dependabot.yml'))
         ..writeAsStringSync('# user content\nversion: 2\n');
       initGitRepo(tempDir);
 

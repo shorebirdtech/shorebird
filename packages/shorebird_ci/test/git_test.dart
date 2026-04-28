@@ -1,3 +1,6 @@
+// Test fixtures contain 40-char SHA-style hex strings that trip cspell.
+// cspell:disable
+
 import 'dart:io';
 
 import 'package:path/path.dart' as p;

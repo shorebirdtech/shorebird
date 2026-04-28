@@ -124,7 +124,7 @@ void main() {
   });
 
   test('uses default base/head refs when none provided', () async {
-    // Exercises the `?? 'origin/main'` and `?? 'HEAD'` fall-throughs.
+    // Exercises the `?? 'origin/main'` and `?? 'HEAD'` defaults.
     // origin/main isn't set up in this temp repo, so the underlying
     // `git diff` will fail; we expect that failure to surface (which
     // confirms the default refs are wired in).
