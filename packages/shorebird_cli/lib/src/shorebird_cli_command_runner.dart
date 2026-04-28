@@ -98,8 +98,14 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
 
   @override
   Future<int> run(Iterable<String> args) async {
+    final argsList = args.toList();
+    // Detect `--json` from the raw argv so that parse-time failures
+    // (unknown flags, malformed input) can still emit a JSON envelope.
+    // `parse(args)` throws before we'd otherwise read this flag.
+    final jsonModeFromArgs = argsList.contains('--json');
+
     try {
-      final topLevelResults = parse(args);
+      final topLevelResults = parse(argsList);
 
       final localEngineSrcPath =
           topLevelResults['local-engine-src-path'] as String?;
@@ -167,15 +173,33 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     } on FormatException catch (e, stackTrace) {
       // On format errors, show the commands error message, root usage and
       // exit with an error code
-      logger
-        ..err(e.message)
-        ..detail('$stackTrace')
-        ..info('')
-        ..info(usage);
+      if (jsonModeFromArgs) {
+        JsonResult.error(
+          code: JsonErrorCode.usageError,
+          message: e.message,
+          hint: 'Run: shorebird --help',
+          command: executableName,
+        ).write();
+      } else {
+        logger
+          ..err(e.message)
+          ..detail('$stackTrace')
+          ..info('')
+          ..info(usage);
+      }
       return ExitCode.usage.code;
     } on UsageException catch (e) {
       // On usage errors, show the commands usage message and
       // exit with an error code
+      if (jsonModeFromArgs) {
+        JsonResult.error(
+          code: JsonErrorCode.usageError,
+          message: e.message,
+          hint: 'Run: shorebird --help',
+          command: executableName,
+        ).write();
+        return ExitCode.usage.code;
+      }
 
       logger.err(e.message);
       if (e.message.contains('Could not find an option named')) {
@@ -255,10 +279,15 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         }
       } on UsageException catch (e) {
         if (isJsonMode) {
+          // Avoid "Run: shorebird shorebird --help" when no subcommand was
+          // recognized (commandNameFromResults falls back to "shorebird").
+          final hint = commandName == executableName
+              ? 'Run: shorebird --help'
+              : 'Run: shorebird $commandName --help';
           JsonResult.error(
             code: JsonErrorCode.usageError,
             message: e.message,
-            hint: 'Run: shorebird $commandName --help',
+            hint: hint,
             command: commandName,
           ).write();
         } else {

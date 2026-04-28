@@ -584,6 +584,46 @@ Engine • revision $shorebirdEngineRevision'''),
         verifyNever(() => shorebirdVersion.isTrackingStable());
         verifyNever(() => shorebirdVersion.isLatest());
       });
+
+      group('on parse-time errors', () {
+        test('emits JSON error envelope on unknown command', () async {
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'fly_to_the_moon']),
+            ),
+          );
+          expect(result, equals(ExitCode.usage.code));
+          expect(stdoutOutput, isNotEmpty);
+          final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+          expect(json['status'], equals('error'));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('usage_error'));
+          expect(error['hint'], equals('Run: shorebird --help'));
+          final meta = json['meta'] as Map<String, dynamic>;
+          expect(meta['command'], equals('shorebird'));
+          // Human-readable error must not be written under --json.
+          verifyNever(() => logger.err(any()));
+        });
+
+        test('emits JSON error envelope on unknown global flag', () async {
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', '--bogus']),
+            ),
+          );
+          expect(result, equals(ExitCode.usage.code));
+          expect(stdoutOutput, isNotEmpty);
+          final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+          expect(json['status'], equals('error'));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('usage_error'));
+          expect(
+            error['message'] as String,
+            contains('Could not find an option'),
+          );
+          verifyNever(() => logger.err(any()));
+        });
+      });
     });
 
     group('on InteractivePromptRequiredException', () {
