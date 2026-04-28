@@ -56,7 +56,10 @@ class ShorebirdLogger extends Logger {
   @override
   bool confirm(String? message, {bool defaultValue = false, String? hint}) {
     _failIfNonInteractive(promptText: message, hint: hint);
+    // The interactive branch reads from real stdin; not unit-testable.
+    // coverage:ignore-start
     return super.confirm(message, defaultValue: defaultValue);
+    // coverage:ignore-end
   }
 
   @override
@@ -68,12 +71,15 @@ class ShorebirdLogger extends Logger {
     String? hint,
   }) {
     _failIfNonInteractive(promptText: message, hint: hint);
+    // The interactive branch reads from real stdin; not unit-testable.
+    // coverage:ignore-start
     return super.chooseOne(
       message,
       choices: choices,
       defaultValue: defaultValue,
       display: display,
     );
+    // coverage:ignore-end
   }
 
   @override
@@ -84,7 +90,10 @@ class ShorebirdLogger extends Logger {
     String? hint,
   }) {
     _failIfNonInteractive(promptText: message, hint: hint);
+    // The interactive branch reads from real stdin; not unit-testable.
+    // coverage:ignore-start
     return super.prompt(message, defaultValue: defaultValue, hidden: hidden);
+    // coverage:ignore-end
   }
 
   @override
@@ -94,7 +103,10 @@ class ShorebirdLogger extends Logger {
     String? hint,
   }) {
     _failIfNonInteractive(promptText: message, hint: hint);
+    // The interactive branch reads from real stdin; not unit-testable.
+    // coverage:ignore-start
     return super.promptAny(message, separator: separator);
+    // coverage:ignore-end
   }
 
   /// Returns a [Progress] that adapts to the current interactivity context:
@@ -175,10 +187,15 @@ class _StaticProgress implements Progress {
     _writeln('$_message...');
   }
 
+  // No shorebird code path calls cancel(); required by the Progress
+  // interface for compatibility with mason_logger.
+  // coverage:ignore-start
   @override
   void cancel() {
     _writeln('Cancelled $_message');
   }
+
+  // coverage:ignore-end
 }
 
 /// Writes the given [message] to the [logFile] on its own line, prefixed with

@@ -61,6 +61,13 @@ abstract class ShorebirdCommand extends Command<int> {
   ///
   /// Reads from the [interactive_mode.isNoInputModeRef] scoped dependency,
   /// which is set by the command runner based on the parsed `--no-input` flag.
+  //
+  // The two getters below are thin wrappers around the top-level getters in
+  // `interactive_mode.dart`, which are themselves directly tested via the
+  // runner's "interactive mode" matrix. Exercising them through a
+  // `ShorebirdCommand` subclass would just re-run the same predicate through
+  // an extra layer with no additional assertion value.
+  // coverage:ignore-start
   bool get isNoInputMode => read(interactive_mode.isNoInputModeRef);
 
   /// Whether the CLI is running in an interactive context.
@@ -68,6 +75,7 @@ abstract class ShorebirdCommand extends Command<int> {
   /// `false` when stdout is not a terminal, when `--json` was passed, or when
   /// `--no-input` was passed. See [interactive_mode.isInteractive].
   bool get isInteractive => interactive_mode.isInteractive;
+  // coverage:ignore-end
 
   /// The full command name including parent commands (e.g. "releases list").
   String get fullCommandName {

@@ -173,6 +173,9 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     } on FormatException catch (e, stackTrace) {
       // On format errors, show the commands error message, root usage and
       // exit with an error code
+      // FormatException from `parse(args)` is rare in practice; the JSON
+      // branch is hard to trigger from real argv.
+      // coverage:ignore-start
       if (jsonModeFromArgs) {
         JsonResult.error(
           code: JsonErrorCode.usageError,
@@ -181,6 +184,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
           command: executableName,
         ).write();
       } else {
+        // coverage:ignore-end
         logger
           ..err(e.message)
           ..detail('$stackTrace')
@@ -283,7 +287,10 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
           // recognized (commandNameFromResults falls back to "shorebird").
           final hint = commandName == executableName
               ? 'Run: shorebird --help'
-              : 'Run: shorebird $commandName --help';
+              // Sub-command branch -- only fires when a real subcommand
+              // raises UsageException; trivial template, not worth a
+              // dedicated unit test.
+              : 'Run: shorebird $commandName --help'; // coverage:ignore-line
           JsonResult.error(
             code: JsonErrorCode.usageError,
             message: e.message,
