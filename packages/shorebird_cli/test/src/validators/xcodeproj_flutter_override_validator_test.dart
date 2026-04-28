@@ -47,38 +47,6 @@ void main() {
       );
     });
 
-    group('canRunInCurrentContext', () {
-      test('returns false if no ios/Runner.xcodeproj directory exists', () {
-        final result = runWithOverrides(
-          () => validator.canRunInCurrentContext(),
-        );
-
-        expect(result, isFalse);
-      });
-
-      test('returns true if ios/Runner.xcodeproj directory exists', () {
-        Directory(
-          p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
-        ).createSync(recursive: true);
-
-        final result = runWithOverrides(
-          () => validator.canRunInCurrentContext(),
-        );
-
-        expect(result, isTrue);
-      });
-
-      test('returns false if project root is null', () {
-        when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(null);
-
-        final result = runWithOverrides(
-          () => validator.canRunInCurrentContext(),
-        );
-
-        expect(result, isFalse);
-      });
-    });
-
     group('validate', () {
       test('returns no issues if project root is null', () async {
         when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(null);
@@ -88,21 +56,35 @@ void main() {
         expect(results, isEmpty);
       });
 
-      test('returns error if project.pbxproj file does not exist', () async {
-        Directory(
-          p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
-        ).createSync(recursive: true);
+      test(
+        'returns no issues if ios/Runner.xcodeproj directory does not exist '
+        '(e.g. Flutter module / no iOS platform)',
+        () async {
+          // No ios/Runner.xcodeproj created — simulates a Flutter module or
+          // an app without the iOS platform. The validator must silently
+          // skip rather than error, otherwise commands like
+          // `shorebird release ios-framework` are blocked.
 
-        final results = await runWithOverrides(validator.validate);
+          final results = await runWithOverrides(validator.validate);
 
-        expect(results, hasLength(1));
-        expect(results.first.severity, ValidationIssueSeverity.error);
-        expect(
-          results.first.message,
-          startsWith('No project.pbxproj file found at'),
-        );
-        expect(results.first.fix, isNull);
-      });
+          expect(results, isEmpty);
+        },
+      );
+
+      test(
+        'returns no issues if project.pbxproj file does not exist',
+        () async {
+          // Edge case: the Runner.xcodeproj directory exists but its
+          // project.pbxproj file is missing. Treat as nothing-to-validate.
+          Directory(
+            p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
+          ).createSync(recursive: true);
+
+          final results = await runWithOverrides(validator.validate);
+
+          expect(results, isEmpty);
+        },
+      );
 
       test(
         'returns successful result if project.pbxproj has no FLUTTER_ '

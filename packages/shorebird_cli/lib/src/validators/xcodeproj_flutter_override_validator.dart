@@ -27,19 +27,6 @@ class XcodeprojFlutterOverrideValidator extends Validator {
       'Xcode project does not override FLUTTER_ build settings';
 
   @override
-  bool canRunInCurrentContext() =>
-      _iosRunnerXcodeprojDirectory?.existsSync() ?? false;
-
-  // coverage:ignore-start
-  @override
-  String get incorrectContextMessage =>
-      '''
-The ${_iosRunnerXcodeprojDirectory?.path ?? _iosRunnerXCodeProjPath} directory does not exist.
-
-The command you are running must be run within a Flutter app project that supports the iOS platform.''';
-  // coverage:ignore-end
-
-  @override
   Future<List<ValidationIssue>> validate() async {
     final root = shorebirdEnv.getFlutterProjectRoot();
     if (root == null) {
@@ -48,12 +35,9 @@ The command you are running must be run within a Flutter app project that suppor
 
     final pbxProjFile = File(p.join(root.path, _projectPbxprojPath));
     if (!pbxProjFile.existsSync()) {
-      return [
-        ValidationIssue(
-          severity: ValidationIssueSeverity.error,
-          message: '''No project.pbxproj file found at $_projectPbxprojPath''',
-        ),
-      ];
+      // No iOS Xcode project to scan (e.g. Flutter module used for add-to-app,
+      // or a project with no iOS platform). Nothing to validate.
+      return [];
     }
 
     final overrides = _flutterOverridesIn(pbxProjFile);
@@ -72,12 +56,6 @@ The command you are running must be run within a Flutter app project that suppor
             'in the Xcode project.',
       ),
     ];
-  }
-
-  Directory? get _iosRunnerXcodeprojDirectory {
-    final root = shorebirdEnv.getFlutterProjectRoot();
-    if (root == null) return null;
-    return Directory(p.join(root.path, 'ios', 'Runner.xcodeproj'));
   }
 
   /// Returns the distinct set of `FLUTTER_*` names that are *assigned* in the
