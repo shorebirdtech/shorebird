@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
@@ -55,6 +56,18 @@ abstract class ShorebirdCommand extends Command<int> {
   /// Reads from the [isJsonModeRef] scoped dependency, which is set by the
   /// command runner based on the parsed `--json` flag.
   bool get isJsonMode => read(isJsonModeRef);
+
+  /// Whether the `--no-input` global flag was passed.
+  ///
+  /// Reads from the [interactive_mode.isNoInputModeRef] scoped dependency,
+  /// which is set by the command runner based on the parsed `--no-input` flag.
+  bool get isNoInputMode => read(interactive_mode.isNoInputModeRef);
+
+  /// Whether the CLI is running in an interactive context.
+  ///
+  /// `false` when stdout is not a terminal, when `--json` was passed, or when
+  /// `--no-input` was passed. See [interactive_mode.isInteractive].
+  bool get isInteractive => interactive_mode.isInteractive;
 
   /// The full command name including parent commands (e.g. "releases list").
   String get fullCommandName {

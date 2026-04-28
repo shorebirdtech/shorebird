@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -43,6 +44,13 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         'json',
         negatable: false,
         help: 'Output results in JSON format.',
+      )
+      ..addFlag(
+        'no-input',
+        negatable: false,
+        help:
+            'Disable interactive prompts. Fails with an actionable error when '
+            'input would otherwise be required.',
       )
       ..addFlag(
         'verbose',
@@ -126,6 +134,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
 
       final jsonMode = topLevelResults['json'] == true;
+      final noInputMode = topLevelResults['no-input'] == true;
 
       // In JSON mode, suppress verbose logging — it writes to stdout and
       // would corrupt the JSON output. Verbose output still goes to the
@@ -143,6 +152,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
             values: {
               engineConfigRef.overrideWith(() => engineConfig),
               isJsonModeRef.overrideWith(() => jsonMode),
+              isNoInputModeRef.overrideWith(() => noInputMode),
               processRef.overrideWith(() => process),
               shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
             },

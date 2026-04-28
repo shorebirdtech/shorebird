@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/logging/logging.dart' hide logger;
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
@@ -17,6 +18,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart' as helpers;
 import 'mocks.dart';
 
 void main() {
@@ -445,16 +447,7 @@ Engine • revision $shorebirdEngineRevision'''),
 
       /// Runs [body] while capturing stdout writes into [stdoutOutput].
       Future<T> captureStdout<T>(Future<T> Function() body) async {
-        // Capture the real stdout before entering the override zone to
-        // avoid infinite recursion.
-        final realStdout = stdout;
-        return IOOverrides.runZoned(
-          body,
-          stdout: () => _CapturingStdout(
-            baseStdOut: realStdout,
-            captured: stdoutOutput,
-          ),
-        );
+        return helpers.captureStdout(body, captured: stdoutOutput);
       }
 
       group('on ProcessExit with non-zero exit code', () {
@@ -591,6 +584,105 @@ Engine • revision $shorebirdEngineRevision'''),
         verifyNever(() => shorebirdVersion.isLatest());
       });
     });
+
+    group('interactive mode', () {
+      late _CaptureModeCommand captureCommand;
+      late List<String> stdoutOutput;
+
+      setUp(() {
+        captureCommand = _CaptureModeCommand();
+        commandRunner.addCommand(captureCommand);
+        stdoutOutput = [];
+      });
+
+      Future<int?> runCapturing({
+        required List<String> args,
+        required bool hasTerminal,
+      }) {
+        return helpers.captureStdout<int?>(
+          () => runWithOverrides(() => commandRunner.run(args)),
+          captured: stdoutOutput,
+          hasTerminal: hasTerminal,
+        );
+      }
+
+      group('with a TTY-attached stdout', () {
+        test(
+          'isInteractive is true when no overriding flags are passed',
+          () async {
+            await runCapturing(args: ['capture-mode'], hasTerminal: true);
+            expect(captureCommand.capturedIsJsonMode, isFalse);
+            expect(captureCommand.capturedIsNoInputMode, isFalse);
+            expect(captureCommand.capturedIsInteractive, isTrue);
+          },
+        );
+
+        test('isInteractive is false when --json is passed', () async {
+          await runCapturing(
+            args: ['--json', 'capture-mode'],
+            hasTerminal: true,
+          );
+          expect(captureCommand.capturedIsJsonMode, isTrue);
+          expect(captureCommand.capturedIsNoInputMode, isFalse);
+          expect(captureCommand.capturedIsInteractive, isFalse);
+        });
+
+        test('isInteractive is false when --no-input is passed', () async {
+          await runCapturing(
+            args: ['--no-input', 'capture-mode'],
+            hasTerminal: true,
+          );
+          expect(captureCommand.capturedIsJsonMode, isFalse);
+          expect(captureCommand.capturedIsNoInputMode, isTrue);
+          expect(captureCommand.capturedIsInteractive, isFalse);
+        });
+
+        test(
+          'isInteractive is false when both --json and --no-input are passed',
+          () async {
+            await runCapturing(
+              args: ['--json', '--no-input', 'capture-mode'],
+              hasTerminal: true,
+            );
+            expect(captureCommand.capturedIsJsonMode, isTrue);
+            expect(captureCommand.capturedIsNoInputMode, isTrue);
+            expect(captureCommand.capturedIsInteractive, isFalse);
+          },
+        );
+      });
+
+      group('without a TTY-attached stdout', () {
+        test('isInteractive is false even with no flags passed', () async {
+          await runCapturing(args: ['capture-mode'], hasTerminal: false);
+          expect(captureCommand.capturedIsJsonMode, isFalse);
+          expect(captureCommand.capturedIsNoInputMode, isFalse);
+          expect(captureCommand.capturedIsInteractive, isFalse);
+        });
+
+        test('isInteractive remains false when --no-input is passed', () async {
+          await runCapturing(
+            args: ['--no-input', 'capture-mode'],
+            hasTerminal: false,
+          );
+          expect(captureCommand.capturedIsNoInputMode, isTrue);
+          expect(captureCommand.capturedIsInteractive, isFalse);
+        });
+      });
+
+      group('--no-input is exposed on every top-level command', () {
+        test('appears in the root usage', () {
+          expect(commandRunner.usage, contains('--no-input'));
+        });
+
+        test('parses with arbitrary subcommands', () async {
+          await runCapturing(
+            args: ['--no-input', 'capture-mode'],
+            hasTerminal: true,
+          );
+          expect(captureCommand.capturedIsNoInputMode, isTrue);
+        });
+      });
+    });
   });
 }
 
@@ -624,73 +716,24 @@ class _ThrowingCommand extends ShorebirdCommand {
   }
 }
 
-/// A minimal [Stdout] that captures [writeln] calls.
-class _CapturingStdout implements Stdout {
-  _CapturingStdout({required this.baseStdOut, required this.captured});
-
-  final Stdout baseStdOut;
-  final List<String> captured;
-
-  @override
-  Encoding get encoding => baseStdOut.encoding;
+/// A test command that records the values of [isJsonMode], [isNoInputMode],
+/// and [isInteractive] as observed during [run].
+class _CaptureModeCommand extends ShorebirdCommand {
+  bool? capturedIsJsonMode;
+  bool? capturedIsNoInputMode;
+  bool? capturedIsInteractive;
 
   @override
-  set encoding(Encoding value) => baseStdOut.encoding = value;
+  String get name => 'capture-mode';
 
   @override
-  String get lineTerminator => baseStdOut.lineTerminator;
+  String get description => 'Captures interactive mode flags for testing.';
 
   @override
-  set lineTerminator(String value) => baseStdOut.lineTerminator = value;
-
-  @override
-  Future<void> get done => baseStdOut.done;
-
-  @override
-  bool get hasTerminal => baseStdOut.hasTerminal;
-
-  @override
-  IOSink get nonBlocking => baseStdOut.nonBlocking;
-
-  @override
-  bool get supportsAnsiEscapes => baseStdOut.supportsAnsiEscapes;
-
-  @override
-  int get terminalColumns => baseStdOut.terminalColumns;
-
-  @override
-  int get terminalLines => baseStdOut.terminalLines;
-
-  @override
-  void add(List<int> data) => baseStdOut.add(data);
-
-  @override
-  void addError(Object error, [StackTrace? stackTrace]) =>
-      baseStdOut.addError(error, stackTrace);
-
-  @override
-  Future<void> addStream(Stream<List<int>> stream) =>
-      baseStdOut.addStream(stream);
-
-  @override
-  Future<void> close() => baseStdOut.close();
-
-  @override
-  Future<void> flush() => baseStdOut.flush();
-
-  @override
-  void write(Object? object) => baseStdOut.write(object);
-
-  @override
-  void writeAll(Iterable<dynamic> objects, [String sep = '']) =>
-      baseStdOut.writeAll(objects, sep);
-
-  @override
-  void writeCharCode(int charCode) => baseStdOut.writeCharCode(charCode);
-
-  @override
-  void writeln([Object? object = '']) {
-    captured.add(object.toString());
-    baseStdOut.writeln(object);
+  Future<int> run() async {
+    capturedIsJsonMode = isJsonMode;
+    capturedIsNoInputMode = isNoInputMode;
+    capturedIsInteractive = isInteractive;
+    return ExitCode.success.code;
   }
 }
