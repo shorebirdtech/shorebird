@@ -855,28 +855,30 @@ origin/flutter_release/3.10.6''';
         },
       );
 
-      test('creates bare repo and uses worktree add for new revision',
-          () async {
-        await runWithOverrides(
-          () => shorebirdFlutter.installRevision(revision: revision),
-        );
+      test(
+        'creates bare repo and uses worktree add for new revision',
+        () async {
+          await runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          );
 
-        final repoPath = p.join(flutterDirectory.parent.path, '.repo');
-        verify(
-          () => git.cloneBare(
-            url: ShorebirdFlutter.flutterGitUrl,
-            outputDirectory: repoPath,
-            args: ['--filter=tree:0'],
-          ),
-        ).called(1);
-        verify(
-          () => git.worktreeAdd(
-            directory: p.join(flutterDirectory.parent.path, revision),
-            revision: revision,
-            repoDirectory: repoPath,
-          ),
-        ).called(1);
-      });
+          final repoPath = p.join(flutterDirectory.parent.path, '.repo');
+          verify(
+            () => git.cloneBare(
+              url: ShorebirdFlutter.flutterGitUrl,
+              outputDirectory: repoPath,
+              args: ['--filter=tree:0'],
+            ),
+          ).called(1);
+          verify(
+            () => git.worktreeAdd(
+              directory: p.join(flutterDirectory.parent.path, revision),
+              revision: revision,
+              repoDirectory: repoPath,
+            ),
+          ).called(1);
+        },
+      );
 
       test('fetches when bare repo already exists', () async {
         // Create the bare repo directory.
@@ -1021,19 +1023,21 @@ origin/flutter_release/3.10.6''';
         ).called(1);
       });
 
-      test('falls back to working directory when .repo does not exist',
-          () async {
-        await runWithOverrides(shorebirdFlutter.getVersionString);
+      test(
+        'falls back to working directory when .repo does not exist',
+        () async {
+          await runWithOverrides(shorebirdFlutter.getVersionString);
 
-        verify(
-          () => git.forEachRef(
-            directory: p.join(flutterDirectory.parent.path, flutterRevision),
-            contains: flutterRevision,
-            format: '%(refname:short)',
-            pattern: 'refs/remotes/origin/flutter_release/*',
-          ),
-        ).called(1);
-      });
+          verify(
+            () => git.forEachRef(
+              directory: p.join(flutterDirectory.parent.path, flutterRevision),
+              contains: flutterRevision,
+              format: '%(refname:short)',
+              pattern: 'refs/remotes/origin/flutter_release/*',
+            ),
+          ).called(1);
+        },
+      );
     });
 
     group('isPorcelain', () {
@@ -1176,8 +1180,9 @@ origin/flutter_release/3.10.6''';
         // Create a last-used file with old timestamp.
         final now = DateTime(2026, 3, 9);
         final oldTime = now.subtract(const Duration(days: 60));
-        File(p.join(lastUsedDir.path, oldRevision))
-            .writeAsStringSync(oldTime.toIso8601String());
+        File(
+          p.join(lastUsedDir.path, oldRevision),
+        ).writeAsStringSync(oldTime.toIso8601String());
 
         // Create the revision directory.
         Directory(
@@ -1213,8 +1218,9 @@ origin/flutter_release/3.10.6''';
         // Create a last-used file with recent timestamp.
         final now = DateTime(2026, 3, 9);
         final recentTime = now.subtract(const Duration(days: 5));
-        File(p.join(lastUsedDir.path, recentRevision))
-            .writeAsStringSync(recentTime.toIso8601String());
+        File(
+          p.join(lastUsedDir.path, recentRevision),
+        ).writeAsStringSync(recentTime.toIso8601String());
 
         // Create the revision directory.
         Directory(
@@ -1248,8 +1254,9 @@ origin/flutter_release/3.10.6''';
         // Create old last-used file.
         final now = DateTime(2026, 3, 9);
         final oldTime = now.subtract(const Duration(days: 60));
-        File(p.join(lastUsedDir.path, oldRevision))
-            .writeAsStringSync(oldTime.toIso8601String());
+        File(
+          p.join(lastUsedDir.path, oldRevision),
+        ).writeAsStringSync(oldTime.toIso8601String());
 
         // Create the revision directory.
         Directory(
@@ -1269,51 +1276,55 @@ origin/flutter_release/3.10.6''';
         ).called(1);
       });
 
-      test('falls back to directory delete when worktree remove fails',
-          () async {
-        const oldRevision = 'old-revision-hash';
-        final lastUsedDir = Directory(
-          p.join(flutterDirectory.parent.path, '.last_used'),
-        )..createSync(recursive: true);
+      test(
+        'falls back to directory delete when worktree remove fails',
+        () async {
+          const oldRevision = 'old-revision-hash';
+          final lastUsedDir = Directory(
+            p.join(flutterDirectory.parent.path, '.last_used'),
+          )..createSync(recursive: true);
 
-        // Create bare repo.
-        final repoPath = p.join(flutterDirectory.parent.path, '.repo');
-        Directory(repoPath).createSync(recursive: true);
+          // Create bare repo.
+          final repoPath = p.join(flutterDirectory.parent.path, '.repo');
+          Directory(repoPath).createSync(recursive: true);
 
-        // Create old last-used file.
-        final now = DateTime(2026, 3, 9);
-        final oldTime = now.subtract(const Duration(days: 60));
-        File(p.join(lastUsedDir.path, oldRevision))
-            .writeAsStringSync(oldTime.toIso8601String());
+          // Create old last-used file.
+          final now = DateTime(2026, 3, 9);
+          final oldTime = now.subtract(const Duration(days: 60));
+          File(
+            p.join(lastUsedDir.path, oldRevision),
+          ).writeAsStringSync(oldTime.toIso8601String());
 
-        // Create the revision directory.
-        final revisionDir = Directory(
-          p.join(flutterDirectory.parent.path, oldRevision),
-        )..createSync(recursive: true);
+          // Create the revision directory.
+          final revisionDir = Directory(
+            p.join(flutterDirectory.parent.path, oldRevision),
+          )..createSync(recursive: true);
 
-        when(
-          () => git.worktreeRemove(
-            directory: any(named: 'directory'),
-            repoDirectory: any(named: 'repoDirectory'),
-          ),
-        ).thenThrow(Exception('worktree remove failed'));
+          when(
+            () => git.worktreeRemove(
+              directory: any(named: 'directory'),
+              repoDirectory: any(named: 'repoDirectory'),
+            ),
+          ).thenThrow(Exception('worktree remove failed'));
 
-        final result = await runWithOverrides(
-          () => shorebirdFlutter.pruneOldRevisions(now: now),
-        );
-        expect(result, equals(1));
+          final result = await runWithOverrides(
+            () => shorebirdFlutter.pruneOldRevisions(now: now),
+          );
+          expect(result, equals(1));
 
-        // Directory should be deleted via fallback.
-        expect(revisionDir.existsSync(), isFalse);
-      });
+          // Directory should be deleted via fallback.
+          expect(revisionDir.existsSync(), isFalse);
+        },
+      );
 
       test('skips entries with unparseable timestamps', () async {
         final lastUsedDir = Directory(
           p.join(flutterDirectory.parent.path, '.last_used'),
         )..createSync(recursive: true);
 
-        File(p.join(lastUsedDir.path, 'bad-revision'))
-            .writeAsStringSync('not-a-date');
+        File(
+          p.join(lastUsedDir.path, 'bad-revision'),
+        ).writeAsStringSync('not-a-date');
 
         final result = await runWithOverrides(
           () => shorebirdFlutter.pruneOldRevisions(),

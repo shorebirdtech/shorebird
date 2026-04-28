@@ -17,7 +17,8 @@ class CleanCacheCommand extends ShorebirdCommand {
   CleanCacheCommand() {
     argParser.addFlag(
       'prune',
-      help: 'Only remove old, unused Flutter revisions instead of the '
+      help:
+          'Only remove old, unused Flutter revisions instead of the '
           'entire cache.',
     );
   }
