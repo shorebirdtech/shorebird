@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
@@ -9,15 +10,33 @@ import 'package:test/test.dart';
 
 import '../mocks.dart';
 
+const _appPubspec = '''
+name: my_app
+environment:
+  sdk: ^3.0.0
+flutter:
+  uses-material-design: true
+''';
+
+const _modulePubspec = '''
+name: my_flutter_module
+environment:
+  sdk: ^3.0.0
+flutter:
+  module:
+    androidPackage: com.example.my_flutter_module
+    iosBundleIdentifier: com.example.myFlutterModule
+''';
+
 void main() {
   group(XcodeprojFlutterOverrideValidator, () {
     late Directory projectRoot;
     late ShorebirdEnv shorebirdEnv;
     late XcodeprojFlutterOverrideValidator validator;
 
-    void writePbxprojFile(String contents) {
+    void writePbxprojFile(String contents, {String iosDir = 'ios'}) {
       final xcodeprojDir = Directory(
-        p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
+        p.join(projectRoot.path, iosDir, 'Runner.xcodeproj'),
       )..createSync(recursive: true);
       File(
         p.join(xcodeprojDir.path, 'project.pbxproj'),
@@ -37,6 +56,10 @@ void main() {
       validator = XcodeprojFlutterOverrideValidator();
 
       when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(projectRoot);
+      // Default to a non-module pubspec; module-specific tests override.
+      when(
+        () => shorebirdEnv.getPubspecYaml(),
+      ).thenReturn(Pubspec.parse(_appPubspec));
     });
 
     test('has a non-empty description', () {
@@ -45,38 +68,6 @@ void main() {
         validator.description,
         'Xcode project does not override FLUTTER_ build settings',
       );
-    });
-
-    group('canRunInCurrentContext', () {
-      test('returns false if no ios/Runner.xcodeproj directory exists', () {
-        final result = runWithOverrides(
-          () => validator.canRunInCurrentContext(),
-        );
-
-        expect(result, isFalse);
-      });
-
-      test('returns true if ios/Runner.xcodeproj directory exists', () {
-        Directory(
-          p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
-        ).createSync(recursive: true);
-
-        final result = runWithOverrides(
-          () => validator.canRunInCurrentContext(),
-        );
-
-        expect(result, isTrue);
-      });
-
-      test('returns false if project root is null', () {
-        when(() => shorebirdEnv.getFlutterProjectRoot()).thenReturn(null);
-
-        final result = runWithOverrides(
-          () => validator.canRunInCurrentContext(),
-        );
-
-        expect(result, isFalse);
-      });
     });
 
     group('validate', () {
@@ -88,21 +79,35 @@ void main() {
         expect(results, isEmpty);
       });
 
-      test('returns error if project.pbxproj file does not exist', () async {
-        Directory(
-          p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
-        ).createSync(recursive: true);
+      test(
+        'returns no issues if ios/Runner.xcodeproj directory does not exist '
+        '(e.g. Flutter module / no iOS platform)',
+        () async {
+          // No ios/Runner.xcodeproj created — simulates a Flutter module or
+          // an app without the iOS platform. The validator must silently
+          // skip rather than error, otherwise commands like
+          // `shorebird release ios-framework` are blocked.
 
-        final results = await runWithOverrides(validator.validate);
+          final results = await runWithOverrides(validator.validate);
 
-        expect(results, hasLength(1));
-        expect(results.first.severity, ValidationIssueSeverity.error);
-        expect(
-          results.first.message,
-          startsWith('No project.pbxproj file found at'),
-        );
-        expect(results.first.fix, isNull);
-      });
+          expect(results, isEmpty);
+        },
+      );
+
+      test(
+        'returns no issues if project.pbxproj file does not exist',
+        () async {
+          // Edge case: the Runner.xcodeproj directory exists but its
+          // project.pbxproj file is missing. Treat as nothing-to-validate.
+          Directory(
+            p.join(projectRoot.path, 'ios', 'Runner.xcodeproj'),
+          ).createSync(recursive: true);
+
+          final results = await runWithOverrides(validator.validate);
+
+          expect(results, isEmpty);
+        },
+      );
 
       test(
         'returns successful result if project.pbxproj has no FLUTTER_ '
@@ -386,6 +391,110 @@ void main() {
 
           expect(results, isEmpty);
         });
+      });
+
+      // Flutter modules (used for add-to-app) keep their generated Xcode
+      // project under `.ios/Runner.xcodeproj` rather than `ios/Runner.xcodeproj`.
+      // The validator must scan that path; otherwise commands like
+      // `shorebird release ios-framework` either skip validation entirely or
+      // (worse) hard-fail because they can't find an `ios/Runner.xcodeproj`.
+      group('Flutter module (.ios/)', () {
+        setUp(() {
+          when(
+            () => shorebirdEnv.getPubspecYaml(),
+          ).thenReturn(Pubspec.parse(_modulePubspec));
+        });
+
+        test(
+          'returns no issues if .ios/Runner.xcodeproj/project.pbxproj does '
+          'not exist (e.g. before flutter pub get)',
+          () async {
+            final results = await runWithOverrides(validator.validate);
+
+            expect(results, isEmpty);
+          },
+        );
+
+        test(
+          'returns no issues if .ios/Runner.xcodeproj/project.pbxproj has '
+          'no FLUTTER_ assignments',
+          () async {
+            const pbxprojContent = r'''
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	buildSettings = {
+		PRODUCT_NAME = Runner;
+	};
+}
+''';
+            writePbxprojFile(pbxprojContent, iosDir: '.ios');
+
+            final results = await runWithOverrides(validator.validate);
+
+            expect(results, isEmpty);
+          },
+        );
+
+        test(
+          'detects FLUTTER_ROOT in .ios/Runner.xcodeproj/project.pbxproj',
+          () async {
+            const pbxprojContent = r'''
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	buildSettings = {
+		FLUTTER_ROOT = /path/to/flutter;
+	};
+}
+''';
+            writePbxprojFile(pbxprojContent, iosDir: '.ios');
+
+            final results = await runWithOverrides(validator.validate);
+
+            expect(results, hasLength(1));
+            expect(results.first.severity, ValidationIssueSeverity.error);
+            expect(
+              results.first.message,
+              allOf(
+                contains(p.join('.ios', 'Runner.xcodeproj', 'project.pbxproj')),
+                contains('FLUTTER_ROOT'),
+              ),
+            );
+          },
+        );
+
+        test(
+          'does not look at ios/ when project is a module',
+          () async {
+            // A module that for some reason also has an `ios/Runner.xcodeproj`
+            // (e.g. left behind from a previous `flutter create`) should still
+            // be checked at `.ios/`, not `ios/`.
+            const appPbxprojWithOverride = r'''
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	FLUTTER_ROOT = /should/not/be/scanned;
+}
+''';
+            writePbxprojFile(appPbxprojWithOverride, iosDir: 'ios');
+            // Module project has no overrides.
+            const modulePbxproj = r'''
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	buildSettings = {
+		PRODUCT_NAME = Runner;
+	};
+}
+''';
+            writePbxprojFile(modulePbxproj, iosDir: '.ios');
+
+            final results = await runWithOverrides(validator.validate);
+
+            expect(results, isEmpty);
+          },
+        );
       });
     });
   });
