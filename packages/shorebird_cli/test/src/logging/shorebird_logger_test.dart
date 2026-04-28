@@ -272,5 +272,147 @@ void main() {
         expect(str, contains('Pass --force.'));
       });
     });
+
+    group('progress', () {
+      late List<String> stdoutOutput;
+      late List<String> stderrOutput;
+
+      setUp(() {
+        stdoutOutput = [];
+        stderrOutput = [];
+      });
+
+      Progress runUnderScope(
+        Progress Function() body, {
+        required bool hasTerminal,
+        bool jsonMode = false,
+        bool noInputMode = false,
+      }) {
+        final realStdout = stdout;
+        final realStderr = stderr;
+        return IOOverrides.runZoned(
+          () => runScoped(
+            body,
+            values: {
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              isJsonModeRef.overrideWith(() => jsonMode),
+              isNoInputModeRef.overrideWith(() => noInputMode),
+            },
+          ),
+          stdout: () => CapturingStdout(
+            baseStdOut: realStdout,
+            captured: stdoutOutput,
+            hasTerminalOverride: hasTerminal,
+          ),
+          stderr: () => CapturingStdout(
+            baseStdOut: realStderr,
+            captured: stderrOutput,
+            hasTerminalOverride: hasTerminal,
+          ),
+        );
+      }
+
+      group('in a non-interactive context', () {
+        test('emits a single "Starting" line on creation', () {
+          runUnderScope(
+            () => logger.progress('fetching apps'),
+            hasTerminal: false,
+          );
+          expect(stdoutOutput, equals(['Starting fetching apps...']));
+        });
+
+        test('emits a "Done" line on complete with no update', () {
+          final progress = runUnderScope(
+            () => logger.progress('fetching apps'),
+            hasTerminal: false,
+          );
+          progress.complete();
+          expect(
+            stdoutOutput,
+            equals(['Starting fetching apps...', 'Done fetching apps']),
+          );
+        });
+
+        test('emits a "Done" line with the update text on complete', () {
+          final progress = runUnderScope(
+            () => logger.progress('fetching apps'),
+            hasTerminal: false,
+          );
+          progress.complete('found 3 apps');
+          expect(stdoutOutput.last, equals('Done found 3 apps'));
+        });
+
+        test('emits a "Failed" line on fail', () {
+          final progress = runUnderScope(
+            () => logger.progress('fetching apps'),
+            hasTerminal: false,
+          );
+          progress.fail('network error');
+          expect(stdoutOutput.last, equals('Failed network error'));
+        });
+
+        test('emits an update line and remembers the new message', () {
+          final progress = runUnderScope(
+            () => logger.progress('fetching apps'),
+            hasTerminal: false,
+          );
+          progress.update('still fetching');
+          progress.complete();
+          expect(stdoutOutput, contains('still fetching...'));
+          expect(stdoutOutput.last, equals('Done still fetching'));
+        });
+
+        test('emits no carriage returns or ANSI escapes', () {
+          final progress = runUnderScope(
+            () => logger.progress('fetching apps'),
+            hasTerminal: false,
+          );
+          progress.complete();
+          for (final line in stdoutOutput) {
+            expect(line, isNot(contains('\r')));
+            expect(line, isNot(contains('\u001b')));
+          }
+        });
+      });
+
+      group('under --json', () {
+        test('routes static progress to stderr instead of stdout', () {
+          final progress = runUnderScope(
+            () => logger.progress('fetching apps'),
+            hasTerminal: true,
+            jsonMode: true,
+          );
+          progress.complete();
+          expect(stdoutOutput, isEmpty);
+          expect(stderrOutput, contains('Starting fetching apps...'));
+          expect(stderrOutput, contains('Done fetching apps'));
+        });
+      });
+
+      group('under --no-input with a TTY', () {
+        test('still produces static lines (no spinner)', () {
+          final progress = runUnderScope(
+            () => logger.progress('fetching apps'),
+            hasTerminal: true,
+            noInputMode: true,
+          );
+          progress.complete();
+          expect(stdoutOutput, contains('Starting fetching apps...'));
+          expect(stdoutOutput, contains('Done fetching apps'));
+        });
+      });
+
+      group('when the log level is above info', () {
+        test('suppresses output entirely', () {
+          logger.level = Level.warning;
+          final progress = runUnderScope(
+            () => logger.progress('fetching apps'),
+            hasTerminal: false,
+          );
+          progress.complete();
+          expect(stdoutOutput, isEmpty);
+        });
+      });
+    });
   });
 }

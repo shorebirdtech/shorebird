@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:io' as io;
 
 import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [Logger] instance.
@@ -95,6 +97,24 @@ class ShorebirdLogger extends Logger {
     return super.promptAny(message, separator: separator);
   }
 
+  /// Returns a [Progress] that adapts to the current interactivity context:
+  ///
+  ///   * In an interactive context (TTY + no `--json`/`--no-input`), defers to
+  ///     mason_logger's animated spinner.
+  ///   * Otherwise, emits a single static line on creation, and a "Done X" /
+  ///     "Failed X" line on `complete`/`fail`. Output is routed to `stderr`
+  ///     under `--json` so it doesn't corrupt the JSON envelope, and to
+  ///     `stdout` otherwise.
+  @override
+  Progress progress(String message, {ProgressOptions? options}) {
+    if (isInteractive) return super.progress(message, options: options);
+    return _StaticProgress(
+      message: message,
+      sink: isJsonMode ? io.stderr : io.stdout,
+      level: level,
+    );
+  }
+
   /// Throws [InteractivePromptRequiredException] when the CLI is running in
   /// a non-interactive context (no TTY on stdout/stdin, on CI, `--json`, or
   /// `--no-input`).
@@ -107,6 +127,57 @@ class ShorebirdLogger extends Logger {
       promptText: promptText ?? '(no prompt text)',
       hint: hint ?? defaultInteractivePromptHint,
     );
+  }
+}
+
+/// {@template static_progress}
+/// A non-animated [Progress] used when the CLI is running in a
+/// non-interactive context (no TTY, `--json`, `--no-input`).
+///
+/// Emits one line on creation and one line on completion -- no spinner,
+/// no ANSI escapes, no carriage returns. Suitable for piping to logs and
+/// for agentic consumers that need predictable line-oriented output.
+/// {@endtemplate}
+class _StaticProgress implements Progress {
+  /// {@macro static_progress}
+  _StaticProgress({
+    required String message,
+    required IOSink sink,
+    required Level level,
+  }) : _message = message,
+       _sink = sink,
+       _level = level {
+    _writeln('Starting $_message...');
+  }
+
+  String _message;
+  final IOSink _sink;
+  final Level _level;
+
+  void _writeln(String line) {
+    if (_level.index > Level.info.index) return;
+    _sink.writeln(line);
+  }
+
+  @override
+  void complete([String? update]) {
+    _writeln('Done ${update ?? _message}');
+  }
+
+  @override
+  void fail([String? update]) {
+    _writeln('Failed ${update ?? _message}');
+  }
+
+  @override
+  void update(String update) {
+    _message = update;
+    _writeln('$_message...');
+  }
+
+  @override
+  void cancel() {
+    _writeln('Cancelled $_message');
   }
 }
 

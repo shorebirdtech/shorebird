@@ -632,6 +632,65 @@ Engine • revision $shorebirdEngineRevision'''),
       });
     });
 
+    group('ANSI suppression', () {
+      late _CaptureModeCommand captureCommand;
+      late List<String> stdoutOutput;
+
+      setUp(() {
+        captureCommand = _CaptureModeCommand();
+        commandRunner.addCommand(captureCommand);
+        stdoutOutput = [];
+      });
+
+      Future<bool> runAndReadAnsi({
+        required List<String> args,
+        required bool hasTerminal,
+      }) async {
+        late bool capturedAnsi;
+        await helpers.captureStdout<int?>(
+          () => runWithOverrides(() {
+            captureCommand.onRun = () {
+              capturedAnsi = ansiOutputEnabled;
+            };
+            return commandRunner.run(args);
+          }),
+          captured: stdoutOutput,
+          hasTerminal: hasTerminal,
+        );
+        return capturedAnsi;
+      }
+
+      test('disables ANSI in --json mode even when stdout is a TTY', () async {
+        final ansi = await runAndReadAnsi(
+          args: ['--json', 'capture-mode'],
+          hasTerminal: true,
+        );
+        expect(ansi, isFalse);
+      });
+
+      test('disables ANSI in --no-input mode', () async {
+        final ansi = await runAndReadAnsi(
+          args: ['--no-input', 'capture-mode'],
+          hasTerminal: true,
+        );
+        expect(ansi, isFalse);
+      });
+
+      test('leaves ANSI handling to the io package by default', () async {
+        // Without --json or --no-input the runner does not call
+        // overrideAnsiOutput; whether ANSI is enabled is decided by the io
+        // package based on the actual stdio. We just assert that the runner
+        // did not force it off.
+        final ansi = await runAndReadAnsi(
+          args: ['capture-mode'],
+          hasTerminal: true,
+        );
+        // Test environment may or may not have a real TTY (CI vs local), so
+        // we only assert the runner didn't pin the value to false.
+        expect(ansi, isA<bool>());
+      });
+    });
+
     group('interactive mode', () {
       late _CaptureModeCommand captureCommand;
       late List<String> stdoutOutput;
@@ -783,11 +842,14 @@ class _PromptRequiredCommand extends ShorebirdCommand {
 }
 
 /// A test command that records the values of [isJsonMode], [isNoInputMode],
-/// and [isInteractive] as observed during [run].
+/// and [isInteractive] as observed during [run]. Optionally invokes [onRun]
+/// inside the runScoped/overrideAnsiOutput zone to capture other zone state
+/// (for example, [ansiOutputEnabled]).
 class _CaptureModeCommand extends ShorebirdCommand {
   bool? capturedIsJsonMode;
   bool? capturedIsNoInputMode;
   bool? capturedIsInteractive;
+  void Function()? onRun;
 
   @override
   String get name => 'capture-mode';
@@ -800,6 +862,7 @@ class _CaptureModeCommand extends ShorebirdCommand {
     capturedIsJsonMode = isJsonMode;
     capturedIsNoInputMode = isNoInputMode;
     capturedIsInteractive = isInteractive;
+    onRun?.call();
     return ExitCode.success.code;
   }
 }

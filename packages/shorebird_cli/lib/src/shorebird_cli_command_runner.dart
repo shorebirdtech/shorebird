@@ -147,17 +147,23 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
           ? const ShorebirdLocalEngineArtifacts()
           : const ShorebirdCachedArtifacts();
-      return await runScoped<Future<int?>>(
-            () => runCommand(topLevelResults),
-            values: {
-              engineConfigRef.overrideWith(() => engineConfig),
-              isJsonModeRef.overrideWith(() => jsonMode),
-              isNoInputModeRef.overrideWith(() => noInputMode),
-              processRef.overrideWith(() => process),
-              shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
-            },
-          ) ??
-          ExitCode.success.code;
+      // Suppress ANSI escape codes when the user has opted into a
+      // non-interactive output mode. When stdout/stderr aren't TTYs the io
+      // package already disables ANSI automatically.
+      Future<int?> runWithRefs() => runScoped<Future<int?>>(
+        () => runCommand(topLevelResults),
+        values: {
+          engineConfigRef.overrideWith(() => engineConfig),
+          isJsonModeRef.overrideWith(() => jsonMode),
+          isNoInputModeRef.overrideWith(() => noInputMode),
+          processRef.overrideWith(() => process),
+          shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
+        },
+      );
+      final exitCode = jsonMode || noInputMode
+          ? await overrideAnsiOutput<Future<int?>>(false, runWithRefs)
+          : await runWithRefs();
+      return exitCode ?? ExitCode.success.code;
     } on FormatException catch (e, stackTrace) {
       // On format errors, show the commands error message, root usage and
       // exit with an error code
