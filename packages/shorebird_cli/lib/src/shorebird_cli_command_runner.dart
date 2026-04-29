@@ -243,7 +243,8 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
       return ExitCode.success.code;
     }
 
-    final commandName = commandNameFromResults(topLevelResults) ?? executableName;
+    final commandName =
+        commandNameFromResults(topLevelResults) ?? executableName;
 
     // Run the command or show version
     int? exitCode;
