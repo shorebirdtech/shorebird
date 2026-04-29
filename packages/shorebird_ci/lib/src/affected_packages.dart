@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/flutter_version_resolver.dart';
 import 'package:shorebird_ci/src/repository_analyzer.dart';
 
@@ -43,14 +42,14 @@ List<Map<String, Object?>> affectedPackagesMetadata({
   return sorted.map((pkg) {
     final isFlutter = RepositoryAnalyzer.dependsOnFlutter(root: pkg.root);
     final subpackages =
-        RepositoryAnalyzer.subpackages(
-            package: pkg,
-          ).map((sub) => p.relative(sub.rootPath, from: pkg.rootPath)).toList()
+        RepositoryAnalyzer.subpackages(package: pkg)
+            .map((sub) => posixRelative(sub.rootPath, from: pkg.rootPath))
+            .toList()
           ..sort();
 
     return {
       'name': pkg.name,
-      'path': p.relative(pkg.rootPath, from: repoRoot.path),
+      'path': posixRelative(pkg.rootPath, from: repoRoot.path),
       'sdk': isFlutter ? 'flutter' : 'dart',
       'flutter_version': isFlutter
           ? (resolveFlutterVersion(packagePath: pkg.rootPath) ?? '')

@@ -216,7 +216,7 @@ jobs:
 ''');
 
     for (final package in packages) {
-      final packageDir = p.relative(
+      final packageDir = posixRelative(
         package.rootPath,
         from: repository.root.path,
       );
@@ -230,7 +230,7 @@ jobs:
     buffer.writeln();
 
     for (final package in packages) {
-      final packageDir = p.relative(
+      final packageDir = posixRelative(
         package.rootPath,
         from: repository.root.path,
       );
@@ -239,7 +239,7 @@ jobs:
       );
       final subpackages =
           RepositoryAnalyzer.subpackages(package: package)
-              .map((sub) => p.relative(sub.rootPath, from: package.rootPath))
+              .map((sub) => posixRelative(sub.rootPath, from: package.rootPath))
               .toList()
             ..sort();
       final reusable = isFlutter
@@ -662,7 +662,7 @@ jobs:
     StringBuffer buffer,
     RepositoryDescription repository,
   ) {
-    final configPath = p.relative(
+    final configPath = posixRelative(
       repository.cspellConfig!.path,
       from: repository.root.path,
     );

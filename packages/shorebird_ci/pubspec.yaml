@@ -4,7 +4,6 @@ description: >-
   workflows, resolves affected packages via dependency graphs, and
   verifies path filters stay in sync.
 version: 0.1.0
-publish_to: none
 resolution: workspace
 
 environment:

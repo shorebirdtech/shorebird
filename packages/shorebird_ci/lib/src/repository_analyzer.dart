@@ -73,7 +73,8 @@ class RepositoryAnalyzer {
         .map((pubspec) {
           final name = packageName(root: pubspec.parent);
           if (name == null) return null;
-          final relative = p.relative(
+          _requireSafePackageName(name, source: pubspec.path);
+          final relative = posixRelative(
             pubspec.parent.path,
             from: repositoryRoot.path,
           );
@@ -138,6 +139,24 @@ class RepositoryAnalyzer {
       'generated CI workflow embeds these paths in shell commands and '
       'cannot tolerate whitespace, shell metacharacters, or Unicode. '
       'Got: $path',
+    );
+  }
+
+  /// Pub's own naming convention for packages: lowercase letter or
+  /// underscore start, then lowercase letters, digits, and underscores.
+  /// `pubspec.yaml` is just YAML — pub doesn't gate this name until you
+  /// publish — so a malformed name can land here and get embedded as
+  /// a YAML map key in the generated workflow. Validate at analysis
+  /// time instead.
+  static final _safePackageNameRegex = RegExp(r'^[a-z][a-z0-9_]*$');
+
+  static void _requireSafePackageName(String name, {required String source}) {
+    if (_safePackageNameRegex.hasMatch(name)) return;
+    throw FormatException(
+      'Invalid package name in $source: "$name". Package names must '
+      'start with a lowercase letter and contain only lowercase '
+      'letters, digits, and underscores '
+      '(see https://dart.dev/tools/pub/pubspec#name).',
     );
   }
 
@@ -312,9 +331,14 @@ class RepositoryAnalyzer {
         if (p.equals(file.parent.path, package.rootPath)) return;
         final name = packageName(root: file.parent);
         if (name == null) return;
-        final relative = p.relative(file.parent.path, from: package.rootPath);
+        final relative = posixRelative(
+          file.parent.path,
+          from: package.rootPath,
+        );
         _requireSafePath(relative);
-        found.add(PackageDescription(name: name, rootPath: file.parent.path));
+        found.add(
+          PackageDescription(name: name, rootPath: file.parent.path),
+        );
       },
     );
     return found;
@@ -396,4 +420,13 @@ void walkPruned({
   }
 
   visit(root);
+}
+
+/// Like [p.relative], but always returns a POSIX-style path with
+/// forward-slash separators. Use at every boundary where a relative
+/// path leaves Dart for YAML, shell, or a Linux runner — `p.relative`
+/// emits `\` on Windows, which would land in the generated workflow as
+/// a path that the runner can't resolve.
+String posixRelative(String path, {required String from}) {
+  return p.relative(path, from: from).replaceAll(r'\', '/');
 }

@@ -129,6 +129,27 @@ void main() {
       expect(repo.packages, isEmpty);
     });
 
+    test('throws on package name that violates pub conventions', () async {
+      // pubspec.yaml is just YAML — pub doesn't gate the name field
+      // until publish, so a malformed name can land here and end up
+      // as a YAML map key in the generated workflow. Validate at
+      // analysis time.
+      createPackage(tempDir, 'packages/foo', 'Not-Valid');
+      initGitRepo(tempDir);
+
+      final analyzer = RepositoryAnalyzer();
+      expect(
+        () => analyzer.analyze(repositoryRoot: tempDir),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('Invalid package name'),
+          ),
+        ),
+      );
+    });
+
     test('throws on duplicate package names', () async {
       // Two packages declaring `name: example` would silently collide
       // when used as YAML map keys in the generated workflow. Fail
@@ -503,5 +524,23 @@ workspace:
         expect(RepositoryAnalyzer.dependsOnFlutter(root: fooDir), isFalse);
       },
     );
+  });
+
+  group('posixRelative', () {
+    test('returns forward-slash separators regardless of input', () {
+      // On POSIX hosts the input is already forward-slash; on Windows
+      // p.relative would emit backslashes. The helper must always
+      // return POSIX so the path is safe to embed in YAML/shell that
+      // runs on a Linux runner.
+      final result = posixRelative('/repo/packages/foo', from: '/repo');
+      expect(result, equals('packages/foo'));
+      expect(result, isNot(contains(r'\')));
+    });
+
+    test('explicitly converts backslashes to forward slashes', () {
+      // Simulate what p.relative would emit on Windows.
+      const windowsLike = r'packages\foo\bar';
+      expect(windowsLike.replaceAll(r'\', '/'), equals('packages/foo/bar'));
+    });
   });
 }

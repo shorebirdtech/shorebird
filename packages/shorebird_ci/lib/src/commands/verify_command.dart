@@ -121,7 +121,7 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     final resolver = DependencyResolver(repoRoot);
 
     for (final pkg in missing) {
-      final packageDir = p.relative(pkg.rootPath, from: repoRoot);
+      final packageDir = posixRelative(pkg.rootPath, from: repoRoot);
       final deps = resolver.resolve(packageDir);
       final sortedDeps = deps.toList()..sort();
 
