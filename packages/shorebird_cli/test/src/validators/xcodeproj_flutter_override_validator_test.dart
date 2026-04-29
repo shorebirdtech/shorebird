@@ -158,7 +158,7 @@ void main() {
           final results = await runWithOverrides(validator.validate);
 
           expect(results, hasLength(1));
-          expect(results.first.severity, ValidationIssueSeverity.error);
+          expect(results.first.severity, ValidationIssueSeverity.warning);
           expect(
             results.first.message,
             contains('FLUTTER_ build setting(s): FLUTTER_ROOT'),
@@ -181,7 +181,7 @@ void main() {
           final results = await runWithOverrides(validator.validate);
 
           expect(results, hasLength(1));
-          expect(results.first.severity, ValidationIssueSeverity.error);
+          expect(results.first.severity, ValidationIssueSeverity.warning);
         });
 
         // I'm also not aware of this occurring in the wild, but
@@ -201,7 +201,7 @@ void main() {
           final results = await runWithOverrides(validator.validate);
 
           expect(results, hasLength(1));
-          expect(results.first.severity, ValidationIssueSeverity.error);
+          expect(results.first.severity, ValidationIssueSeverity.warning);
         });
 
         test('detects FLUTTER_ROOT with variable reference', () async {
@@ -219,7 +219,7 @@ void main() {
           final results = await runWithOverrides(validator.validate);
 
           expect(results, hasLength(1));
-          expect(results.first.severity, ValidationIssueSeverity.error);
+          expect(results.first.severity, ValidationIssueSeverity.warning);
         });
 
         test('detects FLUTTER_ROOT with multiple spaces', () async {
@@ -237,7 +237,7 @@ void main() {
           final results = await runWithOverrides(validator.validate);
 
           expect(results, hasLength(1));
-          expect(results.first.severity, ValidationIssueSeverity.error);
+          expect(results.first.severity, ValidationIssueSeverity.warning);
         });
 
         test('detects FLUTTER_ROOT in buildSettings section', () async {
@@ -256,7 +256,7 @@ void main() {
           final results = await runWithOverrides(validator.validate);
 
           expect(results, hasLength(1));
-          expect(results.first.severity, ValidationIssueSeverity.error);
+          expect(results.first.severity, ValidationIssueSeverity.warning);
         });
 
         test('detects other FLUTTER_-prefixed overrides', () async {
@@ -276,7 +276,7 @@ void main() {
           final results = await runWithOverrides(validator.validate);
 
           expect(results, hasLength(1));
-          expect(results.first.severity, ValidationIssueSeverity.error);
+          expect(results.first.severity, ValidationIssueSeverity.warning);
           expect(
             results.first.message,
             allOf(
@@ -313,6 +313,53 @@ void main() {
             hasLength(1),
           );
         });
+      });
+
+      group('FLUTTER_TARGET allow-list', () {
+        // FLUTTER_TARGET is commonly hard-coded per-configuration to point at
+        // a flavor-specific entrypoint (e.g. lib/main_dev.dart). It does not
+        // participate in SDK selection, so it must not be flagged.
+        test('does not flag FLUTTER_TARGET on its own', () async {
+          const pbxprojContent = r'''
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	buildSettings = {
+		FLUTTER_TARGET = lib/main_dev.dart;
+	};
+}
+''';
+          writePbxprojFile(pbxprojContent);
+
+          final results = await runWithOverrides(validator.validate);
+
+          expect(results, isEmpty);
+        });
+
+        test(
+          'still flags other FLUTTER_ overrides when FLUTTER_TARGET is also '
+          'set',
+          () async {
+            const pbxprojContent = r'''
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	buildSettings = {
+		FLUTTER_TARGET = lib/main_dev.dart;
+		FLUTTER_ROOT = /path/to/flutter;
+	};
+}
+''';
+            writePbxprojFile(pbxprojContent);
+
+            final results = await runWithOverrides(validator.validate);
+
+            expect(results, hasLength(1));
+            expect(results.first.severity, ValidationIssueSeverity.warning);
+            expect(results.first.message, contains('FLUTTER_ROOT'));
+            expect(results.first.message, isNot(contains('FLUTTER_TARGET')));
+          },
+        );
       });
 
       group('when no FLUTTER_ override exists', () {
@@ -453,7 +500,7 @@ void main() {
             final results = await runWithOverrides(validator.validate);
 
             expect(results, hasLength(1));
-            expect(results.first.severity, ValidationIssueSeverity.error);
+            expect(results.first.severity, ValidationIssueSeverity.warning);
             expect(
               results.first.message,
               allOf(
