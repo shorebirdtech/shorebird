@@ -17,4 +17,4 @@ dependencies:
   yaml: ^3.1.0
 
 dev_dependencies:
-  test: ^1.25.0
+  test: ^1.31.1
