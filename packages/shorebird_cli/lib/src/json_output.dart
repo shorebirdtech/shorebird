@@ -6,18 +6,18 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 /// A reference to whether JSON output mode is active.
-final isJsonModeRef = create(() => false);
+final isJsonModeRef = create<bool>(
+  () => throw StateError('isJsonModeRef accessed outside a runner scope'),
+);
 
 /// Whether JSON output mode is active in the current zone.
-///
-/// Defaults to `false` outside of any scope that has overridden the ref --
-/// callers that read this from non-runner contexts (e.g. unit tests for
-/// `ShorebirdEnv`) should not be forced to set up the scoped value.
-bool get isJsonMode => read(isJsonModeRef, orElse: () => false);
+bool get isJsonMode => read(isJsonModeRef);
 
-/// Builds the full command name from [ArgResults] by walking the command
-/// chain (e.g. "doctor" for `shorebird doctor`).
-String commandNameFromResults(ArgResults topLevelResults) {
+/// Builds the subcommand name from [ArgResults] by walking the command chain
+/// (e.g. "doctor" for `shorebird doctor`, "patch ios" for `shorebird patch ios`).
+///
+/// Returns `null` when no subcommand was recognized (bare `shorebird` invocation).
+String? commandNameFromResults(ArgResults topLevelResults) {
   final parts = <String>[];
   var command = topLevelResults.command;
   while (command != null) {
@@ -25,7 +25,7 @@ String commandNameFromResults(ArgResults topLevelResults) {
     if (name != null) parts.add(name);
     command = command.command;
   }
-  return parts.isEmpty ? 'shorebird' : parts.join(' ');
+  return parts.isEmpty ? null : parts.join(' ');
 }
 
 /// The status field in a JSON output envelope.

@@ -4,14 +4,13 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 
 /// A reference to whether non-interactive mode (`--no-input`) is active.
-final isNoInputModeRef = create(() => false);
+final isNoInputModeRef = create<bool>(
+  () => throw StateError('isNoInputModeRef accessed outside a runner scope'),
+);
 
 /// Whether non-interactive mode (`--no-input`) is active in the current zone.
-///
-/// Defaults to `false` outside of any scope that has overridden the ref --
-/// callers that read this from non-runner contexts should not be forced to
-/// set up the scoped value.
-bool get isNoInputMode => read(isNoInputModeRef, orElse: () => false);
+/// Note: `--json` implies `--no-input`.
+bool get isNoInputMode => read(isNoInputModeRef);
 
 /// Whether the CLI is running in an interactive context.
 ///

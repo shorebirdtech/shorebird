@@ -140,7 +140,8 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
 
       final jsonMode = topLevelResults['json'] == true;
-      final noInputMode = topLevelResults['no-input'] == true;
+      // --json implies --no-input: machine-readable consumers don't prompt.
+      final noInputMode = topLevelResults['no-input'] == true || jsonMode;
 
       // In JSON mode, suppress verbose logging — it writes to stdout and
       // would corrupt the JSON output. Verbose output still goes to the
@@ -242,7 +243,7 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
       return ExitCode.success.code;
     }
 
-    final commandName = commandNameFromResults(topLevelResults);
+    final commandName = commandNameFromResults(topLevelResults) ?? executableName;
 
     // Run the command or show version
     int? exitCode;
@@ -283,14 +284,10 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         }
       } on UsageException catch (e) {
         if (isJsonMode) {
-          // Avoid "Run: shorebird shorebird --help" when no subcommand was
-          // recognized (commandNameFromResults falls back to "shorebird").
-          final hint = commandName == executableName
+          final subcommand = commandNameFromResults(topLevelResults);
+          final hint = subcommand == null
               ? 'Run: shorebird --help'
-              // Sub-command branch -- only fires when a real subcommand
-              // raises UsageException; trivial template, not worth a
-              // dedicated unit test.
-              : 'Run: shorebird $commandName --help'; // coverage:ignore-line
+              : 'Run: shorebird $subcommand --help'; // coverage:ignore-line
           JsonResult.error(
             code: JsonErrorCode.usageError,
             message: e.message,

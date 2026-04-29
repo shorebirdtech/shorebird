@@ -769,7 +769,8 @@ Engine • revision $shorebirdEngineRevision'''),
             hasTerminal: true,
           );
           expect(captureCommand.capturedIsJsonMode, isTrue);
-          expect(captureCommand.capturedIsNoInputMode, isFalse);
+          // --json implies --no-input
+          expect(captureCommand.capturedIsNoInputMode, isTrue);
           expect(captureCommand.capturedIsInteractive, isFalse);
         });
 
