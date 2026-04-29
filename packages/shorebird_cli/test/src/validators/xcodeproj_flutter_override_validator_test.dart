@@ -317,7 +317,7 @@ void main() {
 
       group('FLUTTER_TARGET allow-list', () {
         // FLUTTER_TARGET is commonly hard-coded per-configuration to point at
-        // a flavor-specific entrypoint (e.g. lib/main_dev.dart). It does not
+        // a flavor-specific entry point (e.g. lib/main_dev.dart). It does not
         // participate in SDK selection, so it must not be flagged.
         test('does not flag FLUTTER_TARGET on its own', () async {
           const pbxprojContent = r'''

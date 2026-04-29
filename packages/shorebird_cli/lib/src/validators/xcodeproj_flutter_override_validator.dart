@@ -12,7 +12,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 /// build, potentially causing build failures.
 ///
 /// `FLUTTER_TARGET` is exempted: it is commonly customized (e.g. to point at
-/// a flavor-specific entrypoint like `lib/main_dev.dart`) and does not
+/// a flavor-specific entry point like `lib/main_dev.dart`) and does not
 /// participate in selecting which Flutter SDK is used.
 ///
 /// Both standard Flutter apps (`ios/Runner.xcodeproj`) and Flutter modules
