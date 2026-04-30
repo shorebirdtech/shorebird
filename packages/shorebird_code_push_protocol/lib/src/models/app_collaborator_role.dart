@@ -1,3 +1,6 @@
+// Some OpenAPI specs flatten inline schemas into class names long
+// enough that `dart format` can't keep imports and call sites under
+// 80 cols as bare identifiers.
 /// A role a user can have on a specific app.
 enum AppCollaboratorRole {
   /// A user with this role can perform all available actions on apps,
@@ -10,7 +13,7 @@ enum AppCollaboratorRole {
 
   const AppCollaboratorRole._(this.value);
 
-  /// Creates a AppCollaboratorRole from a json string.
+  /// Creates a AppCollaboratorRole from a json value.
   factory AppCollaboratorRole.fromJson(String json) {
     return AppCollaboratorRole.values.firstWhere(
       (value) => value.value == json,
@@ -19,7 +22,7 @@ enum AppCollaboratorRole {
     );
   }
 
-  /// Convenience to create a nullable type from a nullable json object.
+  /// Convenience to create a nullable type from a nullable json value.
   /// Useful when parsing optional fields.
   static AppCollaboratorRole? maybeFromJson(String? json) {
     if (json == null) {
@@ -28,14 +31,14 @@ enum AppCollaboratorRole {
     return AppCollaboratorRole.fromJson(json);
   }
 
-  /// The value of the enum, as a string.  This is the exact value
+  /// The value of the enum.  This is the exact value
   /// from the OpenAPI spec and will be used for network transport.
   final String value;
 
-  /// Converts the enum to a json string.
+  /// Converts the enum to its json value.
   String toJson() => value;
 
-  /// Returns the string value of the enum.
+  /// Returns the string form of the enum.
   @override
   String toString() => value;
 }

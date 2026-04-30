@@ -1,3 +1,6 @@
+// Some OpenAPI specs flatten inline schemas into class names long
+// enough that `dart format` can't keep imports and call sites under
+// 80 cols as bare identifiers.
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/release.dart';

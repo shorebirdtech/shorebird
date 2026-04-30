@@ -1,3 +1,6 @@
+// Some OpenAPI specs flatten inline schemas into class names long
+// enough that `dart format` can't keep imports and call sites under
+// 80 cols as bare identifiers.
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 
@@ -28,7 +31,8 @@ class PrivateUser {
         id: json['id'] as int,
         email: json['email'] as String,
         displayName: json['display_name'] as String?,
-        hasActiveSubscription: json['has_active_subscription'] as bool?,
+        hasActiveSubscription:
+            json['has_active_subscription'] as bool? ?? false,
         stripeCustomerId: json['stripe_customer_id'] as String?,
         jwtIssuer: json['jwt_issuer'] as String,
         patchOverageLimit: json['patch_overage_limit'] as int?,

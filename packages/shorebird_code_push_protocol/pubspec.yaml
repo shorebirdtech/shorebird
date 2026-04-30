@@ -16,9 +16,16 @@ dependencies:
 dev_dependencies:
   mocktail: ^1.0.5
   # Only used by `tool/gen.dart` to regenerate lib/src/ from the OpenAPI
-  # spec. Pinned to a git commit until space_gen publishes to pub.dev.
+  # spec. Pinned to a git commit ahead of the next pub.dev release —
+  # picks up the fix in space_gen #209 (scope long-line suppression to
+  # files we emit + skip import/export/dartdoc when measuring), without
+  # which a regen prepends a spurious `// ignore_for_file:
+  # lines_longer_than_80_chars` to this package's hand-written
+  # `shorebird_code_push_protocol.dart` barrel and trips
+  # `unnecessary_ignore` on three message files whose only over-80
+  # lines are imports.
   space_gen:
     git:
       url: https://github.com/eseidel/space_gen.git
-      ref: 58b4410a9b25bf58e3f76a4ae979cad52d4909cc
+      ref: 89ed510
   test: ^1.31.0

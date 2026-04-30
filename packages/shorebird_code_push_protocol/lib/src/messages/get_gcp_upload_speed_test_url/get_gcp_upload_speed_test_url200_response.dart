@@ -1,3 +1,6 @@
+// Some OpenAPI specs flatten inline schemas into class names long
+// enough that `dart format` can't keep imports and call sites under
+// 80 cols as bare identifiers.
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 
@@ -11,7 +14,8 @@ class GetGcpUploadSpeedTestUrl200Response {
     required this.uploadUrl,
   });
 
-  /// Converts a `Map<String, dynamic>` to a [GetGcpUploadSpeedTestUrl200Response].
+  /// Converts a `Map<String, dynamic>` to a
+  /// [GetGcpUploadSpeedTestUrl200Response].
   factory GetGcpUploadSpeedTestUrl200Response.fromJson(
     Map<String, dynamic> json,
   ) {
@@ -38,7 +42,8 @@ class GetGcpUploadSpeedTestUrl200Response {
   /// The GCP-signed upload URL.
   final String uploadUrl;
 
-  /// Converts a [GetGcpUploadSpeedTestUrl200Response] to a `Map<String, dynamic>`.
+  /// Converts a [GetGcpUploadSpeedTestUrl200Response]
+  /// to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'upload_url': uploadUrl,

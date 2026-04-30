@@ -13,6 +13,8 @@ T parseFromJson<T>(
 ) {
   try {
     return build();
+    // Rewrapping TypeError as FormatException is the whole point.
+    // ignore: avoid_catching_errors
   } on TypeError catch (error) {
     throw FormatException('Failed to parse $className from JSON: $error', json);
   }
