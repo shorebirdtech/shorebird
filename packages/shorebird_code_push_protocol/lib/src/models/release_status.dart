@@ -9,7 +9,7 @@ enum ReleaseStatus {
 
   const ReleaseStatus._(this.value);
 
-  /// Creates a ReleaseStatus from a json string.
+  /// Creates a ReleaseStatus from a json value.
   factory ReleaseStatus.fromJson(String json) {
     return ReleaseStatus.values.firstWhere(
       (value) => value.value == json,
@@ -17,7 +17,7 @@ enum ReleaseStatus {
     );
   }
 
-  /// Convenience to create a nullable type from a nullable json object.
+  /// Convenience to create a nullable type from a nullable json value.
   /// Useful when parsing optional fields.
   static ReleaseStatus? maybeFromJson(String? json) {
     if (json == null) {
@@ -26,14 +26,14 @@ enum ReleaseStatus {
     return ReleaseStatus.fromJson(json);
   }
 
-  /// The value of the enum, as a string.  This is the exact value
+  /// The value of the enum.  This is the exact value
   /// from the OpenAPI spec and will be used for network transport.
   final String value;
 
-  /// Converts the enum to a json string.
+  /// Converts the enum to its json value.
   String toJson() => value;
 
-  /// Returns the string value of the enum.
+  /// Returns the string form of the enum.
   @override
   String toString() => value;
 }

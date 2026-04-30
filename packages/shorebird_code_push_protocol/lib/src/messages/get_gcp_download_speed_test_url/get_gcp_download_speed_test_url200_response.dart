@@ -11,7 +11,8 @@ class GetGcpDownloadSpeedTestUrl200Response {
     required this.downloadUrl,
   });
 
-  /// Converts a `Map<String, dynamic>` to a [GetGcpDownloadSpeedTestUrl200Response].
+  /// Converts a `Map<String, dynamic>` to a
+  /// [GetGcpDownloadSpeedTestUrl200Response].
   factory GetGcpDownloadSpeedTestUrl200Response.fromJson(
     Map<String, dynamic> json,
   ) {
@@ -38,7 +39,8 @@ class GetGcpDownloadSpeedTestUrl200Response {
   /// The GCP-signed download URL.
   final String downloadUrl;
 
-  /// Converts a [GetGcpDownloadSpeedTestUrl200Response] to a `Map<String, dynamic>`.
+  /// Converts a [GetGcpDownloadSpeedTestUrl200Response]
+  /// to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'download_url': downloadUrl,

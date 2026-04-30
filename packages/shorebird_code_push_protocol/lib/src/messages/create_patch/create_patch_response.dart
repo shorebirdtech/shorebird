@@ -1,8 +1,11 @@
+// Spec descriptions copy prose verbatim into dartdoc, where `[x]`
+// inside a sentence (placeholder text, ALL_CAPS tokens, license
+// templates) is parsed as a symbol reference even when no such
+// symbol exists. Suppress file-locally so the lint stays live
+// elsewhere; spec authors do not always escape brackets.
+// ignore_for_file: comment_references
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart'
-    show Patch;
-import 'package:shorebird_code_push_protocol/src/models/patch.dart' show Patch;
 
 /// {@template create_patch_response}
 /// The response body for POST /apps/{appId}/patches. Deliberately

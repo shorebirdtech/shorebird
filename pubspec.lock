@@ -676,12 +676,11 @@ packages:
   space_gen:
     dependency: transitive
     description:
-      path: "."
-      ref: "58b4410a9b25bf58e3f76a4ae979cad52d4909cc"
-      resolved-ref: "58b4410a9b25bf58e3f76a4ae979cad52d4909cc"
-      url: "https://github.com/eseidel/space_gen.git"
-    source: git
-    version: "1.0.1"
+      name: space_gen
+      sha256: "3aea8da8ffba5802110322093ef4e921e297d9b55ffa073a74b6cb38fd225ee1"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.2.2"
   stack_trace:
     dependency: transitive
     description:
