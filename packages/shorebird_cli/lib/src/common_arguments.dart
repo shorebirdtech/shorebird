@@ -167,13 +167,20 @@ Bypass all confirmation messages. It's generally not advised to use this unless 
 ''',
   );
 
+  /// Minimum valid value for [minLinkPercentage].
+  static const minLinkPercentageMin = 0;
+
+  /// Maximum valid value for [minLinkPercentage].
+  static const minLinkPercentageMax = 100;
+
   /// An argument that allows the user to specify a minimum link percentage
   /// threshold.
   static const minLinkPercentage = ArgumentDescriber(
     name: 'min-link-percentage',
     defaultValue: '0',
-    description: '''
-The minimum link percentage (0-100) required in order to generate a patch (Apple platforms only).
+    description:
+        '''
+The minimum link percentage ($minLinkPercentageMin-$minLinkPercentageMax) required in order to generate a patch (Apple platforms only).
 
 Patches with a lower link percentage than what is provided here will fail.
 ''',

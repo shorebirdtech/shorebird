@@ -22,12 +22,12 @@ class PromoteCommand extends ShorebirdCommand {
       )
       ..addOption(
         'release-version',
-        help: 'The release being patched',
+        help: 'The release being patched.',
         mandatory: true,
       )
       ..addOption(
         'patch-number',
-        help: 'The number of the patch to promote to the stable channel',
+        help: 'The number of the patch to promote to the stable channel.',
         mandatory: true,
       );
   }

@@ -27,17 +27,19 @@ class SetTrackCommand extends ShorebirdCommand {
       )
       ..addOption(
         'release',
-        help: 'The release version that the patch belongs to (ex: "1.0.0")',
+        help: 'The release version that the patch belongs to (ex: "1.0.0").',
         mandatory: true,
       )
       ..addOption(
         'patch',
-        help: 'The patch number to set the channel for (ex: "1")',
+        help: 'The patch number to set the channel for (ex: "1").',
         mandatory: true,
       )
       ..addOption(
         'track',
-        help: 'The channel to set the patch to',
+        help:
+            'The deployment track to move the patch to '
+            '(e.g. "stable", "beta", "staging").',
         mandatory: true,
       );
   }
@@ -46,7 +48,7 @@ class SetTrackCommand extends ShorebirdCommand {
   String get name => 'set-track';
 
   @override
-  String get description => 'Sets the track of a patch';
+  String get description => 'Sets the track of a patch.';
 
   @override
   Future<int> run() async {

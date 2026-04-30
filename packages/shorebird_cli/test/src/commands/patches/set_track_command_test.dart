@@ -130,7 +130,7 @@ void main() {
     });
 
     test('description is correct', () {
-      expect(command.description, 'Sets the track of a patch');
+      expect(command.description, 'Sets the track of a patch.');
     });
 
     group('when validation fails', () {

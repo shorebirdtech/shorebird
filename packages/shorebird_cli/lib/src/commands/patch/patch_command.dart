@@ -54,7 +54,7 @@ class PatchCommand extends ShorebirdCommand {
       ..addMultiOption(
         'platforms',
         abbr: 'p',
-        help: 'The platform(s) to to build this release for.',
+        help: 'The platform(s) to build this patch for.',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),
       )
       ..addOption(
@@ -165,7 +165,6 @@ To target the latest release (e.g. the release that was most recently updated) u
         CommonArguments.minLinkPercentage.name,
         help: CommonArguments.minLinkPercentage.description,
         defaultsTo: CommonArguments.minLinkPercentage.defaultValue,
-        allowed: [for (var i = 0; i <= 100; i++) '$i'],
       );
   }
 
@@ -183,7 +182,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   @override
   String get description =>
-      'Creates a shorebird patch for the provided target platforms';
+      'Creates a shorebird patch for the provided target platforms.';
 
   @override
   String get name => 'patch';
@@ -687,9 +686,20 @@ Please re-run the release command for this version or create a new release.''');
     })();
 
     final linkPercentage = patcher.linkPercentage;
-    final minLinkPercentage = int.parse(
-      results[CommonArguments.minLinkPercentage.name] as String,
-    );
+    final minLinkPercentageRaw =
+        results[CommonArguments.minLinkPercentage.name] as String;
+    final minLinkPercentage = int.tryParse(minLinkPercentageRaw);
+    if (minLinkPercentage == null ||
+        minLinkPercentage < CommonArguments.minLinkPercentageMin ||
+        minLinkPercentage > CommonArguments.minLinkPercentageMax) {
+      logger.err(
+        '--min-link-percentage must be an integer between '
+        '${CommonArguments.minLinkPercentageMin} and '
+        '${CommonArguments.minLinkPercentageMax} '
+        '(got $minLinkPercentageRaw).',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
     if (linkPercentage != null && linkPercentage < minLinkPercentage) {
       logger.err(
         '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold ($minLinkPercentage%). Exiting.''',
