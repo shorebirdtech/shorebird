@@ -1,5 +1,5 @@
+import 'package:cli_io/cli_io.dart';
 import 'package:collection/collection.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';

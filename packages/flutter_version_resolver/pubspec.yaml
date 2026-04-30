@@ -8,7 +8,8 @@ environment:
   sdk: ^3.8.1
 
 dependencies:
-  mason_logger: ^0.3.5
+  cli_io:
+    path: ../cli_io
   path: ^1.9.1
   pub_semver: ^2.2.0
   yaml: ^3.1.3

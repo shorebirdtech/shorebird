@@ -1,5 +1,5 @@
 import 'package:args/args.dart';
-import 'package:mason_logger/mason_logger.dart';
+import 'package:cli_io/cli_io.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/flutter/config/flutter_config_command.dart';

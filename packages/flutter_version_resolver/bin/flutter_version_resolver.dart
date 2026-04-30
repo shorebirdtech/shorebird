@@ -1,7 +1,7 @@
 import 'dart:io';
 
+import 'package:cli_io/cli_io.dart';
 import 'package:flutter_version_resolver/flutter_version_resolver.dart';
-import 'package:mason_logger/mason_logger.dart';
 
 /// Resolves the Flutter version for a package and optionally writes it to a
 /// file.

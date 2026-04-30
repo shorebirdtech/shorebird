@@ -3,9 +3,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cli_io/cli_io.dart';
 import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';

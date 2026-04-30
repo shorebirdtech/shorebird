@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:cli_io/cli_io.dart';
 import 'package:collection/collection.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';

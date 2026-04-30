@@ -5,7 +5,7 @@ import 'dart:io' hide Platform;
 
 import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
-import 'package:mason_logger/mason_logger.dart';
+import 'package:cli_io/cli_io.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';

@@ -1,5 +1,5 @@
 // cspell:words swiftobjective ckotlinjava havent
-import 'package:mason_logger/mason_logger.dart';
+import 'package:cli_io/cli_io.dart';
 
 /// Link to the Shorebird documentation page.
 const docsUrl = 'https://docs.shorebird.dev';
