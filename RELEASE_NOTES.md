@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde
  -->
 
+## 1.6.95 (April 29, 2026)
+
+- 🩺 Doctor: allow `FLUTTER_TARGET` override (commonly customized for flavor-specific entry points) and downgrade other `FLUTTER_*` build setting overrides from error to warning
+
 ## 1.6.94 (April 28, 2026)
 
 - 🐦 Support for Flutter 3.41.8
