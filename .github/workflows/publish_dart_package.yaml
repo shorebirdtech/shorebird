@@ -1,3 +1,4 @@
+# cspell:words pipefail
 name: Publish Dart Package
 
 on:
