@@ -67,10 +67,10 @@ void main() {
   });
 
   group('commandNameFromResults', () {
-    test('returns shorebird when no command is present', () {
+    test('returns null when no subcommand is present', () {
       final parser = ArgParser()..addFlag('version');
       final results = parser.parse(['--version']);
-      expect(commandNameFromResults(results), equals('shorebird'));
+      expect(commandNameFromResults(results), isNull);
     });
   });
 

@@ -11,9 +11,11 @@ final isJsonModeRef = create(() => false);
 /// Whether JSON output mode is active in the current zone.
 bool get isJsonMode => read(isJsonModeRef);
 
-/// Builds the full command name from [ArgResults] by walking the command
-/// chain (e.g. "doctor" for `shorebird doctor`).
-String commandNameFromResults(ArgResults topLevelResults) {
+/// Builds the subcommand name from [ArgResults] by walking the command chain
+/// (e.g. "doctor" for `shorebird doctor`, "patch ios" for `shorebird patch ios`).
+///
+/// Returns `null` when no subcommand was recognized (bare `shorebird` invocation).
+String? commandNameFromResults(ArgResults topLevelResults) {
   final parts = <String>[];
   var command = topLevelResults.command;
   while (command != null) {
@@ -21,7 +23,7 @@ String commandNameFromResults(ArgResults topLevelResults) {
     if (name != null) parts.add(name);
     command = command.command;
   }
-  return parts.isEmpty ? 'shorebird' : parts.join(' ');
+  return parts.isEmpty ? null : parts.join(' ');
 }
 
 /// The status field in a JSON output envelope.
@@ -45,7 +47,11 @@ enum JsonErrorCode {
   softwareError('software_error'),
 
   /// A network fetch or data retrieval failed.
-  fetchFailed('fetch_failed');
+  fetchFailed('fetch_failed'),
+
+  /// The CLI required interactive input but no terminal/stdin was available
+  /// (or the user passed `--json`).
+  interactivePromptRequired('interactive_prompt_required');
 
   const JsonErrorCode(this.code);
 

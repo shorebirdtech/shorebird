@@ -139,6 +139,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).thenReturn(release);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -307,6 +308,7 @@ void main() {
                     any(),
                     choices: any(named: 'choices'),
                     display: captureAny(named: 'display'),
+                    hint: any(named: 'hint'),
                   ),
                 ).captured.single
                 as String Function(Release);

@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -25,7 +26,10 @@ void main() {
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         () => body(),
-        values: {platformRef.overrideWith(() => platform)},
+        values: {
+          platformRef.overrideWith(() => platform),
+          isJsonModeRef.overrideWith(() => false),
+        },
       );
     }
 

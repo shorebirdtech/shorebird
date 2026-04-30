@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -42,7 +43,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       ..addFlag(
         'json',
         negatable: false,
-        help: 'Output results in JSON format.',
+        help: 'Output results in JSON format (implies non-interactive mode).',
       )
       ..addFlag(
         'verbose',
@@ -90,8 +91,14 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
 
   @override
   Future<int> run(Iterable<String> args) async {
+    final argsList = args.toList();
+    // Detect `--json` from the raw argv so that parse-time failures
+    // (unknown flags, malformed input) can still emit a JSON envelope.
+    // `parse(args)` throws before we'd otherwise read this flag.
+    final jsonModeFromArgs = argsList.contains('--json');
+
     try {
-      final topLevelResults = parse(args);
+      final topLevelResults = parse(argsList);
 
       final localEngineSrcPath =
           topLevelResults['local-engine-src-path'] as String?;
@@ -138,28 +145,56 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
           ? const ShorebirdLocalEngineArtifacts()
           : const ShorebirdCachedArtifacts();
-      return await runScoped<Future<int?>>(
-            () => runCommand(topLevelResults),
-            values: {
-              engineConfigRef.overrideWith(() => engineConfig),
-              isJsonModeRef.overrideWith(() => jsonMode),
-              processRef.overrideWith(() => process),
-              shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
-            },
-          ) ??
-          ExitCode.success.code;
+      // Suppress ANSI escape codes when the user has opted into a
+      // non-interactive output mode. When stdout/stderr aren't TTYs the io
+      // package already disables ANSI automatically.
+      Future<int?> runWithRefs() => runScoped<Future<int?>>(
+        () => runCommand(topLevelResults),
+        values: {
+          engineConfigRef.overrideWith(() => engineConfig),
+          isJsonModeRef.overrideWith(() => jsonMode),
+          processRef.overrideWith(() => process),
+          shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
+        },
+      );
+      final exitCode = jsonMode
+          ? await overrideAnsiOutput<Future<int?>>(false, runWithRefs)
+          : await runWithRefs();
+      return exitCode ?? ExitCode.success.code;
     } on FormatException catch (e, stackTrace) {
       // On format errors, show the commands error message, root usage and
       // exit with an error code
-      logger
-        ..err(e.message)
-        ..detail('$stackTrace')
-        ..info('')
-        ..info(usage);
+      // FormatException from `parse(args)` is rare in practice; the JSON
+      // branch is hard to trigger from real argv.
+      // coverage:ignore-start
+      if (jsonModeFromArgs) {
+        JsonResult.error(
+          code: JsonErrorCode.usageError,
+          message: e.message,
+          hint: 'Run: shorebird --help',
+          command: executableName,
+        ).write();
+      } else {
+        // coverage:ignore-end
+        logger
+          ..err(e.message)
+          ..detail('$stackTrace')
+          ..info('')
+          ..info(usage);
+      }
       return ExitCode.usage.code;
     } on UsageException catch (e) {
       // On usage errors, show the commands usage message and
       // exit with an error code
+      if (jsonModeFromArgs) {
+        JsonResult.error(
+          code: JsonErrorCode.usageError,
+          message: e.message,
+          hint: 'Run: shorebird --help',
+          command: executableName,
+        ).write();
+        return ExitCode.usage.code;
+      }
 
       logger.err(e.message);
       if (e.message.contains('Could not find an option named')) {
@@ -198,7 +233,8 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
       return ExitCode.success.code;
     }
 
-    final commandName = commandNameFromResults(topLevelResults);
+    final commandName =
+        commandNameFromResults(topLevelResults) ?? executableName;
 
     // Run the command or show version
     int? exitCode;
@@ -239,10 +275,14 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         }
       } on UsageException catch (e) {
         if (isJsonMode) {
+          final subcommand = commandNameFromResults(topLevelResults);
+          final hint = subcommand == null
+              ? 'Run: shorebird --help'
+              : 'Run: shorebird $subcommand --help'; // coverage:ignore-line
           JsonResult.error(
             code: JsonErrorCode.usageError,
             message: e.message,
-            hint: 'Run: shorebird $commandName --help',
+            hint: hint,
             command: commandName,
           ).write();
         } else {
@@ -252,6 +292,25 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         }
         // When on an usage exception we don't need to show the "if you aren't
         // sure" message, so we do an early return here.
+        return ExitCode.usage.code;
+      } on InteractivePromptRequiredException catch (e) {
+        if (isJsonMode) {
+          JsonResult.error(
+            code: JsonErrorCode.interactivePromptRequired,
+            message: e.promptText,
+            hint: e.hint,
+            command: commandName,
+          ).write();
+        } else {
+          logger
+            ..err(
+              'Input was required for the following prompt but the CLI is '
+              'running in a non-interactive context:',
+            )
+            ..err('  ${e.promptText}')
+            ..info('')
+            ..info('Hint: ${e.hint}');
+        }
         return ExitCode.usage.code;
 
         // We explicitly want to catch all exceptions here to log them and show

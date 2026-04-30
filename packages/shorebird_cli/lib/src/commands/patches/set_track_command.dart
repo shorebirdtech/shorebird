@@ -98,6 +98,11 @@ class SetTrackCommand extends ShorebirdCommand {
     if (channel == null) {
       final shouldCreateChannel = logger.confirm(
         '''No channel named ${lightCyan.wrap(targetChannel)} found. Do you want to create it?''',
+        hint:
+            'Pass --track=<existing-channel> to use an existing channel. '
+            'Channels are auto-created when a patch is published with '
+            '--track=<name>; set-track itself has no flag to skip this '
+            'confirmation.',
       );
       if (!shouldCreateChannel) {
         return ExitCode.success.code;
