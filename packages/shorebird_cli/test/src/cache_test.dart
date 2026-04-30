@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -105,6 +106,9 @@ void main() {
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
+      when(
+        () => shorebirdEnv.flutterRevision,
+      ).thenReturn('test-flutter-revision');
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
 
       when(() => platform.environment).thenReturn({});
@@ -217,14 +221,41 @@ void main() {
               setMockPlatform(Platform.macOS);
             });
 
-            test('uses darwin-arm64 on Apple Silicon', () {
-              when(() => mockAbi.current).thenReturn(Abi.macosArm64);
-              final url = runWithOverrides(
-                () =>
-                    PatchArtifact(cache: cache, platform: platform).storageUrl,
-              );
-              expect(url, contains('patch-darwin-arm64.zip'));
-            });
+            test(
+              'uses darwin-arm64 on Apple Silicon when the Flutter revision '
+              'is in the arm64 patch allowlist',
+              () {
+                when(() => mockAbi.current).thenReturn(Abi.macosArm64);
+                when(() => shorebirdEnv.flutterRevision).thenReturn(
+                  arm64PatchSupportingFlutterRevisions.first,
+                );
+                final url = runWithOverrides(
+                  () => PatchArtifact(
+                    cache: cache,
+                    platform: platform,
+                  ).storageUrl,
+                );
+                expect(url, contains('patch-darwin-arm64.zip'));
+              },
+            );
+
+            test(
+              'uses darwin-x64 on Apple Silicon when the Flutter revision '
+              'is not in the arm64 patch allowlist',
+              () {
+                when(() => mockAbi.current).thenReturn(Abi.macosArm64);
+                when(
+                  () => shorebirdEnv.flutterRevision,
+                ).thenReturn('not-in-allowlist');
+                final url = runWithOverrides(
+                  () => PatchArtifact(
+                    cache: cache,
+                    platform: platform,
+                  ).storageUrl,
+                );
+                expect(url, contains('patch-darwin-x64.zip'));
+              },
+            );
 
             test('uses darwin-x64 on Intel', () {
               when(() => mockAbi.current).thenReturn(Abi.macosX64);
@@ -263,123 +294,6 @@ void main() {
               expect(url, contains('patch-windows-x64.zip'));
             });
           });
-        });
-
-        group('fallbackStorageUrl', () {
-          test('points at darwin-x64 on Apple Silicon macOS', () {
-            setMockPlatform(Platform.macOS);
-            when(() => mockAbi.current).thenReturn(Abi.macosArm64);
-            final url = runWithOverrides(
-              () => PatchArtifact(
-                cache: cache,
-                platform: platform,
-              ).fallbackStorageUrl,
-            );
-            expect(url, isNotNull);
-            expect(url, contains('patch-darwin-x64.zip'));
-          });
-
-          test('is null on Intel macOS', () {
-            setMockPlatform(Platform.macOS);
-            when(() => mockAbi.current).thenReturn(Abi.macosX64);
-            final url = runWithOverrides(
-              () => PatchArtifact(
-                cache: cache,
-                platform: platform,
-              ).fallbackStorageUrl,
-            );
-            expect(url, isNull);
-          });
-
-          test('is null on Linux', () {
-            setMockPlatform(Platform.linux);
-            final url = runWithOverrides(
-              () => PatchArtifact(
-                cache: cache,
-                platform: platform,
-              ).fallbackStorageUrl,
-            );
-            expect(url, isNull);
-          });
-
-          test('is null on Windows', () {
-            setMockPlatform(Platform.windows);
-            final url = runWithOverrides(
-              () => PatchArtifact(
-                cache: cache,
-                platform: platform,
-              ).fallbackStorageUrl,
-            );
-            expect(url, isNull);
-          });
-        });
-
-        group('when arm64 patch artifact is missing on Apple Silicon', () {
-          setUp(() {
-            setMockPlatform(Platform.macOS);
-            when(() => mockAbi.current).thenReturn(Abi.macosArm64);
-            when(() => httpClient.send(any())).thenAnswer((invocation) async {
-              final request =
-                  invocation.positionalArguments.first as http.BaseRequest;
-              if (request.url.path.endsWith('patch-darwin-arm64.zip')) {
-                return http.StreamedResponse(
-                  const Stream.empty(),
-                  HttpStatus.notFound,
-                  reasonPhrase: 'Not Found',
-                );
-              }
-              return http.StreamedResponse(
-                Stream.value(ZipEncoder().encode(Archive())),
-                HttpStatus.ok,
-              );
-            });
-          });
-
-          test('falls back to darwin-x64', () async {
-            await expectLater(
-              runWithOverrides(() => cache.updateAll(Duration.zero)),
-              completes,
-            );
-
-            final requests = verify(
-              () => httpClient.send(captureAny()),
-            ).captured.cast<http.BaseRequest>().map((r) => r.url).toList();
-
-            String perEngine(String name) =>
-                '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/$shorebirdEngineRevision/$name';
-
-            expect(
-              requests.first,
-              equals(Uri.parse(perEngine('patch-darwin-arm64.zip'))),
-            );
-            expect(
-              requests,
-              contains(Uri.parse(perEngine('patch-darwin-x64.zip'))),
-            );
-          });
-
-          test(
-            'reports the fallback URL when both arm64 and x64 are missing',
-            () async {
-              when(() => httpClient.send(any())).thenAnswer(
-                (_) async => http.StreamedResponse(
-                  const Stream.empty(),
-                  HttpStatus.notFound,
-                  reasonPhrase: 'Not Found',
-                ),
-              );
-              await expectLater(
-                runWithOverrides(() => cache.updateAll(Duration.zero)),
-                throwsA(
-                  isA<CacheUpdateFailure>().having(
-                    (e) => e.message,
-                    'message',
-                    contains('Failed to download patch: 404 Not Found'),
-                  ),
-                ),
-              );
-            },
-          );
         });
 
         group('when an exception happens', () {

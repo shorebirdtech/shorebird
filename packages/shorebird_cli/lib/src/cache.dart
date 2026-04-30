@@ -9,6 +9,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -152,10 +153,6 @@ abstract class CachedArtifact {
   /// The URL from which the artifact can be downloaded.
   String get storageUrl;
 
-  /// An optional URL to try if [storageUrl] returns a 404. Used for
-  /// artifacts that may not exist in storage for every engine revision.
-  String? get fallbackStorageUrl => null;
-
   /// Whether the artifact is required for Shorebird to function.
   /// If we fail to fetch it we will exit with an error.
   bool get required => true;
@@ -203,27 +200,18 @@ abstract class CachedArtifact {
 
     final updateProgress = logger.progress('Downloading $fileName...');
 
-    final urls = [storageUrl, ?fallbackStorageUrl];
-    http.StreamedResponse? response;
-    for (final url in urls) {
-      try {
-        response = await httpClient.send(http.Request('GET', Uri.parse(url)));
-      } catch (error) {
-        throw CacheUpdateFailure('''
+    final request = http.Request('GET', Uri.parse(storageUrl));
+    final http.StreamedResponse response;
+    try {
+      response = await httpClient.send(request);
+    } catch (error) {
+      throw CacheUpdateFailure('''
 Failed to download $fileName: $error
 If you're behind a firewall/proxy, please, make sure shorebird_cli is
-allowed to access $url.''');
-      }
-      if (response.statusCode == HttpStatus.notFound && url != urls.last) {
-        logger.detail(
-          '[cache] $fileName not found at $url, trying fallback URL',
-        );
-        continue;
-      }
-      break;
+allowed to access $storageUrl.''');
     }
 
-    if (response!.statusCode != HttpStatus.ok) {
+    if (response.statusCode != HttpStatus.ok) {
       if (!required && response.statusCode == HttpStatus.notFound) {
         logger.detail(
           '[cache] optional artifact: "$fileName" was not found, skipping...',
@@ -357,28 +345,20 @@ class PatchArtifact extends CachedArtifact {
   String get storageUrl {
     var artifactName = 'patch-';
     if (platform.isMacOS) {
-      final macArch = abi.current == Abi.macosArm64 ? 'arm64' : 'x64';
-      artifactName += 'darwin-$macArch.zip';
+      final useArm64 =
+          abi.current == Abi.macosArm64 &&
+          arm64PatchSupportingFlutterRevisions.contains(
+            shorebirdEnv.flutterRevision,
+          );
+      artifactName += useArm64 ? 'darwin-arm64.zip' : 'darwin-x64.zip';
     } else if (platform.isLinux) {
       artifactName += 'linux-x64.zip';
     } else if (platform.isWindows) {
       artifactName += 'windows-x64.zip';
     }
 
-    return _storageUrlFor(artifactName);
+    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
   }
-
-  // Engine revisions built before the arm64 patch upload was added do not
-  // have a darwin-arm64 artifact in storage. Fall back to the x64 binary,
-  // which works on Apple Silicon when Rosetta is installed.
-  @override
-  String? get fallbackStorageUrl {
-    if (!platform.isMacOS || abi.current != Abi.macosArm64) return null;
-    return _storageUrlFor('patch-darwin-x64.zip');
-  }
-
-  String _storageUrlFor(String artifactName) =>
-      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
 
   @override
   String? get checksum => null;
