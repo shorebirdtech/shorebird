@@ -1,0 +1,15 @@
+name: Publish scoped_deps
+
+on:
+  push:
+    tags:
+      - "scoped_deps-v[0-9]+.[0-9]+.[0-9]+*"
+
+jobs:
+  publish:
+    uses: ./.github/workflows/publish_dart_package.yaml
+    with:
+      working_directory: packages/scoped_deps
+      tag_prefix: scoped_deps-v
+    permissions:
+      id-token: write

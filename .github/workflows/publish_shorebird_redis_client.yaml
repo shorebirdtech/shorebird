@@ -1,0 +1,15 @@
+name: Publish shorebird_redis_client
+
+on:
+  push:
+    tags:
+      - "shorebird_redis_client-v[0-9]+.[0-9]+.[0-9]+*"
+
+jobs:
+  publish:
+    uses: ./.github/workflows/publish_dart_package.yaml
+    with:
+      working_directory: packages/redis_client
+      tag_prefix: shorebird_redis_client-v
+    permissions:
+      id-token: write
