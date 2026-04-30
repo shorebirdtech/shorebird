@@ -112,7 +112,7 @@ environment:
       when(
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
       ).thenAnswer((_) async => {});
-      when(() => doctor.generalValidators).thenReturn([]);
+      when(() => doctor.initAndDoctorValidators).thenReturn([]);
       when(
         () => gradlew.isDaemonAvailable(any()),
       ).thenAnswer((_) async => true);

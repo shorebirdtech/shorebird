@@ -7,6 +7,7 @@ words:
   - aapt
   - aarch
   - aars # Android Archive
+  - agentic
   - aidl # Android AIDL interface definition files
   - allprojects # From gradle files
   - altool
@@ -73,6 +74,8 @@ words:
   - longpaths
   - lproj
   - madd # From ./packages/redis_client
+  - mbps
+  - metacharacters
   - mget # From ./packages/redis_client
   - metadatas
   - mktemp
@@ -88,6 +91,8 @@ words:
   - parseable
   - patchability
   - pana
+  - pbxproj
+  - pinact # Third-party action-pinning tool referenced in shorebird_ci
   - Perfetto # Chrome trace viewer at ui.perfetto.dev
   - pkcs
   - podfile
@@ -109,6 +114,7 @@ words:
   - reimplementation
   - reinit
   - requirepass # From .github dir, doesn't show up in "**" check?
+  - reusables
   - spawnee
   - Retryable
   - RSAPKCS
@@ -123,6 +129,7 @@ words:
   - SIGSTOP
   - storepass # From .github/workflows/e2e.yaml
   - storyboardc
+  - subpackages
   - symbolication
   - syskeys # From adb.dart
   - subosito # From .github dir, doesn't show up in "**" check?
@@ -146,6 +153,7 @@ words:
   - VCRUNTIME
   - Verdana
   - vmcode
+  - worktrees
   - writeln
   - WRONGPASS
   - xcarchive

@@ -1,0 +1,20 @@
+name: shorebird_ci
+description: >-
+  CI tooling for Dart and Flutter monorepos. Generates GitHub Actions
+  workflows, resolves affected packages via dependency graphs, and
+  verifies path filters stay in sync.
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  args: ^2.6.0
+  meta: ^1.16.0
+  path: ^1.9.0
+  pub_semver: ^2.1.0
+  yaml: ^3.1.0
+
+dev_dependencies:
+  test: ^1.25.0

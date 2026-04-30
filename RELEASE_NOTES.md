@@ -4,6 +4,17 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde
  -->
 
+## 1.6.94 (April 28, 2026)
+
+- 🐦 Support for Flutter 3.41.8
+  - Fixes iOS profile mode failing to connect to the Dart VM
+  - Updater: enrich patch install failure messages with diagnostics
+  - Updater: smaller binary via `panic=abort` and dropped backtrace features
+  - Updater: atomic state writes and surface flush errors in disk_io
+  - shorebird_code_push v2.0.6
+- ✨ Add `--json` output mode for agentic CLI consumption
+- 🩺 Doctor: detect hard-coded `FLUTTER_*` build settings in `Runner.xcodeproj/project.pbxproj` (covers both standard apps and Flutter modules)
+
 ## 1.6.93 (April 21, 2026)
 
 - 🐦 Support for Flutter 3.41.7 & Dart 3.11.5

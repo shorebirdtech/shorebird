@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -9,6 +11,8 @@ import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/http_client/http_client.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -17,6 +21,7 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
@@ -47,6 +52,7 @@ void main() {
           androidSdkRef.overrideWith(() => androidSdk),
           doctorRef.overrideWith(() => doctor),
           gradlewRef.overrideWith(() => gradlew),
+          isJsonModeRef.overrideWith(() => false),
           javaRef.overrideWith(() => java),
           loggerRef.overrideWith(() => logger),
           networkCheckerRef.overrideWith(() => networkChecker),
@@ -95,7 +101,7 @@ void main() {
         () => shorebirdEnv.flutterRevision,
       ).thenReturn(shorebirdFlutterRevision);
       when(() => shorebirdEnv.logsDirectory).thenReturn(logsDirectory);
-      when(() => doctor.generalValidators).thenReturn([validator]);
+      when(() => doctor.initAndDoctorValidators).thenReturn([validator]);
       when(
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
       ).thenAnswer((_) async => {});
@@ -395,6 +401,308 @@ Android Toolchain
       verify(
         () => doctor.runValidators([validator], applyFixes: true),
       ).called(1);
+    });
+
+    group('when --json is passed', () {
+      late http.Client mockHttpClient;
+      late List<String> stdoutOutput;
+
+      setUpAll(() {
+        registerFallbackValue(Uri());
+      });
+
+      R runJsonWithOverrides<R>(R Function() body) {
+        return runScoped(
+          body,
+          values: {
+            androidStudioRef.overrideWith(() => androidStudio),
+            androidSdkRef.overrideWith(() => androidSdk),
+            doctorRef.overrideWith(() => doctor),
+            gradlewRef.overrideWith(() => gradlew),
+            httpClientRef.overrideWith(() => mockHttpClient),
+            isJsonModeRef.overrideWith(() => true),
+            javaRef.overrideWith(() => java),
+            loggerRef.overrideWith(() => logger),
+            networkCheckerRef.overrideWith(() => networkChecker),
+            shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+            shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
+          },
+        );
+      }
+
+      setUp(() {
+        stdoutOutput = [];
+        mockHttpClient = MockHttpClient();
+
+        when(() => mockHttpClient.get(any())).thenAnswer(
+          (_) async => http.Response('', 200),
+        );
+        when(() => java.executable).thenReturn(null);
+        when(() => validator.canRunInCurrentContext()).thenReturn(true);
+        when(() => validator.description).thenReturn('Test Validator');
+        when(() => validator.validate()).thenAnswer((_) async => []);
+
+        command = runJsonWithOverrides(DoctorCommand.new)
+          ..testArgResults = argResults;
+      });
+
+      test('emits JSON success with version info and diagnostics', () async {
+        const flutterVersion = '3.22.2';
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => flutterVersion);
+
+        final exitCode = await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(stdoutOutput, isNotEmpty);
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        expect(json['status'], equals('success'));
+
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['shorebird_version'], equals(packageVersion));
+        expect(data['flutter_version'], equals(flutterVersion));
+        expect(data['flutter_revision'], equals(shorebirdFlutterRevision));
+        expect(data['engine_revision'], equals(shorebirdEngineRevision));
+
+        final toolchain = data['android_toolchain'] as Map<String, dynamic>;
+        expect(toolchain, containsPair('android_studio', isNull));
+        expect(toolchain, containsPair('android_sdk', isNull));
+
+        final network = data['network'] as List<dynamic>;
+        expect(network, isNotEmpty);
+
+        final validators = data['validators'] as List<dynamic>;
+        expect(validators, hasLength(1));
+        final v = validators.first as Map<String, dynamic>;
+        expect(v['name'], equals('Test Validator'));
+        expect(v['ok'], isTrue);
+        expect(v['issues'], isEmpty);
+      });
+
+      test('emits null flutter_version when lookup fails', () async {
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenThrow(Exception('oops'));
+
+        final exitCode = await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data['flutter_version'], isNull);
+      });
+
+      test('includes android toolchain info', () async {
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '3.22.2');
+        when(() => androidStudio.path).thenReturn('/path/to/studio');
+        when(() => androidSdk.path).thenReturn('/path/to/sdk');
+        when(() => androidSdk.adbPath).thenReturn('/path/to/adb');
+        when(() => java.home).thenReturn('/path/to/java');
+        when(() => java.executable).thenReturn('/path/to/java/bin/java');
+        when(() => java.version).thenReturn('17.0.9');
+        when(() => gradlew.exists(any())).thenReturn(true);
+        when(() => gradlew.version(any())).thenAnswer((_) async => '8.0');
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        final toolchain = data['android_toolchain'] as Map<String, dynamic>;
+        expect(toolchain['android_studio'], equals('/path/to/studio'));
+        expect(toolchain['android_sdk'], equals('/path/to/sdk'));
+        expect(toolchain['adb'], equals('/path/to/adb'));
+        expect(toolchain['java_home'], equals('/path/to/java'));
+        expect(toolchain['java_version'], equals('17.0.9'));
+        expect(toolchain['gradle_version'], equals('8.0'));
+      });
+
+      test('reports network reachability per URL', () async {
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '3.22.2');
+
+        // First URL succeeds, second fails.
+        var callCount = 0;
+        when(() => mockHttpClient.get(any())).thenAnswer((_) async {
+          callCount++;
+          if (callCount == 2) throw Exception('unreachable');
+          return http.Response('', 200);
+        });
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        final network = (data['network'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
+        expect(network[0]['reachable'], isTrue);
+        expect(network[1]['reachable'], isFalse);
+      });
+
+      test('includes validator issues with severity', () async {
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '3.22.2');
+        when(() => validator.validate()).thenAnswer(
+          (_) async => [
+            ValidationIssue.error(message: 'Missing permission'),
+            ValidationIssue.warning(message: 'Consider upgrading'),
+          ],
+        );
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        final validators = (data['validators'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
+        expect(validators.first['ok'], isFalse);
+        final issues = (validators.first['issues'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
+        expect(issues[0]['severity'], equals('error'));
+        expect(issues[0]['message'], equals('Missing permission'));
+        expect(issues[1]['severity'], equals('warning'));
+        expect(issues[1]['message'], equals('Consider upgrading'));
+      });
+
+      test('skips validators that cannot run in current context', () async {
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '3.22.2');
+        when(() => validator.canRunInCurrentContext()).thenReturn(false);
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        final validators = data['validators'] as List<dynamic>;
+        expect(validators, isEmpty);
+      });
+
+      test(
+        'does not call logger-based networkChecker or doctor.runValidators',
+        () async {
+          when(
+            () => shorebirdFlutter.getVersionString(),
+          ).thenAnswer((_) async => '3.22.2');
+
+          await captureStdout(
+            () => runJsonWithOverrides(command.run),
+            captured: stdoutOutput,
+          );
+
+          verifyNever(() => networkChecker.checkReachability());
+          verifyNever(
+            () => doctor.runValidators(
+              any(),
+              applyFixes: any(named: 'applyFixes'),
+            ),
+          );
+          verifyNever(() => logger.info(any()));
+        },
+      );
+
+      test('includes speed_test when --verbose is passed', () async {
+        when(() => argResults['verbose']).thenReturn(true);
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '3.22.2');
+        when(
+          () => networkChecker.performGCPUploadSpeedTest(),
+        ).thenAnswer((_) async => 1.23);
+        when(
+          () => networkChecker.performGCPDownloadSpeedTest(),
+        ).thenAnswer((_) async => 4.56);
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        final speedTest = data['speed_test'] as Map<String, dynamic>;
+        expect(speedTest['upload_megabytes_per_sec'], equals(1.23));
+        expect(speedTest['download_megabytes_per_sec'], equals(4.56));
+      });
+
+      test('omits speed_test when --verbose is not passed', () async {
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '3.22.2');
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        expect(data.containsKey('speed_test'), isFalse);
+      });
+
+      test('reports null speed_test values when tests fail', () async {
+        when(() => argResults['verbose']).thenReturn(true);
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '3.22.2');
+        when(
+          () => networkChecker.performGCPUploadSpeedTest(),
+        ).thenThrow(Exception('upload failed'));
+        when(
+          () => networkChecker.performGCPDownloadSpeedTest(),
+        ).thenThrow(Exception('download failed'));
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        final speedTest = data['speed_test'] as Map<String, dynamic>;
+        expect(speedTest['upload_megabytes_per_sec'], isNull);
+        expect(speedTest['download_megabytes_per_sec'], isNull);
+      });
+
+      test('reports null gradle_version when detection fails', () async {
+        when(
+          () => shorebirdFlutter.getVersionString(),
+        ).thenAnswer((_) async => '3.22.2');
+        when(() => gradlew.exists(any())).thenReturn(true);
+        when(() => gradlew.version(any())).thenThrow(Exception('gradle fail'));
+
+        await captureStdout(
+          () => runJsonWithOverrides(command.run),
+          captured: stdoutOutput,
+        );
+
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final data = json['data'] as Map<String, dynamic>;
+        final toolchain = data['android_toolchain'] as Map<String, dynamic>;
+        expect(toolchain['gradle_version'], isNull);
+      });
     });
   });
 }

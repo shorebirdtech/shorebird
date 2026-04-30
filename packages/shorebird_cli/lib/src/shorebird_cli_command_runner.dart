@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -39,14 +40,14 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     argParser
       ..addFlag('version', negatable: false, help: 'Print the current version.')
       ..addFlag(
+        'json',
+        negatable: false,
+        help: 'Output results in JSON format.',
+      )
+      ..addFlag(
         'verbose',
         abbr: 'v',
         help: 'Noisy logging, including all shell commands executed.',
-        callback: (verbose) {
-          if (verbose) {
-            logger.level = Level.verbose;
-          }
-        },
       )
       ..addOption(
         'local-engine-src-path',
@@ -124,6 +125,15 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         );
       }
 
+      final jsonMode = topLevelResults['json'] == true;
+
+      // In JSON mode, suppress verbose logging — it writes to stdout and
+      // would corrupt the JSON output. Verbose output still goes to the
+      // log file via ShorebirdLogger.detail.
+      if (!jsonMode && topLevelResults['verbose'] == true) {
+        logger.level = Level.verbose;
+      }
+
       final process = ShorebirdProcess();
       final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
           ? const ShorebirdLocalEngineArtifacts()
@@ -132,6 +142,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
             () => runCommand(topLevelResults),
             values: {
               engineConfigRef.overrideWith(() => engineConfig),
+              isJsonModeRef.overrideWith(() => jsonMode),
               processRef.overrideWith(() => process),
               shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
             },
@@ -187,28 +198,58 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
       return ExitCode.success.code;
     }
 
+    final commandName = commandNameFromResults(topLevelResults);
+
     // Run the command or show version
     int? exitCode;
     if (topLevelResults['version'] == true) {
       final flutterVersion = await _tryGetFlutterVersion();
-      final shorebirdFlutterPrefix = StringBuffer('Flutter');
-      if (flutterVersion != null) {
-        shorebirdFlutterPrefix.write(' $flutterVersion');
-      }
-      logger.info('''
+      if (isJsonMode) {
+        JsonResult.success(
+          data: {
+            'shorebird_version': packageVersion,
+            'flutter_version': flutterVersion,
+            'flutter_revision': shorebirdEnv.flutterRevision,
+            'engine_revision': shorebirdEnv.shorebirdEngineRevision,
+          },
+          command: 'version',
+        ).write();
+      } else {
+        final shorebirdFlutterPrefix = StringBuffer('Flutter');
+        if (flutterVersion != null) {
+          shorebirdFlutterPrefix.write(' $flutterVersion');
+        }
+        logger.info('''
 Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
 $shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
 Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
+      }
       exitCode = ExitCode.success.code;
     } else {
       try {
         exitCode = await super.runCommand(topLevelResults);
       } on ProcessExit catch (error) {
         exitCode = error.exitCode;
+        if (isJsonMode && error.exitCode != ExitCode.success.code) {
+          JsonResult.error(
+            code: JsonErrorCode.processExit,
+            message: 'Process exited with code ${error.exitCode}.',
+            command: commandName,
+          ).write();
+        }
       } on UsageException catch (e) {
-        logger
-          ..err(e.message)
-          ..info(e.usage);
+        if (isJsonMode) {
+          JsonResult.error(
+            code: JsonErrorCode.usageError,
+            message: e.message,
+            hint: 'Run: shorebird $commandName --help',
+            command: commandName,
+          ).write();
+        } else {
+          logger
+            ..err(e.message)
+            ..info(e.usage);
+        }
         // When on an usage exception we don't need to show the "if you aren't
         // sure" message, so we do an early return here.
         return ExitCode.usage.code;
@@ -217,6 +258,13 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
         // the user a friendly message.
         // ignore: avoid_catches_without_on_clauses
       } catch (error, stackTrace) {
+        if (isJsonMode) {
+          JsonResult.error(
+            code: JsonErrorCode.softwareError,
+            message: '$error',
+            command: commandName,
+          ).write();
+        }
         logger
           ..err('$error')
           ..detail('$stackTrace');
@@ -225,7 +273,8 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
     }
 
     // `runCommand` returns null in when the --help flag is passed.
-    if (exitCode != null &&
+    if (!isJsonMode &&
+        exitCode != null &&
         exitCode != ExitCode.success.code &&
         logger.level != Level.verbose) {
       final fileAnIssue = link(
@@ -243,7 +292,8 @@ ${currentRunLogFile.absolute.path}
 ''');
     }
 
-    if (topLevelResults.command?.name != UpgradeCommand.commandName) {
+    if (!isJsonMode &&
+        topLevelResults.command?.name != UpgradeCommand.commandName) {
       await _checkForUpdates();
     }
 
