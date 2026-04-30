@@ -7,7 +7,6 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
-import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
