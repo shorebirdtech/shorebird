@@ -21,4 +21,4 @@ dev_dependencies:
     git:
       url: https://github.com/eseidel/space_gen.git
       ref: 58b4410a9b25bf58e3f76a4ae979cad52d4909cc
-  test: ^1.31.0
+  test: ^1.31.1
