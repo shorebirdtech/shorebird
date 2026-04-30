@@ -477,7 +477,7 @@ void main() {
 	FLUTTER_ROOT = /should/not/be/scanned;
 }
 ''';
-            writePbxprojFile(appPbxprojWithOverride, iosDir: 'ios');
+            writePbxprojFile(appPbxprojWithOverride);
             // Module project has no overrides.
             const modulePbxproj = r'''
 // !$*UTF8*$!
