@@ -116,9 +116,7 @@ This may indicate that the patch contains native changes, which cannot be applie
 
         if (!logger.confirm(
           'Continue anyway?',
-          hint:
-              'Pass --allow-native-diffs to acknowledge native changes '
-              'without prompting.',
+          hint: allowNativeDiffsHint,
         )) {
           throw UserCancelledException();
         }

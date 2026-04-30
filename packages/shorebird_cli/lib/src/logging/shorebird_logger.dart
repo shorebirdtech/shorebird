@@ -111,7 +111,7 @@ class ShorebirdLogger extends Logger {
 
   /// Returns a [Progress] that adapts to the current interactivity context:
   ///
-  ///   * In an interactive context (TTY + no `--json`/`--no-input`), defers to
+  ///   * In an interactive context (TTY + no `--json`), defers to
   ///     mason_logger's animated spinner.
   ///   * Otherwise, emits a single static line on creation, and a "Done X" /
   ///     "Failed X" line on `complete`/`fail`. Output is routed to `stderr`
@@ -128,8 +128,7 @@ class ShorebirdLogger extends Logger {
   }
 
   /// Throws [InteractivePromptRequiredException] when the CLI is running in
-  /// a non-interactive context (no TTY on stdout/stdin, on CI, `--json`, or
-  /// `--no-input`).
+  /// a non-interactive context (no TTY on stdout/stdin, on CI, or `--json`).
   ///
   /// Used by all interactive prompt methods to fail fast with an actionable
   /// error rather than blocking on stdin or producing garbled output.
@@ -144,7 +143,7 @@ class ShorebirdLogger extends Logger {
 
 /// {@template static_progress}
 /// A non-animated [Progress] used when the CLI is running in a
-/// non-interactive context (no TTY, `--json`, `--no-input`).
+/// non-interactive context (no TTY or `--json`).
 ///
 /// Emits one line on creation and one line on completion -- no spinner,
 /// no ANSI escapes, no carriage returns. Suitable for piping to logs and

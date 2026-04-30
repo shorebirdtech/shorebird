@@ -708,19 +708,10 @@ Engine • revision $shorebirdEngineRevision'''),
         expect(ansi, isFalse);
       });
 
-      test('disables ANSI in --no-input mode', () async {
-        final ansi = await runAndReadAnsi(
-          args: ['--no-input', 'capture-mode'],
-          hasTerminal: true,
-        );
-        expect(ansi, isFalse);
-      });
-
       test('leaves ANSI handling to the io package by default', () async {
-        // Without --json or --no-input the runner does not call
-        // overrideAnsiOutput; whether ANSI is enabled is decided by the io
-        // package based on the actual stdio. We just assert that the runner
-        // did not force it off.
+        // Without --json the runner does not call overrideAnsiOutput; whether
+        // ANSI is enabled is decided by the io package based on the actual
+        // stdio. We just assert that the runner did not force it off.
         final ansi = await runAndReadAnsi(
           args: ['capture-mode'],
           hasTerminal: true,
@@ -758,7 +749,6 @@ Engine • revision $shorebirdEngineRevision'''),
           () async {
             await runCapturing(args: ['capture-mode'], hasTerminal: true);
             expect(captureCommand.capturedIsJsonMode, isFalse);
-            expect(captureCommand.capturedIsNoInputMode, isFalse);
             expect(captureCommand.capturedIsInteractive, isTrue);
           },
         );
@@ -769,64 +759,15 @@ Engine • revision $shorebirdEngineRevision'''),
             hasTerminal: true,
           );
           expect(captureCommand.capturedIsJsonMode, isTrue);
-          // --json implies --no-input
-          expect(captureCommand.capturedIsNoInputMode, isTrue);
           expect(captureCommand.capturedIsInteractive, isFalse);
         });
-
-        test('isInteractive is false when --no-input is passed', () async {
-          await runCapturing(
-            args: ['--no-input', 'capture-mode'],
-            hasTerminal: true,
-          );
-          expect(captureCommand.capturedIsJsonMode, isFalse);
-          expect(captureCommand.capturedIsNoInputMode, isTrue);
-          expect(captureCommand.capturedIsInteractive, isFalse);
-        });
-
-        test(
-          'isInteractive is false when both --json and --no-input are passed',
-          () async {
-            await runCapturing(
-              args: ['--json', '--no-input', 'capture-mode'],
-              hasTerminal: true,
-            );
-            expect(captureCommand.capturedIsJsonMode, isTrue);
-            expect(captureCommand.capturedIsNoInputMode, isTrue);
-            expect(captureCommand.capturedIsInteractive, isFalse);
-          },
-        );
       });
 
       group('without a TTY-attached stdout', () {
         test('isInteractive is false even with no flags passed', () async {
           await runCapturing(args: ['capture-mode'], hasTerminal: false);
           expect(captureCommand.capturedIsJsonMode, isFalse);
-          expect(captureCommand.capturedIsNoInputMode, isFalse);
           expect(captureCommand.capturedIsInteractive, isFalse);
-        });
-
-        test('isInteractive remains false when --no-input is passed', () async {
-          await runCapturing(
-            args: ['--no-input', 'capture-mode'],
-            hasTerminal: false,
-          );
-          expect(captureCommand.capturedIsNoInputMode, isTrue);
-          expect(captureCommand.capturedIsInteractive, isFalse);
-        });
-      });
-
-      group('--no-input is exposed on every top-level command', () {
-        test('appears in the root usage', () {
-          expect(commandRunner.usage, contains('--no-input'));
-        });
-
-        test('parses with arbitrary subcommands', () async {
-          await runCapturing(
-            args: ['--no-input', 'capture-mode'],
-            hasTerminal: true,
-          );
-          expect(captureCommand.capturedIsNoInputMode, isTrue);
         });
       });
     });
@@ -882,13 +823,12 @@ class _PromptRequiredCommand extends ShorebirdCommand {
   Future<int> run() async => throw exception;
 }
 
-/// A test command that records the values of [isJsonMode], [isNoInputMode],
-/// and [isInteractive] as observed during [run]. Optionally invokes [onRun]
-/// inside the runScoped/overrideAnsiOutput zone to capture other zone state
-/// (for example, [ansiOutputEnabled]).
+/// A test command that records the values of [isJsonMode] and [isInteractive]
+/// as observed during [run]. Optionally invokes [onRun] inside the
+/// runScoped/overrideAnsiOutput zone to capture other zone state (for example,
+/// [ansiOutputEnabled]).
 class _CaptureModeCommand extends ShorebirdCommand {
   bool? capturedIsJsonMode;
-  bool? capturedIsNoInputMode;
   bool? capturedIsInteractive;
   void Function()? onRun;
 
@@ -901,7 +841,6 @@ class _CaptureModeCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     capturedIsJsonMode = isJsonMode;
-    capturedIsNoInputMode = isNoInputMode;
     capturedIsInteractive = isInteractive;
     onRun?.call();
     return ExitCode.success.code;

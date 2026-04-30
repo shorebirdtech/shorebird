@@ -7,7 +7,6 @@ import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
-import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
@@ -286,10 +285,9 @@ class ShorebirdEnv {
   /// Whether the CLI can accept user input via stdin.
   ///
   /// Returns `false` when stdin is not a terminal, when running on CI, or
-  /// when the user has opted into non-interactive output via `--json` or
-  /// `--no-input`.
+  /// when the user has opted into non-interactive output via `--json`.
   bool get canAcceptUserInput =>
-      stdin.hasTerminal && !isRunningOnCI && !isJsonMode && !isNoInputMode;
+      stdin.hasTerminal && !isRunningOnCI && !isJsonMode;
 
   /// Whether platform.environment indicates that we are running on a CI
   /// platform. This implementation is intended to behave similar to the Flutter

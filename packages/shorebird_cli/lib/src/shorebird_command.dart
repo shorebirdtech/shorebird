@@ -57,23 +57,15 @@ abstract class ShorebirdCommand extends Command<int> {
   /// command runner based on the parsed `--json` flag.
   bool get isJsonMode => read(isJsonModeRef);
 
-  /// Whether the `--no-input` global flag was passed.
-  ///
-  /// Reads from the [interactive_mode.isNoInputModeRef] scoped dependency,
-  /// which is set by the command runner based on the parsed `--no-input` flag.
-  //
-  // The two getters below are thin wrappers around the top-level getters in
-  // `interactive_mode.dart`, which are themselves directly tested via the
-  // runner's "interactive mode" matrix. Exercising them through a
-  // `ShorebirdCommand` subclass would just re-run the same predicate through
-  // an extra layer with no additional assertion value.
+  // isInteractive is a thin wrapper around the top-level getter in
+  // `interactive_mode.dart`, which is directly tested via the runner's
+  // "interactive mode" matrix. Exercising it through a ShorebirdCommand
+  // subclass would just re-run the same predicate with no additional value.
   // coverage:ignore-start
-  bool get isNoInputMode => read(interactive_mode.isNoInputModeRef);
-
   /// Whether the CLI is running in an interactive context.
   ///
-  /// `false` when stdout is not a terminal, when `--json` was passed, or when
-  /// `--no-input` was passed. See [interactive_mode.isInteractive].
+  /// `false` when stdout is not a terminal or when `--json` was passed.
+  /// See [interactive_mode.isInteractive].
   bool get isInteractive => interactive_mode.isInteractive;
   // coverage:ignore-end
 

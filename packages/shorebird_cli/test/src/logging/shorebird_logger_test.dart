@@ -118,7 +118,6 @@ void main() {
         required bool canAcceptUserInput,
         required bool hasTerminal,
         bool jsonMode = false,
-        bool noInputMode = false,
       }) {
         when(() => shorebirdEnv.canAcceptUserInput).thenReturn(
           canAcceptUserInput,
@@ -130,7 +129,6 @@ void main() {
             values: {
               shorebirdEnvRef.overrideWith(() => shorebirdEnv),
               isJsonModeRef.overrideWith(() => jsonMode),
-              isNoInputModeRef.overrideWith(() => noInputMode),
             },
           ),
           stdout: () => CapturingStdout(
@@ -248,14 +246,14 @@ void main() {
         });
       });
 
-      group('when --no-input is active', () {
+      group('when --json is active', () {
         test('confirm throws with the per-site hint', () {
           expect(
             () => runUnderScope(
               () => logger.confirm('Continue?', hint: 'Pass --force.'),
               canAcceptUserInput: false,
               hasTerminal: true,
-              noInputMode: true,
+              jsonMode: true,
             ),
             throwsPromptRequired(withHint: 'Pass --force.'),
           );
@@ -286,7 +284,6 @@ void main() {
         Progress Function() body, {
         required bool hasTerminal,
         bool jsonMode = false,
-        bool noInputMode = false,
       }) {
         final realStdout = stdout;
         final realStderr = stderr;
@@ -296,7 +293,6 @@ void main() {
             values: {
               shorebirdEnvRef.overrideWith(() => shorebirdEnv),
               isJsonModeRef.overrideWith(() => jsonMode),
-              isNoInputModeRef.overrideWith(() => noInputMode),
             },
           ),
           stdout: () => CapturingStdout(
@@ -389,16 +385,18 @@ void main() {
         });
       });
 
-      group('under --no-input with a TTY', () {
+      group('under --json with a TTY', () {
         test('still produces static lines (no spinner)', () {
           final progress = runUnderScope(
             () => logger.progress('fetching apps'),
             hasTerminal: true,
-            noInputMode: true,
+            jsonMode: true,
           );
           progress.complete();
-          expect(stdoutOutput, contains('Starting fetching apps...'));
-          expect(stdoutOutput, contains('Done fetching apps'));
+          // Under --json progress is routed to stderr to avoid corrupting
+          // the JSON envelope on stdout.
+          expect(stderrOutput, contains('Starting fetching apps...'));
+          expect(stderrOutput, contains('Done fetching apps'));
         });
       });
 

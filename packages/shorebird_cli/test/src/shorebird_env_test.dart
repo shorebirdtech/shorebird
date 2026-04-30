@@ -30,7 +30,6 @@ void main() {
         values: {
           platformRef.overrideWith(() => platform),
           isJsonModeRef.overrideWith(() => false),
-          isNoInputModeRef.overrideWith(() => false),
         },
       );
     }

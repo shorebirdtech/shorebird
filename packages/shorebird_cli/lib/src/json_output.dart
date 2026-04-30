@@ -6,9 +6,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/version.dart';
 
 /// A reference to whether JSON output mode is active.
-final isJsonModeRef = create<bool>(
-  () => throw StateError('isJsonModeRef accessed outside a runner scope'),
-);
+final isJsonModeRef = create(() => false);
 
 /// Whether JSON output mode is active in the current zone.
 bool get isJsonMode => read(isJsonModeRef);
@@ -52,7 +50,7 @@ enum JsonErrorCode {
   fetchFailed('fetch_failed'),
 
   /// The CLI required interactive input but no terminal/stdin was available
-  /// (or the user passed `--json` / `--no-input`).
+  /// (or the user passed `--json`).
   interactivePromptRequired('interactive_prompt_required');
 
   const JsonErrorCode(this.code);

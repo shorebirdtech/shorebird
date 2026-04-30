@@ -43,14 +43,7 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       ..addFlag(
         'json',
         negatable: false,
-        help: 'Output results in JSON format.',
-      )
-      ..addFlag(
-        'no-input',
-        negatable: false,
-        help:
-            'Disable interactive prompts. Fails with an actionable error when '
-            'input would otherwise be required.',
+        help: 'Output results in JSON format (implies non-interactive mode).',
       )
       ..addFlag(
         'verbose',
@@ -140,8 +133,6 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       }
 
       final jsonMode = topLevelResults['json'] == true;
-      // --json implies --no-input: machine-readable consumers don't prompt.
-      final noInputMode = topLevelResults['no-input'] == true || jsonMode;
 
       // In JSON mode, suppress verbose logging — it writes to stdout and
       // would corrupt the JSON output. Verbose output still goes to the
@@ -162,12 +153,11 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         values: {
           engineConfigRef.overrideWith(() => engineConfig),
           isJsonModeRef.overrideWith(() => jsonMode),
-          isNoInputModeRef.overrideWith(() => noInputMode),
           processRef.overrideWith(() => process),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
         },
       );
-      final exitCode = jsonMode || noInputMode
+      final exitCode = jsonMode
           ? await overrideAnsiOutput<Future<int?>>(false, runWithRefs)
           : await runWithRefs();
       return exitCode ?? ExitCode.success.code;
