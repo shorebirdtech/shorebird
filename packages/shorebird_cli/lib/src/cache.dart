@@ -152,6 +152,10 @@ abstract class CachedArtifact {
   /// The URL from which the artifact can be downloaded.
   String get storageUrl;
 
+  /// An optional URL to try if [storageUrl] returns a 404. Used for
+  /// artifacts that may not exist in storage for every engine revision.
+  String? get fallbackStorageUrl => null;
+
   /// Whether the artifact is required for Shorebird to function.
   /// If we fail to fetch it we will exit with an error.
   bool get required => true;
@@ -199,18 +203,27 @@ abstract class CachedArtifact {
 
     final updateProgress = logger.progress('Downloading $fileName...');
 
-    final request = http.Request('GET', Uri.parse(storageUrl));
-    final http.StreamedResponse response;
-    try {
-      response = await httpClient.send(request);
-    } catch (error) {
-      throw CacheUpdateFailure('''
+    final urls = [storageUrl, ?fallbackStorageUrl];
+    http.StreamedResponse? response;
+    for (final url in urls) {
+      try {
+        response = await httpClient.send(http.Request('GET', Uri.parse(url)));
+      } catch (error) {
+        throw CacheUpdateFailure('''
 Failed to download $fileName: $error
 If you're behind a firewall/proxy, please, make sure shorebird_cli is
-allowed to access $storageUrl.''');
+allowed to access $url.''');
+      }
+      if (response.statusCode == HttpStatus.notFound && url != urls.last) {
+        logger.detail(
+          '[cache] $fileName not found at $url, trying fallback URL',
+        );
+        continue;
+      }
+      break;
     }
 
-    if (response.statusCode != HttpStatus.ok) {
+    if (response!.statusCode != HttpStatus.ok) {
       if (!required && response.statusCode == HttpStatus.notFound) {
         logger.detail(
           '[cache] optional artifact: "$fileName" was not found, skipping...',
@@ -352,8 +365,20 @@ class PatchArtifact extends CachedArtifact {
       artifactName += 'windows-x64.zip';
     }
 
-    return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
+    return _storageUrlFor(artifactName);
   }
+
+  // Engine revisions built before the arm64 patch upload was added do not
+  // have a darwin-arm64 artifact in storage. Fall back to the x64 binary,
+  // which works on Apple Silicon when Rosetta is installed.
+  @override
+  String? get fallbackStorageUrl {
+    if (!platform.isMacOS || abi.current != Abi.macosArm64) return null;
+    return _storageUrlFor('patch-darwin-x64.zip');
+  }
+
+  String _storageUrlFor(String artifactName) =>
+      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
 
   @override
   String? get checksum => null;
