@@ -28,6 +28,8 @@ jobs:
 
       - name: 🎯 Setup Dart
         uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
 
       - name: 🔎 Verify tag matches pubspec version
         working-directory: ${{ inputs.working_directory }}
@@ -37,12 +39,15 @@ jobs:
           TAG_VERSION="${GITHUB_REF_NAME#${{ inputs.tag_prefix }}}"
           echo "Tag version:     $TAG_VERSION"
           echo "Pubspec version: $PUBSPEC_VERSION"
+          [ -n "$PUBSPEC_VERSION" ] || { echo "::error::no version found in pubspec.yaml"; exit 1; }
+          [ -n "$TAG_VERSION" ] || { echo "::error::tag $GITHUB_REF_NAME has no version after prefix ${{ inputs.tag_prefix }}"; exit 1; }
           if [ "$PUBSPEC_VERSION" != "$TAG_VERSION" ]; then
             echo "::error::Tag version ($TAG_VERSION) does not match pubspec version ($PUBSPEC_VERSION)"
             exit 1
           fi
 
       - name: 📦 Install dependencies
+        working-directory: ${{ inputs.working_directory }}
         run: dart pub get
 
       - name: 🔍 Analyze
