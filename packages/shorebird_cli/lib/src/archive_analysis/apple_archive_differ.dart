@@ -1,4 +1,4 @@
-// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec xcassets
+// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec xcassets actool
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';

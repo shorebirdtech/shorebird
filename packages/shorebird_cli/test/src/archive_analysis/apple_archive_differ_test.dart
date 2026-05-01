@@ -1,4 +1,4 @@
-// cspell:words xcarchive xcarchives xcframeworks xcframework
+// cspell:words xcarchive xcarchives xcframeworks xcframework actool assetutil
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
