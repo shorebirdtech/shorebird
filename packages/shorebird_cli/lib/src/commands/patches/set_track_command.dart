@@ -40,7 +40,8 @@ class SetTrackCommand extends ShorebirdCommand {
         'track',
         help:
             'The deployment track to move the patch to '
-            '("stable", "beta", "staging", or any custom track name).',
+            '("stable", "beta", "staging", or any custom track name '
+            'up to ${CommonArguments.trackNameMaxLength} characters).',
         mandatory: true,
       );
   }
@@ -67,6 +68,15 @@ class SetTrackCommand extends ShorebirdCommand {
     final flavor = results.findOption('flavor', argParser: argParser);
     final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
     final targetChannel = results['track'] as String;
+
+    if (targetChannel.isEmpty ||
+        targetChannel.length > CommonArguments.trackNameMaxLength) {
+      logger.err(
+        'Track name must be between 1 and '
+        '${CommonArguments.trackNameMaxLength} characters.',
+      );
+      return ExitCode.usage.code;
+    }
 
     final release = await codePushClientWrapper.getRelease(
       appId: appId,

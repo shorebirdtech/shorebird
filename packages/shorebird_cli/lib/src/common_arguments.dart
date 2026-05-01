@@ -178,6 +178,9 @@ Bypass all confirmation messages. It's generally not advised to use this unless 
   /// Maximum character length for an app display name.
   static const appDisplayNameMaxLength = 128;
 
+  /// Maximum character length for a track name.
+  static const trackNameMaxLength = 128;
+
   /// Minimum valid value for [minLinkPercentage].
   static const minLinkPercentageMin = 0;
 
