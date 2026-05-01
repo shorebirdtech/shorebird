@@ -119,7 +119,9 @@ class ShorebirdLogger extends Logger {
   ///     `stdout` otherwise.
   @override
   Progress progress(String message, {ProgressOptions? options}) {
-    if (isInteractive) return super.progress(message, options: options);
+    if (isInteractive && !isJsonMode) {
+      return super.progress(message, options: options);
+    }
     return _StaticProgress(
       message: message,
       sink: isJsonMode ? io.stderr : io.stdout,
