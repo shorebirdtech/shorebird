@@ -39,9 +39,8 @@ class SetTrackCommand extends ShorebirdCommand {
       ..addOption(
         'track',
         help:
-            'The deployment track to move the patch to. '
-            'Built-in tracks are "stable", "beta", and "staging", '
-            'but any name is accepted.',
+            'The deployment track to move the patch to '
+            '("stable", "beta", "staging", or any custom track name).',
         mandatory: true,
       );
   }
