@@ -172,9 +172,6 @@ Bypass all confirmation messages. It's generally not advised to use this unless 
 ''',
   );
 
-  /// Minimum character length for an app display name.
-  static const appDisplayNameMinLength = 1;
-
   /// Maximum character length for an app display name.
   static const appDisplayNameMaxLength = 128;
 

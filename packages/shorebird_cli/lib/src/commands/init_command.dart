@@ -37,7 +37,7 @@ class InitCommand extends ShorebirdCommand {
         help:
             'The app name shown in the Shorebird dashboard '
             '(defaults to the package name in pubspec.yaml). '
-            'Must be between ${CommonArguments.appDisplayNameMinLength} and '
+            'Must be between 1 and '
             '${CommonArguments.appDisplayNameMaxLength} characters.',
       )
       ..addOption('organization-id', help: 'The organization ID to use.');
@@ -256,8 +256,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       if (displayName.isEmpty ||
           displayName.length > CommonArguments.appDisplayNameMaxLength) {
         logger.err(
-          'App display name must be between '
-          '${CommonArguments.appDisplayNameMinLength} and '
+          'App display name must be between 1 and '
           '${CommonArguments.appDisplayNameMaxLength} characters.',
         );
         return ExitCode.usage.code;
