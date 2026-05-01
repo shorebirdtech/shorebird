@@ -17,6 +17,7 @@ class PatchCheckRequest {
     this.patchNumber,
     this.patchHash,
     this.clientId,
+    this.moduleVersion,
   });
 
   /// Converts a `Map<String, dynamic>` to a [PatchCheckRequest].
@@ -33,6 +34,7 @@ class PatchCheckRequest {
         appId: json['app_id'] as String,
         channel: json['channel'] as String,
         clientId: json['client_id'] as String?,
+        moduleVersion: json['module_version'] as String?,
       ),
     );
   }
@@ -46,7 +48,7 @@ class PatchCheckRequest {
     return PatchCheckRequest.fromJson(json);
   }
 
-  /// The release version of the app.
+  /// The release version of the host app (e.g. "1.0.0+1").
   final String releaseVersion;
 
   /// The highest patch number the client has already downloaded.
@@ -73,6 +75,13 @@ class PatchCheckRequest {
   /// unique per app. Optional for backward compatibility.
   final String? clientId;
 
+  /// The module version for add-to-app releases (AAR/iOS framework).
+  ///
+  /// When present, the server uses this instead of [releaseVersion] for patch
+  /// lookup. The [releaseVersion] still contains the host app's version for
+  /// analytics purposes.
+  final String? moduleVersion;
+
   /// Converts a [PatchCheckRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -84,6 +93,7 @@ class PatchCheckRequest {
       'app_id': appId,
       'channel': channel,
       'client_id': clientId,
+      'module_version': moduleVersion,
     };
   }
 
@@ -97,6 +107,7 @@ class PatchCheckRequest {
     appId,
     channel,
     clientId,
+    moduleVersion,
   ]);
 
   @override
@@ -110,6 +121,7 @@ class PatchCheckRequest {
         arch == other.arch &&
         appId == other.appId &&
         channel == other.channel &&
-        clientId == other.clientId;
+        clientId == other.clientId &&
+        moduleVersion == other.moduleVersion;
   }
 }

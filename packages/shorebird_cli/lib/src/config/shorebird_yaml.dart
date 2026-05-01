@@ -25,6 +25,7 @@ class ShorebirdYaml {
     this.baseUrl,
     this.autoUpdate,
     this.patchVerification,
+    this.moduleVersion,
   });
 
   /// Creates a [ShorebirdYaml] from a JSON map.
@@ -61,6 +62,13 @@ class ShorebirdYaml {
 
   /// The patch verification mode for the app.
   final PatchVerification? patchVerification;
+
+  /// The module version baked into the artifact at build time.
+  ///
+  /// Used for add-to-app (AAR) releases where the host app's version differs
+  /// from the module's version. When present, the engine uses this instead of
+  /// the host app's version to identify the release for patch checking.
+  final String? moduleVersion;
 }
 
 /// Extension on [ShorebirdYaml] to get the app id for a specific flavor.
