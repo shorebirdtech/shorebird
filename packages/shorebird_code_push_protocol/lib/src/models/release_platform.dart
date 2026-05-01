@@ -17,7 +17,7 @@ enum ReleasePlatform {
 
   const ReleasePlatform._(this.value);
 
-  /// Creates a ReleasePlatform from a json string.
+  /// Creates a ReleasePlatform from a json value.
   factory ReleasePlatform.fromJson(String json) {
     return ReleasePlatform.values.firstWhere(
       (value) => value.value == json,
@@ -26,7 +26,7 @@ enum ReleasePlatform {
     );
   }
 
-  /// Convenience to create a nullable type from a nullable json object.
+  /// Convenience to create a nullable type from a nullable json value.
   /// Useful when parsing optional fields.
   static ReleasePlatform? maybeFromJson(String? json) {
     if (json == null) {
@@ -35,14 +35,14 @@ enum ReleasePlatform {
     return ReleasePlatform.fromJson(json);
   }
 
-  /// The value of the enum, as a string.  This is the exact value
+  /// The value of the enum.  This is the exact value
   /// from the OpenAPI spec and will be used for network transport.
   final String value;
 
-  /// Converts the enum to a json string.
+  /// Converts the enum to its json value.
   String toJson() => value;
 
-  /// Returns the string value of the enum.
+  /// Returns the string form of the enum.
   @override
   String toString() => value;
 }
