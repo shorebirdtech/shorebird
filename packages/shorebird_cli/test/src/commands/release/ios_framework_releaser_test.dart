@@ -135,6 +135,7 @@ void main() {
       group('when split-per-abi is true', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(false);
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
         });
 
         test('exits with code 64', () async {
@@ -148,6 +149,7 @@ void main() {
       group('when arguments are valid', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.2.3');
         });
 
         test('returns normally', () {
@@ -161,6 +163,7 @@ void main() {
       group('when --obfuscate is passed', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.2.3');
           when(() => argResults['obfuscate']).thenReturn(true);
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
           when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
@@ -200,6 +203,7 @@ void main() {
       group('when --obfuscate is not passed', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.2.3');
         });
 
         test('returns normally', () async {
@@ -570,10 +574,15 @@ void main() {
     group('getReleaseVersion', () {
       const releaseVersion = '1.0.0';
       setUp(() {
+        when(() => argResults.wasParsed('release-version')).thenReturn(true);
         when(() => argResults['release-version']).thenReturn(releaseVersion);
       });
 
       test('returns value from argResults', () async {
+        // assertArgsAreValid must run first to populate explicitReleaseVersion
+        // from --release-version; getReleaseVersion then reads it back via
+        // moduleReleaseVersion.
+        await runWithOverrides(iosFrameworkReleaser.assertArgsAreValid);
         final result = await runWithOverrides(
           () => iosFrameworkReleaser.getReleaseVersion(
             releaseArtifactRoot: Directory(''),

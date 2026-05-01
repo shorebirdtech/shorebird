@@ -69,6 +69,25 @@ extension on String {
   /// This allow us to just call var?.toPublicKeyEnv() instead of doing
   /// a ternary operation to check if the value is null.
   Map<String, String> toPublicKeyEnv() => {'SHOREBIRD_PUBLIC_KEY': this};
+
+  /// Returns a map with the SHOREBIRD_MODULE_VERSION environment variable.
+  Map<String, String> toModuleVersionEnv() => {
+    'SHOREBIRD_MODULE_VERSION': this,
+  };
+}
+
+/// Combines public-key and module-version env vars into a single map for
+/// passing through to `flutter build`. Returns `null` when neither is set
+/// so we don't override the parent process env with an empty map.
+Map<String, String>? _buildEnv({
+  String? base64PublicKey,
+  String? moduleVersion,
+}) {
+  if (base64PublicKey == null && moduleVersion == null) return null;
+  return {
+    ...?base64PublicKey?.toPublicKeyEnv(),
+    ...?moduleVersion?.toModuleVersionEnv(),
+  };
 }
 
 /// @{template artifact_builder}
@@ -286,6 +305,7 @@ Reason: Exited with code $exitCode.''',
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
+    String? moduleVersion,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
@@ -304,7 +324,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: _buildEnv(
+          base64PublicKey: base64PublicKey,
+          moduleVersion: moduleVersion,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -506,6 +529,7 @@ Reason: Exited with code $exitCode.''',
   Future<AppleBuildResult> buildIosFramework({
     List<String> args = const [],
     String? base64PublicKey,
+    String? moduleVersion,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt. This
@@ -530,7 +554,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: _buildEnv(
+          base64PublicKey: base64PublicKey,
+          moduleVersion: moduleVersion,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,

@@ -4,8 +4,8 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:scoped_deps/scoped_deps.dart';
 import 'package:pub_semver/pub_semver.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/release/aar_releaser.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
+import 'package:shorebird_cli/src/executables/git.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -40,6 +41,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late CodeSigner codeSigner;
     late Directory projectRoot;
+    late Git gitClient;
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late Progress progress;
@@ -59,6 +61,7 @@ void main() {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           codeSignerRef.overrideWith(() => codeSigner),
           engineConfigRef.overrideWith(() => const EngineConfig.empty()),
+          gitRef.overrideWith(() => gitClient),
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           processRef.overrideWith(() => shorebirdProcess),
@@ -84,6 +87,7 @@ void main() {
       artifactManager = MockArtifactManager();
       codePushClientWrapper = MockCodePushClientWrapper();
       codeSigner = MockCodeSigner();
+      gitClient = MockGit();
       operatingSystemInterface = MockOperatingSystemInterface();
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
@@ -122,9 +126,7 @@ void main() {
     });
 
     group('minimumFlutterVersion', () {
-      test('is null', () {
-        // Shorebird has always had aar support, so we don't need to
-        // specify a minimum Flutter version.
+      test('is null (checked conditionally in assertArgsAreValid)', () {
         expect(aarReleaser.minimumFlutterVersion, isNull);
       });
     });
@@ -217,22 +219,29 @@ void main() {
     });
 
     group('assertArgsAreValid', () {
-      group('when release-version was not provided', () {
-        setUp(() {
-          when(() => argResults.wasParsed('release-version')).thenReturn(false);
-        });
+      group(
+        'when both --release-version and --module-version are provided',
+        () {
+          setUp(() {
+            when(
+              () => argResults.wasParsed('release-version'),
+            ).thenReturn(true);
+            when(() => argResults.wasParsed('module-version')).thenReturn(true);
+          });
 
-        test('exits with code 64', () async {
-          await expectLater(
-            () => runWithOverrides(aarReleaser.assertArgsAreValid),
-            exitsWithCode(ExitCode.usage),
-          );
-        });
-      });
+          test('exits with usage error', () async {
+            await expectLater(
+              () => runWithOverrides(aarReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+          });
+        },
+      );
 
-      group('when arguments are valid', () {
+      group('when --release-version is provided', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0');
         });
 
         test('returns normally', () {
@@ -243,9 +252,128 @@ void main() {
         });
       });
 
+      group('when --module-version is provided', () {
+        setUp(() {
+          when(() => argResults.wasParsed('module-version')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        });
+
+        group('with value "git"', () {
+          setUp(() {
+            when(() => argResults['module-version']).thenReturn('git');
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 4));
+            when(
+              () => gitClient.revParse(
+                revision: any(named: 'revision'),
+                directory: any(named: 'directory'),
+              ),
+            ).thenAnswer(
+              (_) async => 'abc1234abc1234abc1234abc1234abc1234abc12',
+            );
+          });
+
+          test('resolves git hash as module version', () async {
+            await expectLater(
+              runWithOverrides(aarReleaser.assertArgsAreValid),
+              completes,
+            );
+          });
+        });
+
+        group('with explicit value', () {
+          setUp(() {
+            when(() => argResults['module-version']).thenReturn('v2.0.0');
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 4));
+          });
+
+          test('uses provided value', () async {
+            await expectLater(
+              runWithOverrides(aarReleaser.assertArgsAreValid),
+              completes,
+            );
+          });
+        });
+
+        group('when Flutter version is too old', () {
+          setUp(() {
+            when(() => argResults['module-version']).thenReturn('git');
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 2));
+          });
+
+          test('exits with unavailable', () async {
+            await expectLater(
+              () => runWithOverrides(aarReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.unavailable),
+            );
+          });
+        });
+      });
+
+      group('when neither flag is provided', () {
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(false);
+          when(() => argResults.wasParsed('module-version')).thenReturn(false);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        });
+
+        group('in non-interactive mode', () {
+          setUp(() {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+          });
+
+          test('exits with usage error', () async {
+            await expectLater(
+              () => runWithOverrides(aarReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+          });
+        });
+
+        group('in interactive mode', () {
+          setUp(() {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 4));
+            when(
+              () => gitClient.revParse(
+                revision: any(named: 'revision'),
+                directory: any(named: 'directory'),
+              ),
+            ).thenAnswer(
+              (_) async => 'abc1234abc1234abc1234abc1234abc1234abc12',
+            );
+            when(
+              () => logger.prompt(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+              ),
+            ).thenReturn('abc1234abc1234abc1234abc1234abc1234abc12');
+          });
+
+          test('prompts for module version with git hash default', () async {
+            await runWithOverrides(aarReleaser.assertArgsAreValid);
+
+            verify(
+              () => logger.prompt(
+                'Module version',
+                defaultValue: 'abc1234abc1234abc1234abc1234abc1234abc12',
+              ),
+            ).called(1);
+          });
+        });
+      });
+
       group('when --obfuscate is passed', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0');
           when(() => argResults['obfuscate']).thenReturn(true);
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
           when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
@@ -285,6 +413,7 @@ void main() {
       group('when --obfuscate is not passed', () {
         setUp(() {
           when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0');
         });
 
         test('returns normally', () async {
@@ -324,17 +453,23 @@ void main() {
         File(aarPath).createSync(recursive: true);
       }
 
-      setUp(() {
+      setUp(() async {
         when(() => argResults['artifact']).thenReturn('apk');
+        when(() => argResults.wasParsed('release-version')).thenReturn(true);
+        when(() => argResults['release-version']).thenReturn('1.0.0');
         when(
           () => artifactBuilder.buildAar(
             buildNumber: any(named: 'buildNumber'),
             targetPlatforms: any(named: 'targetPlatforms'),
             args: any(named: 'args'),
+            moduleVersion: any(named: 'moduleVersion'),
           ),
         ).thenAnswer((_) async => File(''));
 
         setUpProjectRootArtifacts();
+
+        // Resolve versions before build tests.
+        await runWithOverrides(aarReleaser.assertArgsAreValid);
       });
 
       group('when build succeeds', () {
@@ -397,6 +532,7 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                moduleVersion: any(named: 'moduleVersion'),
               ),
             ).thenAnswer((_) async => File(''));
 
@@ -439,6 +575,7 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                moduleVersion: any(named: 'moduleVersion'),
               ),
             ).thenAnswer((_) async => File(''));
 
@@ -483,6 +620,7 @@ void main() {
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
+                moduleVersion: any(named: 'moduleVersion'),
               ),
             ).thenAnswer((_) async {
               final mapPath = p.join(
@@ -505,6 +643,7 @@ void main() {
                 buildNumber: any(named: 'buildNumber'),
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: captureAny(named: 'args'),
+                moduleVersion: any(named: 'moduleVersion'),
               ),
             ).captured;
 
@@ -537,6 +676,7 @@ void main() {
                   buildNumber: any(named: 'buildNumber'),
                   targetPlatforms: any(named: 'targetPlatforms'),
                   args: any(named: 'args'),
+                  moduleVersion: any(named: 'moduleVersion'),
                 ),
               ).thenAnswer((_) async {});
             });
@@ -593,15 +733,16 @@ void main() {
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
 
           // Create the obfuscation map at the expected build output location.
-          final mapFile = File(
-            p.join(
-              projectRoot.path,
-              'build',
-              'shorebird',
-              'obfuscation_map.json',
-            ),
-          )..createSync(recursive: true);
-          mapFile.writeAsStringSync('{"key": "value"}');
+          File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'shorebird',
+                'obfuscation_map.json',
+              ),
+            )
+            ..createSync(recursive: true)
+            ..writeAsStringSync('{"key": "value"}');
         });
 
         test('copies map into supplement directory and returns it', () {
@@ -678,17 +819,50 @@ void main() {
     });
 
     group('getReleaseVersion', () {
-      const releaseVersion = '1.0.0';
-      setUp(() {
-        when(() => argResults['release-version']).thenReturn(releaseVersion);
+      group('when --release-version is provided', () {
+        setUp(() {
+          when(() => argResults.wasParsed('release-version')).thenReturn(true);
+          when(() => argResults['release-version']).thenReturn('1.0.0');
+        });
+
+        test('returns the explicit release version', () async {
+          await runWithOverrides(aarReleaser.assertArgsAreValid);
+          final result = await runWithOverrides(
+            () => aarReleaser.getReleaseVersion(
+              releaseArtifactRoot: Directory(''),
+            ),
+          );
+          expect(result, '1.0.0');
+        });
       });
 
-      test('returns value from argResults', () async {
-        final result = await runWithOverrides(
-          () =>
-              aarReleaser.getReleaseVersion(releaseArtifactRoot: Directory('')),
-        );
-        expect(result, releaseVersion);
+      group('when --module-version=git is provided', () {
+        setUp(() {
+          when(() => argResults.wasParsed('module-version')).thenReturn(true);
+          when(() => argResults['module-version']).thenReturn('git');
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => Version(3, 41, 4));
+          when(
+            () => gitClient.revParse(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
+            ),
+          ).thenAnswer(
+            (_) async => 'abc1234abc1234abc1234abc1234abc1234abc12',
+          );
+        });
+
+        test('returns git hash as release version', () async {
+          await runWithOverrides(aarReleaser.assertArgsAreValid);
+          final result = await runWithOverrides(
+            () => aarReleaser.getReleaseVersion(
+              releaseArtifactRoot: Directory(''),
+            ),
+          );
+          expect(result, 'abc1234abc1234abc1234abc1234abc1234abc12');
+        });
       });
     });
 
