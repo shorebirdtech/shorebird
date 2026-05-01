@@ -84,6 +84,15 @@ Entries from "--dart-define" with identical keys take precedence over entries fr
         '''Export an IPA with these options. See "xcodebuild -h" for available exportOptionsPlist keys (iOS only).''',
   );
 
+  /// An argument that allows the user to specify a Shorebird app ID directly,
+  /// bypassing the app ID in shorebird.yaml.
+  static const appIdArg = ArgumentDescriber(
+    name: 'app-id',
+    description:
+        'The Shorebird app ID to use. Overrides the app ID in '
+        'shorebird.yaml (e.g. "your-app-id").',
+  );
+
   /// An argument that allows the user to specify a build flavor. You will most
   /// likely want to provide a custom description for this argument that more
   /// thoroughly explains what the flavor is used for.
