@@ -102,6 +102,11 @@ jobs:
               - ./.github/workflows/main.yaml
               - ./.github/actions/dart_package/action.yaml
               - packages/scoped_deps/**
+            shorebird_ci:
+              - ./.github/codecov.yml
+              - ./.github/workflows/main.yaml
+              - ./.github/actions/dart_package/action.yaml
+              - packages/shorebird_ci/**
             stripe_api:
               - ./.github/codecov.yml
               - ./.github/workflows/main.yaml
