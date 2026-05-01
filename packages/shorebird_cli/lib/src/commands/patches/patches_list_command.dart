@@ -8,6 +8,8 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patches_list_command}
 /// `shorebird patches list`
@@ -62,14 +64,27 @@ class PatchesListCommand extends ShorebirdCommand {
     final releaseVersion =
         results[CommonArguments.releaseVersionArg.name] as String;
 
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-    final patches = await codePushClientWrapper.getReleasePatches(
-      appId: appId,
-      releaseId: release.id,
-    );
+    final Release release;
+    final List<ReleasePatch> patches;
+    try {
+      release = await codePushClientWrapper.getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
+      );
+      patches = await codePushClientWrapper.getReleasePatches(
+        appId: appId,
+        releaseId: release.id,
+      );
+    } on ProcessExit catch (e) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.fetchFailed,
+          message: 'Failed to fetch patches for release "$releaseVersion".',
+        );
+        return e.exitCode;
+      }
+      rethrow;
+    }
 
     if (isJsonMode) {
       emitJsonSuccess({

@@ -4,10 +4,13 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patches_info_command}
 /// `shorebird patches info`
@@ -68,14 +71,28 @@ class PatchesInfoCommand extends ShorebirdCommand {
         results[CommonArguments.releaseVersionArg.name] as String;
     final patchNumber = int.parse(results['patch-number'] as String);
 
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-    final patches = await codePushClientWrapper.getReleasePatches(
-      appId: appId,
-      releaseId: release.id,
-    );
+    final Release release;
+    final List<ReleasePatch> patches;
+    try {
+      release = await codePushClientWrapper.getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
+      );
+      patches = await codePushClientWrapper.getReleasePatches(
+        appId: appId,
+        releaseId: release.id,
+      );
+    } on ProcessExit catch (e) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.fetchFailed,
+          message: 'Failed to fetch patch $patchNumber '
+              'for release "$releaseVersion".',
+        );
+        return e.exitCode;
+      }
+      rethrow;
+    }
 
     final patch = patches.firstWhereOrNull((p) => p.number == patchNumber);
     if (patch == null) {
