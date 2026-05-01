@@ -668,9 +668,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             expect(exitCode, equals(ExitCode.usage.code));
             verify(
               () => logger.err(
-                'App display name must be between '
-                '${CommonArguments.appDisplayNameMinLength} and '
-                '${CommonArguments.appDisplayNameMaxLength} characters.',
+                'App display name must be between 1 and 128 characters.',
               ),
             ).called(1);
           });
@@ -678,8 +676,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
 
         group('when display name exceeds max length', () {
           setUp(() {
-            when(() => argResults['display-name'])
-                .thenReturn('a' * (CommonArguments.appDisplayNameMaxLength + 1));
+            when(() => argResults['display-name']).thenReturn('a' * 129);
           });
 
           test('exits with usage error', () async {
@@ -687,9 +684,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             expect(exitCode, equals(ExitCode.usage.code));
             verify(
               () => logger.err(
-                'App display name must be between '
-                '${CommonArguments.appDisplayNameMinLength} and '
-                '${CommonArguments.appDisplayNameMaxLength} characters.',
+                'App display name must be between 1 and 128 characters.',
               ),
             ).called(1);
           });
@@ -697,8 +692,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
 
         group('when display name is exactly max length', () {
           setUp(() {
-            when(() => argResults['display-name'])
-                .thenReturn('a' * CommonArguments.appDisplayNameMaxLength);
+            when(() => argResults['display-name']).thenReturn('a' * 128);
           });
 
           test('succeeds', () async {
