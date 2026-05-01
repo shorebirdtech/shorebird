@@ -92,6 +92,51 @@ void main() {
       });
     });
 
+    group('sanitizeCarJson', () {
+      test('strips Timestamp lines', () {
+        final input = [
+          '{',
+          '  "Timestamp" : 1234567890',
+          '  "Name" : "AppIcon"',
+          '}',
+        ];
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(input),
+          '{\n  "Name" : "AppIcon"\n}',
+        );
+      });
+
+      test('hashes equivalently when only layered icon UUIDs differ', () {
+        // actool generates a fresh UUID for each build of an iOS 18
+        // layered icon (.icon) bundle, which appears in the
+        // RenditionName/Name fields of the assetutil --info output.
+        const uuidA = '1FB87FB1-9D9F-4F60-B3C3-6E63B0B0E3DD';
+        const uuidB = 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE';
+        final buildA = [
+          '  "Name" : "AppIcon-$uuidA"',
+          '  "RenditionName" : "AppIcon-$uuidA.png"',
+        ];
+        final buildB = [
+          '  "Name" : "AppIcon-$uuidB"',
+          '  "RenditionName" : "AppIcon-$uuidB.png"',
+        ];
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(buildA),
+          AppleArchiveDiffer.sanitizeCarJson(buildB),
+        );
+      });
+
+      test('still detects rendition name changes that are not just UUIDs', () {
+        const uuid = '1FB87FB1-9D9F-4F60-B3C3-6E63B0B0E3DD';
+        final before = ['  "RenditionName" : "AppIcon-$uuid.png"'];
+        final after = ['  "RenditionName" : "AppIconDark-$uuid.png"'];
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(before),
+          isNot(AppleArchiveDiffer.sanitizeCarJson(after)),
+        );
+      });
+    });
+
     group('xcarchive', () {
       group('changedPaths', () {
         test('finds no differences between the same xcarchive', () async {
