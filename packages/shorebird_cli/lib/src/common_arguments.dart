@@ -137,6 +137,11 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
     description: 'The version of the release (e.g. "1.0.0").',
   );
 
+  /// Help text for release version arguments in patch commands, where the
+  /// version identifies which release the patch belongs to.
+  static const patchReleaseVersionDescription =
+      'The version of the release the patch belongs to (e.g. "1.0.0+1").';
+
   /// The Flutter --obfuscate argument.
   static const obfuscateArg = ArgumentDescriber(
     name: 'obfuscate',
