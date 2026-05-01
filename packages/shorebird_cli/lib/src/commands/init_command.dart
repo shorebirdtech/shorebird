@@ -253,7 +253,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                   'prompting.',
             )
           : pubspecName;
-      if (displayName.length < CommonArguments.appDisplayNameMinLength ||
+      if (displayName.isEmpty ||
           displayName.length > CommonArguments.appDisplayNameMaxLength) {
         logger.err(
           'App display name must be between '
