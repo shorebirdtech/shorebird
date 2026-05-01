@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
@@ -27,17 +28,20 @@ class SetTrackCommand extends ShorebirdCommand {
       )
       ..addOption(
         'release',
-        help: 'The release version that the patch belongs to (ex: "1.0.0")',
+        help: CommonArguments.patchReleaseVersionDescription,
         mandatory: true,
       )
       ..addOption(
         'patch',
-        help: 'The patch number to set the channel for (ex: "1")',
+        help: 'The patch number to set the channel for (ex: "1").',
         mandatory: true,
       )
       ..addOption(
         'track',
-        help: 'The channel to set the patch to',
+        help:
+            'The deployment track to move the patch to '
+            '("stable", "beta", "staging", or any custom track name '
+            'up to ${CommonArguments.trackNameMaxLength} characters).',
         mandatory: true,
       );
   }
@@ -46,7 +50,7 @@ class SetTrackCommand extends ShorebirdCommand {
   String get name => 'set-track';
 
   @override
-  String get description => 'Sets the track of a patch';
+  String get description => 'Sets the track of a patch.';
 
   @override
   Future<int> run() async {
@@ -64,6 +68,15 @@ class SetTrackCommand extends ShorebirdCommand {
     final flavor = results.findOption('flavor', argParser: argParser);
     final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
     final targetChannel = results['track'] as String;
+
+    if (targetChannel.isEmpty ||
+        targetChannel.length > CommonArguments.trackNameMaxLength) {
+      logger.err(
+        'Track name must be between 1 and '
+        '${CommonArguments.trackNameMaxLength} characters.',
+      );
+      return ExitCode.usage.code;
+    }
 
     final release = await codePushClientWrapper.getRelease(
       appId: appId,

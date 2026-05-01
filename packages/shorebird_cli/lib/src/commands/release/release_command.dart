@@ -112,7 +112,7 @@ Defaults to "latest" which builds using the latest stable Flutter version.''',
       ..addMultiOption(
         'platforms',
         abbr: 'p',
-        help: 'The platform(s) to to build this release for.',
+        help: 'The platform(s) to build this release for.',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),
         // TODO(bryanoltman): uncomment this once https://github.com/dart-lang/args/pull/273 lands
         // mandatory: true.
@@ -166,7 +166,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   @override
   String get description =>
-      'Creates a shorebird release for the provided target platforms';
+      'Creates a shorebird release for the provided target platforms.';
 
   @override
   String get name => 'release';

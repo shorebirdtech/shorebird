@@ -656,6 +656,49 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             ).called(1);
           },
         );
+
+        group('when display name is empty', () {
+          setUp(() {
+            when(() => argResults['display-name']).thenReturn('');
+          });
+
+          test('exits with usage error', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                'App display name must be between 1 and 128 characters.',
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when display name exceeds max length', () {
+          setUp(() {
+            when(() => argResults['display-name']).thenReturn('a' * 129);
+          });
+
+          test('exits with usage error', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                'App display name must be between 1 and 128 characters.',
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when display name is exactly max length', () {
+          setUp(() {
+            when(() => argResults['display-name']).thenReturn('a' * 128);
+          });
+
+          test('succeeds', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+          });
+        });
       });
 
       test('creates shorebird for an app without flavors', () async {

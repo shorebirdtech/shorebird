@@ -130,7 +130,7 @@ void main() {
     });
 
     test('description is correct', () {
-      expect(command.description, 'Sets the track of a patch');
+      expect(command.description, 'Sets the track of a patch.');
     });
 
     group('when validation fails', () {
@@ -152,6 +152,34 @@ void main() {
             checkUserIsAuthenticated: true,
             checkShorebirdInitialized: true,
           ),
+        ).called(1);
+      });
+    });
+
+    group('when track name is empty', () {
+      setUp(() {
+        when(() => argResults['track']).thenReturn('');
+      });
+
+      test('exits with usage error', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err('Track name must be between 1 and 128 characters.'),
+        ).called(1);
+      });
+    });
+
+    group('when track name exceeds max length', () {
+      setUp(() {
+        when(() => argResults['track']).thenReturn('a' * 129);
+      });
+
+      test('exits with usage error', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err('Track name must be between 1 and 128 characters.'),
         ).called(1);
       });
     });
