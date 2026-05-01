@@ -29,9 +29,6 @@ class ReleasesListCommand extends ShorebirdCommand {
       ..addOption(
         'platform',
         allowed: ReleasePlatform.values.map((p) => p.value),
-        allowedHelp: {
-          for (final p in ReleasePlatform.values) p.value: p.value,
-        },
         help: 'Filter to releases that have the specified platform.',
       );
   }
