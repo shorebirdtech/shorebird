@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -31,7 +32,14 @@ class InitCommand extends ShorebirdCommand {
         help: 'Initialize the app even if a "shorebird.yaml" already exists.',
         negatable: false,
       )
-      ..addOption('display-name', help: 'The display name of the app.')
+      ..addOption(
+        'display-name',
+        help:
+            'The app name shown in the Shorebird dashboard '
+            '(defaults to the package name in pubspec.yaml). '
+            'Must be between ${CommonArguments.appDisplayNameMinLength} and '
+            '${CommonArguments.appDisplayNameMaxLength} characters.',
+      )
       ..addOption('organization-id', help: 'The organization ID to use.');
   }
 
@@ -245,6 +253,15 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                   'prompting.',
             )
           : pubspecName;
+      if (displayName.isEmpty ||
+          displayName.length > CommonArguments.appDisplayNameMaxLength) {
+        logger.err(
+          'App display name must be between '
+          '${CommonArguments.appDisplayNameMinLength} and '
+          '${CommonArguments.appDisplayNameMaxLength} characters.',
+        );
+        return ExitCode.usage.code;
+      }
       final hasNoFlavors = productFlavors.isEmpty;
       final hasSomeFlavors =
           productFlavors.isNotEmpty &&

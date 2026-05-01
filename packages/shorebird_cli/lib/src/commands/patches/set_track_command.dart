@@ -27,7 +27,7 @@ class SetTrackCommand extends ShorebirdCommand {
       )
       ..addOption(
         'release',
-        help: 'The release version that the patch belongs to (ex: "1.0.0").',
+        help: 'The version of the release the patch belongs to (e.g. "1.0.0+1").',
         mandatory: true,
       )
       ..addOption(

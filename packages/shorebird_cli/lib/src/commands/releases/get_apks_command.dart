@@ -26,7 +26,9 @@ class GetApksCommand extends ShorebirdCommand {
     argParser
       ..addOption(
         CommonArguments.releaseVersionArg.name,
-        help: 'The release version to generate apks for.',
+        help:
+            'The version of the release to generate APKs for '
+            '(e.g. "1.0.0+1"). Prompts for selection if omitted.',
       )
       ..addOption(
         CommonArguments.flavorArg.name,

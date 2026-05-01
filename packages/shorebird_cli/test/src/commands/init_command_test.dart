@@ -9,6 +9,7 @@ import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/init_command.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -656,6 +657,55 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             ).called(1);
           },
         );
+
+        group('when display name is empty', () {
+          setUp(() {
+            when(() => argResults['display-name']).thenReturn('');
+          });
+
+          test('exits with usage error', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                'App display name must be between '
+                '${CommonArguments.appDisplayNameMinLength} and '
+                '${CommonArguments.appDisplayNameMaxLength} characters.',
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when display name exceeds max length', () {
+          setUp(() {
+            when(() => argResults['display-name'])
+                .thenReturn('a' * (CommonArguments.appDisplayNameMaxLength + 1));
+          });
+
+          test('exits with usage error', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                'App display name must be between '
+                '${CommonArguments.appDisplayNameMinLength} and '
+                '${CommonArguments.appDisplayNameMaxLength} characters.',
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when display name is exactly max length', () {
+          setUp(() {
+            when(() => argResults['display-name'])
+                .thenReturn('a' * CommonArguments.appDisplayNameMaxLength);
+          });
+
+          test('succeeds', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+          });
+        });
       });
 
       test('creates shorebird for an app without flavors', () async {

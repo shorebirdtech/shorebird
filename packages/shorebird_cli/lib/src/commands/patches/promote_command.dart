@@ -22,7 +22,7 @@ class PromoteCommand extends ShorebirdCommand {
       )
       ..addOption(
         'release-version',
-        help: 'The release being patched.',
+        help: 'The version of the release the patch belongs to (e.g. "1.0.0+1").',
         mandatory: true,
       )
       ..addOption(
