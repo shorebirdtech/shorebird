@@ -1,4 +1,4 @@
-// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec xcassets
+// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec xcassets actool
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
@@ -161,14 +162,32 @@ class AppleArchiveDiffer extends ArchiveDiffer {
   }
 
   /// Uses assetutil to write a json description of a .car file to disk and
-  /// diffs the contents of that file, less a timestamp line that changes based
-  /// on when the .car file was created.
+  /// hashes the contents of that file, less the lines that vary build-to-build
+  /// for reasons unrelated to asset content.
   Future<String> _sanitizedCarFileHash(ArchiveFile file) async {
     final jsonFile = await _carJsonFile(file);
     final lines = jsonFile.readAsLinesSync();
+    return _hash(sanitizeCarJson(lines).codeUnits);
+  }
+
+  /// Strips non-deterministic content from the lines of an
+  /// `assetutil --info` JSON dump so two builds of the same assets hash the
+  /// same. Currently removes:
+  ///
+  ///   * The `Timestamp` line, which records when the .car file was built.
+  ///   * UUIDs that `actool` embeds in the rendition file names of iOS 18
+  ///     layered icon (.icon) bundles, which are regenerated every build.
+  @visibleForTesting
+  static String sanitizeCarJson(List<String> lines) {
     final timestampRegex = RegExp(r'^\W+"Timestamp" : \d+$');
-    final linesToKeep = lines.whereNot(timestampRegex.hasMatch);
-    return _hash(linesToKeep.join('\n').codeUnits);
+    final uuidRegex = RegExp(
+      '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-'
+      '[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}',
+    );
+    return lines
+        .whereNot(timestampRegex.hasMatch)
+        .map((line) => line.replaceAll(uuidRegex, '<uuid>'))
+        .join('\n');
   }
 
   @override
