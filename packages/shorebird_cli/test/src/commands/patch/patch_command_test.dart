@@ -878,9 +878,7 @@ void main() {
               );
               verify(
                 () => logger.err(
-                  '--min-link-percentage must be an integer between '
-                  '${CommonArguments.minLinkPercentageMin} and '
-                  '${CommonArguments.minLinkPercentageMax} '
+                  '--min-link-percentage must be an integer between 0 and 100 '
                   '(got $value).',
                 ),
               ).called(1);
