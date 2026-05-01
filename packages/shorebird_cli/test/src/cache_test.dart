@@ -8,6 +8,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -18,6 +19,7 @@ import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -39,6 +41,7 @@ void main() {
     late Process chmodProcess;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
@@ -54,6 +57,7 @@ void main() {
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
       );
     }
@@ -87,9 +91,13 @@ void main() {
       platform = MockPlatform();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
       shorebirdProcess = MockShorebirdProcess();
 
       when(() => mockAbi.current).thenReturn(Abi.macosX64);
+      when(
+        () => shorebirdFlutter.resolveFlutterVersion(any()),
+      ).thenAnswer((_) async => null);
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
       when(
@@ -222,14 +230,16 @@ void main() {
             });
 
             test(
-              'uses darwin-arm64 on Apple Silicon when the Flutter revision '
-              'is in the arm64 patch allowlist',
-              () {
+              'uses darwin-arm64 on Apple Silicon when the Flutter version '
+              'satisfies the arm64 patch constraint',
+              () async {
                 when(() => mockAbi.current).thenReturn(Abi.macosArm64);
-                when(() => shorebirdEnv.flutterRevision).thenReturn(
-                  arm64PatchSupportingFlutterRevisions.first,
+                when(
+                  () => shorebirdFlutter.resolveFlutterVersion(any()),
+                ).thenAnswer(
+                  (_) async => arm64PatchSupportConstraint.minVersion,
                 );
-                final url = runWithOverrides(
+                final url = await runWithOverrides(
                   () => PatchArtifact(
                     cache: cache,
                     platform: platform,
@@ -240,14 +250,14 @@ void main() {
             );
 
             test(
-              'uses darwin-x64 on Apple Silicon when the Flutter revision '
-              'is not in the arm64 patch allowlist',
-              () {
+              'uses darwin-x64 on Apple Silicon when the Flutter version '
+              'is below the arm64 patch constraint floor',
+              () async {
                 when(() => mockAbi.current).thenReturn(Abi.macosArm64);
                 when(
-                  () => shorebirdEnv.flutterRevision,
-                ).thenReturn('not-in-allowlist');
-                final url = runWithOverrides(
+                  () => shorebirdFlutter.resolveFlutterVersion(any()),
+                ).thenAnswer((_) async => Version(3, 41, 6));
+                final url = await runWithOverrides(
                   () => PatchArtifact(
                     cache: cache,
                     platform: platform,
@@ -257,9 +267,9 @@ void main() {
               },
             );
 
-            test('uses darwin-x64 on Intel', () {
+            test('uses darwin-x64 on Intel', () async {
               when(() => mockAbi.current).thenReturn(Abi.macosX64);
-              final url = runWithOverrides(
+              final url = await runWithOverrides(
                 () =>
                     PatchArtifact(cache: cache, platform: platform).storageUrl,
               );
@@ -272,8 +282,8 @@ void main() {
               setMockPlatform(Platform.linux);
             });
 
-            test('uses linux-x64', () {
-              final url = runWithOverrides(
+            test('uses linux-x64', () async {
+              final url = await runWithOverrides(
                 () =>
                     PatchArtifact(cache: cache, platform: platform).storageUrl,
               );
@@ -286,8 +296,8 @@ void main() {
               setMockPlatform(Platform.windows);
             });
 
-            test('uses windows-x64', () {
-              final url = runWithOverrides(
+            test('uses windows-x64', () async {
+              final url = await runWithOverrides(
                 () =>
                     PatchArtifact(cache: cache, platform: platform).storageUrl,
               );
@@ -663,5 +673,6 @@ class _TestCachedArtifact extends CachedArtifact {
   File get file => File(p.join(_location.path, fileName));
 
   @override
-  String get storageUrl => 'https://example.com/test_artifact.exe';
+  Future<String> get storageUrl async =>
+      'https://example.com/test_artifact.exe';
 }

@@ -65,26 +65,16 @@ class FlutterSupportConstraint {
       version >= minVersion || allowedRevisions.contains(revision);
 }
 
-/// Shorebird Flutter pin SHAs whose engine builds upload
-/// `patch-darwin-arm64.zip` to GCS.
+/// Flutter support for downloading the `patch-darwin-arm64.zip` artifact
+/// on Apple Silicon. The arm64 upload was added in shorebirdtech/flutter#129
+/// (merged 2026-04-09); the tip of `flutter_release/3.41.7` and every
+/// subsequent release branch ships with it.
 ///
-/// The arm64 patch upload was added in shorebirdtech/flutter#129 (merged
-/// 2026-04-09). Engine builds since then include the artifact; older
-/// engine builds do not, even on the same `flutter_release/*` branch
-/// (pre-#129 commits remain present on the branches we still ship), so
-/// a pure version floor is too coarse to gate on.
-///
-/// Append a SHA each time Shorebird rolls a new Flutter pin. Once the
-/// oldest supported Shorebird CLI ships with a pin from this set, the
-/// constant — and the `useArm64` branch in `PatchArtifact.storageUrl`
-/// — can be removed.
-const arm64PatchSupportingFlutterRevisions = <String>{
-  // 3.41.8 — current pin (bin/internal/flutter.version).
-  '8e0003bdaef662b7f8f953a018c1dd38b7e2737a',
-  // 3.41.7 — prior pin; users who downgrade with `--flutter-version 3.41.7`
-  // resolve to this SHA.
-  'c2c56ab2d5483bdf86152725342f55ca6faed946',
-};
+/// Pre-floor pins fall back to `patch-darwin-x64.zip`, which works on
+/// Apple Silicon when Rosetta is installed.
+final arm64PatchSupportConstraint = FlutterSupportConstraint(
+  minVersion: Version(3, 41, 7),
+);
 
 /// Flutter support for `flutter build --shorebird-trace=<path>` for emitting
 /// Chrome Trace Event Format build traces.
