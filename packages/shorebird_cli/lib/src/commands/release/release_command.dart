@@ -162,10 +162,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       )
       ..addOption(
         'dd-max-bytes',
-        help: 'Override the Dynamic Dispatch table cascade byte threshold. '
+        defaultsTo: '10000',
+        help:
+            'Dynamic Dispatch table cascade byte threshold. '
             'Functions whose transitive caller tree exceeds this many bytes '
             'are routed through the indirect dispatch table. '
-            'Defaults to 10000 if not specified.',
+            'Set to 0 to disable.',
       );
   }
 

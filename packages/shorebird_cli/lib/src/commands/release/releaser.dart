@@ -109,7 +109,9 @@ abstract class Releaser {
   /// command-line flag would cause a build failure.
   int? get ddMaxBytes {
     final value = argResults['dd-max-bytes'] as String?;
-    return value != null ? int.tryParse(value) : null;
+    final parsed = value != null ? int.tryParse(value) : 10000;
+    // Return null if 0 (disabled) so the env var isn't set.
+    return (parsed != null && parsed > 0) ? parsed : null;
   }
 
   /// Path where the obfuscation map is saved during obfuscated builds.
