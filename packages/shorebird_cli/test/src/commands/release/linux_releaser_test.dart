@@ -299,6 +299,7 @@ To change the version of this release, change your app's version in your pubspec
             target: any(named: 'target'),
             args: any(named: 'args'),
             base64PublicKey: any(named: 'base64PublicKey'),
+            ddMaxBytes: any(named: 'ddMaxBytes'),
           ),
         ).thenAnswer((_) async => projectRoot);
       });
@@ -415,6 +416,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async {
             final mapPath = p.join(
@@ -437,6 +439,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: captureAny(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).captured;
 
@@ -469,6 +472,7 @@ To change the version of this release, change your app's version in your pubspec
                 target: any(named: 'target'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).thenAnswer((_) async {});
           });

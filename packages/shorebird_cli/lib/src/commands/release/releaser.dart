@@ -101,16 +101,26 @@ abstract class Releaser {
   /// passed either to Shorebird directly or forwarded to Flutter.
   bool get useObfuscation => argResults.flagPresent('obfuscate');
 
-  /// Optional override for the DD table cascade byte threshold.
+  /// DD table cascade byte threshold for the release build.
   ///
   /// Passed to Flutter tools via the SHOREBIRD_DD_MAX_BYTES environment
   /// variable for backwards compatibility: older Flutter builds that don't
   /// recognize the variable will silently ignore it, whereas an unknown
   /// command-line flag would cause a build failure.
+  ///
+  /// The CLI option (`--dd-max-bytes`) carries `defaultsTo: '10000'`, so the
+  /// default-enabled case arrives here as the string `'10000'`. We rely on
+  /// the option-parsing default rather than re-defaulting null here, so
+  /// callers that explicitly stub `argResults['dd-max-bytes']` to null
+  /// (e.g. tests, programmatic invocations) get DD-disabled rather than
+  /// silently re-enabled.
+  ///
+  /// Returns null when DD should be disabled: the option is absent, or the
+  /// value is `0` (the user's "disable DD" knob), or the value is malformed.
   int? get ddMaxBytes {
     final value = argResults['dd-max-bytes'] as String?;
-    final parsed = value != null ? int.tryParse(value) : 10000;
-    // Return null if 0 (disabled) so the env var isn't set.
+    if (value == null) return null;
+    final parsed = int.tryParse(value);
     return (parsed != null && parsed > 0) ? parsed : null;
   }
 
