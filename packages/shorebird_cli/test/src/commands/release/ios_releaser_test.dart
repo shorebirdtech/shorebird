@@ -423,6 +423,7 @@ $body
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -464,6 +465,7 @@ $body
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer(
             (_) async =>
