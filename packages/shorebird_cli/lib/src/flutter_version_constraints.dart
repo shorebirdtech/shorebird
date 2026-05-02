@@ -65,6 +65,17 @@ class FlutterSupportConstraint {
       version >= minVersion || allowedRevisions.contains(revision);
 }
 
+/// Flutter support for downloading the `patch-darwin-arm64.zip` artifact
+/// on Apple Silicon. The arm64 upload was added in shorebirdtech/flutter#129
+/// (merged 2026-04-09); the tip of `flutter_release/3.41.7` and every
+/// subsequent release branch ships with it.
+///
+/// Pre-floor pins fall back to `patch-darwin-x64.zip`, which works on
+/// Apple Silicon when Rosetta is installed.
+final arm64PatchSupportConstraint = FlutterSupportConstraint(
+  minVersion: Version(3, 41, 7),
+);
+
 /// Flutter support for `flutter build --shorebird-trace=<path>` for emitting
 /// Chrome Trace Event Format build traces.
 ///
