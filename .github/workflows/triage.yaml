@@ -3,25 +3,22 @@ name: Triage automation
 on:
   issues:
     types: [opened]
-  pull_request_target:
-    types: [opened]
   issue_comment:
     types: [created]
 
 permissions:
   issues: write
-  pull-requests: write
 
 jobs:
   add-needs-triage:
-    if: github.event_name == 'issues' || github.event_name == 'pull_request_target'
+    if: github.event_name == 'issues'
     runs-on: ubuntu-latest
     steps:
       - name: Add needs-triage label
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          NUMBER: ${{ github.event.issue.number }}
         run: |
           gh api -X POST "repos/$REPO/issues/$NUMBER/labels" \
             -f 'labels[]=needs-triage'
@@ -29,6 +26,7 @@ jobs:
   customer-replied:
     if: >-
       github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request == null &&
       github.event.comment.user.login == github.event.issue.user.login
     runs-on: ubuntu-latest
     steps:
