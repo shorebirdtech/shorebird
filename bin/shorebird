@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# cspell:words MSYS esac
 set -e
 
 # shared.sh expects PROG_NAME, BIN_DIR, and OS to be set.
