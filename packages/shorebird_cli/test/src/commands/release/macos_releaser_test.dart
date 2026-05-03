@@ -744,7 +744,6 @@ To change the version of this release, change your app's version in your pubspec
       );
 
       late Directory appDirectory;
-      late File podfileLockFile;
 
       setUp(() {
         when(() => argResults['codesign']).thenReturn(codesign);
@@ -753,16 +752,6 @@ To change the version of this release, change your app's version in your pubspec
         ).thenReturn(projectRoot);
 
         appDirectory = Directory.systemTemp.createTempSync();
-
-        podfileLockFile =
-            File(
-                p.join(
-                  Directory.systemTemp.createTempSync().path,
-                  'Podfile.lock',
-                ),
-              )
-              ..createSync(recursive: true)
-              ..writeAsStringSync(podfileLockContent);
 
         when(
           () => artifactManager.getMacOSAppDirectory(),
@@ -778,8 +767,8 @@ To change the version of this release, change your app's version in your pubspec
         ).thenAnswer((_) async => {});
 
         when(
-          () => shorebirdEnv.macosPodfileLockFile,
-        ).thenReturn(podfileLockFile);
+          () => shorebirdEnv.macosPodfileLockHash,
+        ).thenReturn('${sha256.convert(utf8.encode(podfileLockContent))}');
       });
 
       group('when app directory does not exist', () {

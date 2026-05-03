@@ -5,35 +5,33 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
-import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/metadata/metadata.dart';
-import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template ios_patcher}
 /// Functions to create an iOS patch.
 /// {@endtemplate}
-class IosPatcher extends Patcher {
+class IosPatcher extends Patcher
+    with ApplePatcherMixin, ApplePodfileLockPatcherMixin {
   /// {@macro ios_patcher}
   IosPatcher({
     required super.argResults,
@@ -51,26 +49,6 @@ class IosPatcher extends Patcher {
   String get _appDillCopyPath =>
       p.join(shorebirdEnv.buildDirectory.path, 'app.dill');
 
-  /// The name of the split debug info file when the target is iOS.
-  static const splitDebugInfoFileName = 'app.ios-arm64.symbols';
-
-  /// The additional gen_snapshot arguments to use when building the patch with
-  /// `--split-debug-info`.
-  static List<String> splitDebugInfoArgs(String? splitDebugInfoPath) {
-    return splitDebugInfoPath != null
-        ? [
-            '--dwarf-stack-traces',
-            '--resolve-dwarf-paths',
-            '''--save-debugging-info=${saveDebuggingInfoPath(splitDebugInfoPath)}''',
-          ]
-        : <String>[];
-  }
-
-  /// The path to save the split debug info file.
-  static String saveDebuggingInfoPath(String directory) {
-    return p.join(p.absolute(directory), splitDebugInfoFileName);
-  }
-
   /// The last build's link percentage.
   @visibleForTesting
   double? lastBuildLinkPercentage;
@@ -83,6 +61,9 @@ class IosPatcher extends Patcher {
   double? get linkPercentage => lastBuildLinkPercentage;
 
   @override
+  Json? get linkMetadata => lastBuildLinkMetadata;
+
+  @override
   ReleaseType get releaseType => ReleaseType.ios;
 
   @override
@@ -92,18 +73,13 @@ class IosPatcher extends Patcher {
   String? get supplementaryReleaseArtifactArch => 'ios_supplement';
 
   @override
-  Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkShorebirdInitialized: true,
-        checkUserIsAuthenticated: true,
-        validators: doctor.iosCommandValidators,
-        supportedOperatingSystems: {Platform.macOS},
-      );
-    } on PreconditionFailedException catch (error) {
-      throw ProcessExit(error.exitCode.code);
-    }
-  }
+  List<Validator> get applePlatformValidators => doctor.iosCommandValidators;
+
+  @override
+  String? get localPodfileLockHash => shorebirdEnv.iosPodfileLockHash;
+
+  @override
+  String get podfileLockRelativePath => 'ios/Podfile.lock';
 
   @override
   Future<void> assertArgsAreValid() async {
@@ -118,56 +94,6 @@ class IosPatcher extends Patcher {
         throw ProcessExit(ExitCode.usage.code);
       }
     }
-  }
-
-  @override
-  Future<DiffStatus> assertUnpatchableDiffs({
-    required ReleaseArtifact releaseArtifact,
-    required File releaseArchive,
-    required File patchArchive,
-  }) async {
-    // Check for diffs without warning about native changes, as Xcode builds
-    // can be nondeterministic. So we still have some hope of alerting users of
-    // unpatchable native changes, we compare the Podfile.lock hash between the
-    // patch and the release.
-    final diffStatus = await patchDiffChecker
-        .confirmUnpatchableDiffsIfNecessary(
-          localArchive: patchArchive,
-          releaseArchive: releaseArchive,
-          archiveDiffer: const AppleArchiveDiffer(),
-          allowAssetChanges: allowAssetDiffs,
-          allowNativeChanges: allowNativeDiffs,
-          confirmNativeChanges: false,
-        );
-
-    if (!diffStatus.hasNativeChanges) {
-      return diffStatus;
-    }
-
-    final podfileLockHash = shorebirdEnv.iosPodfileLockHash;
-    if (releaseArtifact.podfileLockHash != null &&
-        podfileLockHash != releaseArtifact.podfileLockHash) {
-      logger.warn(
-        '''
-Your ios/Podfile.lock is different from the one used to build the release.
-This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
-      );
-
-      if (!allowNativeDiffs) {
-        if (!shorebirdEnv.canAcceptUserInput) {
-          throw UnpatchableChangeException();
-        }
-
-        if (!logger.confirm(
-          'Continue anyway?',
-          hint: allowNativeDiffsHint,
-        )) {
-          throw UserCancelledException();
-        }
-      }
-    }
-
-    return diffStatus;
   }
 
   @override
@@ -210,7 +136,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       outFilePath: _aotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
       additionalArgs: [
-        ...splitDebugInfoArgs(splitDebugInfoPath),
+        ...ApplePatcherMixin.splitDebugInfoArgs(splitDebugInfoPath),
         ...obfuscationGenSnapshotArgs,
       ],
     );
@@ -275,7 +201,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
         kernelFile: File(_appDillCopyPath),
         releaseArtifact: releaseArtifactFile,
         splitDebugInfoArgs: [
-          ...splitDebugInfoArgs(splitDebugInfoPath),
+          ...ApplePatcherMixin.splitDebugInfoArgs(splitDebugInfoPath),
           ...obfuscationGenSnapshotArgs,
         ],
         aotOutputFile: File(_aotOutputPath),
@@ -365,15 +291,4 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       throw ProcessExit(ExitCode.software.code);
     }
   }
-
-  @override
-  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
-    CreatePatchMetadata metadata,
-  ) async => metadata.copyWith(
-    linkPercentage: lastBuildLinkPercentage,
-    linkMetadata: lastBuildLinkMetadata,
-    environment: metadata.environment.copyWith(
-      xcodeVersion: await xcodeBuild.version(),
-    ),
-  );
 }
