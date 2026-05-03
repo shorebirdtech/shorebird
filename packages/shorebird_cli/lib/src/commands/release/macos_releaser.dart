@@ -1,29 +1,26 @@
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
-import 'package:shorebird_cli/src/metadata/update_release_metadata.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template macos_releaser}
 /// Functions to build and publish a macOS release.
 /// {@endtemplate}
-class MacosReleaser extends Releaser {
+class MacosReleaser extends Releaser with AppleReleaserMixin {
   /// {@macro macos_releaser}
   MacosReleaser({
     required super.argResults,
@@ -47,36 +44,16 @@ class MacosReleaser extends Releaser {
   String get artifactDisplayName => 'macOS app';
 
   @override
+  List<Validator> get applePlatformValidators => doctor.macosCommandValidators;
+
+  @override
   Future<void> assertArgsAreValid() async {
-    if (argResults.wasParsed('release-version')) {
-      logger.err(
-        '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
-
-To change the version of this release, change your app's version in your pubspec.yaml.''',
-      );
-      throw ProcessExit(ExitCode.usage.code);
-    }
-
+    assertReleaseVersionFlagNotProvided();
     await assertObfuscationIsSupported();
   }
 
   @override
   Version? get minimumFlutterVersion => minimumSupportedMacosFlutterVersion;
-
-  @override
-  Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-        validators: doctor.macosCommandValidators,
-        supportedOperatingSystems: {Platform.macOS},
-      );
-    } on PreconditionFailedException catch (e) {
-      throw ProcessExit(e.exitCode.code);
-    }
-  }
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
@@ -148,34 +125,16 @@ To change the version of this release, change your app's version in your pubspec
       throw ProcessExit(ExitCode.software.code);
     }
 
-    final String? podfileLockHash;
-    if (shorebirdEnv.macosPodfileLockFile.existsSync()) {
-      podfileLockHash = sha256
-          .convert(shorebirdEnv.macosPodfileLockFile.readAsBytesSync())
-          .toString();
-    } else {
-      podfileLockHash = null;
-    }
-
     await codePushClientWrapper.createMacosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
       appPath: appDirectory.path,
       isCodesigned: codesign,
-      podfileLockHash: podfileLockHash,
+      podfileLockHash: shorebirdEnv.macosPodfileLockHash,
     );
 
     await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
-
-  @override
-  Future<UpdateReleaseMetadata> updatedReleaseMetadata(
-    UpdateReleaseMetadata metadata,
-  ) async => metadata.copyWith(
-    environment: metadata.environment.copyWith(
-      xcodeVersion: await xcodeBuild.version(),
-    ),
-  );
 
   @override
   String get postReleaseInstructions =>

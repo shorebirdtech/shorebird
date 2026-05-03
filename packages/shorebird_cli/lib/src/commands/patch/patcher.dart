@@ -247,6 +247,11 @@ More info: ${troubleshootingUrl.toLink()}.
   /// step has not yet been run.
   double? get linkPercentage => null;
 
+  /// Linker output (link map / version info) attached to patch metadata.
+  /// Returns `null` if the platform does not use a linker or if the linking
+  /// step has not yet been run.
+  Json? get linkMetadata => null;
+
   /// The value of `--split-debug-info-path` if specified.
   String? get splitDebugInfoPath {
     return argResults.findOption(

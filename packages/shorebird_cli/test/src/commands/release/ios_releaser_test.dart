@@ -912,7 +912,6 @@ $body
       late Directory xcarchiveDirectory;
       late Directory iosAppDirectory;
       late Directory supplementDirectory;
-      late File podfileLockFile;
 
       setUp(() {
         when(() => argResults['codesign']).thenReturn(codesign);
@@ -923,15 +922,6 @@ $body
         xcarchiveDirectory = Directory.systemTemp.createTempSync();
         iosAppDirectory = Directory.systemTemp.createTempSync();
         supplementDirectory = Directory.systemTemp.createTempSync();
-        podfileLockFile =
-            File(
-                p.join(
-                  Directory.systemTemp.createTempSync().path,
-                  'Podfile.lock',
-                ),
-              )
-              ..createSync(recursive: true)
-              ..writeAsStringSync(podfileLockContent);
         when(
           artifactManager.getXcarchiveDirectory,
         ).thenReturn(xcarchiveDirectory);
@@ -953,7 +943,9 @@ $body
             podfileLockHash: any(named: 'podfileLockHash'),
           ),
         ).thenAnswer((_) async => {});
-        when(() => shorebirdEnv.iosPodfileLockFile).thenReturn(podfileLockFile);
+        when(
+          () => shorebirdEnv.iosPodfileLockHash,
+        ).thenReturn('${sha256.convert(utf8.encode(podfileLockContent))}');
       });
 
       test('forwards call to codePushClientWrapper', () async {

@@ -3,32 +3,29 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
-import 'package:shorebird_cli/src/metadata/metadata.dart';
-import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// {@template macos_patcher}
 /// Functions to create and apply patches to a macOS release.
 /// {@endtemplate}
-class MacosPatcher extends Patcher {
+class MacosPatcher extends Patcher
+    with ApplePatcherMixin, ApplePodfileLockPatcherMixin {
   /// {@macro macos_patcher}
   MacosPatcher({
     required super.argParser,
@@ -61,70 +58,13 @@ class MacosPatcher extends Patcher {
   String? get supplementaryReleaseArtifactArch => 'macos_supplement';
 
   @override
-  Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkShorebirdInitialized: true,
-        checkUserIsAuthenticated: true,
-        validators: doctor.macosCommandValidators,
-        supportedOperatingSystems: {Platform.macOS},
-      );
-    } on PreconditionFailedException catch (error) {
-      throw ProcessExit(error.exitCode.code);
-    }
-  }
+  List<Validator> get applePlatformValidators => doctor.macosCommandValidators;
 
-  // TODO(bryanoltman): this is a direct copy of IosPatcher's implementation. We
-  // should consolidate this and other copied code.
   @override
-  Future<DiffStatus> assertUnpatchableDiffs({
-    required ReleaseArtifact releaseArtifact,
-    required File releaseArchive,
-    required File patchArchive,
-  }) async {
-    // Check for diffs without warning about native changes, as Xcode builds
-    // can be nondeterministic. So we still have some hope of alerting users of
-    // unpatchable native changes, we compare the Podfile.lock hash between the
-    // patch and the release.
-    final diffStatus = await patchDiffChecker
-        .confirmUnpatchableDiffsIfNecessary(
-          localArchive: patchArchive,
-          releaseArchive: releaseArchive,
-          archiveDiffer: const AppleArchiveDiffer(),
-          allowAssetChanges: allowAssetDiffs,
-          allowNativeChanges: allowNativeDiffs,
-          confirmNativeChanges: false,
-        );
+  String? get localPodfileLockHash => shorebirdEnv.macosPodfileLockHash;
 
-    if (!diffStatus.hasNativeChanges) {
-      return diffStatus;
-    }
-
-    final podfileLockHash = shorebirdEnv.macosPodfileLockHash;
-    if (releaseArtifact.podfileLockHash != null &&
-        podfileLockHash != releaseArtifact.podfileLockHash) {
-      logger.warn(
-        '''
-Your macos/Podfile.lock is different from the one used to build the release.
-This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
-      );
-
-      if (!allowNativeDiffs) {
-        if (!shorebirdEnv.canAcceptUserInput) {
-          throw UnpatchableChangeException();
-        }
-
-        if (!logger.confirm(
-          'Continue anyway?',
-          hint: allowNativeDiffsHint,
-        )) {
-          throw UserCancelledException();
-        }
-      }
-    }
-
-    return diffStatus;
-  }
+  @override
+  String get podfileLockRelativePath => 'macos/Podfile.lock';
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
@@ -165,7 +105,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       outFilePath: _arm64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
       additionalArgs: [
-        ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        ...ApplePatcherMixin.splitDebugInfoArgs(splitDebugInfoPath),
         ...obfuscationGenSnapshotArgs,
       ],
     );
@@ -179,7 +119,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       outFilePath: _x64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
       additionalArgs: [
-        ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        ...ApplePatcherMixin.splitDebugInfoArgs(splitDebugInfoPath),
         ...obfuscationGenSnapshotArgs,
       ],
     );
@@ -296,12 +236,4 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     }
   }
 
-  @override
-  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
-    CreatePatchMetadata metadata,
-  ) async => metadata.copyWith(
-    environment: metadata.environment.copyWith(
-      xcodeVersion: await xcodeBuild.version(),
-    ),
-  );
 }
