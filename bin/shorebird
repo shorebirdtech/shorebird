@@ -11,6 +11,34 @@ OS="$(uname -s)"
 
 FLUTTER_VERSION=`cat "$BIN_DIR/internal/flutter.version"`
 
+# Fast path for `shorebird cache clean` / `shorebird cache clear` when the
+# compiled snapshot is missing. Re-bootstrapping just to compile a snapshot
+# we are about to delete is wasted work and re-downloads the Flutter SDK
+# and engine artifacts on every other invocation. See
+# https://github.com/shorebirdtech/shorebird/issues/2234.
+#
+# Only matched in the bare `cache clean` form (no global flags, no extra
+# args). Anything else falls through to the regular Dart command, which
+# requires the snapshot to be present.
+if [[ "$1" == "cache" && ( "$2" == "clean" || "$2" == "clear" ) && $# -eq 2 \
+      && ! -f "$BIN_DIR/cache/shorebird.snapshot" ]]; then
+  if [[ -d "$BIN_DIR/cache" ]]; then
+    if ! rm -rf "$BIN_DIR/cache" 2>/dev/null; then
+      echo "Failed to delete cache directory $BIN_DIR/cache" >&2
+      case "$OS" in
+        MINGW*|MSYS*|CYGWIN*)
+          echo "" >&2
+          echo "This could be because a program is using a file in the cache directory. To find and stop such a program, see:" >&2
+          echo "    https://superuser.com/questions/1333118/cant-delete-empty-folder-because-it-is-used" >&2
+          ;;
+      esac
+      exit 70
+    fi
+  fi
+  echo "Cleared cache"
+  exit 0
+fi
+
 # If the Flutter SDK for the requested version hasn't been downloaded yet,
 # clear the bootstrap stamp so that shared.sh triggers a re-bootstrap.
 # shared.sh keys the stamp on the Shorebird git revision alone, so changing

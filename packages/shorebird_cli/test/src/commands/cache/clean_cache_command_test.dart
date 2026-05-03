@@ -22,6 +22,12 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late CleanCacheCommand command;
 
+    setUpAll(() {
+      // Required for `any()` to work with `cache.updateAll(...)` in
+      // `verifyNever` calls.
+      registerFallbackValue(Duration.zero);
+    });
+
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         body,
@@ -58,6 +64,17 @@ void main() {
       expect(result, equals(ExitCode.success.code));
       verify(() => progress.complete('Cleared cache')).called(1);
       verify(cache.clear).called(1);
+    });
+
+    // Regression guard for https://github.com/shorebirdtech/shorebird/issues/2234
+    // (and the unit-test follow-up tracked in #2273). The earlier flow could
+    // end up populating the cache before clearing it, defeating the point of
+    // `cache clean`. Even though the current implementation only calls
+    // `clear()`, this assertion makes sure `updateAll` doesn't sneak back in.
+    test('does not update the cache before clearing it', () async {
+      when(cache.clear).thenAnswer((_) async {});
+      await runWithOverrides(command.run);
+      verifyNever(() => cache.updateAll(any()));
     });
 
     group('on failure', () {
