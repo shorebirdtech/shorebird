@@ -244,5 +244,4 @@ class IosFrameworkPatcher extends Patcher with ApplePatcherMixin {
       'Release version must be specified using --release-version.',
     );
   }
-
 }

@@ -235,5 +235,4 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       throw ProcessExit(ExitCode.software.code);
     }
   }
-
 }

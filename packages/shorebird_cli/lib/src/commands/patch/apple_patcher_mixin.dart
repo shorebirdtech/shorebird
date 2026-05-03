@@ -70,7 +70,9 @@ mixin ApplePatcherMixin on Patcher {
     ),
   );
 
-  @override
+  /// Linker output (link map / version info) attached to patch metadata.
+  /// Returns `null` if the platform does not use a linker or if the linking
+  /// step has not yet been run.
   Json? get linkMetadata => null;
 }
 
