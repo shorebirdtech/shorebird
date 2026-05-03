@@ -226,7 +226,9 @@ void main() {
         test('prompts for displayName when not provided', () async {
           const appName = 'test app';
           const app = App(id: appId, displayName: 'Test App');
-          when(() => logger.prompt(any())).thenReturn(appName);
+          when(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).thenReturn(appName);
           when(
             () => codePushClient.createApp(
               displayName: appName,
@@ -239,7 +241,9 @@ void main() {
                 codePushClientWrapper.createApp(organizationId: organizationId),
           );
 
-          verify(() => logger.prompt(any())).called(1);
+          verify(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).called(1);
           verify(
             () => codePushClient.createApp(
               displayName: appName,
@@ -265,7 +269,7 @@ void main() {
             ),
           );
 
-          verifyNever(() => logger.prompt(any()));
+          verifyNever(() => logger.prompt(any(), hint: any(named: 'hint')));
           verify(
             () => codePushClient.createApp(
               displayName: appName,

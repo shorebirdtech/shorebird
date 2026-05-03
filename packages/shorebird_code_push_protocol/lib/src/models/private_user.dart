@@ -28,7 +28,8 @@ class PrivateUser {
         id: json['id'] as int,
         email: json['email'] as String,
         displayName: json['display_name'] as String?,
-        hasActiveSubscription: json['has_active_subscription'] as bool?,
+        hasActiveSubscription:
+            json['has_active_subscription'] as bool? ?? false,
         stripeCustomerId: json['stripe_customer_id'] as String?,
         jwtIssuer: json['jwt_issuer'] as String,
         patchOverageLimit: json['patch_overage_limit'] as int?,

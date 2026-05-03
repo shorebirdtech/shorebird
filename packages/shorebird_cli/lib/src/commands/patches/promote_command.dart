@@ -1,6 +1,7 @@
 import 'package:cli_io/cli_io.dart';
 import 'package:collection/collection.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
@@ -22,12 +23,12 @@ class PromoteCommand extends ShorebirdCommand {
       )
       ..addOption(
         'release-version',
-        help: 'The release being patched',
+        help: CommonArguments.patchReleaseVersionDescription,
         mandatory: true,
       )
       ..addOption(
         'patch-number',
-        help: 'The number of the patch to promote to the stable channel',
+        help: 'The number of the patch to promote to the stable channel.',
         mandatory: true,
       );
   }

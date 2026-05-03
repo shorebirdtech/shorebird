@@ -158,7 +158,10 @@ This may indicate that the patch contains native changes, which cannot be applie
           throw UnpatchableChangeException();
         }
 
-        if (!logger.confirm('Continue anyway?')) {
+        if (!logger.confirm(
+          'Continue anyway?',
+          hint: allowNativeDiffsHint,
+        )) {
           throw UserCancelledException();
         }
       }

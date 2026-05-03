@@ -41,8 +41,11 @@ class DependencyResolver {
       if (entry.value is YamlMap) {
         final pathValue = (entry.value as YamlMap)['path'];
         if (pathValue != null) {
-          final resolved = p.normalize(
-            p.join(packageDir, pathValue as String),
+          // Repo-relative paths flow into YAML and Linux runners, so
+          // resolve with the POSIX context to keep separators forward-
+          // slashed on Windows.
+          final resolved = p.posix.normalize(
+            p.posix.join(packageDir, pathValue as String),
           );
           deps.add(resolved);
         }

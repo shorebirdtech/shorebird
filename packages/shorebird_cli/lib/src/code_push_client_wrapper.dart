@@ -102,6 +102,9 @@ class CodePushClientWrapper {
       displayName = logger.prompt(
         '${lightGreen.wrap('?')} How should we refer to this app?',
         defaultValue: defaultAppName,
+        hint:
+            'Pass --display-name=<name> to set the app name without '
+            'prompting.',
       );
     } else {
       displayName = appName;

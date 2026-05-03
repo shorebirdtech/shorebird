@@ -1,0 +1,67 @@
+# cspell:words pipefail
+name: Publish Dart Package
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        required: true
+        type: string
+        description: Path to the package directory (e.g., packages/shorebird_ci).
+      tag_prefix:
+        required: true
+        type: string
+        description: |
+          Tag prefix expected for this package (e.g., "shorebird_ci-v"). The
+          version after the prefix must match the version in pubspec.yaml.
+
+jobs:
+  publish:
+    name: 📦 Publish ${{ inputs.working_directory }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v6
+
+      - name: 🎯 Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: 🔎 Verify tag matches pubspec version
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          set -euo pipefail
+          PUBSPEC_VERSION=$(awk '/^version:/ {print $2}' pubspec.yaml)
+          TAG_VERSION="${GITHUB_REF_NAME#${{ inputs.tag_prefix }}}"
+          echo "Tag version:     $TAG_VERSION"
+          echo "Pubspec version: $PUBSPEC_VERSION"
+          [ -n "$PUBSPEC_VERSION" ] || { echo "::error::no version found in pubspec.yaml"; exit 1; }
+          [ -n "$TAG_VERSION" ] || { echo "::error::tag $GITHUB_REF_NAME has no version after prefix ${{ inputs.tag_prefix }}"; exit 1; }
+          if [ "$PUBSPEC_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match pubspec version ($PUBSPEC_VERSION)"
+            exit 1
+          fi
+
+      - name: 📦 Install dependencies
+        working-directory: ${{ inputs.working_directory }}
+        run: dart pub get
+
+      - name: 🔍 Analyze
+        working-directory: ${{ inputs.working_directory }}
+        run: dart analyze --fatal-warnings lib test
+
+      - name: 🧪 Test
+        working-directory: ${{ inputs.working_directory }}
+        run: dart test
+
+      - name: 🚀 Publish (dry run)
+        working-directory: ${{ inputs.working_directory }}
+        run: dart pub publish --dry-run
+
+      - name: 🚀 Publish
+        working-directory: ${{ inputs.working_directory }}
+        run: dart pub publish --force

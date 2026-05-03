@@ -162,8 +162,13 @@ class RepositoryAnalyzer {
 
   static bool _isUnderSubmodule(String path, Set<String> submodulePaths) {
     for (final submodule in submodulePaths) {
-      if (path == submodule) return true;
-      if (path.startsWith('$submodule${p.separator}')) return true;
+      // p.equals / p.isWithin handle mixed separators (the submodule
+      // path comes from git as POSIX, while the walked Directory.path
+      // is platform-native — naive string compare misses on Windows).
+      // p.isWithin is also non-trivial-prefix-aware: a submodule at
+      // `packages/foo` does not match `packages/foo_bar`.
+      if (p.equals(path, submodule)) return true;
+      if (p.isWithin(submodule, path)) return true;
     }
     return false;
   }

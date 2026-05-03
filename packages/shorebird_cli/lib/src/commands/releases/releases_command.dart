@@ -14,5 +14,5 @@ class ReleasesCommand extends ShorebirdCommand {
   String get name => 'releases';
 
   @override
-  String get description => 'Manage Shorebird releases';
+  String get description => 'Manage Shorebird releases.';
 }

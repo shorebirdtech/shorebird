@@ -137,6 +137,11 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
     description: 'The version of the release (e.g. "1.0.0").',
   );
 
+  /// Help text for release version arguments in patch commands, where the
+  /// version identifies which release the patch belongs to.
+  static const patchReleaseVersionDescription =
+      'The version of the release the patch belongs to (e.g. "1.0.0+1").';
+
   /// The Flutter --obfuscate argument.
   static const obfuscateArg = ArgumentDescriber(
     name: 'obfuscate',
@@ -167,13 +172,26 @@ Bypass all confirmation messages. It's generally not advised to use this unless 
 ''',
   );
 
+  /// Maximum character length for an app display name.
+  static const appDisplayNameMaxLength = 128;
+
+  /// Maximum character length for a track name.
+  static const trackNameMaxLength = 128;
+
+  /// Minimum valid value for [minLinkPercentage].
+  static const minLinkPercentageMin = 0;
+
+  /// Maximum valid value for [minLinkPercentage].
+  static const minLinkPercentageMax = 100;
+
   /// An argument that allows the user to specify a minimum link percentage
   /// threshold.
   static const minLinkPercentage = ArgumentDescriber(
     name: 'min-link-percentage',
     defaultValue: '0',
-    description: '''
-The minimum link percentage (0-100) required in order to generate a patch (Apple platforms only).
+    description:
+        '''
+The minimum link percentage ($minLinkPercentageMin-$minLinkPercentageMax) required in order to generate a patch (Apple platforms only).
 
 Patches with a lower link percentage than what is provided here will fail.
 ''',

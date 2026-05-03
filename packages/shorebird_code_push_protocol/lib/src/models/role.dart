@@ -21,7 +21,7 @@ enum Role {
 
   const Role._(this.value);
 
-  /// Creates a Role from a json string.
+  /// Creates a Role from a json value.
   factory Role.fromJson(String json) {
     return Role.values.firstWhere(
       (value) => value.value == json,
@@ -29,7 +29,7 @@ enum Role {
     );
   }
 
-  /// Convenience to create a nullable type from a nullable json object.
+  /// Convenience to create a nullable type from a nullable json value.
   /// Useful when parsing optional fields.
   static Role? maybeFromJson(String? json) {
     if (json == null) {
@@ -38,14 +38,14 @@ enum Role {
     return Role.fromJson(json);
   }
 
-  /// The value of the enum, as a string.  This is the exact value
+  /// The value of the enum.  This is the exact value
   /// from the OpenAPI spec and will be used for network transport.
   final String value;
 
-  /// Converts the enum to a json string.
+  /// Converts the enum to its json value.
   String toJson() => value;
 
-  /// Returns the string value of the enum.
+  /// Returns the string form of the enum.
   @override
   String toString() => value;
 }

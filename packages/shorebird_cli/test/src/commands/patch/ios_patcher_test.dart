@@ -471,7 +471,9 @@ Your ios/Podfile.lock is different from the one used to build the release.
 This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
                     ),
                   ).called(1);
-                  verifyNever(() => logger.confirm(any()));
+                  verifyNever(
+                    () => logger.confirm(any(), hint: any(named: 'hint')),
+                  );
                 },
               );
             });
@@ -484,7 +486,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
                 group('when user opts to continue at prompt', () {
                   setUp(() {
-                    when(() => logger.confirm(any())).thenReturn(true);
+                    when(
+                      () => logger.confirm(any(), hint: any(named: 'hint')),
+                    ).thenReturn(true);
                   });
 
                   test('returns diff status from patchDiffChecker', () async {
@@ -501,7 +505,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
                 group('when user aborts at prompt', () {
                   setUp(() {
-                    when(() => logger.confirm(any())).thenReturn(false);
+                    when(
+                      () => logger.confirm(any(), hint: any(named: 'hint')),
+                    ).thenReturn(false);
                   });
 
                   test('throws UserCancelledException', () async {

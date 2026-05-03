@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cli_io/cli_io.dart';
 import 'package:collection/collection.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -31,7 +32,14 @@ class InitCommand extends ShorebirdCommand {
         help: 'Initialize the app even if a "shorebird.yaml" already exists.',
         negatable: false,
       )
-      ..addOption('display-name', help: 'The display name of the app.')
+      ..addOption(
+        'display-name',
+        help:
+            'The app name shown in the Shorebird dashboard '
+            '(defaults to the package name in pubspec.yaml). '
+            'Must be between 1 and '
+            '${CommonArguments.appDisplayNameMaxLength} characters.',
+      )
       ..addOption('organization-id', help: 'The organization ID to use.');
   }
 
@@ -104,6 +112,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         'Which organization should this app belong to?',
         choices: organizationMemberships.map((o) => o.organization).toList(),
         display: (o) => o.name,
+        hint:
+            'Pass --organization-id=<id> to select an organization without '
+            'prompting.',
       );
     } else {
       organization = organizationMemberships.first.organization;
@@ -237,8 +248,19 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           ? logger.prompt(
               '${lightGreen.wrap('?')} How should we refer to this app?',
               defaultValue: pubspecName,
+              hint:
+                  'Pass --display-name=<name> to set the app name without '
+                  'prompting.',
             )
           : pubspecName;
+      if (displayName.isEmpty ||
+          displayName.length > CommonArguments.appDisplayNameMaxLength) {
+        logger.err(
+          'App display name must be between 1 and '
+          '${CommonArguments.appDisplayNameMaxLength} characters.',
+        );
+        return ExitCode.usage.code;
+      }
       final hasNoFlavors = productFlavors.isEmpty;
       final hasSomeFlavors =
           productFlavors.isNotEmpty &&

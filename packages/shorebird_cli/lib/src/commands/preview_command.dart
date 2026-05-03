@@ -300,6 +300,9 @@ This is only applicable when previewing Android releases.''',
       'Which app would you like to preview?',
       choices: apps,
       display: (app) => app.displayName,
+      hint:
+          'Pass --app-id=<app-id> to preview a specific app without '
+          'prompting.',
     );
     return app.appId;
   }
@@ -321,6 +324,9 @@ This is only applicable when previewing Android releases.''',
     final platform = logger.chooseOne(
       'Which platform would you like to preview?',
       choices: platformNames,
+      hint:
+          'Pass --platform=<android|ios|...> to preview a specific platform '
+          'without prompting.',
     );
     return ReleasePlatform.values.firstWhere((p) => p.displayName == platform);
   }

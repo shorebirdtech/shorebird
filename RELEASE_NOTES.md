@@ -4,6 +4,19 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde
  -->
 
+## 1.6.96 (April 30, 2026)
+
+- 🐦 Support for Flutter 3.41.9
+  - Fixes a potential integer overflow when handling some animated PNG files
+- ✨ Non-interactive mode hardening (`--no-input` flag, non-TTY detection)
+  - Prompts fail fast with per-site hints instead of blocking on stdin
+  - Spinners replaced with static `Starting / Done` lines; ANSI escapes suppressed
+  - Parse-time errors now emit JSON envelopes under `--json`
+
+## 1.6.95 (April 29, 2026)
+
+- 🩺 Doctor: allow `FLUTTER_TARGET` override (commonly customized for flavor-specific entry points) and downgrade other `FLUTTER_*` build setting overrides from error to warning
+
 ## 1.6.94 (April 28, 2026)
 
 - 🐦 Support for Flutter 3.41.8

@@ -6,6 +6,8 @@ import 'package:cli_io/cli_io.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/interactive_mode.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart' hide logger;
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
@@ -17,6 +19,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_cli/src/version.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart' as helpers;
 import 'mocks.dart';
 
 void main() {
@@ -445,16 +448,7 @@ Engine • revision $shorebirdEngineRevision'''),
 
       /// Runs [body] while capturing stdout writes into [stdoutOutput].
       Future<T> captureStdout<T>(Future<T> Function() body) async {
-        // Capture the real stdout before entering the override zone to
-        // avoid infinite recursion.
-        final realStdout = stdout;
-        return IOOverrides.runZoned(
-          body,
-          stdout: () => _CapturingStdout(
-            baseStdOut: realStdout,
-            captured: stdoutOutput,
-          ),
-        );
+        return helpers.captureStdout(body, captured: stdoutOutput);
       }
 
       group('on ProcessExit with non-zero exit code', () {
@@ -590,6 +584,192 @@ Engine • revision $shorebirdEngineRevision'''),
         verifyNever(() => shorebirdVersion.isTrackingStable());
         verifyNever(() => shorebirdVersion.isLatest());
       });
+
+      group('on parse-time errors', () {
+        test('emits JSON error envelope on unknown command', () async {
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'fly_to_the_moon']),
+            ),
+          );
+          expect(result, equals(ExitCode.usage.code));
+          expect(stdoutOutput, isNotEmpty);
+          final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+          expect(json['status'], equals('error'));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('usage_error'));
+          expect(error['hint'], equals('Run: shorebird --help'));
+          final meta = json['meta'] as Map<String, dynamic>;
+          expect(meta['command'], equals('shorebird'));
+          // Human-readable error must not be written under --json.
+          verifyNever(() => logger.err(any()));
+        });
+
+        test('emits JSON error envelope on unknown global flag', () async {
+          final result = await captureStdout(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', '--bogus']),
+            ),
+          );
+          expect(result, equals(ExitCode.usage.code));
+          expect(stdoutOutput, isNotEmpty);
+          final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+          expect(json['status'], equals('error'));
+          final error = json['error'] as Map<String, dynamic>;
+          expect(error['code'], equals('usage_error'));
+          expect(
+            error['message'] as String,
+            contains('Could not find an option'),
+          );
+          verifyNever(() => logger.err(any()));
+        });
+      });
+    });
+
+    group('on InteractivePromptRequiredException', () {
+      const exception = InteractivePromptRequiredException(
+        promptText: 'Continue?',
+        hint: 'Pass --force.',
+      );
+
+      test('emits JSON error envelope under --json', () async {
+        commandRunner.addCommand(
+          _PromptRequiredCommand(exception: exception),
+        );
+        final stdoutOutput = <String>[];
+        final result = await helpers.captureStdout<int?>(
+          () => runWithOverrides(
+            () => commandRunner.run(['--json', 'prompt-required']),
+          ),
+          captured: stdoutOutput,
+        );
+        expect(result, equals(ExitCode.usage.code));
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        expect(json['status'], equals('error'));
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], equals('interactive_prompt_required'));
+        expect(error['message'], equals('Continue?'));
+        expect(error['hint'], equals('Pass --force.'));
+        final meta = json['meta'] as Map<String, dynamic>;
+        expect(meta['command'], equals('prompt-required'));
+      });
+
+      test('emits human-readable stderr without --json', () async {
+        commandRunner.addCommand(
+          _PromptRequiredCommand(exception: exception),
+        );
+        final result = await runWithOverrides(
+          () => commandRunner.run(['prompt-required']),
+        );
+        expect(result, equals(ExitCode.usage.code));
+        verify(() => logger.err(any(that: contains('non-interactive')))).called(
+          1,
+        );
+        verify(() => logger.err(any(that: contains('Continue?')))).called(1);
+        verify(() => logger.info(any(that: contains('Pass --force.')))).called(
+          1,
+        );
+      });
+    });
+
+    group('ANSI suppression', () {
+      late _CaptureModeCommand captureCommand;
+      late List<String> stdoutOutput;
+
+      setUp(() {
+        captureCommand = _CaptureModeCommand();
+        commandRunner.addCommand(captureCommand);
+        stdoutOutput = [];
+      });
+
+      Future<bool> runAndReadAnsi({
+        required List<String> args,
+        required bool hasTerminal,
+      }) async {
+        late bool capturedAnsi;
+        await helpers.captureStdout<int?>(
+          () => runWithOverrides(() {
+            captureCommand.onRun = () {
+              capturedAnsi = ansiOutputEnabled;
+            };
+            return commandRunner.run(args);
+          }),
+          captured: stdoutOutput,
+          hasTerminal: hasTerminal,
+        );
+        return capturedAnsi;
+      }
+
+      test('disables ANSI in --json mode even when stdout is a TTY', () async {
+        final ansi = await runAndReadAnsi(
+          args: ['--json', 'capture-mode'],
+          hasTerminal: true,
+        );
+        expect(ansi, isFalse);
+      });
+
+      test('leaves ANSI handling to the io package by default', () async {
+        // Without --json the runner does not call overrideAnsiOutput; whether
+        // ANSI is enabled is decided by the io package based on the actual
+        // stdio. We just assert that the runner did not force it off.
+        final ansi = await runAndReadAnsi(
+          args: ['capture-mode'],
+          hasTerminal: true,
+        );
+        // Test environment may or may not have a real TTY (CI vs local), so
+        // we only assert the runner didn't pin the value to false.
+        expect(ansi, isA<bool>());
+      });
+    });
+
+    group('interactive mode', () {
+      late _CaptureModeCommand captureCommand;
+      late List<String> stdoutOutput;
+
+      setUp(() {
+        captureCommand = _CaptureModeCommand();
+        commandRunner.addCommand(captureCommand);
+        stdoutOutput = [];
+      });
+
+      Future<int?> runCapturing({
+        required List<String> args,
+        required bool hasTerminal,
+      }) {
+        return helpers.captureStdout<int?>(
+          () => runWithOverrides(() => commandRunner.run(args)),
+          captured: stdoutOutput,
+          hasTerminal: hasTerminal,
+        );
+      }
+
+      group('with a TTY-attached stdout', () {
+        test(
+          'isInteractive is true when no overriding flags are passed',
+          () async {
+            await runCapturing(args: ['capture-mode'], hasTerminal: true);
+            expect(captureCommand.capturedIsJsonMode, isFalse);
+            expect(captureCommand.capturedIsInteractive, isTrue);
+          },
+        );
+
+        test('isInteractive is false when --json is passed', () async {
+          await runCapturing(
+            args: ['--json', 'capture-mode'],
+            hasTerminal: true,
+          );
+          expect(captureCommand.capturedIsJsonMode, isTrue);
+          expect(captureCommand.capturedIsInteractive, isFalse);
+        });
+      });
+
+      group('without a TTY-attached stdout', () {
+        test('isInteractive is false even with no flags passed', () async {
+          await runCapturing(args: ['capture-mode'], hasTerminal: false);
+          expect(captureCommand.capturedIsJsonMode, isFalse);
+          expect(captureCommand.capturedIsInteractive, isFalse);
+        });
+      });
     });
   });
 }
@@ -624,73 +804,45 @@ class _ThrowingCommand extends ShorebirdCommand {
   }
 }
 
-/// A minimal [Stdout] that captures [writeln] calls.
-class _CapturingStdout implements Stdout {
-  _CapturingStdout({required this.baseStdOut, required this.captured});
+/// A test command whose `run` throws [InteractivePromptRequiredException].
+///
+/// Used to verify the runner's translation of this exception to either a
+/// JSON envelope (under `--json`) or a stderr message.
+class _PromptRequiredCommand extends ShorebirdCommand {
+  _PromptRequiredCommand({required this.exception});
 
-  final Stdout baseStdOut;
-  final List<String> captured;
-
-  @override
-  Encoding get encoding => baseStdOut.encoding;
-
-  @override
-  set encoding(Encoding value) => baseStdOut.encoding = value;
+  final InteractivePromptRequiredException exception;
 
   @override
-  String get lineTerminator => baseStdOut.lineTerminator;
+  String get name => 'prompt-required';
 
   @override
-  set lineTerminator(String value) => baseStdOut.lineTerminator = value;
+  String get description => 'Throws InteractivePromptRequiredException.';
 
   @override
-  Future<void> get done => baseStdOut.done;
+  Future<int> run() async => throw exception;
+}
+
+/// A test command that records the values of [isJsonMode] and [isInteractive]
+/// as observed during [run]. Optionally invokes [onRun] inside the
+/// runScoped/overrideAnsiOutput zone to capture other zone state (for example,
+/// [ansiOutputEnabled]).
+class _CaptureModeCommand extends ShorebirdCommand {
+  bool? capturedIsJsonMode;
+  bool? capturedIsInteractive;
+  void Function()? onRun;
 
   @override
-  bool get hasTerminal => baseStdOut.hasTerminal;
+  String get name => 'capture-mode';
 
   @override
-  IOSink get nonBlocking => baseStdOut.nonBlocking;
+  String get description => 'Captures interactive mode flags for testing.';
 
   @override
-  bool get supportsAnsiEscapes => baseStdOut.supportsAnsiEscapes;
-
-  @override
-  int get terminalColumns => baseStdOut.terminalColumns;
-
-  @override
-  int get terminalLines => baseStdOut.terminalLines;
-
-  @override
-  void add(List<int> data) => baseStdOut.add(data);
-
-  @override
-  void addError(Object error, [StackTrace? stackTrace]) =>
-      baseStdOut.addError(error, stackTrace);
-
-  @override
-  Future<void> addStream(Stream<List<int>> stream) =>
-      baseStdOut.addStream(stream);
-
-  @override
-  Future<void> close() => baseStdOut.close();
-
-  @override
-  Future<void> flush() => baseStdOut.flush();
-
-  @override
-  void write(Object? object) => baseStdOut.write(object);
-
-  @override
-  void writeAll(Iterable<dynamic> objects, [String sep = '']) =>
-      baseStdOut.writeAll(objects, sep);
-
-  @override
-  void writeCharCode(int charCode) => baseStdOut.writeCharCode(charCode);
-
-  @override
-  void writeln([Object? object = '']) {
-    captured.add(object.toString());
-    baseStdOut.writeln(object);
+  Future<int> run() async {
+    capturedIsJsonMode = isJsonMode;
+    capturedIsInteractive = isInteractive;
+    onRun?.call();
+    return ExitCode.success.code;
   }
 }

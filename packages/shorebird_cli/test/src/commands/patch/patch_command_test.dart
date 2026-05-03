@@ -287,6 +287,7 @@ void main() {
           any(),
           choices: any(named: 'choices'),
           display: any(named: 'display'),
+          hint: any(named: 'hint'),
         ),
       ).thenReturn(release);
       when(() => logger.progress(any())).thenReturn(progress);
@@ -854,6 +855,84 @@ void main() {
               ).called(1);
             });
           });
+
+          group('when min-link-percentage is invalid', () {
+            void setMinLinkPercentage(String value) {
+              when(
+                () => argResults[CommonArguments.minLinkPercentage.name],
+              ).thenReturn(value);
+            }
+
+            Future<void> expectUsageError(String value) async {
+              setMinLinkPercentage(value);
+              await expectLater(
+                runWithOverrides(
+                  () => command.logPatchSummary(
+                    app: appMetadata,
+                    releaseVersion: releaseVersion,
+                    patcher: patcher,
+                    patchArtifactBundles: patchArtifactBundles,
+                  ),
+                ),
+                exitsWithCode(ExitCode.usage),
+              );
+              verify(
+                () => logger.err(
+                  '--min-link-percentage must be an integer between 0 and 100 '
+                  '(got $value).',
+                ),
+              ).called(1);
+            }
+
+            test('above 100 prints error and exits', () async {
+              await expectUsageError('101');
+            });
+
+            test('below 0 prints error and exits', () async {
+              await expectUsageError('-1');
+            });
+
+            test('float prints error and exits', () async {
+              await expectUsageError('50.5');
+            });
+          });
+
+          group('when min-link-percentage is at boundary', () {
+            test('0 is accepted', () async {
+              when(
+                () => argResults[CommonArguments.minLinkPercentage.name],
+              ).thenReturn('0');
+              await expectLater(
+                runWithOverrides(
+                  () => command.logPatchSummary(
+                    app: appMetadata,
+                    releaseVersion: releaseVersion,
+                    patcher: patcher,
+                    patchArtifactBundles: patchArtifactBundles,
+                  ),
+                ),
+                completes,
+              );
+            });
+
+            test('100 is accepted', () async {
+              when(
+                () => argResults[CommonArguments.minLinkPercentage.name],
+              ).thenReturn('100');
+              when(() => patcher.linkPercentage).thenReturn(100);
+              await expectLater(
+                runWithOverrides(
+                  () => command.logPatchSummary(
+                    app: appMetadata,
+                    releaseVersion: releaseVersion,
+                    patcher: patcher,
+                    patchArtifactBundles: patchArtifactBundles,
+                  ),
+                ),
+                completes,
+              );
+            });
+          });
         });
       });
 
@@ -869,6 +948,7 @@ void main() {
               () => logger.confirm(
                 any(),
                 defaultValue: any(named: 'defaultValue'),
+                hint: any(named: 'hint'),
               ),
             ).thenReturn(true);
           });
@@ -889,6 +969,7 @@ void main() {
               () => logger.confirm(
                 'Would you like to continue?',
                 defaultValue: true,
+                hint: any(named: 'hint'),
               ),
             ).called(1);
           });
@@ -900,6 +981,7 @@ void main() {
               () => logger.confirm(
                 any(),
                 defaultValue: any(named: 'defaultValue'),
+                hint: any(named: 'hint'),
               ),
             ).thenReturn(false);
           });
@@ -939,8 +1021,11 @@ void main() {
             completes,
           );
           verifyNever(
-            () =>
-                logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+            () => logger.confirm(
+              any(),
+              defaultValue: any(named: 'defaultValue'),
+              hint: any(named: 'hint'),
+            ),
           );
         });
       });
@@ -1202,6 +1287,7 @@ void main() {
               'Which release would you like to patch?',
               choices: any(named: 'choices'),
               display: captureAny(named: 'display'),
+              hint: any(named: 'hint'),
             ),
             () => codePushClientWrapper.getReleaseArtifact(
               appId: appId,
@@ -1412,7 +1498,13 @@ void main() {
 
         verify(() => logger.info('No issues detected.')).called(1);
 
-        verifyNever(() => logger.confirm(any()));
+        verifyNever(
+          () => logger.confirm(
+            any(),
+            defaultValue: any(named: 'defaultValue'),
+            hint: any(named: 'hint'),
+          ),
+        );
         verifyNever(
           () => patcher.uploadPatchArtifacts(
             appId: appId,
@@ -1432,7 +1524,13 @@ void main() {
 
       test('does not prompt for confirmation', () async {
         await runWithOverrides(command.run);
-        verifyNever(() => logger.confirm(any()));
+        verifyNever(
+          () => logger.confirm(
+            any(),
+            defaultValue: any(named: 'defaultValue'),
+            hint: any(named: 'hint'),
+          ),
+        );
       });
     });
 
@@ -1443,7 +1541,13 @@ void main() {
         final exitCode = await runWithOverrides(command.run);
         expect(exitCode, equals(ExitCode.success.code));
 
-        verifyNever(() => logger.confirm(any()));
+        verifyNever(
+          () => logger.confirm(
+            any(),
+            defaultValue: any(named: 'defaultValue'),
+            hint: any(named: 'hint'),
+          ),
+        );
       });
     });
 

@@ -4,6 +4,9 @@ description: >-
   workflows, resolves affected packages via dependency graphs, and
   verifies path filters stay in sync.
 version: 0.1.0
+homepage: https://shorebird.dev
+repository: https://github.com/shorebirdtech/shorebird/tree/main/packages/shorebird_ci
+topics: [ci, github-actions, monorepo, shorebird]
 resolution: workspace
 
 environment:
@@ -17,4 +20,4 @@ dependencies:
   yaml: ^3.1.0
 
 dev_dependencies:
-  test: ^1.25.0
+  test: ^1.31.1

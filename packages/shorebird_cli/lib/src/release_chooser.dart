@@ -6,6 +6,10 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// The maximum number of releases to display before offering to show all.
 const maxDisplayedReleases = 10;
 
+/// Hint shown when a user can choose a release non-interactively.
+const String releaseVersionHint =
+    'Pass --release-version=<version> to select a release without prompting.';
+
 const _months = [
   'Jan',
   'Feb',
@@ -89,6 +93,7 @@ Release chooseRelease({
       prompt,
       choices: truncated,
       display: display,
+      hint: releaseVersionHint,
     );
 
     if (!identical(choice, showAllReleaseSentinel)) return choice;
@@ -98,5 +103,8 @@ Release chooseRelease({
     prompt,
     choices: sorted,
     display: display,
+    hint:
+        'Pass --release-version=<version> to $action a specific release '
+        'without prompting.',
   );
 }

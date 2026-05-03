@@ -17,6 +17,7 @@ class PatchCheckRequest {
     this.patchNumber,
     this.patchHash,
     this.clientId,
+    this.currentPatchNumber,
   });
 
   /// Converts a `Map<String, dynamic>` to a [PatchCheckRequest].
@@ -33,6 +34,7 @@ class PatchCheckRequest {
         appId: json['app_id'] as String,
         channel: json['channel'] as String,
         clientId: json['client_id'] as String?,
+        currentPatchNumber: json['current_patch_number'] as int?,
       ),
     );
   }
@@ -73,6 +75,14 @@ class PatchCheckRequest {
   /// unique per app. Optional for backward compatibility.
   final String? clientId;
 
+  /// The number of the patch currently running on the device, if any.
+  ///
+  /// Supersedes [patchNumber] for newer updater clients. Unlike
+  /// [patchNumber], this does not affect the server's response;
+  /// [patchNumber] is retained for compatibility with legacy clients that
+  /// rely on the server's short-circuit path.
+  final int? currentPatchNumber;
+
   /// Converts a [PatchCheckRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -84,6 +94,7 @@ class PatchCheckRequest {
       'app_id': appId,
       'channel': channel,
       'client_id': clientId,
+      'current_patch_number': currentPatchNumber,
     };
   }
 
@@ -97,6 +108,7 @@ class PatchCheckRequest {
     appId,
     channel,
     clientId,
+    currentPatchNumber,
   ]);
 
   @override
@@ -110,6 +122,7 @@ class PatchCheckRequest {
         arch == other.arch &&
         appId == other.appId &&
         channel == other.channel &&
-        clientId == other.clientId;
+        clientId == other.clientId &&
+        currentPatchNumber == other.currentPatchNumber;
   }
 }

@@ -1114,6 +1114,7 @@ channel: ${track.channel}
               'Which app would you like to preview?',
               choices: any(named: 'choices'),
               display: any(named: 'display'),
+              hint: any(named: 'hint'),
             ),
           );
           verifyNever(() => codePushClientWrapper.getApps());
@@ -1161,6 +1162,7 @@ channel: ${track.channel}
               any(),
               choices: any(named: 'choices'),
               display: any(named: 'display'),
+              hint: any(named: 'hint'),
             ),
           ).thenReturn(app);
         });
@@ -1174,6 +1176,7 @@ channel: ${track.channel}
                       any(),
                       choices: any(named: 'choices'),
                       display: captureAny(named: 'display'),
+                      hint: any(named: 'hint'),
                     ),
                   ).captured.single
                   as String Function(AppMetadata);
@@ -1202,6 +1205,7 @@ channel: ${track.channel}
               any(),
               choices: any(named: 'choices'),
               display: any(named: 'display'),
+              hint: any(named: 'hint'),
             ),
           ).thenReturn(release);
           when(
@@ -1222,6 +1226,7 @@ channel: ${track.channel}
               any(),
               choices: any(named: 'choices'),
               display: any(named: 'display'),
+              hint: any(named: 'hint'),
             ),
           );
         });
@@ -1243,7 +1248,7 @@ channel: ${track.channel}
             () => logger.chooseOne<String>(
               any(),
               choices: any(named: 'choices'),
-              display: any(named: 'display'),
+              hint: any(named: 'hint'),
             ),
           ).thenReturn(releasePlatform.displayName);
         });
@@ -1256,7 +1261,7 @@ channel: ${track.channel}
                     () => logger.chooseOne<String>(
                       any(),
                       choices: captureAny(named: 'choices'),
-                      display: any(named: 'display'),
+                      hint: any(named: 'hint'),
                     ),
                   ).captured.single
                   as List<String>;
@@ -1287,6 +1292,7 @@ channel: ${track.channel}
               any(),
               choices: any(named: 'choices'),
               display: captureAny(named: 'display'),
+              hint: any(named: 'hint'),
             ),
           );
           verify(() => codePushClientWrapper.getApps()).called(1);
@@ -1313,6 +1319,7 @@ channel: ${track.channel}
               any(),
               choices: any(named: 'choices'),
               display: captureAny(named: 'display'),
+              hint: any(named: 'hint'),
             ),
           );
           verify(
@@ -1342,6 +1349,7 @@ channel: ${track.channel}
               any(),
               choices: any(named: 'choices'),
               display: any(named: 'display'),
+              hint: any(named: 'hint'),
             ),
           ).thenReturn(release);
 
@@ -1371,6 +1379,7 @@ channel: ${track.channel}
                       any(),
                       choices: any(named: 'choices'),
                       display: captureAny(named: 'display'),
+                      hint: any(named: 'hint'),
                     ),
                   ).captured.single
                   as String Function(Release);
@@ -2775,6 +2784,7 @@ channel: ${DeploymentTrack.staging.channel}
             () => logger.chooseOne<String>(
               'Which platform would you like to preview?',
               choices: any(named: 'choices'),
+              hint: any(named: 'hint'),
             ),
           ).thenReturn(ReleasePlatform.ios.displayName);
 
@@ -2849,6 +2859,7 @@ channel: ${DeploymentTrack.staging.channel}
             () => logger.chooseOne<String>(
               'Which platform would you like to preview?',
               choices: any(named: 'choices'),
+              hint: any(named: 'hint'),
             ),
           ).thenReturn(ReleasePlatform.android.displayName);
 

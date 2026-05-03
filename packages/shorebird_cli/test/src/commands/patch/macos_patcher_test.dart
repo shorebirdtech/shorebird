@@ -413,7 +413,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
                 group('when user opts to continue at prompt', () {
                   setUp(() {
-                    when(() => logger.confirm(any())).thenReturn(true);
+                    when(
+                      () => logger.confirm(any(), hint: any(named: 'hint')),
+                    ).thenReturn(true);
                   });
 
                   test('returns diff status from patchDiffChecker', () async {
@@ -430,7 +432,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
                 group('when user aborts at prompt', () {
                   setUp(() {
-                    when(() => logger.confirm(any())).thenReturn(false);
+                    when(
+                      () => logger.confirm(any(), hint: any(named: 'hint')),
+                    ).thenReturn(false);
                   });
 
                   test('throws UserCancelledException', () async {
