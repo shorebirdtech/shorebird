@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:mason_logger/mason_logger.dart';
+import 'package:cli_io/cli_io.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:mason_logger/mason_logger.dart';
+import 'package:cli_io/cli_io.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';

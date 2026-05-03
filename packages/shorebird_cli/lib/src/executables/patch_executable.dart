@@ -1,4 +1,4 @@
-import 'package:mason_logger/mason_logger.dart';
+import 'package:cli_io/cli_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';

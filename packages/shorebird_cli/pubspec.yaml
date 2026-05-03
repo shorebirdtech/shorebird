@@ -14,6 +14,8 @@ dependencies:
   args: ^2.7.0
   checked_yaml: ^2.0.4
   cli_completion: ^0.5.0
+  cli_io:
+    path: ../cli_io
   cli_util: ^0.5.0
   clock: ^1.1.2
   collection: ^1.19.1
@@ -29,7 +31,6 @@ dependencies:
   json_path: ^0.9.0
   jwt:
     path: ../jwt
-  mason_logger: ^0.3.5
   meta: ^1.16.0
   path: ^1.9.1
   pem: ^2.0.5

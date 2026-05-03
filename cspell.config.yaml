@@ -131,6 +131,7 @@ words:
   - storyboardc
   - subpackages
   - symbolication
+  - sysexits # BSD exit code conventions exposed by cli_io.ExitCode
   - syskeys # From adb.dart
   - subosito # From .github dir, doesn't show up in "**" check?
   - swiftshader # From .github dir, doesn't show up in "**" check?

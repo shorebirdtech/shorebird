@@ -1,0 +1,17 @@
+name: cli_io
+description: I/O utilities for Shorebird's CLI tools — logging, progress, prompts, ANSI colors, exit codes.
+version: 0.1.0
+homepage: https://shorebird.dev
+repository: https://github.com/shorebirdtech/shorebird/tree/main/packages/cli_io
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.9.0 <4.0.0"
+
+dependencies:
+  meta: ^1.0.0
+
+dev_dependencies:
+  mocktail: ^1.0.5
+  test: ^1.31.0

@@ -1,7 +1,7 @@
 import 'dart:io';
 
+import 'package:cli_io/cli_io.dart';
 import 'package:crypto/crypto.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/linux_bundle_differ.dart';
