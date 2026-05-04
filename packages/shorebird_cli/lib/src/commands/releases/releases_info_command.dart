@@ -3,10 +3,13 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template releases_info_command}
 /// `shorebird releases info`
@@ -61,10 +64,22 @@ class ReleasesInfoCommand extends ShorebirdCommand {
     final releaseVersion =
         results[CommonArguments.releaseVersionArg.name] as String;
 
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
+    final Release release;
+    try {
+      release = await codePushClientWrapper.getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
+      );
+    } on ProcessExit catch (e) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.fetchFailed,
+          message: 'Failed to fetch release "$releaseVersion".',
+        );
+        return e.exitCode;
+      }
+      rethrow;
+    }
 
     if (isJsonMode) {
       emitJsonSuccess({'release': release.toJson()});

@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template releases_list_command}
@@ -64,7 +65,19 @@ class ReleasesListCommand extends ShorebirdCommand {
       results['platform'] as String?,
     );
 
-    final releases = await codePushClientWrapper.getReleases(appId: appId);
+    final List<Release> releases;
+    try {
+      releases = await codePushClientWrapper.getReleases(appId: appId);
+    } on ProcessExit catch (e) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.fetchFailed,
+          message: 'Failed to fetch releases.',
+        );
+        return e.exitCode;
+      }
+      rethrow;
+    }
 
     final filtered = platformFilter != null
         ? releases
