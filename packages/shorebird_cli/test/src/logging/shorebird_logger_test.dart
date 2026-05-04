@@ -314,7 +314,8 @@ void main() {
             () => logger.progress('fetching apps'),
             hasTerminal: false,
           );
-          expect(stdoutOutput, equals(['Starting fetching apps...']));
+          expect(stdoutOutput, isEmpty);
+          expect(stderrOutput, equals(['Starting fetching apps...']));
         });
 
         test('emits a "Done" line on complete with no update', () {
@@ -323,8 +324,9 @@ void main() {
             hasTerminal: false,
           );
           progress.complete();
+          expect(stdoutOutput, isEmpty);
           expect(
-            stdoutOutput,
+            stderrOutput,
             equals(['Starting fetching apps...', 'Done fetching apps']),
           );
         });
@@ -335,7 +337,7 @@ void main() {
             hasTerminal: false,
           );
           progress.complete('found 3 apps');
-          expect(stdoutOutput.last, equals('Done found 3 apps'));
+          expect(stderrOutput.last, equals('Done found 3 apps'));
         });
 
         test('emits a "Failed" line on fail', () {
@@ -344,7 +346,7 @@ void main() {
             hasTerminal: false,
           );
           progress.fail('network error');
-          expect(stdoutOutput.last, equals('Failed network error'));
+          expect(stderrOutput.last, equals('Failed network error'));
         });
 
         test('emits an update line and remembers the new message', () {
@@ -354,8 +356,8 @@ void main() {
           );
           progress.update('still fetching');
           progress.complete();
-          expect(stdoutOutput, contains('still fetching...'));
-          expect(stdoutOutput.last, equals('Done still fetching'));
+          expect(stderrOutput, contains('still fetching...'));
+          expect(stderrOutput.last, equals('Done still fetching'));
         });
 
         test('emits no carriage returns or ANSI escapes', () {
@@ -364,7 +366,7 @@ void main() {
             hasTerminal: false,
           );
           progress.complete();
-          for (final line in stdoutOutput) {
+          for (final line in stderrOutput) {
             expect(line, isNot(contains('\r')));
             expect(line, isNot(contains('\u001b')));
           }
@@ -372,7 +374,7 @@ void main() {
       });
 
       group('under --json', () {
-        test('routes static progress to stderr instead of stdout', () {
+        test('routes static progress to stderr', () {
           final progress = runUnderScope(
             () => logger.progress('fetching apps'),
             hasTerminal: true,
@@ -386,15 +388,14 @@ void main() {
       });
 
       group('under --json with a TTY', () {
-        test('still produces static lines (no spinner)', () {
+        test('still produces static lines on stderr (no spinner)', () {
           final progress = runUnderScope(
             () => logger.progress('fetching apps'),
             hasTerminal: true,
             jsonMode: true,
           );
           progress.complete();
-          // Under --json progress is routed to stderr to avoid corrupting
-          // the JSON envelope on stdout.
+          expect(stdoutOutput, isEmpty);
           expect(stderrOutput, contains('Starting fetching apps...'));
           expect(stderrOutput, contains('Done fetching apps'));
         });
