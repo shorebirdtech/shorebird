@@ -27,7 +27,7 @@ class PatchesInfoCommand extends ShorebirdCommand {
       )
       ..addOption(
         'patch-number',
-        help: 'The patch number to show details for (ex: "1").',
+        help: 'The patch number to show details for (e.g. "1").',
         mandatory: true,
       )
       ..addOption(
@@ -86,7 +86,8 @@ class PatchesInfoCommand extends ShorebirdCommand {
       if (isJsonMode) {
         emitJsonError(
           code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch patch $patchNumber '
+          message:
+              'Failed to fetch patch $patchNumber '
               'for release "$releaseVersion".',
         );
         return e.exitCode;
@@ -96,6 +97,15 @@ class PatchesInfoCommand extends ShorebirdCommand {
 
     final patch = patches.firstWhereOrNull((p) => p.number == patchNumber);
     if (patch == null) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.usageError,
+          message:
+              'No patch found with number $patchNumber '
+              'for release "$releaseVersion".',
+        );
+        return ExitCode.usage.code;
+      }
       logger
         ..err('No patch found with number $patchNumber.')
         ..info(

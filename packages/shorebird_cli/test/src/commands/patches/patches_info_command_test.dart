@@ -324,13 +324,20 @@ void main() {
           ).thenAnswer((_) async => []);
         });
 
-        test('returns usage exit code', () async {
+        test('emits JSON error envelope and returns usage exit code', () async {
           final captured = <String>[];
           final result = await captureStdout(
             () => runJsonMode(command.run),
             captured: captured,
           );
           expect(result, equals(ExitCode.usage.code));
+          expect(captured, hasLength(1));
+          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+          expect(decoded['status'], 'error');
+          expect(
+            (decoded['error'] as Map<String, dynamic>)['code'],
+            'usage_error',
+          );
         });
       });
     });
