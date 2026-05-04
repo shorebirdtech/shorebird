@@ -6,7 +6,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
-import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [Logger] instance.
@@ -118,7 +117,7 @@ class ShorebirdLogger extends Logger {
   ///     `stderr` — progress is diagnostic, never content.
   @override
   Progress progress(String message, {ProgressOptions? options}) {
-    if (isInteractive && !isJsonMode) {
+    if (isInteractive) {
       return super.progress(message, options: options); // coverage:ignore-line
     }
     return _StaticProgress(
