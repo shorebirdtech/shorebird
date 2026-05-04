@@ -228,6 +228,34 @@ void main() {
         verify(() => logger.info(any(that: contains('#1')))).called(1);
       });
 
+      group('when patch has no track', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleasePatches(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
+          ).thenAnswer(
+            (_) async => [
+              const ReleasePatch(
+                id: 2,
+                number: 2,
+                isRolledBack: false,
+                artifacts: [],
+              ),
+            ],
+          );
+        });
+
+        test('indicates the patch has no track', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.info(any(that: contains('[no track]'))),
+          ).called(1);
+        });
+      });
+
       group('when patch is rolled back', () {
         setUp(() {
           when(

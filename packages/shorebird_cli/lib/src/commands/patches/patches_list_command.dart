@@ -42,7 +42,8 @@ class PatchesListCommand extends ShorebirdCommand {
       'List patches for a release.\n\n'
       'Example output (one line per patch):\n'
       '  #1  track: stable\n'
-      '  #2  track: beta  [rolled back]\n\n'
+      '  #2  [no track]\n'
+      '  #3  track: beta  [rolled back]\n\n'
       'Pass --json (global flag) for machine-readable output with all fields:\n'
       '  shorebird patches list --release-version 1.0.0+1 --app-id <id> --json';
 
@@ -106,7 +107,8 @@ class PatchesListCommand extends ShorebirdCommand {
 
     for (final patch in patches) {
       final number = lightCyan.wrap('#${patch.number}');
-      final channel = patch.channel != null ? '  track: ${patch.channel}' : '';
+      final channel =
+          patch.channel != null ? '  track: ${patch.channel}' : '  [no track]';
       final rolledBack = patch.isRolledBack ? '  [rolled back]' : '';
       logger.info('$number$channel$rolledBack');
     }
