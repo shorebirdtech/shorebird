@@ -107,8 +107,9 @@ class PatchesListCommand extends ShorebirdCommand {
 
     for (final patch in patches) {
       final number = lightCyan.wrap('#${patch.number}');
-      final channel =
-          patch.channel != null ? '  track: ${patch.channel}' : '  [no track]';
+      final channel = patch.channel != null
+          ? '  track: ${patch.channel}'
+          : '  [no track]';
       final rolledBack = patch.isRolledBack ? '  [rolled back]' : '';
       logger.info('$number$channel$rolledBack');
     }

@@ -47,6 +47,7 @@ class PatchesInfoCommand extends ShorebirdCommand {
   String get description =>
       'Show details for a specific patch.\n\n'
       'Example output:\n'
+      '  ID:          42\n'
       '  Number:      1\n'
       '  Track:       stable\n'
       '  Rolled back: no\n'
@@ -127,6 +128,7 @@ class PatchesInfoCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
+    logger.info('ID:          ${patch.id}');
     logger.info('Number:      ${patch.number}');
     if (patch.channel != null) {
       logger.info('Track:       ${patch.channel}');

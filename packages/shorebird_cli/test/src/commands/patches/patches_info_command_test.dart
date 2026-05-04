@@ -110,7 +110,10 @@ void main() {
     });
 
     test('has correct description', () {
-      expect(command.description, startsWith('Show details for a specific patch.'));
+      expect(
+        command.description,
+        startsWith('Show details for a specific patch.'),
+      );
     });
 
     group('when validation fails', () {
@@ -247,6 +250,9 @@ void main() {
       test('prints patch fields', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
+        verify(() => logger.info(any(that: contains('10')))).called(
+          greaterThanOrEqualTo(1),
+        );
         verify(
           () => logger.info(any(that: contains('$patchNumber'))),
         ).called(greaterThanOrEqualTo(1));
