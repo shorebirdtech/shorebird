@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -47,7 +48,11 @@ class PatchesInfoCommand extends ShorebirdCommand {
       '  Number:      1\n'
       '  Track:       stable\n'
       '  Rolled back: no\n'
-      '  Notes:       Optional patch notes.\n\n'
+      '  Notes:       Optional patch notes.\n'
+      '  Artifacts:\n'
+      '    android  arm64-v8a    1.20 MB\n'
+      '    android  armeabi-v7a  1.10 MB\n'
+      '    ios      arm64        896 KB\n\n'
       '${ShorebirdCommand.jsonHint('shorebird patches info --release-version 1.0.0+1 --patch-number 1 --app-id <id> --json')}';
 
   @override
@@ -115,6 +120,14 @@ class PatchesInfoCommand extends ShorebirdCommand {
     logger.info('Rolled back: ${patch.isRolledBack ? 'yes' : 'no'}');
     if (patch.notes != null) {
       logger.info('Notes:       ${patch.notes}');
+    }
+    if (patch.artifacts.isNotEmpty) {
+      logger.info('Artifacts:');
+      for (final artifact in patch.artifacts) {
+        final platform = artifact.platform.value.padRight(8);
+        final arch = artifact.arch.padRight(12);
+        logger.info('  $platform $arch ${formatBytes(artifact.size)}');
+      }
     }
 
     return ExitCode.success.code;

@@ -35,7 +35,7 @@ void main() {
       updatedAt: DateTime(2026, 1, 16),
     );
     const patch = ReleasePatch(
-      id: 1,
+      id: 7,
       number: 1,
       channel: 'stable',
       isRolledBack: false,
@@ -222,10 +222,14 @@ void main() {
     });
 
     group('human-readable output', () {
-      test('prints each patch with number and channel', () async {
+      test('prints each patch with id, number, and channel', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
-        verify(() => logger.info(any(that: contains('#1')))).called(1);
+        verify(
+          () => logger.info(
+            any(that: allOf(contains('7'), contains('#1'), contains('stable'))),
+          ),
+        ).called(1);
       });
 
       group('when patch has no track', () {

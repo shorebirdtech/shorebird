@@ -262,6 +262,55 @@ void main() {
         ).called(1);
       });
 
+      group('when patch has artifacts', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleasePatches(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
+          ).thenAnswer(
+            (_) async => [
+              ReleasePatch(
+                id: 10,
+                number: patchNumber,
+                channel: 'stable',
+                isRolledBack: false,
+                artifacts: [
+                  PatchArtifact(
+                    id: 1,
+                    patchId: 10,
+                    arch: 'arm64-v8a',
+                    platform: ReleasePlatform.android,
+                    hash: 'abc123',
+                    size: 1258291,
+                    createdAt: DateTime(2026, 1, 15),
+                  ),
+                ],
+              ),
+            ],
+          );
+        });
+
+        test('prints artifact platform, arch, and size', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.info(any(that: contains('Artifacts:'))),
+          ).called(1);
+          verify(
+            () => logger.info(
+              any(
+                that: allOf(
+                  contains('android'),
+                  contains('arm64-v8a'),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+      });
+
       group('when notes is null', () {
         setUp(() {
           when(

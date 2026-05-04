@@ -42,7 +42,7 @@ class PromoteCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     logger.warn(
-      '''This command is deprecated and will be removed in a future release. Use `shorebird patches set-channel --channel=stable` instead.''',
+      '''This command is deprecated and will be removed in a future release. Use `shorebird patches set-track --track=stable` instead.''',
     );
 
     try {
