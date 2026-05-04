@@ -479,6 +479,24 @@ void main() {
         verify(() => artifactBuilder.buildIosFramework(args: [])).called(1);
       });
 
+      test('generates podspec in release directory', () async {
+        await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+        final podspecFile = File(
+          p.join(projectRoot.path, 'release', 'ShorebirdFlutter.podspec'),
+        );
+        expect(podspecFile.existsSync(), isTrue);
+        final content = podspecFile.readAsStringSync();
+        expect(content, contains("s.name         = 'ShorebirdFlutter'"));
+        expect(
+          content,
+          contains(
+            "s.vendored_frameworks = 'App.xcframework', "
+            "'ShorebirdFlutter.xcframework'",
+          ),
+        );
+      });
+
       group('when --obfuscate is passed', () {
         setUp(() {
           when(() => argResults['obfuscate']).thenReturn(true);
@@ -686,18 +704,22 @@ void main() {
         final relativeFrameworkDirectoryPath = p.relative(
           p.join(projectRoot.path, 'release'),
         );
+        final instructions = runWithOverrides(
+          () => iosFrameworkReleaser.postReleaseInstructions,
+        );
+        expect(instructions, contains('Option A: CocoaPods'));
+        expect(instructions, contains('Option B: Manual Xcode embedding'));
         expect(
-          runWithOverrides(() => iosFrameworkReleaser.postReleaseInstructions),
-          equals('''
-
-Your next step is to add the .xcframework files found in the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your iOS app.
-
-To do this:
-    1. Add the relative path to the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your app's Framework Search Paths in your Xcode build settings.
-    2. Embed the App.xcframework and ShorebirdFlutter.framework in your Xcode project.
-
-Instructions for these steps can be found at https://docs.flutter.dev/add-to-app/ios/project-setup#option-b---embed-frameworks-in-xcode.
-'''),
+          instructions,
+          contains(
+            "pod 'ShorebirdFlutter', :path => "
+            "'$relativeFrameworkDirectoryPath'",
+          ),
+        );
+        expect(instructions, contains('pod install'));
+        expect(
+          instructions,
+          contains('App.xcframework and ShorebirdFlutter.xcframework'),
         );
       });
     });

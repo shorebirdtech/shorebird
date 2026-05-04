@@ -115,6 +115,9 @@ class IosFrameworkReleaser extends Releaser {
       p.join(targetLibraryDirectory.path, 'ShorebirdFlutter.xcframework'),
     );
 
+    // Generate a podspec so users can integrate via CocoaPods if preferred.
+    _writePodspec(targetLibraryDirectory);
+
     return targetLibraryDirectory;
   }
 
@@ -148,6 +151,28 @@ class IosFrameworkReleaser extends Releaser {
     ),
   );
 
+  /// Writes a podspec that wraps the release xcframework output, enabling
+  /// CocoaPods-based integration as an alternative to manual Xcode embedding.
+  void _writePodspec(Directory releaseDir) {
+    final podspecPath = p.join(
+      releaseDir.path,
+      'ShorebirdFlutter.podspec',
+    );
+    File(podspecPath).writeAsStringSync('''
+Pod::Spec.new do |s|
+  s.name         = 'ShorebirdFlutter'
+  s.version      = '0.0.1'
+  s.summary      = 'Shorebird Flutter framework for add-to-app integration.'
+  s.homepage     = 'https://shorebird.dev'
+  s.license      = { :type => 'BSD-3-Clause' }
+  s.author       = 'Shorebird'
+  s.source       = { :path => '.' }
+  s.platform     = :ios, '12.0'
+  s.vendored_frameworks = 'App.xcframework', 'ShorebirdFlutter.xcframework'
+end
+''');
+  }
+
   @override
   String get postReleaseInstructions {
     final relativeFrameworkDirectoryPath = p.relative(releaseDirectory.path);
@@ -155,11 +180,15 @@ class IosFrameworkReleaser extends Releaser {
 
 Your next step is to add the .xcframework files found in the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your iOS app.
 
-To do this:
-    1. Add the relative path to the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your app's Framework Search Paths in your Xcode build settings.
-    2. Embed the App.xcframework and ShorebirdFlutter.framework in your Xcode project.
+${styleBold.wrap('Option A: CocoaPods')}
+    Add the following to your app's Podfile:
+    ${lightCyan.wrap("pod 'ShorebirdFlutter', :path => '$relativeFrameworkDirectoryPath'")}
+    Then run ${lightCyan.wrap('pod install')}.
 
-Instructions for these steps can be found at https://docs.flutter.dev/add-to-app/ios/project-setup#option-b---embed-frameworks-in-xcode.
+${styleBold.wrap('Option B: Manual Xcode embedding')}
+    1. Add the relative path to the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your app's Framework Search Paths in your Xcode build settings.
+    2. Embed the App.xcframework and ShorebirdFlutter.xcframework in your Xcode project.
+    Instructions: https://docs.flutter.dev/add-to-app/ios/project-setup#option-b---embed-frameworks-in-xcode
 ''';
   }
 }
