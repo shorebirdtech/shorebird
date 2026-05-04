@@ -1068,7 +1068,9 @@ void main() {
           (_) async => http.StreamedResponse(
             Stream.value(
               utf8.encode(
-                json.encode(const Patch(id: patchId, number: patchNumber)),
+                json.encode(
+                  const CreatePatchResponse(id: patchId, number: patchNumber),
+                ),
               ),
             ),
             HttpStatus.ok,
@@ -1083,9 +1085,10 @@ void main() {
           ),
           completion(
             equals(
-              isA<Patch>()
+              isA<CreatePatchResponse>()
                   .having((c) => c.id, 'id', patchId)
-                  .having((c) => c.number, 'number', patchNumber),
+                  .having((c) => c.number, 'number', patchNumber)
+                  .having((c) => c.clientPatchId, 'clientPatchId', isNull),
             ),
           ),
         );
@@ -1099,6 +1102,71 @@ void main() {
           codePushClient.hostedUri.replace(path: '/api/v1/apps/$appId/patches'),
         );
       });
+
+      test('sends client_patch_id in body when supplied', () async {
+        const sha = 'abc1234';
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  const CreatePatchResponse(
+                    id: 0,
+                    number: 1,
+                    clientPatchId: sha,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+        );
+
+        final response = await codePushClient.createPatch(
+          appId: appId,
+          releaseId: releaseId,
+          metadata: const {'foo': 'bar'},
+          clientPatchId: sha,
+        );
+        expect(response.clientPatchId, equals(sha));
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        final body = json.decode(request.body) as Map<String, dynamic>;
+        expect(body['client_patch_id'], equals(sha));
+      });
+
+      test(
+        'normalizes empty clientPatchId to null before sending',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(
+                utf8.encode(
+                  json.encode(
+                    const CreatePatchResponse(id: 0, number: 1),
+                  ),
+                ),
+              ),
+              HttpStatus.ok,
+            ),
+          );
+
+          await codePushClient.createPatch(
+            appId: appId,
+            releaseId: releaseId,
+            metadata: const {'foo': 'bar'},
+            clientPatchId: '',
+          );
+
+          final request =
+              verify(() => httpClient.send(captureAny())).captured.single
+                  as http.Request;
+          final body = json.decode(request.body) as Map<String, dynamic>;
+          expect(body['client_patch_id'], isNull);
+        },
+      );
     });
 
     group('createRelease', () {

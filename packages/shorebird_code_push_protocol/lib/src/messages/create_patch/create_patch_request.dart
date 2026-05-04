@@ -10,6 +10,7 @@ class CreatePatchRequest {
   const CreatePatchRequest({
     required this.releaseId,
     required this.metadata,
+    this.clientPatchId,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchRequest].
@@ -22,6 +23,7 @@ class CreatePatchRequest {
         metadata: (json['metadata'] as Map<String, dynamic>).map(
           MapEntry.new,
         ),
+        clientPatchId: json['client_patch_id'] as String?,
       ),
     );
   }
@@ -42,11 +44,20 @@ class CreatePatchRequest {
   /// create the patch and the environment it was run in.
   final Map<String, dynamic> metadata;
 
+  /// Optional client-supplied correlation key used to make patch
+  /// creation idempotent across invocations. When two requests on
+  /// the same release supply the same value, the server returns the
+  /// existing patch instead of creating a new one — letting
+  /// cross-platform builds share one patch number. Most commonly a
+  /// git SHA, but any stable token works.
+  final String? clientPatchId;
+
   /// Converts a [CreatePatchRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'release_id': releaseId,
       'metadata': metadata,
+      'client_patch_id': clientPatchId,
     };
   }
 
@@ -54,6 +65,7 @@ class CreatePatchRequest {
   int get hashCode => Object.hashAll([
     releaseId,
     mapHash(metadata),
+    clientPatchId,
   ]);
 
   @override
@@ -61,6 +73,7 @@ class CreatePatchRequest {
     if (identical(this, other)) return true;
     return other is CreatePatchRequest &&
         releaseId == other.releaseId &&
-        mapsEqual(metadata, other.metadata);
+        mapsEqual(metadata, other.metadata) &&
+        clientPatchId == other.clientPatchId;
   }
 }

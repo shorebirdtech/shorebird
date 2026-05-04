@@ -134,21 +134,25 @@ More info: ${troubleshootingUrl.toLink()}.
     return metadata;
   }
 
-  /// Uploads the patch artifacts to the CodePush server.
-  Future<void> uploadPatchArtifacts({
+  /// Uploads the patch artifacts to the CodePush server. Returns the resulting
+  /// [CreatePatchResponse] so the orchestrating command can emit one
+  /// aggregated success message across every platform in the invocation.
+  Future<CreatePatchResponse> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
     required Map<String, dynamic> metadata,
     required Map<Arch, PatchArtifactBundle> artifacts,
     required DeploymentTrack track,
+    String? clientPatchId,
   }) async {
-    await codePushClientWrapper.publishPatch(
+    return codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: releaseId,
       metadata: metadata,
       platform: releaseType.releasePlatform,
       track: track,
       patchArtifactBundles: artifacts,
+      clientPatchId: clientPatchId,
     );
   }
 

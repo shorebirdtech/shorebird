@@ -20,6 +20,7 @@ class CreatePatchResponse {
   const CreatePatchResponse({
     required this.id,
     required this.number,
+    this.clientPatchId,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchResponse].
@@ -30,6 +31,7 @@ class CreatePatchResponse {
       () => CreatePatchResponse(
         id: json['id'] as int,
         number: json['number'] as int,
+        clientPatchId: json['client_patch_id'] as String?,
       ),
     );
   }
@@ -49,11 +51,17 @@ class CreatePatchResponse {
   /// The patch number. A larger number equates to a newer patch.
   final int number;
 
+  /// The client-supplied correlation key, if one was provided on the
+  /// request. Echoed back so callers can verify whether an
+  /// idempotent re-use occurred. See `CreatePatchRequest.client_patch_id`.
+  final String? clientPatchId;
+
   /// Converts a [CreatePatchResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'number': number,
+      'client_patch_id': clientPatchId,
     };
   }
 
@@ -61,6 +69,7 @@ class CreatePatchResponse {
   int get hashCode => Object.hashAll([
     id,
     number,
+    clientPatchId,
   ]);
 
   @override
@@ -68,6 +77,7 @@ class CreatePatchResponse {
     if (identical(this, other)) return true;
     return other is CreatePatchResponse &&
         id == other.id &&
-        number == other.number;
+        number == other.number &&
+        clientPatchId == other.clientPatchId;
   }
 }

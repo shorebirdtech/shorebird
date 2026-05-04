@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
@@ -30,6 +31,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:uuid/uuid.dart';
 
 /// Signature for a function that returns a [Patcher] for a given [ReleaseType].
 typedef ResolvePatcher = Patcher Function(ReleaseType releaseType);
@@ -97,6 +99,19 @@ To target the latest release (e.g. the release that was most recently updated) u
         'track',
         help: 'The track to publish the patch to.',
         defaultsTo: DeploymentTrack.stable.channel,
+      )
+      ..addOption(
+        'patch-id',
+        help: '''
+A stable correlation key (e.g. a git SHA) used to unify a logical patch
+across platforms. When two invocations on the same release supply the same
+--patch-id, the server returns the existing patch instead of allocating a
+new number — the iOS and Android halves of the same change end up sharing
+one patch number visible to end users.
+
+When omitted on a multi-platform invocation, the CLI generates a fresh
+correlation key locally so the platforms in this single command share one
+patch.''',
       )
       ..addFlag(
         'staging',
@@ -215,6 +230,72 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// The deployment track to publish the patch to.
   DeploymentTrack get track => DeploymentTrack(results['track'] as String);
 
+  /// The correlation key used to make patch creation idempotent across
+  /// platforms within this invocation. When the user passes `--patch-id`,
+  /// that value is used as-is. When the user omits it on a multi-platform
+  /// invocation, a fresh UUID is generated so the platforms in this single
+  /// command end up sharing one patch number on the server.
+  ///
+  /// Returns null only for single-platform invocations with no `--patch-id`,
+  /// preserving the legacy behavior where the server allocates a fresh patch
+  /// number per call.
+  late final String? clientPatchId = _resolveClientPatchId();
+
+  String? _resolveClientPatchId() {
+    final explicit = results['patch-id'] as String?;
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    if (results.releaseTypes.length > 1) return const Uuid().v4();
+    return null;
+  }
+
+  /// Patches collected from each platform's [createPatch] run, used to emit
+  /// a single aggregated success message after the fan-out completes.
+  @visibleForTesting
+  final platformPatches = <ReleasePlatform, CreatePatchResponse>{};
+
+  /// Warns when `--patch-id` is the current `HEAD` commit but the working
+  /// tree has uncommitted changes — the SHA wouldn't actually identify the
+  /// code being shipped. Detection is intentionally narrow (literal equality
+  /// with `git rev-parse HEAD`) so non-SHA ids like `hotfix-login` or CI run
+  /// IDs never trigger a false positive. Non-blocking: local debug patches
+  /// over uncommitted code are a legitimate flow.
+  @visibleForTesting
+  Future<void> warnIfDirtyTreeMatchesPatchId() async {
+    final patchId = results['patch-id'] as String?;
+    if (patchId == null || patchId.isEmpty) return;
+
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
+    if (projectRoot == null) return;
+
+    final String head;
+    try {
+      head = await git.revParse(
+        revision: 'HEAD',
+        directory: projectRoot.path,
+      );
+    } on Exception {
+      return;
+    }
+    if (patchId != head) return;
+
+    final String porcelain;
+    try {
+      porcelain = await git.status(
+        directory: projectRoot.path,
+        args: ['--porcelain'],
+      );
+    } on Exception {
+      return;
+    }
+    if (porcelain.isEmpty) return;
+
+    logger.warn(
+      '--patch-id is set to HEAD ($patchId), but the working tree has '
+      'uncommitted changes — this SHA does not identify the code being '
+      'shipped.',
+    );
+  }
+
   @override
   Future<int> run() async {
     if (results.releaseTypes.isEmpty) {
@@ -231,6 +312,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return ExitCode.usage.code;
     }
 
+    await warnIfDirtyTreeMatchesPatchId();
+
     final patcherFutures = results.releaseTypes
         .map(_resolvePatcher)
         .map(createPatch);
@@ -239,7 +322,35 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       await patcherFuture;
     }
 
+    logUnifiedSuccess();
+
     return ExitCode.success.code;
+  }
+
+  /// Emits one aggregated success line per patch number that ended up with
+  /// at least one published platform — replaces the old per-platform log
+  /// that used to live inside the wrapper's `publishPatch`.
+  @visibleForTesting
+  void logUnifiedSuccess() {
+    if (platformPatches.isEmpty) return;
+
+    // Group platforms by the patch number they ended up under. Under unified
+    // numbering this is almost always a single group, but pinning by number
+    // keeps the message correct in degenerate cases (different releases per
+    // platform, the user explicitly skipping --patch-id on a multi-platform
+    // call against a server that hasn't been updated, etc.).
+    final byPatchNumber = <int, List<ReleasePlatform>>{};
+    for (final entry in platformPatches.entries) {
+      byPatchNumber.putIfAbsent(entry.value.number, () => []).add(entry.key);
+    }
+
+    for (final number in byPatchNumber.keys.toList()..sort()) {
+      final platforms =
+          byPatchNumber[number]!.map((p) => p.displayName).toList()..sort();
+      logger.success(
+        '\n✅ Published Patch $number (${platforms.join(', ')})',
+      );
+    }
   }
 
   /// Returns a [Patcher] for the given [ReleaseType].
@@ -574,13 +685,15 @@ Building patch with Flutter $flutterVersionString
           baseMetadata,
         );
 
-        await patcher.uploadPatchArtifacts(
+        final publishedPatch = await patcher.uploadPatchArtifacts(
           appId: appId,
           releaseId: release.id,
           metadata: updateMetadata.toJson(),
           track: track,
           artifacts: patchArtifactBundles,
+          clientPatchId: clientPatchId,
         );
+        platformPatches[patcher.releaseType.releasePlatform] = publishedPatch;
       },
       values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
     );

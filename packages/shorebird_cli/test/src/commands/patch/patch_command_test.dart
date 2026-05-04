@@ -66,6 +66,7 @@ void main() {
       hasAssetChanges: false,
       hasNativeChanges: false,
     );
+    const publishedPatch = CreatePatchResponse(id: 0, number: 1);
     final patchMetadata = CreatePatchMetadata.forTest();
 
     final appMetadata = AppMetadata(
@@ -125,6 +126,7 @@ void main() {
     late ArtifactManager artifactManager;
     late Cache cache;
     late CodePushClientWrapper codePushClientWrapper;
+    late Git git;
     late ShorebirdLogger logger;
     late Patcher patcher;
     late Progress progress;
@@ -146,6 +148,7 @@ void main() {
           ),
           cacheRef.overrideWith(() => cache),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          gitRef.overrideWith(() => git),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
@@ -180,6 +183,7 @@ void main() {
       artifactManager = MockArtifactManager();
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
+      git = MockGit();
       logger = MockShorebirdLogger();
       progress = MockProgress();
       patcher = MockPatcher();
@@ -189,6 +193,7 @@ void main() {
 
       when(() => argResults['dry-run']).thenReturn(false);
       when(() => argResults['platforms']).thenReturn(['android']);
+      when(() => argResults['patch-id']).thenReturn(null);
       when(() => argResults['release-version']).thenReturn(releaseVersion);
       when(
         () => argResults[CommonArguments.minLinkPercentage.name],
@@ -248,8 +253,9 @@ void main() {
           track: any(named: 'track'),
           artifacts: any(named: 'artifacts'),
           metadata: any(named: 'metadata'),
+          clientPatchId: any(named: 'clientPatchId'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => publishedPatch);
 
       when(
         () => codePushClientWrapper.getReleaseArtifacts(
@@ -379,6 +385,373 @@ void main() {
                 '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
               ),
             ).called(1);
+          },
+        );
+      });
+
+      group('warnIfDirtyTreeMatchesPatchId', () {
+        const headSha = '0123456789abcdef0123456789abcdef01234567';
+        late Directory projectRoot;
+
+        setUp(() {
+          projectRoot = Directory.systemTemp.createTempSync();
+          when(
+            () => shorebirdEnv.getShorebirdProjectRoot(),
+          ).thenReturn(projectRoot);
+        });
+
+        test('does nothing when --patch-id is omitted', () async {
+          when(() => argResults['patch-id']).thenReturn(null);
+
+          await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+
+          verifyNever(
+            () => git.revParse(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
+            ),
+          );
+          verifyNever(() => logger.warn(any()));
+        });
+
+        test('does nothing when not running inside a project', () async {
+          when(() => argResults['patch-id']).thenReturn(headSha);
+          when(() => shorebirdEnv.getShorebirdProjectRoot()).thenReturn(null);
+
+          await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+
+          verifyNever(
+            () => git.revParse(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
+            ),
+          );
+          verifyNever(() => logger.warn(any()));
+        });
+
+        test('does nothing when not in a git repo', () async {
+          when(() => argResults['patch-id']).thenReturn(headSha);
+          when(
+            () => git.revParse(
+              revision: any(named: 'revision'),
+              directory: any(named: 'directory'),
+            ),
+          ).thenThrow(const ProcessException('git', ['rev-parse']));
+
+          await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+
+          verifyNever(() => logger.warn(any()));
+        });
+
+        test(
+          '''does nothing when --patch-id does not match HEAD (avoids false positives on non-SHA ids)''',
+          () async {
+            when(() => argResults['patch-id']).thenReturn('hotfix-login');
+            when(
+              () => git.revParse(
+                revision: 'HEAD',
+                directory: projectRoot.path,
+              ),
+            ).thenAnswer((_) async => headSha);
+
+            await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+
+            verifyNever(
+              () => git.status(
+                directory: any(named: 'directory'),
+                args: any(named: 'args'),
+              ),
+            );
+            verifyNever(() => logger.warn(any()));
+          },
+        );
+
+        test(
+          'does nothing when --patch-id matches HEAD and tree is clean',
+          () async {
+            when(() => argResults['patch-id']).thenReturn(headSha);
+            when(
+              () => git.revParse(
+                revision: 'HEAD',
+                directory: projectRoot.path,
+              ),
+            ).thenAnswer((_) async => headSha);
+            when(
+              () => git.status(
+                directory: projectRoot.path,
+                args: ['--porcelain'],
+              ),
+            ).thenAnswer((_) async => '');
+
+            await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+
+            verifyNever(() => logger.warn(any()));
+          },
+        );
+
+        test('warns when --patch-id matches HEAD and tree is dirty', () async {
+          when(() => argResults['patch-id']).thenReturn(headSha);
+          when(
+            () => git.revParse(
+              revision: 'HEAD',
+              directory: projectRoot.path,
+            ),
+          ).thenAnswer((_) async => headSha);
+          when(
+            () => git.status(
+              directory: projectRoot.path,
+              args: ['--porcelain'],
+            ),
+          ).thenAnswer((_) async => ' M lib/main.dart');
+
+          await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+
+          verify(
+            () => logger.warn(
+              any(
+                that: allOf(
+                  contains('uncommitted changes'),
+                  contains(headSha),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test(
+          'silently no-ops if git status fails after rev-parse succeeded',
+          () async {
+            when(() => argResults['patch-id']).thenReturn(headSha);
+            when(
+              () => git.revParse(
+                revision: 'HEAD',
+                directory: projectRoot.path,
+              ),
+            ).thenAnswer((_) async => headSha);
+            when(
+              () => git.status(
+                directory: any(named: 'directory'),
+                args: any(named: 'args'),
+              ),
+            ).thenThrow(const ProcessException('git', ['status']));
+
+            await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+
+            verifyNever(() => logger.warn(any()));
+          },
+        );
+      });
+
+      group('clientPatchId resolution', () {
+        // Captures the clientPatchId observed by uploadPatchArtifacts so we
+        // can assert on the resolved value across single-platform and
+        // multi-platform invocations.
+        String? capturedClientPatchId;
+
+        setUp(() {
+          capturedClientPatchId = null;
+          when(
+            () => patcher.uploadPatchArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              track: any(named: 'track'),
+              artifacts: any(named: 'artifacts'),
+              metadata: any(named: 'metadata'),
+              clientPatchId: any(named: 'clientPatchId'),
+            ),
+          ).thenAnswer((invocation) async {
+            capturedClientPatchId =
+                invocation.namedArguments[#clientPatchId] as String?;
+            return publishedPatch;
+          });
+        });
+
+        test(
+          'is null on a single-platform invocation with no --patch-id',
+          () async {
+            await runWithOverrides(() => command.createPatch(patcher));
+            expect(capturedClientPatchId, isNull);
+          },
+        );
+
+        test(
+          'uses the explicit value when --patch-id is supplied',
+          () async {
+            when(() => argResults['patch-id']).thenReturn('sha-deadbeef');
+            await runWithOverrides(() => command.createPatch(patcher));
+            expect(capturedClientPatchId, equals('sha-deadbeef'));
+          },
+        );
+
+        test(
+          '''generates a UUID for multi-platform invocations so platforms share a patch''',
+          () async {
+            when(() => argResults['platforms']).thenReturn(['ios', 'android']);
+            await runWithOverrides(() => command.createPatch(patcher));
+            expect(capturedClientPatchId, isNotNull);
+            // RFC4122 v4: 8-4-4-4-12 hex with version nibble == 4. Asserted
+            // as a single raw string to keep the regex semantics obvious;
+            // splitting it earned a "use raw string" / "adjacent strings"
+            // ping-pong from the linter.
+            //
+            // ignore: lines_longer_than_80_chars
+            expect(
+              capturedClientPatchId,
+              matches(
+                RegExp(
+                  r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+                ),
+              ),
+            );
+          },
+        );
+
+        test(
+          '''uses the same generated id across every platform in one invocation''',
+          () async {
+            when(() => argResults['platforms']).thenReturn(['ios', 'android']);
+
+            // Drive both platforms through the same command instance so we can
+            // confirm the lazily-resolved clientPatchId is shared.
+            final observed = <String?>[];
+            when(
+              () => patcher.uploadPatchArtifacts(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                track: any(named: 'track'),
+                artifacts: any(named: 'artifacts'),
+                metadata: any(named: 'metadata'),
+                clientPatchId: any(named: 'clientPatchId'),
+              ),
+            ).thenAnswer((invocation) async {
+              observed.add(
+                invocation.namedArguments[#clientPatchId] as String?,
+              );
+              return publishedPatch;
+            });
+
+            await runWithOverrides(() => command.createPatch(patcher));
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            expect(observed, hasLength(2));
+            expect(observed.first, isNotNull);
+            expect(observed[0], equals(observed[1]));
+          },
+        );
+
+        test(
+          'prefers an explicit --patch-id over an auto-generated one',
+          () async {
+            when(() => argResults['platforms']).thenReturn(['ios', 'android']);
+            when(() => argResults['patch-id']).thenReturn('hotfix-login');
+            await runWithOverrides(() => command.createPatch(patcher));
+            expect(capturedClientPatchId, equals('hotfix-login'));
+          },
+        );
+      });
+
+      group('logUnifiedSuccess', () {
+        test('logs nothing when no platforms have published', () {
+          runWithOverrides(command.logUnifiedSuccess);
+          verifyNever(() => logger.success(any()));
+        });
+
+        test(
+          'logs one line per patch with all platforms that landed on it',
+          () {
+            command.platformPatches
+              ..[ReleasePlatform.ios] = const CreatePatchResponse(id: 7, number: 3)
+              ..[ReleasePlatform.android] = const CreatePatchResponse(id: 7, number: 3);
+
+            runWithOverrides(command.logUnifiedSuccess);
+
+            verify(
+              () => logger.success(
+                any(
+                  that: allOf(
+                    contains('Published Patch 3'),
+                    contains('Android'),
+                    contains('iOS'),
+                  ),
+                ),
+              ),
+            ).called(1);
+          },
+        );
+
+        test(
+          'still names the platform on a single-platform invocation',
+          () {
+            command.platformPatches[ReleasePlatform.android] =
+                const CreatePatchResponse(id: 7, number: 3);
+
+            runWithOverrides(command.logUnifiedSuccess);
+
+            verify(
+              () => logger.success(
+                any(
+                  that: allOf(
+                    contains('Published Patch 3'),
+                    contains('Android'),
+                  ),
+                ),
+              ),
+            ).called(1);
+          },
+        );
+
+        test(
+          'groups platforms separately when they end up on different numbers',
+          () {
+            // Degenerate but possible: server hadn't deployed PR 2, or
+            // releases differed across platforms. Each patch number gets
+            // its own line so the user sees what actually happened.
+            command.platformPatches
+              ..[ReleasePlatform.ios] = const CreatePatchResponse(id: 7, number: 3)
+              ..[ReleasePlatform.android] = const CreatePatchResponse(
+                id: 8,
+                number: 4,
+              );
+
+            runWithOverrides(command.logUnifiedSuccess);
+
+            verify(
+              () => logger.success(
+                any(
+                  that: allOf(
+                    contains('Published Patch 3'),
+                    contains('iOS'),
+                  ),
+                ),
+              ),
+            ).called(1);
+            verify(
+              () => logger.success(
+                any(
+                  that: allOf(
+                    contains('Published Patch 4'),
+                    contains('Android'),
+                  ),
+                ),
+              ),
+            ).called(1);
+          },
+        );
+      });
+
+      group('aggregated success message', () {
+        test(
+          'no success message is logged when run() exits early',
+          () async {
+            when(() => argResults['platforms']).thenReturn(const <String>[]);
+
+            await expectLater(
+              runWithOverrides(command.run),
+              completion(equals(ExitCode.usage.code)),
+            );
+            verifyNever(
+              () => logger.success(any(that: contains('Published Patch'))),
+            );
           },
         );
       });

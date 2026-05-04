@@ -94,6 +94,12 @@ class CodePushClientWrapper {
   /// The underlying code push client.
   final CodePushClient codePushClient;
 
+  /// Patch ids this wrapper has promoted during the current command run.
+  /// Used to suppress the append-after-promotion warning for the second
+  /// platform of a single `--platforms ios,android` invocation, where the
+  /// "already on stable" state was created moments earlier by this same run.
+  final Set<int> _patchesPromotedThisRun = {};
+
   /// Create an app with the given [organizationId] and [appName].
   Future<App> createApp({required int organizationId, String? appName}) async {
     late final String displayName;
@@ -872,11 +878,16 @@ aar artifact already exists, continuing...''');
   }
 
   /// Creates a patch for the given [appId], [releaseId], and [metadata].
+  ///
+  /// When [clientPatchId] is supplied, the server treats the call as
+  /// idempotent: if a patch on this release already has that id, the
+  /// existing patch is returned instead of creating a new one.
   @visibleForTesting
-  Future<Patch> createPatch({
+  Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
+    String? clientPatchId,
   }) async {
     final createPatchProgress = logger.progress('Creating patch');
     try {
@@ -884,6 +895,7 @@ aar artifact already exists, continuing...''');
         appId: appId,
         releaseId: releaseId,
         metadata: metadata,
+        clientPatchId: clientPatchId,
       );
       createPatchProgress.complete();
       return patch;
@@ -896,7 +908,7 @@ aar artifact already exists, continuing...''');
   @visibleForTesting
   Future<void> createPatchArtifacts({
     required String appId,
-    required Patch patch,
+    required CreatePatchResponse patch,
     required ReleasePlatform platform,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
   }) async {
@@ -943,20 +955,38 @@ aar artifact already exists, continuing...''');
 
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
-  /// channel based on the provided [track].
-  Future<void> publishPatch({
+  /// channel based on the provided [track]. Returns the resulting
+  /// [CreatePatchResponse] so callers can compose a final success message
+  /// that spans every platform in the invocation.
+  Future<CreatePatchResponse> publishPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
     required ReleasePlatform platform,
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
+    String? clientPatchId,
   }) async {
     final patch = await createPatch(
       appId: appId,
       releaseId: releaseId,
       metadata: metadata,
+      clientPatchId: clientPatchId,
     );
+
+    // When the create call was idempotent (a clientPatchId hit on an existing
+    // patch row that's already on the stable channel), uploading this
+    // platform's artifacts will make them go live immediately to that
+    // platform's stable users. The server is permissive; the CLI is
+    // responsible for making sure the developer knows.
+    if (clientPatchId != null) {
+      await _confirmAppendToPromotedPatch(
+        appId: appId,
+        releaseId: releaseId,
+        patch: patch,
+        platform: platform,
+      );
+    }
 
     await createPatchArtifacts(
       appId: appId,
@@ -970,8 +1000,67 @@ aar artifact already exists, continuing...''');
         await createChannel(appId: appId, name: track.channel);
 
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);
+    _patchesPromotedThisRun.add(patch.id);
 
-    logger.success('\n✅ Published Patch ${patch.number}!');
+    return patch;
+  }
+
+  /// Detects the "idempotent hit on an already-promoted patch" case: the
+  /// caller passed a clientPatchId that matched an existing patch which is
+  /// already promoted to the stable channel. Uploading this platform's
+  /// artifacts will go live immediately to that platform's stable users.
+  ///
+  /// In an interactive terminal we surface that fact and prompt before
+  /// continuing. In CI we proceed silently — the iOS-promotes-then-Android-
+  /// completes flow is the canonical use case and prompting would deadlock.
+  ///
+  /// Skipped entirely when this run is the one that promoted the patch
+  /// (e.g. the second platform of a `--platforms ios,android` invocation),
+  /// since the user already opted in by passing both platforms together.
+  Future<void> _confirmAppendToPromotedPatch({
+    required String appId,
+    required int releaseId,
+    required CreatePatchResponse patch,
+    required ReleasePlatform platform,
+  }) async {
+    // If this run promoted the patch itself (e.g. the first platform of
+    // `--platforms ios,android`), the "already on stable" state is our own
+    // doing and the prompt would be spurious.
+    if (_patchesPromotedThisRun.contains(patch.id)) return;
+
+    final List<ReleasePatch> existing;
+    try {
+      existing = await codePushClient.getPatches(
+        appId: appId,
+        releaseId: releaseId,
+      );
+    } on Exception {
+      // If we can't determine the patch's promotion state, fall back to the
+      // server's permissive behavior — the design treats append-after-
+      // promotion as allowed; the prompt is a courtesy.
+      return;
+    }
+
+    final priorState = existing.firstWhereOrNull((p) => p.id == patch.id);
+    final isOnStable = priorState?.channel == DeploymentTrack.stable.channel;
+    if (!isOnStable) return;
+
+    final platformName = platform.displayName;
+    final message =
+        'Patch ${patch.number} is already promoted to the stable track. '
+        'Uploading $platformName artifacts will go live to $platformName '
+        'stable users immediately.';
+
+    if (shorebirdEnv.canAcceptUserInput) {
+      logger.warn(message);
+      if (!logger.confirm('Continue?')) {
+        logger.info('Aborting.');
+        throw ProcessExit(ExitCode.success.code);
+      }
+    } else {
+      // CI: log so the action is traceable, but proceed.
+      logger.info(message);
+    }
   }
 
   /// Returns a GCP download link for measuring download speed.
