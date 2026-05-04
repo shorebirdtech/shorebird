@@ -5,9 +5,14 @@ import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
+import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
+import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Signature for a function which takes a list of bytes and returns a hash.
@@ -85,6 +90,39 @@ abstract class ShorebirdCommand extends Command<int> {
   /// Only call this when [isJsonMode] is true.
   void emitJsonSuccess(Map<String, dynamic> data) {
     JsonResult.success(data: data, command: fullCommandName).write();
+  }
+
+  /// Suffix appended to command descriptions to advertise `--json` mode.
+  ///
+  /// [example] should be a complete example invocation, e.g.:
+  ///   `'shorebird releases list --app-id <id> --json'`
+  static String jsonHint(String example) =>
+      'Pass --json (global flag) for machine-readable output with all fields:\n'
+      '  $example';
+
+  /// Resolves the app ID from `--app-id` or `shorebird.yaml`, validating
+  /// preconditions in the process.
+  ///
+  /// Returns `(appId: <id>, errorCode: null)` on success, or
+  /// `(appId: '', errorCode: <code>)` if precondition validation failed.
+  Future<({String appId, int? errorCode})> resolveAppId() async {
+    final explicitAppId = results[CommonArguments.appIdArg.name] as String?;
+    try {
+      await shorebirdValidator.validatePreconditions(
+        checkUserIsAuthenticated: true,
+        checkShorebirdInitialized: explicitAppId == null,
+      );
+    } on PreconditionFailedException catch (error) {
+      return (appId: '', errorCode: error.exitCode.code);
+    }
+    final flavor = results.findOption(
+      CommonArguments.flavorArg.name,
+      argParser: argParser,
+    );
+    final appId =
+        explicitAppId ??
+        shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
+    return (appId: appId, errorCode: null);
   }
 
   /// Emits a JSON error envelope to stdout.

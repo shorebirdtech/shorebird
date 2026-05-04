@@ -2,13 +2,9 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
-import 'package:shorebird_cli/src/config/config.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -52,29 +48,12 @@ class PatchesInfoCommand extends ShorebirdCommand {
       '  Track:       stable\n'
       '  Rolled back: no\n'
       '  Notes:       Optional patch notes.\n\n'
-      'Pass --json (global flag) for machine-readable output with all fields:\n'
-      '  shorebird patches info --release-version 1.0.0+1 --patch-number 1 --app-id <id> --json';
+      '${ShorebirdCommand.jsonHint('shorebird patches info --release-version 1.0.0+1 --patch-number 1 --app-id <id> --json')}';
 
   @override
   Future<int> run() async {
-    final explicitAppId = results[CommonArguments.appIdArg.name] as String?;
-
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: explicitAppId == null,
-      );
-    } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
-    }
-
-    final flavor = results.findOption(
-      CommonArguments.flavorArg.name,
-      argParser: argParser,
-    );
-    final appId =
-        explicitAppId ??
-        shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
+    final (:appId, :errorCode) = await resolveAppId();
+    if (errorCode != null) return errorCode;
 
     final releaseVersion =
         results[CommonArguments.releaseVersionArg.name] as String;
