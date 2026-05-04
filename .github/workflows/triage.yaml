@@ -1,0 +1,44 @@
+name: Triage automation
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+jobs:
+  add-needs-triage:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add needs-triage label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh api -X POST "repos/$REPO/issues/$NUMBER/labels" \
+            -f 'labels[]=needs-triage'
+
+  customer-replied:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request == null &&
+      github.event.comment.user.login == github.event.issue.user.login
+    runs-on: ubuntu-latest
+    steps:
+      - name: Swap waiting-for-response to needs-triage on author reply
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          has_waiting=$(gh api "repos/$REPO/issues/$NUMBER/labels" \
+            --jq '[.[].name] | any(. == "waiting for response")')
+          if [ "$has_waiting" = "true" ]; then
+            gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/waiting%20for%20response"
+            gh api -X POST "repos/$REPO/issues/$NUMBER/labels" -f 'labels[]=needs-triage'
+          fi
