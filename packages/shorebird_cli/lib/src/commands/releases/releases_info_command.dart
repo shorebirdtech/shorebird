@@ -41,18 +41,18 @@ class ReleasesInfoCommand extends ShorebirdCommand {
   String get description =>
       'Show details for a specific release.\n\n'
       'Example output:\n'
-      '  ID:       42\n'
-      '  Version:  1.0.0+1\n'
-      '  Flutter:  3.27.0\n'
-      '  Revision: abc123def\n'
-      '  Created:  2026-01-15\n'
-      '  Updated:  2026-01-16\n'
-      '  Notes:    Optional release notes.\n'
+      '  ID:         42\n'
+      '  Version:    1.0.0+1\n'
+      '  Flutter:    3.27.0\n'
+      '  Revision:   abc123def\n'
+      '  Created:    2026-01-15\n'
+      '  Updated:    2026-01-16\n'
+      '  Notes:      Optional release notes.\n'
       '  Platforms:\n'
-      '    android: active\n'
-      '    ios:     draft\n'
-      '    macos:   active\n'
-      '    windows: active\n\n'
+      '    android:  active\n'
+      '    ios:      draft\n'
+      '    macos:    active\n'
+      '    windows:  active\n\n'
       'Pass --json (global flag) for machine-readable output with all fields:\n'
       '  shorebird releases info --release-version 1.0.0+1 --app-id <id> --json';
 
@@ -122,7 +122,8 @@ class ReleasesInfoCommand extends ShorebirdCommand {
     }
     logger.info('Platforms:');
     for (final entry in release.platformStatuses.entries) {
-      logger.info('  ${entry.key.value}:  ${entry.value.value}');
+      final label = '${entry.key.value}:'.padRight(10);
+      logger.info('  $label${entry.value.value}');
     }
 
     return ExitCode.success.code;
