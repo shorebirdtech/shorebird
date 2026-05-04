@@ -44,7 +44,15 @@ class PatchesInfoCommand extends ShorebirdCommand {
   String get name => 'info';
 
   @override
-  String get description => 'Show details for a specific patch.';
+  String get description =>
+      'Show details for a specific patch.\n\n'
+      'Example output:\n'
+      '  Number:      1\n'
+      '  Track:       stable\n'
+      '  Rolled back: no\n'
+      '  Notes:       Optional patch notes.\n\n'
+      'Pass --json (global flag) for machine-readable output with all fields:\n'
+      '  shorebird patches info --release-version 1.0.0+1 --patch-number 1 --app-id <id> --json';
 
   @override
   Future<int> run() async {

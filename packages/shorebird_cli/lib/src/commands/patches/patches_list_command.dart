@@ -38,7 +38,13 @@ class PatchesListCommand extends ShorebirdCommand {
   String get name => 'list';
 
   @override
-  String get description => 'List patches for a release.';
+  String get description =>
+      'List patches for a release.\n\n'
+      'Example output (one line per patch):\n'
+      '  #1  track: stable\n'
+      '  #2  track: beta  [rolled back]\n\n'
+      'Pass --json (global flag) for machine-readable output with all fields:\n'
+      '  shorebird patches list --release-version 1.0.0+1 --app-id <id> --json';
 
   @override
   Future<int> run() async {

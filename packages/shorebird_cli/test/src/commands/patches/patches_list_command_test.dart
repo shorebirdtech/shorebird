@@ -105,7 +105,7 @@ void main() {
     });
 
     test('has correct description', () {
-      expect(command.description, 'List patches for a release.');
+      expect(command.description, startsWith('List patches for a release.'));
     });
 
     group('when validation fails', () {

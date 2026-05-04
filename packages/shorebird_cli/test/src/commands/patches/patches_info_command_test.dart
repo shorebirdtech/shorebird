@@ -110,7 +110,7 @@ void main() {
     });
 
     test('has correct description', () {
-      expect(command.description, 'Show details for a specific patch.');
+      expect(command.description, startsWith('Show details for a specific patch.'));
     });
 
     group('when validation fails', () {
