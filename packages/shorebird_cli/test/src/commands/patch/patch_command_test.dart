@@ -660,8 +660,14 @@ void main() {
           'logs one line per patch with all platforms that landed on it',
           () {
             command.platformPatches
-              ..[ReleasePlatform.ios] = const CreatePatchResponse(id: 7, number: 3)
-              ..[ReleasePlatform.android] = const CreatePatchResponse(id: 7, number: 3);
+              ..[ReleasePlatform.ios] = const CreatePatchResponse(
+                id: 7,
+                number: 3,
+              )
+              ..[ReleasePlatform.android] = const CreatePatchResponse(
+                id: 7,
+                number: 3,
+              );
 
             runWithOverrides(command.logUnifiedSuccess);
 
@@ -707,7 +713,10 @@ void main() {
             // releases differed across platforms. Each patch number gets
             // its own line so the user sees what actually happened.
             command.platformPatches
-              ..[ReleasePlatform.ios] = const CreatePatchResponse(id: 7, number: 3)
+              ..[ReleasePlatform.ios] = const CreatePatchResponse(
+                id: 7,
+                number: 3,
+              )
               ..[ReleasePlatform.android] = const CreatePatchResponse(
                 id: 8,
                 number: 4,
