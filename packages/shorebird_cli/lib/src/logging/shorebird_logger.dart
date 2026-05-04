@@ -114,17 +114,16 @@ class ShorebirdLogger extends Logger {
   ///   * In an interactive context (TTY + no `--json`), defers to
   ///     mason_logger's animated spinner.
   ///   * Otherwise, emits a single static line on creation, and a "Done X" /
-  ///     "Failed X" line on `complete`/`fail`. Output is routed to `stderr`
-  ///     under `--json` so it doesn't corrupt the JSON envelope, and to
-  ///     `stdout` otherwise.
+  ///     "Failed X" line on `complete`/`fail`. Output is always routed to
+  ///     `stderr` — progress is diagnostic, never content.
   @override
   Progress progress(String message, {ProgressOptions? options}) {
     if (isInteractive && !isJsonMode) {
-      return super.progress(message, options: options);
+      return super.progress(message, options: options); // coverage:ignore-line
     }
     return _StaticProgress(
       message: message,
-      sink: isJsonMode ? io.stderr : io.stdout,
+      sink: io.stderr,
       level: level,
     );
   }

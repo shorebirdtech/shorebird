@@ -143,7 +143,7 @@ Command that reads data from stdin and outputs a base64 signature to stdout.
   /// more thoroughly explains what the release version is used for.
   static const releaseVersionArg = ArgumentDescriber(
     name: 'release-version',
-    description: 'The version of the release (e.g. "1.0.0").',
+    description: 'The version of the release (e.g. "1.0.0+1").',
   );
 
   /// Help text for release version arguments in patch commands, where the

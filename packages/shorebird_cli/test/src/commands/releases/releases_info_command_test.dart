@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -95,7 +96,10 @@ void main() {
     });
 
     test('has correct description', () {
-      expect(command.description, 'Show details for a specific release.');
+      expect(
+        command.description,
+        startsWith('Show details for a specific release.'),
+      );
     });
 
     group('when validation fails', () {
@@ -198,8 +202,10 @@ void main() {
       test('prints release fields', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
+        verify(() => logger.info(any(that: contains('ID:')))).called(1);
         verify(() => logger.info(any(that: contains('1.0.0+1')))).called(1);
         verify(() => logger.info(any(that: contains('3.27.0')))).called(1);
+        verify(() => logger.info(any(that: contains('Revision:')))).called(1);
         verify(
           () => logger.info(any(that: contains('Some release notes.'))),
         ).called(1);
@@ -234,6 +240,47 @@ void main() {
           expect(result, equals(ExitCode.success.code));
           verifyNever(() => logger.info(any(that: contains('Flutter:'))));
         });
+      });
+    });
+
+    group('when API fetch fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('in human-readable mode, rethrows ProcessExit', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          throwsA(isA<ProcessExit>()),
+        );
+      });
+
+      test('in --json mode, emits JSON error envelope', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runScoped(
+            command.run,
+            values: {
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.software.code));
+        expect(captured, hasLength(1));
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(decoded['status'], 'error');
       });
     });
 

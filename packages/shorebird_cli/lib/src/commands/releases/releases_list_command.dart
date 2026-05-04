@@ -38,7 +38,12 @@ class ReleasesListCommand extends ShorebirdCommand {
   String get name => 'list';
 
   @override
-  String get description => 'List releases for an app.';
+  String get description =>
+      'List releases for an app.\n\n'
+      'Example output (one line per release):\n'
+      '  42  1.0.0+1  android: active, ios: draft  3.27.0\n\n'
+      'Pass --json (global flag) for machine-readable output with all fields:\n'
+      '  shorebird releases list --app-id <id> --json';
 
   @override
   Future<int> run() async {
@@ -104,7 +109,9 @@ class ReleasesListCommand extends ShorebirdCommand {
       final flutter = release.flutterVersion != null
           ? '  ${release.flutterVersion}'
           : '';
-      logger.info('${lightCyan.wrap(release.version)}  $platforms$flutter');
+      logger.info(
+        '${release.id}  ${lightCyan.wrap(release.version)}  $platforms$flutter',
+      );
     }
 
     return ExitCode.success.code;

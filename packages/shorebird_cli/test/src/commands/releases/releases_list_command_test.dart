@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -92,7 +93,7 @@ void main() {
     });
 
     test('has correct description', () {
-      expect(command.description, 'List releases for an app.');
+      expect(command.description, startsWith('List releases for an app.'));
     });
 
     group('when validation fails', () {
@@ -222,10 +223,54 @@ void main() {
     });
 
     group('human-readable output', () {
-      test('prints each release', () async {
+      test('prints each release with id and version', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
-        verify(() => logger.info(any())).called(1);
+        verify(
+          () => logger.info(
+            any(that: allOf(contains('1'), contains('1.0.0+1'))),
+          ),
+        ).called(1);
+      });
+    });
+
+    group('when API fetch fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleases(
+            appId: any(named: 'appId'),
+          ),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('in human-readable mode, rethrows ProcessExit', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          throwsA(isA<ProcessExit>()),
+        );
+      });
+
+      test('in --json mode, emits JSON error envelope', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runScoped(
+            command.run,
+            values: {
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.software.code));
+        expect(captured, hasLength(1));
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(decoded['status'], 'error');
       });
     });
 
