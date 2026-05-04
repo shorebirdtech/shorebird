@@ -30,7 +30,7 @@ void main() {
     });
 
     group('currentPatchNumber', () {
-      test('forwards the result of shorebird_next_boot_patch_number', () {
+      test('forwards the result of shorebird_current_boot_patch_number', () {
         when(
           () => updaterBindings.shorebird_current_boot_patch_number(),
         ).thenReturn(123);
@@ -40,7 +40,8 @@ void main() {
     });
 
     group('checkForDownloadableUpdate', () {
-      test('forwards the result of shorebird_check_for_update', () {
+      test('forwards the result of shorebird_check_for_downloadable_update',
+          () {
         when(
           () => updaterBindings.shorebird_check_for_downloadable_update(
             nullptr,
@@ -65,7 +66,8 @@ void main() {
           ).thenReturn(true);
         });
 
-        test('forwards the result of shorebird_check_for_update', () {
+        test('forwards the result of shorebird_check_for_downloadable_update',
+            () {
           expect(
             updater.checkForDownloadableUpdate(track: UpdateTrack.beta),
             isTrue,
@@ -98,14 +100,6 @@ void main() {
         ).thenReturn(123);
         final currentPatchNumber = updater.nextPatchNumber();
         expect(currentPatchNumber, 123);
-      });
-    });
-
-    group('downloadUpdate', () {
-      test('calls bindings.shorebird_update', () {
-        when(() => updaterBindings.shorebird_update()).thenReturn(null);
-        updater.downloadUpdate();
-        verify(() => updaterBindings.shorebird_update()).called(1);
       });
     });
 

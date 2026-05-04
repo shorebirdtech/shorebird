@@ -1,3 +1,7 @@
+# 2.0.7
+
+- chore: internal cleanup; no public API changes.
+
 # 2.0.6
 
 - fix: `checkForUpdate` now reports `restartRequired` when the current patch

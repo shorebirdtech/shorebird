@@ -95,15 +95,7 @@ class ShorebirdUpdaterImpl implements ShorebirdUpdater {
   Future<void> update({UpdateTrack? track}) async {
     if (!_isAvailable) return;
 
-    Pointer<UpdateResult> result = nullptr;
-
-    try {
-      result = await _run(() => _updater.update(track: track));
-      // Explicitly catch all errors/exceptions to ensure we gracefully fallback.
-      // ignore: avoid_catches_without_on_clauses
-    } catch (_) {
-      return _legacyFallback();
-    }
+    final result = await _run(() => _updater.update(track: track));
 
     const unknownErrorMessage = 'An unknown error occurred.';
 
@@ -137,22 +129,6 @@ class ShorebirdUpdaterImpl implements ShorebirdUpdater {
     } finally {
       _updater.freeUpdateResult(result);
     }
-  }
-
-  // Fallback to downloadUpdate if update is not available.
-  Future<void> _legacyFallback() async {
-    await _run(_updater.downloadUpdate);
-    final (current, next) = await (readCurrentPatch(), readNextPatch()).wait;
-    final status = next != null && current?.number != next.number
-        ? UpdateStatus.restartRequired
-        : UpdateStatus.upToDate;
-    if (status == UpdateStatus.restartRequired) return;
-    throw const UpdateException(
-      message: '''
-Downloading update failed but reason is unknown due to legacy updater.
-Please upgrade the Shorebird Engine for improved error messages.''',
-      reason: UpdateFailureReason.unknown,
-    );
   }
 }
 

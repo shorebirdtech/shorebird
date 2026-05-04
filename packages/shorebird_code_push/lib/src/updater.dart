@@ -26,11 +26,6 @@ class Updater {
   /// currentPatchNumber if no new patch is available.
   int nextPatchNumber() => bindings.shorebird_next_boot_patch_number();
 
-  /// Downloads the latest patch, if available.
-  void downloadUpdate() => bindings.shorebird_update();
-
-  // New Methods added to support v2.0.0 of the Dart APIs //
-
   /// Whether a new patch is available for download.
   bool checkForDownloadableUpdate({UpdateTrack? track}) =>
       bindings.shorebird_check_for_downloadable_update(

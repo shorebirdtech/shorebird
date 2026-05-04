@@ -1,6 +1,6 @@
 name: shorebird_code_push
 description: Check for and download Shorebird code push updates from your app.
-version: 2.0.6
+version: 2.0.7
 homepage: https://shorebird.dev
 repository: https://github.com/shorebirdtech/updater/tree/main/shorebird_code_push
 
@@ -22,7 +22,11 @@ ffigen:
   output: "lib/src/generated/updater_bindings.g.dart"
   name: "UpdaterBindings"
   headers:
+    # Only the Dart-stable surface drives ffigen. Engine-only symbols live in
+    # ../library/include/updater_engine.h and must NOT be reachable from the
+    # generated bindings — the package's public ABI is exactly what this file
+    # exposes.
     entry-points:
-      - "../library/include/updater.h"
+      - "../library/include/updater_dart.h"
   preamble: |
     // ignore_for_file: unused_element, unused_field

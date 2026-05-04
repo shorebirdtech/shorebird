@@ -354,7 +354,7 @@ void main() {
           overridePrint((_) async {
             shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
             await expectLater(shorebirdUpdater.update(), completes);
-            verifyNever(updater.downloadUpdate);
+            verifyNever(() => updater.update());
           }),
         );
       });
@@ -384,6 +384,31 @@ void main() {
             ),
           );
           verify(updater.update).called(1);
+        });
+      });
+
+      group('when the FFI call throws', () {
+        // Pre-2.0.7 the package wrapped this call in a try/catch and routed
+        // throws into a legacy fallback that called the now-removed
+        // shorebird_update symbol. The fallback was unreachable under the
+        // package's flutter: >=3.24.5 constraint, so it was deleted along
+        // with the symbol. The replacement contract: any unexpected throw
+        // from the FFI propagates to the caller, and freeUpdateResult is
+        // not invoked (we never received a pointer to free).
+        setUp(() {
+          when(() => updater.currentPatchNumber()).thenReturn(0);
+          when(() => updater.update()).thenThrow(Exception('boom'));
+          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
+        });
+
+        test('propagates the exception and does not call freeUpdateResult',
+            () async {
+          await expectLater(
+            shorebirdUpdater.update(),
+            throwsA(isA<Exception>()),
+          );
+          verify(() => updater.update()).called(1);
+          verifyNever(() => updater.freeUpdateResult(any()));
         });
       });
 
@@ -537,52 +562,6 @@ void main() {
           );
           verify(updater.update).called(1);
           verify(() => updater.freeUpdateResult(any())).called(1);
-        });
-      });
-
-      group('when an outdated version of the engine is used', () {
-        setUp(() {
-          when(updater.currentPatchNumber).thenReturn(0);
-          when(updater.nextPatchNumber).thenReturn(1);
-          when(() => updater.update()).thenThrow(Exception('oops'));
-          shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
-        });
-
-        test('falls back to downloadUpdate', () async {
-          await expectLater(shorebirdUpdater.update(), completes);
-          verify(updater.update).called(1);
-          verify(updater.downloadUpdate).called(1);
-          verifyNever(() => updater.freeUpdateResult(any()));
-        });
-
-        group('when update fails', () {
-          setUp(() {
-            when(updater.currentPatchNumber).thenReturn(0);
-            when(updater.nextPatchNumber).thenReturn(0);
-            shorebirdUpdater = ShorebirdUpdaterImpl(updater: updater, run: run);
-          });
-
-          test('throws if legacy update fails', () async {
-            await expectLater(
-              shorebirdUpdater.update,
-              throwsA(
-                isA<UpdateException>().having(
-                  (e) => e.message,
-                  'message',
-                  '''
-Downloading update failed but reason is unknown due to legacy updater.
-Please upgrade the Shorebird Engine for improved error messages.''',
-                ).having(
-                  (e) => e.reason,
-                  'reason',
-                  UpdateFailureReason.unknown,
-                ),
-              ),
-            );
-            verify(updater.update).called(1);
-            verify(updater.downloadUpdate).called(1);
-            verifyNever(() => updater.freeUpdateResult(any()));
-          });
         });
       });
 
