@@ -39,6 +39,10 @@ Future<void> main(List<String> args) async {
     () => LoggingStdout(baseStdOut: stdout, logFile: currentRunLogFile),
     values: {shorebirdEnvRef},
   );
+  final loggingStderr = runScoped(
+    () => LoggingStdout(baseStdOut: stderr, logFile: currentRunLogFile),
+    values: {shorebirdEnvRef},
+  );
 
   // Write the current command to the top of the log file.
   currentRunLogFile.writeAsStringSync('''
@@ -104,7 +108,7 @@ Command: shorebird ${args.join(' ')}
       ),
     ),
     stdout: () => loggingStdout,
-    stderr: () => loggingStdout,
+    stderr: () => loggingStderr,
   );
 }
 

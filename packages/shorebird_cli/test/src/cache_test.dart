@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ffi' show Abi;
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
@@ -7,14 +8,18 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
@@ -25,6 +30,7 @@ void main() {
   group(Cache, () {
     const shorebirdEngineRevision = 'test-revision';
 
+    late LocalAbi mockAbi;
     late ArtifactManager artifactManager;
     late Cache cache;
     late ChecksumChecker checksumChecker;
@@ -35,12 +41,14 @@ void main() {
     late Process chmodProcess;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdProcess shorebirdProcess;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
         () => body(),
         values: {
+          abiRef.overrideWith(() => mockAbi),
           artifactManagerRef.overrideWith(() => artifactManager),
           cacheRef.overrideWith(() => cache),
           checksumCheckerRef.overrideWith(() => checksumChecker),
@@ -49,6 +57,7 @@ void main() {
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdFlutterRef.overrideWith(() => shorebirdFlutter),
         },
       );
     }
@@ -73,6 +82,7 @@ void main() {
     });
 
     setUp(() {
+      mockAbi = MockAbi();
       artifactManager = MockArtifactManager();
       chmodProcess = MockProcess();
       checksumChecker = MockChecksumChecker();
@@ -81,7 +91,13 @@ void main() {
       platform = MockPlatform();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
+      shorebirdFlutter = MockShorebirdFlutter();
       shorebirdProcess = MockShorebirdProcess();
+
+      when(() => mockAbi.current).thenReturn(Abi.macosX64);
+      when(
+        () => shorebirdFlutter.resolveFlutterVersion(any()),
+      ).thenAnswer((_) async => null);
 
       shorebirdRoot = Directory.systemTemp.createTempSync();
       when(
@@ -98,6 +114,9 @@ void main() {
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
+      when(
+        () => shorebirdEnv.flutterRevision,
+      ).thenReturn('test-flutter-revision');
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
 
       when(() => platform.environment).thenReturn({});
@@ -200,6 +219,89 @@ void main() {
                 () => PatchArtifact(cache: cache, platform: platform).fileName,
               );
               expect(fileName, equals('patch'));
+            });
+          });
+        });
+
+        group('storageUrl', () {
+          group('when on macOS', () {
+            setUp(() {
+              setMockPlatform(Platform.macOS);
+            });
+
+            test(
+              'uses darwin-arm64 on Apple Silicon when the Flutter version '
+              'satisfies the arm64 patch constraint',
+              () async {
+                when(() => mockAbi.current).thenReturn(Abi.macosArm64);
+                when(
+                  () => shorebirdFlutter.resolveFlutterVersion(any()),
+                ).thenAnswer(
+                  (_) async => arm64PatchSupportConstraint.minVersion,
+                );
+                final url = await runWithOverrides(
+                  () => PatchArtifact(
+                    cache: cache,
+                    platform: platform,
+                  ).storageUrl,
+                );
+                expect(url, contains('patch-darwin-arm64.zip'));
+              },
+            );
+
+            test(
+              'uses darwin-x64 on Apple Silicon when the Flutter version '
+              'is below the arm64 patch constraint floor',
+              () async {
+                when(() => mockAbi.current).thenReturn(Abi.macosArm64);
+                when(
+                  () => shorebirdFlutter.resolveFlutterVersion(any()),
+                ).thenAnswer((_) async => Version(3, 41, 6));
+                final url = await runWithOverrides(
+                  () => PatchArtifact(
+                    cache: cache,
+                    platform: platform,
+                  ).storageUrl,
+                );
+                expect(url, contains('patch-darwin-x64.zip'));
+              },
+            );
+
+            test('uses darwin-x64 on Intel', () async {
+              when(() => mockAbi.current).thenReturn(Abi.macosX64);
+              final url = await runWithOverrides(
+                () =>
+                    PatchArtifact(cache: cache, platform: platform).storageUrl,
+              );
+              expect(url, contains('patch-darwin-x64.zip'));
+            });
+          });
+
+          group('when on Linux', () {
+            setUp(() {
+              setMockPlatform(Platform.linux);
+            });
+
+            test('uses linux-x64', () async {
+              final url = await runWithOverrides(
+                () =>
+                    PatchArtifact(cache: cache, platform: platform).storageUrl,
+              );
+              expect(url, contains('patch-linux-x64.zip'));
+            });
+          });
+
+          group('when on Windows', () {
+            setUp(() {
+              setMockPlatform(Platform.windows);
+            });
+
+            test('uses windows-x64', () async {
+              final url = await runWithOverrides(
+                () =>
+                    PatchArtifact(cache: cache, platform: platform).storageUrl,
+              );
+              expect(url, contains('patch-windows-x64.zip'));
             });
           });
         });
@@ -571,5 +673,6 @@ class _TestCachedArtifact extends CachedArtifact {
   File get file => File(p.join(_location.path, fileName));
 
   @override
-  String get storageUrl => 'https://example.com/test_artifact.exe';
+  Future<String> get storageUrl async =>
+      'https://example.com/test_artifact.exe';
 }

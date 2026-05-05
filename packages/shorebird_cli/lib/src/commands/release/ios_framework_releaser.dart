@@ -3,27 +3,25 @@ import 'dart:io';
 import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template ios_framework_releaser}
 /// Functions to create an iOS framework release.
 /// {@endtemplate}
-class IosFrameworkReleaser extends Releaser {
+class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
   /// {@macro ios_framework_releaser}
   IosFrameworkReleaser({
     required super.argResults,
@@ -49,6 +47,9 @@ class IosFrameworkReleaser extends Releaser {
   String get supplementArtifactArch => 'ios_framework_supplement';
 
   @override
+  List<Validator> get applePlatformValidators => doctor.iosCommandValidators;
+
+  @override
   Future<void> assertArgsAreValid() async {
     if (!argResults.wasParsed('release-version')) {
       logger.err('Missing required argument: --release-version');
@@ -60,20 +61,6 @@ class IosFrameworkReleaser extends Releaser {
 
   @override
   Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
-
-  @override
-  Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-        supportedOperatingSystems: {Platform.macOS},
-        validators: doctor.iosCommandValidators,
-      );
-    } on PreconditionFailedException catch (e) {
-      throw ProcessExit(e.exitCode.code);
-    }
-  }
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
@@ -138,15 +125,6 @@ class IosFrameworkReleaser extends Releaser {
 
     await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
-
-  @override
-  Future<UpdateReleaseMetadata> updatedReleaseMetadata(
-    UpdateReleaseMetadata metadata,
-  ) async => metadata.copyWith(
-    environment: metadata.environment.copyWith(
-      xcodeVersion: await xcodeBuild.version(),
-    ),
-  );
 
   @override
   String get postReleaseInstructions {

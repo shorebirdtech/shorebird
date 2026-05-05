@@ -1,3 +1,4 @@
+import 'dart:ffi' show Abi;
 import 'dart:io' hide Platform;
 
 import 'package:http/http.dart' as http;
@@ -5,13 +6,16 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:retry/retry.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// {@template cache_update_failure}
@@ -147,8 +151,10 @@ abstract class CachedArtifact {
   /// Should the artifact be marked executable.
   bool get isExecutable;
 
-  /// The URL from which the artifact can be downloaded.
-  String get storageUrl;
+  /// The URL from which the artifact can be downloaded. Returned as a
+  /// future so subclasses can resolve runtime context (e.g. the active
+  /// Flutter version) before deciding which artifact to fetch.
+  Future<String> get storageUrl;
 
   /// Whether the artifact is required for Shorebird to function.
   /// If we fail to fetch it we will exit with an error.
@@ -197,7 +203,8 @@ abstract class CachedArtifact {
 
     final updateProgress = logger.progress('Downloading $fileName...');
 
-    final request = http.Request('GET', Uri.parse(storageUrl));
+    final url = await storageUrl;
+    final request = http.Request('GET', Uri.parse(url));
     final http.StreamedResponse response;
     try {
       response = await httpClient.send(request);
@@ -205,7 +212,7 @@ abstract class CachedArtifact {
       throw CacheUpdateFailure('''
 Failed to download $fileName: $error
 If you're behind a firewall/proxy, please, make sure shorebird_cli is
-allowed to access $storageUrl.''');
+allowed to access $url.''');
     }
 
     if (response.statusCode != HttpStatus.ok) {
@@ -304,7 +311,7 @@ class AotToolsArtifact extends CachedArtifact {
   );
 
   @override
-  String get storageUrl =>
+  Future<String> get storageUrl async =>
       '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$fileName';
 
   @override
@@ -339,10 +346,12 @@ class PatchArtifact extends CachedArtifact {
   }
 
   @override
-  String get storageUrl {
+  Future<String> get storageUrl async {
     var artifactName = 'patch-';
     if (platform.isMacOS) {
-      artifactName += 'darwin-x64.zip';
+      final useArm64 =
+          abi.current == Abi.macosArm64 && await _supportsArm64Patch();
+      artifactName += useArm64 ? 'darwin-arm64.zip' : 'darwin-x64.zip';
     } else if (platform.isLinux) {
       artifactName += 'linux-x64.zip';
     } else if (platform.isWindows) {
@@ -350,6 +359,15 @@ class PatchArtifact extends CachedArtifact {
     }
 
     return '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$artifactName';
+  }
+
+  Future<bool> _supportsArm64Patch() async {
+    final revision = shorebirdEnv.flutterRevision;
+    final version = await shorebirdFlutter.resolveFlutterVersion(revision);
+    return arm64PatchSupportConstraint.isSatisfiedBy(
+      version: version ?? arm64PatchSupportConstraint.minVersion,
+      revision: revision,
+    );
   }
 
   @override
@@ -371,7 +389,7 @@ class BundleToolArtifact extends CachedArtifact {
   bool get isExecutable => false;
 
   @override
-  String get storageUrl {
+  Future<String> get storageUrl async {
     return 'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar';
   }
 
