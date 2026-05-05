@@ -13,7 +13,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 ///
 /// Sample usage:
 /// ```sh
-/// shorebird patches set-track --release-version=1.0.0+1 --patch-number=1 --track=beta
+/// shorebird patches set-track --release=1.0.0+1 --patch=1 --track=beta
 /// ```
 ///
 /// {@endtemplate}
