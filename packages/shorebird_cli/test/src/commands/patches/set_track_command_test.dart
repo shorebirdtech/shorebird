@@ -567,6 +567,120 @@ void main() {
           );
         });
       });
+
+      group('when track name is empty', () {
+        setUp(() {
+          when(() => argResults['track']).thenReturn('');
+        });
+
+        test('emits usage_error envelope', () async {
+          final captured = <String>[];
+          final result = await captureStdout(
+            () => runJsonMode(command.run),
+            captured: captured,
+          );
+          expect(result, equals(ExitCode.usage.code));
+          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+          expect(decoded['status'], 'error');
+          expect(
+            (decoded['error'] as Map<String, dynamic>)['code'],
+            'usage_error',
+          );
+        });
+      });
+
+      group('when track name exceeds max length', () {
+        setUp(() {
+          when(() => argResults['track']).thenReturn('a' * 129);
+        });
+
+        test('emits usage_error envelope', () async {
+          final captured = <String>[];
+          final result = await captureStdout(
+            () => runJsonMode(command.run),
+            captured: captured,
+          );
+          expect(result, equals(ExitCode.usage.code));
+          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+          expect(decoded['status'], 'error');
+          expect(
+            (decoded['error'] as Map<String, dynamic>)['code'],
+            'usage_error',
+          );
+        });
+      });
+
+      group('when no patch with given number is found', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleasePatches(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
+          ).thenAnswer(
+            (_) async => [
+              const ReleasePatch(
+                id: 1,
+                number: patchNumber + 1,
+                channel: 'stable',
+                isRolledBack: false,
+                artifacts: [],
+              ),
+            ],
+          );
+        });
+
+        test('emits usage_error envelope', () async {
+          final captured = <String>[];
+          final result = await captureStdout(
+            () => runJsonMode(command.run),
+            captured: captured,
+          );
+          expect(result, equals(ExitCode.usage.code));
+          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+          expect(decoded['status'], 'error');
+          expect(
+            (decoded['error'] as Map<String, dynamic>)['code'],
+            'usage_error',
+          );
+        });
+      });
+
+      group('when patch is already in target channel', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getReleasePatches(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
+          ).thenAnswer(
+            (_) async => [
+              ReleasePatch(
+                id: 0,
+                number: patchNumber,
+                channel: targetChannel.name,
+                isRolledBack: false,
+                artifacts: const [],
+              ),
+            ],
+          );
+        });
+
+        test('emits usage_error envelope', () async {
+          final captured = <String>[];
+          final result = await captureStdout(
+            () => runJsonMode(command.run),
+            captured: captured,
+          );
+          expect(result, equals(ExitCode.usage.code));
+          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+          expect(decoded['status'], 'error');
+          expect(
+            (decoded['error'] as Map<String, dynamic>)['code'],
+            'usage_error',
+          );
+        });
+      });
     });
   });
 }
