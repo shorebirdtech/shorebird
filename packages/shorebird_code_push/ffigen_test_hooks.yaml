@@ -1,0 +1,17 @@
+# ffigen config for the integration-test-only `library_test_hooks` C
+# surface. Output lives under `test/integration/generated/`, NOT under
+# `lib/`, because these bindings are not part of `shorebird_code_push`'s
+# public API — they're consumed only by the integration tests.
+#
+# Regenerate with:
+#   dart run ffigen --config ffigen_test_hooks.yaml
+#
+# The header is produced by `cargo build -p library_test_hooks`. If
+# the header is stale, run that first.
+output: "test/integration/generated/test_hooks_bindings.g.dart"
+name: "TestHooksBindings"
+headers:
+  entry-points:
+    - "../library_test_hooks/include/library_test_hooks.h"
+preamble: |
+  // ignore_for_file: unused_element, unused_field, type=lint
