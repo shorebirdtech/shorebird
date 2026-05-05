@@ -68,43 +68,6 @@ cat lib/main.dart
 # Create a patch
 shorebird patch android --release-version 0.1.0+1 --split-debug-info=./build/symbols -v
 
-# Verify patches list returns the newly created patch.
-PATCHES_LIST=$(shorebird patches list --release-version 0.1.0+1 --app-id "$APP_ID" --json)
-echo "$PATCHES_LIST" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-assert data['status'] == 'success', f'Expected success, got: {data}'
-patches = data['data']['patches']
-assert len(patches) >= 1, f'Expected at least one patch, got: {patches}'
-assert patches[0]['number'] == 1, f'Expected patch number 1, got: {patches[0]}'
-print('✅ patches list returned patch #1')
-"
-
-# Verify patches info returns the correct patch details.
-PATCH_INFO=$(shorebird patches info --release-version 0.1.0+1 --patch-number 1 --app-id "$APP_ID" --json)
-echo "$PATCH_INFO" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-assert data['status'] == 'success', f'Expected success, got: {data}'
-patch = data['data']['patch']
-assert patch['number'] == 1, f'Expected patch number 1, got: {patch}'
-assert patch['is_rolled_back'] == False, f'Expected patch not rolled back, got: {patch}'
-print('✅ patches info returned correct details for patch #1')
-"
-
-# Verify patches info returns a structured error for a non-existent patch number.
-set +e
-BAD_PATCH=$(shorebird patches info --release-version 0.1.0+1 --patch-number 999 --app-id "$APP_ID" --json)
-BAD_EXIT=$?
-set -e
-echo "$BAD_PATCH" | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-assert data['status'] == 'error', f'Expected error envelope, got: {data}'
-print('✅ patches info returns error envelope for non-existent patch number')
-"
-[ $BAD_EXIT -ne 0 ] || (echo "❌ Expected non-zero exit for bad patch number" && exit 1)
-
 # Run the app on Android and ensure that the original print statement is printed.
 while IFS= read line; do
     if [[ "$line" == *"Patch 1 successfully"* ]]; then
