@@ -2,30 +2,25 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
-import 'package:shorebird_cli/src/config/config.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template set_track_command}
-/// Sets the channel of a patch.
+/// Sets the track of a patch.
 ///
 /// Sample usage:
 /// ```sh
 /// shorebird patches set-track --release=1.0.0+1 --patch=1 --track=beta
 /// ```
 ///
-/// {@endtemplate
+/// {@endtemplate}
 class SetTrackCommand extends ShorebirdCommand {
   /// {@macro set_track_command}
   SetTrackCommand() {
     argParser
-      ..addOption(
-        'flavor',
-        help: 'The product flavor to use when building the app.',
-      )
       ..addOption(
         'release',
         help: CommonArguments.patchReleaseVersionDescription,
@@ -33,7 +28,7 @@ class SetTrackCommand extends ShorebirdCommand {
       )
       ..addOption(
         'patch',
-        help: 'The patch number to set the channel for (ex: "1").',
+        help: 'The patch number to set the track for (e.g. "1").',
         mandatory: true,
       )
       ..addOption(
@@ -43,6 +38,14 @@ class SetTrackCommand extends ShorebirdCommand {
             '("stable", "beta", "staging", or any custom track name '
             'up to ${CommonArguments.trackNameMaxLength} characters).',
         mandatory: true,
+      )
+      ..addOption(
+        CommonArguments.appIdArg.name,
+        help: CommonArguments.appIdArg.description,
+      )
+      ..addOption(
+        CommonArguments.flavorArg.name,
+        help: 'The product flavor to use when building the app.',
       );
   }
 
@@ -50,27 +53,32 @@ class SetTrackCommand extends ShorebirdCommand {
   String get name => 'set-track';
 
   @override
-  String get description => 'Sets the track of a patch.';
+  String get description =>
+      'Sets the track of a patch.\n\n'
+      'Example output:\n'
+      '  Patch 1 on release 1.0.0+1 is now in channel stable!\n\n'
+      '${ShorebirdCommand.jsonHint('shorebird patches set-track --release 1.0.0+1 --patch 1 --track stable --app-id <id> --json')}';
 
   @override
   Future<int> run() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-      );
-    } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
-    }
+    final (:appId, :errorCode) = await resolveAppId();
+    if (errorCode != null) return errorCode;
 
     final releaseVersion = results['release'] as String;
     final patchNumber = int.parse(results['patch'] as String);
-    final flavor = results.findOption('flavor', argParser: argParser);
-    final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
     final targetChannel = results['track'] as String;
 
     if (targetChannel.isEmpty ||
         targetChannel.length > CommonArguments.trackNameMaxLength) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.usageError,
+          message:
+              'Track name must be between 1 and '
+              '${CommonArguments.trackNameMaxLength} characters.',
+        );
+        return ExitCode.usage.code;
+      }
       logger.err(
         'Track name must be between 1 and '
         '${CommonArguments.trackNameMaxLength} characters.',
@@ -78,29 +86,70 @@ class SetTrackCommand extends ShorebirdCommand {
       return ExitCode.usage.code;
     }
 
-    final release = await codePushClientWrapper.getRelease(
-      appId: appId,
-      releaseVersion: releaseVersion,
-    );
-    final patches = await codePushClientWrapper.getReleasePatches(
-      appId: appId,
-      releaseId: release.id,
-    );
+    final Release release;
+    final List<ReleasePatch> patches;
+    try {
+      release = await codePushClientWrapper.getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
+      );
+      patches = await codePushClientWrapper.getReleasePatches(
+        appId: appId,
+        releaseId: release.id,
+      );
+    } on ProcessExit catch (e) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.fetchFailed,
+          message: 'Failed to fetch patches for release "$releaseVersion".',
+        );
+        return e.exitCode;
+      }
+      rethrow;
+    }
+
     if (patches.isEmpty) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.usageError,
+          message: 'No patches found for release "$releaseVersion".',
+        );
+        return ExitCode.usage.code;
+      }
       logger.err('No patches found for release $releaseVersion');
       return ExitCode.usage.code;
     }
 
-    final patchToPromote = patches.firstWhereOrNull(
-      (patch) => patch.number == patchNumber,
-    );
-    if (patchToPromote == null) {
+    final patch = patches.firstWhereOrNull((p) => p.number == patchNumber);
+    if (patch == null) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.usageError,
+          message:
+              'No patch found with number $patchNumber '
+              'for release "$releaseVersion".',
+        );
+        return ExitCode.usage.code;
+      }
       logger
         ..err('No patch found with number $patchNumber')
         ..info(
-          '''Available patches: ${patches.map((patch) => patch.number).join(', ')}''',
+          'Available patches: ${patches.map((p) => p.number).join(', ')}',
         );
+      return ExitCode.usage.code;
+    }
 
+    if (patch.channel == targetChannel) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.usageError,
+          message: 'Patch $patchNumber is already in channel "$targetChannel".',
+        );
+        return ExitCode.usage.code;
+      }
+      logger.err(
+        'Patch ${patch.number} is already in channel $targetChannel',
+      );
       return ExitCode.usage.code;
     }
 
@@ -109,15 +158,26 @@ class SetTrackCommand extends ShorebirdCommand {
       name: targetChannel,
     );
     if (channel == null) {
-      final shouldCreateChannel = logger.confirm(
-        '''No channel named ${lightCyan.wrap(targetChannel)} found. Do you want to create it?''',
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.interactivePromptRequired,
+          message: 'Channel "$targetChannel" does not exist.',
+          hint:
+              'Create it by publishing a patch with --track=$targetChannel, '
+              'or run without --json to create it interactively.',
+        );
+        return ExitCode.usage.code;
+      }
+      final shouldCreate = logger.confirm(
+        'No channel named ${lightCyan.wrap(targetChannel)} found. '
+        'Do you want to create it?',
         hint:
             'Pass --track=<existing-channel> to use an existing channel. '
             'Channels are auto-created when a patch is published with '
             '--track=<name>; set-track itself has no flag to skip this '
             'confirmation.',
       );
-      if (!shouldCreateChannel) {
+      if (!shouldCreate) {
         return ExitCode.success.code;
       }
 
@@ -127,21 +187,36 @@ class SetTrackCommand extends ShorebirdCommand {
       );
     }
 
-    if (patchToPromote.channel == targetChannel) {
-      logger.err(
-        'Patch ${patchToPromote.number} is already in channel $targetChannel',
+    try {
+      await codePushClientWrapper.promotePatch(
+        appId: appId,
+        patchId: patch.id,
+        channel: channel,
       );
-      return ExitCode.usage.code;
+    } on ProcessExit catch (e) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.softwareError,
+          message:
+              'Failed to set track for patch $patchNumber '
+              'of release "$releaseVersion".',
+        );
+        return e.exitCode;
+      }
+      rethrow;
     }
 
-    await codePushClientWrapper.promotePatch(
-      appId: appId,
-      patchId: patchToPromote.id,
-      channel: channel,
-    );
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'release_version': releaseVersion,
+        'patch_number': patchNumber,
+        'track': targetChannel,
+      });
+      return ExitCode.success.code;
+    }
 
     logger.success(
-      '''Patch ${patchToPromote.number} on release $releaseVersion is now in channel $targetChannel!''',
+      'Patch $patchNumber on release $releaseVersion is now in channel $targetChannel!',
     );
 
     return ExitCode.success.code;
