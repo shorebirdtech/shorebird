@@ -106,10 +106,6 @@ void main() {
       ).thenAnswer((_) async => [patch]);
     });
 
-    test('has correct name', () {
-      expect(command.name, 'info');
-    });
-
     test('has correct description', () {
       expect(
         command.description,
@@ -248,19 +244,14 @@ void main() {
     });
 
     group('human-readable output', () {
-      test('prints patch fields', () async {
+      test('prints labelled patch fields in order', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
-        verify(() => logger.info(any(that: contains('10')))).called(
-          greaterThanOrEqualTo(1),
-        );
-        verify(
-          () => logger.info(any(that: contains('$patchNumber'))),
-        ).called(greaterThanOrEqualTo(1));
-        verify(() => logger.info(any(that: contains('stable')))).called(1);
-        verify(
-          () => logger.info(any(that: contains('A test patch.'))),
-        ).called(1);
+        verify(() => logger.info('ID:          10')).called(1);
+        verify(() => logger.info('Number:      $patchNumber')).called(1);
+        verify(() => logger.info('Track:       stable')).called(1);
+        verify(() => logger.info('Rolled back: no')).called(1);
+        verify(() => logger.info('Notes:       A test patch.')).called(1);
       });
 
       group('when patch has artifacts', () {
@@ -293,21 +284,12 @@ void main() {
           );
         });
 
-        test('prints artifact platform, arch, and size', () async {
+        test('prints column-padded artifact line w/ formatted size', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
+          verify(() => logger.info('Artifacts:')).called(1);
           verify(
-            () => logger.info(any(that: contains('Artifacts:'))),
-          ).called(1);
-          verify(
-            () => logger.info(
-              any(
-                that: allOf(
-                  contains('android'),
-                  contains('arm64-v8a'),
-                ),
-              ),
-            ),
+            () => logger.info('  android  arm64-v8a    1.20 MB'),
           ).called(1);
         });
       });

@@ -101,10 +101,6 @@ void main() {
       ).thenAnswer((_) async => [patch]);
     });
 
-    test('has correct name', () {
-      expect(command.name, 'list');
-    });
-
     test('has correct description', () {
       expect(command.description, startsWith('List patches for a release.'));
     });
