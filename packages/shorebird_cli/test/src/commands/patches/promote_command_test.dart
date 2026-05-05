@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -6,6 +8,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/patches/patches.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -13,6 +16,7 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import '../../fakes.dart';
+import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
@@ -60,6 +64,7 @@ void main() {
         body,
         values: {
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
+          isJsonModeRef.overrideWith(() => false),
           loggerRef.overrideWith(() => logger),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
           shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
@@ -233,6 +238,44 @@ void main() {
           () => logger.success('Patch 1 is now live for release 1.0.0!'),
         ).called(1);
       });
+    });
+
+    group('--json', () {
+      test(
+        'refuses with structured envelope and points to set-track',
+        () async {
+          final captured = <String>[];
+          final result = await captureStdout(
+            () => runScoped(
+              command.run,
+              values: {
+                codePushClientWrapperRef.overrideWith(
+                  () => codePushClientWrapper,
+                ),
+                isJsonModeRef.overrideWith(() => true),
+                loggerRef.overrideWith(() => logger),
+                shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+                shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+              },
+            ),
+            captured: captured,
+          );
+          expect(result, equals(ExitCode.usage.code));
+          expect(captured, hasLength(1));
+          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+          expect(decoded['status'], 'error');
+          final error = decoded['error'] as Map<String, dynamic>;
+          expect(error['code'], 'usage_error');
+          expect(error['hint'], contains('set-track'));
+          verifyNever(
+            () => codePushClientWrapper.promotePatch(
+              appId: any(named: 'appId'),
+              patchId: any(named: 'patchId'),
+              channel: any(named: 'channel'),
+            ),
+          );
+        },
+      );
     });
   });
 }

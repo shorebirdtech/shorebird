@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -387,6 +388,97 @@ void main() {
             'is now in channel ${targetChannel.name}!',
           ),
         ).called(1);
+      });
+    });
+
+    group('when API fetch fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getReleasePatches(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+          ),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('in human-readable mode, rethrows ProcessExit', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          throwsA(isA<ProcessExit>()),
+        );
+      });
+
+      test('in --json mode, emits fetch_failed JSON error', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runScoped(
+            command.run,
+            values: {
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.software.code));
+        expect(captured, hasLength(1));
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(decoded['status'], 'error');
+        expect(
+          (decoded['error'] as Map<String, dynamic>)['code'],
+          'fetch_failed',
+        );
+      });
+    });
+
+    group('when promotePatch fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.promotePatch(
+            appId: any(named: 'appId'),
+            patchId: any(named: 'patchId'),
+            channel: any(named: 'channel'),
+          ),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('in human-readable mode, rethrows ProcessExit', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          throwsA(isA<ProcessExit>()),
+        );
+      });
+
+      test('in --json mode, emits software_error JSON error', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runScoped(
+            command.run,
+            values: {
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.software.code));
+        expect(captured, hasLength(1));
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(decoded['status'], 'error');
+        expect(
+          (decoded['error'] as Map<String, dynamic>)['code'],
+          'software_error',
+        );
       });
     });
 
