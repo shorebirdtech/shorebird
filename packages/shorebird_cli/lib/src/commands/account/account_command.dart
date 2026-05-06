@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 class AccountCommand extends ShorebirdCommand {
   /// {@macro account_command}
   AccountCommand() {
+    addSubcommand(AppsCommand());
     addSubcommand(OrgsCommand());
     addSubcommand(WhoamiCommand());
   }
