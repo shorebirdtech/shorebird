@@ -2362,6 +2362,58 @@ class TestHooksBindings {
       _lookup<ffi.NativeFunction<ffi.Void Function()>>('shorebird_test_reset');
   late final _shorebird_test_reset =
       _shorebird_test_resetPtr.asFunction<void Function()>();
+
+  /// Test-only convenience wrapper around `shorebird_init` that builds
+  /// `AppParameters` and stub `FileCallbacks` internally. Dart tests
+  /// pass plain C strings instead of needing bindings for those
+  /// engine-API structs.
+  bool shorebird_test_init(
+    ffi.Pointer<ffi.Char> app_storage_dir,
+    ffi.Pointer<ffi.Char> code_cache_dir,
+    ffi.Pointer<ffi.Char> release_version,
+    ffi.Pointer<ffi.Char> libapp_path,
+    ffi.Pointer<ffi.Char> yaml,
+  ) {
+    return _shorebird_test_init(
+      app_storage_dir,
+      code_cache_dir,
+      release_version,
+      libapp_path,
+      yaml,
+    );
+  }
+
+  late final _shorebird_test_initPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Bool Function(
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>)>>('shorebird_test_init');
+  late final _shorebird_test_init = _shorebird_test_initPtr.asFunction<
+      bool Function(
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>)>();
+
+  /// Simulates the engine's successful boot of `next_boot_patch`.
+  /// In production this is two engine actions (launch-start, then
+  /// launch-success after Dart VM startup completes); the Dart layer
+  /// has no concept of either, so we expose the combined outcome as a
+  /// single semantic action: "the next patch booted cleanly."
+  void shorebird_test_simulate_successful_launch() {
+    return _shorebird_test_simulate_successful_launch();
+  }
+
+  late final _shorebird_test_simulate_successful_launchPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function()>>(
+          'shorebird_test_simulate_successful_launch');
+  late final _shorebird_test_simulate_successful_launch =
+      _shorebird_test_simulate_successful_launchPtr
+          .asFunction<void Function()>();
 }
 
 typedef __builtin_va_list = ffi.Pointer<ffi.Char>;
