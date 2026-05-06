@@ -27,7 +27,7 @@ void main() {
       updatedAt: DateTime(2026, 1, 16),
     );
     final appWithoutReleases = AppMetadata(
-      appId: '01J000000000000000000FGHIJ',
+      appId: '01J000000000000000000ABCDE',
       displayName: 'Acme Internal',
       createdAt: DateTime(2026, 2),
       updatedAt: DateTime(2026, 2, 2),
