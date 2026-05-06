@@ -1,57 +1,47 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_analysis.dart';
-import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 
-/// {@template release}
-/// A release build of an application that is distributed to devices.
-/// A release can have zero or more patches applied to it.
+/// {@template latest_release}
+/// Per-platform projection of an analyzed release as surfaced by
+/// `AppMetadata.latest_releases`. Each entry corresponds to the
+/// most recent analyzed release on the keying platform, so
+/// `analysis` is always populated and `status` is the single
+/// per-platform status (rather than the cross-platform
+/// `platform_statuses` map carried by `Release`).
 /// {@endtemplate}
 @immutable
-class Release {
-  /// {@macro release}
-  const Release({
+class LatestRelease {
+  /// {@macro latest_release}
+  const LatestRelease({
     required this.id,
-    required this.appId,
     required this.version,
     required this.flutterRevision,
-    required this.platformStatuses,
     required this.createdAt,
     required this.updatedAt,
+    required this.status,
+    required this.analysis,
     this.flutterVersion,
-    this.displayName,
     this.notes,
-    this.analyses,
   });
 
-  /// Converts a `Map<String, dynamic>` to a [Release].
-  factory Release.fromJson(Map<String, dynamic> json) {
+  /// Converts a `Map<String, dynamic>` to a [LatestRelease].
+  factory LatestRelease.fromJson(Map<String, dynamic> json) {
     return parseFromJson(
-      'Release',
+      'LatestRelease',
       json,
-      () => Release(
+      () => LatestRelease(
         id: json['id'] as int,
-        appId: json['app_id'] as String,
         version: json['version'] as String,
         flutterRevision: json['flutter_revision'] as String,
         flutterVersion: json['flutter_version'] as String?,
-        displayName: json['display_name'] as String?,
-        platformStatuses: (json['platform_statuses'] as Map<String, dynamic>)
-            .map(
-              (key, value) => MapEntry(
-                ReleasePlatform.fromJson(key),
-                ReleaseStatus.fromJson(value as String),
-              ),
-            ),
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
+        status: ReleaseStatus.fromJson(json['status'] as String),
         notes: json['notes'] as String?,
-        analyses: (json['analyses'] as Map<String, dynamic>?)?.map(
-          (key, value) => MapEntry(
-            ReleasePlatform.fromJson(key),
-            ReleaseAnalysis.fromJson(value as Map<String, dynamic>),
-          ),
+        analysis: ReleaseAnalysis.fromJson(
+          json['analysis'] as Map<String, dynamic>,
         ),
       ),
     );
@@ -59,18 +49,15 @@ class Release {
 
   /// Convenience to create a nullable type from a nullable json object.
   /// Useful when parsing optional fields.
-  static Release? maybeFromJson(Map<String, dynamic>? json) {
+  static LatestRelease? maybeFromJson(Map<String, dynamic>? json) {
     if (json == null) {
       return null;
     }
-    return Release.fromJson(json);
+    return LatestRelease.fromJson(json);
   }
 
   /// The ID of the release.
   final int id;
-
-  /// The ID of the app.
-  final String appId;
 
   /// The version of the release.
   final String version;
@@ -82,77 +69,62 @@ class Release {
   /// because it was added later; older releases do not have it.
   final String? flutterVersion;
 
-  /// The display name for the release.
-  final String? displayName;
-
-  /// The status of the release for each platform.
-  final Map<ReleasePlatform, ReleaseStatus> platformStatuses;
-
   /// The date and time the release was created.
   final DateTime createdAt;
 
   /// The date and time the release was last updated.
   final DateTime updatedAt;
 
+  /// The status of a release.
+  final ReleaseStatus status;
+
   /// Freeform notes associated with the release, if any.
   final String? notes;
 
-  /// Analyzer-extracted metadata per platform (icon, package name,
-  /// SDK levels, architectures). A platform is omitted when its
-  /// artifact has not been analyzed yet. Empty when no platform
-  /// of this release has been analyzed.
-  final Map<ReleasePlatform, ReleaseAnalysis>? analyses;
+  /// Analyzer-extracted metadata for a release artifact on a single
+  /// platform.
+  final ReleaseAnalysis analysis;
 
-  /// Converts a [Release] to a `Map<String, dynamic>`.
+  /// Converts a [LatestRelease] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'app_id': appId,
       'version': version,
       'flutter_revision': flutterRevision,
       'flutter_version': flutterVersion,
-      'display_name': displayName,
-      'platform_statuses': platformStatuses.map(
-        (key, value) => MapEntry(key.toJson(), value.toJson()),
-      ),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'status': status.toJson(),
       'notes': notes,
-      'analyses': analyses?.map(
-        (key, value) => MapEntry(key.toJson(), value.toJson()),
-      ),
+      'analysis': analysis.toJson(),
     };
   }
 
   @override
   int get hashCode => Object.hashAll([
     id,
-    appId,
     version,
     flutterRevision,
     flutterVersion,
-    displayName,
-    mapHash(platformStatuses),
     createdAt,
     updatedAt,
+    status,
     notes,
-    mapHash(analyses),
+    analysis,
   ]);
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is Release &&
+    return other is LatestRelease &&
         id == other.id &&
-        appId == other.appId &&
         version == other.version &&
         flutterRevision == other.flutterRevision &&
         flutterVersion == other.flutterVersion &&
-        displayName == other.displayName &&
-        mapsEqual(platformStatuses, other.platformStatuses) &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
+        status == other.status &&
         notes == other.notes &&
-        mapsEqual(analyses, other.analyses);
+        analysis == other.analysis;
   }
 }
