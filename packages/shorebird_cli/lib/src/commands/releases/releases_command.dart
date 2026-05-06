@@ -8,6 +8,8 @@ class ReleasesCommand extends ShorebirdCommand {
   /// {@macro releases_command}
   ReleasesCommand() {
     addSubcommand(GetApksCommand());
+    addSubcommand(ReleasesInfoCommand());
+    addSubcommand(ReleasesListCommand());
   }
 
   @override

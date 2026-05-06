@@ -7,6 +7,8 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 class PatchesCommand extends ShorebirdCommand {
   /// {@macro patches_command}
   PatchesCommand() {
+    addSubcommand(PatchesInfoCommand());
+    addSubcommand(PatchesListCommand());
     addSubcommand(PromoteCommand());
     addSubcommand(SetTrackCommand());
   }

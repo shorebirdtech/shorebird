@@ -6,7 +6,6 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
-import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// A reference to a [Logger] instance.
@@ -114,15 +113,16 @@ class ShorebirdLogger extends Logger {
   ///   * In an interactive context (TTY + no `--json`), defers to
   ///     mason_logger's animated spinner.
   ///   * Otherwise, emits a single static line on creation, and a "Done X" /
-  ///     "Failed X" line on `complete`/`fail`. Output is routed to `stderr`
-  ///     under `--json` so it doesn't corrupt the JSON envelope, and to
-  ///     `stdout` otherwise.
+  ///     "Failed X" line on `complete`/`fail`. Output is always routed to
+  ///     `stderr` — progress is diagnostic, never content.
   @override
   Progress progress(String message, {ProgressOptions? options}) {
-    if (isInteractive) return super.progress(message, options: options);
+    if (isInteractive) {
+      return super.progress(message, options: options); // coverage:ignore-line
+    }
     return _StaticProgress(
       message: message,
-      sink: isJsonMode ? io.stderr : io.stdout,
+      sink: io.stderr,
       level: level,
     );
   }
