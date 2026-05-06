@@ -279,6 +279,49 @@ void main() {
         });
       });
 
+      group('getCurrentUser', () {
+        test('exits with code 70 when fetching the user fails', () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getCurrentUser()).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(codePushClientWrapper.getCurrentUser),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('exits with code 70 when no current user is found', () async {
+          when(
+            () => codePushClient.getCurrentUser(),
+          ).thenAnswer((_) async => null);
+
+          await expectLater(
+            () async => runWithOverrides(codePushClientWrapper.getCurrentUser),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => logger.err('Could not find current user.')).called(1);
+        });
+
+        test('returns the current user on success', () async {
+          const expectedUser = PrivateUser(
+            id: 1,
+            email: 'user@example.com',
+            jwtIssuer: 'https://accounts.google.com',
+          );
+          when(
+            () => codePushClient.getCurrentUser(),
+          ).thenAnswer((_) async => expectedUser);
+
+          final user = await runWithOverrides(
+            codePushClientWrapper.getCurrentUser,
+          );
+
+          expect(user, equals(expectedUser));
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('getOrganizationMemberships', () {
         test(
           'exits with code 70 when getting organization memberships fails',

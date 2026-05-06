@@ -116,6 +116,23 @@ class CodePushClientWrapper {
     );
   }
 
+  /// Fetches the currently authenticated user.
+  Future<PrivateUser> getCurrentUser() async {
+    final progress = logger.progress('Fetching account');
+    final PrivateUser? user;
+    try {
+      user = await codePushClient.getCurrentUser();
+      progress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+    if (user == null) {
+      logger.err('Could not find current user.');
+      throw ProcessExit(ExitCode.software.code);
+    }
+    return user;
+  }
+
   /// Fetches the organization memberships for the current user.
   Future<List<OrganizationMembership>> getOrganizationMemberships() async {
     final progress = logger.progress('Fetching organizations');
