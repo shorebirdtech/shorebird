@@ -14,7 +14,6 @@ class ReleaseAnalysis {
     required this.minSdkVersion,
     required this.targetSdkVersion,
     required this.architectures,
-    this.iconBase64,
   });
 
   /// Converts a `Map<String, dynamic>` to a [ReleaseAnalysis].
@@ -25,7 +24,6 @@ class ReleaseAnalysis {
       () => ReleaseAnalysis(
         displayName: json['display_name'] as String,
         packageName: json['package_name'] as String,
-        iconBase64: json['icon_base64'] as String?,
         minSdkVersion: json['min_sdk_version'] as String,
         targetSdkVersion: json['target_sdk_version'] as String,
         architectures: (json['architectures'] as List).cast<String>(),
@@ -50,11 +48,6 @@ class ReleaseAnalysis {
   /// The application package name (e.g. `com.example.app`).
   final String packageName;
 
-  /// The app launcher icon as a base64-encoded PNG data URI
-  /// (e.g. `data:image/png;base64,...`). Omitted if no icon was
-  /// extracted.
-  final String? iconBase64;
-
   /// The minimum SDK level required to install the artifact
   /// (Android API level for android, iOS deployment target for ios).
   final String minSdkVersion;
@@ -72,7 +65,6 @@ class ReleaseAnalysis {
     return {
       'display_name': displayName,
       'package_name': packageName,
-      'icon_base64': iconBase64,
       'min_sdk_version': minSdkVersion,
       'target_sdk_version': targetSdkVersion,
       'architectures': architectures,
@@ -83,7 +75,6 @@ class ReleaseAnalysis {
   int get hashCode => Object.hashAll([
     displayName,
     packageName,
-    iconBase64,
     minSdkVersion,
     targetSdkVersion,
     listHash(architectures),
@@ -95,7 +86,6 @@ class ReleaseAnalysis {
     return other is ReleaseAnalysis &&
         displayName == other.displayName &&
         packageName == other.packageName &&
-        iconBase64 == other.iconBase64 &&
         minSdkVersion == other.minSdkVersion &&
         targetSdkVersion == other.targetSdkVersion &&
         listsEqual(architectures, other.architectures);

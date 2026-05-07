@@ -7,24 +7,9 @@ void main() {
       const analysis = ReleaseAnalysis(
         displayName: 'My App',
         packageName: 'com.example.app',
-        iconBase64: 'data:image/png;base64,AAA',
         minSdkVersion: '24',
         targetSdkVersion: '34',
         architectures: ['arm64-v8a', 'armeabi-v7a'],
-      );
-      expect(
-        ReleaseAnalysis.fromJson(analysis.toJson()).toJson(),
-        equals(analysis.toJson()),
-      );
-    });
-
-    test('can be (de)serialized with a null icon', () {
-      const analysis = ReleaseAnalysis(
-        displayName: 'My App',
-        packageName: 'com.example.app',
-        minSdkVersion: '24',
-        targetSdkVersion: '34',
-        architectures: ['arm64-v8a'],
       );
       expect(
         ReleaseAnalysis.fromJson(analysis.toJson()).toJson(),

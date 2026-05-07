@@ -16,7 +16,6 @@ void main() {
         analysis: const ReleaseAnalysis(
           displayName: 'My App',
           packageName: 'com.example.app',
-          iconBase64: 'data:image/png;base64,AAA',
           minSdkVersion: '24',
           targetSdkVersion: '34',
           architectures: ['arm64-v8a'],

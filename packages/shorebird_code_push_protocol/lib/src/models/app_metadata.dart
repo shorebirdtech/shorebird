@@ -22,6 +22,7 @@ class AppMetadata {
     this.platforms,
     this.latestReleases,
     this.pendingReleases,
+    this.iconUrl,
   });
 
   /// Converts a `Map<String, dynamic>` to an [AppMetadata].
@@ -52,6 +53,7 @@ class AppMetadata {
                 PendingRelease.fromJson(value as Map<String, dynamic>),
               ),
             ),
+        iconUrl: json['icon_url'] as String?,
       ),
     );
   }
@@ -105,6 +107,15 @@ class AppMetadata {
   /// present (no release on the platform has been analyzed yet).
   final Map<ReleasePlatform, PendingRelease>? pendingReleases;
 
+  /// Server-emitted URL for the app's launcher icon, sourced from
+  /// the most recent analyzed iOS release (or Android, when iOS has
+  /// no analyzed release with an icon). The URL embeds the picked
+  /// release's id as a `v` query parameter so it can be cached
+  /// indefinitely; when a different release becomes the icon source
+  /// the URL changes and clients re-fetch. Omitted when no analyzed
+  /// release has an icon.
+  final String? iconUrl;
+
   /// Converts an [AppMetadata] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -121,6 +132,7 @@ class AppMetadata {
       'pending_releases': pendingReleases?.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),
       ),
+      'icon_url': iconUrl,
     };
   }
 
@@ -135,6 +147,7 @@ class AppMetadata {
     listHash(platforms),
     mapHash(latestReleases),
     mapHash(pendingReleases),
+    iconUrl,
   ]);
 
   @override
@@ -149,6 +162,7 @@ class AppMetadata {
         updatedAt == other.updatedAt &&
         listsEqual(platforms, other.platforms) &&
         mapsEqual(latestReleases, other.latestReleases) &&
-        mapsEqual(pendingReleases, other.pendingReleases);
+        mapsEqual(pendingReleases, other.pendingReleases) &&
+        iconUrl == other.iconUrl;
   }
 }

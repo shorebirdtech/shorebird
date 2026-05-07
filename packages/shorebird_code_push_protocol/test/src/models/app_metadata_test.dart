@@ -18,8 +18,8 @@ void main() {
       );
     });
 
-    test('can be (de)serialized with platforms, latestReleases, and '
-        'pendingReleases', () {
+    test('can be (de)serialized with platforms, latestReleases, '
+        'pendingReleases, and iconUrl', () {
       final appMetadata = AppMetadata(
         appId: '30370f27-dbf1-4673-8b20-fb096e38dffa',
         displayName: 'My App',
@@ -40,7 +40,6 @@ void main() {
             analysis: const ReleaseAnalysis(
               displayName: 'My App',
               packageName: 'com.example.app',
-              iconBase64: 'data:image/png;base64,AAA',
               minSdkVersion: '24',
               targetSdkVersion: '34',
               architectures: ['arm64-v8a'],
@@ -54,6 +53,7 @@ void main() {
             createdAt: DateTime(2024),
           ),
         },
+        iconUrl: '/api/v1/app-icons/30370f27-dbf1-4673-8b20-fb096e38dffa?v=535',
       );
       expect(
         AppMetadata.fromJson(appMetadata.toJson()).toJson(),
