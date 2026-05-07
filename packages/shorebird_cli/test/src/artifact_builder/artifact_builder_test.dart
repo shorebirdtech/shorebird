@@ -1006,29 +1006,31 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
       });
 
       test(
-          'forwards --flavor to flutter build when flavor is provided',
-          () async {
-        await runWithOverrides(
-          () => builder.buildAar(buildNumber: buildNumber, flavor: 'internal'),
-        );
+        'forwards --flavor to flutter build when flavor is provided',
+        () async {
+          await runWithOverrides(
+            () =>
+                builder.buildAar(buildNumber: buildNumber, flavor: 'internal'),
+          );
 
-        verify(
-          () => shorebirdProcess.stream(
-            'flutter',
-            [
-              'build',
-              'aar',
-              '--no-debug',
-              '--no-profile',
-              '--build-number=1.0',
-              '--flavor=internal',
-            ],
-            environment: any(named: 'environment'),
-            runInShell: false,
-            onStart: any(named: 'onStart'),
-          ),
-        ).called(1);
-      });
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              [
+                'build',
+                'aar',
+                '--no-debug',
+                '--no-profile',
+                '--build-number=1.0',
+                '--flavor=internal',
+              ],
+              environment: any(named: 'environment'),
+              runInShell: false,
+              onStart: any(named: 'onStart'),
+            ),
+          ).called(1);
+        },
+      );
 
       group('when base64PublicKey is not null', () {
         const base64PublicKey = 'base64PublicKey';
@@ -1899,28 +1901,29 @@ Reason: Exited with code 70.'''),
       });
 
       test(
-          'forwards --flavor to flutter build when flavor is provided',
-          () async {
-        await runWithOverrides(
-          () => builder.buildIosFramework(flavor: 'internal'),
-        );
+        'forwards --flavor to flutter build when flavor is provided',
+        () async {
+          await runWithOverrides(
+            () => builder.buildIosFramework(flavor: 'internal'),
+          );
 
-        verify(
-          () => shorebirdProcess.stream(
-            'flutter',
-            [
-              'build',
-              'ios-framework',
-              '--no-debug',
-              '--no-profile',
-              '--flavor=internal',
-            ],
-            environment: any(named: 'environment'),
-            runInShell: false,
-            onStart: any(named: 'onStart'),
-          ),
-        ).called(1);
-      });
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              [
+                'build',
+                'ios-framework',
+                '--no-debug',
+                '--no-profile',
+                '--flavor=internal',
+              ],
+              environment: any(named: 'environment'),
+              runInShell: false,
+              onStart: any(named: 'onStart'),
+            ),
+          ).called(1);
+        },
+      );
 
       group('when base64PublicKey is not null', () {
         const base64PublicKey = 'base64PublicKey';
