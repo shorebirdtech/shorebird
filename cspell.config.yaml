@@ -116,6 +116,7 @@ words:
   - reinit
   - requirepass # From .github dir, doesn't show up in "**" check?
   - reusables
+  - rollforward # POST /.../patches/<id>/rollforward — un-rolls-back a patch
   - spawnee
   - Retryable
   - RSAPKCS
