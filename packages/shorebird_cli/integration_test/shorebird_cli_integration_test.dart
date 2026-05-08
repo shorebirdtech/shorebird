@@ -297,11 +297,42 @@ void main() {
           ),
         ),
       );
-      expect(
-        client.getCurrentUser(),
-        throwsA(isA<SocketException>()),
-      );
+      expect(client.getCurrentUser(), throwsA(isA<SocketException>()));
     });
+
+    final shorebirdHostedURLFallback =
+        Platform.environment['SHOREBIRD_HOSTED_URL_FALLBACK'];
+    test(
+      'cross-provider: GCP primary and Cloudflare fallback both serve the API',
+      () async {
+        // Confirms the configured Cloudflare-fronted endpoint actually
+        // serves the same API as the GCP-direct endpoint, end-to-end.
+        // Verifies each endpoint independently by routing through it as
+        // the primary against a bogus fallback.
+        final viaPrimary = runWithOverrides(
+          () => CodePushClient(
+            httpClient: Auth().client,
+            hostedUri: reachable,
+            fallbackHostedUri: unreachable,
+          ),
+        );
+        await hitApi(viaPrimary);
+
+        final viaFallback = runWithOverrides(
+          () => CodePushClient(
+            httpClient: Auth().client,
+            hostedUri: Uri.parse(shorebirdHostedURLFallback!),
+            fallbackHostedUri: unreachable,
+          ),
+        );
+        await hitApi(viaFallback);
+      },
+      skip:
+          shorebirdHostedURLFallback == null ||
+              shorebirdHostedURLFallback.isEmpty
+          ? 'SHOREBIRD_HOSTED_URL_FALLBACK is not set'
+          : null,
+    );
   });
 }
 

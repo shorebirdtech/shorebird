@@ -58,6 +58,7 @@ jobs:
 
     env:
       SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      SHOREBIRD_HOSTED_URL_FALLBACK: https://api-dev.shorebird.cloud
 
     steps:
       - name: 📚 Git Checkout
@@ -140,6 +141,7 @@ jobs:
 
     env:
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
+      SHOREBIRD_HOSTED_URL_FALLBACK: ${{ matrix.branch == 'stable' && 'https://api.shorebird.cloud' || 'https://api-dev.shorebird.cloud' }}
 
     steps:
       - name: 📚 Git Checkout
