@@ -160,14 +160,24 @@ class _FailoverClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    // Capture the host pair locally so this request keeps using the same
+    // routing even if a concurrent in-flight request swaps the fields.
+    final preferredAtStart = _preferredHost;
+    final alternateAtStart = _alternateHost;
+
     try {
-      return await _inner.send(_routedTo(request, _preferredHost));
+      return await _inner.send(_routedTo(request, preferredAtStart));
     } on Exception catch (e) {
       if (!_isTransportFailure(e)) rethrow;
     }
 
-    final response = await _inner.send(_routedTo(request, _alternateHost));
-    _swapHosts();
+    final response = await _inner.send(_routedTo(request, alternateAtStart));
+    // Swap only if no concurrent send already did. The check and swap are
+    // atomic in Dart's single-isolate model because there is no `await`
+    // between them.
+    if (identical(_preferredHost, preferredAtStart)) {
+      _swapHosts();
+    }
     return response;
   }
 
