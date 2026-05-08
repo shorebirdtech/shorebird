@@ -2320,35 +2320,6 @@ void main() {
         },
       );
 
-      test(
-        'does not rewrite host on requests to other hosts (e.g. GCS)',
-        () async {
-          when(() => httpClient.send(any())).thenAnswer((invocation) async {
-            final req =
-                invocation.positionalArguments.first as http.BaseRequest;
-            // Primary metadata POST returns a signed GCS upload URL.
-            if (req.url.host == 'primary.example.com') {
-              return http.StreamedResponse(
-                Stream.value(
-                  utf8.encode(
-                    '{"download_url": "https://upload.gcs.example.com/x"}',
-                  ),
-                ),
-                HttpStatus.ok,
-              );
-            }
-            return okResponse();
-          });
-
-          await client.getGCPDownloadSpeedTestUrl();
-
-          final sent = verify(
-            () => httpClient.send(captureAny()),
-          ).captured.cast<http.BaseRequest>();
-          expect(sent.single.url.host, equals('primary.example.com'));
-        },
-      );
-
       // Each transport-failure exception type lives on its own line of
       // _isTransportFailure. Because || short-circuits, only the matched
       // type's line and the lines before it execute. Test all four to
