@@ -188,9 +188,14 @@ class _FailoverClient extends http.BaseClient {
       e is TimeoutException ||
       e is http.ClientException;
 
-  /// Returns a copy of [original] with its host swapped to [newHost]. Only
-  /// supports request types we actually send through this client, namely
-  /// [http.Request] and [http.MultipartRequest].
+  /// Returns a copy of [original] with its host swapped to [newHost].
+  ///
+  /// Only supports request types we actually send to API hosts:
+  /// [http.Request] for JSON calls, and [http.MultipartRequest] for
+  /// field-only metadata POSTs (e.g. createPatchArtifact, which uses
+  /// multipart as a form-data envelope and carries no files). Real file
+  /// uploads target signed GCS URLs and do not reach this path because
+  /// [_HostRouter] sends them straight through.
   static http.BaseRequest _rewriteHost(
     http.BaseRequest original,
     String newHost,
