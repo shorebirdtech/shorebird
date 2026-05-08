@@ -958,6 +958,56 @@ aar artifact already exists, continuing...''');
     }
   }
 
+  /// Rolls back the patch identified by [patchId] under [releaseId].
+  ///
+  /// [patchNumber] is used purely for the human-readable progress message;
+  /// pass it through when the caller already has it on hand.
+  Future<void> rollbackPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+    int? patchNumber,
+  }) async {
+    final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
+    final progress = logger.progress('Rolling back $label');
+    try {
+      await codePushClient.rollbackPatch(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patchId,
+      );
+      progress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+  }
+
+  /// Rolls forward (un-rolls-back) the patch identified by [patchId] under
+  /// [releaseId]. Returns the patch to its active state; the server resends
+  /// the same patch artifact to devices on the next patch check.
+  ///
+  /// [patchNumber] is used purely for the human-readable progress message;
+  /// pass it through when the caller already has it on hand.
+  Future<void> rollforwardPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+    int? patchNumber,
+  }) async {
+    final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
+    final progress = logger.progress('Rolling forward $label');
+    try {
+      await codePushClient.rollforwardPatch(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patchId,
+      );
+      progress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+  }
+
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track].

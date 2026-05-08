@@ -2006,6 +2006,196 @@ void main() {
       });
     });
 
+    group('rollbackPatch', () {
+      const releaseId = 7;
+      const patchId = 11;
+
+      test('makes the correct request', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await codePushClient.rollbackPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(
+          request.url,
+          equals(
+            v1('apps/$appId/releases/$releaseId/patches/$patchId/rollback'),
+          ),
+        );
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('treats 304 Not Modified as success (idempotent)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.notModified,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollbackPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completes,
+        );
+      });
+
+      test('treats 204 No Content as success', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollbackPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completes,
+        );
+      });
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          codePushClient.rollbackPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test('throws a parsed exception on a structured error response', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.rollbackPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+    });
+
+    group('rollforwardPatch', () {
+      const releaseId = 7;
+      const patchId = 11;
+
+      test('makes the correct request', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await codePushClient.rollforwardPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(
+          request.url,
+          equals(
+            v1('apps/$appId/releases/$releaseId/patches/$patchId/rollforward'),
+          ),
+        );
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('treats 304 Not Modified as success (idempotent)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.notModified,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollforwardPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completes,
+        );
+      });
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          codePushClient.rollforwardPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+    });
+
     group('getOrganizationMemberships', () {
       group('when response is not success', () {
         setUp(() {

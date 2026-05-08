@@ -484,6 +484,58 @@ class CodePushClient {
     }
   }
 
+  /// Rolls back the patch with [patchId] under [releaseId] for [appId].
+  ///
+  /// Devices on the affected release_version that next call the patch-check
+  /// endpoint will receive the patch number in `rolled_back_patch_numbers`,
+  /// which signals the updater to revert to the prior patch (or the base
+  /// release if none).
+  ///
+  /// Idempotent: the server returns `304 Not Modified` if the patch is
+  /// already rolled back; this method treats that as success.
+  Future<void> rollbackPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse(
+        '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollback',
+      ),
+    );
+
+    // 304 means the patch was already rolled back — treat as a no-op success.
+    if (response.statusCode == HttpStatus.notModified) return;
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Rolls forward (un-rolls-back) the patch with [patchId] under [releaseId]
+  /// for [appId]. The server flips `is_rolled_back` from `true` to `false`
+  /// on the same patch row, so the same patch artifact (same hash) becomes
+  /// active again.
+  ///
+  /// Idempotent: the server returns `304 Not Modified` if the patch is
+  /// already active; this method treats that as success.
+  Future<void> rollforwardPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse(
+        '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollforward',
+      ),
+    );
+
+    // 304 means the patch was already active — treat as a no-op success.
+    if (response.statusCode == HttpStatus.notModified) return;
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// Gets the list of organizations the user is a member of, along with the
   /// user's role in each organization.
   Future<List<OrganizationMembership>> getOrganizationMemberships() async {

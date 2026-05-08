@@ -2485,6 +2485,127 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         });
       });
 
+      group('rollbackPatch', () {
+        const releaseId = 7;
+        const patchNumber = 1;
+
+        test('exits with code 70 when rollback fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.rollbackPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.rollbackPatch(
+                appId: appId,
+                releaseId: releaseId,
+                patchId: patchId,
+                patchNumber: patchNumber,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes progress when patch is rolled back', () async {
+          when(
+            () => codePushClient.rollbackPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.rollbackPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('omits patch number from progress label when not provided',
+            () async {
+          when(
+            () => codePushClient.rollbackPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.rollbackPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+            ),
+          );
+
+          verify(() => logger.progress('Rolling back patch')).called(1);
+        });
+      });
+
+      group('rollforwardPatch', () {
+        const releaseId = 7;
+        const patchNumber = 1;
+
+        test('exits with code 70 when rollforward fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.rollforwardPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.rollforwardPatch(
+                appId: appId,
+                releaseId: releaseId,
+                patchId: patchId,
+                patchNumber: patchNumber,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes progress when patch is rolled forward', () async {
+          when(
+            () => codePushClient.rollforwardPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.rollforwardPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('createPatchArtifacts', () {
         test('exits with code 70 when creating patch artifact fails', () async {
           const error = 'something went wrong';
