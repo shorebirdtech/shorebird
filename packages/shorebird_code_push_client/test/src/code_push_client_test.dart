@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -2345,6 +2346,102 @@ void main() {
             () => httpClient.send(captureAny()),
           ).captured.cast<http.BaseRequest>();
           expect(sent.single.url.host, equals('primary.example.com'));
+        },
+      );
+
+      // Each transport-failure exception type lives on its own line of
+      // _isTransportFailure. Because || short-circuits, only the matched
+      // type's line and the lines before it execute. Test all four to
+      // cover the full chain.
+      for (final entry in <String, Exception>{
+        'HandshakeException': const HandshakeException('tls failure'),
+        'TimeoutException': TimeoutException('connect timeout'),
+        'http.ClientException': http.ClientException('client error'),
+      }.entries) {
+        test('falls over when primary throws ${entry.key}', () async {
+          when(() => httpClient.send(any())).thenAnswer((invocation) async {
+            final req =
+                invocation.positionalArguments.first as http.BaseRequest;
+            if (req.url.host == 'primary.example.com') {
+              throw entry.value;
+            }
+            return okResponse();
+          });
+
+          await client.getApps();
+
+          final hosts = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>().map((r) => r.url.host).toList();
+          expect(hosts, ['primary.example.com', 'fallback.example.com']);
+        });
+      }
+
+      test(
+        'rewrites a MultipartRequest preserving fields when failing over',
+        () async {
+          final tempDir = Directory.systemTemp.createTempSync();
+          addTearDown(() => tempDir.deleteSync(recursive: true));
+          final fixture = File(path.join(tempDir.path, 'patch.txt'))
+            ..writeAsStringSync('contents');
+
+          when(() => httpClient.send(any())).thenAnswer((invocation) async {
+            final req =
+                invocation.positionalArguments.first as http.BaseRequest;
+            if (req.url.host == 'primary.example.com') {
+              throw const SocketException('blocked');
+            }
+            if (req.url.host == 'fallback.example.com') {
+              return http.StreamedResponse(
+                Stream.value(
+                  utf8.encode(
+                    json.encode({
+                      'id': 1,
+                      'patch_id': 0,
+                      'arch': 'aarch64',
+                      'platform': 'android',
+                      'hash': 'test-hash',
+                      'size': 8,
+                      'url': 'https://upload.gcs.example.com/x',
+                    }),
+                  ),
+                ),
+                HttpStatus.ok,
+              );
+            }
+            // GCS upload passthrough.
+            return http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.ok,
+            );
+          });
+
+          await client.createPatchArtifact(
+            appId: 'app-id',
+            artifactPath: fixture.path,
+            patchId: 0,
+            arch: 'aarch64',
+            platform: ReleasePlatform.android,
+            hash: 'test-hash',
+          );
+
+          final sent = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>();
+          // Three sends: primary metadata (threw), fallback metadata
+          // (rewritten copy, succeeded), GCS upload (passthrough, no
+          // rewrite).
+          expect(sent.length, equals(3));
+          expect(sent[0], isA<http.MultipartRequest>());
+          expect(sent[0].url.host, equals('primary.example.com'));
+          expect(sent[1], isA<http.MultipartRequest>());
+          expect(sent[1].url.host, equals('fallback.example.com'));
+          expect(sent[1].method, equals('POST'));
+          expect(
+            (sent[1] as http.MultipartRequest).fields,
+            containsPair('arch', 'aarch64'),
+          );
+          expect(sent[2].url.host, equals('upload.gcs.example.com'));
         },
       );
     });

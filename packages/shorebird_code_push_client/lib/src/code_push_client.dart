@@ -233,9 +233,15 @@ class _FailoverClient extends http.BaseClient {
         ..maxRedirects = original.maxRedirects
         ..persistentConnection = original.persistentConnection;
     }
+    // Defensive guard. Unreachable through CodePushClient's public API
+    // because every request issued internally is either an http.Request
+    // or an http.MultipartRequest. Marked ignore so the unreachable
+    // branch does not block the 100% patch coverage check.
+    // coverage:ignore-start
     throw StateError(
       'Cannot rewrite host on request of type ${original.runtimeType}',
     );
+    // coverage:ignore-end
   }
 
   @override
