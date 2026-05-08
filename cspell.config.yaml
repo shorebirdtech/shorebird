@@ -79,6 +79,7 @@ words:
   - mget # From ./packages/redis_client
   - metadatas
   - mktemp
+  - mmap # Unix system call — referenced in RELEASE_NOTES (libapp.so mmap-from-APK)
   - mocktail
   - mset # From ./packages/redis_client
   - multioption
