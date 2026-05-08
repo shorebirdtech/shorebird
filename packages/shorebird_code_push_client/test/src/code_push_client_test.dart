@@ -2150,6 +2150,204 @@ void main() {
         verify(() => httpClient.close()).called(1);
       });
     });
+
+    group('fallback retry', () {
+      late CodePushClient client;
+
+      setUp(() {
+        client = CodePushClient(
+          httpClient: httpClient,
+          hostedUri: Uri.https('primary.example.com'),
+          fallbackHostedUri: Uri.https('fallback.example.com'),
+        );
+      });
+
+      http.StreamedResponse okResponse() => http.StreamedResponse(
+        Stream.value(utf8.encode(json.encode({'apps': <Object>[]}))),
+        HttpStatus.ok,
+      );
+
+      test(
+        'does not contact fallback when primary succeeds',
+        () async {
+          when(
+            () => httpClient.send(any()),
+          ).thenAnswer((_) async => okResponse());
+
+          await client.getApps();
+
+          final sent = verify(() => httpClient.send(captureAny())).captured;
+          expect(sent, hasLength(1));
+          expect(
+            (sent.single as http.BaseRequest).url.host,
+            equals('primary.example.com'),
+          );
+        },
+      );
+
+      test(
+        'retries on fallback host when primary throws SocketException',
+        () async {
+          var callCount = 0;
+          when(() => httpClient.send(any())).thenAnswer((invocation) async {
+            callCount++;
+            final req =
+                invocation.positionalArguments.first as http.BaseRequest;
+            if (req.url.host == 'primary.example.com') {
+              throw const SocketException('blocked');
+            }
+            return okResponse();
+          });
+
+          await client.getApps();
+
+          expect(callCount, equals(2));
+          final sent = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>();
+          expect(sent[0].url.host, equals('primary.example.com'));
+          expect(sent[1].url.host, equals('fallback.example.com'));
+        },
+      );
+
+      test(
+        'sticks to fallback after a successful retry',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer((invocation) async {
+            final req =
+                invocation.positionalArguments.first as http.BaseRequest;
+            if (req.url.host == 'primary.example.com') {
+              throw const SocketException('blocked');
+            }
+            return okResponse();
+          });
+
+          await client.getApps();
+          await client.getApps();
+
+          final sent = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>();
+          // First call: primary (throws) + fallback (ok). Second call:
+          // fallback only, primary skipped due to sticky host.
+          expect(sent.map((r) => r.url.host), [
+            'primary.example.com',
+            'fallback.example.com',
+            'fallback.example.com',
+          ]);
+        },
+      );
+
+      test(
+        'does not retry on non-transport errors (4xx response)',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.forbidden,
+            ),
+          );
+
+          try {
+            await client.getApps();
+          } on Exception {
+            // expected
+          }
+
+          final sent = verify(() => httpClient.send(captureAny())).captured;
+          expect(sent, hasLength(1));
+        },
+      );
+
+      test(
+        'surfaces error when both primary and fallback fail',
+        () async {
+          when(
+            () => httpClient.send(any()),
+          ).thenAnswer((_) async => throw const SocketException('blocked'));
+
+          await expectLater(
+            client.getApps(),
+            throwsA(isA<SocketException>()),
+          );
+        },
+      );
+
+      test(
+        'falls back from sticky host when it later fails (self-heal)',
+        () async {
+          // Phase 1: primary blocked, fallback works. Sticky becomes fallback.
+          when(() => httpClient.send(any())).thenAnswer((invocation) async {
+            final req =
+                invocation.positionalArguments.first as http.BaseRequest;
+            if (req.url.host == 'primary.example.com') {
+              throw const SocketException('blocked');
+            }
+            return okResponse();
+          });
+          await client.getApps();
+
+          // Phase 2: fallback now broken, primary recovered. The session
+          // should fall over from the now-failing sticky to the recovered
+          // primary, and re-stick to primary.
+          when(() => httpClient.send(any())).thenAnswer((invocation) async {
+            final req =
+                invocation.positionalArguments.first as http.BaseRequest;
+            if (req.url.host == 'fallback.example.com') {
+              throw const SocketException('cf down');
+            }
+            return okResponse();
+          });
+          await client.getApps();
+
+          // A third call should now go directly to primary, no failover.
+          await client.getApps();
+
+          final hosts = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>().map((r) => r.url.host).toList();
+          expect(hosts, [
+            // Phase 1 cold: primary tried, fails, falls over to fallback.
+            'primary.example.com',
+            'fallback.example.com',
+            // Phase 2: sticky=fallback tried, fails, falls over to primary.
+            'fallback.example.com',
+            'primary.example.com',
+            // Third call: sticky=primary, no failover needed.
+            'primary.example.com',
+          ]);
+        },
+      );
+
+      test(
+        'does not rewrite host on requests to other hosts (e.g. GCS)',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer((invocation) async {
+            final req =
+                invocation.positionalArguments.first as http.BaseRequest;
+            // Primary metadata POST returns a signed GCS upload URL.
+            if (req.url.host == 'primary.example.com') {
+              return http.StreamedResponse(
+                Stream.value(
+                  utf8.encode(
+                    '{"download_url": "https://upload.gcs.example.com/x"}',
+                  ),
+                ),
+                HttpStatus.ok,
+              );
+            }
+            return okResponse();
+          });
+
+          await client.getGCPDownloadSpeedTestUrl();
+
+          final sent = verify(
+            () => httpClient.send(captureAny()),
+          ).captured.cast<http.BaseRequest>();
+          expect(sent.single.url.host, equals('primary.example.com'));
+        },
+      );
+    });
   });
 }
 
