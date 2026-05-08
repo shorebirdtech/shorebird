@@ -2534,26 +2534,28 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(() => progress.complete()).called(1);
         });
 
-        test('omits patch number from progress label when not provided',
-            () async {
-          when(
-            () => codePushClient.rollbackPatch(
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              patchId: any(named: 'patchId'),
-            ),
-          ).thenAnswer((_) async {});
+        test(
+          'omits patch number from progress label when not provided',
+          () async {
+            when(
+              () => codePushClient.rollbackPatch(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                patchId: any(named: 'patchId'),
+              ),
+            ).thenAnswer((_) async {});
 
-          await runWithOverrides(
-            () => codePushClientWrapper.rollbackPatch(
-              appId: appId,
-              releaseId: releaseId,
-              patchId: patchId,
-            ),
-          );
+            await runWithOverrides(
+              () => codePushClientWrapper.rollbackPatch(
+                appId: appId,
+                releaseId: releaseId,
+                patchId: patchId,
+              ),
+            );
 
-          verify(() => logger.progress('Rolling back patch')).called(1);
-        });
+            verify(() => logger.progress('Rolling back patch')).called(1);
+          },
+        );
       });
 
       group('rollforwardPatch', () {

@@ -2097,29 +2097,32 @@ void main() {
         );
       });
 
-      test('throws a parsed exception on a structured error response', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
-            HttpStatus.failedDependency,
-          ),
-        );
-
-        expect(
-          codePushClient.rollbackPatch(
-            appId: appId,
-            releaseId: releaseId,
-            patchId: patchId,
-          ),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              errorResponse.message,
+      test(
+        'throws a parsed exception on a structured error response',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+              HttpStatus.failedDependency,
             ),
-          ),
-        );
-      });
+          );
+
+          expect(
+            codePushClient.rollbackPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+            ),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                errorResponse.message,
+              ),
+            ),
+          );
+        },
+      );
     });
 
     group('rollforwardPatch', () {
