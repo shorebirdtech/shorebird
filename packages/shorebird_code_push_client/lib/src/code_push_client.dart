@@ -64,7 +64,11 @@ class CodePushUpgradeRequiredException extends CodePushException {
 /// A thin [http.BaseClient] decorator that injects the given headers on
 /// every outgoing request. Forwards everything else to the wrapped client.
 class _HeaderInjectingClient extends http.BaseClient {
-  _HeaderInjectingClient(this._inner, this._headers);
+  _HeaderInjectingClient({
+    required http.Client inner,
+    required Map<String, String> headers,
+  }) : _inner = inner,
+       _headers = headers;
 
   final http.Client _inner;
   final Map<String, String> _headers;
@@ -267,10 +271,10 @@ class CodePushClient {
       passthroughClient: transport,
       hostsThroughPrimary: {resolvedHosted.host, resolvedFallback.host},
     );
-    final wrapped = _HeaderInjectingClient(router, {
-      ...standardHeaders,
-      ...?customHeaders,
-    });
+    final wrapped = _HeaderInjectingClient(
+      inner: router,
+      headers: {...standardHeaders, ...?customHeaders},
+    );
     return CodePushClient._(
       httpClient: wrapped,
       hostedUri: resolvedHosted,
