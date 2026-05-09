@@ -283,7 +283,6 @@ Reason: Exited with code $exitCode.''',
   /// after the build completes or fails.
   Future<void> buildAar({
     required String buildNumber,
-    String? flavor,
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
@@ -297,7 +296,6 @@ Reason: Exited with code $exitCode.''',
         '--no-debug',
         '--no-profile',
         '--build-number=$buildNumber',
-        if (flavor != null) '--flavor=$flavor',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
         ...await _traceArgs('aar'),
         ...args,
@@ -506,7 +504,6 @@ Reason: Exited with code $exitCode.''',
 
   /// Builds a release iOS framework (.xcframework) for the current project.
   Future<AppleBuildResult> buildIosFramework({
-    String? flavor,
     List<String> args = const [],
     String? base64PublicKey,
   }) async {
@@ -525,7 +522,6 @@ Reason: Exited with code $exitCode.''',
         'ios-framework',
         '--no-debug',
         '--no-profile',
-        if (flavor != null) '--flavor=$flavor',
         ...await _traceArgs('ios-framework'),
         ...args,
       ];
