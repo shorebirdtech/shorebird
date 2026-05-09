@@ -6,7 +6,10 @@ import 'package:args/command_runner.dart';
 mixin RepoRootOption on Command<int> {
   /// Call from the command's constructor to register the option.
   void addRepoRootOption() {
-    argParser.addOption('repo-root', help: 'Path to the repository root.');
+    argParser.addOption(
+      'repo-root',
+      help: 'Path to the repository root.',
+    );
   }
 
   /// The resolved repo root, or `'.'` if not specified.

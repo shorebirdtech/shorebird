@@ -48,9 +48,13 @@ class VerifyCommand extends Command<int> with RepoRootOption {
         : <String>{};
 
     final analyzer = RepositoryAnalyzer();
-    final repository = analyzer.analyze(repositoryRoot: Directory(repoRoot));
+    final repository = analyzer.analyze(
+      repositoryRoot: Directory(repoRoot),
+    );
 
-    final workflowDir = Directory(p.join(repoRoot, '.github', 'workflows'));
+    final workflowDir = Directory(
+      p.join(repoRoot, '.github', 'workflows'),
+    );
     if (!workflowDir.existsSync()) {
       stderr.writeln('No .github/workflows directory found.');
       return 1;
@@ -100,7 +104,9 @@ class VerifyCommand extends Command<int> with RepoRootOption {
       if (ignoreSet.contains(pkg.name)) continue;
       final workflows = coverageMap[pkg.name];
       if (workflows != null) {
-        stdout.writeln('OK: ${pkg.name} (${workflows.join(', ')})');
+        stdout.writeln(
+          'OK: ${pkg.name} (${workflows.join(', ')})',
+        );
       } else {
         missing.add(pkg);
       }
@@ -129,7 +135,9 @@ class VerifyCommand extends Command<int> with RepoRootOption {
       stdout.writeln();
     }
 
-    stderr.writeln('${missing.length} package(s) missing from CI coverage.');
+    stderr.writeln(
+      '${missing.length} package(s) missing from CI coverage.',
+    );
     return 1;
   }
 
