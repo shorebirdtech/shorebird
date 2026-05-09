@@ -49,9 +49,7 @@ class GenerateCommand extends Command<int> with RepoRootOption {
 
     final analyzer = RepositoryAnalyzer();
     final repoDir = Directory(repoRoot);
-    final repository = analyzer.analyze(
-      repositoryRoot: repoDir,
-    );
+    final repository = analyzer.analyze(repositoryRoot: repoDir);
 
     if (repository.packages.isEmpty) {
       stderr.writeln('No Dart packages found in $repoRoot');
@@ -234,9 +232,7 @@ jobs:
         package.rootPath,
         from: repository.root.path,
       );
-      final isFlutter = RepositoryAnalyzer.dependsOnFlutter(
-        root: package.root,
-      );
+      final isFlutter = RepositoryAnalyzer.dependsOnFlutter(root: package.root);
       final subpackages =
           RepositoryAnalyzer.subpackages(package: package)
               .map((sub) => posixRelative(sub.rootPath, from: package.rootPath))
@@ -259,9 +255,7 @@ jobs:
 ''');
 
       if (isFlutter) {
-        final version = resolveFlutterVersion(
-          packagePath: package.rootPath,
-        );
+        final version = resolveFlutterVersion(packagePath: package.rootPath);
         buffer
           ..writeln('      flutter_version: "${version ?? ''}"')
           ..writeln(
@@ -658,10 +652,7 @@ jobs:
           flags: ${{ matrix.name }}
 ''';
 
-  void _writeCspellJob(
-    StringBuffer buffer,
-    RepositoryDescription repository,
-  ) {
+  void _writeCspellJob(StringBuffer buffer, RepositoryDescription repository) {
     final configPath = posixRelative(
       repository.cspellConfig!.path,
       from: repository.root.path,

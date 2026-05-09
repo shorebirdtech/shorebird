@@ -3,7 +3,7 @@ import 'package:path/path.dart' as p;
 /// Candidate paths for cSpell config files.
 ///
 /// See https://cspell.org/docs/getting-started#1-create-a-configuration-file
-final cSpellConfigFileNames = {
+final cSpellConfigFileNames = <String>{
   '.cspell.json',
   'cspell.json',
   '.cSpell.json',

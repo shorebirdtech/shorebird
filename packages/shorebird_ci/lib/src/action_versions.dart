@@ -106,9 +106,7 @@ Set<_ActionRef> _extractActions(String content) {
 
 // coverage:ignore-start
 Future<String?> _latestMajor(HttpClient client, String repo) async {
-  final uri = Uri.parse(
-    'https://api.github.com/repos/$repo/releases/latest',
-  );
+  final uri = Uri.parse('https://api.github.com/repos/$repo/releases/latest');
 
   try {
     final request = await client.getUrl(uri);

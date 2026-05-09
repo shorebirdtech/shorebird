@@ -32,9 +32,7 @@ class UpdateActionsCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final workflowDir = Directory(
-      argResults!['workflow-dir'] as String,
-    );
+    final workflowDir = Directory(argResults!['workflow-dir'] as String);
     if (!workflowDir.existsSync()) {
       stderr.writeln('No such directory: ${workflowDir.path}');
       return 1;

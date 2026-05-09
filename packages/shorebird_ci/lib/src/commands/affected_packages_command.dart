@@ -32,20 +32,13 @@ class AffectedPackagesCommand extends Command<int> with RepoRootOption {
         help: 'Base git ref to compare against.',
         defaultsTo: 'origin/main',
       )
-      ..addOption(
-        'head',
-        help: 'Head git ref to compare.',
-        defaultsTo: 'HEAD',
-      )
+      ..addOption('head', help: 'Head git ref to compare.', defaultsTo: 'HEAD')
       ..addOption(
         'sdk',
         help: 'Filter by SDK type.',
         allowed: ['dart', 'flutter'],
       )
-      ..addFlag(
-        'all',
-        help: 'List all packages, not just affected ones.',
-      );
+      ..addFlag('all', help: 'List all packages, not just affected ones.');
   }
 
   @override

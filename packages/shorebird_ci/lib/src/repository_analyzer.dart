@@ -50,10 +50,7 @@ class RepositoryAnalyzer {
           pubspecFiles.add(entry);
         }
 
-        final relPath = p.relative(
-          entry.path,
-          from: repositoryRoot.path,
-        );
+        final relPath = p.relative(entry.path, from: repositoryRoot.path);
         if (!hasCodecov && codecovFileNames.contains(relPath)) {
           hasCodecov = true;
         }
@@ -79,10 +76,7 @@ class RepositoryAnalyzer {
             from: repositoryRoot.path,
           );
           _requireSafePath(relative);
-          return PackageDescription(
-            name: name,
-            rootPath: pubspec.parent.path,
-          );
+          return PackageDescription(name: name, rootPath: pubspec.parent.path);
         })
         .whereType<PackageDescription>()
         .toList();
@@ -97,9 +91,7 @@ class RepositoryAnalyzer {
     );
   }
 
-  static void _checkForDuplicateNames(
-    List<PackageDescription> packages,
-  ) {
+  static void _checkForDuplicateNames(List<PackageDescription> packages) {
     final byName = <String, List<PackageDescription>>{};
     for (final pkg in packages) {
       byName.putIfAbsent(pkg.name, () => []).add(pkg);
@@ -341,9 +333,7 @@ class RepositoryAnalyzer {
           from: package.rootPath,
         );
         _requireSafePath(relative);
-        found.add(
-          PackageDescription(name: name, rootPath: file.parent.path),
-        );
+        found.add(PackageDescription(name: name, rootPath: file.parent.path));
       },
     );
     return found;
@@ -395,9 +385,7 @@ class RepositoryAnalyzer {
             p.join(package.root.path, depPath),
           );
           return repository.packages
-              .where(
-                (pkg) => p.canonicalize(pkg.root.path) == normalizedPath,
-              )
+              .where((pkg) => p.canonicalize(pkg.root.path) == normalizedPath)
               .firstOrNull;
         })
         .whereType<PackageDescription>()

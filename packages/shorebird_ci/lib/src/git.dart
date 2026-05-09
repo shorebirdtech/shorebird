@@ -32,22 +32,21 @@ class Git {
 
   /// Returns the paths of all git submodules.
   List<String> submodulePaths({required String workingDirectory}) {
-    final result = Process.runSync(
-      'git',
-      ['submodule', 'status'],
-      workingDirectory: workingDirectory,
-    );
+    final result = Process.runSync('git', [
+      'submodule',
+      'status',
+    ], workingDirectory: workingDirectory);
     if (result.exitCode != 0) return [];
     return parseSubmoduleStatus(result.stdout as String);
   }
 
   /// Returns whether the given [path] is ignored by git.
   bool isIgnored({required String path, required String workingDirectory}) {
-    final result = Process.runSync(
-      'git',
-      ['check-ignore', '-q', path],
-      workingDirectory: workingDirectory,
-    );
+    final result = Process.runSync('git', [
+      'check-ignore',
+      '-q',
+      path,
+    ], workingDirectory: workingDirectory);
     return result.exitCode == 0;
   }
 }
