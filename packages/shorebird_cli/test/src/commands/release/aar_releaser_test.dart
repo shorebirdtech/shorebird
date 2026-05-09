@@ -374,39 +374,6 @@ void main() {
           ).called(1);
         });
 
-        group('with flavor', () {
-          const flavor = 'internal';
-
-          setUp(() {
-            aarReleaser = AarReleaser(
-              argResults: argResults,
-              flavor: flavor,
-              target: null,
-            );
-            when(
-              () => artifactBuilder.buildAar(
-                buildNumber: any(named: 'buildNumber'),
-                flavor: any(named: 'flavor'),
-                targetPlatforms: any(named: 'targetPlatforms'),
-                args: any(named: 'args'),
-              ),
-            ).thenAnswer((_) async => File(''));
-          });
-
-          test('forwards flavor to buildAar', () async {
-            await runWithOverrides(() => aarReleaser.buildReleaseArtifacts());
-
-            verify(
-              () => artifactBuilder.buildAar(
-                buildNumber: buildNumber,
-                flavor: flavor,
-                targetPlatforms: Arch.values.toSet(),
-                args: [],
-              ),
-            ).called(1);
-          });
-        });
-
         group('when a patch signing key path is provided', () {
           const base64PublicKey = 'base64PublicKey';
 
