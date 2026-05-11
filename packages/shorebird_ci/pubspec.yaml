@@ -9,6 +9,9 @@ repository: https://github.com/shorebirdtech/shorebird/tree/main/packages/shoreb
 topics: [ci, github-actions, monorepo, shorebird]
 resolution: workspace
 
+executables:
+  shorebird_ci:
+
 environment:
   sdk: ^3.9.0
 
@@ -21,3 +24,4 @@ dependencies:
 
 dev_dependencies:
   test: ^1.31.1
+  very_good_analysis: ^10.2.0
