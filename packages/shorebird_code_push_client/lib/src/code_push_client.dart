@@ -232,12 +232,16 @@ class _FailoverClient extends http.BaseClient {
       // body. API-host multiparts today are fields-only (file uploads
       // target signed GCS URLs via _HostRouter's passthrough path), so
       // enforce that invariant rather than hoping callers preserve it.
+      // Unreachable through CodePushClient's public API; ignored for
+      // the same reason as the StateError below.
+      // coverage:ignore-start
       if (original.files.isNotEmpty) {
         throw StateError(
           'Cannot fail over a MultipartRequest with attached files: '
           'MultipartFile streams are single-use.',
         );
       }
+      // coverage:ignore-end
       return http.MultipartRequest(original.method, newUri)
         ..headers.addAll(original.headers)
         ..fields.addAll(original.fields)
