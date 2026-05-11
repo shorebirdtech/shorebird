@@ -86,9 +86,9 @@ class _HeaderInjectingClient extends http.BaseClient {
   }
 }
 
-/// Routes requests by their URL host. Requests whose host is in
-/// [hostsThroughPrimary] are forwarded to [primaryClient]. All other
-/// requests are forwarded to [passthroughClient].
+/// Routes requests by their URL host. Requests whose host is in the
+/// `hostsThroughPrimary` set are forwarded to the primary client. All
+/// other requests are forwarded to the passthrough client.
 ///
 /// Used to direct API calls through a failover-aware client while letting
 /// requests aimed at unrelated hosts (signed GCS upload URLs, third-party
@@ -178,7 +178,9 @@ class _FailoverClient extends http.BaseClient {
     final response = await _inner.send(_routedTo(request, alternateAtStart));
     // Swap only if no concurrent send already did. The check and swap are
     // atomic in Dart's single-isolate model because there is no `await`
-    // between them.
+    // between them. Invariant: at most one swap per concurrent burst of
+    // failovers, so the post-burst state is deterministic regardless of
+    // how many requests piled up.
     if (identical(_preferredHost, preferredAtStart)) {
       _swapHosts();
     }
@@ -225,10 +227,20 @@ class _FailoverClient extends http.BaseClient {
         ..persistentConnection = original.persistentConnection;
     }
     if (original is http.MultipartRequest) {
+      // MultipartFile streams are single-use. Retrying a request whose
+      // files have already been consumed would silently send an empty
+      // body. API-host multiparts today are fields-only (file uploads
+      // target signed GCS URLs via _HostRouter's passthrough path), so
+      // enforce that invariant rather than hoping callers preserve it.
+      if (original.files.isNotEmpty) {
+        throw StateError(
+          'Cannot fail over a MultipartRequest with attached files: '
+          'MultipartFile streams are single-use.',
+        );
+      }
       return http.MultipartRequest(original.method, newUri)
         ..headers.addAll(original.headers)
         ..fields.addAll(original.fields)
-        ..files.addAll(original.files)
         ..followRedirects = original.followRedirects
         ..maxRedirects = original.maxRedirects
         ..persistentConnection = original.persistentConnection;
