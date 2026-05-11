@@ -1,3 +1,5 @@
+<!-- cspell:words toplevel -->
+
 # 0.2.0
 
 - `shorebird_ci generate` now bumps action versions to current latest automatically after writing the workflow files. Pass `--no-update-actions` to skip the network call.

@@ -1,3 +1,5 @@
+// cspell:words toplevel
+
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
