@@ -208,4 +208,44 @@ void main() {
     ]);
     expect(code, 1);
   });
+
+  // The two tests below exercise the --repo-root autodiscovery path
+  // (`git rev-parse --show-toplevel`) by setting Directory.current.
+  // Save+restore in try/finally so subsequent tests in this file see
+  // the original cwd. Test isolation across files is fine because each
+  // test file runs in its own isolate w/ isolate-local cwd.
+  test('repoRoot autodiscovers via git rev-parse when not passed', () async {
+    initGitRepo(tempDir);
+    createPackage(tempDir, 'packages/foo', 'foo');
+
+    final original = Directory.current;
+    Directory.current = tempDir;
+    try {
+      final runner = CommandRunner<int>('test', 'test')
+        ..addCommand(AffectedPackagesCommand());
+      final code = await runner.run(['affected_packages', '--all']);
+      expect(code, 0);
+    } finally {
+      Directory.current = original;
+    }
+  });
+
+  test('repoRoot falls back to "." when not inside a git repo', () async {
+    // tempDir is intentionally NOT a git repo. The autodiscovery
+    // `git rev-parse` will exit non-zero → mixin returns '.', which
+    // resolves to tempDir (our cwd) — confirmed by the friendly-error
+    // exit 1 from running git diff in a non-git tree.
+    createPackage(tempDir, 'packages/foo', 'foo');
+
+    final original = Directory.current;
+    Directory.current = tempDir;
+    try {
+      final runner = CommandRunner<int>('test', 'test')
+        ..addCommand(AffectedPackagesCommand());
+      final code = await runner.run(['affected_packages']);
+      expect(code, 1);
+    } finally {
+      Directory.current = original;
+    }
+  });
 }
