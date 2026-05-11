@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_ci/src/action_versions.dart';
 import 'package:shorebird_ci/src/commands/repo_root_option.dart';
 import 'package:shorebird_ci/src/dependency_resolver.dart';
 import 'package:shorebird_ci/src/flutter_version_resolver.dart';
@@ -11,8 +12,11 @@ import 'package:shorebird_ci/src/repository_description.dart';
 
 /// Generates a GitHub Actions CI workflow for a Dart/Flutter repository.
 class GenerateCommand extends Command<int> with RepoRootOption {
-  /// Creates a [GenerateCommand].
-  GenerateCommand() {
+  /// Creates a [GenerateCommand]. The optional [resolveLatestMajor] is
+  /// exposed for tests so they don't have to hit the live GitHub API
+  /// when verifying the `--update-actions` path.
+  GenerateCommand({LatestMajorResolver? resolveLatestMajor})
+    : _resolveLatestMajor = resolveLatestMajor {
     addRepoRootOption();
     argParser
       ..addOption(
@@ -32,8 +36,19 @@ class GenerateCommand extends Command<int> with RepoRootOption {
         help:
             'Print the generated workflow to stdout '
             'instead of writing to a file.',
+      )
+      ..addFlag(
+        'no-update-actions',
+        help:
+            'Skip the post-generate step that queries GitHub for current '
+            'action versions and bumps pins in place. By default, generate '
+            'auto-bumps action versions to current latest. Pass this flag '
+            'in offline environments.',
+        negatable: false,
       );
   }
+
+  final LatestMajorResolver? _resolveLatestMajor;
 
   @override
   String get name => 'generate';
@@ -88,7 +103,29 @@ class GenerateCommand extends Command<int> with RepoRootOption {
 
     _ensureDependabotConfig(repoRoot);
 
+    if (!argResults!.flag('no-update-actions')) {
+      await _bumpActionVersions(
+        files: files.keys.map((rel) => File(p.join(repoRoot, rel))),
+      );
+    }
+
     return 0;
+  }
+
+  /// Rewrites each file in place w/ latest-major action pins. Best-effort:
+  /// network failures leave the file untouched (handled by
+  /// [updateActionVersions], which returns null per-action on lookup
+  /// failure).
+  Future<void> _bumpActionVersions({required Iterable<File> files}) async {
+    stderr.writeln('Updating action versions...');
+    for (final file in files) {
+      final before = file.readAsStringSync();
+      final after = await updateActionVersions(
+        before,
+        resolveLatestMajor: _resolveLatestMajor,
+      );
+      if (before != after) file.writeAsStringSync(after);
+    }
   }
 
   /// Creates `.github/dependabot.yml` with a `github-actions` ecosystem

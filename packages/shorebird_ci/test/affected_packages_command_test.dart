@@ -172,4 +172,40 @@ void main() {
   test('command exposes a non-empty description', () {
     expect(AffectedPackagesCommand().description, isNotEmpty);
   });
+
+  test(
+    'command exits 1 (not stack-traces) when run outside a git repo',
+    () async {
+      // tempDir is not a git repo here. Underlying helper throws
+      // ProcessException; the command should catch it and surface a
+      // friendly message instead of a Dart stack trace.
+      createPackage(tempDir, 'packages/foo', 'foo');
+
+      final runner = CommandRunner<int>('test', 'test')
+        ..addCommand(AffectedPackagesCommand());
+      final code = await runner.run([
+        'affected_packages',
+        '--repo-root',
+        tempDir.path,
+      ]);
+      expect(code, 1);
+    },
+  );
+
+  test('command exits 1 when base ref is missing', () async {
+    // No origin/main in the temp git repo → git diff fails with
+    // "Could not access 'origin/main'". The command should report a
+    // friendly error and exit 1, not throw.
+    createPackage(tempDir, 'packages/foo', 'foo');
+    initGitRepo(tempDir);
+
+    final runner = CommandRunner<int>('test', 'test')
+      ..addCommand(AffectedPackagesCommand());
+    final code = await runner.run([
+      'affected_packages',
+      '--repo-root',
+      tempDir.path,
+    ]);
+    expect(code, 1);
+  });
 }

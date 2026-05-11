@@ -6,13 +6,11 @@ Designed to be used by both humans and AI agents.
 
 ## Install
 
-Once published to pub.dev:
-
 ```sh
 dart pub global activate shorebird_ci
 ```
 
-From a local checkout (current state — not yet on pub.dev):
+Or from a local checkout:
 
 ```sh
 dart pub global activate --source path packages/shorebird_ci
@@ -76,6 +74,13 @@ cut a lot in the future (prebuilt snapshot, a composite action), but
 it's what you pay today. For most repos it's noise. If you have a
 high-volume monorepo where most PRs don't touch Dart, static lets the
 workflow skip entirely at the trigger level.
+
+### A note on subpackage double-coverage
+
+Subpackages of a Flutter root get CI'd twice: once in their own
+matrix job, once inside the root's job. Intentional. The root needs
+them for `pub get`, and the standalone job gives focused per-package
+pass/fail. Cost is a duplicate analyze/test on affected PRs.
 
 ## For AI agents
 

@@ -56,13 +56,19 @@ class AffectedPackagesCommand extends Command<int> with RepoRootOption {
 
   @override
   Future<int> run() async {
-    final result = affectedPackagesMetadata(
-      repoRoot: Directory(repoRoot),
-      baseRef: argResults!['base'] as String,
-      headRef: argResults!['head'] as String,
-      sdkFilter: argResults!['sdk'] as String?,
-      all: argResults!.flag('all'),
-    );
+    final List<Map<String, Object?>> result;
+    try {
+      result = affectedPackagesMetadata(
+        repoRoot: Directory(repoRoot),
+        baseRef: argResults!['base'] as String,
+        headRef: argResults!['head'] as String,
+        sdkFilter: argResults!['sdk'] as String?,
+        all: argResults!.flag('all'),
+      );
+    } on ProcessException catch (e) {
+      stderr.writeln(_friendlyGitError(e));
+      return 1;
+    }
 
     if (result.isEmpty) {
       // Distinguish "no packages in repo" from "no affected packages".
@@ -73,5 +79,22 @@ class AffectedPackagesCommand extends Command<int> with RepoRootOption {
 
     stdout.writeln(jsonEncode(result));
     return 0;
+  }
+
+  String _friendlyGitError(ProcessException e) {
+    final message = e.message.toLowerCase();
+    if (message.contains('not a git repository')) {
+      return 'Not in a git repository. Run from inside a git checkout, or '
+          'pass --repo-root <path> to a git repo.';
+    }
+    if (message.contains('could not access') ||
+        message.contains('bad revision') ||
+        message.contains('unknown revision')) {
+      final base = argResults!['base'] as String;
+      return 'Base ref "$base" not found. Pass --base <ref> with a ref '
+          'that exists locally, or fetch the missing ref '
+          '(e.g. `git fetch origin main`).';
+    }
+    return 'git failed: ${e.message.trim()}';
   }
 }
