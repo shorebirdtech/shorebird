@@ -1504,6 +1504,9 @@ channel: ${track.channel}
           () => devicectl.deviceForLaunch(deviceId: any(named: 'deviceId')),
         ).thenAnswer((_) async => null);
         when(
+          () => devicectl.listAllIosDevices(),
+        ).thenAnswer((_) async => []);
+        when(
           () => devicectl.installAndLaunchApp(
             runnerAppDirectory: any(named: 'runnerAppDirectory'),
             device: any(named: 'device'),
@@ -1677,6 +1680,171 @@ channel: ${track.channel}
               deviceId: any(named: 'deviceId'),
             ),
           );
+        });
+      });
+
+      group('when devicectl knows of an unreachable iOS 17+ device', () {
+        late AppleDevice unreachableDevice;
+
+        setUp(() {
+          unreachableDevice = MockAppleDevice();
+          when(() => unreachableDevice.name).thenReturn('Locked iPhone');
+          when(
+            () => unreachableDevice.udid,
+          ).thenReturn('UNREACHABLE-UDID');
+          when(() => unreachableDevice.isAvailable).thenReturn(false);
+          when(
+            () => unreachableDevice.osVersion,
+          ).thenReturn(Version(17, 4, 1));
+          when(
+            () => unreachableDevice.osVersionString,
+          ).thenReturn('17.4.1');
+          when(
+            () => devicectl.listAllIosDevices(),
+          ).thenAnswer((_) async => [unreachableDevice]);
+          setupIOSShorebirdYaml();
+        });
+
+        test('does not attempt ios-deploy and exits with code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verifyNever(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          );
+        });
+
+        test('shows the device name and OS version in the failure', () async {
+          await runWithOverrides(command.run);
+          verify(
+            () => progress.fail(
+              any(
+                that: stringContainsInOrder([
+                  'Locked iPhone',
+                  '17.4.1',
+                  'paired',
+                  'unreachable',
+                ]),
+              ),
+            ),
+          ).called(1);
+        });
+
+        test(
+          'tells the user to plug in or unlock and that ios-deploy was skipped',
+          () async {
+            await runWithOverrides(command.run);
+            verify(
+              () => logger.info(
+                any(
+                  that: stringContainsInOrder([
+                    'Connect it via USB',
+                    'Unlock the device',
+                    'ios-deploy',
+                    'iOS 17',
+                  ]),
+                ),
+              ),
+            ).called(1);
+          },
+        );
+
+        group('when --device-id matches the unreachable device', () {
+          setUp(() {
+            // The existing --device-id branch in installAndLaunchIos calls
+            // listAvailableIosDevices(); the unreachable device is filtered
+            // out of that list, so it returns empty.
+            when(
+              () => devicectl.listAvailableIosDevices(),
+            ).thenAnswer((_) async => []);
+            when(
+              () => argResults['device-id'],
+            ).thenAnswer((_) => 'UNREACHABLE-UDID');
+          });
+
+          test('still emits the hint and skips ios-deploy', () async {
+            final result = await runWithOverrides(command.run);
+            expect(result, equals(ExitCode.software.code));
+            verifyNever(
+              () => iosDeploy.installAndLaunchApp(
+                bundlePath: any(named: 'bundlePath'),
+                deviceId: any(named: 'deviceId'),
+              ),
+            );
+          });
+        });
+
+        group('when --device-id does not match any known device', () {
+          setUp(() {
+            when(
+              () => devicectl.listAvailableIosDevices(),
+            ).thenAnswer((_) async => []);
+            when(
+              () => argResults['device-id'],
+            ).thenAnswer((_) => 'SOME-OTHER-UDID');
+          });
+
+          test('falls back to ios-deploy (no hint)', () async {
+            await runWithOverrides(command.run);
+            verify(
+              () => iosDeploy.installAndLaunchApp(
+                bundlePath: any(named: 'bundlePath'),
+                deviceId: 'SOME-OTHER-UDID',
+              ),
+            ).called(1);
+          });
+        });
+      });
+
+      group('when devicectl knows of an unreachable iOS 16 device', () {
+        late AppleDevice oldUnreachableDevice;
+
+        setUp(() {
+          oldUnreachableDevice = MockAppleDevice();
+          when(() => oldUnreachableDevice.name).thenReturn('Old iPhone');
+          when(() => oldUnreachableDevice.udid).thenReturn('OLD-UDID');
+          when(() => oldUnreachableDevice.isAvailable).thenReturn(false);
+          when(
+            () => oldUnreachableDevice.osVersion,
+          ).thenReturn(Version(16, 7, 0));
+          when(
+            () => oldUnreachableDevice.osVersionString,
+          ).thenReturn('16.7.0');
+          when(
+            () => devicectl.listAllIosDevices(),
+          ).thenAnswer((_) async => [oldUnreachableDevice]);
+          setupIOSShorebirdYaml();
+        });
+
+        test('falls back to ios-deploy (the hint is iOS 17+ only)', () async {
+          await runWithOverrides(command.run);
+          verify(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when listAllIosDevices throws', () {
+        setUp(() {
+          when(
+            () => devicectl.listAllIosDevices(),
+          ).thenThrow(Exception('devicectl exploded'));
+          setupIOSShorebirdYaml();
+        });
+
+        test('silently falls through to ios-deploy', () async {
+          await runWithOverrides(command.run);
+          verify(
+            () => iosDeploy.installAndLaunchApp(
+              bundlePath: any(named: 'bundlePath'),
+              deviceId: any(named: 'deviceId'),
+            ),
+          ).called(1);
         });
       });
 
@@ -2717,6 +2885,9 @@ channel: ${DeploymentTrack.staging.channel}
         when(
           () => devicectl.deviceForLaunch(deviceId: any(named: 'deviceId')),
         ).thenAnswer((_) async => null);
+        when(
+          () => devicectl.listAllIosDevices(),
+        ).thenAnswer((_) async => []);
         when(
           () => devicectl.installAndLaunchApp(
             runnerAppDirectory: any(named: 'runnerAppDirectory'),

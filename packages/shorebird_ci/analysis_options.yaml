@@ -1,1 +1,11 @@
-include: ../../analysis_options.yaml
+# Self-contained (does NOT `include: ../../analysis_options.yaml`).
+# Reason: pub publish uploads only this package, and pana scores it
+# in an isolated copy. A relative include of the workspace-root file
+# is unresolvable in those environments, which causes dart_style to
+# silently drop the `formatter:` block and reformat against defaults.
+# Keeping the formatter config local to the package guarantees the
+# same formatting behavior here, in CI, in pana, and on pub.dev.
+include: package:very_good_analysis/analysis_options.10.0.0.yaml
+formatter:
+  page_width: 80
+  trailing_commas: preserve

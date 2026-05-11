@@ -602,6 +602,83 @@ void main() {
           expect(secondDevice.platform, equals('iOS'));
         });
       });
+
+      group('when one of the devices is paired but unreachable', () {
+        setUp(() {
+          jsonOutput = File(
+            '$fixturesPath/device_list_with_unreachable.json',
+          ).readAsStringSync();
+        });
+
+        test('omits the unreachable device', () async {
+          final devices = await runWithOverrides(
+            devicectl.listAvailableIosDevices,
+          );
+          expect(devices, hasLength(1));
+          expect(devices.first.name, equals('Reachable iPhone'));
+          expect(
+            devices.first.udid,
+            equals('11111111-1111111111111111'),
+          );
+        });
+      });
+    });
+
+    group('listAllIosDevices', () {
+      setUp(() {
+        exitCode = ExitCode.success;
+      });
+
+      group('when one of the devices is paired but unreachable', () {
+        setUp(() {
+          jsonOutput = File(
+            '$fixturesPath/device_list_with_unreachable.json',
+          ).readAsStringSync();
+        });
+
+        test(
+          'returns the unreachable device alongside reachable ones',
+          () async {
+            final devices = await runWithOverrides(
+              devicectl.listAllIosDevices,
+            );
+            expect(devices, hasLength(2));
+
+            final reachable = devices.firstWhere((d) => d.isAvailable);
+            expect(reachable.name, equals('Reachable iPhone'));
+            expect(reachable.osVersionString, equals('18.5'));
+
+            final unreachable = devices.firstWhere((d) => !d.isAvailable);
+            expect(unreachable.name, equals('Unreachable iPhone'));
+            expect(unreachable.osVersionString, equals('17.4.1'));
+            expect(
+              unreachable.udid,
+              equals('22222222-2222222222222222'),
+            );
+          },
+        );
+      });
+
+      group('when command fails', () {
+        setUp(() {
+          jsonOutput = File(
+            '$fixturesPath/device_list_failure.json',
+          ).readAsStringSync();
+        });
+
+        test('throws a DevicectlException', () {
+          expect(
+            runWithOverrides(devicectl.listAllIosDevices),
+            throwsA(
+              isA<DevicectlException>().having(
+                (e) => e.message,
+                'message',
+                'Failed to list devices',
+              ),
+            ),
+          );
+        });
+      });
     });
   });
 }

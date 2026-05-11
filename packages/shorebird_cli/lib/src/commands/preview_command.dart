@@ -824,6 +824,37 @@ This is only applicable when previewing Android releases.''',
       }
 
       final shouldUseDeviceCtl = deviceForLaunch != null;
+
+      // Before falling back to ios-deploy, check if devicectl knows about a
+      // matching iOS 17+ device that is paired but currently unreachable
+      // (locked, screen off, or off the local network when wireless debugging
+      // is in use). ios-deploy does not work with iOS 17 or later, so the
+      // fallback would just produce an opaque failure. Surface a hint
+      // instead.
+      if (!shouldUseDeviceCtl) {
+        final unreachable = await _findUnreachableIos17OrLaterDevice(
+          deviceId: deviceId,
+        );
+        if (unreachable != null) {
+          deviceLocateProgress.fail(
+            '${unreachable.name} (iOS '
+            '${unreachable.osVersionString ?? 'unknown'}) is paired but '
+            'currently unreachable.',
+          );
+          logger.info(
+            '''
+This usually means the device is locked, or that wireless debugging dropped because the screen turned off.
+
+To preview on this device:
+  • Connect it via USB, or
+  • Unlock the device and make sure it is on the same Wi-Fi network as this Mac.
+
+Skipping the ios-deploy fallback because it does not support iOS 17 or later.''',
+          );
+          return ExitCode.software.code;
+        }
+      }
+
       final progressCompleteMessage = deviceForLaunch != null
           ? 'Using device ${deviceForLaunch.name}'
           : '''No iOS 17+ device found, looking for devices running iOS 16 or lower''';
@@ -854,6 +885,37 @@ This is only applicable when previewing Android releases.''',
       logger.detail('Error launching app. $error $stackTrace');
       return ExitCode.software.code;
     }
+  }
+
+  /// Returns a paired iOS 17+ device that devicectl knows about but cannot
+  /// currently reach (e.g. locked, screen off, off Wi-Fi while wireless
+  /// debugging), or `null` if no such device exists. When [deviceId] is
+  /// provided, only a device with that UDID is considered.
+  ///
+  /// If devicectl can't be queried for any reason, returns `null` so the
+  /// caller can fall through to its existing behavior rather than surface a
+  /// hint based on partial information.
+  Future<AppleDevice?> _findUnreachableIos17OrLaterDevice({
+    String? deviceId,
+  }) async {
+    final List<AppleDevice> all;
+    try {
+      all = await devicectl.listAllIosDevices();
+    } on Exception catch (error, stackTrace) {
+      logger.detail('listAllIosDevices failed: $error $stackTrace');
+      return null;
+    }
+
+    final unreachableModern = all.where((device) {
+      if (device.isAvailable) return false;
+      final version = device.osVersion;
+      return version != null && version.major >= 17;
+    });
+
+    if (deviceId != null) {
+      return unreachableModern.firstWhereOrNull((d) => d.udid == deviceId);
+    }
+    return unreachableModern.firstOrNull;
   }
 
   /// Resolves the artifact path for the given parameters.

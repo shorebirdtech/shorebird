@@ -4,6 +4,16 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde
  -->
 
+## 1.6.98 (May 7, 2026)
+
+- ✨ New `account` command: `shorebird account whoami` and `shorebird account orgs`
+- ✨ New `patches list` and `patches info` commands; `set-track` gains `--json`
+- ✨ Hint at unreachable iOS 17+ devices instead of silently falling back to ios-deploy
+- 🔧 Updater (rolled into Flutter 3.41.9 engine):
+  - Android: mmap `libapp.so` out of the APK instead of buffering in RAM
+  - Internal C API split (Dart-stable vs engine surfaces) and per-patch lifecycle state machine refactor
+- 🐛 Fix: forward `--flavor` to `flutter build aar` and `flutter build ios-framework`
+
 ## 1.6.97 (May 5, 2026)
 
 - ✨ New `releases list` and `releases info` commands
