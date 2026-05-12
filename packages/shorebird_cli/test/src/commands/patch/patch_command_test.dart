@@ -6,6 +6,7 @@ import 'package:equatable/equatable.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -587,6 +588,96 @@ void main() {
                 ),
               ).called(1);
             });
+          });
+
+          group('when the supplement contains an obfuscation map', () {
+            // Wire up extractZip to actually write the obfuscation_map.json
+            // so PatchCommand's `if (obfuscationMapFile != null)` block
+            // fires. The flutter-version gating that drops --strip on
+            // Android 3.44+ depends on `release.flutterRevision` resolving
+            // to a Version, so we mock that per-test.
+            setUp(() {
+              when(
+                () => artifactManager.extractZip(
+                  zipFile: any(named: 'zipFile'),
+                  outputDirectory: any(named: 'outputDirectory'),
+                ),
+              ).thenAnswer((invocation) async {
+                final outputDirectory =
+                    invocation.namedArguments[#outputDirectory] as Directory;
+                File(
+                  p.join(outputDirectory.path, 'obfuscation_map.json'),
+                ).writeAsStringSync('{}');
+              });
+            });
+
+            test(
+              '''on Android with Flutter < 3.44, passes --strip in extraBuildArgs''',
+              () async {
+                when(
+                  () => shorebirdFlutter.resolveFlutterVersion(any()),
+                ).thenAnswer((_) async => Version(3, 43, 0));
+
+                await runWithOverrides(() => command.createPatch(patcher));
+
+                final captured =
+                    verify(
+                          () => patcher.extraBuildArgs = captureAny(),
+                        ).captured.last
+                        as List<String>;
+                expect(
+                  captured,
+                  contains('--extra-gen-snapshot-options=--strip'),
+                );
+              },
+            );
+
+            test(
+              '''on Android with Flutter 3.44+, omits --strip in extraBuildArgs''',
+              () async {
+                when(
+                  () => shorebirdFlutter.resolveFlutterVersion(any()),
+                ).thenAnswer((_) async => Version(3, 44, 0));
+
+                await runWithOverrides(() => command.createPatch(patcher));
+
+                final captured =
+                    verify(
+                          () => patcher.extraBuildArgs = captureAny(),
+                        ).captured.last
+                        as List<String>;
+                expect(
+                  captured,
+                  isNot(contains('--extra-gen-snapshot-options=--strip')),
+                );
+              },
+            );
+
+            test(
+              '''when releaseFlutterVersion resolves to null, treats it as 3.44+ and omits --strip''',
+              () async {
+                // resolveFlutterVersion returns null for development pins.
+                // The gating logic falls back to the constraint's minVersion
+                // (3.44), so --strip should be omitted. Mirrors the
+                // unknown-version branch in
+                // LegacyKeepDebugSymbolsValidator.
+                when(
+                  () => shorebirdFlutter.resolveFlutterVersion(any()),
+                ).thenAnswer((_) async => null);
+
+                await runWithOverrides(() => command.createPatch(patcher));
+
+                final captured =
+                    verify(
+                          () => patcher.extraBuildArgs = captureAny(),
+                        ).captured.last
+                        as List<String>;
+                expect(
+                  captured,
+                  isNot(contains('--extra-gen-snapshot-options=--strip')),
+                );
+              },
+            );
           });
         });
 

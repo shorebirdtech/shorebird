@@ -418,6 +418,28 @@ To change the version of this release, change your app's version in your pubspec
 
         expect(buildArgs, isEmpty);
       });
+
+      test(
+        '''when resolveFlutterVersion returns null, treats it as 3.44+ and omits --strip''',
+        () async {
+          // resolveFlutterVersion returns null for development pins. The
+          // gating falls back to the constraint's minVersion so users on
+          // bleeding-edge pins get the new AGP-stripped behavior.
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => null);
+
+          final buildArgs = <String>[];
+          await runWithOverrides(
+            () => androidReleaser.addObfuscationMapArgs(buildArgs),
+          );
+
+          expect(
+            buildArgs,
+            isNot(contains('--extra-gen-snapshot-options=--strip')),
+          );
+        },
+      );
     });
 
     group('buildReleaseArtifacts', () {
