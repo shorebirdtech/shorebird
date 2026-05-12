@@ -598,10 +598,8 @@ jobs:
     ].join(' && ');
     buffer
       ..write('''
-          if [[ "\${{ github.event_name }}" != "workflow_dispatch" ]] \\
-             && [[ $emptyChecks ]]; then
-            echo "::notice::No affected packages in diff vs origin/main. \\
-Click 'Run workflow' in the Actions tab to run CI against all packages."
+          if [[ "\${{ github.event_name }}" != "workflow_dispatch" ]] && [[ $emptyChecks ]]; then
+            echo "::notice::No affected packages in diff vs origin/main. Click 'Run workflow' in the Actions tab to run CI against all packages."
           fi
 ''')
       ..writeln();

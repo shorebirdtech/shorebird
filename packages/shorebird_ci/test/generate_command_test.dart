@@ -4,6 +4,7 @@ import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/commands/commands.dart';
 import 'package:test/test.dart';
+import 'package:yaml/yaml.dart';
 
 import 'test_utils.dart';
 
@@ -409,6 +410,17 @@ void main() {
       await runGenerate(tempDir);
       final yaml = _readMain(tempDir);
       expect(yaml, contains("Click 'Run workflow' in the Actions tab"));
+    });
+
+    test('generated dynamic workflow is valid YAML', () async {
+      // Regression guard: a bash `\` continuation that drops to column 0
+      // inside a `run: |` block silently breaks the YAML literal and
+      // the runner rejects the file. loadYaml catches this locally.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(() => loadYaml(yaml), returnsNormally);
     });
 
     test('static main yaml pins fetch-depth: 0', () async {
