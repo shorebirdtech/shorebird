@@ -45,8 +45,9 @@ class _FakeRelease extends Fake with EquatableMixin implements Release {
 }
 
 /// RFC 4122 v4: 8-4-4-4-12 hex with the version nibble == 4.
-// ignore: lines_longer_than_80_chars
-final _uuidV4Pattern = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+final _uuidV4Pattern = RegExp(
+  r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+);
 
 void main() {
   group(PatchCommand, () {
