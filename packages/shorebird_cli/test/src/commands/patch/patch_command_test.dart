@@ -44,6 +44,10 @@ class _FakeRelease extends Fake with EquatableMixin implements Release {
   List<Object?> get props => [updatedAt];
 }
 
+/// RFC 4122 v4: 8-4-4-4-12 hex with the version nibble == 4.
+// ignore: lines_longer_than_80_chars
+final _uuidV4Pattern = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+
 void main() {
   group(PatchCommand, () {
     const appId = 'test-app-id';
@@ -389,6 +393,29 @@ void main() {
         );
       });
 
+      group('when --patch-id is present but empty', () {
+        setUp(() {
+          when(() => argResults['patch-id']).thenReturn('');
+        });
+
+        test('errors and exits with usage code', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            completion(equals(ExitCode.usage.code)),
+          );
+          verify(
+            () => logger.err(
+              any(
+                that: allOf(
+                  contains('--patch-id was provided but is empty'),
+                  contains('unexpanded template variable'),
+                ),
+              ),
+            ),
+          ).called(1);
+        });
+      });
+
       group('warnIfDirtyTreeMatchesPatchId', () {
         const headSha = '0123456789abcdef0123456789abcdef01234567';
         late Directory projectRoot;
@@ -589,20 +616,7 @@ void main() {
             when(() => argResults['platforms']).thenReturn(['ios', 'android']);
             await runWithOverrides(() => command.createPatch(patcher));
             expect(capturedClientPatchId, isNotNull);
-            // RFC4122 v4: 8-4-4-4-12 hex with version nibble == 4. Asserted
-            // as a single raw string to keep the regex semantics obvious;
-            // splitting it earned a "use raw string" / "adjacent strings"
-            // ping-pong from the linter.
-            //
-            // ignore: lines_longer_than_80_chars
-            expect(
-              capturedClientPatchId,
-              matches(
-                RegExp(
-                  r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
-                ),
-              ),
-            );
+            expect(capturedClientPatchId, matches(_uuidV4Pattern));
           },
         );
 

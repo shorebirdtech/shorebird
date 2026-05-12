@@ -239,11 +239,19 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// Returns null only for single-platform invocations with no `--patch-id`,
   /// preserving the legacy behavior where the server allocates a fresh patch
   /// number per call.
+  ///
+  /// Resolved on first read and cached for the rest of the command so every
+  /// platform's `createPatch` sees the same value. Requires `argResults` to
+  /// be wired before first access — every code path through `run()` (and
+  /// every test going through `runWithOverrides`) satisfies that.
   late final String? clientPatchId = _resolveClientPatchId();
 
   String? _resolveClientPatchId() {
+    // `run()` already rejects an empty `--patch-id`, so non-null here implies
+    // non-empty. Empty-to-null coalescence lives at the client boundary
+    // (`CodePushClient.createPatch`) and stays the single normalizer.
     final explicit = results['patch-id'] as String?;
-    if (explicit != null && explicit.isNotEmpty) return explicit;
+    if (explicit != null) return explicit;
     if (results.releaseTypes.length > 1) return const Uuid().v4();
     return null;
   }
@@ -312,6 +320,18 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return ExitCode.usage.code;
     }
 
+    // Reject `--patch-id=` (present but empty) outright. The typical cause is
+    // an unexpanded CI template variable; silently treating it as omitted
+    // would mean a multi-platform invocation generates a fresh UUID per bot,
+    // so iOS and Android never converge on the same patch number.
+    final patchIdRaw = results['patch-id'] as String?;
+    if (patchIdRaw != null && patchIdRaw.isEmpty) {
+      logger.err(
+        r'''--patch-id was provided but is empty. This usually means an unexpanded template variable in your CI config (e.g. --patch-id=${{ env.PATCH_SHA }} where PATCH_SHA is not set). Pass a non-empty value or omit the flag.''',
+      );
+      return ExitCode.usage.code;
+    }
+
     await warnIfDirtyTreeMatchesPatchId();
 
     final patcherFutures = results.releaseTypes
@@ -348,7 +368,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       final platforms =
           byPatchNumber[number]!.map((p) => p.displayName).toList()..sort();
       logger.success(
-        '\n✅ Published Patch $number (${platforms.join(', ')})',
+        '\n✅ Published Patch $number (${platforms.join(', ')})!',
       );
     }
   }

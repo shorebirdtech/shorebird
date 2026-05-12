@@ -94,10 +94,10 @@ class CodePushClientWrapper {
   /// The underlying code push client.
   final CodePushClient codePushClient;
 
-  /// Patch ids this wrapper has promoted during the current command run.
-  /// Used to suppress the append-after-promotion warning for the second
-  /// platform of a single `--platforms ios,android` invocation, where the
-  /// "already on stable" state was created moments earlier by this same run.
+  /// Patch ids promoted by this wrapper instance — command-scoped, so a
+  /// fresh `shorebird patch` gets an empty set and cross-invocation reuse
+  /// still prompts. Suppresses the append-after-promotion warning for the
+  /// second platform of a single `--platforms ios,android` invocation.
   final Set<int> _patchesPromotedThisRun = {};
 
   /// Create an app with the given [organizationId] and [appName].
