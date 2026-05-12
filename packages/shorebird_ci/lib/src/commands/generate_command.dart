@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_ci/src/action_versions.dart';
 import 'package:shorebird_ci/src/commands/repo_root_option.dart';
 import 'package:shorebird_ci/src/dependency_resolver.dart';
 import 'package:shorebird_ci/src/flutter_version_resolver.dart';
@@ -11,8 +12,11 @@ import 'package:shorebird_ci/src/repository_description.dart';
 
 /// Generates a GitHub Actions CI workflow for a Dart/Flutter repository.
 class GenerateCommand extends Command<int> with RepoRootOption {
-  /// Creates a [GenerateCommand].
-  GenerateCommand() {
+  /// Creates a [GenerateCommand]. The optional [resolveLatestMajor] is
+  /// exposed for tests so they don't have to hit the live GitHub API
+  /// when verifying the `--update-actions` path.
+  GenerateCommand({LatestMajorResolver? resolveLatestMajor})
+    : _resolveLatestMajor = resolveLatestMajor {
     addRepoRootOption();
     argParser
       ..addOption(
@@ -32,8 +36,19 @@ class GenerateCommand extends Command<int> with RepoRootOption {
         help:
             'Print the generated workflow to stdout '
             'instead of writing to a file.',
+      )
+      ..addFlag(
+        'no-update-actions',
+        help:
+            'Skip the post-generate step that queries GitHub for current '
+            'action versions and bumps pins in place. By default, generate '
+            'auto-bumps action versions to current latest. Pass this flag '
+            'in offline environments.',
+        negatable: false,
       );
   }
+
+  final LatestMajorResolver? _resolveLatestMajor;
 
   @override
   String get name => 'generate';
@@ -88,7 +103,29 @@ class GenerateCommand extends Command<int> with RepoRootOption {
 
     _ensureDependabotConfig(repoRoot);
 
+    if (!argResults!.flag('no-update-actions')) {
+      await _bumpActionVersions(
+        files: files.keys.map((rel) => File(p.join(repoRoot, rel))),
+      );
+    }
+
     return 0;
+  }
+
+  /// Rewrites each file in place w/ latest-major action pins. Best-effort:
+  /// network failures leave the file untouched (handled by
+  /// [updateActionVersions], which returns null per-action on lookup
+  /// failure).
+  Future<void> _bumpActionVersions({required Iterable<File> files}) async {
+    stderr.writeln('Updating action versions...');
+    for (final file in files) {
+      final before = file.readAsStringSync();
+      final after = await updateActionVersions(
+        before,
+        resolveLatestMajor: _resolveLatestMajor,
+      );
+      if (before != after) file.writeAsStringSync(after);
+    }
   }
 
   /// Creates `.github/dependabot.yml` with a `github-actions` ecosystem
@@ -204,7 +241,10 @@ jobs:
     // a changed `path:` dependency would silently go uncovered.
     buffer.write('''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          # Full history so dorny/paths-filter can diff on push events.
+          fetch-depth: 0
       - uses: dart-lang/setup-dart@v1
       - run: dart pub global activate shorebird_ci
       - name: Verify CI coverage
@@ -324,7 +364,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - uses: dart-lang/setup-dart@v1
@@ -397,7 +437,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Setup Flutter
@@ -454,6 +494,10 @@ on:
   push:
     branches:
       - main
+  # Manual dispatch runs CI against all packages, bypassing the
+  # affected-packages diff. Useful on the first push to a new repo (where
+  # there's no diff base) or when you want to force a full re-check.
+  workflow_dispatch:
 
 jobs:
 ''');
@@ -509,11 +553,15 @@ jobs:
       );
     }
 
-    buffer.write('''
+    buffer.write(r'''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
+          # affected_packages diffs against origin/main, which isn't in
+          # the default shallow checkout. Full history is needed for the
+          # diff to resolve.
+          fetch-depth: 0
       - uses: dart-lang/setup-dart@v1
       - run: dart pub global activate shorebird_ci
       # Verify first so we fail fast if CI coverage is broken and
@@ -522,20 +570,39 @@ jobs:
         run: shorebird_ci verify
       - id: affected
         run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "::notice::Manual dispatch: running CI against all packages."
+            EXTRA_ARGS=--all
+          else
+            EXTRA_ARGS=
+          fi
 ''');
     if (hasDart) {
       buffer.write(r'''
-          DART=$(shorebird_ci affected_packages --sdk dart)
+          DART=$(shorebird_ci affected_packages --sdk dart $EXTRA_ARGS)
           echo "dart_packages=$DART" >> $GITHUB_OUTPUT
 ''');
     }
     if (hasFlutter) {
       buffer.write(r'''
-          FLUTTER=$(shorebird_ci affected_packages --sdk flutter)
+          FLUTTER=$(shorebird_ci affected_packages --sdk flutter $EXTRA_ARGS)
           echo "flutter_packages=$FLUTTER" >> $GITHUB_OUTPUT
 ''');
     }
-    buffer.writeln();
+    // Friendly notice when the diff path yields nothing, e.g. on a push
+    // to main where HEAD already equals origin/main. Points users at the
+    // manual-dispatch button so the green check has context.
+    final emptyChecks = <String>[
+      if (hasDart) r'"$DART" == "[]"',
+      if (hasFlutter) r'"$FLUTTER" == "[]"',
+    ].join(' && ');
+    buffer
+      ..write('''
+          if [[ "\${{ github.event_name }}" != "workflow_dispatch" ]] && [[ $emptyChecks ]]; then
+            echo "::notice::No affected packages in diff vs origin/main. Click 'Run workflow' in the Actions tab to run CI against all packages."
+          fi
+''')
+      ..writeln();
   }
 
   void _writeCiJob(
@@ -584,7 +651,7 @@ jobs:
       run:
         working-directory: \${{ matrix.path }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 ''';
@@ -672,7 +739,7 @@ jobs:
     name: CSpell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - uses: streetsidesoftware/cspell-action@v6
