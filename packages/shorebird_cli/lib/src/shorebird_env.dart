@@ -282,6 +282,17 @@ class ShorebirdEnv {
     }
   }
 
+  /// The fallback URL for the Shorebird code push server, used by
+  /// [CodePushClient] when a request to the primary [hostedUri] fails at the
+  /// transport layer. Overrides the [CodePushClient] default. Set via the
+  /// `SHOREBIRD_HOSTED_URL_FALLBACK` environment variable. If unset or empty,
+  /// returns null and [CodePushClient] uses its default fallback.
+  Uri? get fallbackHostedUri {
+    final raw = platform.environment['SHOREBIRD_HOSTED_URL_FALLBACK'];
+    if (raw == null || raw.isEmpty) return null;
+    return Uri.tryParse(raw);
+  }
+
   /// Whether the CLI can accept user input via stdin.
   ///
   /// Returns `false` when stdin is not a terminal, when running on CI, or
