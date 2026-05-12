@@ -981,8 +981,6 @@ aar artifact already exists, continuing...''');
     // responsible for making sure the developer knows.
     if (clientPatchId != null) {
       await _confirmAppendToPromotedPatch(
-        appId: appId,
-        releaseId: releaseId,
         patch: patch,
         platform: platform,
       );
@@ -1017,9 +1015,12 @@ aar artifact already exists, continuing...''');
   /// Skipped entirely when this run is the one that promoted the patch
   /// (e.g. the second platform of a `--platforms ios,android` invocation),
   /// since the user already opted in by passing both platforms together.
+  ///
+  /// The patch's current channel comes from [CreatePatchResponse.channel],
+  /// which the server populates on the idempotent return path. Older servers
+  /// that don't echo `channel` leave it null and the prompt simply doesn't
+  /// fire — append-after-promotion stays allowed per the design.
   Future<void> _confirmAppendToPromotedPatch({
-    required String appId,
-    required int releaseId,
     required CreatePatchResponse patch,
     required ReleasePlatform platform,
   }) async {
@@ -1028,22 +1029,7 @@ aar artifact already exists, continuing...''');
     // doing and the prompt would be spurious.
     if (_patchesPromotedThisRun.contains(patch.id)) return;
 
-    final List<ReleasePatch> existing;
-    try {
-      existing = await codePushClient.getPatches(
-        appId: appId,
-        releaseId: releaseId,
-      );
-    } on Exception {
-      // If we can't determine the patch's promotion state, fall back to the
-      // server's permissive behavior — the design treats append-after-
-      // promotion as allowed; the prompt is a courtesy.
-      return;
-    }
-
-    final priorState = existing.firstWhereOrNull((p) => p.id == patch.id);
-    final isOnStable = priorState?.channel == DeploymentTrack.stable.channel;
-    if (!isOnStable) return;
+    if (patch.channel != DeploymentTrack.stable.channel) return;
 
     final platformName = platform.displayName;
     final message =

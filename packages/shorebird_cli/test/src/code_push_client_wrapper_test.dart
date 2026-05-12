@@ -2694,23 +2694,25 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
 
         // Append-after-promotion: idempotent createPatch returned an existing
         // patch that's already on the stable channel, so uploading this
-        // platform's artifacts goes live to stable users immediately.
+        // platform's artifacts goes live to stable users immediately. The
+        // server reports the current channel inline on CreatePatchResponse,
+        // so the CLI doesn't need a second round-trip to detect this.
         group('when appending to a patch already promoted to stable', () {
-          final promotedPatch = ReleasePatch(
+          const promotedPatch = CreatePatchResponse(
             id: patchId,
             number: patchNumber,
-            channel: DeploymentTrack.stable.channel,
-            isRolledBack: false,
-            artifacts: const [],
+            channel: 'stable',
           );
 
           setUp(() {
             when(
-              () => codePushClient.getPatches(
+              () => codePushClient.createPatch(
                 appId: any(named: 'appId'),
                 releaseId: any(named: 'releaseId'),
+                metadata: any(named: 'metadata'),
+                clientPatchId: any(named: 'clientPatchId'),
               ),
-            ).thenAnswer((_) async => [promotedPatch]);
+            ).thenAnswer((_) async => promotedPatch);
           });
 
           test(
@@ -2834,12 +2836,15 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           test(
             'does not prompt on the second platform of the same run',
             () async {
+              // First call: fresh patch, no channel populated yet.
               when(
-                () => codePushClient.getPatches(
+                () => codePushClient.createPatch(
                   appId: any(named: 'appId'),
                   releaseId: any(named: 'releaseId'),
+                  metadata: any(named: 'metadata'),
+                  clientPatchId: any(named: 'clientPatchId'),
                 ),
-              ).thenAnswer((_) async => []);
+              ).thenAnswer((_) async => patch);
               when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
 
               await runWithOverrides(
@@ -2854,12 +2859,16 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 ),
               );
 
+              // Second call: idempotent hit, server reports the patch is
+              // already on stable (because the first call promoted it).
               when(
-                () => codePushClient.getPatches(
+                () => codePushClient.createPatch(
                   appId: any(named: 'appId'),
                   releaseId: any(named: 'releaseId'),
+                  metadata: any(named: 'metadata'),
+                  clientPatchId: any(named: 'clientPatchId'),
                 ),
-              ).thenAnswer((_) async => [promotedPatch]);
+              ).thenAnswer((_) async => promotedPatch);
 
               await runWithOverrides(
                 () => codePushClientWrapper.publishPatch(
@@ -2896,20 +2905,18 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           '''does not prompt when the existing patch is on a non-stable track''',
           () async {
             when(
-              () => codePushClient.getPatches(
+              () => codePushClient.createPatch(
                 appId: any(named: 'appId'),
                 releaseId: any(named: 'releaseId'),
+                metadata: any(named: 'metadata'),
+                clientPatchId: any(named: 'clientPatchId'),
               ),
             ).thenAnswer(
-              (_) async => [
-                ReleasePatch(
-                  id: patchId,
-                  number: patchNumber,
-                  channel: DeploymentTrack.staging.channel,
-                  isRolledBack: false,
-                  artifacts: const [],
-                ),
-              ],
+              (_) async => const CreatePatchResponse(
+                id: patchId,
+                number: patchNumber,
+                channel: 'staging',
+              ),
             );
             when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
 
@@ -2929,38 +2936,13 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           },
         );
 
+        // Older servers that don't populate `channel` on the response leave
+        // the field null — append-after-promotion stays allowed per the
+        // design and the courtesy prompt simply doesn't fire.
         test(
-          'does not query existing patches when no clientPatchId is supplied',
+          'does not prompt when the server omits the channel field',
           () async {
-            await runWithOverrides(
-              () => codePushClientWrapper.publishPatch(
-                appId: appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                track: track,
-                patchArtifactBundles: patchArtifactBundles,
-                metadata: {'foo': 'bar'},
-              ),
-            );
-
-            verifyNever(
-              () => codePushClient.getPatches(
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-              ),
-            );
-          },
-        );
-
-        test(
-          '''proceeds when the patch promotion lookup fails — prompt is a courtesy, not a gate''',
-          () async {
-            when(
-              () => codePushClient.getPatches(
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-              ),
-            ).thenThrow(Exception('network down'));
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
 
             await runWithOverrides(
               () => codePushClientWrapper.publishPatch(
@@ -2974,16 +2956,12 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               ),
             );
 
-            verify(
-              () => codePushClient.createPatchArtifact(
-                appId: appId,
-                artifactPath: any(named: 'artifactPath'),
-                patchId: patchId,
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
+            verifyNever(() => logger.confirm(any()));
+            verifyNever(
+              () => logger.warn(
+                any(that: contains('already promoted to the stable track')),
               ),
-            ).called(1);
+            );
           },
         );
       });

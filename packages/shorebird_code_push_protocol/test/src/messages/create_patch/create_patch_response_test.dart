@@ -52,5 +52,40 @@ void main() {
       expect(a.hashCode, equals(b.hashCode));
       expect(a, isNot(equals(c)));
     });
+
+    test('round-trips channel', () {
+      const response = CreatePatchResponse(
+        id: 1,
+        number: 2,
+        channel: 'stable',
+      );
+      final json = response.toJson();
+      expect(json['channel'], equals('stable'));
+      expect(CreatePatchResponse.fromJson(json).channel, equals('stable'));
+    });
+
+    test('parses json without channel', () {
+      final response = CreatePatchResponse.fromJson(const {
+        'id': 1,
+        'number': 2,
+      });
+      expect(response.channel, isNull);
+    });
+
+    test('toJson always includes channel (null when unset)', () {
+      const response = CreatePatchResponse(id: 1, number: 2);
+      final json = response.toJson();
+      expect(json.containsKey('channel'), isTrue);
+      expect(json['channel'], isNull);
+    });
+
+    test('channel participates in equality', () {
+      const a = CreatePatchResponse(id: 1, number: 2, channel: 'stable');
+      const b = CreatePatchResponse(id: 1, number: 2, channel: 'stable');
+      const c = CreatePatchResponse(id: 1, number: 2, channel: 'staging');
+      expect(a, equals(b));
+      expect(a.hashCode, equals(b.hashCode));
+      expect(a, isNot(equals(c)));
+    });
   });
 }

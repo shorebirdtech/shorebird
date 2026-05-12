@@ -21,6 +21,7 @@ class CreatePatchResponse {
     required this.id,
     required this.number,
     this.clientPatchId,
+    this.channel,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchResponse].
@@ -32,6 +33,7 @@ class CreatePatchResponse {
         id: json['id'] as int,
         number: json['number'] as int,
         clientPatchId: json['client_patch_id'] as String?,
+        channel: json['channel'] as String?,
       ),
     );
   }
@@ -56,12 +58,22 @@ class CreatePatchResponse {
   /// idempotent re-use occurred. See `CreatePatchRequest.client_patch_id`.
   final String? clientPatchId;
 
+  /// The channel this patch is currently promoted to, if any. Null on a
+  /// freshly-created patch (the common path) and on idempotent hits where
+  /// the existing patch has not been promoted. When non-null on an
+  /// idempotent hit it tells the client that uploading further artifacts
+  /// will go live to that channel's users immediately — letting the
+  /// client surface the append-after-promotion case without a second
+  /// round-trip to list patches.
+  final String? channel;
+
   /// Converts a [CreatePatchResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'number': number,
       'client_patch_id': clientPatchId,
+      'channel': channel,
     };
   }
 
@@ -70,6 +82,7 @@ class CreatePatchResponse {
     id,
     number,
     clientPatchId,
+    channel,
   ]);
 
   @override
@@ -78,6 +91,7 @@ class CreatePatchResponse {
     return other is CreatePatchResponse &&
         id == other.id &&
         number == other.number &&
-        clientPatchId == other.clientPatchId;
+        clientPatchId == other.clientPatchId &&
+        channel == other.channel;
   }
 }
