@@ -85,8 +85,7 @@ android {
       test('returns false when no android/app directory exists', () {
         expect(
           runWithOverrides(
-            () =>
-                LegacyKeepDebugSymbolsValidator().canRunInCurrentContext(),
+            () => LegacyKeepDebugSymbolsValidator().canRunInCurrentContext(),
           ),
           isFalse,
         );
@@ -96,8 +95,7 @@ android {
         writeGradle('build.gradle.kts', cleanGradle);
         expect(
           runWithOverrides(
-            () =>
-                LegacyKeepDebugSymbolsValidator().canRunInCurrentContext(),
+            () => LegacyKeepDebugSymbolsValidator().canRunInCurrentContext(),
           ),
           isTrue,
         );
@@ -107,8 +105,7 @@ android {
         writeGradle('build.gradle', cleanGradle);
         expect(
           runWithOverrides(
-            () =>
-                LegacyKeepDebugSymbolsValidator().canRunInCurrentContext(),
+            () => LegacyKeepDebugSymbolsValidator().canRunInCurrentContext(),
           ),
           isTrue,
         );
@@ -137,33 +134,37 @@ android {
     });
 
     group('on Flutter >= 3.44', () {
-      test('returns no issues when neither gradle file contains the line',
-          () async {
-        writeGradle('build.gradle.kts', cleanGradle);
+      test(
+        'returns no issues when neither gradle file contains the line',
+        () async {
+          writeGradle('build.gradle.kts', cleanGradle);
 
-        final issues = await runWithOverrides(
-          LegacyKeepDebugSymbolsValidator().validate,
-        );
+          final issues = await runWithOverrides(
+            LegacyKeepDebugSymbolsValidator().validate,
+          );
 
-        expect(issues, isEmpty);
-      });
+          expect(issues, isEmpty);
+        },
+      );
 
-      test('returns a warning when build.gradle.kts has the .add(...) form',
-          () async {
-        writeGradle('build.gradle.kts', kotlinGradleWithLegacyLine);
+      test(
+        'returns a warning when build.gradle.kts has the .add(...) form',
+        () async {
+          writeGradle('build.gradle.kts', kotlinGradleWithLegacyLine);
 
-        final issues = await runWithOverrides(
-          LegacyKeepDebugSymbolsValidator().validate,
-        );
+          final issues = await runWithOverrides(
+            LegacyKeepDebugSymbolsValidator().validate,
+          );
 
-        expect(issues, hasLength(1));
-        final issue = issues.single;
-        expect(issue.severity, ValidationIssueSeverity.warning);
-        expect(issue.message, contains('build.gradle.kts'));
-        expect(issue.message, contains('keepDebugSymbols'));
-        expect(issue.message, contains('libapp.so'));
-        expect(issue.message, contains('flutter/flutter#181275'));
-      });
+          expect(issues, hasLength(1));
+          final issue = issues.single;
+          expect(issue.severity, ValidationIssueSeverity.warning);
+          expect(issue.message, contains('build.gradle.kts'));
+          expect(issue.message, contains('keepDebugSymbols'));
+          expect(issue.message, contains('libapp.so'));
+          expect(issue.message, contains('flutter/flutter#181275'));
+        },
+      );
 
       test('returns a warning when build.gradle has the += form', () async {
         writeGradle('build.gradle', groovyGradleWithLegacyPlusEquals);
@@ -176,21 +177,23 @@ android {
         expect(issues.single.message, contains('build.gradle'));
       });
 
-      test('returns two warnings when both files contain the legacy line',
-          () async {
-        writeGradle('build.gradle.kts', kotlinGradleWithLegacyLine);
-        writeGradle('build.gradle', groovyGradleWithLegacyPlusEquals);
+      test(
+        'returns two warnings when both files contain the legacy line',
+        () async {
+          writeGradle('build.gradle.kts', kotlinGradleWithLegacyLine);
+          writeGradle('build.gradle', groovyGradleWithLegacyPlusEquals);
 
-        final issues = await runWithOverrides(
-          LegacyKeepDebugSymbolsValidator().validate,
-        );
+          final issues = await runWithOverrides(
+            LegacyKeepDebugSymbolsValidator().validate,
+          );
 
-        expect(issues, hasLength(2));
-        expect(
-          issues.map((i) => i.severity),
-          everyElement(ValidationIssueSeverity.warning),
-        );
-      });
+          expect(issues, hasLength(2));
+          expect(
+            issues.map((i) => i.severity),
+            everyElement(ValidationIssueSeverity.warning),
+          );
+        },
+      );
     });
 
     test(
