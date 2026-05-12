@@ -74,7 +74,6 @@ ScopedRef<CodePushClientWrapper> codePushClientWrapperRef = create(() {
     codePushClient: CodePushClient(
       httpClient: auth.client,
       hostedUri: shorebirdEnv.hostedUri,
-      fallbackHostedUri: shorebirdEnv.fallbackHostedUri,
       customHeaders: {'x-cli-version': packageVersion},
     ),
   );

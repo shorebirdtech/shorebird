@@ -219,14 +219,9 @@ void main() {
         () => Auth(
           credentialsDir: credentialsDir,
           httpClient: httpClient,
-          buildCodePushClient:
-              ({
-                Uri? hostedUri,
-                Uri? fallbackHostedUri,
-                http.Client? httpClient,
-              }) {
-                return codePushClient;
-              },
+          buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
+            return codePushClient;
+          },
           obtainCredentialsViaLoopbackLogin:
               ({
                 required http.Client httpClient,
