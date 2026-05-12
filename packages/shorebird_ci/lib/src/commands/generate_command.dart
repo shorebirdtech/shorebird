@@ -241,7 +241,10 @@ jobs:
     // a changed `path:` dependency would silently go uncovered.
     buffer.write('''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          # Full history so dorny/paths-filter can diff on push events.
+          fetch-depth: 0
       - uses: dart-lang/setup-dart@v1
       - run: dart pub global activate shorebird_ci
       - name: Verify CI coverage
@@ -361,7 +364,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - uses: dart-lang/setup-dart@v1
@@ -434,7 +437,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Setup Flutter
@@ -491,6 +494,10 @@ on:
   push:
     branches:
       - main
+  # Manual dispatch runs CI against all packages, bypassing the
+  # affected-packages diff. Useful on the first push to a new repo (where
+  # there's no diff base) or when you want to force a full re-check.
+  workflow_dispatch:
 
 jobs:
 ''');
@@ -546,11 +553,15 @@ jobs:
       );
     }
 
-    buffer.write('''
+    buffer.write(r'''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
+          # affected_packages diffs against origin/main, which isn't in
+          # the default shallow checkout. Full history is needed for the
+          # diff to resolve.
+          fetch-depth: 0
       - uses: dart-lang/setup-dart@v1
       - run: dart pub global activate shorebird_ci
       # Verify first so we fail fast if CI coverage is broken and
@@ -559,20 +570,41 @@ jobs:
         run: shorebird_ci verify
       - id: affected
         run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "::notice::Manual dispatch: running CI against all packages."
+            EXTRA_ARGS=--all
+          else
+            EXTRA_ARGS=
+          fi
 ''');
     if (hasDart) {
       buffer.write(r'''
-          DART=$(shorebird_ci affected_packages --sdk dart)
+          DART=$(shorebird_ci affected_packages --sdk dart $EXTRA_ARGS)
           echo "dart_packages=$DART" >> $GITHUB_OUTPUT
 ''');
     }
     if (hasFlutter) {
       buffer.write(r'''
-          FLUTTER=$(shorebird_ci affected_packages --sdk flutter)
+          FLUTTER=$(shorebird_ci affected_packages --sdk flutter $EXTRA_ARGS)
           echo "flutter_packages=$FLUTTER" >> $GITHUB_OUTPUT
 ''');
     }
-    buffer.writeln();
+    // Friendly notice when the diff path yields nothing, e.g. on a push
+    // to main where HEAD already equals origin/main. Points users at the
+    // manual-dispatch button so the green check has context.
+    final emptyChecks = <String>[
+      if (hasDart) r'"$DART" == "[]"',
+      if (hasFlutter) r'"$FLUTTER" == "[]"',
+    ].join(' && ');
+    buffer
+      ..write('''
+          if [[ "\${{ github.event_name }}" != "workflow_dispatch" ]] \\
+             && [[ $emptyChecks ]]; then
+            echo "::notice::No affected packages in diff vs origin/main. \\
+Click 'Run workflow' in the Actions tab to run CI against all packages."
+          fi
+''')
+      ..writeln();
   }
 
   void _writeCiJob(
@@ -621,7 +653,7 @@ jobs:
       run:
         working-directory: \${{ matrix.path }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 ''';
@@ -709,7 +741,7 @@ jobs:
     name: CSpell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - uses: streetsidesoftware/cspell-action@v6

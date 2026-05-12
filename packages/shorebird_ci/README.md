@@ -58,6 +58,30 @@ Plus a CSpell job if a cspell config file exists.
 Adding or removing packages requires no workflow changes — the setup
 job discovers them at runtime.
 
+### Manual runs and the empty-diff case
+
+The workflow includes a `workflow_dispatch:` trigger so you can launch
+a run from the **Run workflow** button in the Actions tab. Manual runs
+bypass the affected-packages diff and execute CI against every
+package, which is what you want when:
+
+- You just pushed an initial commit to `main` and the diff vs.
+  `origin/main` is empty.
+- You want to force a full re-check after editing CI configuration.
+- Something looks off and you want a baseline green run.
+
+For normal `push: main` events where the diff is empty, setup emits a
+GitHub notice pointing at the manual button so a green-but-skipped run
+isn't confused for a full pass.
+
+### `--no-update-actions`
+
+`generate` auto-bumps action pins by querying GitHub for current
+latest majors. `--no-update-actions` skips that network call and
+leaves the static pins in the template as-is. Use it in offline
+environments. Once you push, Dependabot picks up bumps on its weekly
+schedule.
+
 ### `--style static` (advanced)
 
 `generate --style static` emits a pre-computed dorny `filters:` block,

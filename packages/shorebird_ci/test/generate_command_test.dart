@@ -342,7 +342,7 @@ void main() {
 
       expect(code, 0);
       final yaml = _readMain(tempDir);
-      // setup-dart and checkout were emitted at @v1/@v4 by the generator;
+      // setup-dart and checkout were emitted at @v1/@v6 by the generator;
       // resolver bumps them both to @v99.
       expect(yaml, contains('actions/checkout@v99'));
       expect(yaml, contains('dart-lang/setup-dart@v99'));
@@ -353,7 +353,7 @@ void main() {
       initGitRepo(tempDir);
 
       // Resolver would bump to v99 if called; --no-update-actions should
-      // prevent that, leaving the generator's @v4/@v1 pins untouched.
+      // prevent that, leaving the generator's @v6/@v1 pins untouched.
       final runner = CommandRunner<int>('test', 'test')
         ..addCommand(
           GenerateCommand(resolveLatestMajor: (_) async => 'v99'),
@@ -368,7 +368,65 @@ void main() {
       expect(code, 0);
       final yaml = _readMain(tempDir);
       expect(yaml, isNot(contains('@v99')));
-      expect(yaml, contains('actions/checkout@v4'));
+      expect(yaml, contains('actions/checkout@v6'));
+    });
+  });
+
+  group('setup-job runner ergonomics', () {
+    test('dynamic workflow has workflow_dispatch trigger', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains('workflow_dispatch:'));
+    });
+
+    test('dynamic setup job pins fetch-depth: 0', () async {
+      // Without full history, affected_packages can't diff against
+      // origin/main on the runner.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains('fetch-depth: 0'));
+    });
+
+    test('dynamic setup passes --all on workflow_dispatch', () async {
+      // Manual dispatch should bypass the diff and run every package.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains('EXTRA_ARGS=--all'));
+      expect(yaml, contains(r'affected_packages --sdk dart $EXTRA_ARGS'));
+    });
+
+    test('dynamic setup logs a hint when diff yields no packages', () async {
+      // On push to main, HEAD == origin/main and the diff is empty.
+      // The workflow should tell the user about the manual button.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains("Click 'Run workflow' in the Actions tab"));
+    });
+
+    test('static main yaml pins fetch-depth: 0', () async {
+      // dorny/paths-filter on push events needs full history.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      final runner = CommandRunner<int>('test', 'test')
+        ..addCommand(GenerateCommand(resolveLatestMajor: (_) async => null));
+      await runner.run([
+        'generate',
+        '--repo-root',
+        tempDir.path,
+        '--style',
+        'static',
+        '--no-update-actions',
+      ]);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains('fetch-depth: 0'));
     });
   });
 }
