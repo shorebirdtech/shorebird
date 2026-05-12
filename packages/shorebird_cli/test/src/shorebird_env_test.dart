@@ -815,36 +815,6 @@ base_url: https://example.com''');
       });
     });
 
-    group('fallbackHostedUri', () {
-      test('returns parsed uri when env var is set', () {
-        when(() => platform.environment).thenReturn({
-          'SHOREBIRD_HOSTED_URL_FALLBACK': 'https://fallback.example.com',
-        });
-        expect(
-          runWithOverrides(() => shorebirdEnv.fallbackHostedUri),
-          equals(Uri.parse('https://fallback.example.com')),
-        );
-      });
-
-      test('returns null when env var is unset', () {
-        when(() => platform.environment).thenReturn({});
-        expect(
-          runWithOverrides(() => shorebirdEnv.fallbackHostedUri),
-          isNull,
-        );
-      });
-
-      test('returns null when env var is empty', () {
-        when(
-          () => platform.environment,
-        ).thenReturn({'SHOREBIRD_HOSTED_URL_FALLBACK': ''});
-        expect(
-          runWithOverrides(() => shorebirdEnv.fallbackHostedUri),
-          isNull,
-        );
-      });
-    });
-
     group('canAcceptUserInput', () {
       late Stdin stdin;
 

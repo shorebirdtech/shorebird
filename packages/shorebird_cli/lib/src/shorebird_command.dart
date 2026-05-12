@@ -23,11 +23,7 @@ typedef UnzipFn = Future<void> Function(String zipFilePath, String outputDir);
 
 /// Signature for a function which builds a [CodePushClient].
 typedef CodePushClientBuilder =
-    CodePushClient Function({
-      required http.Client httpClient,
-      Uri? hostedUri,
-      Uri? fallbackHostedUri,
-    });
+    CodePushClient Function({required http.Client httpClient, Uri? hostedUri});
 
 /// Signature for a function which starts a process (e.g. [Process.start]).
 typedef StartProcess =

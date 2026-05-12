@@ -285,7 +285,6 @@ class Auth {
       final codePushClient = _buildCodePushClient(
         httpClient: this.client,
         hostedUri: shorebirdEnv.hostedUri,
-        fallbackHostedUri: shorebirdEnv.fallbackHostedUri,
       );
 
       final user = await codePushClient.getCurrentUser();

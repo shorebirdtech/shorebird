@@ -37,7 +37,6 @@ class NetworkChecker {
   /// The URLs to check for network reachability.
   static final urlsToCheck = [
     'https://api.shorebird.dev',
-    'https://api.shorebird.cloud',
     'https://console.shorebird.dev',
     'https://oauth2.googleapis.com',
     'https://storage.googleapis.com',
