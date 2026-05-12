@@ -1,3 +1,5 @@
+// cspell:words toplevel autodiscovers autodiscovery
+
 import 'dart:io';
 
 import 'package:args/command_runner.dart';

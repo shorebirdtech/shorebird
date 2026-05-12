@@ -95,6 +95,6 @@ class AffectedPackagesCommand extends Command<int> with RepoRootOption {
           'that exists locally, or fetch the missing ref '
           '(e.g. `git fetch origin main`).';
     }
-    return 'git failed: ${e.message.trim()}';
+    return 'git failed: ${e.message.trim()}'; // coverage:ignore-line
   }
 }
