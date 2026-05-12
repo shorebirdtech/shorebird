@@ -477,6 +477,10 @@ void main() {
           setUp(() {
             when(() => argResults['obfuscate']).thenReturn(true);
             when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+            when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 2));
             // Simulate the build creating the obfuscation map.
             when(
               () => artifactBuilder.buildAar(

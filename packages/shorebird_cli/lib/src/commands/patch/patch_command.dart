@@ -462,10 +462,43 @@ Building with Flutter $flutterVersionString to determine the release version...
         '--obfuscate',
         '--extra-gen-snapshot-options='
             '--load-obfuscation-map=${obfuscationMapFile.path}',
-        // Strip unobfuscated DWARF debug info from the compiled snapshot so
-        // it doesn't leak identifiers that obfuscation was meant to hide.
-        '--extra-gen-snapshot-options=--strip',
       ]);
+
+      // On Android with Flutter 3.44+, AGP performs the strip on
+      // libapp.so as part of `stripReleaseDebugSymbols` and produces the
+      // matching `.sym` companion that flutter_tools'
+      // post-build verification requires. Passing --strip to gen_snapshot
+      // here would pre-strip the snapshot, leaving AGP nothing to strip,
+      // and flutter_tools would fail the patch build with "libapp.so.sym
+      // or libapp.so.dbg not present". On older Flutter we keep --strip
+      // because the post-build verification does not exist there.
+      //
+      // The version check uses release.flutterRevision (not the user's
+      // currently-installed pin) because the patch's gen_snapshot
+      // behavior must match the release's. See upstream PR
+      // https://github.com/flutter/flutter/pull/181275 (merged 2026-01-26)
+      // and https://github.com/shorebirdtech/_shorebird/issues/2150.
+      final isAndroid =
+          patcher.releaseType.releasePlatform == ReleasePlatform.android;
+      var shouldPreStripInGenSnapshot = true;
+      if (isAndroid) {
+        final releaseFlutterVersion = await shorebirdFlutter
+            .resolveFlutterVersion(release.flutterRevision);
+        final agpStripsLibapp = libappStrippedByAgpConstraint.isSatisfiedBy(
+          version:
+              releaseFlutterVersion ?? libappStrippedByAgpConstraint.minVersion,
+          revision: release.flutterRevision,
+        );
+        shouldPreStripInGenSnapshot = !agpStripsLibapp;
+      }
+
+      if (shouldPreStripInGenSnapshot) {
+        // Strip unobfuscated DWARF debug info from the compiled snapshot
+        // so it doesn't leak identifiers that obfuscation was meant to
+        // hide. On Android 3.44+ this is handled by AGP instead; see the
+        // block above.
+        extraBuildArgs.add('--extra-gen-snapshot-options=--strip');
+      }
     }
     // Flutter requires --split-debug-info with --obfuscate. Auto-add it
     // if --obfuscate will be in the build args (from the user or from

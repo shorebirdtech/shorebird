@@ -358,6 +358,39 @@ $body
       });
     });
 
+    group('addObfuscationMapArgs', () {
+      // The libapp.so strip gating only applies to Android; on iOS AGP is
+      // not in the pipeline. iOS must continue to pre-strip the snapshot in
+      // gen_snapshot regardless of the Flutter version to prevent the
+      // DWARF debug sections from leaking the identifiers obfuscation is
+      // meant to hide. See
+      // https://github.com/shorebirdtech/_shorebird/issues/2150.
+      setUp(() {
+        when(() => argResults['obfuscate']).thenReturn(true);
+        when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+        when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        when(
+          () => shorebirdEnv.getShorebirdProjectRoot(),
+        ).thenReturn(projectRoot);
+      });
+
+      test('passes --strip on Flutter 3.44+ for iOS', () async {
+        when(
+          () => shorebirdFlutter.resolveFlutterVersion(any()),
+        ).thenAnswer((_) async => Version(3, 44, 0));
+
+        final buildArgs = <String>[];
+        await runWithOverrides(
+          () => iosReleaser.addObfuscationMapArgs(buildArgs),
+        );
+
+        expect(
+          buildArgs,
+          contains('--extra-gen-snapshot-options=--strip'),
+        );
+      });
+    });
+
     group('buildReleaseArtifacts', () {
       const flutterVersionAndRevision = '3.10.6 (83305b5088)';
       const base64PublicKey = 'base64PublicKey';
