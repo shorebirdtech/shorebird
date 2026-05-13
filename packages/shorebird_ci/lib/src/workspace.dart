@@ -18,6 +18,17 @@ bool isDartWorkspace(String packageDir) {
   return workspace is List && workspace.isNotEmpty;
 }
 
+/// The declared `workspace:` member paths from the pubspec at
+/// [packageDir], as written (relative, POSIX-style). Returns `null` if
+/// the pubspec does not declare a workspace.
+List<String>? workspaceMembers(String packageDir) {
+  final pubspec = readPubspec(packageDir);
+  if (pubspec == null) return null;
+  final members = pubspec['workspace'];
+  if (members is! List || members.isEmpty) return null;
+  return members.whereType<String>().toList();
+}
+
 /// Whether the pubspec at [packageDir] is a workspace "stub" root
 /// that should be skipped during package discovery.
 ///

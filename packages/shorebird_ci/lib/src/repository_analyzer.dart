@@ -67,6 +67,7 @@ class RepositoryAnalyzer {
     final packages = _filterPackages(
       pubspecFiles: pubspecFiles,
       repositoryRoot: repositoryRoot,
+      workspaceMemberPaths: _workspaceMemberPaths(repositoryRoot),
     );
 
     final packageDescriptions = packages
@@ -221,6 +222,7 @@ class RepositoryAnalyzer {
   List<File> _filterPackages({
     required List<File> pubspecFiles,
     required Directory repositoryRoot,
+    required Set<String>? workspaceMemberPaths,
   }) {
     final packages = <File>[];
     for (final pubspec in pubspecFiles) {
@@ -237,10 +239,28 @@ class RepositoryAnalyzer {
 
       if (workspace.isWorkspaceStubRoot(pubspec.parent.path)) continue;
 
+      // When the repo root declares a Dart workspace, the declared
+      // member list is the source of truth: out-of-workspace pubspecs
+      // are not packages this tool should drive in the generated CI.
+      if (workspaceMemberPaths != null &&
+          !workspaceMemberPaths.contains(
+            p.canonicalize(pubspec.parent.path),
+          )) {
+        continue;
+      }
+
       packages.add(pubspec);
     }
 
     return packages;
+  }
+
+  static Set<String>? _workspaceMemberPaths(Directory repositoryRoot) {
+    final members = workspace.workspaceMembers(repositoryRoot.path);
+    if (members == null) return null;
+    return members
+        .map((m) => p.canonicalize(p.join(repositoryRoot.path, m)))
+        .toSet();
   }
 
   /// The name of the package at the given [root].

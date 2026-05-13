@@ -51,6 +51,46 @@ workspace: []
     });
   });
 
+  group('workspaceMembers', () {
+    test('returns declared member paths in order', () {
+      writePubspec('.', '''
+name: _
+environment:
+  sdk: ^3.0.0
+workspace:
+  - packages/foo
+  - packages/bar
+''');
+      expect(
+        workspaceMembers(tempDir.path),
+        equals(['packages/foo', 'packages/bar']),
+      );
+    });
+
+    test('null when no workspace declared', () {
+      writePubspec('.', '''
+name: foo
+environment:
+  sdk: ^3.0.0
+''');
+      expect(workspaceMembers(tempDir.path), isNull);
+    });
+
+    test('null when workspace list is empty', () {
+      writePubspec('.', '''
+name: _
+environment:
+  sdk: ^3.0.0
+workspace: []
+''');
+      expect(workspaceMembers(tempDir.path), isNull);
+    });
+
+    test('null when no pubspec exists', () {
+      expect(workspaceMembers(tempDir.path), isNull);
+    });
+  });
+
   group('isWorkspaceStubRoot', () {
     test('true for nameless workspace', () {
       writePubspec('.', '''
