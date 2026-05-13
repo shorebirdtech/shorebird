@@ -163,6 +163,10 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       ..addOption(
         'dd-max-bytes',
         defaultsTo: '10000',
+        // Hidden from --help: changing this off the default is almost never
+        // the right call for end users. The flag is here for internal
+        // testing of the cascade limiter against patch flows.
+        hide: true,
         help:
             'Dynamic Dispatch table cascade byte threshold. '
             'Functions whose transitive caller tree exceeds this many bytes '
