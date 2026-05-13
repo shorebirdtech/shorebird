@@ -67,7 +67,6 @@ class RepositoryAnalyzer {
     final packages = _filterPackages(
       pubspecFiles: pubspecFiles,
       repositoryRoot: repositoryRoot,
-      workspaceMemberPaths: _workspaceMemberPaths(repositoryRoot),
     );
 
     final packageDescriptions = packages
@@ -88,37 +87,12 @@ class RepositoryAnalyzer {
         .whereType<PackageDescription>()
         .toList();
 
-    _checkForDuplicateNames(packageDescriptions);
-
     return RepositoryDescription(
       packages: packageDescriptions,
       root: repositoryRoot,
       hasCodecov: hasCodecov,
       cspellConfig: cSpellConfigFile,
     );
-  }
-
-  static void _checkForDuplicateNames(
-    List<PackageDescription> packages,
-  ) {
-    final byName = <String, List<PackageDescription>>{};
-    for (final pkg in packages) {
-      byName.putIfAbsent(pkg.name, () => []).add(pkg);
-    }
-    final duplicates = byName.entries.where((e) => e.value.length > 1);
-    if (duplicates.isEmpty) return;
-
-    final buffer = StringBuffer(
-      'Duplicate package names found. Each package in the workspace '
-      'must have a unique `name:` in its pubspec.yaml.\n',
-    );
-    for (final entry in duplicates) {
-      buffer.writeln('  ${entry.key}:');
-      for (final pkg in entry.value) {
-        buffer.writeln('    - ${pkg.rootPath}');
-      }
-    }
-    throw StateError(buffer.toString().trimRight());
   }
 
   /// Allowed characters in a package or subpackage path: letters,
@@ -145,10 +119,9 @@ class RepositoryAnalyzer {
 
   /// Pub's own naming convention for packages: lowercase letter or
   /// underscore start, then lowercase letters, digits, and underscores.
-  /// `pubspec.yaml` is just YAML — pub doesn't gate this name until you
-  /// publish — so a malformed name can land here and get embedded as
-  /// a YAML map key in the generated workflow. Validate at analysis
-  /// time instead.
+  /// `pubspec.yaml` is just YAML, and pub doesn't gate this name until
+  /// publish. A malformed name flows into the slug used as a YAML map
+  /// key in the generated workflow, so validate at analysis time.
   static final _safePackageNameRegex = RegExp(r'^[a-z][a-z0-9_]*$');
 
   static void _requireSafePackageName(String name, {required String source}) {
@@ -222,7 +195,6 @@ class RepositoryAnalyzer {
   List<File> _filterPackages({
     required List<File> pubspecFiles,
     required Directory repositoryRoot,
-    required Set<String>? workspaceMemberPaths,
   }) {
     final packages = <File>[];
     for (final pubspec in pubspecFiles) {
@@ -239,28 +211,10 @@ class RepositoryAnalyzer {
 
       if (workspace.isWorkspaceStubRoot(pubspec.parent.path)) continue;
 
-      // When the repo root declares a Dart workspace, the declared
-      // member list is the source of truth: out-of-workspace pubspecs
-      // are not packages this tool should drive in the generated CI.
-      if (workspaceMemberPaths != null &&
-          !workspaceMemberPaths.contains(
-            p.canonicalize(pubspec.parent.path),
-          )) {
-        continue;
-      }
-
       packages.add(pubspec);
     }
 
     return packages;
-  }
-
-  static Set<String>? _workspaceMemberPaths(Directory repositoryRoot) {
-    final members = workspace.workspaceMembers(repositoryRoot.path);
-    if (members == null) return null;
-    return members
-        .map((m) => p.canonicalize(p.join(repositoryRoot.path, m)))
-        .toSet();
   }
 
   /// The name of the package at the given [root].

@@ -150,52 +150,21 @@ void main() {
       );
     });
 
-    test(
-      'restricts to declared workspace members when root declares a '
-      'workspace',
-      () async {
-        // Root declares a workspace with two members. Two standalone
-        // pubspecs sit outside the workspace and happen to share the
-        // same `name:` (pub allows this when packages are unrelated).
-        // The analyzer must use the workspace member list as the source
-        // of truth and ignore the out-of-workspace pubspecs.
-        createPackage(tempDir, 'packages/foo', 'foo', useWorkspace: true);
-        createPackage(tempDir, 'packages/bar', 'bar', useWorkspace: true);
-        createPackage(tempDir, 'extras/one/harness', 'harness');
-        createPackage(tempDir, 'extras/two/harness', 'harness');
-        createWorkspaceRoot(
-          tempDir,
-          members: ['packages/foo', 'packages/bar'],
-        );
-        initGitRepo(tempDir);
-
-        final analyzer = RepositoryAnalyzer();
-        final repo = analyzer.analyze(repositoryRoot: tempDir);
-
-        final names = repo.packages.map((p) => p.name).toSet();
-        expect(names, equals({'foo', 'bar'}));
-      },
-    );
-
-    test('throws on duplicate package names', () async {
-      // Two packages declaring `name: example` would silently collide
-      // when used as YAML map keys in the generated workflow. Fail
-      // loudly instead.
+    test('allows packages sharing a `name:` at different paths', () async {
+      // Two packages can legitimately share a `name:` (pub allows it
+      // when the packages are unrelated, e.g. test harnesses sitting
+      // next to multiple apps). The analyzer must surface both; the
+      // workflow generator disambiguates by path when it emits YAML
+      // map keys.
       createPackage(tempDir, 'a/example', 'example');
       createPackage(tempDir, 'b/example', 'example');
       initGitRepo(tempDir);
 
       final analyzer = RepositoryAnalyzer();
-      expect(
-        () => analyzer.analyze(repositoryRoot: tempDir),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            contains('Duplicate package names'),
-          ),
-        ),
-      );
+      final repo = analyzer.analyze(repositoryRoot: tempDir);
+
+      expect(repo.packages.length, 2);
+      expect(repo.packages.every((p) => p.name == 'example'), isTrue);
     });
 
     test(

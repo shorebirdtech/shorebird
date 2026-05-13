@@ -311,6 +311,38 @@ void main() {
       },
     );
 
+    test(
+      'YAML map keys are slugged from the package path',
+      () async {
+        // Two packages w/ the same `name:` at different parent dirs:
+        // pub allows this, and shorebird_ci must disambiguate the YAML
+        // keys by walking up one path segment. `name: harness` under
+        // `apps/alpha/` becomes `alpha_harness`, under `apps/beta/`
+        // becomes `beta_harness`.
+        createPackage(tempDir, 'apps/alpha/harness', 'harness');
+        createPackage(tempDir, 'apps/beta/harness', 'harness');
+        // Sanity: a unique-named package still gets a slug, since the
+        // rule applies uniformly. `name: foo` under `packages/` becomes
+        // `packages_foo`.
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final yaml = _readMain(tempDir);
+
+        for (final slug in ['alpha_harness', 'beta_harness', 'packages_foo']) {
+          // Each slug appears as a dorny filter key, an outputs entry,
+          // and a per-package job key.
+          expect(yaml, contains('$slug:'));
+          expect(yaml, contains('needs.changes.outputs.$slug'));
+        }
+        // The actual package name still flows through as the
+        // `package_name:` input value (used for codecov flags).
+        expect(yaml, contains('package_name: harness'));
+        expect(yaml, contains('package_name: foo'));
+      },
+    );
+
     test('verify step comes before dorny filter', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);

@@ -1,8 +1,8 @@
-<!-- cspell:words toplevel pubspecs -->
+<!-- cspell:words toplevel -->
 
 # 0.2.1
 
-- `RepositoryAnalyzer.analyze` now restricts package discovery to the repo's declared Dart workspace members when the root pubspec declares a `workspace:` list. Out-of-workspace pubspecs (which can collide on `name:`) are no longer scanned. Repos without a root workspace fall back to the existing filesystem walk.
+- Static main workflow now derives its YAML map keys from each package's path as `<parent_dir>_<package_name>` instead of relying on the `name:` field. Packages can share a `name:` across different paths without crashing the generator. The `package_name:` input passed to the reusable workflow keeps the actual package name for codecov flag display.
 - Static reusable workflows now gate the test and codecov-upload steps on a new `has_unit_tests` input. Packages without a `test/` directory no longer attempt to run `dart test` / `flutter test` or upload coverage. The input defaults to `true` for back-compat with workflows that don't pass it.
 
 # 0.2.0

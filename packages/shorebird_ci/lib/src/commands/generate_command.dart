@@ -230,10 +230,11 @@ jobs:
 ''');
 
     for (final package in packages) {
-      buffer.writeln(
-        '      ${package.name}: '
-        '\${{ steps.filter.outputs.${package.name} }}',
+      final slug = _packageSlug(
+        package: package,
+        repoRoot: repository.root.path,
       );
+      buffer.writeln('      $slug: \${{ steps.filter.outputs.$slug }}');
     }
 
     // Verify first so we fail fast if the dorny filters below have
@@ -261,8 +262,12 @@ jobs:
         from: repository.root.path,
       );
       final sortedDeps = resolver.resolve(packageDir).toList()..sort();
+      final slug = _packageSlug(
+        package: package,
+        repoRoot: repository.root.path,
+      );
 
-      buffer.writeln('            ${package.name}:');
+      buffer.writeln('            $slug:');
       for (final dep in sortedDeps) {
         buffer.writeln('              - $dep/**');
       }
@@ -285,11 +290,15 @@ jobs:
       final reusable = isFlutter
           ? '_shorebird_ci_flutter.yaml'
           : '_shorebird_ci_dart.yaml';
+      final slug = _packageSlug(
+        package: package,
+        repoRoot: repository.root.path,
+      );
 
       buffer.write('''
-  ${package.name}:
+  $slug:
     needs: changes
-    if: needs.changes.outputs.${package.name} == 'true'
+    if: needs.changes.outputs.$slug == 'true'
     uses: ./.github/workflows/$reusable
     with:
       package_name: ${package.name}
@@ -319,6 +328,30 @@ jobs:
     }
 
     return buffer.toString();
+  }
+
+  /// A unique-by-construction identifier derived from a package's path,
+  /// used as the YAML map key for jobs, dorny filters, and outputs in
+  /// the static main workflow. Built as `<parent_dir>_<package_name>`,
+  /// normalized to pub's `[a-z][a-z0-9_]*` rules so it can also be
+  /// referenced from GitHub Actions expressions.
+  ///
+  /// Two packages cannot share both parent directory and name, so this
+  /// stays unique without any duplicate-detection pass. Packages w/ a
+  /// shared `name:` at different paths end up w/ distinct keys derived
+  /// from each one's parent directory.
+  static String _packageSlug({
+    required PackageDescription package,
+    required String repoRoot,
+  }) {
+    final relative = posixRelative(package.rootPath, from: repoRoot);
+    final parts = relative.split('/');
+    if (parts.length < 2) return package.name;
+    final parent = parts[parts.length - 2].toLowerCase().replaceAll(
+      RegExp('[^a-z0-9_]'),
+      '_',
+    );
+    return '${parent}_${package.name}';
   }
 
   String _buildDartReusableWorkflow({required bool hasCodecov}) {
