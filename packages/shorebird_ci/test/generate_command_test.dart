@@ -261,6 +261,56 @@ void main() {
       },
     );
 
+    test(
+      'has_unit_tests gates the test + codecov steps',
+      () async {
+        // Two packages: one with a test/ dir, one without. The main
+        // workflow should pass has_unit_tests per package, and the
+        // reusable workflow should gate its test step on the input.
+        createPackage(
+          tempDir,
+          'packages/with_tests',
+          'with_tests',
+          addTestDir: true,
+        );
+        createPackage(tempDir, 'packages/no_tests', 'no_tests');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+
+        final main = _readMain(tempDir);
+        expect(
+          main,
+          matches(
+            RegExp(
+              'with_tests:[^#]*has_unit_tests: true',
+              dotAll: true,
+            ),
+          ),
+        );
+        expect(
+          main,
+          matches(
+            RegExp(
+              'no_tests:[^#]*has_unit_tests: false',
+              dotAll: true,
+            ),
+          ),
+        );
+
+        final reusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+        expect(reusable, contains('has_unit_tests:'));
+        expect(reusable, contains('if: inputs.has_unit_tests'));
+      },
+    );
+
     test('verify step comes before dorny filter', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);

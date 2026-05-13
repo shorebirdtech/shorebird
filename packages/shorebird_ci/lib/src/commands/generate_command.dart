@@ -295,6 +295,7 @@ jobs:
       package_name: ${package.name}
       package_path: $packageDir
       has_bloc_lint: ${RepositoryAnalyzer.dependsOnBlocLint(root: package.root)}
+      has_unit_tests: ${RepositoryAnalyzer.hasUnitTests(root: package.root)}
       subpackages: "${subpackages.join(' ')}"
 ''');
 
@@ -324,18 +325,21 @@ jobs:
     final testStep = hasCodecov
         ? r'''
       - name: Run Tests
+        if: inputs.has_unit_tests
         working-directory: ${{ inputs.package_path }}
         run: |
           dart pub global activate coverage && \
           dart test --coverage=coverage && \
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
-      - uses: codecov/codecov-action@v5
+      - if: inputs.has_unit_tests
+        uses: codecov/codecov-action@v5
         with:
           flags: ${{ inputs.package_name }}
           working-directory: ${{ inputs.package_path }}
 '''
         : r'''
-      - working-directory: ${{ inputs.package_path }}
+      - if: inputs.has_unit_tests
+        working-directory: ${{ inputs.package_path }}
         run: dart test
 ''';
 
@@ -354,6 +358,10 @@ on:
       has_bloc_lint:
         required: false
         default: false
+        type: boolean
+      has_unit_tests:
+        required: false
+        default: true
         type: boolean
       subpackages:
         required: false
@@ -392,15 +400,18 @@ $testStep''';
   String _buildFlutterReusableWorkflow({required bool hasCodecov}) {
     final testStep = hasCodecov
         ? r'''
-      - working-directory: ${{ inputs.package_path }}
+      - if: inputs.has_unit_tests
+        working-directory: ${{ inputs.package_path }}
         run: flutter test --coverage
-      - uses: codecov/codecov-action@v5
+      - if: inputs.has_unit_tests
+        uses: codecov/codecov-action@v5
         with:
           flags: ${{ inputs.package_name }}
           working-directory: ${{ inputs.package_path }}
 '''
         : r'''
-      - working-directory: ${{ inputs.package_path }}
+      - if: inputs.has_unit_tests
+        working-directory: ${{ inputs.package_path }}
         run: flutter test
 ''';
 
@@ -427,6 +438,10 @@ on:
       has_integration_tests:
         required: false
         default: false
+        type: boolean
+      has_unit_tests:
+        required: false
+        default: true
         type: boolean
       subpackages:
         required: false
