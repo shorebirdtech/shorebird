@@ -2,7 +2,7 @@
 
 # 0.2.1
 
-- Static main workflow now derives its YAML map keys from each package's path as `<parent_dir>_<package_name>` instead of relying on the `name:` field. Packages can share a `name:` across different paths without crashing the generator. The `package_name:` input passed to the reusable workflow keeps the actual package name for codecov flag display.
+- Static main workflow YAML map keys default to each package's `name:` and fall back to `<parent_dir>_<package_name>` only when two or more packages share a name. Avoids prefixing in the common case while still handling duplicate-`name:` repos. The `package_name:` input passed to the reusable workflow keeps the actual package name for codecov flag display.
 - Static reusable workflows now gate the test and codecov-upload steps on a new `has_unit_tests` input. Packages without a `test/` directory no longer attempt to run `dart test` / `flutter test` or upload coverage. The input defaults to `true` for back-compat with workflows that don't pass it.
 
 # 0.2.0
