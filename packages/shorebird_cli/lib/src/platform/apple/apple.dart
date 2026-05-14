@@ -59,6 +59,8 @@ class Apple {
       // DD table files for cascade limiter (produced by 2-pass release build).
       'App.dd.link',
       'App.dd_callers.link',
+      // Per-slot DD resolution outcome diagnostic (TSV).
+      'App.dd_resolution.tsv',
     ];
 
     // This uses maybeCopy because not all versions of gen_snapshot/aot_tools
