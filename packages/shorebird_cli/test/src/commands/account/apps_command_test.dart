@@ -37,7 +37,6 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdLogger logger;
-    late Progress progress;
     late AppsCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -56,11 +55,9 @@ void main() {
       argResults = MockArgResults();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
-      progress = MockProgress();
       shorebirdValidator = MockShorebirdValidator();
       command = runWithOverrides(AppsCommand.new)..testArgResults = argResults;
 
-      when(() => logger.progress(any())).thenReturn(progress);
       when(() => argResults.rest).thenReturn([]);
       when(
         () => shorebirdValidator.validatePreconditions(
