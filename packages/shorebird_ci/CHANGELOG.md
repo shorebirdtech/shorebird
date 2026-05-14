@@ -1,5 +1,10 @@
 <!-- cspell:words toplevel -->
 
+# 0.2.1
+
+- Static main workflow YAML map keys default to each package's `name:` and fall back to `<parent_dir>_<package_name>` only when two or more packages share a name. Avoids prefixing in the common case while still handling duplicate-`name:` repos. The `package_name:` input passed to the reusable workflow keeps the actual package name for codecov flag display.
+- Static reusable workflows now gate the test and codecov-upload steps on a new `has_unit_tests` input. Packages without a `test/` directory no longer attempt to run `dart test` / `flutter test` or upload coverage. The input defaults to `true` for back-compat with workflows that don't pass it.
+
 # 0.2.0
 
 - Generated dynamic workflow now pins `fetch-depth: 0` on the setup-job checkout. Without it, `affected_packages` fails on every PR because the default shallow checkout doesn't include `origin/main`. The static main workflow gets the same fix so dorny/paths-filter can diff on push events.

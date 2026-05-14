@@ -261,6 +261,110 @@ void main() {
       },
     );
 
+    test(
+      'has_unit_tests gates the test + codecov steps',
+      () async {
+        // Two packages: one with a test/ dir, one without. The main
+        // workflow should pass has_unit_tests per package, and the
+        // reusable workflow should gate its test step on the input.
+        createPackage(
+          tempDir,
+          'packages/with_tests',
+          'with_tests',
+          addTestDir: true,
+        );
+        createPackage(tempDir, 'packages/no_tests', 'no_tests');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+
+        final main = _readMain(tempDir);
+        expect(
+          main,
+          matches(
+            RegExp(
+              'with_tests:[^#]*has_unit_tests: true',
+              dotAll: true,
+            ),
+          ),
+        );
+        expect(
+          main,
+          matches(
+            RegExp(
+              'no_tests:[^#]*has_unit_tests: false',
+              dotAll: true,
+            ),
+          ),
+        );
+
+        final reusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+        expect(reusable, contains('has_unit_tests:'));
+        expect(reusable, contains('if: inputs.has_unit_tests'));
+      },
+    );
+
+    test(
+      'YAML map keys default to the package name when unique',
+      () async {
+        // A repo where every package has a unique `name:` — the YAML
+        // keys are just the names, no path prefix.
+        createPackage(tempDir, 'packages/foo', 'foo');
+        createPackage(tempDir, 'apps/bar', 'bar');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final yaml = _readMain(tempDir);
+
+        for (final slug in ['foo', 'bar']) {
+          expect(yaml, contains('$slug:'));
+          expect(yaml, contains('needs.changes.outputs.$slug'));
+        }
+        // No path-prefixed variants leak in.
+        expect(yaml, isNot(contains('packages_foo')));
+        expect(yaml, isNot(contains('apps_bar')));
+      },
+    );
+
+    test(
+      'YAML map keys fall back to <parent>_<name> on collision',
+      () async {
+        // Two packages w/ the same `name:` at different parent dirs:
+        // pub allows this, and shorebird_ci must disambiguate the YAML
+        // keys by walking up one path segment. `name: harness` under
+        // `apps/alpha/` becomes `alpha_harness`, under `apps/beta/`
+        // becomes `beta_harness`. A unique-named neighbor in the same
+        // repo keeps its plain name.
+        createPackage(tempDir, 'apps/alpha/harness', 'harness');
+        createPackage(tempDir, 'apps/beta/harness', 'harness');
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final yaml = _readMain(tempDir);
+
+        for (final slug in ['alpha_harness', 'beta_harness', 'foo']) {
+          // Each slug appears as a dorny filter key, an outputs entry,
+          // and a per-package job key.
+          expect(yaml, contains('$slug:'));
+          expect(yaml, contains('needs.changes.outputs.$slug'));
+        }
+        // The actual package name still flows through as the
+        // `package_name:` input value (used for codecov flags).
+        expect(yaml, contains('package_name: harness'));
+        expect(yaml, contains('package_name: foo'));
+        // The unique package does not get prefixed.
+        expect(yaml, isNot(contains('packages_foo')));
+      },
+    );
+
     test('verify step comes before dorny filter', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);

@@ -125,6 +125,37 @@ jobs:
     expect(await runVerify(tempDir), 1);
   });
 
+  test(
+    'colliding package names match by slug, not by name',
+    () async {
+      // Two packages share `name: harness` at different parent dirs.
+      // `generate` emits the dorny filter keys as `alpha_harness` and
+      // `beta_harness`. Verify must compute the same slugs to
+      // recognize coverage; looking up by plain `pkg.name`
+      // ("harness") would miss both.
+      createPackage(tempDir, 'apps/alpha/harness', 'harness');
+      createPackage(tempDir, 'apps/beta/harness', 'harness');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            alpha_harness:
+              - apps/alpha/harness/**
+            beta_harness:
+              - apps/beta/harness/**
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 0);
+    },
+  );
+
   test('exposes a non-empty description', () {
     expect(VerifyCommand().description, isNotEmpty);
   });

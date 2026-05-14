@@ -150,25 +150,21 @@ void main() {
       );
     });
 
-    test('throws on duplicate package names', () async {
-      // Two packages declaring `name: example` would silently collide
-      // when used as YAML map keys in the generated workflow. Fail
-      // loudly instead.
+    test('allows packages sharing a `name:` at different paths', () async {
+      // Two packages can legitimately share a `name:` (pub allows it
+      // when the packages are unrelated, e.g. test harnesses sitting
+      // next to multiple apps). The analyzer must surface both; the
+      // workflow generator disambiguates by path when it emits YAML
+      // map keys.
       createPackage(tempDir, 'a/example', 'example');
       createPackage(tempDir, 'b/example', 'example');
       initGitRepo(tempDir);
 
       final analyzer = RepositoryAnalyzer();
-      expect(
-        () => analyzer.analyze(repositoryRoot: tempDir),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            contains('Duplicate package names'),
-          ),
-        ),
-      );
+      final repo = analyzer.analyze(repositoryRoot: tempDir);
+
+      expect(repo.packages.length, 2);
+      expect(repo.packages.every((p) => p.name == 'example'), isTrue);
     });
 
     test(
