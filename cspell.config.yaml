@@ -57,6 +57,7 @@ words:
   - ints
   - iokit
   - iphoneos
+  - isatty
   - keyalg # From .github/workflows/e2e.yaml
   - keypass # From .github/workflows/e2e.yaml
   - keysize # From .github/workflows/e2e.yaml
@@ -154,6 +155,7 @@ words:
   - VCRUNTIME
   - Verdana
   - vmcode
+  - winsize
   - worktrees
   - writeln
   - WRONGPASS
