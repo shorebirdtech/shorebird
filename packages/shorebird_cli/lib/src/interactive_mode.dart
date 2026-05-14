@@ -9,9 +9,17 @@ import 'package:shorebird_cli/src/json_output.dart';
 /// (`chooseOne`/`confirm`/`prompt`).
 ///
 /// Returns `false` when any of the following is true:
-///   * stdout is not connected to a terminal (`!stdout.hasTerminal`).
+///   * stdout is not connected to a terminal.
 ///   * `--json` was passed (machine-readable output expected).
-bool get isInteractive => io.stdout.hasTerminal && !isJsonMode;
+///
+/// `Stdout.hasTerminal` is winsize-based, not isatty-based, so PTYs with
+/// default 0x0 winsize fail it. `stdioType(stdout) == StdioType.terminal`
+/// uses isatty semantics and catches them.
+bool get isInteractive {
+  if (isJsonMode) return false;
+  if (io.stdout.hasTerminal) return true;
+  return io.stdioType(io.stdout) == io.StdioType.terminal;
+}
 
 /// The default hint emitted when an interactive prompt is reached in a
 /// non-interactive context and no per-site hint was provided.
