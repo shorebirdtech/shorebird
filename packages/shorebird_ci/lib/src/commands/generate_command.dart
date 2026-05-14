@@ -7,6 +7,7 @@ import 'package:shorebird_ci/src/commands/repo_root_option.dart';
 import 'package:shorebird_ci/src/dependency_resolver.dart';
 import 'package:shorebird_ci/src/flutter_version_resolver.dart';
 import 'package:shorebird_ci/src/package_description.dart';
+import 'package:shorebird_ci/src/package_slug.dart';
 import 'package:shorebird_ci/src/repository_analyzer.dart';
 import 'package:shorebird_ci/src/repository_description.dart';
 
@@ -209,17 +210,10 @@ updates:
     required List<PackageDescription> packages,
   }) {
     final resolver = DependencyResolver(repository.root.path);
-
-    // Names shared by two or more packages get the path-prefixed slug.
-    // Everyone else keeps their plain `name:` as the YAML map key.
-    final byName = <String, List<PackageDescription>>{};
-    for (final pkg in packages) {
-      byName.putIfAbsent(pkg.name, () => []).add(pkg);
-    }
-    final duplicateNames = {
-      for (final entry in byName.entries)
-        if (entry.value.length > 1) entry.key,
-    };
+    final slugs = computePackageSlugs(
+      packages: packages,
+      repoRoot: repository.root.path,
+    );
 
     final buffer = StringBuffer()
       ..write('''
@@ -242,11 +236,7 @@ jobs:
 ''');
 
     for (final package in packages) {
-      final slug = _packageSlug(
-        package: package,
-        repoRoot: repository.root.path,
-        duplicateNames: duplicateNames,
-      );
+      final slug = slugs[package]!;
       buffer.writeln('      $slug: \${{ steps.filter.outputs.$slug }}');
     }
 
@@ -275,11 +265,7 @@ jobs:
         from: repository.root.path,
       );
       final sortedDeps = resolver.resolve(packageDir).toList()..sort();
-      final slug = _packageSlug(
-        package: package,
-        repoRoot: repository.root.path,
-        duplicateNames: duplicateNames,
-      );
+      final slug = slugs[package]!;
 
       buffer.writeln('            $slug:');
       for (final dep in sortedDeps) {
@@ -304,11 +290,7 @@ jobs:
       final reusable = isFlutter
           ? '_shorebird_ci_flutter.yaml'
           : '_shorebird_ci_dart.yaml';
-      final slug = _packageSlug(
-        package: package,
-        repoRoot: repository.root.path,
-        duplicateNames: duplicateNames,
-      );
+      final slug = slugs[package]!;
 
       buffer.write('''
   $slug:
@@ -343,28 +325,6 @@ jobs:
     }
 
     return buffer.toString();
-  }
-
-  /// YAML map key for a package in the static main workflow's jobs,
-  /// dorny filters, and outputs. Defaults to the package's `name:`.
-  /// Only when [duplicateNames] contains the name do we disambiguate
-  /// by prefixing the parent directory: `<parent_dir>_<package_name>`,
-  /// normalized to pub's `[a-z][a-z0-9_]*` rules so it can be
-  /// referenced from GitHub Actions expressions.
-  static String _packageSlug({
-    required PackageDescription package,
-    required String repoRoot,
-    required Set<String> duplicateNames,
-  }) {
-    if (!duplicateNames.contains(package.name)) return package.name;
-    final relative = posixRelative(package.rootPath, from: repoRoot);
-    final parts = relative.split('/');
-    if (parts.length < 2) return package.name;
-    final parent = parts[parts.length - 2].toLowerCase().replaceAll(
-      RegExp('[^a-z0-9_]'),
-      '_',
-    );
-    return '${parent}_${package.name}';
   }
 
   String _buildDartReusableWorkflow({required bool hasCodecov}) {
