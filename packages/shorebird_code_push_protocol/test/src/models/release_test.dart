@@ -22,44 +22,6 @@ void main() {
       );
     });
 
-    test('can be (de)serialized with analyses', () {
-      final release = Release(
-        id: 1,
-        appId: 'app-id',
-        version: '1.0.0',
-        flutterRevision: '83305b5088e6fe327fb3334a73ff190828d85713',
-        flutterVersion: '3.22.0',
-        displayName: 'v1.0.0',
-        platformStatuses: const {
-          ReleasePlatform.android: ReleaseStatus.active,
-          ReleasePlatform.ios: ReleaseStatus.active,
-        },
-        notes: 'some notes',
-        createdAt: DateTime(2023),
-        updatedAt: DateTime(2023),
-        analyses: const {
-          ReleasePlatform.android: ReleaseAnalysis(
-            displayName: 'My App',
-            packageName: 'com.example.app',
-            minSdkVersion: '24',
-            targetSdkVersion: '34',
-            architectures: ['arm64-v8a', 'armeabi-v7a'],
-          ),
-          ReleasePlatform.ios: ReleaseAnalysis(
-            displayName: 'My App',
-            packageName: 'com.example.app',
-            minSdkVersion: '13.0',
-            targetSdkVersion: '17.0',
-            architectures: ['arm64'],
-          ),
-        },
-      );
-      expect(
-        Release.fromJson(release.toJson()).toJson(),
-        equals(release.toJson()),
-      );
-    });
-
     test('is equatable', () {
       final release1 = Release(
         id: 1,

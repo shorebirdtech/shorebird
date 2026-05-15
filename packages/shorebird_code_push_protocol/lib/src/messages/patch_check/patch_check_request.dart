@@ -75,12 +75,9 @@ class PatchCheckRequest {
   /// unique per app. Optional for backward compatibility.
   final String? clientId;
 
-  /// The number of the patch currently running on the device, if any.
-  ///
-  /// Supersedes [patchNumber] for newer updater clients. Unlike
-  /// [patchNumber], this does not affect the server's response;
-  /// [patchNumber] is retained for compatibility with legacy clients that
-  /// rely on the server's short-circuit path.
+  /// The patch number currently running on the device, if any.
+  /// Supersedes `patch_number` for newer clients; unlike
+  /// `patch_number`, this does not affect the server's response.
   final int? currentPatchNumber;
 
   /// Converts a [PatchCheckRequest] to a `Map<String, dynamic>`.

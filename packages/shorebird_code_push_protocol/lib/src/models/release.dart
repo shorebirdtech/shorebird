@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
-import 'package:shorebird_code_push_protocol/src/models/release_analysis.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 
@@ -22,7 +21,6 @@ class Release {
     this.flutterVersion,
     this.displayName,
     this.notes,
-    this.analyses,
   });
 
   /// Converts a `Map<String, dynamic>` to a [Release].
@@ -47,12 +45,6 @@ class Release {
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
         notes: json['notes'] as String?,
-        analyses: (json['analyses'] as Map<String, dynamic>?)?.map(
-          (key, value) => MapEntry(
-            ReleasePlatform.fromJson(key),
-            ReleaseAnalysis.fromJson(value as Map<String, dynamic>),
-          ),
-        ),
       ),
     );
   }
@@ -97,12 +89,6 @@ class Release {
   /// Freeform notes associated with the release, if any.
   final String? notes;
 
-  /// Analyzer-extracted metadata per platform (icon, package name,
-  /// SDK levels, architectures). A platform is omitted when its
-  /// artifact has not been analyzed yet. Empty when no platform
-  /// of this release has been analyzed.
-  final Map<ReleasePlatform, ReleaseAnalysis>? analyses;
-
   /// Converts a [Release] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -118,9 +104,6 @@ class Release {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'notes': notes,
-      'analyses': analyses?.map(
-        (key, value) => MapEntry(key.toJson(), value.toJson()),
-      ),
     };
   }
 
@@ -136,7 +119,6 @@ class Release {
     createdAt,
     updatedAt,
     notes,
-    mapHash(analyses),
   ]);
 
   @override
@@ -152,7 +134,6 @@ class Release {
         mapsEqual(platformStatuses, other.platformStatuses) &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
-        notes == other.notes &&
-        mapsEqual(analyses, other.analyses);
+        notes == other.notes;
   }
 }

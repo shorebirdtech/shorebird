@@ -142,6 +142,7 @@ words:
   - timebase # Mach timebase (mach_timebase_info)
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
+  - unanalyzed
   - unawaited
   - unmockable
   - unobfuscated

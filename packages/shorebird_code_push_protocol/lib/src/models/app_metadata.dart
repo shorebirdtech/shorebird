@@ -1,5 +1,3 @@
-// cspell:words unanalyzed
-
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 import 'package:shorebird_code_push_protocol/src/models/latest_release.dart';
@@ -108,12 +106,13 @@ class AppMetadata {
   final Map<ReleasePlatform, PendingRelease>? pendingReleases;
 
   /// Server-emitted URL for the app's launcher icon, sourced from
-  /// the most recent analyzed iOS release (or Android, when iOS has
-  /// no analyzed release with an icon). The URL embeds the picked
+  /// the most recent analyzed iOS release (or Android, when iOS
+  /// has no analyzed release with an icon). Requires the same
+  /// auth as the rest of the apps API. The URL embeds the picked
   /// release's id as a `v` query parameter so it can be cached
-  /// indefinitely; when a different release becomes the icon source
-  /// the URL changes and clients re-fetch. Omitted when no analyzed
-  /// release has an icon.
+  /// indefinitely; when a different release becomes the icon
+  /// source the URL changes and clients re-fetch. Omitted when
+  /// no analyzed release has an icon.
   final String? iconUrl;
 
   /// Converts an [AppMetadata] to a `Map<String, dynamic>`.
