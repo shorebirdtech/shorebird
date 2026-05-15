@@ -83,6 +83,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   dex:
     needs: changes
@@ -94,6 +95,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   discord_gcp_alerts:
     needs: changes
@@ -105,6 +107,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   flutter_version_resolver:
     needs: changes
@@ -116,6 +119,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   jwt:
     needs: changes
@@ -127,6 +131,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   scoped_deps:
     needs: changes
@@ -138,6 +143,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   shorebird_build_trace:
     needs: changes
@@ -149,6 +155,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   shorebird_ci:
     needs: changes
@@ -160,6 +167,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   shorebird_cli:
     needs: changes
@@ -171,6 +179,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   shorebird_code_push_client:
     needs: changes
@@ -182,6 +191,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   shorebird_code_push_protocol:
     needs: changes
@@ -193,6 +203,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   shorebird_redis_client:
     needs: changes
@@ -204,6 +215,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   stripe_api:
     needs: changes
@@ -215,6 +227,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+    secrets: inherit
 
   cspell:
     name: CSpell
