@@ -58,7 +58,7 @@ jobs:
             dart pub get --no-example -C $sub
           done
       - run: dart format --set-exit-if-changed .
-      - run: dart analyze .
+      - run: dart analyze --fatal-warnings .
       - name: Bloc Lint
         if: matrix.has_bloc_lint == true
         run: bloc lint .

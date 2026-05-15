@@ -187,6 +187,73 @@ void main() {
       // The verify step must itself be present in the generated workflow.
       expect(yaml, contains('shorebird_ci verify'));
     });
+
+    test(
+      'Dart analyze step emits --fatal-warnings explicitly',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir);
+        final yaml = _readMain(tempDir);
+
+        expect(yaml, contains('dart analyze --fatal-warnings .'));
+      },
+    );
+
+    test(
+      'Flutter analyze step does not need --fatal-warnings (default on)',
+      () async {
+        createPackage(
+          tempDir,
+          'packages/flutter_pkg',
+          'flutter_pkg',
+          flutterLine: 'any',
+        );
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir);
+        final yaml = _readMain(tempDir);
+
+        expect(yaml, contains('flutter analyze .'));
+        expect(yaml, isNot(contains('flutter analyze --fatal-warnings')));
+      },
+    );
+
+    test(
+      '--codecov-token-secret threads token into codecov-action',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+        initGitRepo(tempDir);
+
+        await runGenerate(
+          tempDir,
+          extra: ['--codecov-token-secret', 'CODECOV_TOKEN'],
+        );
+        final yaml = _readMain(tempDir);
+
+        expect(yaml, contains(r'token: ${{ secrets.CODECOV_TOKEN }}'));
+      },
+    );
+
+    test(
+      'no --codecov-token-secret → no token plumbing emitted',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir);
+        final yaml = _readMain(tempDir);
+
+        // Asserting on `token:` alone is enough to prove the codecov
+        // token plumbing didn't fire. A broader assertion on `secrets.`
+        // would trip on any unrelated future step that references a
+        // GitHub Actions secret.
+        expect(yaml, isNot(contains('token:')));
+      },
+    );
   });
 
   group('generate --style static', () {
@@ -390,6 +457,192 @@ void main() {
       expect(yaml, contains('cspell:'));
       expect(yaml, contains('streetsidesoftware/cspell-action'));
     });
+
+    test(
+      'Dart reusable analyze step emits --fatal-warnings explicitly',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final dartReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+
+        expect(dartReusable, contains('dart analyze --fatal-warnings .'));
+      },
+    );
+
+    test(
+      'Flutter reusable analyze step does not need --fatal-warnings',
+      () async {
+        createPackage(
+          tempDir,
+          'packages/flutter_pkg',
+          'flutter_pkg',
+          flutterLine: 'any',
+        );
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final flutterReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_flutter.yaml',
+          ),
+        ).readAsStringSync();
+
+        expect(flutterReusable, contains('flutter analyze .'));
+        expect(
+          flutterReusable,
+          isNot(contains('flutter analyze --fatal-warnings')),
+        );
+      },
+    );
+
+    test(
+      '--codecov-token-secret emits secrets: inherit on each '
+      'orchestrator uses: call and threads token into reusable',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        createPackage(
+          tempDir,
+          'packages/flutter_pkg',
+          'flutter_pkg',
+          flutterLine: 'any',
+          addTestDir: true,
+        );
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+        initGitRepo(tempDir);
+
+        await runGenerate(
+          tempDir,
+          extra: [
+            '--style',
+            'static',
+            '--codecov-token-secret',
+            'CODECOV_TOKEN',
+          ],
+        );
+        final mainYaml = _readMain(tempDir);
+        final dartReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+        final flutterReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_flutter.yaml',
+          ),
+        ).readAsStringSync();
+
+        // One `secrets: inherit` per package job (2 packages).
+        expect(
+          'secrets: inherit'.allMatches(mainYaml).length,
+          equals(2),
+        );
+        expect(
+          dartReusable,
+          contains(r'token: ${{ secrets.CODECOV_TOKEN }}'),
+        );
+        expect(
+          flutterReusable,
+          contains(r'token: ${{ secrets.CODECOV_TOKEN }}'),
+        );
+      },
+    );
+
+    test(
+      'no --codecov-token-secret → no secrets: inherit, no token',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final mainYaml = _readMain(tempDir);
+        final dartReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+
+        expect(mainYaml, isNot(contains('secrets: inherit')));
+        expect(dartReusable, isNot(contains('token:')));
+      },
+    );
+
+    test(
+      '--codecov-token-secret w/o codecov config → no plumbing emitted',
+      () async {
+        // Repo has no codecov config, so reusable workflow has no
+        // codecov-action step. The flag should be a no-op here even
+        // when passed.
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        initGitRepo(tempDir);
+
+        await runGenerate(
+          tempDir,
+          extra: [
+            '--style',
+            'static',
+            '--codecov-token-secret',
+            'CODECOV_TOKEN',
+          ],
+        );
+        final mainYaml = _readMain(tempDir);
+
+        expect(mainYaml, isNot(contains('secrets: inherit')));
+      },
+    );
+
+    test(
+      '--codecov-token-secret accepts an arbitrary secret name',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+        initGitRepo(tempDir);
+
+        await runGenerate(
+          tempDir,
+          extra: [
+            '--style',
+            'static',
+            '--codecov-token-secret',
+            'MY_CUSTOM_NAME',
+          ],
+        );
+        final dartReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+
+        expect(
+          dartReusable,
+          contains(r'token: ${{ secrets.MY_CUSTOM_NAME }}'),
+        );
+      },
+    );
   });
 
   group('dependabot.yml', () {

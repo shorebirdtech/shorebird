@@ -46,6 +46,18 @@ class GenerateCommand extends Command<int> with RepoRootOption {
             'auto-bumps action versions to current latest. Pass this flag '
             'in offline environments.',
         negatable: false,
+      )
+      ..addOption(
+        'codecov-token-secret',
+        help: r'''
+Name of the GitHub Actions secret holding the Codecov upload token.
+When set, the codecov-action step receives
+`token: ${{ secrets.<NAME> }}` in both --style dynamic (default) and
+--style static output. In --style static, the generated orchestrator
+additionally emits `secrets: inherit` on each reusable workflow call
+so the secret is reachable inside the reusable workflow. When unset
+(the default), no token plumbing is emitted. Refer to Codecov's docs
+for whether your repo requires a token to upload.''',
       );
   }
 
@@ -62,6 +74,7 @@ class GenerateCommand extends Command<int> with RepoRootOption {
     final outputPath = argResults!['output'] as String;
     final dryRun = argResults!.flag('dry-run');
     final style = argResults!['style'] as String;
+    final codecovTokenSecret = argResults!['codecov-token-secret'] as String?;
 
     final analyzer = RepositoryAnalyzer();
     final repoDir = Directory(repoRoot);
@@ -81,8 +94,17 @@ class GenerateCommand extends Command<int> with RepoRootOption {
     // Action versions are emitted as the hardcoded defaults below;
     // run `shorebird_ci update_actions` to bump them.
     final files = style == 'static'
-        ? _buildStaticFiles(repository, outputPath: outputPath)
-        : {outputPath: _buildDynamicYaml(repository)};
+        ? _buildStaticFiles(
+            repository,
+            outputPath: outputPath,
+            codecovTokenSecret: codecovTokenSecret,
+          )
+        : {
+            outputPath: _buildDynamicYaml(
+              repository,
+              codecovTokenSecret: codecovTokenSecret,
+            ),
+          };
 
     if (dryRun) {
       final sortedKeys = files.keys.toList()..sort();
@@ -174,6 +196,7 @@ updates:
   Map<String, String> _buildStaticFiles(
     RepositoryDescription repository, {
     required String outputPath,
+    required String? codecovTokenSecret,
   }) {
     final packages = repository.packages.toList()
       ..sort(
@@ -192,15 +215,22 @@ updates:
       outputPath: _buildStaticMainYaml(
         repository: repository,
         packages: packages,
+        codecovTokenSecret: codecovTokenSecret,
       ),
     };
     if (hasDart) {
       files['.github/workflows/_shorebird_ci_dart.yaml'] =
-          _buildDartReusableWorkflow(hasCodecov: repository.hasCodecov);
+          _buildDartReusableWorkflow(
+            hasCodecov: repository.hasCodecov,
+            codecovTokenSecret: codecovTokenSecret,
+          );
     }
     if (hasFlutter) {
       files['.github/workflows/_shorebird_ci_flutter.yaml'] =
-          _buildFlutterReusableWorkflow(hasCodecov: repository.hasCodecov);
+          _buildFlutterReusableWorkflow(
+            hasCodecov: repository.hasCodecov,
+            codecovTokenSecret: codecovTokenSecret,
+          );
     }
     return files;
   }
@@ -208,7 +238,12 @@ updates:
   String _buildStaticMainYaml({
     required RepositoryDescription repository,
     required List<PackageDescription> packages,
+    required String? codecovTokenSecret,
   }) {
+    final emitSecretsInherit =
+        codecovTokenSecret != null &&
+        codecovTokenSecret.isNotEmpty &&
+        repository.hasCodecov;
     final resolver = DependencyResolver(repository.root.path);
     final slugs = computePackageSlugs(
       packages: packages,
@@ -317,6 +352,10 @@ jobs:
           );
       }
 
+      if (emitSecretsInherit) {
+        buffer.writeln('    secrets: inherit');
+      }
+
       buffer.writeln();
     }
 
@@ -327,22 +366,25 @@ jobs:
     return buffer.toString();
   }
 
-  String _buildDartReusableWorkflow({required bool hasCodecov}) {
+  String _buildDartReusableWorkflow({
+    required bool hasCodecov,
+    required String? codecovTokenSecret,
+  }) {
     final testStep = hasCodecov
-        ? r'''
+        ? '''
       - name: Run Tests
         if: inputs.has_unit_tests
-        working-directory: ${{ inputs.package_path }}
+        working-directory: \${{ inputs.package_path }}
         run: |
-          dart pub global activate coverage && \
-          dart test --coverage=coverage && \
+          dart pub global activate coverage && \\
+          dart test --coverage=coverage && \\
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
       - if: inputs.has_unit_tests
         uses: codecov/codecov-action@v5
         with:
-          flags: ${{ inputs.package_name }}
-          working-directory: ${{ inputs.package_path }}
-'''
+          flags: \${{ inputs.package_name }}
+          working-directory: \${{ inputs.package_path }}
+${_codecovTokenLine(codecovTokenSecret)}'''
         : r'''
       - if: inputs.has_unit_tests
         working-directory: ${{ inputs.package_path }}
@@ -395,7 +437,7 @@ jobs:
       - working-directory: \${{ inputs.package_path }}
         run: dart format --set-exit-if-changed .
       - working-directory: \${{ inputs.package_path }}
-        run: dart analyze .
+        run: dart analyze --fatal-warnings .
       - name: Bloc Lint
         if: inputs.has_bloc_lint
         working-directory: \${{ inputs.package_path }}
@@ -403,18 +445,21 @@ jobs:
 $testStep''';
   }
 
-  String _buildFlutterReusableWorkflow({required bool hasCodecov}) {
+  String _buildFlutterReusableWorkflow({
+    required bool hasCodecov,
+    required String? codecovTokenSecret,
+  }) {
     final testStep = hasCodecov
-        ? r'''
+        ? '''
       - if: inputs.has_unit_tests
-        working-directory: ${{ inputs.package_path }}
+        working-directory: \${{ inputs.package_path }}
         run: flutter test --coverage
       - if: inputs.has_unit_tests
         uses: codecov/codecov-action@v5
         with:
-          flags: ${{ inputs.package_name }}
-          working-directory: ${{ inputs.package_path }}
-'''
+          flags: \${{ inputs.package_name }}
+          working-directory: \${{ inputs.package_path }}
+${_codecovTokenLine(codecovTokenSecret)}'''
         : r'''
       - if: inputs.has_unit_tests
         working-directory: ${{ inputs.package_path }}
@@ -493,7 +538,10 @@ $testStep      - name: Integration Tests
 
   // ── Dynamic (affected_packages + matrix) ─────────────────────────
 
-  String _buildDynamicYaml(RepositoryDescription repository) {
+  String _buildDynamicYaml(
+    RepositoryDescription repository, {
+    required String? codecovTokenSecret,
+  }) {
     final hasDart = repository.packages.any(
       (pkg) => !RepositoryAnalyzer.dependsOnFlutter(root: pkg.root),
     );
@@ -532,6 +580,7 @@ jobs:
         outputKey: 'dart_packages',
         sdk: 'dart',
         hasCodecov: repository.hasCodecov,
+        codecovTokenSecret: codecovTokenSecret,
       );
     }
 
@@ -542,6 +591,7 @@ jobs:
         outputKey: 'flutter_packages',
         sdk: 'flutter',
         hasCodecov: repository.hasCodecov,
+        codecovTokenSecret: codecovTokenSecret,
       );
     }
 
@@ -632,6 +682,7 @@ jobs:
     required String outputKey,
     required String sdk,
     required bool hasCodecov,
+    required String? codecovTokenSecret,
   }) {
     final isFlutter = sdk == 'flutter';
     final executable = isFlutter ? 'flutter' : 'dart';
@@ -651,7 +702,9 @@ jobs:
       );
 
     if (isFlutter) buffer.write(_integrationTestsStep);
-    if (hasCodecov) buffer.write(_codecovUploadStep);
+    if (hasCodecov) {
+      buffer.write(_codecovUploadStep(codecovTokenSecret: codecovTokenSecret));
+    }
 
     buffer.writeln();
   }
@@ -709,9 +762,17 @@ jobs:
   }
 
   String _formatAndAnalyzeSteps({required String executable}) {
+    // `dart analyze` defaults `--fatal-warnings` to on, so passing it is a
+    // no-op today. Emitting it explicitly documents intent and keeps the
+    // generated workflow correct if the SDK default ever flips.
+    // `flutter analyze` already defaults `--fatal-warnings` to on with no
+    // CLI flag, so it doesn't need the same treatment.
+    final analyzeCmd = executable == 'dart'
+        ? 'dart analyze --fatal-warnings .'
+        : '$executable analyze .';
     return '''
       - run: dart format --set-exit-if-changed .
-      - run: $executable analyze .
+      - run: $analyzeCmd
       - name: Bloc Lint
         if: matrix.has_bloc_lint == true
         run: bloc lint .
@@ -740,11 +801,21 @@ jobs:
         run: flutter test integration_test
 ''';
 
-  static const _codecovUploadStep = r'''
+  String _codecovUploadStep({required String? codecovTokenSecret}) {
+    return '''
       - uses: codecov/codecov-action@v5
         with:
-          flags: ${{ matrix.name }}
-''';
+          flags: \${{ matrix.name }}
+${_codecovTokenLine(codecovTokenSecret)}''';
+  }
+
+  /// Emits the `token:` line for a codecov-action `with:` block, or the
+  /// empty string when no token secret is configured. Indented 10 spaces
+  /// to match `flags:` peers in both static and dynamic templates.
+  String _codecovTokenLine(String? secret) {
+    if (secret == null || secret.isEmpty) return '';
+    return '          token: \${{ secrets.$secret }}\n';
+  }
 
   void _writeCspellJob(
     StringBuffer buffer,

@@ -1,5 +1,10 @@
 <!-- cspell:words toplevel -->
 
+# 0.2.2
+
+- Generated Dart workflows now emit `dart analyze --fatal-warnings .` explicitly. The SDK already defaults `--fatal-warnings` to on, so this is behavior-preserving today, but the explicit form documents intent and survives any future flip in the SDK default. Flutter workflows are unchanged: `flutter analyze` defaults `--fatal-warnings` to on with no CLI flag.
+- New `--codecov-token-secret <NAME>` option on `generate`. When set, the static orchestrator emits `secrets: inherit` on each reusable workflow call, and the codecov-action step in the reusable workflows receives `token: ${{ secrets.<NAME> }}`. The dynamic style threads the same `token:` into its single codecov-action step. When unset (the default), no token plumbing is emitted, matching prior behavior. Private repos that need a token to upload coverage should pass `--codecov-token-secret CODECOV_TOKEN` (or the secret name of their choice).
+
 # 0.2.1
 
 - Static main workflow YAML map keys default to each package's `name:` and fall back to `<parent_dir>_<package_name>` only when two or more packages share a name. Avoids prefixing in the common case while still handling duplicate-`name:` repos. The `package_name:` input passed to the reusable workflow keeps the actual package name for codecov flag display.

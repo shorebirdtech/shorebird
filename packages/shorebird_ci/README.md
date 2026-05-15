@@ -82,6 +82,25 @@ leaves the static pins in the template as-is. Use it in offline
 environments. Once you push, Dependabot picks up bumps on its weekly
 schedule.
 
+### `--codecov-token-secret <NAME>`
+
+Pass the name of the GitHub Actions secret holding your Codecov
+upload token. When set:
+
+- `--style static`: the orchestrator emits `secrets: inherit` on each
+  reusable workflow call, and the codecov-action step in the reusable
+  workflows receives `token: ${{ secrets.<NAME> }}`.
+- `--style dynamic` (default): the single codecov-action step receives
+  the same `token:` line.
+
+When unset (the default), no token plumbing is emitted. Whether you
+need a token is a Codecov question — refer to their docs for whether
+your repo requires one to upload.
+
+```bash
+shorebird_ci generate --codecov-token-secret CODECOV_TOKEN
+```
+
 ### `--style static` (advanced)
 
 `generate --style static` emits a pre-computed dorny `filters:` block,
