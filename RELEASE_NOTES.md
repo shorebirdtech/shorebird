@@ -1,8 +1,18 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch
  -->
+
+## 1.6.99 (May 15, 2026)
+
+- 📉 Link percentage improvements (for Flutter 3.41.9)
+  - 💥 Contain the blast radius of unlinking caused by small code changes.
+- 🔧 Updater (rolled into Flutter 3.41.9 engine):
+  - Enhanced logging and diagnostics for patch-apply errors
+- ✨ New `shorebird account apps` subcommand
+- 🐛 Fix: `isInteractive` falls back to `stdioType` for unsized PTYs
+- ⏪ Reverted the 1.6.98 `--flavor` forward for `flutter build aar` / `flutter build ios-framework`
 
 ## 1.6.98 (May 7, 2026)
 
