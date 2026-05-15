@@ -43,7 +43,7 @@ jobs:
       - working-directory: ${{ inputs.package_path }}
         run: dart format --set-exit-if-changed .
       - working-directory: ${{ inputs.package_path }}
-        run: dart analyze .
+        run: dart analyze --fatal-warnings .
       - name: Bloc Lint
         if: inputs.has_bloc_lint
         working-directory: ${{ inputs.package_path }}
