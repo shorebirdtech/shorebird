@@ -926,7 +926,7 @@ void main() {
             ).called(1);
             verifyNever(
               () => logger.detail(
-                '[env] $shorebirdTokenEnvVar parsed as legacy CiToken',
+                '[env] $shorebirdTokenEnvVar parsed as CiToken',
               ),
             );
           },
@@ -970,18 +970,48 @@ void main() {
         ).called(1);
         verify(
           () => logger.warn(
-            'SHOREBIRD_TOKEN contains a legacy CI token from '
-            '`shorebird login:ci`. '
-            'This format is deprecated and will stop working in a future '
-            'release. '
-            'Create an API key at https://console.shorebird.dev instead.',
+            '''
+SHOREBIRD_TOKEN is backed by a legacy Google account.
+This sign-in method is deprecated and will stop working in a future release.
+Create a new Shorebird API key at https://console.shorebird.dev and replace SHOREBIRD_TOKEN with it.
+Learn more: https://shorebird.dev/blog/introducing-shorebirds-upgraded-auth-service''',
           ),
         ).called(1);
         verify(
           () => logger.detail(
-            '[env] $shorebirdTokenEnvVar parsed as legacy CiToken',
+            '[env] $shorebirdTokenEnvVar parsed as CiToken',
           ),
         ).called(1);
+      });
+
+      test('warns and names Microsoft when CiToken is Microsoft-backed', () {
+        const microsoftCiToken = CiToken(
+          refreshToken: 'ms-refresh',
+          authProvider: AuthProvider.microsoft,
+        );
+        when(() => platform.environment).thenReturn(<String, String>{
+          shorebirdTokenEnvVar: microsoftCiToken.toBase64(),
+        });
+        auth = buildAuth();
+        expect(auth.isAuthenticated, isTrue);
+        verify(
+          () => logger.warn(
+            '''
+SHOREBIRD_TOKEN is backed by a legacy Microsoft account.
+This sign-in method is deprecated and will stop working in a future release.
+Create a new Shorebird API key at https://console.shorebird.dev and replace SHOREBIRD_TOKEN with it.
+Learn more: https://shorebird.dev/blog/introducing-shorebirds-upgraded-auth-service''',
+          ),
+        ).called(1);
+      });
+
+      test('does not warn when CiToken is Shorebird-issued', () {
+        when(() => platform.environment).thenReturn(<String, String>{
+          shorebirdTokenEnvVar: shorebirdCiToken.toBase64(),
+        });
+        auth = buildAuth();
+        expect(auth.isAuthenticated, isTrue);
+        verifyNever(() => logger.warn(any()));
       });
 
       test(

@@ -360,16 +360,10 @@ class Auth {
         return;
       }
 
-      // Legacy CiToken format — still supported, but deprecated.
+      // CiToken format — Shorebird-issued tokens are still current; tokens
+      // backed by a Google or Microsoft account are legacy.
       try {
         _token = CiToken.fromBase64(trimmed);
-        logger.warn(
-          'SHOREBIRD_TOKEN contains a legacy CI token from '
-          '`shorebird login:ci`. '
-          'This format is deprecated and will stop working in a future '
-          'release. '
-          'Create an API key at https://console.shorebird.dev instead.',
-        );
       } on FormatException catch (e) {
         logger
           ..err(
@@ -380,7 +374,9 @@ class Auth {
         rethrow;
       }
 
-      logger.detail('[env] $shorebirdTokenEnvVar parsed as legacy CiToken');
+      _maybeWarnLegacyProvider(_token!.authProvider);
+
+      logger.detail('[env] $shorebirdTokenEnvVar parsed as CiToken');
       return;
     }
 
@@ -396,6 +392,22 @@ class Auth {
         // Swallow json decode exceptions.
       }
     }
+  }
+
+  void _maybeWarnLegacyProvider(AuthProvider provider) {
+    final providerName = switch (provider) {
+      AuthProvider.google => 'Google',
+      AuthProvider.microsoft => 'Microsoft',
+      AuthProvider.shorebird => null,
+    };
+    if (providerName == null) return;
+    logger.warn(
+      '''
+SHOREBIRD_TOKEN is backed by a legacy $providerName account.
+This sign-in method is deprecated and will stop working in a future release.
+Create a new Shorebird API key at https://console.shorebird.dev and replace SHOREBIRD_TOKEN with it.
+Learn more: https://shorebird.dev/blog/introducing-shorebirds-upgraded-auth-service''',
+    );
   }
 
   void _flushCredentials(oauth2.AccessCredentials credentials) {
