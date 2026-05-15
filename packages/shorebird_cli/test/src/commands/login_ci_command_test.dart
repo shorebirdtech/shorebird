@@ -36,22 +36,23 @@ void main() {
     });
 
     test('has correct description', () {
-      expect(command.description, contains('deprecated'));
+      expect(command.description, contains('Removed'));
     });
 
-    test('shows deprecation message and exits with code 0', () async {
+    test('errors with usage exit code and points to API keys', () async {
       final result = await runWithOverrides(command.run);
 
-      expect(result, equals(ExitCode.success.code));
+      expect(result, equals(ExitCode.usage.code));
 
       final captured = verify(
-        () => logger.info(captureAny()),
+        () => logger.err(captureAny()),
       ).captured;
 
       final message = captured.single as String;
-      expect(message, contains('shorebird login:ci is deprecated'));
+      expect(message, contains('shorebird login:ci has been replaced'));
       expect(message, contains('console.shorebird.dev'));
       expect(message, contains('SHOREBIRD_TOKEN'));
+      expect(message, contains('docs.shorebird.dev/account/api-keys'));
     });
 
     test('does not trigger any auth flow', () async {
