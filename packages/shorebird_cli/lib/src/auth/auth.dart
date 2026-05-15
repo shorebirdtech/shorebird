@@ -395,17 +395,12 @@ class Auth {
   }
 
   void _maybeWarnLegacyProvider(AuthProvider provider) {
-    final providerName = switch (provider) {
-      AuthProvider.google => 'Google',
-      AuthProvider.microsoft => 'Microsoft',
-      AuthProvider.shorebird => null,
-    };
-    if (providerName == null) return;
+    if (provider == AuthProvider.shorebird) return;
     logger.warn(
       '''
-SHOREBIRD_TOKEN is backed by a legacy $providerName account.
-This sign-in method is deprecated and will stop working in a future release.
-Create a new Shorebird API key at https://console.shorebird.dev and replace SHOREBIRD_TOKEN with it.
+SHOREBIRD_TOKEN is a legacy token and will stop working in a future release.
+Upgrade to a Shorebird API key for better control, visibility, and revocation.
+Create one at https://console.shorebird.dev and replace SHOREBIRD_TOKEN with it.
 Learn more: https://shorebird.dev/blog/introducing-shorebirds-upgraded-auth-service''',
     );
   }

@@ -971,9 +971,9 @@ void main() {
         verify(
           () => logger.warn(
             '''
-SHOREBIRD_TOKEN is backed by a legacy Google account.
-This sign-in method is deprecated and will stop working in a future release.
-Create a new Shorebird API key at https://console.shorebird.dev and replace SHOREBIRD_TOKEN with it.
+SHOREBIRD_TOKEN is a legacy token and will stop working in a future release.
+Upgrade to a Shorebird API key for better control, visibility, and revocation.
+Create one at https://console.shorebird.dev and replace SHOREBIRD_TOKEN with it.
 Learn more: https://shorebird.dev/blog/introducing-shorebirds-upgraded-auth-service''',
           ),
         ).called(1);
@@ -984,7 +984,7 @@ Learn more: https://shorebird.dev/blog/introducing-shorebirds-upgraded-auth-serv
         ).called(1);
       });
 
-      test('warns and names Microsoft when CiToken is Microsoft-backed', () {
+      test('warns when CiToken is Microsoft-backed', () {
         const microsoftCiToken = CiToken(
           refreshToken: 'ms-refresh',
           authProvider: AuthProvider.microsoft,
@@ -997,9 +997,9 @@ Learn more: https://shorebird.dev/blog/introducing-shorebirds-upgraded-auth-serv
         verify(
           () => logger.warn(
             '''
-SHOREBIRD_TOKEN is backed by a legacy Microsoft account.
-This sign-in method is deprecated and will stop working in a future release.
-Create a new Shorebird API key at https://console.shorebird.dev and replace SHOREBIRD_TOKEN with it.
+SHOREBIRD_TOKEN is a legacy token and will stop working in a future release.
+Upgrade to a Shorebird API key for better control, visibility, and revocation.
+Create one at https://console.shorebird.dev and replace SHOREBIRD_TOKEN with it.
 Learn more: https://shorebird.dev/blog/introducing-shorebirds-upgraded-auth-service''',
           ),
         ).called(1);
