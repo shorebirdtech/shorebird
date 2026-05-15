@@ -6,6 +6,7 @@ import 'package:shorebird_ci/src/commands/repo_root_option.dart';
 import 'package:shorebird_ci/src/dependency_resolver.dart';
 import 'package:shorebird_ci/src/dorny_filter.dart';
 import 'package:shorebird_ci/src/package_description.dart';
+import 'package:shorebird_ci/src/package_slug.dart';
 import 'package:shorebird_ci/src/repository_analyzer.dart';
 
 /// Marker comment that the `generate` command writes into dynamic
@@ -21,9 +22,11 @@ const dynamicCoverageMarker = '# shorebird_ci-managed: dynamic';
 ///   - **Dynamic**: a workflow that calls `shorebird_ci affected_packages`
 ///     covers every package automatically. One dynamic workflow means no
 ///     missing packages.
-///   - **Static**: each package name appears in a `dorny/paths-filter`
-///     block somewhere. Missing packages are reported with the dorny
-///     entry that should be added (including transitive deps).
+///   - **Static**: each package's slug (see [computePackageSlugs]) appears
+///     in a `dorny/paths-filter` block somewhere. For most packages the
+///     slug is just the package name; when two packages share a name the
+///     slug is `<parent_dir>_<name>`. Missing packages are reported with
+///     the dorny entry that should be added (including transitive deps).
 class VerifyCommand extends Command<int> with RepoRootOption {
   /// Creates a [VerifyCommand].
   VerifyCommand() {
@@ -98,15 +101,19 @@ class VerifyCommand extends Command<int> with RepoRootOption {
       return 0;
     }
 
+    final slugs = computePackageSlugs(
+      packages: allPackages,
+      repoRoot: repoRoot,
+    );
     final missing = <PackageDescription>[];
 
     for (final pkg in allPackages) {
       if (ignoreSet.contains(pkg.name)) continue;
-      final workflows = coverageMap[pkg.name];
+      final slug = slugs[pkg]!;
+      final workflows = coverageMap[slug];
       if (workflows != null) {
-        stdout.writeln(
-          'OK: ${pkg.name} (${workflows.join(', ')})',
-        );
+        final label = slug == pkg.name ? pkg.name : '${pkg.name} ($slug)';
+        stdout.writeln('OK: $label (${workflows.join(', ')})');
       } else {
         missing.add(pkg);
       }
@@ -124,11 +131,13 @@ class VerifyCommand extends Command<int> with RepoRootOption {
       final packageDir = posixRelative(pkg.rootPath, from: repoRoot);
       final deps = resolver.resolve(packageDir);
       final sortedDeps = deps.toList()..sort();
+      final slug = slugs[pkg]!;
+      final label = slug == pkg.name ? pkg.name : '${pkg.name} ($slug)';
 
       stdout
-        ..writeln('MISSING: ${pkg.name}')
+        ..writeln('MISSING: $label')
         ..writeln('  Add this entry to a dorny paths-filter block:')
-        ..writeln('            ${pkg.name}:');
+        ..writeln('            $slug:');
       for (final dep in sortedDeps) {
         stdout.writeln('              - $dep/**');
       }

@@ -5,7 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/account/orgs_command.dart';
+import 'package:shorebird_cli/src/commands/account/apps_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -17,33 +17,27 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
-  group(OrgsCommand, () {
-    final teamMembership = OrganizationMembership(
-      organization: Organization(
-        id: 1,
-        name: 'Acme Corp',
-        organizationType: OrganizationType.team,
-        createdAt: DateTime(2026, 1, 15),
-        updatedAt: DateTime(2026, 1, 16),
-      ),
-      role: Role.admin,
+  group(AppsCommand, () {
+    final appWithReleases = AppMetadata(
+      appId: '01H000000000000000000ABCDE',
+      displayName: 'Acme Mobile',
+      latestReleaseVersion: '1.2.3',
+      latestPatchNumber: 4,
+      createdAt: DateTime(2026, 1, 15),
+      updatedAt: DateTime(2026, 1, 16),
     );
-    final personalMembership = OrganizationMembership(
-      organization: Organization(
-        id: 2,
-        name: 'user@example.com',
-        organizationType: OrganizationType.personal,
-        createdAt: DateTime(2026, 1, 10),
-        updatedAt: DateTime(2026, 1, 11),
-      ),
-      role: Role.owner,
+    final appWithoutReleases = AppMetadata(
+      appId: '01J000000000000000000ABCDE',
+      displayName: 'Acme Internal',
+      createdAt: DateTime(2026, 2),
+      updatedAt: DateTime(2026, 2, 2),
     );
 
     late ArgResults argResults;
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdLogger logger;
-    late OrgsCommand command;
+    late AppsCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -62,7 +56,7 @@ void main() {
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
       shorebirdValidator = MockShorebirdValidator();
-      command = runWithOverrides(OrgsCommand.new)..testArgResults = argResults;
+      command = runWithOverrides(AppsCommand.new)..testArgResults = argResults;
 
       when(() => argResults.rest).thenReturn([]);
       when(
@@ -71,14 +65,14 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       when(
-        () => codePushClientWrapper.getOrganizationMemberships(),
-      ).thenAnswer((_) async => [teamMembership, personalMembership]);
+        () => codePushClientWrapper.getApps(),
+      ).thenAnswer((_) async => [appWithReleases, appWithoutReleases]);
     });
 
     test('has correct description', () {
       expect(
         command.description,
-        startsWith('List the organizations you belong to.'),
+        startsWith('List the apps you have access to.'),
       );
     });
 
@@ -109,31 +103,43 @@ void main() {
     });
 
     group('human-readable output', () {
-      test('prints one line per organization', () async {
+      test('prints one line per app', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
         final lines = verify(
           () => logger.info(captureAny()),
         ).captured.cast<String>();
         expect(lines, hasLength(2));
-        expect(lines[0], allOf(contains('Acme Corp'), contains('admin')));
+        expect(
+          lines[0],
+          allOf(
+            contains('Acme Mobile'),
+            contains('1.2.3'),
+            contains('4'),
+            contains(appWithReleases.appId),
+          ),
+        );
         expect(
           lines[1],
-          allOf(contains('user@example.com'), contains('owner')),
+          allOf(
+            contains('Acme Internal'),
+            contains('-'),
+            contains(appWithoutReleases.appId),
+          ),
         );
       });
 
-      group('when there are no organizations', () {
+      group('when there are no apps', () {
         setUp(() {
           when(
-            () => codePushClientWrapper.getOrganizationMemberships(),
+            () => codePushClientWrapper.getApps(),
           ).thenAnswer((_) async => []);
         });
 
         test('prints an empty-state message', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
-          verify(() => logger.info('No organizations found.')).called(1);
+          verify(() => logger.info('No apps found.')).called(1);
         });
       });
     });
@@ -141,7 +147,7 @@ void main() {
     group('when API fetch fails', () {
       setUp(() {
         when(
-          () => codePushClientWrapper.getOrganizationMemberships(),
+          () => codePushClientWrapper.getApps(),
         ).thenThrow(ProcessExit(ExitCode.software.code));
       });
 
@@ -188,7 +194,7 @@ void main() {
         );
       }
 
-      test('emits JSON success with flat organization fields', () async {
+      test('emits JSON success with flat app fields', () async {
         final captured = <String>[];
         final result = await captureStdout(
           () => runJsonMode(command.run),
@@ -199,13 +205,16 @@ void main() {
         final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
         expect(decoded['status'], 'success');
         final data = decoded['data'] as Map<String, dynamic>;
-        final orgs = data['organizations'] as List<dynamic>;
-        expect(orgs, hasLength(2));
-        final firstOrg = orgs.first as Map<String, dynamic>;
-        expect(firstOrg['id'], 1);
-        expect(firstOrg['name'], 'Acme Corp');
-        expect(firstOrg['type'], 'team');
-        expect(firstOrg['role'], 'admin');
+        final apps = data['apps'] as List<dynamic>;
+        expect(apps, hasLength(2));
+        final firstApp = apps.first as Map<String, dynamic>;
+        expect(firstApp['app_id'], appWithReleases.appId);
+        expect(firstApp['display_name'], 'Acme Mobile');
+        expect(firstApp['latest_release_version'], '1.2.3');
+        expect(firstApp['latest_patch_number'], 4);
+        final secondApp = apps[1] as Map<String, dynamic>;
+        expect(secondApp['latest_release_version'], isNull);
+        expect(secondApp['latest_patch_number'], isNull);
       });
 
       test('does not leak timestamps or protocol-internal fields', () async {
@@ -215,22 +224,17 @@ void main() {
           captured: captured,
         );
         final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        final orgs =
-            ((decoded['data'] as Map<String, dynamic>)['organizations']
-                    as List<dynamic>)
+        final apps =
+            ((decoded['data'] as Map<String, dynamic>)['apps'] as List<dynamic>)
                 .cast<Map<String, dynamic>>();
-        for (final org in orgs) {
-          expect(org.containsKey('created_at'), isFalse);
-          expect(org.containsKey('updated_at'), isFalse);
-          expect(org.containsKey('organization_type'), isFalse);
-          expect(org.containsKey('organization'), isFalse);
+        for (final app in apps) {
+          expect(app.containsKey('created_at'), isFalse);
+          expect(app.containsKey('updated_at'), isFalse);
         }
       });
 
-      test('emits empty array when there are no organizations', () async {
-        when(
-          () => codePushClientWrapper.getOrganizationMemberships(),
-        ).thenAnswer((_) async => []);
+      test('emits empty array when there are no apps', () async {
+        when(() => codePushClientWrapper.getApps()).thenAnswer((_) async => []);
         final captured = <String>[];
         final result = await captureStdout(
           () => runJsonMode(command.run),
@@ -239,7 +243,7 @@ void main() {
         expect(result, equals(ExitCode.success.code));
         final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
         final data = decoded['data'] as Map<String, dynamic>;
-        expect(data['organizations'], isEmpty);
+        expect(data['apps'], isEmpty);
       });
     });
   });

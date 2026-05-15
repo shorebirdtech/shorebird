@@ -80,6 +80,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
     await artifactBuilder.buildIosFramework(
       args: buildArgs,
       base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
     );
     verifyObfuscationMap();
 

@@ -57,6 +57,7 @@ words:
   - ints
   - iokit
   - iphoneos
+  - isatty
   - keyalg # From .github/workflows/e2e.yaml
   - keypass # From .github/workflows/e2e.yaml
   - keysize # From .github/workflows/e2e.yaml
@@ -79,6 +80,7 @@ words:
   - mget # From ./packages/redis_client
   - metadatas
   - mktemp
+  - mmap # Unix system call — referenced in RELEASE_NOTES (libapp.so mmap-from-APK)
   - mocktail
   - mset # From ./packages/redis_client
   - multioption
@@ -153,6 +155,7 @@ words:
   - VCRUNTIME
   - Verdana
   - vmcode
+  - winsize
   - worktrees
   - writeln
   - WRONGPASS
