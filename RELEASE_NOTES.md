@@ -4,6 +4,11 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch
  -->
 
+## 1.6.100 (May 16, 2026)
+
+- 🐦 Refreshed Flutter 3.41.9 engine pin with a fix for exception-related crashes
+- 💥 BREAKING: `shorebird login:ci` now hard-errors. Use API keys instead.
+
 ## 1.6.99 (May 15, 2026)
 
 - 📉 Link percentage improvements (for Flutter 3.41.9)
