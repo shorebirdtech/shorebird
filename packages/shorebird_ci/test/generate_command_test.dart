@@ -798,6 +798,116 @@ void main() {
       expect(yaml, contains('fetch-depth: 0'));
     });
   });
+
+  group('--required aggregator job', () {
+    test('omitted by default in static mode', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+      final yaml = _readMain(tempDir);
+
+      expect(yaml, isNot(contains('required:')));
+    });
+
+    test('omitted by default in dynamic mode', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+
+      expect(yaml, isNot(contains('  required:')));
+    });
+
+    test('static --required depends on changes + every package job', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--required'],
+      );
+      final yaml = _readMain(tempDir);
+
+      expect(yaml, contains('  required:'));
+      // `needs:` lists changes + every per-package slug.
+      expect(
+        yaml,
+        matches(
+          RegExp(
+            r'required:[^#]*needs:[^#]*- changes[^#]*- bar[^#]*- foo',
+            dotAll: true,
+          ),
+        ),
+      );
+      // Always-run and treats skipped sub-jobs as success.
+      expect(yaml, contains(r'if: ${{ always() }}'));
+      expect(yaml, contains("contains(needs.*.result, 'failure')"));
+      expect(yaml, contains("contains(needs.*.result, 'cancelled')"));
+    });
+
+    test('static --required includes cspell when present', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      File(p.join(tempDir.path, '.cspell.json')).writeAsStringSync('{}');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--required'],
+      );
+      final yaml = _readMain(tempDir);
+
+      expect(
+        yaml,
+        matches(
+          RegExp(
+            r'required:[^#]*needs:[^#]*- cspell',
+            dotAll: true,
+          ),
+        ),
+      );
+    });
+
+    test('dynamic --required depends on setup + matrix jobs', () async {
+      createPackage(tempDir, 'packages/dart_pkg', 'dart_pkg');
+      createPackage(
+        tempDir,
+        'packages/flutter_pkg',
+        'flutter_pkg',
+        flutterLine: 'any',
+      );
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--required']);
+      final yaml = _readMain(tempDir);
+
+      expect(yaml, contains('  required:'));
+      expect(
+        yaml,
+        matches(
+          RegExp(
+            r'required:[^#]*needs:[^#]*- setup[^#]*'
+            r'- dart_ci[^#]*- flutter_ci',
+            dotAll: true,
+          ),
+        ),
+      );
+    });
+
+    test('generated workflow with --required is valid YAML', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--required'],
+      );
+      final yaml = _readMain(tempDir);
+      expect(() => loadYaml(yaml), returnsNormally);
+    });
+  });
 }
 
 String _readMain(Directory repoRoot) {
