@@ -26,6 +26,7 @@ void main() {
         'patch_available': true,
         'patch': null,
         'rolled_back_patch_numbers': null,
+        'available_release_versions': null,
       });
     });
 
@@ -81,6 +82,7 @@ void main() {
           'hash_signature': null,
         },
         'rolled_back_patch_numbers': null,
+        'available_release_versions': null,
       });
     });
 
@@ -104,6 +106,7 @@ void main() {
             'hash_signature': 'signature',
           },
           'rolled_back_patch_numbers': null,
+          'available_release_versions': null,
         });
       });
     });
@@ -118,6 +121,7 @@ void main() {
           'patch_available': true,
           'patch': null,
           'rolled_back_patch_numbers': [1, 2, 3],
+          'available_release_versions': null,
         });
       });
 
@@ -127,6 +131,32 @@ void main() {
           'rolled_back_patch_numbers': [1, 2, 3],
         });
         expect(response.rolledBackPatchNumbers, equals([1, 2, 3]));
+      });
+    });
+
+    group('when available release versions are provided', () {
+      test('includes the available release versions', () {
+        const response = PatchCheckResponse(
+          patchAvailable: false,
+          availableReleaseVersions: ['1.0.1+2', '1.0.2+3'],
+        );
+        expect(response.toJson(), {
+          'patch_available': false,
+          'patch': null,
+          'rolled_back_patch_numbers': null,
+          'available_release_versions': ['1.0.1+2', '1.0.2+3'],
+        });
+      });
+
+      test('parses available release versions from json', () {
+        final response = PatchCheckResponse.fromJson(const {
+          'patch_available': false,
+          'available_release_versions': ['1.0.1+2', '1.0.2+3'],
+        });
+        expect(
+          response.availableReleaseVersions,
+          equals(['1.0.1+2', '1.0.2+3']),
+        );
       });
     });
   });

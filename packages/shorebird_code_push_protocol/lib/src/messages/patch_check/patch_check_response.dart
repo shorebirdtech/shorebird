@@ -12,6 +12,7 @@ class PatchCheckResponse {
     required this.patchAvailable,
     this.patch,
     this.rolledBackPatchNumbers,
+    this.availableReleaseVersions,
   });
 
   /// Converts a `Map<String, dynamic>` to a [PatchCheckResponse].
@@ -26,6 +27,8 @@ class PatchCheckResponse {
         ),
         rolledBackPatchNumbers: (json['rolled_back_patch_numbers'] as List?)
             ?.cast<int>(),
+        availableReleaseVersions: (json['available_release_versions'] as List?)
+            ?.cast<String>(),
       ),
     );
   }
@@ -50,12 +53,17 @@ class PatchCheckResponse {
   /// release.
   final List<int>? rolledBackPatchNumbers;
 
+  /// Server-selected release versions on the same app/channel/platform/arch
+  /// that the client may prefetch before the native binary updates.
+  final List<String>? availableReleaseVersions;
+
   /// Converts a [PatchCheckResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'patch_available': patchAvailable,
       'patch': patch?.toJson(),
       'rolled_back_patch_numbers': rolledBackPatchNumbers,
+      'available_release_versions': availableReleaseVersions,
     };
   }
 
@@ -64,6 +72,7 @@ class PatchCheckResponse {
     patchAvailable,
     patch,
     listHash(rolledBackPatchNumbers),
+    listHash(availableReleaseVersions),
   ]);
 
   @override
@@ -72,6 +81,7 @@ class PatchCheckResponse {
     return other is PatchCheckResponse &&
         patchAvailable == other.patchAvailable &&
         patch == other.patch &&
-        listsEqual(rolledBackPatchNumbers, other.rolledBackPatchNumbers);
+        listsEqual(rolledBackPatchNumbers, other.rolledBackPatchNumbers) &&
+        listsEqual(availableReleaseVersions, other.availableReleaseVersions);
   }
 }
