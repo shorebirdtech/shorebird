@@ -78,9 +78,9 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
     addSplitDebugInfoDefault(buildArgs);
     addObfuscationMapArgs(buildArgs);
     await artifactBuilder.buildIosFramework(
-      flavor: flavor,
       args: buildArgs,
       base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
     );
     verifyObfuscationMap();
 

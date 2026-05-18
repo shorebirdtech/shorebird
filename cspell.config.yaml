@@ -57,6 +57,7 @@ words:
   - ints
   - iokit
   - iphoneos
+  - isatty
   - keyalg # From .github/workflows/e2e.yaml
   - keypass # From .github/workflows/e2e.yaml
   - keysize # From .github/workflows/e2e.yaml
@@ -143,6 +144,7 @@ words:
   - timebase # Mach timebase (mach_timebase_info)
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
+  - unanalyzed
   - unawaited
   - unmockable
   - unobfuscated
@@ -156,6 +158,7 @@ words:
   - VCRUNTIME
   - Verdana
   - vmcode
+  - winsize
   - worktrees
   - writeln
   - WRONGPASS

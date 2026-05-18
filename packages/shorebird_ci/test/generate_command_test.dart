@@ -4,20 +4,28 @@ import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_ci/src/commands/commands.dart';
 import 'package:test/test.dart';
+import 'package:yaml/yaml.dart';
 
 import 'test_utils.dart';
 
 /// Runs `generate` via the command runner.
+///
+/// Auto-bumping action versions is disabled by default so tests don't
+/// hit the live GitHub API. Pass `--update-actions` in [extra] (along
+/// with an injected resolver via the [GenerateCommand] constructor) to
+/// exercise that path.
 Future<int?> runGenerate(
   Directory repoRoot, {
   List<String> extra = const [],
+  GenerateCommand? command,
 }) async {
   final runner = CommandRunner<int>('test', 'test')
-    ..addCommand(GenerateCommand());
+    ..addCommand(command ?? GenerateCommand());
   return runner.run([
     'generate',
     '--repo-root',
     repoRoot.path,
+    '--no-update-actions',
     ...extra,
   ]);
 }
@@ -179,6 +187,73 @@ void main() {
       // The verify step must itself be present in the generated workflow.
       expect(yaml, contains('shorebird_ci verify'));
     });
+
+    test(
+      'Dart analyze step emits --fatal-warnings explicitly',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir);
+        final yaml = _readMain(tempDir);
+
+        expect(yaml, contains('dart analyze --fatal-warnings .'));
+      },
+    );
+
+    test(
+      'Flutter analyze step does not need --fatal-warnings (default on)',
+      () async {
+        createPackage(
+          tempDir,
+          'packages/flutter_pkg',
+          'flutter_pkg',
+          flutterLine: 'any',
+        );
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir);
+        final yaml = _readMain(tempDir);
+
+        expect(yaml, contains('flutter analyze .'));
+        expect(yaml, isNot(contains('flutter analyze --fatal-warnings')));
+      },
+    );
+
+    test(
+      '--codecov-token-secret threads token into codecov-action',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+        initGitRepo(tempDir);
+
+        await runGenerate(
+          tempDir,
+          extra: ['--codecov-token-secret', 'CODECOV_TOKEN'],
+        );
+        final yaml = _readMain(tempDir);
+
+        expect(yaml, contains(r'token: ${{ secrets.CODECOV_TOKEN }}'));
+      },
+    );
+
+    test(
+      'no --codecov-token-secret → no token plumbing emitted',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir);
+        final yaml = _readMain(tempDir);
+
+        // Asserting on `token:` alone is enough to prove the codecov
+        // token plumbing didn't fire. A broader assertion on `secrets.`
+        // would trip on any unrelated future step that references a
+        // GitHub Actions secret.
+        expect(yaml, isNot(contains('token:')));
+      },
+    );
   });
 
   group('generate --style static', () {
@@ -253,6 +328,110 @@ void main() {
       },
     );
 
+    test(
+      'has_unit_tests gates the test + codecov steps',
+      () async {
+        // Two packages: one with a test/ dir, one without. The main
+        // workflow should pass has_unit_tests per package, and the
+        // reusable workflow should gate its test step on the input.
+        createPackage(
+          tempDir,
+          'packages/with_tests',
+          'with_tests',
+          addTestDir: true,
+        );
+        createPackage(tempDir, 'packages/no_tests', 'no_tests');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+
+        final main = _readMain(tempDir);
+        expect(
+          main,
+          matches(
+            RegExp(
+              'with_tests:[^#]*has_unit_tests: true',
+              dotAll: true,
+            ),
+          ),
+        );
+        expect(
+          main,
+          matches(
+            RegExp(
+              'no_tests:[^#]*has_unit_tests: false',
+              dotAll: true,
+            ),
+          ),
+        );
+
+        final reusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+        expect(reusable, contains('has_unit_tests:'));
+        expect(reusable, contains('if: inputs.has_unit_tests'));
+      },
+    );
+
+    test(
+      'YAML map keys default to the package name when unique',
+      () async {
+        // A repo where every package has a unique `name:` — the YAML
+        // keys are just the names, no path prefix.
+        createPackage(tempDir, 'packages/foo', 'foo');
+        createPackage(tempDir, 'apps/bar', 'bar');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final yaml = _readMain(tempDir);
+
+        for (final slug in ['foo', 'bar']) {
+          expect(yaml, contains('$slug:'));
+          expect(yaml, contains('needs.changes.outputs.$slug'));
+        }
+        // No path-prefixed variants leak in.
+        expect(yaml, isNot(contains('packages_foo')));
+        expect(yaml, isNot(contains('apps_bar')));
+      },
+    );
+
+    test(
+      'YAML map keys fall back to <parent>_<name> on collision',
+      () async {
+        // Two packages w/ the same `name:` at different parent dirs:
+        // pub allows this, and shorebird_ci must disambiguate the YAML
+        // keys by walking up one path segment. `name: harness` under
+        // `apps/alpha/` becomes `alpha_harness`, under `apps/beta/`
+        // becomes `beta_harness`. A unique-named neighbor in the same
+        // repo keeps its plain name.
+        createPackage(tempDir, 'apps/alpha/harness', 'harness');
+        createPackage(tempDir, 'apps/beta/harness', 'harness');
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final yaml = _readMain(tempDir);
+
+        for (final slug in ['alpha_harness', 'beta_harness', 'foo']) {
+          // Each slug appears as a dorny filter key, an outputs entry,
+          // and a per-package job key.
+          expect(yaml, contains('$slug:'));
+          expect(yaml, contains('needs.changes.outputs.$slug'));
+        }
+        // The actual package name still flows through as the
+        // `package_name:` input value (used for codecov flags).
+        expect(yaml, contains('package_name: harness'));
+        expect(yaml, contains('package_name: foo'));
+        // The unique package does not get prefixed.
+        expect(yaml, isNot(contains('packages_foo')));
+      },
+    );
+
     test('verify step comes before dorny filter', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);
@@ -278,6 +457,192 @@ void main() {
       expect(yaml, contains('cspell:'));
       expect(yaml, contains('streetsidesoftware/cspell-action'));
     });
+
+    test(
+      'Dart reusable analyze step emits --fatal-warnings explicitly',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final dartReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+
+        expect(dartReusable, contains('dart analyze --fatal-warnings .'));
+      },
+    );
+
+    test(
+      'Flutter reusable analyze step does not need --fatal-warnings',
+      () async {
+        createPackage(
+          tempDir,
+          'packages/flutter_pkg',
+          'flutter_pkg',
+          flutterLine: 'any',
+        );
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final flutterReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_flutter.yaml',
+          ),
+        ).readAsStringSync();
+
+        expect(flutterReusable, contains('flutter analyze .'));
+        expect(
+          flutterReusable,
+          isNot(contains('flutter analyze --fatal-warnings')),
+        );
+      },
+    );
+
+    test(
+      '--codecov-token-secret emits secrets: inherit on each '
+      'orchestrator uses: call and threads token into reusable',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        createPackage(
+          tempDir,
+          'packages/flutter_pkg',
+          'flutter_pkg',
+          flutterLine: 'any',
+          addTestDir: true,
+        );
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+        initGitRepo(tempDir);
+
+        await runGenerate(
+          tempDir,
+          extra: [
+            '--style',
+            'static',
+            '--codecov-token-secret',
+            'CODECOV_TOKEN',
+          ],
+        );
+        final mainYaml = _readMain(tempDir);
+        final dartReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+        final flutterReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_flutter.yaml',
+          ),
+        ).readAsStringSync();
+
+        // One `secrets: inherit` per package job (2 packages).
+        expect(
+          'secrets: inherit'.allMatches(mainYaml).length,
+          equals(2),
+        );
+        expect(
+          dartReusable,
+          contains(r'token: ${{ secrets.CODECOV_TOKEN }}'),
+        );
+        expect(
+          flutterReusable,
+          contains(r'token: ${{ secrets.CODECOV_TOKEN }}'),
+        );
+      },
+    );
+
+    test(
+      'no --codecov-token-secret → no secrets: inherit, no token',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+        initGitRepo(tempDir);
+
+        await runGenerate(tempDir, extra: ['--style', 'static']);
+        final mainYaml = _readMain(tempDir);
+        final dartReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+
+        expect(mainYaml, isNot(contains('secrets: inherit')));
+        expect(dartReusable, isNot(contains('token:')));
+      },
+    );
+
+    test(
+      '--codecov-token-secret w/o codecov config → no plumbing emitted',
+      () async {
+        // Repo has no codecov config, so reusable workflow has no
+        // codecov-action step. The flag should be a no-op here even
+        // when passed.
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        initGitRepo(tempDir);
+
+        await runGenerate(
+          tempDir,
+          extra: [
+            '--style',
+            'static',
+            '--codecov-token-secret',
+            'CODECOV_TOKEN',
+          ],
+        );
+        final mainYaml = _readMain(tempDir);
+
+        expect(mainYaml, isNot(contains('secrets: inherit')));
+      },
+    );
+
+    test(
+      '--codecov-token-secret accepts an arbitrary secret name',
+      () async {
+        createPackage(tempDir, 'packages/foo', 'foo', addTestDir: true);
+        File(p.join(tempDir.path, 'codecov.yml')).writeAsStringSync('');
+        initGitRepo(tempDir);
+
+        await runGenerate(
+          tempDir,
+          extra: [
+            '--style',
+            'static',
+            '--codecov-token-secret',
+            'MY_CUSTOM_NAME',
+          ],
+        );
+        final dartReusable = File(
+          p.join(
+            tempDir.path,
+            '.github',
+            'workflows',
+            '_shorebird_ci_dart.yaml',
+          ),
+        ).readAsStringSync();
+
+        expect(
+          dartReusable,
+          contains(r'token: ${{ secrets.MY_CUSTOM_NAME }}'),
+        );
+      },
+    );
   });
 
   group('dependabot.yml', () {
@@ -312,6 +677,125 @@ void main() {
         existing.readAsStringSync(),
         equals('# user content\nversion: 2\n'),
       );
+    });
+  });
+
+  group('--update-actions (auto-bump)', () {
+    test('rewrites action pins in place when enabled', () async {
+      // Inject a resolver that bumps every action to v99 so we can
+      // confirm the post-write step actually runs and mutates the file.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      final runner = CommandRunner<int>('test', 'test')
+        ..addCommand(
+          GenerateCommand(resolveLatestMajor: (_) async => 'v99'),
+        );
+      final code = await runner.run([
+        'generate',
+        '--repo-root',
+        tempDir.path,
+        // No --no-update-actions here — auto-bump is the default.
+      ]);
+
+      expect(code, 0);
+      final yaml = _readMain(tempDir);
+      // setup-dart and checkout were emitted at @v1/@v6 by the generator;
+      // resolver bumps them both to @v99.
+      expect(yaml, contains('actions/checkout@v99'));
+      expect(yaml, contains('dart-lang/setup-dart@v99'));
+    });
+
+    test('--no-update-actions skips the bump', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      // Resolver would bump to v99 if called; --no-update-actions should
+      // prevent that, leaving the generator's @v6/@v1 pins untouched.
+      final runner = CommandRunner<int>('test', 'test')
+        ..addCommand(
+          GenerateCommand(resolveLatestMajor: (_) async => 'v99'),
+        );
+      final code = await runner.run([
+        'generate',
+        '--repo-root',
+        tempDir.path,
+        '--no-update-actions',
+      ]);
+
+      expect(code, 0);
+      final yaml = _readMain(tempDir);
+      expect(yaml, isNot(contains('@v99')));
+      expect(yaml, contains('actions/checkout@v6'));
+    });
+  });
+
+  group('setup-job runner ergonomics', () {
+    test('dynamic workflow has workflow_dispatch trigger', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains('workflow_dispatch:'));
+    });
+
+    test('dynamic setup job pins fetch-depth: 0', () async {
+      // Without full history, affected_packages can't diff against
+      // origin/main on the runner.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains('fetch-depth: 0'));
+    });
+
+    test('dynamic setup passes --all on workflow_dispatch', () async {
+      // Manual dispatch should bypass the diff and run every package.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains('EXTRA_ARGS=--all'));
+      expect(yaml, contains(r'affected_packages --sdk dart $EXTRA_ARGS'));
+    });
+
+    test('dynamic setup logs a hint when diff yields no packages', () async {
+      // On push to main, HEAD == origin/main and the diff is empty.
+      // The workflow should tell the user about the manual button.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains("Click 'Run workflow' in the Actions tab"));
+    });
+
+    test('generated dynamic workflow is valid YAML', () async {
+      // Regression guard: a bash `\` continuation that drops to column 0
+      // inside a `run: |` block silently breaks the YAML literal and
+      // the runner rejects the file. loadYaml catches this locally.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(() => loadYaml(yaml), returnsNormally);
+    });
+
+    test('static main yaml pins fetch-depth: 0', () async {
+      // dorny/paths-filter on push events needs full history.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      final runner = CommandRunner<int>('test', 'test')
+        ..addCommand(GenerateCommand(resolveLatestMajor: (_) async => null));
+      await runner.run([
+        'generate',
+        '--repo-root',
+        tempDir.path,
+        '--style',
+        'static',
+        '--no-update-actions',
+      ]);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains('fetch-depth: 0'));
     });
   });
 }

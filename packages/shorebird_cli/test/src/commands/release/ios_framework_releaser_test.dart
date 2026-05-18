@@ -353,6 +353,7 @@ void main() {
             () => artifactBuilder.buildIosFramework(
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -396,6 +397,7 @@ void main() {
             () => artifactBuilder.buildIosFramework(
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -477,35 +479,6 @@ void main() {
 
         expect(xcframework.path, p.join(projectRoot.path, 'release'));
         verify(() => artifactBuilder.buildIosFramework(args: [])).called(1);
-      });
-
-      group('with flavor', () {
-        const flavor = 'internal';
-
-        setUp(() {
-          iosFrameworkReleaser = IosFrameworkReleaser(
-            argResults: argResults,
-            flavor: flavor,
-            target: null,
-          );
-          when(
-            () => artifactBuilder.buildIosFramework(
-              flavor: any(named: 'flavor'),
-              args: any(named: 'args'),
-            ),
-          ).thenAnswer(
-            (_) async =>
-                AppleBuildResult(kernelFile: File('/path/to/app.dill')),
-          );
-        });
-
-        test('forwards flavor to buildIosFramework', () async {
-          await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
-
-          verify(
-            () => artifactBuilder.buildIosFramework(flavor: flavor, args: []),
-          ).called(1);
-        });
       });
 
       group('when --obfuscate is passed', () {

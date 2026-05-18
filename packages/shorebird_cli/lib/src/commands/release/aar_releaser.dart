@@ -88,7 +88,6 @@ class AarReleaser extends Releaser {
     addObfuscationMapArgs(buildArgs);
     await artifactBuilder.buildAar(
       buildNumber: buildNumber,
-      flavor: flavor,
       targetPlatforms: architectures,
       args: buildArgs,
       base64PublicKey: base64PublicKey,

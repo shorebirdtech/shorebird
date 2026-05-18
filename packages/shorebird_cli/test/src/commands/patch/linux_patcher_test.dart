@@ -271,6 +271,7 @@ void main() {
           when(
             () => artifactBuilder.buildLinuxApp(
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
               args: any(named: 'args'),
             ),
           ).thenAnswer((_) async => {});
@@ -286,6 +287,7 @@ void main() {
           final captured = verify(
             () => artifactBuilder.buildLinuxApp(
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
               args: captureAny(named: 'args'),
             ),
           ).captured;

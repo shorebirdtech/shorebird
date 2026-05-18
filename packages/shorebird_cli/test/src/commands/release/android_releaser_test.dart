@@ -491,6 +491,7 @@ To change the version of this release, change your app's version in your pubspec
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async => aabFile);
           when(
@@ -500,6 +501,7 @@ To change the version of this release, change your app's version in your pubspec
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async => File(''));
 
@@ -581,6 +583,7 @@ To change the version of this release, change your app's version in your pubspec
               targetPlatforms: any(named: 'targetPlatforms'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async => aabFile);
 

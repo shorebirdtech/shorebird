@@ -109,6 +109,7 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
       target: target,
       args: buildArgs,
       base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
     );
 
     verifyObfuscationMap();
