@@ -61,13 +61,15 @@ for whether your repo requires a token to upload.''',
       )
       ..addFlag(
         'required',
-        help:
-            'Emit a `required` aggregator job that depends on every other '
-            'job in the workflow. Use it as the single required check in '
-            'branch protection: it fails if any sub-job failed or was '
-            'cancelled, and passes when sub-jobs succeed or were skipped '
-            '(skips are expected since per-package jobs only run on '
-            'touched paths).',
+        help: '''
+Emit a `required` aggregator job at the end of the workflow that
+depends on every other job. Use it as the single required check in
+branch protection: the aggregator fails when any dependency reports
+`failure` or `cancelled`, and passes when dependencies succeed or
+were skipped. Skipped sub-jobs are the common case since per-package
+jobs only run on touched paths. The `required` job key is reserved
+when this flag is set, so generation fails if any package slug
+resolves to `required`. Skip the flag and any package slug is fine.''',
         negatable: false,
       );
   }

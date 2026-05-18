@@ -17,7 +17,8 @@ import 'package:yaml/yaml.dart';
 const dynamicCoverageMarker = '# shorebird_ci-managed: dynamic';
 
 /// Verifies that every discovered package has CI coverage somewhere in
-/// `.github/workflows/`.
+/// `.github/workflows/`, and that any `required` aggregator job stays
+/// in sync with the rest of the workflow.
 ///
 /// Coverage can be provided in two ways:
 ///   - **Dynamic**: a workflow that calls `shorebird_ci affected_packages`
@@ -28,6 +29,12 @@ const dynamicCoverageMarker = '# shorebird_ci-managed: dynamic';
 ///     slug is just the package name; when two packages share a name the
 ///     slug is `<parent_dir>_<name>`. Missing packages are reported with
 ///     the dorny entry that should be added (including transitive deps).
+///
+/// In addition, if any workflow file has a top-level job keyed
+/// `required`, every other top-level job in that file must appear in
+/// its `needs:`, and every entry in `needs:` must match a real
+/// top-level job. The aggregator is the single check listed in branch
+/// protection, so drift in either direction silently breaks the gate.
 class VerifyCommand extends Command<int> with RepoRootOption {
   /// Creates a [VerifyCommand].
   VerifyCommand() {
@@ -42,7 +49,8 @@ class VerifyCommand extends Command<int> with RepoRootOption {
   String get name => 'verify';
 
   @override
-  String get description => 'Verify every package has CI coverage';
+  String get description =>
+      'Verify package CI coverage and `required` aggregator consistency';
 
   @override
   Future<int> run() async {
