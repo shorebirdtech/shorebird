@@ -58,6 +58,17 @@ additionally emits `secrets: inherit` on each reusable workflow call
 so the secret is reachable inside the reusable workflow. When unset
 (the default), no token plumbing is emitted. Refer to Codecov's docs
 for whether your repo requires a token to upload.''',
+      )
+      ..addFlag(
+        'required',
+        help:
+            'Emit a `required` aggregator job that depends on every other '
+            'job in the workflow. Use it as the single required check in '
+            'branch protection: it fails if any sub-job failed or was '
+            'cancelled, and passes when sub-jobs succeed or were skipped '
+            '(skips are expected since per-package jobs only run on '
+            'touched paths).',
+        negatable: false,
       );
   }
 
@@ -75,6 +86,7 @@ for whether your repo requires a token to upload.''',
     final dryRun = argResults!.flag('dry-run');
     final style = argResults!['style'] as String;
     final codecovTokenSecret = argResults!['codecov-token-secret'] as String?;
+    final emitRequiredJob = argResults!.flag('required');
 
     final analyzer = RepositoryAnalyzer();
     final repoDir = Directory(repoRoot);
@@ -98,11 +110,13 @@ for whether your repo requires a token to upload.''',
             repository,
             outputPath: outputPath,
             codecovTokenSecret: codecovTokenSecret,
+            emitRequiredJob: emitRequiredJob,
           )
         : {
             outputPath: _buildDynamicYaml(
               repository,
               codecovTokenSecret: codecovTokenSecret,
+              emitRequiredJob: emitRequiredJob,
             ),
           };
 
@@ -197,6 +211,7 @@ updates:
     RepositoryDescription repository, {
     required String outputPath,
     required String? codecovTokenSecret,
+    required bool emitRequiredJob,
   }) {
     final packages = repository.packages.toList()
       ..sort(
@@ -216,6 +231,7 @@ updates:
         repository: repository,
         packages: packages,
         codecovTokenSecret: codecovTokenSecret,
+        emitRequiredJob: emitRequiredJob,
       ),
     };
     if (hasDart) {
@@ -239,6 +255,7 @@ updates:
     required RepositoryDescription repository,
     required List<PackageDescription> packages,
     required String? codecovTokenSecret,
+    required bool emitRequiredJob,
   }) {
     final emitSecretsInherit =
         codecovTokenSecret != null &&
@@ -361,6 +378,15 @@ jobs:
 
     if (repository.cspellConfig != null) {
       _writeCspellJob(buffer, repository);
+    }
+
+    if (emitRequiredJob) {
+      final needs = <String>[
+        'changes',
+        for (final package in packages) slugs[package]!,
+        if (repository.cspellConfig != null) 'cspell',
+      ];
+      _writeRequiredJob(buffer, needs);
     }
 
     return buffer.toString();
@@ -541,6 +567,7 @@ $testStep      - name: Integration Tests
   String _buildDynamicYaml(
     RepositoryDescription repository, {
     required String? codecovTokenSecret,
+    required bool emitRequiredJob,
   }) {
     final hasDart = repository.packages.any(
       (pkg) => !RepositoryAnalyzer.dependsOnFlutter(root: pkg.root),
@@ -597,6 +624,16 @@ jobs:
 
     if (repository.cspellConfig != null) {
       _writeCspellJob(buffer, repository);
+    }
+
+    if (emitRequiredJob) {
+      final needs = <String>[
+        'setup',
+        if (hasDart) 'dart_ci',
+        if (hasFlutter) 'flutter_ci',
+        if (repository.cspellConfig != null) 'cspell',
+      ];
+      _writeRequiredJob(buffer, needs);
     }
 
     return buffer.toString();
@@ -838,6 +875,35 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
         with:
           incremental_files_only: false
           config: $configPath
+''')
+      ..writeln();
+  }
+
+  /// Emits an aggregator job that depends on every other job in the
+  /// workflow. Designed as the single check to require in branch
+  /// protection: per-package jobs only run on touched paths, so we
+  /// need a job that succeeds when its dependencies are either
+  /// `success` or `skipped`, and fails on `failure` or `cancelled`.
+  void _writeRequiredJob(StringBuffer buffer, List<String> needs) {
+    buffer
+      ..writeln('  required:')
+      ..writeln('    name: required')
+      ..writeln(r'    if: ${{ always() }}')
+      ..writeln('    needs:');
+    for (final need in needs) {
+      buffer.writeln('      - $need');
+    }
+    buffer
+      ..write(r'''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required jobs
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more required jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed (or were skipped because nothing changed)."
 ''')
       ..writeln();
   }

@@ -1,5 +1,9 @@
 <!-- cspell:words toplevel -->
 
+# 0.2.3
+
+- New `--required` flag on `generate`. When set, the generated workflow gets an aggregator `required` job that depends on every other job and uses `if: ${{ always() }}` so it runs even when sub-jobs are skipped. The job fails only if any dependency reports `failure` or `cancelled`, so it's safe to use as the single required check in branch protection: per-package jobs that get skipped because no paths-filter output matched are treated as a pass. Wired into both `--style static` and `--style dynamic`. Skipped by default, so existing generated workflows are unaffected.
+
 # 0.2.2
 
 - Generated Dart workflows now emit `dart analyze --fatal-warnings .` explicitly. The SDK already defaults `--fatal-warnings` to on, so this is behavior-preserving today, but the explicit form documents intent and survives any future flip in the SDK default. Flutter workflows are unchanged: `flutter analyze` defaults `--fatal-warnings` to on with no CLI flag.
