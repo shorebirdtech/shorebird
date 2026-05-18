@@ -168,19 +168,23 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     return 1;
   }
 
-  /// For each workflow file, if a top-level job named `required` is
-  /// present, returns the names of any other top-level jobs that are
-  /// missing from its `needs:` list. Result is keyed by workflow file
-  /// name. Workflows without a `required` job are absent from the map.
+  /// For each workflow file w/ a top-level `required:` job, returns
+  /// the symmetric drift between its `needs:` list and the set of
+  /// other top-level jobs in the same file.
   ///
-  /// The `required` job is the [--required] aggregator emitted by
-  /// `generate`. It exists to be the single check listed in branch
-  /// protection. If a job is missing from its `needs:`, that job's
-  /// status is silently ignored by the aggregator and branch
-  /// protection — exactly the silent failure mode this check guards
-  /// against.
-  Map<String, List<String>> _findRequiredJobErrors(List<File> workflowFiles) {
-    final errors = <String, List<String>>{};
+  /// `missing` are top-level jobs absent from `needs:` — they run but
+  /// their status is silently ignored by the aggregator and branch
+  /// protection, the exact failure mode this check guards against.
+  ///
+  /// `stale` are entries in `needs:` w/ no matching top-level job,
+  /// usually a typo. GHA itself rejects these at runtime, but catching
+  /// them at verify time keeps the feedback loop tight.
+  ///
+  /// Workflows without a `required:` job are absent from the result.
+  Map<String, _RequiredJobReport> _findRequiredJobErrors(
+    List<File> workflowFiles,
+  ) {
+    final errors = <String, _RequiredJobReport>{};
     for (final file in workflowFiles) {
       final fileName = p.basename(file.path);
       final YamlMap doc;
@@ -200,34 +204,60 @@ class VerifyCommand extends Command<int> with RepoRootOption {
       final requiredJob = jobs['required'];
       if (requiredJob is! YamlMap) continue;
 
-      // `needs:` may be a scalar (single dependency) or a list. Normalize.
+      // `needs:` may be a scalar (single dependency), a list, missing
+      // entirely, or null. Normalize to a set of strings; unrecognized
+      // types fall through to an empty set, which surfaces every other
+      // job as missing — the correct conservative outcome.
       final rawNeeds = requiredJob['needs'];
-      final needsSet = <String>{
+      final needsList = <String>[
         if (rawNeeds is String) rawNeeds,
         if (rawNeeds is YamlList)
           for (final n in rawNeeds) n.toString(),
+      ];
+      final needsSet = needsList.toSet();
+
+      final jobNames = <String>{
+        for (final key in jobs.keys) key.toString(),
       };
 
-      final missing = <String>[];
-      for (final key in jobs.keys) {
-        final jobName = key.toString();
-        if (jobName == 'required') continue;
-        if (!needsSet.contains(jobName)) missing.add(jobName);
+      final missing = <String>[
+        for (final job in jobNames)
+          if (job != 'required' && !needsSet.contains(job)) job,
+      ];
+      final stale = <String>[
+        for (final need in needsList)
+          if (!jobNames.contains(need)) need,
+      ];
+
+      if (missing.isNotEmpty || stale.isNotEmpty) {
+        errors[fileName] = _RequiredJobReport(
+          missing: missing,
+          stale: stale,
+        );
       }
-      if (missing.isNotEmpty) errors[fileName] = missing;
     }
     return errors;
   }
 
-  void _printRequiredJobErrors(Map<String, List<String>> errors) {
+  void _printRequiredJobErrors(Map<String, _RequiredJobReport> errors) {
     stderr.writeln();
     for (final entry in errors.entries) {
-      stderr
-        ..writeln('MISSING from required.needs in ${entry.key}:')
-        ..writeln('  ${entry.value.join(', ')}');
+      final report = entry.value;
+      if (report.missing.isNotEmpty) {
+        stderr
+          ..writeln('MISSING from required.needs in ${entry.key}:')
+          ..writeln('  ${report.missing.join(', ')}');
+      }
+      if (report.stale.isNotEmpty) {
+        stderr
+          ..writeln('STALE entries in required.needs in ${entry.key}:')
+          ..writeln('  ${report.stale.join(', ')}')
+          ..writeln('  (these reference jobs that do not exist in the file)');
+      }
     }
     stderr.writeln(
-      '\n`required` job must depend on every other job in the workflow. '
+      '\n`required` job must depend on every other job in the workflow, '
+      'and every entry in `needs:` must match a real job. '
       'Re-run `shorebird_ci generate --required` to regenerate.',
     );
   }
@@ -246,4 +276,17 @@ class VerifyCommand extends Command<int> with RepoRootOption {
   bool _usesDynamicCoverage(String workflowContent) {
     return workflowContent.contains(dynamicCoverageMarker);
   }
+}
+
+/// Per-workflow drift report for the `required:` aggregator.
+class _RequiredJobReport {
+  _RequiredJobReport({required this.missing, required this.stale});
+
+  /// Top-level jobs that exist in the workflow but are absent from
+  /// `required.needs`. They run but don't gate the aggregator.
+  final List<String> missing;
+
+  /// Entries listed in `required.needs` that don't match any top-level
+  /// job in the workflow. GHA itself rejects these at runtime.
+  final List<String> stale;
 }

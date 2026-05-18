@@ -2,7 +2,7 @@
 
 # 0.2.4
 
-- `verify` now enforces the `--required` aggregator's `needs:` list. Name-based detection: if a workflow has a top-level job named `required`, every other top-level job must appear in its `needs:`. Closes the silent failure mode where a hand-edited workflow could leave a job out of the aggregator and have it pass the required check without actually gating the merge.
+- `verify` now enforces the `--required` aggregator's `needs:` list. Name-based detection: if a workflow has a top-level job named `required`, every other top-level job must appear in its `needs:`, and every entry in `needs:` must match a real top-level job in the same file. Closes two silent-failure modes: a hand-edited workflow could leave a job out of `required.needs` and have its status silently ignored by the merge gate, or a typo'd `needs:` entry could go unnoticed until GHA rejected it at runtime.
 - `generate --required` reserves the `required` job name and refuses to generate when a package slug would collide. Prevents a duplicate YAML key from silently overwriting the aggregator job. Fires regardless of `--style`. Skip the flag and any package slug is fine.
 
 # 0.2.3

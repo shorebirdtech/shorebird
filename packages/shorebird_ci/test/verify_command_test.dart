@@ -300,6 +300,70 @@ jobs:
       expect(await runVerify(tempDir), 1);
     });
 
+    test('required job w/ no needs key → returns 1', () async {
+      // Extreme drift: aggregator job declared but `needs:` missing
+      // entirely. Every other job becomes "missing" by definition.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('required.needs references a non-existent job → returns 1', () async {
+      // Typo case: `needs:` lists a job that doesn't exist in the file.
+      // GHA itself catches this at runtime, but verify catches it earlier.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+    needs:
+      - changes
+      - foo
+      - foo_typo
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
     test('required job check fires alongside dynamic coverage', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       // Dynamic-coverage workflow (so the package check is satisfied)
