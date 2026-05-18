@@ -8,6 +8,7 @@ import 'package:shorebird_ci/src/dorny_filter.dart';
 import 'package:shorebird_ci/src/package_description.dart';
 import 'package:shorebird_ci/src/package_slug.dart';
 import 'package:shorebird_ci/src/repository_analyzer.dart';
+import 'package:yaml/yaml.dart';
 
 /// Marker comment that the `generate` command writes into dynamic
 /// workflows. Verify uses this to detect dynamic coverage instead of
@@ -93,11 +94,21 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     final allPackages = repository.packages.toList()
       ..sort((a, b) => a.name.compareTo(b.name));
 
+    // Required-job consistency check. Name-based: if a workflow has a
+    // top-level job keyed `required`, every other top-level job must
+    // appear in its `needs:` list. Runs unconditionally for every
+    // workflow file, independent of static-vs-dynamic coverage style.
+    final requiredJobErrors = _findRequiredJobErrors(workflowFiles);
+
     if (dynamicWorkflows.isNotEmpty) {
       stdout.writeln(
         'Using dynamic coverage via ${dynamicWorkflows.join(', ')} — '
         'all ${allPackages.length} packages covered at runtime.',
       );
+      if (requiredJobErrors.isNotEmpty) {
+        _printRequiredJobErrors(requiredJobErrors);
+        return 1;
+      }
       return 0;
     }
 
@@ -121,6 +132,10 @@ class VerifyCommand extends Command<int> with RepoRootOption {
 
     if (missing.isEmpty) {
       stdout.writeln('\nAll packages have CI coverage.');
+      if (requiredJobErrors.isNotEmpty) {
+        _printRequiredJobErrors(requiredJobErrors);
+        return 1;
+      }
       return 0;
     }
 
@@ -147,7 +162,74 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     stderr.writeln(
       '${missing.length} package(s) missing from CI coverage.',
     );
+    if (requiredJobErrors.isNotEmpty) {
+      _printRequiredJobErrors(requiredJobErrors);
+    }
     return 1;
+  }
+
+  /// For each workflow file, if a top-level job named `required` is
+  /// present, returns the names of any other top-level jobs that are
+  /// missing from its `needs:` list. Result is keyed by workflow file
+  /// name. Workflows without a `required` job are absent from the map.
+  ///
+  /// The `required` job is the [--required] aggregator emitted by
+  /// `generate`. It exists to be the single check listed in branch
+  /// protection. If a job is missing from its `needs:`, that job's
+  /// status is silently ignored by the aggregator and branch
+  /// protection — exactly the silent failure mode this check guards
+  /// against.
+  Map<String, List<String>> _findRequiredJobErrors(List<File> workflowFiles) {
+    final errors = <String, List<String>>{};
+    for (final file in workflowFiles) {
+      final fileName = p.basename(file.path);
+      final YamlMap doc;
+      try {
+        final loaded = loadYaml(file.readAsStringSync());
+        if (loaded is! YamlMap) continue;
+        doc = loaded;
+      } on YamlException {
+        // Skip files we can't parse — verify isn't a YAML linter.
+        continue;
+      }
+
+      final jobs = doc['jobs'];
+      if (jobs is! YamlMap) continue;
+      if (!jobs.containsKey('required')) continue;
+
+      final requiredJob = jobs['required'];
+      if (requiredJob is! YamlMap) continue;
+
+      // `needs:` may be a scalar (single dependency) or a list. Normalize.
+      final rawNeeds = requiredJob['needs'];
+      final needsSet = <String>{
+        if (rawNeeds is String) rawNeeds,
+        if (rawNeeds is YamlList)
+          for (final n in rawNeeds) n.toString(),
+      };
+
+      final missing = <String>[];
+      for (final key in jobs.keys) {
+        final jobName = key.toString();
+        if (jobName == 'required') continue;
+        if (!needsSet.contains(jobName)) missing.add(jobName);
+      }
+      if (missing.isNotEmpty) errors[fileName] = missing;
+    }
+    return errors;
+  }
+
+  void _printRequiredJobErrors(Map<String, List<String>> errors) {
+    stderr.writeln();
+    for (final entry in errors.entries) {
+      stderr
+        ..writeln('MISSING from required.needs in ${entry.key}:')
+        ..writeln('  ${entry.value.join(', ')}');
+    }
+    stderr.writeln(
+      '\n`required` job must depend on every other job in the workflow. '
+      'Re-run `shorebird_ci generate --required` to regenerate.',
+    );
   }
 
   /// Whether a workflow uses the dynamic affected_packages approach.

@@ -99,6 +99,33 @@ for whether your repo requires a token to upload.''',
       return 1;
     }
 
+    if (emitRequiredJob) {
+      // `required` is the reserved job key for the --required aggregator.
+      // A package slug that resolves to `required` would emit a duplicate
+      // YAML key and silently overwrite the aggregator. Fail loudly so
+      // the user renames the package before generation.
+      final sortedPackages = repository.packages.toList()
+        ..sort(
+          (PackageDescription a, PackageDescription b) =>
+              a.name.compareTo(b.name),
+        );
+      final slugs = computePackageSlugs(
+        packages: sortedPackages,
+        repoRoot: repoRoot,
+      );
+      final colliding = slugs.entries
+          .where((e) => e.value == 'required')
+          .map((e) => e.key.name)
+          .toList();
+      if (colliding.isNotEmpty) {
+        stderr.writeln(
+          'Package slug `required` collides with the --required aggregator '
+          'job. Rename the colliding package(s): ${colliding.join(', ')}',
+        );
+        return 1;
+      }
+    }
+
     // Each builder returns a map of repo-relative path → file content.
     // Dynamic returns a single entry; static returns a main workflow
     // plus one or two reusable workflows.
