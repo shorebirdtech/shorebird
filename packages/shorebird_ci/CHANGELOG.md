@@ -1,5 +1,10 @@
 <!-- cspell:words toplevel -->
 
+# 0.2.4
+
+- `verify` now enforces the `--required` aggregator's `needs:` list. Name-based detection: if a workflow has a top-level job named `required`, every other top-level job must appear in its `needs:`. Closes the silent failure mode where a hand-edited workflow could leave a job out of the aggregator and have it pass the required check without actually gating the merge.
+- `generate --required` reserves the `required` job name and refuses to generate when a package slug would collide. Prevents a duplicate YAML key from silently overwriting the aggregator job. Fires regardless of `--style`. Skip the flag and any package slug is fine.
+
 # 0.2.3
 
 - New `--required` flag on `generate`. When set, the generated workflow gets an aggregator `required` job that depends on every other job and uses `if: ${{ always() }}` so it runs even when sub-jobs are skipped. The job fails only if any dependency reports `failure` or `cancelled`, so it's safe to use as the single required check in branch protection: per-package jobs that get skipped because no paths-filter output matched are treated as a pass. Wired into both `--style static` and `--style dynamic`. Skipped by default, so existing generated workflows are unaffected.
