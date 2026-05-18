@@ -837,7 +837,7 @@ void main() {
         yaml,
         matches(
           RegExp(
-            r'required:[^#]*needs:[^#]*- changes[^#]*- bar[^#]*- foo',
+            'required:[^#]*needs:[^#]*- changes[^#]*- bar[^#]*- foo',
             dotAll: true,
           ),
         ),
@@ -863,7 +863,7 @@ void main() {
         yaml,
         matches(
           RegExp(
-            r'required:[^#]*needs:[^#]*- cspell',
+            'required:[^#]*needs:[^#]*- cspell',
             dotAll: true,
           ),
         ),
@@ -888,8 +888,27 @@ void main() {
         yaml,
         matches(
           RegExp(
-            r'required:[^#]*needs:[^#]*- setup[^#]*'
-            r'- dart_ci[^#]*- flutter_ci',
+            'required:[^#]*needs:[^#]*- setup[^#]*'
+            '- dart_ci[^#]*- flutter_ci',
+            dotAll: true,
+          ),
+        ),
+      );
+    });
+
+    test('dynamic --required includes cspell when present', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      File(p.join(tempDir.path, '.cspell.json')).writeAsStringSync('{}');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--required']);
+      final yaml = _readMain(tempDir);
+
+      expect(
+        yaml,
+        matches(
+          RegExp(
+            'required:[^#]*needs:[^#]*- cspell',
             dotAll: true,
           ),
         ),
