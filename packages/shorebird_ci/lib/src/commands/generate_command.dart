@@ -40,11 +40,11 @@ class GenerateCommand extends Command<int> with RepoRootOption {
       )
       ..addFlag(
         'no-update-actions',
-        help:
-            'Skip the post-generate step that queries GitHub for current '
-            'action versions and bumps pins in place. By default, generate '
-            'auto-bumps action versions to current latest. Pass this flag '
-            'in offline environments.',
+        help: '''
+Skip the post-generate step that queries GitHub for current action
+versions and bumps pins in place. By default, generate auto-bumps
+action versions to current latest. Pass this flag in offline
+environments.''',
         negatable: false,
       )
       ..addOption(
