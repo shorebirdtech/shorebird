@@ -107,9 +107,6 @@ final buildTraceSupportConstraint = FlutterSupportConstraint(
 /// companion file used by Play Console for native crash symbolication.
 /// flutter_tools adds a post-build verification that fatal-errors when the
 /// `.sym` companion is missing.
-///
-/// Shorebird-side fallout tracked in
-/// https://github.com/shorebirdtech/_shorebird/issues/2150.
 final libappStrippedByAgpConstraint = FlutterSupportConstraint(
   minVersion: Version(3, 44, 0),
 );

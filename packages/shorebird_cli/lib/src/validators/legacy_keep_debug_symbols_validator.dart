@@ -29,8 +29,6 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 ///
 /// On older Flutter versions the line is still appropriate and this validator
 /// is a no-op.
-///
-/// Tracked in https://github.com/shorebirdtech/_shorebird/issues/2150.
 class LegacyKeepDebugSymbolsValidator extends Validator {
   /// The substring we treat as a match. Catches `add(...)` and `+=` forms,
   /// single-quoted and double-quoted, with arbitrary whitespace around the
