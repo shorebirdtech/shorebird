@@ -1,3 +1,4 @@
+// cspell:words sysexits
 import 'dart:io';
 
 import 'package:args/command_runner.dart';

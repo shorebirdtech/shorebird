@@ -395,6 +395,73 @@ jobs:
       expect(await runVerify(tempDir), 1);
     });
 
+    test('drift fires alongside missing-package coverage', () async {
+      // Static-style workflow w/ a package missing from filters AND a
+      // required.needs that's missing a job. Exercises the
+      // requiredJobErrors branch on the missing-packages path, so the
+      // user sees both failures in one run.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+    needs:
+      - changes
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('unparseable workflow yaml is skipped, not crashing', () async {
+      // verify is not a YAML linter. A file we can't parse should
+      // silently fall out of the required-job check rather than
+      // throwing.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'bad.yaml', '''
+name: CI
+on: [push]
+jobs:
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+        this: is: not: valid: yaml: [
+''');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+# shorebird_ci-managed: dynamic
+name: CI
+on: [push]
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - run: shorebird_ci affected_packages
+''');
+      initGitRepo(tempDir);
+
+      // Dynamic coverage covers the package; the bad file just gets
+      // skipped during the required-job scan. Verify returns 0.
+      expect(await runVerify(tempDir), 0);
+    });
+
     test('malformed `required:` (no map body) → returns 1', () async {
       // `required:` exists as a key but has no job-map body. GHA
       // wouldn't run it, so verify can't reason about its `needs:`.
