@@ -43,50 +43,64 @@ class ShorebirdFlutter {
   }
 
   /// Install the provided Flutter [revision].
+  ///
+  /// Always runs `flutter precache` so a previously failed precache (which
+  /// otherwise leaves a half-populated cache and surfaces later as an opaque
+  /// Gradle "file does not exist" error) is retried on the next invocation.
+  /// `flutter precache` is idempotent: it no-ops on artifacts whose stamps
+  /// match.
   Future<void> installRevision({required String revision}) async {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
-    if (targetDirectory.existsSync()) return;
-
     final version = await getVersionForRevision(flutterRevision: revision);
 
-    final installProgress = logger.progress(
-      'Installing Flutter $version (${shortRevisionString(revision)})',
-    );
-
-    try {
-      // Clone the Shorebird Flutter repo into the target directory.
-      await git.clone(
-        url: flutterGitUrl,
-        outputDirectory: targetDirectory.path,
-        args: ['--filter=tree:0', '--no-checkout'],
+    if (!targetDirectory.existsSync()) {
+      final installProgress = logger.progress(
+        'Installing Flutter $version (${shortRevisionString(revision)})',
       );
 
-      // Checkout the correct revision.
-      await git.checkout(directory: targetDirectory.path, revision: revision);
-      installProgress.complete();
-    } catch (error) {
-      installProgress.fail(
-        'Failed to install Flutter $version (${shortRevisionString(revision)})',
-      );
-      logger.err('$error');
-      rethrow;
+      try {
+        // Clone the Shorebird Flutter repo into the target directory.
+        await git.clone(
+          url: flutterGitUrl,
+          outputDirectory: targetDirectory.path,
+          args: ['--filter=tree:0', '--no-checkout'],
+        );
+
+        // Checkout the correct revision.
+        await git.checkout(directory: targetDirectory.path, revision: revision);
+        installProgress.complete();
+      } catch (error) {
+        final short = shortRevisionString(revision);
+        installProgress.fail('Failed to install Flutter $version ($short)');
+        logger.err('$error');
+        rethrow;
+      }
     }
 
     final precacheProgress = logger.progress(
       'Running ${lightCyan.wrap('flutter precache')}',
     );
 
+    final precacheArguments = ['precache', ...precacheArgs];
     try {
-      await process.run(executable, [
-        'precache',
-        ...precacheArgs,
-      ], workingDirectory: targetDirectory.path);
-      precacheProgress.complete();
-    } on Exception {
-      precacheProgress.fail('Failed to precache Flutter $version');
-      logger.info(
-        '''This is not a critical error, but your next build make take longer than usual.''',
+      final result = await process.run(
+        executable,
+        precacheArguments,
+        workingDirectory: targetDirectory.path,
       );
+      if (result.exitCode != ExitCode.success.code) {
+        throw ProcessException(
+          executable,
+          precacheArguments,
+          '${result.stderr}',
+          result.exitCode,
+        );
+      }
+      precacheProgress.complete();
+    } on Exception catch (error) {
+      precacheProgress.fail('Failed to precache Flutter $version');
+      logger.err('$error');
+      rethrow;
     }
   }
 

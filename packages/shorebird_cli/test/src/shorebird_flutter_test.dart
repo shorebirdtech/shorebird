@@ -110,7 +110,10 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => precacheProcessResult);
-      when(() => versionProcessResult.exitCode).thenReturn(0);
+      when(
+        () => precacheProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(() => precacheProcessResult.stderr).thenReturn('');
     });
 
     group('precacheArgs', () {
@@ -892,7 +895,10 @@ origin/flutter_release/3.10.6''';
     group('installRevision', () {
       const revision = 'test-revision';
 
-      test('does nothing if the revision is already installed', () async {
+      test('skips clone but re-runs precache if dir already exists', () async {
+        // A dir from a prior install (possibly with a failed precache) should
+        // not be re-cloned, but precache must run so missing artifacts get
+        // re-fetched.
         Directory(
           p.join(flutterDirectory.parent.path, revision),
         ).createSync(recursive: true);
@@ -908,9 +914,16 @@ origin/flutter_release/3.10.6''';
             args: any(named: 'args'),
           ),
         );
-        verifyNever(
-          () => process.run('flutter', any(that: contains('precache'))),
-        );
+        verify(
+          () => process.run(
+            'flutter',
+            [
+              'precache',
+              ...runWithOverrides(() => shorebirdFlutter.precacheArgs),
+            ],
+            workingDirectory: p.join(flutterDirectory.parent.path, revision),
+          ),
+        ).called(1);
       });
 
       test('throws exception if unable to clone', () async {
@@ -978,7 +991,7 @@ origin/flutter_release/3.10.6''';
         ).called(1);
       });
 
-      group('when unable to precache', () {
+      group('when precache throws', () {
         setUp(() {
           when(
             () => process.run(
@@ -989,31 +1002,34 @@ origin/flutter_release/3.10.6''';
           ).thenThrow(Exception('oh no!'));
         });
 
-        test('logs error and continues', () async {
+        test('rethrows so the next attempt can retry', () async {
           await expectLater(
             runWithOverrides(
               () => shorebirdFlutter.installRevision(revision: revision),
             ),
-            completes,
+            throwsA(isA<Exception>()),
           );
-          verify(
-            () => process.run(
-              'flutter',
-              [
-                'precache',
-                ...runWithOverrides(() => shorebirdFlutter.precacheArgs),
-              ],
-              workingDirectory: p.join(flutterDirectory.parent.path, revision),
-            ),
-          ).called(1);
-
           verify(
             () => progress.fail('Failed to precache Flutter 3.10.6'),
           ).called(1);
-          verify(
-            () => logger.info(
-              '''This is not a critical error, but your next build make take longer than usual.''',
+        });
+      });
+
+      group('when precache exits with a non-zero code', () {
+        setUp(() {
+          when(() => precacheProcessResult.exitCode).thenReturn(1);
+          when(() => precacheProcessResult.stderr).thenReturn('boom');
+        });
+
+        test('rethrows so the next attempt can retry', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
             ),
+            throwsA(isA<ProcessException>()),
+          );
+          verify(
+            () => progress.fail('Failed to precache Flutter 3.10.6'),
           ).called(1);
         });
       });
