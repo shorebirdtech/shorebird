@@ -228,3 +228,32 @@ jobs:
           incremental_files_only: false
           config: cspell.config.yaml
 
+  required:
+    name: required
+    if: ${{ always() }}
+    needs:
+      - changes
+      - artifact_proxy
+      - dex
+      - discord_gcp_alerts
+      - flutter_version_resolver
+      - jwt
+      - scoped_deps
+      - shorebird_build_trace
+      - shorebird_ci
+      - shorebird_cli
+      - shorebird_code_push_client
+      - shorebird_code_push_protocol
+      - shorebird_redis_client
+      - stripe_api
+      - cspell
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required jobs
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more required jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed (or were skipped because nothing changed)."
+
