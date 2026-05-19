@@ -394,5 +394,33 @@ jobs:
       // missing cspell, so verify still fails.
       expect(await runVerify(tempDir), 1);
     });
+
+    test('malformed `required:` (no map body) → returns 1', () async {
+      // `required:` exists as a key but has no job-map body. GHA
+      // wouldn't run it, so verify can't reason about its `needs:`.
+      // Treat as a hard error rather than silently skipping.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
   });
 }

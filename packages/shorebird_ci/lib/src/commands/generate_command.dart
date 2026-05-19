@@ -101,30 +101,41 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
       return 1;
     }
 
-    if (emitRequiredJob) {
-      // `required` is the reserved job key for the --required aggregator.
-      // A package slug that resolves to `required` would emit a duplicate
-      // YAML key and silently overwrite the aggregator. Fail loudly so
-      // the user renames the package before generation.
-      final sortedPackages = repository.packages.toList()
-        ..sort(
-          (PackageDescription a, PackageDescription b) =>
-              a.name.compareTo(b.name),
-        );
-      final slugs = computePackageSlugs(
+    final sortedPackages = repository.packages.toList()
+      ..sort(
+        (PackageDescription a, PackageDescription b) =>
+            a.name.compareTo(b.name),
+      );
+
+    // Slugs only matter for static-mode workflow generation: in dynamic
+    // mode jobs are keyed `setup` / `dart_ci` / `flutter_ci` / `cspell`,
+    // never by per-package slug, so a package named `required` cannot
+    // collide w/ the aggregator there. Compute (and collision-check)
+    // only when static.
+    Map<PackageDescription, String>? slugs;
+    if (style == 'static') {
+      slugs = computePackageSlugs(
         packages: sortedPackages,
         repoRoot: repoRoot,
       );
-      final colliding = slugs.entries
-          .where((e) => e.value == 'required')
-          .map((e) => e.key.name)
-          .toList();
-      if (colliding.isNotEmpty) {
-        stderr.writeln(
-          'Package slug `required` collides with the --required aggregator '
-          'job. Rename the colliding package(s): ${colliding.join(', ')}',
-        );
-        return 1;
+      if (emitRequiredJob) {
+        // `required` is the reserved job key for the --required
+        // aggregator. A package slug that resolves to `required` would
+        // emit a duplicate YAML key and silently overwrite the
+        // aggregator. Fail loudly so the user renames the package
+        // before generation.
+        final colliding = slugs.entries
+            .where((e) => e.value == 'required')
+            .map((e) => e.key.name)
+            .toList();
+        if (colliding.isNotEmpty) {
+          stderr.writeln(
+            'Package slug `required` collides with the --required '
+            'aggregator job. Rename the colliding package(s): '
+            '${colliding.join(', ')}',
+          );
+          return 1;
+        }
       }
     }
 
@@ -140,6 +151,8 @@ resolves to `required`. Skip the flag and any package slug is fine.''',
             outputPath: outputPath,
             codecovTokenSecret: codecovTokenSecret,
             emitRequiredJob: emitRequiredJob,
+            packages: sortedPackages,
+            slugs: slugs!,
           )
         : {
             outputPath: _buildDynamicYaml(
@@ -241,13 +254,9 @@ updates:
     required String outputPath,
     required String? codecovTokenSecret,
     required bool emitRequiredJob,
+    required List<PackageDescription> packages,
+    required Map<PackageDescription, String> slugs,
   }) {
-    final packages = repository.packages.toList()
-      ..sort(
-        (PackageDescription a, PackageDescription b) =>
-            a.name.compareTo(b.name),
-      );
-
     final hasDart = packages.any(
       (pkg) => !RepositoryAnalyzer.dependsOnFlutter(root: pkg.root),
     );
@@ -261,6 +270,7 @@ updates:
         packages: packages,
         codecovTokenSecret: codecovTokenSecret,
         emitRequiredJob: emitRequiredJob,
+        slugs: slugs,
       ),
     };
     if (hasDart) {
@@ -285,16 +295,13 @@ updates:
     required List<PackageDescription> packages,
     required String? codecovTokenSecret,
     required bool emitRequiredJob,
+    required Map<PackageDescription, String> slugs,
   }) {
     final emitSecretsInherit =
         codecovTokenSecret != null &&
         codecovTokenSecret.isNotEmpty &&
         repository.hasCodecov;
     final resolver = DependencyResolver(repository.root.path);
-    final slugs = computePackageSlugs(
-      packages: packages,
-      repoRoot: repository.root.path,
-    );
 
     final buffer = StringBuffer()
       ..write('''

@@ -210,7 +210,18 @@ class VerifyCommand extends Command<int> with RepoRootOption {
       if (!jobs.containsKey('required')) continue;
 
       final requiredJob = jobs['required'];
-      if (requiredJob is! YamlMap) continue;
+      if (requiredJob is! YamlMap) {
+        // `required:` exists as a key but has no map body (e.g. `null`,
+        // a scalar string, or a list). That's a malformed aggregator —
+        // GHA wouldn't run it, and verify can't reason about its
+        // `needs:`. Surface it instead of silently skipping.
+        errors[fileName] = _RequiredJobReport(
+          missing: const [],
+          stale: const [],
+          isMalformed: true,
+        );
+        continue;
+      }
 
       // `needs:` may be a scalar (single dependency), a list, missing
       // entirely, or null. Normalize to a set of strings; unrecognized
@@ -251,6 +262,13 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     stderr.writeln();
     for (final entry in errors.entries) {
       final report = entry.value;
+      if (report.isMalformed) {
+        stderr.writeln(
+          'MALFORMED `required:` job in ${entry.key}: value is not a '
+          'map. Expected a job definition w/ `needs:` and `runs-on:`.',
+        );
+        continue;
+      }
       if (report.missing.isNotEmpty) {
         stderr
           ..writeln('MISSING from required.needs in ${entry.key}:')
@@ -288,7 +306,11 @@ class VerifyCommand extends Command<int> with RepoRootOption {
 
 /// Per-workflow drift report for the `required:` aggregator.
 class _RequiredJobReport {
-  _RequiredJobReport({required this.missing, required this.stale});
+  _RequiredJobReport({
+    required this.missing,
+    required this.stale,
+    this.isMalformed = false,
+  });
 
   /// Top-level jobs that exist in the workflow but are absent from
   /// `required.needs`. They run but don't gate the aggregator.
@@ -297,4 +319,9 @@ class _RequiredJobReport {
   /// Entries listed in `required.needs` that don't match any top-level
   /// job in the workflow. GHA itself rejects these at runtime.
   final List<String> stale;
+
+  /// The `required:` key exists but its value isn't a job map. When
+  /// true, `missing` and `stale` are empty — there's nothing structured
+  /// to compare.
+  final bool isMalformed;
 }

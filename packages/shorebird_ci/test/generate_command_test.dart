@@ -944,11 +944,12 @@ void main() {
     });
 
     test(
-      '--required + collision applies in dynamic mode too',
+      '--required + package named `required` is fine in dynamic mode',
       () async {
-        // Even though dynamic mode does not emit per-package top-level
-        // job keys, the reserved-name contract is per-tool, not
-        // per-style. Generate refuses regardless.
+        // Dynamic mode keys jobs by `setup` / `dart_ci` / `flutter_ci`
+        // / `cspell`, never by per-package slug, so a package named
+        // `required` cannot collide w/ the aggregator. The collision
+        // check only fires for --style static.
         createPackage(tempDir, 'packages/required', 'required');
         initGitRepo(tempDir);
 
@@ -957,7 +958,7 @@ void main() {
           extra: ['--required'],
         );
 
-        expect(exitCode, 1);
+        expect(exitCode, 0);
       },
     );
 
