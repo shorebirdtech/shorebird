@@ -926,6 +926,55 @@ void main() {
       final yaml = _readMain(tempDir);
       expect(() => loadYaml(yaml), returnsNormally);
     });
+
+    test('--required + package named `required` → fails at generate', () async {
+      // `required` is the reserved aggregator job key. A package slug
+      // that resolves to `required` would duplicate the YAML key and
+      // silently overwrite the aggregator. Generate must refuse.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/required', 'required');
+      initGitRepo(tempDir);
+
+      final exitCode = await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--required'],
+      );
+
+      expect(exitCode, 1);
+    });
+
+    test(
+      '--required + package named `required` is fine in dynamic mode',
+      () async {
+        // Dynamic mode keys jobs by `setup` / `dart_ci` / `flutter_ci`
+        // / `cspell`, never by per-package slug, so a package named
+        // `required` cannot collide w/ the aggregator. The collision
+        // check only fires for --style static.
+        createPackage(tempDir, 'packages/required', 'required');
+        initGitRepo(tempDir);
+
+        final exitCode = await runGenerate(
+          tempDir,
+          extra: ['--required'],
+        );
+
+        expect(exitCode, 0);
+      },
+    );
+
+    test('collision check does not fire when --required is absent', () async {
+      // The reserved-name contract only applies when the user opts into
+      // the aggregator. A package named `required` is fine on its own.
+      createPackage(tempDir, 'packages/required', 'required');
+      initGitRepo(tempDir);
+
+      final exitCode = await runGenerate(
+        tempDir,
+        extra: ['--style', 'static'],
+      );
+
+      expect(exitCode, 0);
+    });
   });
 }
 

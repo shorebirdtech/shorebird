@@ -40,11 +40,11 @@ class GenerateCommand extends Command<int> with RepoRootOption {
       )
       ..addFlag(
         'no-update-actions',
-        help:
-            'Skip the post-generate step that queries GitHub for current '
-            'action versions and bumps pins in place. By default, generate '
-            'auto-bumps action versions to current latest. Pass this flag '
-            'in offline environments.',
+        help: '''
+Skip the post-generate step that queries GitHub for current action
+versions and bumps pins in place. By default, generate auto-bumps
+action versions to current latest. Pass this flag in offline
+environments.''',
         negatable: false,
       )
       ..addOption(
@@ -61,13 +61,15 @@ for whether your repo requires a token to upload.''',
       )
       ..addFlag(
         'required',
-        help:
-            'Emit a `required` aggregator job that depends on every other '
-            'job in the workflow. Use it as the single required check in '
-            'branch protection: it fails if any sub-job failed or was '
-            'cancelled, and passes when sub-jobs succeed or were skipped '
-            '(skips are expected since per-package jobs only run on '
-            'touched paths).',
+        help: '''
+Emit a `required` aggregator job at the end of the workflow that
+depends on every other job. Use it as the single required check in
+branch protection: the aggregator fails when any dependency reports
+`failure` or `cancelled`, and passes when dependencies succeed or
+were skipped. Skipped sub-jobs are the common case since per-package
+jobs only run on touched paths. The `required` job key is reserved
+when this flag is set, so generation fails if any package slug
+resolves to `required`. Skip the flag and any package slug is fine.''',
         negatable: false,
       );
   }
@@ -99,6 +101,44 @@ for whether your repo requires a token to upload.''',
       return 1;
     }
 
+    final sortedPackages = repository.packages.toList()
+      ..sort(
+        (PackageDescription a, PackageDescription b) =>
+            a.name.compareTo(b.name),
+      );
+
+    // Slugs only matter for static-mode workflow generation: in dynamic
+    // mode jobs are keyed `setup` / `dart_ci` / `flutter_ci` / `cspell`,
+    // never by per-package slug, so a package named `required` cannot
+    // collide w/ the aggregator there. Compute (and collision-check)
+    // only when static.
+    Map<PackageDescription, String>? slugs;
+    if (style == 'static') {
+      slugs = computePackageSlugs(
+        packages: sortedPackages,
+        repoRoot: repoRoot,
+      );
+      if (emitRequiredJob) {
+        // `required` is the reserved job key for the --required
+        // aggregator. A package slug that resolves to `required` would
+        // emit a duplicate YAML key and silently overwrite the
+        // aggregator. Fail loudly so the user renames the package
+        // before generation.
+        final colliding = slugs.entries
+            .where((e) => e.value == 'required')
+            .map((e) => e.key.name)
+            .toList();
+        if (colliding.isNotEmpty) {
+          stderr.writeln(
+            'Package slug `required` collides with the --required '
+            'aggregator job. Rename the colliding package(s): '
+            '${colliding.join(', ')}',
+          );
+          return 1;
+        }
+      }
+    }
+
     // Each builder returns a map of repo-relative path → file content.
     // Dynamic returns a single entry; static returns a main workflow
     // plus one or two reusable workflows.
@@ -111,6 +151,8 @@ for whether your repo requires a token to upload.''',
             outputPath: outputPath,
             codecovTokenSecret: codecovTokenSecret,
             emitRequiredJob: emitRequiredJob,
+            packages: sortedPackages,
+            slugs: slugs!,
           )
         : {
             outputPath: _buildDynamicYaml(
@@ -212,13 +254,9 @@ updates:
     required String outputPath,
     required String? codecovTokenSecret,
     required bool emitRequiredJob,
+    required List<PackageDescription> packages,
+    required Map<PackageDescription, String> slugs,
   }) {
-    final packages = repository.packages.toList()
-      ..sort(
-        (PackageDescription a, PackageDescription b) =>
-            a.name.compareTo(b.name),
-      );
-
     final hasDart = packages.any(
       (pkg) => !RepositoryAnalyzer.dependsOnFlutter(root: pkg.root),
     );
@@ -232,6 +270,7 @@ updates:
         packages: packages,
         codecovTokenSecret: codecovTokenSecret,
         emitRequiredJob: emitRequiredJob,
+        slugs: slugs,
       ),
     };
     if (hasDart) {
@@ -256,16 +295,13 @@ updates:
     required List<PackageDescription> packages,
     required String? codecovTokenSecret,
     required bool emitRequiredJob,
+    required Map<PackageDescription, String> slugs,
   }) {
     final emitSecretsInherit =
         codecovTokenSecret != null &&
         codecovTokenSecret.isNotEmpty &&
         repository.hasCodecov;
     final resolver = DependencyResolver(repository.root.path);
-    final slugs = computePackageSlugs(
-      packages: packages,
-      repoRoot: repository.root.path,
-    );
 
     final buffer = StringBuffer()
       ..write('''

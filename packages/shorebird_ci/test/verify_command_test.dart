@@ -183,4 +183,311 @@ jobs:
     // With --ignore, e2e is skipped.
     expect(await runVerify(tempDir, extra: ['--ignore', 'e2e']), 0);
   });
+
+  group('required job consistency', () {
+    test('workflow without a required job → no extra check', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('required.needs covers every other job → passes', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+    needs:
+      - changes
+      - foo
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('required.needs missing a job → returns 1', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+    needs:
+      - changes
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('required.needs as scalar string → handled', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      // `needs: changes` is the YAML scalar form. `foo` is missing.
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('required job w/ no needs key → returns 1', () async {
+      // Extreme drift: aggregator job declared but `needs:` missing
+      // entirely. Every other job becomes "missing" by definition.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('required.needs references a non-existent job → returns 1', () async {
+      // Typo case: `needs:` lists a job that doesn't exist in the file.
+      // GHA itself catches this at runtime, but verify catches it earlier.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+    needs:
+      - changes
+      - foo
+      - foo_typo
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('required job check fires alongside dynamic coverage', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      // Dynamic-coverage workflow (so the package check is satisfied)
+      // that also has a malformed required job missing the cspell entry.
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+# shorebird_ci-managed: dynamic
+name: CI
+on: [push]
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - run: shorebird_ci affected_packages
+  cspell:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+    needs:
+      - setup
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      // Dynamic coverage would pass on its own, but required.needs is
+      // missing cspell, so verify still fails.
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('drift fires alongside missing-package coverage', () async {
+      // Static-style workflow w/ a package missing from filters AND a
+      // required.needs that's missing a job. Exercises the
+      // requiredJobErrors branch on the missing-packages path, so the
+      // user sees both failures in one run.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+    needs:
+      - changes
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+
+    test('invalid workflow yaml is skipped, not crashing', () async {
+      // verify is not a YAML linter. A file we can't parse should
+      // silently fall out of the required-job check rather than
+      // throwing.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'bad.yaml', '''
+name: CI
+on: [push]
+jobs:
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+        this: is: not: valid: yaml: [
+''');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+# shorebird_ci-managed: dynamic
+name: CI
+on: [push]
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - run: shorebird_ci affected_packages
+''');
+      initGitRepo(tempDir);
+
+      // Dynamic coverage covers the package; the bad file just gets
+      // skipped during the required-job scan. Verify returns 0.
+      expect(await runVerify(tempDir), 0);
+    });
+
+    test('malformed `required:` (no map body) → returns 1', () async {
+      // `required:` exists as a key but has no job-map body. GHA
+      // wouldn't run it, so verify can't reason about its `needs:`.
+      // Treat as a hard error rather than silently skipping.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      _writeWorkflow(tempDir, 'ci.yaml', '''
+name: CI
+on: [push]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            foo:
+              - packages/foo/**
+  foo:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo
+  required:
+''');
+      initGitRepo(tempDir);
+
+      expect(await runVerify(tempDir), 1);
+    });
+  });
 }

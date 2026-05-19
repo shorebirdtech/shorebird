@@ -1,5 +1,12 @@
 <!-- cspell:words toplevel -->
 
+# 0.2.4
+
+- `verify` now enforces the `--required` aggregator's `needs:` list. Name-based detection: if a workflow has a top-level job named `required`, every other top-level job must appear in its `needs:`, and every entry in `needs:` must match a real top-level job in the same file. A `required:` key w/ no map body is also reported as malformed. Closes three silent-failure modes: a hand-edited workflow could leave a job out of `required.needs` and have its status silently ignored by the merge gate, a typo'd `needs:` entry could go unnoticed until GHA rejected it at runtime, or a bodiless `required:` could pass verify while doing nothing at runtime.
+- `generate --required` reserves the `required` job name and refuses to generate when a package slug would collide. Prevents a duplicate YAML key from silently overwriting the aggregator job. Only fires for `--style static` (dynamic mode keys jobs by `setup`/`dart_ci`/`flutter_ci`/`cspell`, so a package named `required` can't collide there). Skip the flag and any package slug is fine.
+- Bad CLI args now print a usage message and exit 64 instead of dumping a Dart stack trace. Same as the convention used by other args-based tools.
+- `verify` command description and `--required` flag help text updated to cover the new aggregator-consistency checks and the reserved-name contract. `--required` help also rewraps cleanly at the col-30 boundary.
+
 # 0.2.3
 
 - New `--required` flag on `generate`. When set, the generated workflow gets an aggregator `required` job that depends on every other job and uses `if: ${{ always() }}` so it runs even when sub-jobs are skipped. The job fails only if any dependency reports `failure` or `cancelled`, so it's safe to use as the single required check in branch protection: per-package jobs that get skipped because no paths-filter output matched are treated as a pass. Wired into both `--style static` and `--style dynamic`. Skipped by default, so existing generated workflows are unaffected.
