@@ -615,8 +615,11 @@ void main() {
               '''on Android with Flutter < 3.44, passes --strip in extraBuildArgs''',
               () async {
                 when(
-                  () => shorebirdFlutter.resolveFlutterVersion(any()),
-                ).thenAnswer((_) async => Version(3, 43, 0));
+                  () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                    platform: any(named: 'platform'),
+                    flutterRevision: any(named: 'flutterRevision'),
+                  ),
+                ).thenAnswer((_) async => true);
 
                 await runWithOverrides(() => command.createPatch(patcher));
 
@@ -636,34 +639,11 @@ void main() {
               '''on Android with Flutter 3.44+, omits --strip in extraBuildArgs''',
               () async {
                 when(
-                  () => shorebirdFlutter.resolveFlutterVersion(any()),
-                ).thenAnswer((_) async => Version(3, 44, 0));
-
-                await runWithOverrides(() => command.createPatch(patcher));
-
-                final captured =
-                    verify(
-                          () => patcher.extraBuildArgs = captureAny(),
-                        ).captured.last
-                        as List<String>;
-                expect(
-                  captured,
-                  isNot(contains('--extra-gen-snapshot-options=--strip')),
-                );
-              },
-            );
-
-            test(
-              '''when releaseFlutterVersion resolves to null, treats it as 3.44+ and omits --strip''',
-              () async {
-                // resolveFlutterVersion returns null for development pins.
-                // The gating logic falls back to the constraint's minVersion
-                // (3.44), so --strip should be omitted. Mirrors the
-                // unknown-version branch in
-                // LegacyKeepDebugSymbolsValidator.
-                when(
-                  () => shorebirdFlutter.resolveFlutterVersion(any()),
-                ).thenAnswer((_) async => null);
+                  () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                    platform: any(named: 'platform'),
+                    flutterRevision: any(named: 'flutterRevision'),
+                  ),
+                ).thenAnswer((_) async => false);
 
                 await runWithOverrides(() => command.createPatch(patcher));
 

@@ -68,6 +68,10 @@ void main() {
       );
     }
 
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.macos);
+    });
+
     setUp(() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
@@ -454,6 +458,14 @@ To change the version of this release, change your app's version in your pubspec
         setUp(() {
           when(() => argResults['obfuscate']).thenReturn(true);
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+          // Non-Android pipelines always pre-strip in gen_snapshot.
+          when(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => true);
           // By default, simulate the build creating the obfuscation map.
           when(
             () => artifactBuilder.buildMacos(

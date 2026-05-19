@@ -348,8 +348,7 @@ To change the version of this release, change your app's version in your pubspec
       // Passing --strip on 3.44+ pre-strips the snapshot, blocks AGP from
       // emitting the `.sym` companion, and trips flutter_tools' new
       // post-build verification. The releaser must therefore conditionally
-      // omit --strip on Android for 3.44+ pins. See also
-      // https://github.com/shorebirdtech/_shorebird/issues/2150.
+      // omit --strip on Android for 3.44+ pins.
       setUp(() {
         when(() => argResults['obfuscate']).thenReturn(true);
         when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
@@ -360,8 +359,11 @@ To change the version of this release, change your app's version in your pubspec
         'on Flutter < 3.44, passes --strip so gen_snapshot strips libapp.so',
         () async {
           when(
-            () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 43, 0));
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => true);
 
           final buildArgs = <String>[];
           await runWithOverrides(
@@ -384,8 +386,11 @@ To change the version of this release, change your app's version in your pubspec
         '''on Flutter 3.44+ Android, omits --strip so AGP can strip libapp.so and emit libapp.so.sym''',
         () async {
           when(
-            () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 44, 0));
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => false);
 
           final buildArgs = <String>[];
           await runWithOverrides(
@@ -418,28 +423,6 @@ To change the version of this release, change your app's version in your pubspec
 
         expect(buildArgs, isEmpty);
       });
-
-      test(
-        '''when resolveFlutterVersion returns null, treats it as 3.44+ and omits --strip''',
-        () async {
-          // resolveFlutterVersion returns null for development pins. The
-          // gating falls back to the constraint's minVersion so users on
-          // bleeding-edge pins get the new AGP-stripped behavior.
-          when(
-            () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => null);
-
-          final buildArgs = <String>[];
-          await runWithOverrides(
-            () => androidReleaser.addObfuscationMapArgs(buildArgs),
-          );
-
-          expect(
-            buildArgs,
-            isNot(contains('--extra-gen-snapshot-options=--strip')),
-          );
-        },
-      );
     });
 
     group('buildReleaseArtifacts', () {

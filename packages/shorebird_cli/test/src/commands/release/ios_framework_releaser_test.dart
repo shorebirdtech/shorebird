@@ -483,6 +483,14 @@ void main() {
         setUp(() {
           when(() => argResults['obfuscate']).thenReturn(true);
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+          // Non-Android pipelines always pre-strip in gen_snapshot.
+          when(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => true);
           // Simulate the build creating the obfuscation map.
           when(
             () => artifactBuilder.buildIosFramework(

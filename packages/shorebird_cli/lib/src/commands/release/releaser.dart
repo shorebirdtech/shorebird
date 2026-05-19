@@ -147,8 +147,6 @@ abstract class Releaser {
   /// On non-Android platforms (iOS, macOS, Linux, Windows, iOS framework,
   /// AAR), AGP is not in the pipeline, so --strip is always passed
   /// regardless of Flutter version.
-  ///
-  /// Tracked in https://github.com/shorebirdtech/_shorebird/issues/2150.
   Future<void> addObfuscationMapArgs(List<String> buildArgs) async {
     if (!useObfuscation) return;
     final mapDir = Directory(p.dirname(obfuscationMapPath));
@@ -157,19 +155,11 @@ abstract class Releaser {
       '--extra-gen-snapshot-options=--save-obfuscation-map=$obfuscationMapPath',
     );
 
-    final isAndroid = releaseType.releasePlatform == ReleasePlatform.android;
-    var shouldPreStripInGenSnapshot = true;
-    if (isAndroid) {
-      final revision = shorebirdEnv.flutterRevision;
-      final version = await shorebirdFlutter.resolveFlutterVersion(revision);
-      final agpStripsLibapp = libappStrippedByAgpConstraint.isSatisfiedBy(
-        version: version ?? libappStrippedByAgpConstraint.minVersion,
-        revision: revision,
-      );
-      // On Flutter 3.44+ AGP performs the strip. Passing --strip here
-      // would pre-strip and trip flutter_tools' post-build verification.
-      shouldPreStripInGenSnapshot = !agpStripsLibapp;
-    }
+    final shouldPreStripInGenSnapshot = await shorebirdFlutter
+        .shouldPreStripLibappInGenSnapshot(
+          platform: releaseType.releasePlatform,
+          flutterRevision: shorebirdEnv.flutterRevision,
+        );
 
     if (shouldPreStripInGenSnapshot) {
       buildArgs.add('--extra-gen-snapshot-options=--strip');

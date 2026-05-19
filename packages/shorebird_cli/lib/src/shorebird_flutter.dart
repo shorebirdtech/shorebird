@@ -7,10 +7,12 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// A reference to a [ShorebirdFlutter] instance.
 final shorebirdFlutterRef = create(ShorebirdFlutter.new);
@@ -266,6 +268,33 @@ class ShorebirdFlutter {
     } on Exception {
       return null;
     }
+  }
+
+  /// Whether `gen_snapshot` should be invoked with `--strip` for a build
+  /// targeting [platform] on the Flutter pin identified by [flutterRevision].
+  ///
+  /// On non-Android platforms (iOS, macOS, Linux, Windows, iOS framework,
+  /// AAR), AGP is not in the pipeline, so we always pre-strip in gen_snapshot.
+  ///
+  /// On Android, the answer depends on the Flutter version: from 3.44 onward
+  /// AGP performs the strip and emits the matching `.sym` companion;
+  /// pre-stripping in gen_snapshot on those versions leaves AGP with nothing
+  /// to strip and trips flutter_tools' post-build verification. See
+  /// [libappStrippedByAgpConstraint].
+  ///
+  /// An unresolvable [flutterRevision] (e.g. a development branch) is treated
+  /// as satisfying the constraint, since the alternative — pre-stripping —
+  /// would fail the post-build check on any 3.44+ pin.
+  Future<bool> shouldPreStripLibappInGenSnapshot({
+    required ReleasePlatform platform,
+    required String flutterRevision,
+  }) async {
+    if (platform != ReleasePlatform.android) return true;
+    final version = await resolveFlutterVersion(flutterRevision);
+    return !libappStrippedByAgpConstraint.isSatisfiedBy(
+      version: version ?? libappStrippedByAgpConstraint.minVersion,
+      revision: flutterRevision,
+    );
   }
 
   /// Fetches the latest remote refs for the Flutter clone so that

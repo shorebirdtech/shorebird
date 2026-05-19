@@ -464,33 +464,17 @@ Building with Flutter $flutterVersionString to determine the release version...
             '--load-obfuscation-map=${obfuscationMapFile.path}',
       ]);
 
-      // On Android with Flutter 3.44+, AGP performs the strip on
-      // libapp.so as part of `stripReleaseDebugSymbols` and produces the
-      // matching `.sym` companion that flutter_tools'
-      // post-build verification requires. Passing --strip to gen_snapshot
-      // here would pre-strip the snapshot, leaving AGP nothing to strip,
-      // and flutter_tools would fail the patch build with "libapp.so.sym
-      // or libapp.so.dbg not present". On older Flutter we keep --strip
-      // because the post-build verification does not exist there.
-      //
-      // The version check uses release.flutterRevision (not the user's
-      // currently-installed pin) because the patch's gen_snapshot
-      // behavior must match the release's. See upstream PR
-      // https://github.com/flutter/flutter/pull/181275 (merged 2026-01-26)
-      // and https://github.com/shorebirdtech/_shorebird/issues/2150.
-      final isAndroid =
-          patcher.releaseType.releasePlatform == ReleasePlatform.android;
-      var shouldPreStripInGenSnapshot = true;
-      if (isAndroid) {
-        final releaseFlutterVersion = await shorebirdFlutter
-            .resolveFlutterVersion(release.flutterRevision);
-        final agpStripsLibapp = libappStrippedByAgpConstraint.isSatisfiedBy(
-          version:
-              releaseFlutterVersion ?? libappStrippedByAgpConstraint.minVersion,
-          revision: release.flutterRevision,
-        );
-        shouldPreStripInGenSnapshot = !agpStripsLibapp;
-      }
+      // Gate --strip on the release's Flutter revision (not the user's
+      // currently-installed pin) so the patch's gen_snapshot behavior
+      // matches the release's. On Android with Flutter 3.44+ AGP performs
+      // the strip; passing --strip here would pre-strip the snapshot,
+      // leaving AGP nothing to strip and tripping flutter_tools'
+      // post-build "libapp.so.sym or libapp.so.dbg not present" check.
+      final shouldPreStripInGenSnapshot = await shorebirdFlutter
+          .shouldPreStripLibappInGenSnapshot(
+            platform: patcher.releaseType.releasePlatform,
+            flutterRevision: release.flutterRevision,
+          );
 
       if (shouldPreStripInGenSnapshot) {
         // Strip unobfuscated DWARF debug info from the compiled snapshot
