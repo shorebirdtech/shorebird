@@ -430,7 +430,7 @@ jobs:
       expect(await runVerify(tempDir), 1);
     });
 
-    test('unparseable workflow yaml is skipped, not crashing', () async {
+    test('invalid workflow yaml is skipped, not crashing', () async {
       // verify is not a YAML linter. A file we can't parse should
       // silently fall out of the required-job check rather than
       // throwing.
