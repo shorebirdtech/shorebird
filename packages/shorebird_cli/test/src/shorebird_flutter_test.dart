@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import 'mocks.dart';
@@ -453,6 +454,90 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
           expect(revision, equals(Version(1, 2, 3)));
         });
       });
+    });
+
+    group('shouldPreStripLibappInGenSnapshot', () {
+      test('returns true on iOS regardless of Flutter version', () async {
+        when(
+          () => git.forEachRef(
+            directory: any(named: 'directory'),
+            contains: any(named: 'contains'),
+            format: any(named: 'format'),
+            pattern: any(named: 'pattern'),
+          ),
+        ).thenAnswer((_) async => 'origin/flutter_release/3.44.0');
+
+        final result = await runWithOverrides(
+          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+            platform: ReleasePlatform.ios,
+            flutterRevision: 'deadbeef',
+          ),
+        );
+        expect(result, isTrue);
+      });
+
+      test('returns true on Android when Flutter is older than 3.44', () async {
+        when(
+          () => git.forEachRef(
+            directory: any(named: 'directory'),
+            contains: any(named: 'contains'),
+            format: any(named: 'format'),
+            pattern: any(named: 'pattern'),
+          ),
+        ).thenAnswer((_) async => 'origin/flutter_release/3.43.0');
+
+        final result = await runWithOverrides(
+          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+            platform: ReleasePlatform.android,
+            flutterRevision: 'deadbeef',
+          ),
+        );
+        expect(result, isTrue);
+      });
+
+      test('returns false on Android when Flutter is 3.44 or newer', () async {
+        when(
+          () => git.forEachRef(
+            directory: any(named: 'directory'),
+            contains: any(named: 'contains'),
+            format: any(named: 'format'),
+            pattern: any(named: 'pattern'),
+          ),
+        ).thenAnswer((_) async => 'origin/flutter_release/3.44.0');
+
+        final result = await runWithOverrides(
+          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+            platform: ReleasePlatform.android,
+            flutterRevision: 'deadbeef',
+          ),
+        );
+        expect(result, isFalse);
+      });
+
+      test(
+        '''returns false on Android when the version cannot be resolved (development pin)''',
+        () async {
+          // Unresolvable revisions (e.g. development branches) fall back to the
+          // constraint's min version, so users on bleeding-edge pins get the
+          // 3.44+ AGP-stripped behavior rather than the pre-strip path.
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => '');
+
+          final result = await runWithOverrides(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: ReleasePlatform.android,
+              flutterRevision: 'deadbeef',
+            ),
+          );
+          expect(result, isFalse);
+        },
+      );
     });
 
     group('fetchRemoteRefs', () {

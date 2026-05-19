@@ -101,7 +101,7 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
 
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
-    addObfuscationMapArgs(buildArgs);
+    await addObfuscationMapArgs(buildArgs);
 
     await artifactBuilder.buildIpa(
       codesign: codesign,
