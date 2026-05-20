@@ -4,6 +4,14 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch
  -->
 
+## 1.6.101 (May 19, 2026)
+
+- 🐦 Flutter 3.44.0 / Dart 3.12.0 support
+  - 💥 Android: AGP now strips `libapp.so` and emits `libapp.so.sym` (for Play Console crash symbolication). If your `android/app/build.gradle(.kts)` contains a legacy `packaging.jniLibs.keepDebugSymbols.add("**/libapp.so")` line, remove it — `shorebird doctor` flags it for you.
+- 🔧 Updater (rolled into Flutter 3.44 engine):
+  - 📉 mmap `libapp.so` out of the APK instead of buffering in RAM (Android memory win)
+  - Enhanced patch-apply diagnostic events
+
 ## 1.6.100 (May 16, 2026)
 
 - 🐦 Refreshed Flutter 3.41.9 engine pin with a fix for exception-related crashes
