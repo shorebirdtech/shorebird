@@ -110,7 +110,10 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => precacheProcessResult);
-      when(() => versionProcessResult.exitCode).thenReturn(0);
+      when(
+        () => precacheProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(() => precacheProcessResult.stderr).thenReturn('');
     });
 
     group('precacheArgs', () {
@@ -978,7 +981,7 @@ origin/flutter_release/3.10.6''';
         ).called(1);
       });
 
-      group('when unable to precache', () {
+      group('when precache throws', () {
         setUp(() {
           when(
             () => process.run(
@@ -989,33 +992,54 @@ origin/flutter_release/3.10.6''';
           ).thenThrow(Exception('oh no!'));
         });
 
-        test('logs error and continues', () async {
-          await expectLater(
-            runWithOverrides(
-              () => shorebirdFlutter.installRevision(revision: revision),
-            ),
-            completes,
-          );
-          verify(
-            () => process.run(
-              'flutter',
-              [
-                'precache',
-                ...runWithOverrides(() => shorebirdFlutter.precacheArgs),
-              ],
-              workingDirectory: p.join(flutterDirectory.parent.path, revision),
-            ),
-          ).called(1);
+        test(
+          'throws CacheCorruptedException directing to shorebird cache clean',
+          () async {
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdFlutter.installRevision(revision: revision),
+              ),
+              throwsA(
+                isA<CacheCorruptedException>().having(
+                  (e) => e.toString(),
+                  'toString',
+                  contains('shorebird cache clean'),
+                ),
+              ),
+            );
+            verify(
+              () => progress.fail('Failed to precache Flutter 3.10.6'),
+            ).called(1);
+          },
+        );
+      });
 
-          verify(
-            () => progress.fail('Failed to precache Flutter 3.10.6'),
-          ).called(1);
-          verify(
-            () => logger.info(
-              '''This is not a critical error, but your next build make take longer than usual.''',
-            ),
-          ).called(1);
+      group('when precache exits with a non-zero code', () {
+        setUp(() {
+          when(() => precacheProcessResult.exitCode).thenReturn(1);
+          when(() => precacheProcessResult.stderr).thenReturn('boom');
         });
+
+        test(
+          'throws CacheCorruptedException directing to shorebird cache clean',
+          () async {
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdFlutter.installRevision(revision: revision),
+              ),
+              throwsA(
+                isA<CacheCorruptedException>().having(
+                  (e) => e.toString(),
+                  'toString',
+                  contains('shorebird cache clean'),
+                ),
+              ),
+            );
+            verify(
+              () => progress.fail('Failed to precache Flutter 3.10.6'),
+            ).called(1);
+          },
+        );
       });
 
       group('when clone and checkout succeed', () {
