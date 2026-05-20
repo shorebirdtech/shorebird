@@ -192,6 +192,18 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
       );
       logger.detail('Creating artifact for $patchArtifactPath');
       final patchArtifact = File(patchArtifactPath);
+      // Skip archs the build didn't produce (ndk.abiFilters / splits.abi /
+      // jniLibs.excludes). Without this, a release built for a subset of
+      // archs can't be patched without hitting PathNotFoundException
+      // (https://github.com/shorebirdtech/shorebird/issues/3388).
+      if (!patchArtifact.existsSync()) {
+        logger.detail(
+          'Skipping ${arch.arch}: no libapp.so at $patchArtifactPath. '
+          'This is expected if the project filters this ABI via '
+          'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
+        );
+        continue;
+      }
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
       final hashSignature = await signHash(hash);
 
@@ -211,6 +223,13 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
         createDiffProgress.fail('$error');
         throw ProcessExit(ExitCode.software.code);
       }
+    }
+    if (patchArtifactBundles.isEmpty) {
+      createDiffProgress.fail(
+        'No patch artifacts produced: no libapp.so found for any architecture '
+        'under ${patchArchsBuildDir.path}.',
+      );
+      throw ProcessExit(ExitCode.software.code);
     }
     createDiffProgress.complete();
     return patchArtifactBundles;
