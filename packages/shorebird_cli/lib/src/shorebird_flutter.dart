@@ -44,37 +44,38 @@ class ShorebirdFlutter {
 
   /// Install the provided Flutter [revision].
   ///
-  /// Always runs `flutter precache` so a previously failed precache (which
-  /// otherwise leaves a half-populated cache and surfaces later as an opaque
-  /// Gradle "file does not exist" error) is retried on the next invocation.
-  /// `flutter precache` is idempotent: it no-ops on artifacts whose stamps
-  /// match.
+  /// Precaches engine artifacts on first install as a convenience so the first
+  /// build is not unexpectedly slow. A precache failure is treated as a
+  /// corrupted install: Flutter's stamp-based cache will otherwise trust a
+  /// partial extraction and surface the missing artifact later as an opaque
+  /// Gradle error (see shorebirdtech/shorebird#3783). The user is directed
+  /// to run `shorebird cache clean` to start over.
   Future<void> installRevision({required String revision}) async {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
+    if (targetDirectory.existsSync()) return;
+
     final version = await getVersionForRevision(flutterRevision: revision);
 
-    if (!targetDirectory.existsSync()) {
-      final installProgress = logger.progress(
-        'Installing Flutter $version (${shortRevisionString(revision)})',
+    final installProgress = logger.progress(
+      'Installing Flutter $version (${shortRevisionString(revision)})',
+    );
+
+    try {
+      // Clone the Shorebird Flutter repo into the target directory.
+      await git.clone(
+        url: flutterGitUrl,
+        outputDirectory: targetDirectory.path,
+        args: ['--filter=tree:0', '--no-checkout'],
       );
 
-      try {
-        // Clone the Shorebird Flutter repo into the target directory.
-        await git.clone(
-          url: flutterGitUrl,
-          outputDirectory: targetDirectory.path,
-          args: ['--filter=tree:0', '--no-checkout'],
-        );
-
-        // Checkout the correct revision.
-        await git.checkout(directory: targetDirectory.path, revision: revision);
-        installProgress.complete();
-      } catch (error) {
-        final short = shortRevisionString(revision);
-        installProgress.fail('Failed to install Flutter $version ($short)');
-        logger.err('$error');
-        rethrow;
-      }
+      // Checkout the correct revision.
+      await git.checkout(directory: targetDirectory.path, revision: revision);
+      installProgress.complete();
+    } catch (error) {
+      final short = shortRevisionString(revision);
+      installProgress.fail('Failed to install Flutter $version ($short)');
+      logger.err('$error');
+      rethrow;
     }
 
     final precacheProgress = logger.progress(
@@ -82,26 +83,27 @@ class ShorebirdFlutter {
     );
 
     final precacheArguments = ['precache', ...precacheArgs];
+    final ShorebirdProcessResult result;
     try {
-      final result = await process.run(
+      result = await process.run(
         executable,
         precacheArguments,
         workingDirectory: targetDirectory.path,
       );
-      if (result.exitCode != ExitCode.success.code) {
-        throw ProcessException(
-          executable,
-          precacheArguments,
-          '${result.stderr}',
-          result.exitCode,
-        );
-      }
-      precacheProgress.complete();
     } on Exception catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');
-      logger.err('$error');
-      rethrow;
+      throw CacheCorruptedException(
+        'Failed to precache Flutter $version: $error.',
+      );
     }
+    if (result.exitCode != ExitCode.success.code) {
+      precacheProgress.fail('Failed to precache Flutter $version');
+      throw CacheCorruptedException(
+        'flutter precache exited with code ${result.exitCode}: '
+        '${result.stderr}',
+      );
+    }
+    precacheProgress.complete();
   }
 
   /// Whether the current revision is unmodified.
