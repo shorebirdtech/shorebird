@@ -44,7 +44,7 @@ class ShorebirdFlutter {
 
   /// Install the provided Flutter [revision].
   ///
-  /// Precaches engine artifacts on first install as a convenience so the first
+  /// Runs `flutter precache` on first install as a convenience so the first
   /// build is not unexpectedly slow. A precache failure is treated as a
   /// corrupted install: Flutter's stamp-based cache will otherwise trust a
   /// partial extraction and surface the missing artifact later as an opaque
@@ -98,9 +98,9 @@ class ShorebirdFlutter {
     }
     if (result.exitCode != ExitCode.success.code) {
       precacheProgress.fail('Failed to precache Flutter $version');
+      final stderr = '${result.stderr}'.trim();
       throw CacheCorruptedException(
-        'flutter precache exited with code ${result.exitCode}: '
-        '${result.stderr}',
+        'flutter precache exited with code ${result.exitCode}: $stderr.',
       );
     }
     precacheProgress.complete();
