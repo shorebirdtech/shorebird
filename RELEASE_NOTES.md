@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch
  -->
 
+## 1.6.102 (May 19, 2026)
+
+- 🐛 macOS: fix `shorebird release --platforms macos` failing with "could not find an analyze_snapshot binary whose --sdk_version matches gen_snapshot". DD activation is skipped on macOS for now (patches will compute DD on the fly when applied, matching pre-1.6.99 behavior). iOS / Android / Linux / Windows are unaffected.
+
 ## 1.6.101 (May 19, 2026)
 
 - 🐦 Flutter 3.44.0 / Dart 3.12.0 support
