@@ -11,7 +11,7 @@ dependencies:
   clock: ^1.1.0
   collection: ^1.18.0
   http: ^1.5.0
-  json_annotation: ^4.11.0
+  json_annotation: ^4.12.0
   meta: ^1.7.0
   pointycastle: ^4.0.0
   rsa_pkcs: ^2.0.0
