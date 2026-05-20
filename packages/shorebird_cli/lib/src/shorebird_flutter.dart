@@ -43,6 +43,13 @@ class ShorebirdFlutter {
   }
 
   /// Install the provided Flutter [revision].
+  ///
+  /// Runs `flutter precache` on first install as a convenience so the first
+  /// build is not unexpectedly slow. A precache failure is treated as a
+  /// corrupted install: Flutter's stamp-based cache will otherwise trust a
+  /// partial extraction and surface the missing artifact later as an opaque
+  /// Gradle error (see shorebirdtech/shorebird#3783). The user is directed
+  /// to run `shorebird cache clean` to start over.
   Future<void> installRevision({required String revision}) async {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
     if (targetDirectory.existsSync()) return;
@@ -65,9 +72,8 @@ class ShorebirdFlutter {
       await git.checkout(directory: targetDirectory.path, revision: revision);
       installProgress.complete();
     } catch (error) {
-      installProgress.fail(
-        'Failed to install Flutter $version (${shortRevisionString(revision)})',
-      );
+      final short = shortRevisionString(revision);
+      installProgress.fail('Failed to install Flutter $version ($short)');
       logger.err('$error');
       rethrow;
     }
@@ -76,18 +82,28 @@ class ShorebirdFlutter {
       'Running ${lightCyan.wrap('flutter precache')}',
     );
 
+    final precacheArguments = ['precache', ...precacheArgs];
+    final ShorebirdProcessResult result;
     try {
-      await process.run(executable, [
-        'precache',
-        ...precacheArgs,
-      ], workingDirectory: targetDirectory.path);
-      precacheProgress.complete();
-    } on Exception {
+      result = await process.run(
+        executable,
+        precacheArguments,
+        workingDirectory: targetDirectory.path,
+      );
+    } on Exception catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');
-      logger.info(
-        '''This is not a critical error, but your next build make take longer than usual.''',
+      throw CacheCorruptedException(
+        'Failed to precache Flutter $version: $error.',
       );
     }
+    if (result.exitCode != ExitCode.success.code) {
+      precacheProgress.fail('Failed to precache Flutter $version');
+      final stderr = '${result.stderr}'.trim();
+      throw CacheCorruptedException(
+        'flutter precache exited with code ${result.exitCode}: $stderr.',
+      );
+    }
+    precacheProgress.complete();
   }
 
   /// Whether the current revision is unmodified.
