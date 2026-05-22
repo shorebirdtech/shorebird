@@ -204,6 +204,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+      needs_redis: true
 
   stripe_api:
     needs: changes
