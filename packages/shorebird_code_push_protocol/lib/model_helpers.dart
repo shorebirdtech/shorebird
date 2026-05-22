@@ -20,6 +20,18 @@ T parseFromJson<T>(
   }
 }
 
+/// Reads a key that is required to be present in [json] but whose value
+/// may legitimately be null (OpenAPI 3.1 `type: [T, "null"]` combined
+/// with `required`). A plain `json[key] as T?` cast would otherwise
+/// accept a missing key as a null value, silently violating `required`.
+/// Throws [FormatException] when the key is absent.
+dynamic checkedKey(Map<String, dynamic> json, String key) {
+  if (!json.containsKey(key)) {
+    throw FormatException("Missing required key '$key'", json);
+  }
+  return json[key];
+}
+
 /// Check if two nullable lists are deeply equal.
 bool listsEqual<T>(List<T>? a, List<T>? b) {
   final deepEquals = const DeepCollectionEquality().equals;
