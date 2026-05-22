@@ -33,6 +33,7 @@ export 'package:shorebird_code_push_protocol/src/messages/get_release/get_releas
 export 'package:shorebird_code_push_protocol/src/messages/get_release_artifacts/get_release_artifacts_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_release_patches/get_release_patches_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_releases/get_releases_response.dart';
+export 'package:shorebird_code_push_protocol/src/messages/get_version_distribution/get_version_distribution_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/patch_check/patch_check_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/patch_check/patch_check_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/promote_patch/promote_patch_request.dart';
@@ -61,6 +62,7 @@ export 'package:shorebird_code_push_protocol/src/models/release_patch.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 export 'package:shorebird_code_push_protocol/src/models/role.dart';
+export 'package:shorebird_code_push_protocol/src/models/version_distribution_entry.dart';
 
 /// Parsed JSON data.
 typedef Json = Map<String, dynamic>;
