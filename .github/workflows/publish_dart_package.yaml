@@ -14,6 +14,13 @@ on:
         description: |
           Tag prefix expected for this package (e.g., "shorebird_ci-v"). The
           version after the prefix must match the version in pubspec.yaml.
+      needs_redis:
+        required: false
+        default: false
+        type: boolean
+        description: |
+          Start a redis/redis-stack-server container before running tests.
+          Required for packages whose test suite connects to Redis.
 
 jobs:
   publish:
@@ -25,6 +32,12 @@ jobs:
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v6
+
+      - name: 🐳 Run Redis
+        if: inputs.needs_redis
+        run: |
+          docker pull redis/redis-stack-server:latest
+          docker run --name test_redis -d -p 6379:6379 --rm -e REDIS_ARGS="--requirepass password" redis/redis-stack-server:latest
 
       - name: 🎯 Setup Dart
         uses: dart-lang/setup-dart@v1
