@@ -11,5 +11,6 @@ jobs:
     with:
       working_directory: packages/redis_client
       tag_prefix: shorebird_redis_client-v
+      needs_redis: true
     permissions:
       id-token: write
