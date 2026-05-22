@@ -561,6 +561,84 @@ Looked in:
         });
       });
 
+      group('when one arch is missing from the patch build', () {
+        setUp(() {
+          // Create every arch's libapp.so, then delete one to simulate AGP
+          // filtering a single ABI via ndk.abiFilters / splits.abi.
+          setUpProjectRootArtifacts();
+          patchArtifactForArch(Arch.arm32).deleteSync();
+
+          when(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
+            ),
+          ).thenAnswer((_) async {
+            final tempDir = Directory.systemTemp.createTempSync();
+            final diffPath = p.join(tempDir.path, 'diff');
+            File(diffPath)
+              ..createSync()
+              ..writeAsStringSync('test');
+            return diffPath;
+          });
+        });
+
+        test('skips missing arch and returns bundles for the rest', () async {
+          final result = await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: 'appId',
+              releaseId: 0,
+              releaseArtifact: File('release.aab'),
+            ),
+          );
+
+          expect(result.keys, isNot(contains(Arch.arm32)));
+          expect(result, hasLength(Arch.values.length - 1));
+          verifyNever(() => progress.fail(any()));
+        });
+      });
+
+      group('when every arch is missing from the patch build', () {
+        setUp(() {
+          // Create the archs directory layout so androidArchsDirectory
+          // resolves, but leave each arch directory empty.
+          for (final arch in Arch.values) {
+            Directory(
+              p.join(
+                projectRoot.path,
+                'build',
+                'app',
+                'intermediates',
+                'stripped_native_libs',
+                'release',
+                'out',
+                'lib',
+                arch.androidBuildPath,
+              ),
+            ).createSync(recursive: true);
+          }
+        });
+
+        test('fails progress and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: 'appId',
+                releaseId: 0,
+                releaseArtifact: File('release.aab'),
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => progress.fail(
+              any(that: contains('No patch artifacts produced')),
+            ),
+          ).called(1);
+        });
+      });
+
       group('when patch artifacts successfully created', () {
         setUp(() {
           setUpProjectRootArtifacts();

@@ -497,6 +497,14 @@ Looked in:
       );
     }
 
+    // Track which arch paths AGP didn't produce, so we can surface them at
+    // the end if zero archs uploaded. AGP omits an arch directory whenever
+    // the project filters it out via `ndk.abiFilters`, `splits.abi`, or
+    // `jniLibs.excludes`. Iterating only over present files lets a filtered
+    // release succeed instead of crashing on the first missing arch
+    // (https://github.com/shorebirdtech/shorebird/issues/3388).
+    final missingArchPaths = <String>[];
+    var uploadedArchCount = 0;
     for (final arch in architectures) {
       final artifactPath = p.join(
         archsDir.path,
@@ -504,6 +512,15 @@ Looked in:
         'libapp.so',
       );
       final artifact = File(artifactPath);
+      if (!artifact.existsSync()) {
+        logger.detail(
+          'Skipping ${arch.arch}: no libapp.so at $artifactPath. '
+          'This is expected if the project filters this ABI via '
+          'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
+        );
+        missingArchPaths.add(artifactPath);
+        continue;
+      }
       final hash = sha256.convert(await artifact.readAsBytes()).toString();
       logger.detail('Uploading artifact for $artifactPath');
 
@@ -518,7 +535,9 @@ Looked in:
           canSideload: false,
           podfileLockHash: null,
         );
+        uploadedArchCount++;
       } on CodePushConflictException catch (_) {
+        uploadedArchCount++;
         // Newlines are due to how logger.info interacts with logger.progress.
         logger.info('''
 
@@ -530,6 +549,25 @@ ${arch.arch} artifact already exists, continuing...''');
           message: 'Error uploading ${artifact.path}: $error',
         );
       }
+    }
+
+    if (uploadedArchCount == 0) {
+      _handleErrorAndExit(
+        Exception('No architecture artifacts found to upload.'),
+        progress: createArtifactProgress,
+        message:
+            '''
+No architecture artifacts found to upload.
+
+Shorebird looked for libapp.so under ${archsDir.path} but every requested
+architecture was missing:
+${missingArchPaths.map((p) => '  - $p').join('\n')}
+
+This usually means your project's ndk.abiFilters / splits.abi / jniLibs.excludes
+configuration excludes every architecture Shorebird was asked to build. Either
+relax those filters or pass `--target-platform=<archs>` to restrict Shorebird
+to the architectures your project actually builds.''',
+      );
     }
 
     try {

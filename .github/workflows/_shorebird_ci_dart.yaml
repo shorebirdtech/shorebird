@@ -21,6 +21,10 @@ on:
         required: false
         default: ""
         type: string
+      needs_redis:
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   ci:
@@ -29,6 +33,11 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: recursive
+      - name: 🐳 Run Redis
+        if: inputs.needs_redis
+        run: |
+          docker pull redis/redis-stack-server:latest
+          docker run --name test_redis -d -p 6379:6379 --rm -e REDIS_ARGS="--requirepass password" redis/redis-stack-server:latest
       - uses: dart-lang/setup-dart@v1
       - name: Setup Bloc Tools
         if: inputs.has_bloc_lint

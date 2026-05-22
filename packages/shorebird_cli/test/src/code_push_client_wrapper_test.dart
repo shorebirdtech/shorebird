@@ -1489,6 +1489,129 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });
+
+        test(
+          'skips arches whose libapp.so is missing (abiFilters case)',
+          () async {
+            setUpProjectRoot();
+            // Simulate AGP filtering: remove armeabi-v7a libapp.so to mirror
+            // a project with ndk.abiFilters that excludes arm32.
+            final missingArch = Arch.arm32;
+            File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'app',
+                'intermediates',
+                'stripped_native_libs',
+                'release',
+                'out',
+                'lib',
+                missingArch.androidBuildPath,
+                'libapp.so',
+              ),
+            ).deleteSync();
+
+            await runWithOverrides(
+              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                projectRoot: projectRoot.path,
+                aabPath: p.join(projectRoot.path, aabPath),
+                architectures: Arch.values,
+              ),
+            );
+
+            // One upload per surviving arch, plus one for the aab.
+            final expectedUploads = Arch.values.length - 1 + 1;
+            verify(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).called(expectedUploads);
+            verifyNever(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: missingArch.arch,
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            );
+            verify(() => progress.complete()).called(1);
+            verifyNever(() => progress.fail(any()));
+          },
+        );
+
+        test(
+          'exits with code 70 when every requested arch is missing',
+          () async {
+            // Create the archs directory but no libapp.so files inside it.
+            // This mirrors AGP producing an empty strip output (all archs
+            // filtered out).
+            for (final archMetadata in Arch.values) {
+              Directory(
+                p.join(
+                  projectRoot.path,
+                  'build',
+                  'app',
+                  'intermediates',
+                  'stripped_native_libs',
+                  'release',
+                  'out',
+                  'lib',
+                  archMetadata.androidBuildPath,
+                ),
+              ).createSync(recursive: true);
+            }
+            File(p.join(projectRoot.path, aabPath)).createSync(recursive: true);
+
+            await expectLater(
+              () async => runWithOverrides(
+                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: p.join(projectRoot.path, aabPath),
+                  architectures: Arch.values,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => progress.fail(
+                any(
+                  that: contains('No architecture artifacts found to upload'),
+                ),
+              ),
+            ).called(1);
+            verifyNever(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            );
+          },
+        );
       });
 
       group('createWindowsReleaseArtifacts', () {

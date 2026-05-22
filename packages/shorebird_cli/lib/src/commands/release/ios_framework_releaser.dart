@@ -76,7 +76,7 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
     final base64PublicKey = await getEncodedPublicKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
-    addObfuscationMapArgs(buildArgs);
+    await addObfuscationMapArgs(buildArgs);
     await artifactBuilder.buildIosFramework(
       args: buildArgs,
       base64PublicKey: base64PublicKey,

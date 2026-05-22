@@ -8,6 +8,7 @@ import 'package:shorebird_ci/src/dorny_filter.dart';
 import 'package:shorebird_ci/src/package_description.dart';
 import 'package:shorebird_ci/src/package_slug.dart';
 import 'package:shorebird_ci/src/repository_analyzer.dart';
+import 'package:yaml/yaml.dart';
 
 /// Marker comment that the `generate` command writes into dynamic
 /// workflows. Verify uses this to detect dynamic coverage instead of
@@ -16,7 +17,8 @@ import 'package:shorebird_ci/src/repository_analyzer.dart';
 const dynamicCoverageMarker = '# shorebird_ci-managed: dynamic';
 
 /// Verifies that every discovered package has CI coverage somewhere in
-/// `.github/workflows/`.
+/// `.github/workflows/`, and that any `required` aggregator job stays
+/// in sync with the rest of the workflow.
 ///
 /// Coverage can be provided in two ways:
 ///   - **Dynamic**: a workflow that calls `shorebird_ci affected_packages`
@@ -27,6 +29,12 @@ const dynamicCoverageMarker = '# shorebird_ci-managed: dynamic';
 ///     slug is just the package name; when two packages share a name the
 ///     slug is `<parent_dir>_<name>`. Missing packages are reported with
 ///     the dorny entry that should be added (including transitive deps).
+///
+/// In addition, if any workflow file has a top-level job keyed
+/// `required`, every other top-level job in that file must appear in
+/// its `needs:`, and every entry in `needs:` must match a real
+/// top-level job. The aggregator is the single check listed in branch
+/// protection, so drift in either direction silently breaks the gate.
 class VerifyCommand extends Command<int> with RepoRootOption {
   /// Creates a [VerifyCommand].
   VerifyCommand() {
@@ -41,7 +49,8 @@ class VerifyCommand extends Command<int> with RepoRootOption {
   String get name => 'verify';
 
   @override
-  String get description => 'Verify every package has CI coverage';
+  String get description =>
+      'Verify package CI coverage and `required` aggregator consistency';
 
   @override
   Future<int> run() async {
@@ -93,11 +102,21 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     final allPackages = repository.packages.toList()
       ..sort((a, b) => a.name.compareTo(b.name));
 
+    // Required-job consistency check. Name-based: if a workflow has a
+    // top-level job keyed `required`, every other top-level job must
+    // appear in its `needs:` list. Runs unconditionally for every
+    // workflow file, independent of static-vs-dynamic coverage style.
+    final requiredJobErrors = _findRequiredJobErrors(workflowFiles);
+
     if (dynamicWorkflows.isNotEmpty) {
       stdout.writeln(
         'Using dynamic coverage via ${dynamicWorkflows.join(', ')} — '
         'all ${allPackages.length} packages covered at runtime.',
       );
+      if (requiredJobErrors.isNotEmpty) {
+        _printRequiredJobErrors(requiredJobErrors);
+        return 1;
+      }
       return 0;
     }
 
@@ -121,6 +140,10 @@ class VerifyCommand extends Command<int> with RepoRootOption {
 
     if (missing.isEmpty) {
       stdout.writeln('\nAll packages have CI coverage.');
+      if (requiredJobErrors.isNotEmpty) {
+        _printRequiredJobErrors(requiredJobErrors);
+        return 1;
+      }
       return 0;
     }
 
@@ -147,7 +170,122 @@ class VerifyCommand extends Command<int> with RepoRootOption {
     stderr.writeln(
       '${missing.length} package(s) missing from CI coverage.',
     );
+    if (requiredJobErrors.isNotEmpty) {
+      _printRequiredJobErrors(requiredJobErrors);
+    }
     return 1;
+  }
+
+  /// For each workflow file w/ a top-level `required:` job, returns
+  /// the symmetric drift between its `needs:` list and the set of
+  /// other top-level jobs in the same file.
+  ///
+  /// `missing` are top-level jobs absent from `needs:` — they run but
+  /// their status is silently ignored by the aggregator and branch
+  /// protection, the exact failure mode this check guards against.
+  ///
+  /// `stale` are entries in `needs:` w/ no matching top-level job,
+  /// usually a typo. GHA itself rejects these at runtime, but catching
+  /// them at verify time keeps the feedback loop tight.
+  ///
+  /// Workflows without a `required:` job are absent from the result.
+  Map<String, _RequiredJobReport> _findRequiredJobErrors(
+    List<File> workflowFiles,
+  ) {
+    final errors = <String, _RequiredJobReport>{};
+    for (final file in workflowFiles) {
+      final fileName = p.basename(file.path);
+      final YamlMap doc;
+      try {
+        final loaded = loadYaml(file.readAsStringSync());
+        if (loaded is! YamlMap) continue;
+        doc = loaded;
+      } on YamlException {
+        // Skip files we can't parse — verify isn't a YAML linter.
+        continue;
+      }
+
+      final jobs = doc['jobs'];
+      if (jobs is! YamlMap) continue;
+      if (!jobs.containsKey('required')) continue;
+
+      final requiredJob = jobs['required'];
+      if (requiredJob is! YamlMap) {
+        // `required:` exists as a key but has no map body (e.g. `null`,
+        // a scalar string, or a list). That's a malformed aggregator —
+        // GHA wouldn't run it, and verify can't reason about its
+        // `needs:`. Surface it instead of silently skipping.
+        errors[fileName] = _RequiredJobReport(
+          missing: const [],
+          stale: const [],
+          isMalformed: true,
+        );
+        continue;
+      }
+
+      // `needs:` may be a scalar (single dependency), a list, missing
+      // entirely, or null. Normalize to a set of strings; unrecognized
+      // types fall through to an empty set, which surfaces every other
+      // job as missing — the correct conservative outcome.
+      final rawNeeds = requiredJob['needs'];
+      final needsList = <String>[
+        if (rawNeeds is String) rawNeeds,
+        if (rawNeeds is YamlList)
+          for (final n in rawNeeds) n.toString(),
+      ];
+      final needsSet = needsList.toSet();
+
+      final jobNames = <String>{
+        for (final key in jobs.keys) key.toString(),
+      };
+
+      final missing = <String>[
+        for (final job in jobNames)
+          if (job != 'required' && !needsSet.contains(job)) job,
+      ];
+      final stale = <String>[
+        for (final need in needsList)
+          if (!jobNames.contains(need)) need,
+      ];
+
+      if (missing.isNotEmpty || stale.isNotEmpty) {
+        errors[fileName] = _RequiredJobReport(
+          missing: missing,
+          stale: stale,
+        );
+      }
+    }
+    return errors;
+  }
+
+  void _printRequiredJobErrors(Map<String, _RequiredJobReport> errors) {
+    stderr.writeln();
+    for (final entry in errors.entries) {
+      final report = entry.value;
+      if (report.isMalformed) {
+        stderr.writeln(
+          'MALFORMED `required:` job in ${entry.key}: value is not a '
+          'map. Expected a job definition w/ `needs:` and `runs-on:`.',
+        );
+        continue;
+      }
+      if (report.missing.isNotEmpty) {
+        stderr
+          ..writeln('MISSING from required.needs in ${entry.key}:')
+          ..writeln('  ${report.missing.join(', ')}');
+      }
+      if (report.stale.isNotEmpty) {
+        stderr
+          ..writeln('STALE entries in required.needs in ${entry.key}:')
+          ..writeln('  ${report.stale.join(', ')}')
+          ..writeln('  (these reference jobs that do not exist in the file)');
+      }
+    }
+    stderr.writeln(
+      '\n`required` job must depend on every other job in the workflow, '
+      'and every entry in `needs:` must match a real job. '
+      'Re-run `shorebird_ci generate --required` to regenerate.',
+    );
   }
 
   /// Whether a workflow uses the dynamic affected_packages approach.
@@ -164,4 +302,26 @@ class VerifyCommand extends Command<int> with RepoRootOption {
   bool _usesDynamicCoverage(String workflowContent) {
     return workflowContent.contains(dynamicCoverageMarker);
   }
+}
+
+/// Per-workflow drift report for the `required:` aggregator.
+class _RequiredJobReport {
+  _RequiredJobReport({
+    required this.missing,
+    required this.stale,
+    this.isMalformed = false,
+  });
+
+  /// Top-level jobs that exist in the workflow but are absent from
+  /// `required.needs`. They run but don't gate the aggregator.
+  final List<String> missing;
+
+  /// Entries listed in `required.needs` that don't match any top-level
+  /// job in the workflow. GHA itself rejects these at runtime.
+  final List<String> stale;
+
+  /// The `required:` key exists but its value isn't a job map. When
+  /// true, `missing` and `stale` are empty — there's nothing structured
+  /// to compare.
+  final bool isMalformed;
 }
