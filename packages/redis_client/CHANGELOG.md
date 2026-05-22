@@ -1,3 +1,7 @@
+# 0.0.13
+
+- refactor: extract `RedisConnection` from `RedisClient` to prepare for opt-in connection pooling
+
 # 0.0.12
 
 - fix: more redis query result type handling fixes
