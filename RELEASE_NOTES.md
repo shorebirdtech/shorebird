@@ -4,6 +4,10 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch
  -->
 
+## 1.6.105 (May 22, 2026)
+
+- 🐛 Fix FFI crashers on iOS and Android.
+
 ## 1.6.104 (May 22, 2026)
 
 - 🐛 Fix FFI-related crashers.
