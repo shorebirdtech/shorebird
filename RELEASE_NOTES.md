@@ -4,6 +4,15 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch
  -->
 
+## 1.6.106 (June 1, 2026)
+
+- 🐦 Flutter 3.44.1 / Dart 3.12.1 support
+  - The `flutter` tool now prints a descriptive error instead of crashing when
+    the analysis server exits unexpectedly, or when it fails to connect to a
+    Chrome instance on Windows.
+  - Dart 3.12.1: ignore socket deletion errors on shutdown; preserve
+    ThreadLocal values when a VM thread is reclaimed.
+
 ## 1.6.105 (May 22, 2026)
 
 - 🐛 Fix FFI crashers on iOS and Android.
