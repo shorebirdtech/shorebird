@@ -474,9 +474,10 @@ Please create a release using "shorebird release" and try again.
     String? flavor,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-    final archsDir = ArtifactManager.androidArchsDirectory(
+    final archsDir = ArtifactManager.androidArchsDirectoryOrExtractFromAab(
       projectRoot: Directory(projectRoot),
       flavor: flavor,
+      aab: File(aabPath),
     );
 
     if (archsDir == null) {

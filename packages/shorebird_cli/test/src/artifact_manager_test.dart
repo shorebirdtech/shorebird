@@ -572,6 +572,105 @@ void main() {
       });
     });
 
+    group('extractAndroidLibappsFromAab', () {
+      test('extracts a non-empty libapp.so for every arch in the aab', () {
+        final aab = File(
+          p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'),
+        );
+
+        final dir = ArtifactManager.extractAndroidLibappsFromAab(aab);
+
+        final archDirs =
+            dir
+                .listSync()
+                .whereType<Directory>()
+                .map((d) => p.basename(d.path))
+                .toList()
+              ..sort();
+        expect(archDirs, equals(['arm64-v8a', 'armeabi-v7a', 'x86_64']));
+        for (final arch in archDirs) {
+          final libapp = File(p.join(dir.path, arch, 'libapp.so'));
+          expect(libapp.existsSync(), isTrue, reason: arch);
+          expect(libapp.lengthSync(), greaterThan(0), reason: arch);
+        }
+      });
+    });
+
+    group('androidArchsDirectoryOrExtractFromAab', () {
+      late Directory projectRoot;
+      final aab = File(p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'));
+
+      Directory strippedOutLib() => Directory(
+        p.join(
+          projectRoot.path,
+          'build',
+          'app',
+          'intermediates',
+          'stripped_native_libs',
+          'release',
+          'stripReleaseDebugSymbols',
+          'out',
+          'lib',
+        ),
+      );
+
+      setUp(() {
+        projectRoot = Directory.systemTemp.createTempSync();
+      });
+
+      test('returns the stripped dir when it contains libapp.so', () {
+        final stripped = strippedOutLib()..createSync(recursive: true);
+        File(p.join(stripped.path, 'arm64-v8a', 'libapp.so'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync('stripped-libapp');
+
+        final result = ArtifactManager.androidArchsDirectoryOrExtractFromAab(
+          projectRoot: projectRoot,
+          aab: aab,
+        );
+
+        expect(result, isNotNull);
+        expect(result!.path, equals(stripped.path));
+      });
+
+      test('extracts from the aab when the stripped dir is empty', () {
+        final stripped = strippedOutLib()..createSync(recursive: true);
+
+        final result = ArtifactManager.androidArchsDirectoryOrExtractFromAab(
+          projectRoot: projectRoot,
+          aab: aab,
+        );
+
+        expect(result, isNotNull);
+        expect(result!.path, isNot(equals(stripped.path)));
+        expect(
+          File(p.join(result.path, 'arm64-v8a', 'libapp.so')).existsSync(),
+          isTrue,
+        );
+      });
+
+      test('extracts from the aab when no stripped dir exists', () {
+        final result = ArtifactManager.androidArchsDirectoryOrExtractFromAab(
+          projectRoot: projectRoot,
+          aab: aab,
+        );
+
+        expect(result, isNotNull);
+        expect(
+          File(p.join(result!.path, 'x86_64', 'libapp.so')).existsSync(),
+          isTrue,
+        );
+      });
+
+      test('returns null when there is no stripped dir and no aab', () {
+        final result = ArtifactManager.androidArchsDirectoryOrExtractFromAab(
+          projectRoot: projectRoot,
+        );
+
+        expect(result, isNull);
+      });
+    });
+
     group('getXcarchiveDirectory', () {
       group('when archive directory exists', () {
         late Directory archiveDirectory;

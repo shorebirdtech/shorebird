@@ -241,6 +241,72 @@ class ArtifactManager {
     return archsDirectory.existsSync() ? archsDirectory : null;
   }
 
+  /// Returns a directory laid out as `<arch>/libapp.so`, sourcing each library
+  /// from AGP's stripped output when present and otherwise extracting it from
+  /// [aab].
+  ///
+  /// AGP's stripped output is the same `libapp.so` that gets packaged into the
+  /// AAB, so when it exists we use it directly (this is the common path and is
+  /// byte-identical to the AAB). But Flutter 3.44 (flutter/flutter#181275)
+  /// handed `libapp.so` stripping to AGP, and the strip task can emit nothing
+  /// while the library is still bundled into the AAB — e.g. a legacy
+  /// `keepDebugSymbols.add("**/libapp.so")` line, a gen_snapshot `--strip`
+  /// pre-strip, or the upstream strip-handover bug. In that case
+  /// [androidArchsDirectory] is empty, so we fall back to the AAB's
+  /// `base/lib/<arch>/libapp.so`, which is exactly the bytes shipped to the
+  /// device — a patch diffed against them always applies.
+  ///
+  /// Reading the unstripped `merged_native_libs` is deliberately NOT used as a
+  /// fallback: in a normal stripping build those bytes differ from the stripped
+  /// library in the AAB, so a patch built against them would fail to link on
+  /// device. See https://github.com/shorebirdtech/shorebird/issues/3388.
+  static Directory? androidArchsDirectoryOrExtractFromAab({
+    required Directory projectRoot,
+    String? flavor,
+    File? aab,
+  }) {
+    final strippedDir = androidArchsDirectory(
+      projectRoot: projectRoot,
+      flavor: flavor,
+    );
+    if (strippedDir != null && _containsLibapp(strippedDir)) {
+      return strippedDir;
+    }
+    // The strip task produced no libapp.so. Extract it from the AAB, which is
+    // the source of truth for what runs on the device.
+    if (aab == null || !aab.existsSync()) return strippedDir;
+    return extractAndroidLibappsFromAab(aab);
+  }
+
+  /// Whether [archsDir] holds a `<arch>/libapp.so` for at least one
+  /// architecture.
+  static bool _containsLibapp(Directory archsDir) {
+    if (!archsDir.existsSync()) return false;
+    return archsDir.listSync().whereType<Directory>().any(
+      (archDir) => File(p.join(archDir.path, 'libapp.so')).existsSync(),
+    );
+  }
+
+  /// Extracts every `base/lib/<arch>/libapp.so` entry from [aab] into a fresh
+  /// temporary directory laid out as `<arch>/libapp.so`, and returns it. The
+  /// extracted bytes are exactly those packaged into the AAB and installed on
+  /// the device.
+  static Directory extractAndroidLibappsFromAab(File aab) {
+    final outDir = Directory.systemTemp.createTempSync('shorebird_aab_libapps');
+    final libappEntry = RegExp(r'^base/lib/([^/]+)/libapp\.so$');
+    final archive = ZipDecoder().decodeStream(InputFileStream(aab.path));
+    for (final file in archive.files) {
+      if (!file.isFile) continue;
+      final match = libappEntry.firstMatch(file.name);
+      if (match == null) continue;
+      final arch = match.group(1)!;
+      File(p.join(outDir.path, arch, 'libapp.so'))
+        ..createSync(recursive: true)
+        ..writeAsBytesSync(file.content as List<int>);
+    }
+    return outDir;
+  }
+
   /// The directory containing the compiled macOS .app file, if it exists.
   Directory? getMacOSAppDirectory({String? flavor}) {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;

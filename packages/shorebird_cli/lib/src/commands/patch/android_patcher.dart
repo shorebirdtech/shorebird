@@ -45,6 +45,12 @@ This issue was fixed in Flutter 3.24.2. Please upgrade to a newer version of Flu
 See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebirdtech/updater/issues/211'), message: 'on Github')}
 ''';
 
+  /// The patch app bundle produced by [buildPatchArtifact], cached so
+  /// [createPatchArtifacts] can fall back to extracting `libapp.so` from it
+  /// when AGP's strip task produced none.
+  /// See https://github.com/shorebirdtech/shorebird/issues/3388.
+  File? _patchArtifactAab;
+
   @override
   ReleaseType get releaseType => ReleaseType.android;
 
@@ -102,10 +108,13 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       base64PublicKey: argResults.encodedPublicKey,
     );
 
-    final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
-      projectRoot: projectRoot,
-      flavor: flavor,
-    );
+    _patchArtifactAab = aabFile;
+    final patchArchsBuildDir =
+        ArtifactManager.androidArchsDirectoryOrExtractFromAab(
+          projectRoot: projectRoot,
+          flavor: flavor,
+          aab: aabFile,
+        );
 
     if (patchArchsBuildDir == null) {
       logger
@@ -115,10 +124,9 @@ Please run `shorebird cache clean` and try again. If the issue persists, please
 file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
 
 Looked in:
-  - build/app/intermediates/stripped_native_libs/stripReleaseDebugSymbols/release/out/lib
-  - build/app/intermediates/stripped_native_libs/strip{flavor}ReleaseDebugSymbols/{flavor}Release/out/lib
-  - build/app/intermediates/stripped_native_libs/release/out/lib
-  - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib''');
+  - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
+  - build/app/intermediates/stripped_native_libs/{variant}/out/lib
+  - the libapp.so entries inside the built .aab''');
       throw ProcessExit(ExitCode.software.code);
     }
     return aabFile;
@@ -172,10 +180,12 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
 
     artifactsDownloadCompleted = true;
 
-    final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
-      projectRoot: projectRoot,
-      flavor: flavor,
-    );
+    final patchArchsBuildDir =
+        ArtifactManager.androidArchsDirectoryOrExtractFromAab(
+          projectRoot: projectRoot,
+          flavor: flavor,
+          aab: _patchArtifactAab,
+        );
     if (patchArchsBuildDir == null) {
       logger.err('Could not find patch artifacts');
       throw ProcessExit(ExitCode.software.code);
