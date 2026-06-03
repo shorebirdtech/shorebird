@@ -640,8 +640,9 @@ Looked in:
 
       group('when the strip output is empty but the aab has libapp.so', () {
         // Mirrors AGP emitting no libapp.so on Flutter 3.44+.
-        // buildPatchArtifact caches the built aab, and createPatchArtifacts
-        // diffs the libapp.so copies extracted from it instead of failing.
+        // buildPatchArtifact extracts libapp.so from the built aab and caches
+        // the resulting directory; createPatchArtifacts diffs those copies
+        // instead of failing.
         setUp(() {
           for (final arch in Arch.values) {
             Directory(

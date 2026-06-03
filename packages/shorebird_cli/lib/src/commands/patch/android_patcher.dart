@@ -45,11 +45,13 @@ This issue was fixed in Flutter 3.24.2. Please upgrade to a newer version of Flu
 See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebirdtech/updater/issues/211'), message: 'on Github')}
 ''';
 
-  /// The patch app bundle produced by [buildPatchArtifact], cached so
-  /// [createPatchArtifacts] can fall back to extracting `libapp.so` from it
-  /// when AGP's strip task produced none.
+  /// The `<arch>/libapp.so` directory resolved by [buildPatchArtifact] —
+  /// either AGP's stripped output or, when the strip task produced no
+  /// libapp.so, a temporary directory extracted from the built patch AAB.
+  /// Cached so [createPatchArtifacts] reuses it instead of decoding the AAB a
+  /// second time.
   /// See https://github.com/shorebirdtech/shorebird/issues/3388.
-  File? _patchArtifactAab;
+  Directory? _patchArchsBuildDir;
 
   @override
   ReleaseType get releaseType => ReleaseType.android;
@@ -108,8 +110,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       base64PublicKey: argResults.encodedPublicKey,
     );
 
-    _patchArtifactAab = aabFile;
-    final patchArchsBuildDir =
+    final patchArchsBuildDir = _patchArchsBuildDir =
         ArtifactManager.androidArchsDirectoryOrExtractFromAab(
           projectRoot: projectRoot,
           flavor: flavor,
@@ -180,11 +181,14 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
 
     artifactsDownloadCompleted = true;
 
+    // [buildPatchArtifact] runs before this and caches the resolved
+    // directory; the fallback only covers a direct call without it, in which
+    // case no patch AAB exists to extract from.
     final patchArchsBuildDir =
-        ArtifactManager.androidArchsDirectoryOrExtractFromAab(
+        _patchArchsBuildDir ??
+        ArtifactManager.androidArchsDirectory(
           projectRoot: projectRoot,
           flavor: flavor,
-          aab: _patchArtifactAab,
         );
     if (patchArchsBuildDir == null) {
       logger.err('Could not find patch artifacts');

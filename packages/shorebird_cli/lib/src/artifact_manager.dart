@@ -294,7 +294,10 @@ class ArtifactManager {
   static Directory extractAndroidLibappsFromAab(File aab) {
     final outDir = Directory.systemTemp.createTempSync('shorebird_aab_libapps');
     final libappEntry = RegExp(r'^base/lib/([^/]+)/libapp\.so$');
-    final archive = ZipDecoder().decodeStream(InputFileStream(aab.path));
+    final inputStream = InputFileStream(aab.path);
+    final archive = ZipDecoder().decodeStream(inputStream);
+    // Entry contents are decompressed lazily from the input stream, so only
+    // close it once every libapp.so has been written out.
     for (final file in archive.files) {
       if (!file.isFile) continue;
       final match = libappEntry.firstMatch(file.name);
@@ -304,6 +307,7 @@ class ArtifactManager {
         ..createSync(recursive: true)
         ..writeAsBytesSync(file.content as List<int>);
     }
+    inputStream.closeSync();
     return outDir;
   }
 
