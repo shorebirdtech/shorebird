@@ -692,7 +692,7 @@ void main() {
           ..writeAsBytesSync(
             ZipEncoder().encode(
               Archive()..addFile(
-                ArchiveFile.string('base/lib/arm64-v8a/libother.so', 'so'),
+                ArchiveFile.string('base/lib/arm64-v8a/libflutter.so', 'so'),
               ),
             ),
           );
