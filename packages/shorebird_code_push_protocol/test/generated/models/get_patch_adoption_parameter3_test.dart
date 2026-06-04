@@ -8,7 +8,7 @@ void main() {
       final instance = GetPatchAdoptionParameter3.values.first;
       final parsed = GetPatchAdoptionParameter3.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

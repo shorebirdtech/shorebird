@@ -30,7 +30,7 @@ void main() {
           ),
         ],
       );
-      final parsed = GetPatchAdoptionResponse.maybeFromJson(instance.toJson());
+      final parsed = GetPatchAdoptionResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

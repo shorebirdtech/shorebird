@@ -18,7 +18,7 @@ void main() {
           ),
         ],
       );
-      final parsed = PatchAdoptionEntry.maybeFromJson(instance.toJson());
+      final parsed = PatchAdoptionEntry.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
