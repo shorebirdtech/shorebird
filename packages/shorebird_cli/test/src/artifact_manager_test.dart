@@ -694,8 +694,8 @@ void main() {
       test('falls back to the stripped dir when the aab is '
           'corrupt', () async {
         final stripped = strippedOutLib()..createSync(recursive: true);
-        // A structurally valid zip whose libapp.so entry has an
-        // undecompressible payload: extraction throws when the entry is read.
+        // A structurally valid zip whose libapp.so entry has a payload that
+        // cannot be decompressed: extraction throws when the entry is read.
         const entryName = 'base/lib/arm64-v8a/libapp.so';
         final bytes = ZipEncoder().encode(
           Archive()..addFile(ArchiveFile.string(entryName, 'a' * 4096)),
