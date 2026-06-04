@@ -1618,8 +1618,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           () async {
             // The strip output dirs exist but contain no libapp.so, as happens
             // when AGP's strip task emits nothing on Flutter 3.44+. The
-            // libraries still ship inside the aab, so the upload should fall
-            // back to extracting them from it rather than failing.
+            // libraries still ship inside the aab, which is read first, so the
+            // upload succeeds regardless of the strip output.
             for (final archMetadata in Arch.values) {
               Directory(
                 p.join(

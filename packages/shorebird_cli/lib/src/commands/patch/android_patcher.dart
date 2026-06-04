@@ -46,10 +46,10 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
 ''';
 
   /// The `<arch>/libapp.so` directory resolved by [buildPatchArtifact] —
-  /// either AGP's stripped output or, when the strip task produced no
-  /// libapp.so, a temporary directory extracted from the built patch AAB.
-  /// Cached so [createPatchArtifacts] reuses it instead of decoding the AAB a
-  /// second time.
+  /// a temporary directory extracted from the built patch AAB or, when the
+  /// AAB is unreadable, AGP's stripped output. Cached so
+  /// [createPatchArtifacts] reuses it instead of decoding the AAB a second
+  /// time.
   /// See https://github.com/shorebirdtech/shorebird/issues/3388.
   Directory? _patchArchsBuildDir;
 
@@ -111,7 +111,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
     );
 
     final patchArchsBuildDir = _patchArchsBuildDir =
-        ArtifactManager.androidArchsDirectoryOrExtractFromAab(
+        await ArtifactManager.androidArchsDirectoryFromAab(
           projectRoot: projectRoot,
           flavor: flavor,
           aab: aabFile,
@@ -125,9 +125,9 @@ Please run `shorebird cache clean` and try again. If the issue persists, please
 file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
 
 Looked in:
+  - the libapp.so entries inside the built .aab
   - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
-  - build/app/intermediates/stripped_native_libs/{variant}/out/lib
-  - the libapp.so entries inside the built .aab''');
+  - build/app/intermediates/stripped_native_libs/{variant}/out/lib''');
       throw ProcessExit(ExitCode.software.code);
     }
     return aabFile;

@@ -474,7 +474,7 @@ Please create a release using "shorebird release" and try again.
     String? flavor,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-    final archsDir = ArtifactManager.androidArchsDirectoryOrExtractFromAab(
+    final archsDir = await ArtifactManager.androidArchsDirectoryFromAab(
       projectRoot: Directory(projectRoot),
       flavor: flavor,
       aab: File(aabPath),
@@ -491,9 +491,9 @@ Please run `shorebird cache clean` and try again. If the issue persists, please
 file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
 
 Looked in:
+  - the libapp.so entries inside the built .aab
   - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
-  - build/app/intermediates/stripped_native_libs/{variant}/out/lib
-  - the libapp.so entries inside the built .aab''',
+  - build/app/intermediates/stripped_native_libs/{variant}/out/lib''',
       );
     }
 
