@@ -64,6 +64,7 @@ words:
   - keytool # From .github/workflows/e2e.yaml
   - lerping
   - libapp
+  - libapps
   - libflutter
   - libimobiledevice
   - libimobiledeviceglue

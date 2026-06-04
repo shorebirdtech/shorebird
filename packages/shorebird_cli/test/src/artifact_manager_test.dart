@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -569,6 +570,150 @@ void main() {
             expect(result!.path, equals(noStripReleaseDebugSymbolsPath.path));
           },
         );
+      });
+    });
+
+    group('extractAndroidLibappsFromAab', () {
+      test('extracts a non-empty libapp.so for every arch in the '
+          'aab', () async {
+        final aab = File(
+          p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'),
+        );
+
+        final dir = await ArtifactManager.extractAndroidLibappsFromAab(aab);
+
+        final archDirs =
+            dir
+                .listSync()
+                .whereType<Directory>()
+                .map((d) => p.basename(d.path))
+                .toList()
+              ..sort();
+        expect(archDirs, equals(['arm64-v8a', 'armeabi-v7a', 'x86_64']));
+        for (final arch in archDirs) {
+          final libapp = File(p.join(dir.path, arch, 'libapp.so'));
+          expect(libapp.existsSync(), isTrue, reason: arch);
+          expect(libapp.lengthSync(), greaterThan(0), reason: arch);
+        }
+      });
+    });
+
+    group('androidArchsDirectoryFromAab', () {
+      late Directory projectRoot;
+      final aab = File(p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'));
+
+      Directory strippedOutLib() => Directory(
+        p.join(
+          projectRoot.path,
+          'build',
+          'app',
+          'intermediates',
+          'stripped_native_libs',
+          'release',
+          'stripReleaseDebugSymbols',
+          'out',
+          'lib',
+        ),
+      );
+
+      setUp(() {
+        projectRoot = Directory.systemTemp.createTempSync();
+      });
+
+      test('extracts from the aab even when the stripped dir contains '
+          'libapp.so', () async {
+        // The strip output can be stale (left over from a previous build when
+        // AGP's strip task emits nothing), so the aab always wins.
+        final stripped = strippedOutLib()..createSync(recursive: true);
+        const staleContents = 'stale-stripped-libapp';
+        File(p.join(stripped.path, 'arm64-v8a', 'libapp.so'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync(staleContents);
+
+        final result = await ArtifactManager.androidArchsDirectoryFromAab(
+          projectRoot: projectRoot,
+          aab: aab,
+        );
+
+        expect(result, isNotNull);
+        expect(result!.path, isNot(equals(stripped.path)));
+        final libapp = File(p.join(result.path, 'arm64-v8a', 'libapp.so'));
+        expect(libapp.existsSync(), isTrue);
+        expect(libapp.lengthSync(), isNot(equals(staleContents.length)));
+      });
+
+      test('extracts from the aab when no stripped dir exists', () async {
+        final result = await ArtifactManager.androidArchsDirectoryFromAab(
+          projectRoot: projectRoot,
+          aab: aab,
+        );
+
+        expect(result, isNotNull);
+        expect(
+          File(p.join(result!.path, 'x86_64', 'libapp.so')).existsSync(),
+          isTrue,
+        );
+      });
+
+      test('falls back to the stripped dir when no aab is provided', () async {
+        final stripped = strippedOutLib()..createSync(recursive: true);
+
+        final result = await ArtifactManager.androidArchsDirectoryFromAab(
+          projectRoot: projectRoot,
+        );
+
+        expect(result, isNotNull);
+        expect(result!.path, equals(stripped.path));
+      });
+
+      test('falls back to the stripped dir when the aab is not a valid '
+          'zip', () async {
+        final stripped = strippedOutLib()..createSync(recursive: true);
+        final invalidAab = File(p.join(projectRoot.path, 'invalid.aab'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync('not a zip');
+
+        final result = await runWithOverrides(
+          () => ArtifactManager.androidArchsDirectoryFromAab(
+            projectRoot: projectRoot,
+            aab: invalidAab,
+          ),
+        );
+
+        expect(result, isNotNull);
+        expect(result!.path, equals(stripped.path));
+      });
+
+      test('falls back to the stripped dir when the aab contains no '
+          'libapp.so', () async {
+        final stripped = strippedOutLib()..createSync(recursive: true);
+        final libappLessAab = File(p.join(projectRoot.path, 'no_libapp.aab'))
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(
+            ZipEncoder().encode(
+              Archive()..addFile(
+                ArchiveFile.string('base/lib/arm64-v8a/libflutter.so', 'so'),
+              ),
+            ),
+          );
+
+        final result = await runWithOverrides(
+          () => ArtifactManager.androidArchsDirectoryFromAab(
+            projectRoot: projectRoot,
+            aab: libappLessAab,
+          ),
+        );
+
+        expect(result, isNotNull);
+        expect(result!.path, equals(stripped.path));
+      });
+
+      test('returns null when there is no stripped dir and no aab', () async {
+        final result = await ArtifactManager.androidArchsDirectoryFromAab(
+          projectRoot: projectRoot,
+        );
+
+        expect(result, isNull);
       });
     });
 

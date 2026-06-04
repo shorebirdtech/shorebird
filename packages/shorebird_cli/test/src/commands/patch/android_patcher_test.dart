@@ -369,10 +369,9 @@ Please run `shorebird cache clean` and try again. If the issue persists, please
 file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
 
 Looked in:
-  - build/app/intermediates/stripped_native_libs/stripReleaseDebugSymbols/release/out/lib
-  - build/app/intermediates/stripped_native_libs/strip{flavor}ReleaseDebugSymbols/{flavor}Release/out/lib
-  - build/app/intermediates/stripped_native_libs/release/out/lib
-  - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib'''),
+  - the libapp.so entries inside the built .aab
+  - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
+  - build/app/intermediates/stripped_native_libs/{variant}/out/lib'''),
           ).called(1);
         });
       });
@@ -636,6 +635,82 @@ Looked in:
               any(that: contains('No patch artifacts produced')),
             ),
           ).called(1);
+        });
+      });
+
+      group('when the strip output is empty but the aab has libapp.so', () {
+        // Mirrors AGP emitting no libapp.so on Flutter 3.44+.
+        // buildPatchArtifact extracts libapp.so from the built aab and caches
+        // the resulting directory; createPatchArtifacts diffs those copies
+        // instead of failing.
+        setUp(() {
+          for (final arch in Arch.values) {
+            Directory(
+              p.join(
+                projectRoot.path,
+                'build',
+                'app',
+                'intermediates',
+                'stripped_native_libs',
+                'release',
+                'out',
+                'lib',
+                arch.androidBuildPath,
+              ),
+            ).createSync(recursive: true);
+          }
+          when(
+            () => shorebirdFlutter.getVersion(),
+          ).thenAnswer((_) async => Version(3, 44, 1));
+          when(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+              base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
+            ),
+          ).thenAnswer(
+            (_) async =>
+                File(p.join('test', 'fixtures', 'aabs', 'changed_asset.aab')),
+          );
+          when(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(named: 'patchArtifactPath'),
+            ),
+          ).thenAnswer((_) async {
+            final tempDir = Directory.systemTemp.createTempSync();
+            final diffPath = p.join(tempDir.path, 'diff');
+            File(diffPath)
+              ..createSync()
+              ..writeAsStringSync('test');
+            return diffPath;
+          });
+        });
+
+        test('diffs the libapp.so extracted from the aab', () async {
+          final result = await runWithOverrides(() async {
+            await patcher.buildPatchArtifact();
+            return patcher.createPatchArtifacts(
+              appId: 'appId',
+              releaseId: 0,
+              releaseArtifact: File('release.aab'),
+            );
+          });
+
+          expect(result, hasLength(Arch.values.length));
+          verify(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: any(named: 'releaseArtifactPath'),
+              patchArtifactPath: any(
+                named: 'patchArtifactPath',
+                that: contains('shorebird_aab_libapps'),
+              ),
+            ),
+          ).called(Arch.values.length);
+          verifyNever(() => progress.fail(any()));
         });
       });
 
