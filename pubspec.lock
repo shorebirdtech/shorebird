@@ -517,10 +517,10 @@ packages:
     dependency: transitive
     description:
       name: propertylistserialization
-      sha256: "645aaac37e73735286087fc81b27c7eabaa81b6146881bdf84090ba56f4e15ad"
+      sha256: "8ebe5e73b912c080916895bff96af9dd026cf87c1867447894f84e4c9e51b4b8"
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.1"
+    version: "1.5.0"
   pub_semver:
     dependency: transitive
     description:
@@ -845,10 +845,10 @@ packages:
     dependency: transitive
     description:
       name: xml
-      sha256: "971043b3a0d3da28727e40ed3e0b5d18b742fa5a68665cca88e74b7876d5e025"
+      sha256: "67f0aff7be013d107995e9b75bf4e7f2c3ef2dfdb2c8e68024bba0a7fd5756a4"
       url: "https://pub.dev"
     source: hosted
-    version: "6.6.1"
+    version: "7.0.1"
   yaml:
     dependency: transitive
     description:
