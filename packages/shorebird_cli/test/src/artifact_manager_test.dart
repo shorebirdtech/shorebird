@@ -668,6 +668,8 @@ void main() {
 
       test('falls back to the stripped dir when the aab is not a valid '
           'zip', () async {
+        // ZipDecoder yields an empty archive for unrecognized input rather
+        // than throwing, so this exercises the no-entries fallback.
         final stripped = strippedOutLib()..createSync(recursive: true);
         final invalidAab = File(p.join(projectRoot.path, 'invalid.aab'))
           ..createSync(recursive: true)
@@ -682,6 +684,45 @@ void main() {
 
         expect(result, isNotNull);
         expect(result!.path, equals(stripped.path));
+        verify(
+          () => logger.detail(
+            any(that: contains('No libapp.so entries found')),
+          ),
+        ).called(1);
+      });
+
+      test('falls back to the stripped dir when the aab is '
+          'corrupt', () async {
+        final stripped = strippedOutLib()..createSync(recursive: true);
+        // A structurally valid zip whose libapp.so entry has a payload that
+        // cannot be decompressed: extraction throws when the entry is read.
+        const entryName = 'base/lib/arm64-v8a/libapp.so';
+        final bytes = ZipEncoder().encode(
+          Archive()..addFile(ArchiveFile.string(entryName, 'a' * 4096)),
+        );
+        // Corrupt the deflate stream that follows the 30-byte local file
+        // header and entry name.
+        for (var i = 30 + entryName.length; i < 38 + entryName.length; i++) {
+          bytes[i] = 0xff;
+        }
+        final corruptAab = File(p.join(projectRoot.path, 'corrupt.aab'))
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(bytes);
+
+        final result = await runWithOverrides(
+          () => ArtifactManager.androidArchsDirectoryFromAab(
+            projectRoot: projectRoot,
+            aab: corruptAab,
+          ),
+        );
+
+        expect(result, isNotNull);
+        expect(result!.path, equals(stripped.path));
+        verify(
+          () => logger.detail(
+            any(that: contains('Failed to extract libapp.so')),
+          ),
+        ).called(1);
       });
 
       test('falls back to the stripped dir when the aab contains no '
