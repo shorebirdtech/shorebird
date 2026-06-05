@@ -4,6 +4,14 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch
  -->
 
+## 1.6.107 (June 5, 2026)
+
+- 🐛 Fix arm64 FFI callback crashers affecting async and isolate-group-bound
+  callbacks (follow-up to the 1.6.105 FFI fixes).
+- 🐛 Android: read `libapp.so` from the `.aab` instead of the Gradle strip task
+  output.
+- 🐛 Fix a potential `gen_snapshot` crash.
+
 ## 1.6.106 (June 1, 2026)
 
 - 🐦 Flutter 3.44.1 / Dart 3.12.1 support
