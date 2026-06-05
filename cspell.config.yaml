@@ -74,6 +74,7 @@ words:
   - LOCALAPPDATA
   - logcat
   - longpaths
+  - lookback # active-hours "best time to release" lookback window
   - lproj
   - madd # From ./packages/redis_client
   - mbps
