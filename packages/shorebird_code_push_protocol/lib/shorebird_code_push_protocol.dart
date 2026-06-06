@@ -35,6 +35,7 @@ export 'package:shorebird_code_push_protocol/src/messages/get_release/get_releas
 export 'package:shorebird_code_push_protocol/src/messages/get_release_artifacts/get_release_artifacts_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_release_patches/get_release_patches_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_releases/get_releases_response.dart';
+export 'package:shorebird_code_push_protocol/src/messages/get_unique_users/get_unique_users_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_version_distribution/get_version_distribution_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/patch_check/patch_check_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/patch_check/patch_check_response.dart';
@@ -48,6 +49,8 @@ export 'package:shorebird_code_push_protocol/src/models/app_collaborator_role.da
 export 'package:shorebird_code_push_protocol/src/models/app_metadata.dart';
 export 'package:shorebird_code_push_protocol/src/models/channel.dart';
 export 'package:shorebird_code_push_protocol/src/models/get_patch_adoption_parameter3.dart';
+export 'package:shorebird_code_push_protocol/src/models/get_unique_users_parameter2.dart';
+export 'package:shorebird_code_push_protocol/src/models/get_unique_users_parameter3.dart';
 export 'package:shorebird_code_push_protocol/src/models/latest_release.dart';
 export 'package:shorebird_code_push_protocol/src/models/organization.dart';
 export 'package:shorebird_code_push_protocol/src/models/organization_membership.dart';
@@ -69,6 +72,9 @@ export 'package:shorebird_code_push_protocol/src/models/release_patch.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 export 'package:shorebird_code_push_protocol/src/models/role.dart';
+export 'package:shorebird_code_push_protocol/src/models/unique_users_breakdown_entry.dart';
+export 'package:shorebird_code_push_protocol/src/models/unique_users_range.dart';
+export 'package:shorebird_code_push_protocol/src/models/unique_users_time_series_entry.dart';
 export 'package:shorebird_code_push_protocol/src/models/version_distribution_entry.dart';
 
 /// Parsed JSON data.
