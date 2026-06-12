@@ -4,6 +4,17 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch
  -->
 
+## 1.6.108 (June 12, 2026)
+
+- 🐦 Flutter 3.44.2 / Dart 3.12.2 support
+  - Swift Package Manager: fix remote package dependencies sometimes failing
+    to download when building iOS or macOS apps, and silence spurious SwiftPM
+    warnings on non-Apple builds.
+  - Android: fix system bars unexpectedly staying invisible when switching to
+    edge-to-edge mode.
+  - The `flutter` tool now exits gracefully instead of crashing when the
+    widget-preview DTD connection is lost or fails at startup.
+
 ## 1.6.107 (June 5, 2026)
 
 - 🐛 Fix arm64 FFI callback crashers affecting async and isolate-group-bound
