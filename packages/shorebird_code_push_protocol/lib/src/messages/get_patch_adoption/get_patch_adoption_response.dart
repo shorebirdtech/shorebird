@@ -1,7 +1,7 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/metrics_range.dart';
 import 'package:shorebird_code_push_protocol/src/models/patch_adoption_entry.dart';
-import 'package:shorebird_code_push_protocol/src/models/patch_adoption_range.dart';
 
 /// {@template get_patch_adoption_response}
 /// The response body for GET /apps/{appId}/metrics/patch-adoption. Covers
@@ -28,9 +28,7 @@ class GetPatchAdoptionResponse {
         releaseVersion: json['release_version'] as String,
         isLatest: json['is_latest'] as bool,
         granularity: checkedKey(json, 'granularity') as String?,
-        range: PatchAdoptionRange.fromJson(
-          json['range'] as Map<String, dynamic>,
-        ),
+        range: MetricsRange.fromJson(json['range'] as Map<String, dynamic>),
         asOf: DateTime.parse(json['as_of'] as String),
         patches: (json['patches'] as List)
             .map<PatchAdoptionEntry>(
@@ -61,8 +59,11 @@ class GetPatchAdoptionResponse {
   /// when each patch carries a single full-window value.
   final String? granularity;
 
-  /// The effective (post-clamp) window the response covers.
-  final PatchAdoptionRange range;
+  /// The effective (post-default, post-clamp) window a metrics response —
+  /// or one window of a metrics envelope — covers. Always echoed by the
+  /// server; clients must treat it as authoritative rather than reusing
+  /// the requested range.
+  final MetricsRange range;
 
   /// Server's UTC timestamp at the moment the response was
   /// constructed. Not a freshness indicator for the underlying

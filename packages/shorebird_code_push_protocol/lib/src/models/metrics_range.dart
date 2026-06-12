@@ -1,23 +1,26 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
 
-/// {@template patch_adoption_range}
-/// The effective (post-clamp) window the response covers.
+/// {@template metrics_range}
+/// The effective (post-default, post-clamp) window a metrics response —
+/// or one window of a metrics envelope — covers. Always echoed by the
+/// server; clients must treat it as authoritative rather than reusing
+/// the requested range.
 /// {@endtemplate}
 @immutable
-class PatchAdoptionRange {
-  /// {@macro patch_adoption_range}
-  const PatchAdoptionRange({
+class MetricsRange {
+  /// {@macro metrics_range}
+  const MetricsRange({
     required this.start,
     required this.end,
   });
 
-  /// Converts a `Map<String, dynamic>` to a [PatchAdoptionRange].
-  factory PatchAdoptionRange.fromJson(Map<String, dynamic> json) {
+  /// Converts a `Map<String, dynamic>` to a [MetricsRange].
+  factory MetricsRange.fromJson(Map<String, dynamic> json) {
     return parseFromJson(
-      'PatchAdoptionRange',
+      'MetricsRange',
       json,
-      () => PatchAdoptionRange(
+      () => MetricsRange(
         start: DateTime.parse(json['start'] as String),
         end: DateTime.parse(json['end'] as String),
       ),
@@ -26,11 +29,11 @@ class PatchAdoptionRange {
 
   /// Convenience to create a nullable type from a nullable json object.
   /// Useful when parsing optional fields.
-  static PatchAdoptionRange? maybeFromJson(Map<String, dynamic>? json) {
+  static MetricsRange? maybeFromJson(Map<String, dynamic>? json) {
     if (json == null) {
       return null;
     }
-    return PatchAdoptionRange.fromJson(json);
+    return MetricsRange.fromJson(json);
   }
 
   /// Window start (UTC, inclusive).
@@ -39,7 +42,7 @@ class PatchAdoptionRange {
   /// Window end (UTC, exclusive).
   final DateTime end;
 
-  /// Converts a [PatchAdoptionRange] to a `Map<String, dynamic>`.
+  /// Converts a [MetricsRange] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
       'start': start.toIso8601String(),
@@ -56,8 +59,6 @@ class PatchAdoptionRange {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is PatchAdoptionRange &&
-        start == other.start &&
-        end == other.end;
+    return other is MetricsRange && start == other.start && end == other.end;
   }
 }
