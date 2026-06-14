@@ -6,8 +6,11 @@ import 'package:shorebird_code_push_protocol/src/models/unique_users_window.dart
 /// {@template get_unique_users_response}
 /// The response body for GET /apps/{appId}/metrics/unique-users: a
 /// current/previous envelope. `previous` covers the equal-length window
-/// immediately preceding `current` and is always computed; period-over-
-/// period deltas are client display logic over the two totals.
+/// immediately preceding `current`; period-over-period deltas are client
+/// display logic over the two totals. `previous` is omitted when the
+/// prior window would reach past the plan's metrics-history horizon or
+/// before the data floor — clients then render `current` alone, with no
+/// delta and no prior-window overlay.
 /// {@endtemplate}
 @immutable
 class GetUniqueUsersResponse {
@@ -16,7 +19,7 @@ class GetUniqueUsersResponse {
     required this.asOf,
     required this.granularity,
     required this.current,
-    required this.previous,
+    this.previous,
   });
 
   /// Converts a `Map<String, dynamic>` to a [GetUniqueUsersResponse].
@@ -30,8 +33,8 @@ class GetUniqueUsersResponse {
         current: UniqueUsersCurrentWindow.fromJson(
           json['current'] as Map<String, dynamic>,
         ),
-        previous: UniqueUsersWindow.fromJson(
-          json['previous'] as Map<String, dynamic>,
+        previous: UniqueUsersWindow.maybeFromJson(
+          json['previous'] as Map<String, dynamic>?,
         ),
       ),
     );
@@ -66,7 +69,7 @@ class GetUniqueUsersResponse {
   /// the window's effective range, with a per-bucket series when a
   /// `granularity` was requested. This base atom is the full shape of
   /// `previous`; `current` extends it (see UniqueUsersCurrentWindow).
-  final UniqueUsersWindow previous;
+  final UniqueUsersWindow? previous;
 
   /// Converts a [GetUniqueUsersResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
@@ -74,7 +77,7 @@ class GetUniqueUsersResponse {
       'as_of': asOf.toIso8601String(),
       'granularity': granularity,
       'current': current.toJson(),
-      'previous': previous.toJson(),
+      'previous': previous?.toJson(),
     };
   }
 

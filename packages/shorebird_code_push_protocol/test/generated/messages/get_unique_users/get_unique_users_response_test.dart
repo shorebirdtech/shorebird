@@ -15,13 +15,6 @@ void main() {
             end: DateTime.utc(2024),
           ),
         ),
-        previous: UniqueUsersWindow(
-          uniqueUsers: 0,
-          range: MetricsRange(
-            start: DateTime.utc(2024),
-            end: DateTime.utc(2024),
-          ),
-        ),
       );
       final parsed = GetUniqueUsersResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));

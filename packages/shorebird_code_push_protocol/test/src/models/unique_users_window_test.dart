@@ -109,7 +109,23 @@ void main() {
       expect(parsed, equals(response));
       expect(parsed.current.timeSeries, isNull);
       expect(parsed.current.breakdown, isNull);
-      expect(parsed.previous.timeSeries, isNull);
+      expect(parsed.previous!.timeSeries, isNull);
+    });
+
+    test('round-trips an envelope with previous omitted (dropped)', () {
+      // `previous` is dropped when the prior window would reach past the plan
+      // horizon or before the data floor; the envelope then carries `current`
+      // alone and `previous` is null on the wire and after a round-trip.
+      final response = GetUniqueUsersResponse(
+        asOf: DateTime.utc(2026, 5, 20, 17, 30),
+        granularity: null,
+        current: UniqueUsersCurrentWindow(uniqueUsers: 42, range: range),
+      );
+      final json = response.toJson();
+      expect(json['previous'], isNull);
+      final parsed = GetUniqueUsersResponse.fromJson(json);
+      expect(parsed, equals(response));
+      expect(parsed.previous, isNull);
     });
   });
 }
