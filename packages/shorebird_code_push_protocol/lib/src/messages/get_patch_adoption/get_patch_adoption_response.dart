@@ -55,7 +55,7 @@ class GetPatchAdoptionResponse {
   /// creation date" default (no `release_version` was supplied).
   final bool isLatest;
 
-  /// The bucket resolution (`hour`, `day`, `week`, or `month`), or null
+  /// The bucket resolution (`hour`, `day`, or `week`), or null
   /// when each patch carries a single full-window value.
   final String? granularity;
 

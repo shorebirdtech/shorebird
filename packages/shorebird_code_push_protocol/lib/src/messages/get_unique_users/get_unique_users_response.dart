@@ -7,10 +7,12 @@ import 'package:shorebird_code_push_protocol/src/models/unique_users_window.dart
 /// The response body for GET /apps/{appId}/metrics/unique-users: a
 /// current/previous envelope. `previous` covers the equal-length window
 /// immediately preceding `current`; period-over-period deltas are client
-/// display logic over the two totals. `previous` is omitted when the
-/// prior window would reach past the plan's metrics-history horizon or
-/// before the data floor — clients then render `current` alone, with no
-/// delta and no prior-window overlay.
+/// display logic over the two totals. `previous` is omitted only when the
+/// prior window predates the data floor (no comparison data exists). When
+/// it reaches past the plan's metrics-history horizon, `previous` is still
+/// present with its total — the delta renders — but without a `time_series`
+/// (no prior-window overlay): granular history is the resolution the
+/// horizon gates, the scalar comparison is not.
 /// {@endtemplate}
 @immutable
 class GetUniqueUsersResponse {

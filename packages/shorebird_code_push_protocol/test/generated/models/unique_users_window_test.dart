@@ -12,7 +12,7 @@ void main() {
           end: DateTime.utc(2024),
         ),
       );
-      final parsed = UniqueUsersWindow.maybeFromJson(instance.toJson());
+      final parsed = UniqueUsersWindow.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

@@ -58,8 +58,11 @@ class UniqueUsersWindow {
   final MetricsRange range;
 
   /// Per-bucket series for this window, present only when a
-  /// `granularity` was requested; otherwise null. Empty buckets are
-  /// omitted — gap-fill against this window's `range`.
+  /// `granularity` was requested; otherwise null. On `previous`, also
+  /// null when the prior window reaches past the plan's metrics-history
+  /// horizon (the total is still present — only the granular overlay is
+  /// withheld). Empty buckets are omitted — gap-fill against this
+  /// window's `range`.
   final List<UniqueUsersTimeSeriesEntry>? timeSeries;
 
   /// Converts a [UniqueUsersWindow] to a `Map<String, dynamic>`.

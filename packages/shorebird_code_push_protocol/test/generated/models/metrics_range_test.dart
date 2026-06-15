@@ -9,7 +9,7 @@ void main() {
         start: DateTime.utc(2024),
         end: DateTime.utc(2024),
       );
-      final parsed = MetricsRange.maybeFromJson(instance.toJson());
+      final parsed = MetricsRange.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
