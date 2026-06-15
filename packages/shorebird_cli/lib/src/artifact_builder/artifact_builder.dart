@@ -11,6 +11,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
+import 'package:shorebird_cli/src/artifact_builder/legacy_flutter_jar.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -115,6 +116,22 @@ fails when using the same flutter version, please file an issue:
 ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
 ''';
 
+  /// The fix recommendation for a failed Android build.
+  ///
+  /// Prepends a targeted hint to [runVanillaFlutterBuildRecommendation] when a
+  /// plugin in the project still references the legacy `flutter.jar` artifact
+  /// (see [LegacyFlutterJarReference]), which is the most common cause of an
+  /// Android build that succeeds under `flutter build` but fails under
+  /// `shorebird release`.
+  String _androidBuildFixRecommendation(String buildCommand) {
+    final vanilla = runVanillaFlutterBuildRecommendation(buildCommand);
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
+    if (projectRoot == null) return vanilla;
+    final offenders = LegacyFlutterJarReference.findInProject(projectRoot);
+    if (offenders.isEmpty) return vanilla;
+    return '${LegacyFlutterJarReference.recommendation(offenders)}\n$vanilla';
+  }
+
   /// Cache of `flutter build <command>` help output checks for
   /// `--shorebird-trace` support. Populated lazily by
   /// [_supportsTraceFlag].
@@ -197,7 +214,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
 Failed to build AAB.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
+          fixRecommendation: _androidBuildFixRecommendation(
             [executable, ...arguments].join(' '),
           ),
         );
@@ -273,7 +290,7 @@ Reason: Exited with code $exitCode.''',
 Failed to build APK.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
+          fixRecommendation: _androidBuildFixRecommendation(
             [executable, ...arguments].join(' '),
           ),
         );
@@ -341,7 +358,7 @@ Reason: Exited with code $exitCode.''',
 Failed to build AAR.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
+          fixRecommendation: _androidBuildFixRecommendation(
             [executable, ...arguments].join(' '),
           ),
         );
