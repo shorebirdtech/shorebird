@@ -112,14 +112,15 @@ void main() {
       expect(parsed.previous!.timeSeries, isNull);
     });
 
-    test('round-trips an envelope with previous omitted (dropped)', () {
-      // `previous` is dropped when the prior window would reach past the plan
-      // horizon or before the data floor; the envelope then carries `current`
-      // alone and `previous` is null on the wire and after a round-trip.
+    test('round-trips an envelope with previous null', () {
+      // `previous` is always present but null when the prior window predates
+      // the data floor (no comparison data); the key is still emitted, so it
+      // is null on the wire and after a round-trip.
       final response = GetUniqueUsersResponse(
         asOf: DateTime.utc(2026, 5, 20, 17, 30),
         granularity: null,
         current: UniqueUsersCurrentWindow(uniqueUsers: 42, range: range),
+        previous: null,
       );
       final json = response.toJson();
       expect(json['previous'], isNull);
