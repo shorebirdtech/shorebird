@@ -52,6 +52,7 @@ export 'package:shorebird_code_push_protocol/src/models/get_patch_adoption_param
 export 'package:shorebird_code_push_protocol/src/models/get_unique_users_parameter2.dart';
 export 'package:shorebird_code_push_protocol/src/models/get_unique_users_parameter3.dart';
 export 'package:shorebird_code_push_protocol/src/models/latest_release.dart';
+export 'package:shorebird_code_push_protocol/src/models/metrics_range.dart';
 export 'package:shorebird_code_push_protocol/src/models/organization.dart';
 export 'package:shorebird_code_push_protocol/src/models/organization_membership.dart';
 export 'package:shorebird_code_push_protocol/src/models/organization_type.dart';
@@ -59,7 +60,6 @@ export 'package:shorebird_code_push_protocol/src/models/organization_user.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_adoption_entry.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_adoption_point.dart';
-export 'package:shorebird_code_push_protocol/src/models/patch_adoption_range.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_artifact.dart';
 export 'package:shorebird_code_push_protocol/src/models/patch_check_metadata.dart';
 export 'package:shorebird_code_push_protocol/src/models/pending_release.dart';
@@ -73,8 +73,9 @@ export 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 export 'package:shorebird_code_push_protocol/src/models/role.dart';
 export 'package:shorebird_code_push_protocol/src/models/unique_users_breakdown_entry.dart';
-export 'package:shorebird_code_push_protocol/src/models/unique_users_range.dart';
+export 'package:shorebird_code_push_protocol/src/models/unique_users_current_window.dart';
 export 'package:shorebird_code_push_protocol/src/models/unique_users_time_series_entry.dart';
+export 'package:shorebird_code_push_protocol/src/models/unique_users_window.dart';
 export 'package:shorebird_code_push_protocol/src/models/version_distribution_entry.dart';
 
 /// Parsed JSON data.
