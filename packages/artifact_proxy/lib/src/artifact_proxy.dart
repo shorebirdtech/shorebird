@@ -29,8 +29,7 @@ https://github.com/shorebirdtech/shorebird/tree/main/packages/artifact_proxy</a>
 </p>
 <p>
 If you're seeing problems with your Shorebird install, or are interested in
-replicating this proxy, please reach out to us over Discord.
-<a href='https://shorebird.dev/contact'>https://shorebird.dev/contact</a>
+replicating this proxy, please reach out to us over <a href='https://discord.com/invite/shorebird'>Discord</a>.
 </p>
 </body>
 </html>
