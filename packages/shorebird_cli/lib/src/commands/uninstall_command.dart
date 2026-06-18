@@ -42,9 +42,9 @@ class UninstallCommand extends ShorebirdCommand {
         // Remove from PATH on Windows
         final path = platform.environment['Path'] ?? '';
         final newPath = path
-            .split(Platform.pathSeparator)
+            .split(';')
             .where((pathSegment) => !pathSegment.contains(r'.shorebird\bin'))
-            .join(Platform.pathSeparator);
+            .join(';');
 
         await process.run('powershell.exe', [
           '-Command',

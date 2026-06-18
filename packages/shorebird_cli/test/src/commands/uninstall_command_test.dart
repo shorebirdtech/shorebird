@@ -15,6 +15,10 @@ import 'package:test/test.dart';
 import '../mocks.dart';
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(ProcessStartMode.normal);
+  });
+
   group('uninstall', () {
     late ShorebirdLogger logger;
     late Progress progress;
