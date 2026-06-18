@@ -27,7 +27,9 @@ class UninstallCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
-    final confirm = logger.confirm('Are you sure you want to uninstall Shorebird?');
+    final confirm = logger.confirm(
+      'Are you sure you want to uninstall Shorebird?',
+    );
     if (!confirm) {
       logger.info('Aborting.');
       return ExitCode.success.code;
@@ -43,7 +45,7 @@ class UninstallCommand extends ShorebirdCommand {
             .split(Platform.pathSeparator)
             .where((pathSegment) => !pathSegment.contains(r'.shorebird\bin'))
             .join(Platform.pathSeparator);
-        
+
         await process.run('powershell.exe', [
           '-Command',
           '[Environment]::SetEnvironmentVariable("Path", "$newPath", "User")',
@@ -55,7 +57,7 @@ class UninstallCommand extends ShorebirdCommand {
           'powershell.exe',
           [
             '-Command',
-            'Start-Sleep -Seconds 1; Remove-Item -Recurse -Force "${shorebirdEnv.shorebirdRoot.path}"'
+            'Start-Sleep -Seconds 1; Remove-Item -Recurse -Force "${shorebirdEnv.shorebirdRoot.path}"',
           ],
           mode: ProcessStartMode.detached,
         );
@@ -73,7 +75,9 @@ class UninstallCommand extends ShorebirdCommand {
           for (final file in rcFiles) {
             if (file.existsSync()) {
               final lines = file.readAsLinesSync();
-              final newLines = lines.where((line) => !line.contains('.shorebird/bin')).toList();
+              final newLines = lines
+                  .where((line) => !line.contains('.shorebird/bin'))
+                  .toList();
               if (lines.length != newLines.length) {
                 file.writeAsStringSync('${newLines.join('\n')}\n');
               }
@@ -90,8 +94,10 @@ class UninstallCommand extends ShorebirdCommand {
     }
 
     progress.complete('Shorebird has been uninstalled.');
-    logger.info('Please restart your terminal for the PATH changes to take effect.');
-    
+    logger.info(
+      'Please restart your terminal for the PATH changes to take effect.',
+    );
+
     return ExitCode.success.code;
   }
 }
