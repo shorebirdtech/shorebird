@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 
 /// {@template uninstall_command}
 /// `shorebird uninstall`
@@ -43,14 +44,14 @@ class UninstallCommand extends ShorebirdCommand {
             .where((pathSegment) => !pathSegment.contains(r'.shorebird\bin'))
             .join(Platform.pathSeparator);
         
-        await Process.run('powershell.exe', [
+        await process.run('powershell.exe', [
           '-Command',
           '[Environment]::SetEnvironmentVariable("Path", "$newPath", "User")',
         ]);
 
         // We use a detached process to delete the shorebird directory because
         // the current process is running from within the directory.
-        await Process.start(
+        await process.start(
           'powershell.exe',
           [
             '-Command',
