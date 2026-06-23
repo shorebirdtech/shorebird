@@ -65,7 +65,7 @@ jobs:
           dart test --coverage=coverage && \
           dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info --report-on=lib --check-ignore
       - if: inputs.has_unit_tests
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           flags: ${{ inputs.package_name }}
           working-directory: ${{ inputs.package_path }}
