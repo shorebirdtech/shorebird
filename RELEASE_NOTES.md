@@ -4,6 +4,18 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch
  -->
 
+## 1.6.109 (June 22, 2026)
+
+- 🐦 Flutter 3.44.3 / Dart 3.12.2 support
+  - Fix a potential buffer overflow in the animated PNG decoder when parsing
+    malformed fdAT chunks.
+  - Swift Package Manager: fix crashes from concurrent directory/file/symlink
+    creation when building iOS or macOS apps.
+  - Impeller (OpenGL ES): fix a texture resource leak by ensuring the
+    TextureGLES destructor releases all objects it holds, including its sync
+    fence.
+  - Print a trace when skipping flavor-specific and platform-specific assets.
+
 ## 1.6.108 (June 12, 2026)
 
 - 🐦 Flutter 3.44.2 / Dart 3.12.2 support

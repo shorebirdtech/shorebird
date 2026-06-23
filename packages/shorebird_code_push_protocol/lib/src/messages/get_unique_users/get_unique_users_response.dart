@@ -1,22 +1,27 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
-import 'package:shorebird_code_push_protocol/src/models/unique_users_breakdown_entry.dart';
-import 'package:shorebird_code_push_protocol/src/models/unique_users_range.dart';
-import 'package:shorebird_code_push_protocol/src/models/unique_users_time_series_entry.dart';
+import 'package:shorebird_code_push_protocol/src/models/unique_users_current_window.dart';
+import 'package:shorebird_code_push_protocol/src/models/unique_users_window.dart';
 
 /// {@template get_unique_users_response}
-/// The response body for GET /apps/{appId}/metrics/unique-users.
+/// The response body for GET /apps/{appId}/metrics/unique-users: a
+/// current/previous envelope. `previous` covers the equal-length window
+/// immediately preceding `current`; period-over-period deltas are client
+/// display logic over the two totals. `previous` is always present but is
+/// null when the prior window predates the data floor (no comparison data
+/// exists). When it reaches past the plan's metrics-history horizon,
+/// `previous` is non-null with its total — the delta renders — but without
+/// a `time_series` (no prior-window overlay): granular history is the
+/// resolution the horizon gates, the scalar comparison is not.
 /// {@endtemplate}
 @immutable
 class GetUniqueUsersResponse {
   /// {@macro get_unique_users_response}
   const GetUniqueUsersResponse({
-    required this.uniqueUsers,
-    required this.granularity,
-    required this.range,
     required this.asOf,
-    this.timeSeries,
-    this.breakdown,
+    required this.granularity,
+    required this.current,
+    required this.previous,
   });
 
   /// Converts a `Map<String, dynamic>` to a [GetUniqueUsersResponse].
@@ -25,23 +30,14 @@ class GetUniqueUsersResponse {
       'GetUniqueUsersResponse',
       json,
       () => GetUniqueUsersResponse(
-        uniqueUsers: json['unique_users'] as int,
-        granularity: checkedKey(json, 'granularity') as String?,
-        range: UniqueUsersRange.fromJson(json['range'] as Map<String, dynamic>),
         asOf: DateTime.parse(json['as_of'] as String),
-        timeSeries: (json['time_series'] as List?)
-            ?.map<UniqueUsersTimeSeriesEntry>(
-              (e) => UniqueUsersTimeSeriesEntry.fromJson(
-                e as Map<String, dynamic>,
-              ),
-            )
-            .toList(),
-        breakdown: (json['breakdown'] as List?)
-            ?.map<UniqueUsersBreakdownEntry>(
-              (e) =>
-                  UniqueUsersBreakdownEntry.fromJson(e as Map<String, dynamic>),
-            )
-            .toList(),
+        granularity: checkedKey(json, 'granularity') as String?,
+        current: UniqueUsersCurrentWindow.fromJson(
+          json['current'] as Map<String, dynamic>,
+        ),
+        previous: UniqueUsersWindow.maybeFromJson(
+          checkedKey(json, 'previous') as Map<String, dynamic>?,
+        ),
       ),
     );
   }
@@ -55,60 +51,53 @@ class GetUniqueUsersResponse {
     return GetUniqueUsersResponse.fromJson(json);
   }
 
-  /// Distinct active devices over the whole window (an HLL count).
-  final int uniqueUsers;
-
-  /// The time-series bucket resolution (`hour`, `day`, `week`, or
-  /// `month`), or null when no time series was requested.
-  final String? granularity;
-
-  /// The window the unique-users response covers.
-  final UniqueUsersRange range;
-
   /// Server's UTC timestamp at the moment the response was constructed.
   /// Not a freshness indicator for the underlying data, which is
   /// refreshed by an hourly scheduled query and may lag by up to ~1 hour.
   final DateTime asOf;
 
-  /// The top-level time series, present only when a `granularity` was
-  /// requested; otherwise null.
-  final List<UniqueUsersTimeSeriesEntry>? timeSeries;
+  /// The time-series bucket resolution (`hour`, `day`, or `week`), or
+  /// null when no time series was requested. Applies to both windows.
+  final String? granularity;
 
-  /// Per-group unique users, present only when a `group_by` was
-  /// requested; otherwise null.
-  final List<UniqueUsersBreakdownEntry>? breakdown;
+  /// The `current` window of the unique-users envelope: the base window
+  /// atom plus the optional `breakdown`. Only `current` carries a
+  /// breakdown — no chart renders a previous-window breakdown, so the
+  /// asymmetry is declared in the contract rather than left as an
+  /// optional-but-never-populated field.
+  final UniqueUsersCurrentWindow current;
+
+  /// One window of the unique-users envelope: the HLL-merged total over
+  /// the window's effective range, with a per-bucket series when a
+  /// `granularity` was requested. This base atom is the full shape of
+  /// `previous`; `current` extends it (see UniqueUsersCurrentWindow).
+  final UniqueUsersWindow? previous;
 
   /// Converts a [GetUniqueUsersResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
-      'unique_users': uniqueUsers,
-      'granularity': granularity,
-      'range': range.toJson(),
       'as_of': asOf.toIso8601String(),
-      'time_series': timeSeries?.map((e) => e.toJson()).toList(),
-      'breakdown': breakdown?.map((e) => e.toJson()).toList(),
+      'granularity': granularity,
+      'current': current.toJson(),
+      'previous': previous?.toJson(),
     };
   }
 
   @override
   int get hashCode => Object.hashAll([
-    uniqueUsers,
-    granularity,
-    range,
     asOf,
-    listHash(timeSeries),
-    listHash(breakdown),
+    granularity,
+    current,
+    previous,
   ]);
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is GetUniqueUsersResponse &&
-        uniqueUsers == other.uniqueUsers &&
-        granularity == other.granularity &&
-        range == other.range &&
         asOf == other.asOf &&
-        listsEqual(timeSeries, other.timeSeries) &&
-        listsEqual(breakdown, other.breakdown);
+        granularity == other.granularity &&
+        current == other.current &&
+        previous == other.previous;
   }
 }
