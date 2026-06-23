@@ -3,27 +3,26 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('UniqueUsersBreakdownEntry', () {
+  group('PatchMetricTimeSeriesEntry', () {
     test('round-trips via maybeFromJson/toJson', () {
-      const instance = UniqueUsersBreakdownEntry(
-        groupBy: 'example',
-        groupValue: 'example',
-        uniqueUsers: 0,
+      final instance = PatchMetricTimeSeriesEntry(
+        period: DateTime.utc(2024),
+        count: 0,
       );
-      final parsed = UniqueUsersBreakdownEntry.maybeFromJson(
+      final parsed = PatchMetricTimeSeriesEntry.maybeFromJson(
         instance.toJson(),
-      )!;
+      );
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });
 
     test('maybeFromJson returns null on null input', () {
-      expect(UniqueUsersBreakdownEntry.maybeFromJson(null), isNull);
+      expect(PatchMetricTimeSeriesEntry.maybeFromJson(null), isNull);
     });
 
     test('maybeFromJson throws FormatException on invalid input', () {
       expect(
-        () => UniqueUsersBreakdownEntry.maybeFromJson(<String, dynamic>{}),
+        () => PatchMetricTimeSeriesEntry.maybeFromJson(<String, dynamic>{}),
         throwsFormatException,
       );
     });

@@ -1,8 +1,7 @@
 enum GetPatchAdoptionParameter3 {
   hour._('hour'),
   day._('day'),
-  week._('week'),
-  month._('month');
+  week._('week');
 
   const GetPatchAdoptionParameter3._(this.value);
 
