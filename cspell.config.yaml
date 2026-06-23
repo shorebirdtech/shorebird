@@ -50,6 +50,7 @@ words:
   - FLUSHALL
   - genhtml
   - genkey # From .github/workflows/e2e.yaml
+  - GLES
   - gradlew
   - hotreload
   - idevicesyslog
