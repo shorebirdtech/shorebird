@@ -8,7 +8,7 @@ environment:
   sdk: ">=3.9.0 <4.0.0"
 
 dependencies:
-  meta: ^1.16.0
+  meta: ^1.18.3
 
 dev_dependencies:
   path: ^1.9.1
