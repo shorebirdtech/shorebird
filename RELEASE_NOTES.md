@@ -4,6 +4,11 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES
  -->
 
+## 1.6.110 (June 25, 2026)
+
+- 🐦 Flutter 3.44.4 / Dart 3.12.2 support
+  - Linux: fix bounds checking in `FlAccessibleTextField`.
+
 ## 1.6.109 (June 22, 2026)
 
 - 🐦 Flutter 3.44.3 / Dart 3.12.2 support
