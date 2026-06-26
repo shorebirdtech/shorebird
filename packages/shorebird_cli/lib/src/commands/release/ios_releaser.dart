@@ -129,6 +129,22 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
       throw ProcessExit(ExitCode.software.code);
     }
 
+    // When code signing is requested (the default), `flutter build ipa` is
+    // expected to export a signed .ipa. Flutter treats the export step as
+    // optional and exits 0 even when it fails (e.g. no signing certificate),
+    // so we must verify the .ipa was actually produced. Otherwise we would
+    // report a successful release and point the user at an .ipa that does not
+    // exist. See https://github.com/shorebirdtech/shorebird/issues/3807.
+    if (codesign && artifactManager.getIpa() == null) {
+      logger.err(
+        '''
+Unable to find generated IPA. This usually means that the IPA export step of "flutter build ipa" failed (for example, due to a missing or invalid code signing certificate). Review the build output above for the underlying error.
+
+If you do not need a signed IPA (for example, you will sign the .xcarchive in Xcode), re-run this command with --no-codesign.''',
+      );
+      throw ProcessExit(ExitCode.software.code);
+    }
+
     return xcarchiveDirectory;
   }
 

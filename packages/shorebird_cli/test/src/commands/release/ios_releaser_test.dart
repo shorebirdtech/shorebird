@@ -423,6 +423,9 @@ $body
         when(
           () => artifactManager.getXcarchiveDirectory(),
         ).thenReturn(xcarchiveDirectory);
+        when(
+          () => artifactManager.getIpa(),
+        ).thenReturn(File(p.join(Directory.systemTemp.path, 'app.ipa')));
 
         when(
           () => codeSigner.base64PublicKeyFromPem(any()),
@@ -657,6 +660,42 @@ $body
           );
 
           verify(() => logger.err('Unable to find .app directory')).called(1);
+        });
+      });
+
+      group('when codesigning and ipa not found after build', () {
+        setUp(() {
+          when(() => argResults['codesign']).thenReturn(true);
+          when(() => artifactManager.getIpa()).thenReturn(null);
+        });
+
+        test('logs message and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => logger.err(
+              any(that: contains('Unable to find generated IPA')),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when not codesigning and ipa not found after build', () {
+        setUp(() {
+          when(() => argResults['codesign']).thenReturn(false);
+          when(() => artifactManager.getIpa()).thenReturn(null);
+        });
+
+        test('does not check for the ipa and returns xcarchive path', () async {
+          expect(
+            await runWithOverrides(iosReleaser.buildReleaseArtifacts),
+            equals(xcarchiveDirectory),
+          );
+
+          verifyNever(() => artifactManager.getIpa());
         });
       });
 
