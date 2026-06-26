@@ -103,6 +103,9 @@ class CodePushClient {
   /// The default error message to use when an unknown error occurs.
   static const unknownErrorMessage = 'An unknown error occurred.';
 
+  /// The status GCS returns ("Resume Incomplete") between resumable chunks.
+  static const _resumeIncompleteStatus = 308;
+
   final http.Client _httpClient;
 
   /// The hosted uri for the Shorebird CodePush API.
@@ -245,10 +248,7 @@ class CodePushClient {
       ..files.add(multipartFile);
     final uploadResponse = await _httpClient.send(uploadRequest);
     if (!uploadResponse.isSuccess) {
-      throw CodePushException(
-        message:
-            '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
-      );
+      throw _uploadFailed(uploadResponse);
     }
   }
 
@@ -262,8 +262,6 @@ class CodePushClient {
   }) async {
     // GCS requires chunk sizes to be a multiple of 256 KiB (except the last).
     const chunkSize = 8 * 1024 * 1024;
-    // GCS returns 308 "Resume Incomplete" between chunks.
-    const resumeIncomplete = 308;
     const maxConsecutiveFailures = 5;
 
     final file = File(artifactPath);
@@ -295,14 +293,11 @@ class CodePushClient {
         await response.stream.drain<void>();
 
         if (status == HttpStatus.ok || status == HttpStatus.created) return;
-        if (status == resumeIncomplete) {
+        if (status == _resumeIncompleteStatus) {
           failures = 0;
           offset = _parseRangeEnd(response.headers['range']) ?? end;
         } else {
-          throw CodePushException(
-            message:
-                '''Failed to upload artifact (${response.reasonPhrase} $status)''',
-          );
+          throw _uploadFailed(response);
         }
       }
     } finally {
@@ -313,20 +308,17 @@ class CodePushClient {
   /// Queries a resumable [sessionUri] for the number of bytes GCS has received
   /// so far, returning the offset to resume from.
   Future<int> _queryResumeOffset(Uri sessionUri, int total) async {
-    const resumeIncomplete = 308;
     final response = await _httpClient.send(
-      http.Request('PUT', sessionUri)..headers['content-range'] = 'bytes */$total',
+      http.Request('PUT', sessionUri)
+        ..headers['content-range'] = 'bytes */$total',
     );
     final status = response.statusCode;
     await response.stream.drain<void>();
     if (status == HttpStatus.ok || status == HttpStatus.created) return total;
-    if (status == resumeIncomplete) {
+    if (status == _resumeIncompleteStatus) {
       return _parseRangeEnd(response.headers['range']) ?? 0;
     }
-    throw CodePushException(
-      message:
-          '''Failed to upload artifact (${response.reasonPhrase} $status)''',
-    );
+    throw _uploadFailed(response);
   }
 
   /// Parses the next byte offset from a GCS `Range: bytes=0-X` header,
@@ -337,6 +329,14 @@ class CodePushClient {
     if (dash == -1) return null;
     final last = int.tryParse(range.substring(dash + 1));
     return last == null ? null : last + 1;
+  }
+
+  /// The exception thrown when an artifact upload request fails.
+  CodePushException _uploadFailed(http.BaseResponse response) {
+    final reason = response.reasonPhrase;
+    return CodePushException(
+      message: 'Failed to upload artifact ($reason ${response.statusCode})',
+    );
   }
 
   /// Create a new app with the provided [displayName].
