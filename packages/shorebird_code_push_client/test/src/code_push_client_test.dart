@@ -456,6 +456,62 @@ void main() {
           ),
         );
       });
+
+      test('uploads via a resumable session when the server '
+          'selects resumable', () async {
+        const artifactId = 42;
+        const sessionUrl = 'https://storage.googleapis.com/session?upload_id=a';
+        final responses = [
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  const CreatePatchArtifactResponse(
+                    id: artifactId,
+                    patchId: patchId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: sessionUrl,
+                    uploadMethod: ArtifactUploadMethod.resumable,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+          http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        ];
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'patch.txt'))
+          ..writeAsBytesSync([1, 2, 3, 4, 5]);
+
+        await expectLater(
+          codePushClient.createPatchArtifact(
+            appId: appId,
+            artifactPath: fixture.path,
+            patchId: patchId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          completes,
+        );
+
+        final requests = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
+        expect(requests, hasLength(2));
+        final uploadRequest = requests.last;
+        expect(uploadRequest.method, equals('PUT'));
+        expect(uploadRequest.url, equals(Uri.parse(sessionUrl)));
+        expect(uploadRequest.headers['content-range'], equals('bytes 0-4/5'));
+      });
     });
 
     group('createReleaseArtifact', () {
@@ -802,6 +858,64 @@ void main() {
             path: '/api/v1/apps/$appId/releases/$releaseId/artifacts',
           ),
         );
+      });
+
+      test('uploads via a resumable session when the server '
+          'selects resumable', () async {
+        const artifactId = 42;
+        const sessionUrl = 'https://storage.googleapis.com/session?upload_id=a';
+        final responses = [
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  const CreateReleaseArtifactResponse(
+                    id: artifactId,
+                    releaseId: releaseId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: sessionUrl,
+                    uploadMethod: ArtifactUploadMethod.resumable,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+          http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        ];
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..writeAsBytesSync([1, 2, 3, 4, 5]);
+
+        await expectLater(
+          codePushClient.createReleaseArtifact(
+            appId: appId,
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+            canSideload: canSideload,
+            podfileLockHash: podfileLockHash,
+          ),
+          completes,
+        );
+
+        final requests = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
+        expect(requests, hasLength(2));
+        final uploadRequest = requests.last;
+        expect(uploadRequest.method, equals('PUT'));
+        expect(uploadRequest.url, equals(Uri.parse(sessionUrl)));
+        expect(uploadRequest.headers['content-range'], equals('bytes 0-4/5'));
       });
     });
 

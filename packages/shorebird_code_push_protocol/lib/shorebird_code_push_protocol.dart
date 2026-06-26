@@ -48,6 +48,7 @@ export 'package:shorebird_code_push_protocol/src/models/active_hour_entry.dart';
 export 'package:shorebird_code_push_protocol/src/models/app.dart';
 export 'package:shorebird_code_push_protocol/src/models/app_collaborator_role.dart';
 export 'package:shorebird_code_push_protocol/src/models/app_metadata.dart';
+export 'package:shorebird_code_push_protocol/src/models/artifact_upload_method.dart';
 export 'package:shorebird_code_push_protocol/src/models/channel.dart';
 export 'package:shorebird_code_push_protocol/src/models/get_app_patch_downloads_parameter2.dart';
 export 'package:shorebird_code_push_protocol/src/models/get_app_patch_downloads_parameter3.dart';
