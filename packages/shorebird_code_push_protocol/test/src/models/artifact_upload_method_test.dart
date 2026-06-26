@@ -19,5 +19,10 @@ void main() {
         throwsFormatException,
       );
     });
+
+    test('toString returns the wire value', () {
+      expect(ArtifactUploadMethod.multipart.toString(), 'multipart');
+      expect(ArtifactUploadMethod.resumable.toString(), 'resumable');
+    });
   });
 }
