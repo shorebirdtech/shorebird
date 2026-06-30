@@ -47,6 +47,8 @@ void main() {
       codePushClient = CodePushClient(
         httpClient: httpClient,
         customHeaders: customHeaders,
+        // Disable backoff delays so retry paths run instantly under test.
+        uploadRetryBaseDelay: Duration.zero,
       );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
@@ -456,6 +458,62 @@ void main() {
           ),
         );
       });
+
+      test('uploads via a resumable session when the server '
+          'selects resumable', () async {
+        const artifactId = 42;
+        const sessionUrl = 'https://storage.googleapis.com/session?upload_id=a';
+        final responses = [
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  const CreatePatchArtifactResponse(
+                    id: artifactId,
+                    patchId: patchId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: sessionUrl,
+                    uploadMethod: ArtifactUploadMethod.resumable,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+          http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        ];
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'patch.txt'))
+          ..writeAsBytesSync([1, 2, 3, 4, 5]);
+
+        await expectLater(
+          codePushClient.createPatchArtifact(
+            appId: appId,
+            artifactPath: fixture.path,
+            patchId: patchId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          completes,
+        );
+
+        final requests = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
+        expect(requests, hasLength(2));
+        final uploadRequest = requests.last;
+        expect(uploadRequest.method, equals('PUT'));
+        expect(uploadRequest.url, equals(Uri.parse(sessionUrl)));
+        expect(uploadRequest.headers['content-range'], equals('bytes 0-4/5'));
+      });
     });
 
     group('createReleaseArtifact', () {
@@ -802,6 +860,314 @@ void main() {
             path: '/api/v1/apps/$appId/releases/$releaseId/artifacts',
           ),
         );
+      });
+
+      test('uploads via a resumable session when the server '
+          'selects resumable', () async {
+        const artifactId = 42;
+        const sessionUrl = 'https://storage.googleapis.com/session?upload_id=a';
+        final responses = [
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  const CreateReleaseArtifactResponse(
+                    id: artifactId,
+                    releaseId: releaseId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: sessionUrl,
+                    uploadMethod: ArtifactUploadMethod.resumable,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+          http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        ];
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..writeAsBytesSync([1, 2, 3, 4, 5]);
+
+        await expectLater(
+          codePushClient.createReleaseArtifact(
+            appId: appId,
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+            canSideload: canSideload,
+            podfileLockHash: podfileLockHash,
+          ),
+          completes,
+        );
+
+        final requests = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
+        expect(requests, hasLength(2));
+        final uploadRequest = requests.last;
+        expect(uploadRequest.method, equals('PUT'));
+        expect(uploadRequest.url, equals(Uri.parse(sessionUrl)));
+        expect(uploadRequest.headers['content-range'], equals('bytes 0-4/5'));
+      });
+
+      group('resumable upload driver', () {
+        const sessionUrl = 'https://storage.googleapis.com/session?id=abc';
+
+        http.StreamedResponse resumableMeta() => http.StreamedResponse(
+          Stream.value(
+            utf8.encode(
+              json.encode(
+                const CreateReleaseArtifactResponse(
+                  id: 42,
+                  releaseId: releaseId,
+                  arch: arch,
+                  platform: platform,
+                  hash: hash,
+                  size: size,
+                  url: sessionUrl,
+                  uploadMethod: ArtifactUploadMethod.resumable,
+                ),
+              ),
+            ),
+          ),
+          HttpStatus.ok,
+        );
+
+        String fiveByteFixture() {
+          final dir = Directory.systemTemp.createTempSync();
+          return (File(
+            path.join(dir.path, 'release.txt'),
+          )..writeAsBytesSync([1, 2, 3, 4, 5])).path;
+        }
+
+        void stubActions(
+          List<Future<http.StreamedResponse> Function()> actions,
+        ) {
+          when(
+            () => httpClient.send(any()),
+          ).thenAnswer((_) => actions.removeAt(0)());
+        }
+
+        Future<void> upload(String artifactPath) =>
+            codePushClient.createReleaseArtifact(
+              appId: appId,
+              artifactPath: artifactPath,
+              releaseId: releaseId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+              canSideload: canSideload,
+              podfileLockHash: null,
+            );
+
+        List<http.BaseRequest> capturedPuts() =>
+            verify(
+                  () => httpClient.send(captureAny()),
+                ).captured
+                .cast<http.BaseRequest>()
+                .where((r) => r.method == 'PUT')
+                .toList();
+
+        test('continues to the next chunk on a 308 response', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              308,
+              headers: const {'range': 'bytes=0-2'},
+            ),
+            () async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+          ]);
+
+          await expectLater(upload(fiveByteFixture()), completes);
+
+          final puts = capturedPuts();
+          expect(puts, hasLength(2));
+          expect(puts[0].headers['content-range'], 'bytes 0-4/5');
+          expect(puts[1].headers['content-range'], 'bytes 3-4/5');
+        });
+
+        test('throws when a chunk returns an error status', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.badRequest,
+            ),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                contains('Failed to upload artifact'),
+              ),
+            ),
+          );
+        });
+
+        test(
+          'queries the offset and resumes after a network failure',
+          () async {
+            stubActions([
+              () async => resumableMeta(),
+              () async => throw http.ClientException('connection reset'),
+              () async => http.StreamedResponse(
+                const Stream.empty(),
+                308,
+                headers: const {'range': 'bytes=0-1'},
+              ),
+              () async =>
+                  http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+            ]);
+
+            await expectLater(upload(fiveByteFixture()), completes);
+
+            final puts = capturedPuts();
+            // failed chunk, status query, resumed chunk from offset 2.
+            expect(puts, hasLength(3));
+            expect(puts[1].headers['content-range'], 'bytes */5');
+            expect(puts[2].headers['content-range'], 'bytes 2-4/5');
+          },
+        );
+
+        test('throws when the status query returns an error', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => throw http.ClientException('connection reset'),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.badRequest,
+            ),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
+        });
+
+        test('restarts from the beginning on a 308 with no range', () async {
+          stubActions([
+            () async => resumableMeta(),
+            // 308 without a `range` header: GCS stored nothing, restart at 0.
+            () async => http.StreamedResponse(const Stream.empty(), 308),
+            () async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+          ]);
+
+          await expectLater(upload(fiveByteFixture()), completes);
+
+          final puts = capturedPuts();
+          expect(puts, hasLength(2));
+          expect(puts[0].headers['content-range'], 'bytes 0-4/5');
+          // Restarts from offset 0 rather than advancing.
+          expect(puts[1].headers['content-range'], 'bytes 0-4/5');
+        });
+
+        test('throws when a 308 never makes forward progress', () async {
+          // A session stuck at offset 0 keeps returning a 308 with no range;
+          // the upload must give up rather than spin forever.
+          stubActions([
+            () async => resumableMeta(),
+            for (var i = 0; i < 6; i++)
+              () async => http.StreamedResponse(const Stream.empty(), 308),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
+        });
+
+        test('queries the offset and resumes after a 5xx', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.serviceUnavailable,
+            ),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              308,
+              headers: const {'range': 'bytes=0-1'},
+            ),
+            () async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+          ]);
+
+          await expectLater(upload(fiveByteFixture()), completes);
+
+          final puts = capturedPuts();
+          // failed chunk, status query, resumed chunk from offset 2.
+          expect(puts, hasLength(3));
+          expect(puts[0].headers['content-range'], 'bytes 0-4/5');
+          expect(puts[1].headers['content-range'], 'bytes */5');
+          expect(puts[2].headers['content-range'], 'bytes 2-4/5');
+        });
+
+        test('throws when a 5xx persists through the status query', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.serviceUnavailable,
+            ),
+            // The status query also fails, so we surface the error.
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.serviceUnavailable,
+            ),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
+        });
+
+        test('throws after exhausting retries on repeated 5xx', () async {
+          // Each chunk PUT fails with a 5xx while the status query reports no
+          // forward progress, so failures accumulate until we give up.
+          final actions = <Future<http.StreamedResponse> Function()>[
+            () async => resumableMeta(),
+          ];
+          for (var i = 0; i < 6; i++) {
+            actions
+              ..add(
+                () async => http.StreamedResponse(
+                  const Stream.empty(),
+                  HttpStatus.serviceUnavailable,
+                ),
+              )
+              ..add(
+                () async => http.StreamedResponse(
+                  const Stream.empty(),
+                  308,
+                  headers: const {'range': 'bytes=0-1'},
+                ),
+              );
+          }
+          stubActions(actions);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
+        });
       });
     });
 
