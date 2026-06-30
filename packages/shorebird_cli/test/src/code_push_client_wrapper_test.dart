@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -1670,6 +1671,46 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ).called(3);
             verify(() => progress.complete()).called(1);
             verifyNever(() => progress.fail(any()));
+          },
+        );
+
+        test(
+          'fails with an accurate message when the aab has no libapp.so',
+          () async {
+            // A real aab that packages a native lib but no libapp.so, as
+            // happens when a custom Gradle build drops the Dart library before
+            // bundling (https://github.com/shorebirdtech/shorebird/issues/3813).
+            final archive = Archive()
+              ..addFile(
+                ArchiveFile.string('base/lib/arm64-v8a/libflutter.so', 'so'),
+              );
+            final aab = File(p.join(projectRoot.path, 'no_libapp.aab'))
+              ..createSync(recursive: true)
+              ..writeAsBytesSync(ZipEncoder().encode(archive));
+
+            await expectLater(
+              () async => runWithOverrides(
+                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: aab.path,
+                  architectures: Arch.values,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => progress.fail(
+                any(
+                  that: contains(
+                    'does not contain libapp.so for any architecture',
+                  ),
+                ),
+              ),
+            ).called(1);
           },
         );
       });
