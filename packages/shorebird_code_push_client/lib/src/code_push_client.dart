@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_client/src/version.dart';
@@ -91,6 +92,7 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
     Map<String, String>? customHeaders,
+    @visibleForTesting
     Duration uploadRetryBaseDelay = const Duration(seconds: 1),
   }) : _httpClient = _CodePushHttpClient(httpClient ?? http.Client(), {
          ...standardHeaders,
