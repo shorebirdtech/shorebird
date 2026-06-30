@@ -1095,12 +1095,17 @@ void main() {
           );
         });
 
-        test('backs off and retries the same chunk after a 5xx', () async {
+        test('queries the offset and resumes after a 5xx', () async {
           stubActions([
             () async => resumableMeta(),
             () async => http.StreamedResponse(
               const Stream.empty(),
               HttpStatus.serviceUnavailable,
+            ),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              308,
+              headers: const {'range': 'bytes=0-1'},
             ),
             () async =>
                 http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
@@ -1109,21 +1114,56 @@ void main() {
           await expectLater(upload(fiveByteFixture()), completes);
 
           final puts = capturedPuts();
-          // failed chunk, then the same chunk retried.
-          expect(puts, hasLength(2));
+          // failed chunk, status query, resumed chunk from offset 2.
+          expect(puts, hasLength(3));
           expect(puts[0].headers['content-range'], 'bytes 0-4/5');
-          expect(puts[1].headers['content-range'], 'bytes 0-4/5');
+          expect(puts[1].headers['content-range'], 'bytes */5');
+          expect(puts[2].headers['content-range'], 'bytes 2-4/5');
+        });
+
+        test('throws when a 5xx persists through the status query', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.serviceUnavailable,
+            ),
+            // The status query also fails, so we surface the error.
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.serviceUnavailable,
+            ),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
         });
 
         test('throws after exhausting retries on repeated 5xx', () async {
-          stubActions([
+          // Each chunk PUT fails with a 5xx while the status query reports no
+          // forward progress, so failures accumulate until we give up.
+          final actions = <Future<http.StreamedResponse> Function()>[
             () async => resumableMeta(),
-            for (var i = 0; i < 6; i++)
-              () async => http.StreamedResponse(
-                const Stream.empty(),
-                HttpStatus.serviceUnavailable,
-              ),
-          ]);
+          ];
+          for (var i = 0; i < 6; i++) {
+            actions
+              ..add(
+                () async => http.StreamedResponse(
+                  const Stream.empty(),
+                  HttpStatus.serviceUnavailable,
+                ),
+              )
+              ..add(
+                () async => http.StreamedResponse(
+                  const Stream.empty(),
+                  308,
+                  headers: const {'range': 'bytes=0-1'},
+                ),
+              );
+          }
+          stubActions(actions);
 
           await expectLater(
             upload(fiveByteFixture()),

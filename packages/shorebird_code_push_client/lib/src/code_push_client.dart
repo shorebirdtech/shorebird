@@ -321,11 +321,12 @@ class CodePushClient {
           }
           offset = next;
         } else if (status >= HttpStatus.internalServerError) {
-          // Transient server error (5xx): back off and retry the same chunk
-          // rather than failing the whole upload. Re-PUTting the same
-          // `Content-Range` is safe because GCS is idempotent on the range.
+          // Transient server error (5xx): recover the same way as a mid-chunk
+          // network failure — back off, then resume from where GCS left off
+          // rather than re-sending bytes it has already persisted.
           if (++failures > _maxUploadFailures) throw _uploadFailed(response);
           await _backoff(failures);
+          offset = await _queryResumeOffset(sessionUri, total);
         } else {
           throw _uploadFailed(response);
         }
