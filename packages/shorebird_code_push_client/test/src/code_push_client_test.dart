@@ -47,6 +47,8 @@ void main() {
       codePushClient = CodePushClient(
         httpClient: httpClient,
         customHeaders: customHeaders,
+        // Disable backoff delays so retry paths run instantly under test.
+        uploadRetryBaseDelay: Duration.zero,
       );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
@@ -1050,6 +1052,77 @@ void main() {
               const Stream.empty(),
               HttpStatus.badRequest,
             ),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
+        });
+
+        test('restarts from the beginning on a 308 with no range', () async {
+          stubActions([
+            () async => resumableMeta(),
+            // 308 without a `range` header: GCS stored nothing, restart at 0.
+            () async =>
+                http.StreamedResponse(const Stream.empty(), 308),
+            () async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+          ]);
+
+          await expectLater(upload(fiveByteFixture()), completes);
+
+          final puts = capturedPuts();
+          expect(puts, hasLength(2));
+          expect(puts[0].headers['content-range'], 'bytes 0-4/5');
+          // Restarts from offset 0 rather than advancing.
+          expect(puts[1].headers['content-range'], 'bytes 0-4/5');
+        });
+
+        test('throws when a 308 never makes forward progress', () async {
+          // A session stuck at offset 0 keeps returning a 308 with no range;
+          // the upload must give up rather than spin forever.
+          stubActions([
+            () async => resumableMeta(),
+            for (var i = 0; i < 6; i++)
+              () async =>
+                  http.StreamedResponse(const Stream.empty(), 308),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
+        });
+
+        test('backs off and retries the same chunk after a 5xx', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.serviceUnavailable,
+            ),
+            () async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+          ]);
+
+          await expectLater(upload(fiveByteFixture()), completes);
+
+          final puts = capturedPuts();
+          // failed chunk, then the same chunk retried.
+          expect(puts, hasLength(2));
+          expect(puts[0].headers['content-range'], 'bytes 0-4/5');
+          expect(puts[1].headers['content-range'], 'bytes 0-4/5');
+        });
+
+        test('throws after exhausting retries on repeated 5xx', () async {
+          stubActions([
+            () async => resumableMeta(),
+            for (var i = 0; i < 6; i++)
+              () async => http.StreamedResponse(
+                const Stream.empty(),
+                HttpStatus.serviceUnavailable,
+              ),
           ]);
 
           await expectLater(

@@ -91,10 +91,12 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
     Map<String, String>? customHeaders,
+    Duration uploadRetryBaseDelay = const Duration(seconds: 1),
   }) : _httpClient = _CodePushHttpClient(httpClient ?? http.Client(), {
          ...standardHeaders,
          ...?customHeaders,
        }),
+       _uploadRetryBaseDelay = uploadRetryBaseDelay,
        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
@@ -106,7 +108,15 @@ class CodePushClient {
   /// The status GCS returns ("Resume Incomplete") between resumable chunks.
   static const _resumeIncompleteStatus = 308;
 
+  /// The maximum number of consecutive failures tolerated while uploading a
+  /// single resumable session before the upload is abandoned.
+  static const _maxUploadFailures = 5;
+
   final http.Client _httpClient;
+
+  /// The base delay for exponential backoff between resumable upload retries.
+  /// Doubles with each consecutive failure.
+  final Duration _uploadRetryBaseDelay;
 
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
@@ -262,7 +272,6 @@ class CodePushClient {
   }) async {
     // GCS requires chunk sizes to be a multiple of 256 KiB (except the last).
     const chunkSize = 8 * 1024 * 1024;
-    const maxConsecutiveFailures = 5;
 
     final file = File(artifactPath);
     final total = await file.length();
@@ -283,8 +292,10 @@ class CodePushClient {
               ..headers['content-range'] = 'bytes $offset-${end - 1}/$total',
           );
         } on Exception {
-          // Network failure mid-chunk: ask GCS how far it got and resume.
-          if (++failures > maxConsecutiveFailures) rethrow;
+          // Network failure mid-chunk: back off, ask GCS how far it got, and
+          // resume from there.
+          if (++failures > _maxUploadFailures) rethrow;
+          await _backoff(failures);
           offset = await _queryResumeOffset(sessionUri, total);
           continue;
         }
@@ -293,9 +304,28 @@ class CodePushClient {
         await response.stream.drain<void>();
 
         if (status == HttpStatus.ok || status == HttpStatus.created) return;
+
         if (status == _resumeIncompleteStatus) {
-          failures = 0;
-          offset = _parseRangeEnd(response.headers['range']) ?? end;
+          // A 308 reports GCS's stored byte count in the `range` header. Its
+          // absence means GCS has no bytes yet, so we must restart from 0
+          // (per the resumable upload status-check docs). Treat a lack of
+          // forward progress as a failure so a stuck session can't spin
+          // forever.
+          final next = _parseRangeEnd(response.headers['range']) ?? 0;
+          if (next > offset) {
+            failures = 0;
+          } else if (++failures > _maxUploadFailures) {
+            throw _uploadFailed(response);
+          } else {
+            await _backoff(failures);
+          }
+          offset = next;
+        } else if (status >= HttpStatus.internalServerError) {
+          // Transient server error (5xx): back off and retry the same chunk
+          // rather than failing the whole upload. Re-PUTting the same
+          // `Content-Range` is safe because GCS is idempotent on the range.
+          if (++failures > _maxUploadFailures) throw _uploadFailed(response);
+          await _backoff(failures);
         } else {
           throw _uploadFailed(response);
         }
@@ -304,6 +334,11 @@ class CodePushClient {
       await raf.close();
     }
   }
+
+  /// Waits with exponential backoff before retrying a resumable upload,
+  /// doubling [_uploadRetryBaseDelay] with each consecutive [failures].
+  Future<void> _backoff(int failures) =>
+      Future<void>.delayed(_uploadRetryBaseDelay * (1 << (failures - 1)));
 
   /// Queries a resumable [sessionUri] for the number of bytes GCS has received
   /// so far, returning the offset to resume from.
