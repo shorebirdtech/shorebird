@@ -102,9 +102,11 @@ class CodePushClient {
        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
+  @visibleForTesting
   static const standardHeaders = <String, String>{'x-version': packageVersion};
 
   /// The default error message to use when an unknown error occurs.
+  @visibleForTesting
   static const unknownErrorMessage = 'An unknown error occurred.';
 
   /// The status GCS returns ("Resume Incomplete") between resumable chunks.
