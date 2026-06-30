@@ -15,6 +15,7 @@ class ReleasePatch {
     required this.isRolledBack,
     this.channel,
     this.notes,
+    this.clientPatchId,
   });
 
   /// Converts a `Map<String, dynamic>` to a [ReleasePatch].
@@ -33,6 +34,7 @@ class ReleasePatch {
             .toList(),
         isRolledBack: json['is_rolled_back'] as bool,
         notes: json['notes'] as String?,
+        clientPatchId: json['client_patch_id'] as String?,
       ),
     );
   }
@@ -64,6 +66,11 @@ class ReleasePatch {
   /// Freeform notes associated with the patch, if any.
   final String? notes;
 
+  /// The client-supplied correlation key, if one was provided when the
+  /// patch was created. See `CreatePatchRequest.client_patch_id`. Null
+  /// for patches predating unified patch numbering.
+  final String? clientPatchId;
+
   /// Converts a [ReleasePatch] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -73,6 +80,7 @@ class ReleasePatch {
       'artifacts': artifacts.map((e) => e.toJson()).toList(),
       'is_rolled_back': isRolledBack,
       'notes': notes,
+      'client_patch_id': clientPatchId,
     };
   }
 
@@ -84,6 +92,7 @@ class ReleasePatch {
     listHash(artifacts),
     isRolledBack,
     notes,
+    clientPatchId,
   ]);
 
   @override
@@ -95,6 +104,7 @@ class ReleasePatch {
         channel == other.channel &&
         listsEqual(artifacts, other.artifacts) &&
         isRolledBack == other.isRolledBack &&
-        notes == other.notes;
+        notes == other.notes &&
+        clientPatchId == other.clientPatchId;
   }
 }

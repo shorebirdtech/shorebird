@@ -206,6 +206,8 @@ void main() {
         const metadata = <String, String>{};
         const artifacts = <Arch, PatchArtifactBundle>{};
         const track = DeploymentTrack.stable;
+        const clientPatchId = 'abc123';
+        const publishedPatch = CreatePatchResponse(id: 7, number: 3);
         final codePushClientWrapper = MockCodePushClientWrapper();
         when(
           () => codePushClientWrapper.publishPatch(
@@ -215,18 +217,18 @@ void main() {
             platform: any(named: 'platform'),
             track: any(named: 'track'),
             patchArtifactBundles: any(named: 'patchArtifactBundles'),
+            clientPatchId: any(named: 'clientPatchId'),
           ),
-        ).thenAnswer((_) async {});
-        await runScoped(
-          () async {
-            await patcher.uploadPatchArtifacts(
-              appId: appId,
-              releaseId: releaseId,
-              metadata: metadata,
-              artifacts: artifacts,
-              track: track,
-            );
-          },
+        ).thenAnswer((_) async => publishedPatch);
+        final returnedPatch = await runScoped(
+          () => patcher.uploadPatchArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            metadata: metadata,
+            artifacts: artifacts,
+            track: track,
+            clientPatchId: clientPatchId,
+          ),
           values: {
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
           },
@@ -239,8 +241,10 @@ void main() {
             platform: ReleaseType.android.releasePlatform,
             track: track,
             patchArtifactBundles: artifacts,
+            clientPatchId: clientPatchId,
           ),
         ).called(1);
+        expect(returnedPatch, equals(publishedPatch));
       });
     });
 

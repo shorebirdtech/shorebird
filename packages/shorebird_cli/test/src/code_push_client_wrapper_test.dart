@@ -112,7 +112,7 @@ void main() {
     final channel = Channel(id: 0, appId: appId, name: track.channel);
     const patchId = 1;
     const patchNumber = 2;
-    const patch = Patch(id: patchId, number: patchNumber);
+    const patch = CreatePatchResponse(id: patchId, number: patchNumber);
     const releasePlatform = ReleasePlatform.ios;
     const releaseId = 123;
     const arch = Arch.arm64;
@@ -2739,6 +2739,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
               metadata: any(named: 'metadata'),
+              clientPatchId: any(named: 'clientPatchId'),
             ),
           ).thenAnswer((_) async => patch);
           when(
@@ -2754,6 +2755,12 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           when(
             () => codePushClient.getChannels(appId: any(named: 'appId')),
           ).thenAnswer((_) async => [channel]);
+          when(
+            () => codePushClient.getPatches(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+            ),
+          ).thenAnswer((_) async => []);
           when(
             () => codePushClient.promotePatch(
               appId: any(named: 'appId'),
@@ -2864,8 +2871,8 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ).called(1);
         });
 
-        test('prints patch number on success', () async {
-          await runWithOverrides(
+        test('returns the patch from the server', () async {
+          final result = await runWithOverrides(
             () => codePushClientWrapper.publishPatch(
               appId: appId,
               releaseId: releaseId,
@@ -2876,10 +2883,313 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ),
           );
 
-          verify(
-            () => logger.success(any(that: contains('Published Patch 2!'))),
-          ).called(1);
+          expect(result, equals(patch));
+          // The aggregated success message is now emitted by patch_command;
+          // publishPatch itself no longer logs.
+          verifyNever(
+            () => logger.success(any(that: contains('Published Patch'))),
+          );
         });
+
+        test(
+          'forwards clientPatchId to enable cross-platform idempotency',
+          () async {
+            const clientPatchId = 'sha-abcdef';
+            await runWithOverrides(
+              () => codePushClientWrapper.publishPatch(
+                appId: appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                track: track,
+                patchArtifactBundles: patchArtifactBundles,
+                metadata: {'foo': 'bar'},
+                clientPatchId: clientPatchId,
+              ),
+            );
+
+            verify(
+              () => codePushClient.createPatch(
+                appId: appId,
+                releaseId: releaseId,
+                metadata: {'foo': 'bar'},
+                clientPatchId: clientPatchId,
+              ),
+            ).called(1);
+          },
+        );
+
+        // Append-after-promotion: idempotent createPatch returned an existing
+        // patch that's already on the stable channel, so uploading this
+        // platform's artifacts goes live to stable users immediately. The
+        // server reports the current channel inline on CreatePatchResponse,
+        // so the CLI doesn't need a second round-trip to detect this.
+        group('when appending to a patch already promoted to stable', () {
+          const promotedPatch = CreatePatchResponse(
+            id: patchId,
+            number: patchNumber,
+            channel: 'stable',
+          );
+
+          setUp(() {
+            when(
+              () => codePushClient.createPatch(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                metadata: any(named: 'metadata'),
+                clientPatchId: any(named: 'clientPatchId'),
+              ),
+            ).thenAnswer((_) async => promotedPatch);
+          });
+
+          test(
+            'prompts and proceeds when the user confirms in a TTY',
+            () async {
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+              when(() => logger.confirm(any())).thenReturn(true);
+
+              await runWithOverrides(
+                () => codePushClientWrapper.publishPatch(
+                  appId: appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  track: track,
+                  patchArtifactBundles: patchArtifactBundles,
+                  metadata: {'foo': 'bar'},
+                  clientPatchId: 'sha-abcdef',
+                ),
+              );
+
+              verify(
+                () => logger.warn(
+                  any(that: contains('already promoted to the stable track')),
+                ),
+              ).called(1);
+              verify(() => logger.confirm(any())).called(1);
+              verify(
+                () => codePushClient.createPatchArtifact(
+                  appId: appId,
+                  artifactPath: any(named: 'artifactPath'),
+                  patchId: patchId,
+                  arch: any(named: 'arch'),
+                  platform: any(named: 'platform'),
+                  hash: any(named: 'hash'),
+                ),
+              ).called(1);
+            },
+          );
+
+          test(
+            'aborts before uploading artifacts when the user declines',
+            () async {
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+              when(() => logger.confirm(any())).thenReturn(false);
+
+              await expectLater(
+                () async => runWithOverrides(
+                  () => codePushClientWrapper.publishPatch(
+                    appId: appId,
+                    releaseId: releaseId,
+                    platform: releasePlatform,
+                    track: track,
+                    patchArtifactBundles: patchArtifactBundles,
+                    metadata: {'foo': 'bar'},
+                    clientPatchId: 'sha-abcdef',
+                  ),
+                ),
+                exitsWithCode(ExitCode.success),
+              );
+
+              verifyNever(
+                () => codePushClient.createPatchArtifact(
+                  appId: any(named: 'appId'),
+                  artifactPath: any(named: 'artifactPath'),
+                  patchId: any(named: 'patchId'),
+                  arch: any(named: 'arch'),
+                  platform: any(named: 'platform'),
+                  hash: any(named: 'hash'),
+                ),
+              );
+              verifyNever(
+                () => codePushClient.promotePatch(
+                  appId: any(named: 'appId'),
+                  patchId: any(named: 'patchId'),
+                  channelId: any(named: 'channelId'),
+                ),
+              );
+            },
+          );
+
+          test(
+            'proceeds silently in CI without prompting',
+            () async {
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+
+              await runWithOverrides(
+                () => codePushClientWrapper.publishPatch(
+                  appId: appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  track: track,
+                  patchArtifactBundles: patchArtifactBundles,
+                  metadata: {'foo': 'bar'},
+                  clientPatchId: 'sha-abcdef',
+                ),
+              );
+
+              verifyNever(() => logger.confirm(any()));
+              verify(
+                () => logger.info(
+                  any(that: contains('already promoted to the stable track')),
+                ),
+              ).called(1);
+              verify(
+                () => codePushClient.createPatchArtifact(
+                  appId: appId,
+                  artifactPath: any(named: 'artifactPath'),
+                  patchId: patchId,
+                  arch: any(named: 'arch'),
+                  platform: any(named: 'platform'),
+                  hash: any(named: 'hash'),
+                ),
+              ).called(1);
+            },
+          );
+
+          // Single-invocation `--platforms ios,android`: the first platform
+          // promotes the patch to stable; the second platform's call sees
+          // it as "already promoted" but we shouldn't prompt — the user
+          // opted into both platforms in one command.
+          test(
+            'does not prompt on the second platform of the same run',
+            () async {
+              // First call: fresh patch, no channel populated yet.
+              when(
+                () => codePushClient.createPatch(
+                  appId: any(named: 'appId'),
+                  releaseId: any(named: 'releaseId'),
+                  metadata: any(named: 'metadata'),
+                  clientPatchId: any(named: 'clientPatchId'),
+                ),
+              ).thenAnswer((_) async => patch);
+              when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+
+              await runWithOverrides(
+                () => codePushClientWrapper.publishPatch(
+                  appId: appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  track: track,
+                  patchArtifactBundles: patchArtifactBundles,
+                  metadata: {'foo': 'bar'},
+                  clientPatchId: 'sha-abcdef',
+                ),
+              );
+
+              // Second call: idempotent hit, server reports the patch is
+              // already on stable (because the first call promoted it).
+              when(
+                () => codePushClient.createPatch(
+                  appId: any(named: 'appId'),
+                  releaseId: any(named: 'releaseId'),
+                  metadata: any(named: 'metadata'),
+                  clientPatchId: any(named: 'clientPatchId'),
+                ),
+              ).thenAnswer((_) async => promotedPatch);
+
+              await runWithOverrides(
+                () => codePushClientWrapper.publishPatch(
+                  appId: appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  track: track,
+                  patchArtifactBundles: patchArtifactBundles,
+                  metadata: {'foo': 'bar'},
+                  clientPatchId: 'sha-abcdef',
+                ),
+              );
+
+              verifyNever(() => logger.confirm(any()));
+              verifyNever(
+                () => logger.warn(
+                  any(
+                    that: contains('already promoted to the stable track'),
+                  ),
+                ),
+              );
+              verifyNever(
+                () => logger.info(
+                  any(
+                    that: contains('already promoted to the stable track'),
+                  ),
+                ),
+              );
+            },
+          );
+        });
+
+        test(
+          '''does not prompt when the existing patch is on a non-stable track''',
+          () async {
+            when(
+              () => codePushClient.createPatch(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                metadata: any(named: 'metadata'),
+                clientPatchId: any(named: 'clientPatchId'),
+              ),
+            ).thenAnswer(
+              (_) async => const CreatePatchResponse(
+                id: patchId,
+                number: patchNumber,
+                channel: 'staging',
+              ),
+            );
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+
+            await runWithOverrides(
+              () => codePushClientWrapper.publishPatch(
+                appId: appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                track: track,
+                patchArtifactBundles: patchArtifactBundles,
+                metadata: {'foo': 'bar'},
+                clientPatchId: 'sha-abcdef',
+              ),
+            );
+
+            verifyNever(() => logger.confirm(any()));
+          },
+        );
+
+        // Older servers that don't populate `channel` on the response leave
+        // the field null — append-after-promotion stays allowed per the
+        // design and the courtesy prompt simply doesn't fire.
+        test(
+          'does not prompt when the server omits the channel field',
+          () async {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+
+            await runWithOverrides(
+              () => codePushClientWrapper.publishPatch(
+                appId: appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                track: track,
+                patchArtifactBundles: patchArtifactBundles,
+                metadata: {'foo': 'bar'},
+                clientPatchId: 'sha-abcdef',
+              ),
+            );
+
+            verifyNever(() => logger.confirm(any()));
+            verifyNever(
+              () => logger.warn(
+                any(that: contains('already promoted to the stable track')),
+              ),
+            );
+          },
+        );
       });
     });
 

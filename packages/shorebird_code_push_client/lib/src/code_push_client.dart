@@ -420,14 +420,27 @@ class CodePushClient {
   }
 
   /// Create a new patch for the given [releaseId].
-  Future<Patch> createPatch({
+  ///
+  /// When [clientPatchId] is supplied and a patch on this release already
+  /// has that id, the server returns the existing patch — letting two
+  /// invocations across platforms share one patch number. The returned
+  /// [CreatePatchResponse] echoes [clientPatchId] back so callers can
+  /// verify the correlation.
+  Future<CreatePatchResponse> createPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
+    String? clientPatchId,
   }) async {
+    // Coerce empty to null. A caller that passes an unexpanded template
+    // variable or empty flag would otherwise land on the idempotent path
+    // keyed on `''` and inherit a stranger's patch.
+    final normalizedClientPatchId =
+        (clientPatchId == null || clientPatchId.isEmpty) ? null : clientPatchId;
     final request = CreatePatchRequest(
       releaseId: releaseId,
       metadata: metadata,
+      clientPatchId: normalizedClientPatchId,
     );
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches'),
@@ -439,7 +452,7 @@ class CodePushClient {
     }
 
     final body = json.decode(response.body) as Map<String, dynamic>;
-    return Patch.fromJson(body);
+    return CreatePatchResponse.fromJson(body);
   }
 
   /// Create a new release for the app with the provided [appId].
