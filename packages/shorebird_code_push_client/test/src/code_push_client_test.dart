@@ -1064,8 +1064,7 @@ void main() {
           stubActions([
             () async => resumableMeta(),
             // 308 without a `range` header: GCS stored nothing, restart at 0.
-            () async =>
-                http.StreamedResponse(const Stream.empty(), 308),
+            () async => http.StreamedResponse(const Stream.empty(), 308),
             () async =>
                 http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
           ]);
@@ -1085,8 +1084,7 @@ void main() {
           stubActions([
             () async => resumableMeta(),
             for (var i = 0; i < 6; i++)
-              () async =>
-                  http.StreamedResponse(const Stream.empty(), 308),
+              () async => http.StreamedResponse(const Stream.empty(), 308),
           ]);
 
           await expectLater(
