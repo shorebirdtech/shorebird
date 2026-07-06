@@ -66,5 +66,59 @@ void main() {
       expect(a.hashCode, equals(b.hashCode));
       expect(a, isNot(equals(c)));
     });
+
+    test('round-trips a gitSha independent of clientPatchId', () {
+      const request = CreatePatchRequest(
+        releaseId: 1234,
+        metadata: {'foo': 'bar'},
+        clientPatchId: 'hotfix-login',
+        gitSha: 'deadbeef',
+      );
+      final json = request.toJson();
+      expect(json['git_sha'], equals('deadbeef'));
+      expect(json['client_patch_id'], equals('hotfix-login'));
+      final parsed = CreatePatchRequest.fromJson(json);
+      expect(parsed.gitSha, equals('deadbeef'));
+      expect(parsed.clientPatchId, equals('hotfix-login'));
+    });
+
+    test('parses json without git_sha', () {
+      final request = CreatePatchRequest.fromJson(const {
+        'release_id': 1234,
+        'metadata': {'foo': 'bar'},
+      });
+      expect(request.gitSha, isNull);
+    });
+
+    test('toJson always includes git_sha (null when unset)', () {
+      const request = CreatePatchRequest(
+        releaseId: 1234,
+        metadata: {'foo': 'bar'},
+      );
+      final json = request.toJson();
+      expect(json.containsKey('git_sha'), isTrue);
+      expect(json['git_sha'], isNull);
+    });
+
+    test('gitSha participates in equality', () {
+      final a = CreatePatchRequest.fromJson(const {
+        'release_id': 1234,
+        'metadata': {'foo': 'bar'},
+        'git_sha': 'abc',
+      });
+      final b = CreatePatchRequest.fromJson(const {
+        'release_id': 1234,
+        'metadata': {'foo': 'bar'},
+        'git_sha': 'abc',
+      });
+      final c = CreatePatchRequest.fromJson(const {
+        'release_id': 1234,
+        'metadata': {'foo': 'bar'},
+        'git_sha': 'xyz',
+      });
+      expect(a, equals(b));
+      expect(a.hashCode, equals(b.hashCode));
+      expect(a, isNot(equals(c)));
+    });
   });
 }

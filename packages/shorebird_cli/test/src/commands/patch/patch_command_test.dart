@@ -347,6 +347,7 @@ void main() {
         return shorebirdEnv;
       });
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
+      when(() => shorebirdEnv.isRunningOnCI).thenReturn(false);
       when(() => shorebirdEnv.usesShorebirdCodePushPackage).thenReturn(false);
 
       when(
@@ -417,7 +418,7 @@ void main() {
         });
       });
 
-      group('warnIfDirtyTreeMatchesPatchId', () {
+      group('logCorrelationDecision', () {
         const headSha = '0123456789abcdef0123456789abcdef01234567';
         late Directory projectRoot;
 
@@ -426,39 +427,26 @@ void main() {
           when(
             () => shorebirdEnv.getShorebirdProjectRoot(),
           ).thenReturn(projectRoot);
-        });
-
-        test('does nothing when --patch-id is omitted', () async {
-          when(() => argResults['patch-id']).thenReturn(null);
-
-          await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
-
-          verifyNever(
+          when(
             () => git.revParse(
-              revision: any(named: 'revision'),
-              directory: any(named: 'directory'),
+              revision: 'HEAD',
+              directory: projectRoot.path,
             ),
-          );
-          verifyNever(() => logger.warn(any()));
+          ).thenAnswer((_) async => headSha);
         });
 
         test('does nothing when not running inside a project', () async {
-          when(() => argResults['patch-id']).thenReturn(headSha);
+          when(() => argResults['patch-id']).thenReturn(null);
           when(() => shorebirdEnv.getShorebirdProjectRoot()).thenReturn(null);
 
-          await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+          await runWithOverrides(command.logCorrelationDecision);
 
-          verifyNever(
-            () => git.revParse(
-              revision: any(named: 'revision'),
-              directory: any(named: 'directory'),
-            ),
-          );
           verifyNever(() => logger.warn(any()));
+          verifyNever(() => logger.info(any()));
         });
 
         test('does nothing when not in a git repo', () async {
-          when(() => argResults['patch-id']).thenReturn(headSha);
+          when(() => argResults['patch-id']).thenReturn(null);
           when(
             () => git.revParse(
               revision: any(named: 'revision'),
@@ -466,44 +454,16 @@ void main() {
             ),
           ).thenThrow(const ProcessException('git', ['rev-parse']));
 
-          await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+          await runWithOverrides(command.logCorrelationDecision);
 
           verifyNever(() => logger.warn(any()));
+          verifyNever(() => logger.info(any()));
         });
 
         test(
-          '''does nothing when --patch-id does not match HEAD (avoids false positives on non-SHA ids)''',
+          'announces grouping by commit when the tree is clean',
           () async {
-            when(() => argResults['patch-id']).thenReturn('hotfix-login');
-            when(
-              () => git.revParse(
-                revision: 'HEAD',
-                directory: projectRoot.path,
-              ),
-            ).thenAnswer((_) async => headSha);
-
-            await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
-
-            verifyNever(
-              () => git.status(
-                directory: any(named: 'directory'),
-                args: any(named: 'args'),
-              ),
-            );
-            verifyNever(() => logger.warn(any()));
-          },
-        );
-
-        test(
-          'does nothing when --patch-id matches HEAD and tree is clean',
-          () async {
-            when(() => argResults['patch-id']).thenReturn(headSha);
-            when(
-              () => git.revParse(
-                revision: 'HEAD',
-                directory: projectRoot.path,
-              ),
-            ).thenAnswer((_) async => headSha);
+            when(() => argResults['patch-id']).thenReturn(null);
             when(
               () => git.status(
                 directory: projectRoot.path,
@@ -511,51 +471,27 @@ void main() {
               ),
             ).thenAnswer((_) async => '');
 
-            await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+            await runWithOverrides(command.logCorrelationDecision);
 
+            verify(
+              () => logger.info(
+                any(
+                  that: allOf(
+                    contains('Grouping this patch by commit'),
+                    contains(headSha),
+                  ),
+                ),
+              ),
+            ).called(1);
             verifyNever(() => logger.warn(any()));
           },
         );
 
-        test('warns when --patch-id matches HEAD and tree is dirty', () async {
-          when(() => argResults['patch-id']).thenReturn(headSha);
-          when(
-            () => git.revParse(
-              revision: 'HEAD',
-              directory: projectRoot.path,
-            ),
-          ).thenAnswer((_) async => headSha);
-          when(
-            () => git.status(
-              directory: projectRoot.path,
-              args: ['--porcelain'],
-            ),
-          ).thenAnswer((_) async => ' M lib/main.dart');
-
-          await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
-
-          verify(
-            () => logger.warn(
-              any(
-                that: allOf(
-                  contains('uncommitted changes'),
-                  contains(headSha),
-                ),
-              ),
-            ),
-          ).called(1);
-        });
-
         test(
-          'silently no-ops if git status fails after rev-parse succeeded',
+          'treats a failing git status as dirty (does not auto-group — an '
+          'unknown tree state must never group under the commit SHA)',
           () async {
-            when(() => argResults['patch-id']).thenReturn(headSha);
-            when(
-              () => git.revParse(
-                revision: 'HEAD',
-                directory: projectRoot.path,
-              ),
-            ).thenAnswer((_) async => headSha);
+            when(() => argResults['patch-id']).thenReturn(null);
             when(
               () => git.status(
                 directory: any(named: 'directory'),
@@ -563,21 +499,118 @@ void main() {
               ),
             ).thenThrow(const ProcessException('git', ['status']));
 
-            await runWithOverrides(command.warnIfDirtyTreeMatchesPatchId);
+            await runWithOverrides(command.logCorrelationDecision);
 
+            verify(
+              () => logger.info(
+                any(
+                  that: allOf(
+                    contains('uncommitted changes'),
+                    contains('will not auto-group'),
+                  ),
+                ),
+              ),
+            ).called(1);
             verifyNever(() => logger.warn(any()));
           },
         );
+
+        group('when the tree is dirty', () {
+          setUp(() {
+            when(
+              () => git.status(
+                directory: projectRoot.path,
+                args: ['--porcelain'],
+              ),
+            ).thenAnswer((_) async => ' M lib/main.dart');
+          });
+
+          test('warns when --patch-id was explicitly set to HEAD', () async {
+            when(() => argResults['patch-id']).thenReturn(headSha);
+
+            await runWithOverrides(command.logCorrelationDecision);
+
+            verify(
+              () => logger.warn(
+                any(
+                  that: allOf(
+                    contains('uncommitted changes'),
+                    contains(headSha),
+                  ),
+                ),
+              ),
+            ).called(1);
+            verifyNever(() => logger.info(any()));
+          });
+
+          test(
+            'locally, notes that the patch will NOT auto-group and points at '
+            '--patch-id (no --patch-id supplied)',
+            () async {
+              when(() => argResults['patch-id']).thenReturn(null);
+
+              await runWithOverrides(command.logCorrelationDecision);
+
+              verify(
+                () => logger.info(
+                  any(
+                    that: allOf(
+                      contains('uncommitted changes'),
+                      contains('will not auto-group'),
+                      contains('--patch-id'),
+                    ),
+                  ),
+                ),
+              ).called(1);
+              verifyNever(() => logger.warn(any()));
+            },
+          );
+
+          test(
+            'on CI, notes that grouping by HEAD proceeds despite the dirty '
+            'tree (build-generated dirt)',
+            () async {
+              when(() => argResults['patch-id']).thenReturn(null);
+              when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+
+              await runWithOverrides(command.logCorrelationDecision);
+
+              verify(
+                () => logger.info(
+                  any(
+                    that: allOf(
+                      contains('uncommitted changes'),
+                      contains(headSha),
+                      contains('anyway'),
+                    ),
+                  ),
+                ),
+              ).called(1);
+              verifyNever(() => logger.warn(any()));
+            },
+          );
+
+          test('stays silent for a non-SHA --patch-id (no false positive on '
+              'ids like hotfix-login)', () async {
+            when(() => argResults['patch-id']).thenReturn('hotfix-login');
+
+            await runWithOverrides(command.logCorrelationDecision);
+
+            verifyNever(() => logger.warn(any()));
+            verifyNever(() => logger.info(any()));
+          });
+        });
       });
 
-      group('clientPatchId resolution', () {
-        // Captures the clientPatchId observed by uploadPatchArtifacts so we
-        // can assert on the resolved value across single-platform and
-        // multi-platform invocations.
+      group('clientPatchId & gitSha resolution', () {
+        // Captures the values observed by uploadPatchArtifacts so we can assert
+        // on the resolved correlation key and the recorded git SHA.
         String? capturedClientPatchId;
+        String? capturedGitSha;
 
         setUp(() {
           capturedClientPatchId = null;
+          capturedGitSha = null;
           when(
             () => patcher.uploadPatchArtifacts(
               appId: any(named: 'appId'),
@@ -586,24 +619,18 @@ void main() {
               artifacts: any(named: 'artifacts'),
               metadata: any(named: 'metadata'),
               clientPatchId: any(named: 'clientPatchId'),
+              gitSha: any(named: 'gitSha'),
             ),
           ).thenAnswer((invocation) async {
             capturedClientPatchId =
                 invocation.namedArguments[#clientPatchId] as String?;
+            capturedGitSha = invocation.namedArguments[#gitSha] as String?;
             return publishedPatch;
           });
         });
 
         test(
-          'is null on a single-platform invocation with no --patch-id',
-          () async {
-            await runWithOverrides(() => command.createPatch(patcher));
-            expect(capturedClientPatchId, isNull);
-          },
-        );
-
-        test(
-          'uses the explicit value when --patch-id is supplied',
+          'uses the explicit --patch-id as the correlation key when supplied',
           () async {
             when(() => argResults['patch-id']).thenReturn('sha-deadbeef');
             await runWithOverrides(() => command.createPatch(patcher));
@@ -611,56 +638,261 @@ void main() {
           },
         );
 
-        test(
-          '''generates a UUID for multi-platform invocations so platforms share a patch''',
-          () async {
-            when(() => argResults['platforms']).thenReturn(['ios', 'android']);
+        group('outside a git checkout', () {
+          setUp(() {
+            when(() => shorebirdEnv.getShorebirdProjectRoot()).thenReturn(null);
+          });
+
+          test(
+            '''correlation key is null on a single-platform invocation with no --patch-id''',
+            () async {
+              await runWithOverrides(() => command.createPatch(patcher));
+              expect(capturedClientPatchId, isNull);
+            },
+          );
+
+          test(
+            '''generates a UUID correlation key for multi-platform invocations so platforms share a patch''',
+            () async {
+              when(
+                () => argResults['platforms'],
+              ).thenReturn(['ios', 'android']);
+              await runWithOverrides(() => command.createPatch(patcher));
+              expect(capturedClientPatchId, isNotNull);
+              expect(capturedClientPatchId, matches(_uuidV4Pattern));
+            },
+          );
+
+          test(
+            'uses the same generated id across every platform in one '
+            'invocation',
+            () async {
+              when(
+                () => argResults['platforms'],
+              ).thenReturn(['ios', 'android']);
+
+              // Drive both platforms through the same command instance so we
+              // can confirm the lazily-resolved clientPatchId is shared.
+              final observed = <String?>[];
+              when(
+                () => patcher.uploadPatchArtifacts(
+                  appId: any(named: 'appId'),
+                  releaseId: any(named: 'releaseId'),
+                  track: any(named: 'track'),
+                  artifacts: any(named: 'artifacts'),
+                  metadata: any(named: 'metadata'),
+                  clientPatchId: any(named: 'clientPatchId'),
+                  gitSha: any(named: 'gitSha'),
+                ),
+              ).thenAnswer((invocation) async {
+                observed.add(
+                  invocation.namedArguments[#clientPatchId] as String?,
+                );
+                return publishedPatch;
+              });
+
+              await runWithOverrides(() => command.createPatch(patcher));
+              await runWithOverrides(() => command.createPatch(patcher));
+
+              expect(observed, hasLength(2));
+              expect(observed.first, isNotNull);
+              expect(observed[0], equals(observed[1]));
+            },
+          );
+
+          test('records a null gitSha (nothing to record without a '
+              'checkout)', () async {
             await runWithOverrides(() => command.createPatch(patcher));
-            expect(capturedClientPatchId, isNotNull);
-            expect(capturedClientPatchId, matches(_uuidV4Pattern));
-          },
-        );
+            expect(capturedGitSha, isNull);
+          });
+        });
 
-        test(
-          '''uses the same generated id across every platform in one invocation''',
-          () async {
-            when(() => argResults['platforms']).thenReturn(['ios', 'android']);
+        group('inside a git checkout', () {
+          const headSha = '0123456789abcdef0123456789abcdef01234567';
+          late Directory projectRoot;
 
-            // Drive both platforms through the same command instance so we can
-            // confirm the lazily-resolved clientPatchId is shared.
-            final observed = <String?>[];
+          setUp(() {
+            projectRoot = Directory.systemTemp.createTempSync();
             when(
-              () => patcher.uploadPatchArtifacts(
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-                track: any(named: 'track'),
-                artifacts: any(named: 'artifacts'),
-                metadata: any(named: 'metadata'),
-                clientPatchId: any(named: 'clientPatchId'),
+              () => shorebirdEnv.getShorebirdProjectRoot(),
+            ).thenReturn(projectRoot);
+            when(
+              () => git.revParse(
+                revision: 'HEAD',
+                directory: projectRoot.path,
               ),
-            ).thenAnswer((invocation) async {
-              observed.add(
-                invocation.namedArguments[#clientPatchId] as String?,
-              );
-              return publishedPatch;
-            });
+            ).thenAnswer((_) async => headSha);
+            // Clean tree by default; dirty-tree cases override below.
+            when(
+              () => git.status(
+                directory: projectRoot.path,
+                args: ['--porcelain'],
+              ),
+            ).thenAnswer((_) async => '');
+          });
 
-            await runWithOverrides(() => command.createPatch(patcher));
-            await runWithOverrides(() => command.createPatch(patcher));
+          test(
+            '''defaults the correlation key to the HEAD SHA with no --patch-id (single platform)''',
+            () async {
+              await runWithOverrides(() => command.createPatch(patcher));
+              expect(capturedClientPatchId, equals(headSha));
+              expect(capturedGitSha, equals(headSha));
+            },
+          );
 
-            expect(observed, hasLength(2));
-            expect(observed.first, isNotNull);
-            expect(observed[0], equals(observed[1]));
-          },
-        );
+          test(
+            '''defaults the correlation key to the HEAD SHA for multi-platform invocations''',
+            () async {
+              when(
+                () => argResults['platforms'],
+              ).thenReturn(['ios', 'android']);
+              await runWithOverrides(() => command.createPatch(patcher));
+              expect(capturedClientPatchId, equals(headSha));
+            },
+          );
 
-        test(
-          'prefers an explicit --patch-id over an auto-generated one',
-          () async {
-            when(() => argResults['platforms']).thenReturn(['ios', 'android']);
+          test('always records the HEAD SHA as gitSha, even when an explicit '
+              '--patch-id overrides the correlation key', () async {
             when(() => argResults['patch-id']).thenReturn('hotfix-login');
             await runWithOverrides(() => command.createPatch(patcher));
             expect(capturedClientPatchId, equals('hotfix-login'));
+            expect(capturedGitSha, equals(headSha));
+          });
+
+          group('when the tree is dirty', () {
+            setUp(() {
+              when(
+                () => git.status(
+                  directory: projectRoot.path,
+                  args: ['--porcelain'],
+                ),
+              ).thenAnswer((_) async => ' M lib/main.dart');
+            });
+
+            test(
+              'locally, does NOT default the key to the SHA (single platform '
+              '→ null) and records a -dirty provenance SHA',
+              () async {
+                await runWithOverrides(() => command.createPatch(patcher));
+                expect(capturedClientPatchId, isNull);
+                expect(capturedGitSha, equals('$headSha-dirty'));
+              },
+            );
+
+            test(
+              'locally, multi-platform invocations mint a one-time UUID key '
+              'instead of the SHA',
+              () async {
+                when(
+                  () => argResults['platforms'],
+                ).thenReturn(['ios', 'android']);
+                await runWithOverrides(() => command.createPatch(patcher));
+                expect(capturedClientPatchId, isNotNull);
+                expect(capturedClientPatchId, isNot(equals(headSha)));
+                expect(capturedClientPatchId, matches(_uuidV4Pattern));
+                expect(capturedGitSha, equals('$headSha-dirty'));
+              },
+            );
+
+            test(
+              'on CI, still defaults the key to the raw SHA (so separate '
+              'platform bots converge) while provenance records -dirty',
+              () async {
+                when(() => shorebirdEnv.isRunningOnCI).thenReturn(true);
+                await runWithOverrides(() => command.createPatch(patcher));
+                expect(capturedClientPatchId, equals(headSha));
+                expect(capturedGitSha, equals('$headSha-dirty'));
+              },
+            );
+          });
+        });
+      });
+
+      group('maybeLogResumeHint', () {
+        setUp(() {
+          // No git checkout: a multi-platform invocation mints a UUID key.
+          when(() => shorebirdEnv.getShorebirdProjectRoot()).thenReturn(null);
+          when(() => argResults['platforms']).thenReturn(['ios', 'android']);
+          when(
+            () => patcher.uploadPatchArtifacts(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              track: any(named: 'track'),
+              artifacts: any(named: 'artifacts'),
+              metadata: any(named: 'metadata'),
+              clientPatchId: any(named: 'clientPatchId'),
+              gitSha: any(named: 'gitSha'),
+            ),
+          ).thenAnswer((_) async => publishedPatch);
+        });
+
+        test(
+          'logs the minted key and published platforms so a retry can resume',
+          () async {
+            // Simulate ios having published before a failure.
+            command.platformPatches[ReleasePlatform.ios] = publishedPatch;
+            // Force key resolution the way createPatch would.
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            runWithOverrides(command.maybeLogResumeHint);
+
+            verify(
+              () => logger.info(
+                any(
+                  that: allOf(
+                    contains('--patch-id='),
+                    contains('Patch ${publishedPatch.number}'),
+                    contains('iOS'),
+                  ),
+                ),
+              ),
+            ).called(1);
+          },
+        );
+
+        test('stays silent when nothing has published yet', () async {
+          await runWithOverrides(() => command.createPatch(patcher));
+          command.platformPatches.clear();
+
+          runWithOverrides(command.maybeLogResumeHint);
+
+          verifyNever(() => logger.info(any(that: contains('--patch-id='))));
+        });
+
+        test('stays silent when the key is reproducible (explicit '
+            '--patch-id)', () async {
+          when(() => argResults['patch-id']).thenReturn('sha-deadbeef');
+          command.platformPatches[ReleasePlatform.ios] = publishedPatch;
+          await runWithOverrides(() => command.createPatch(patcher));
+
+          runWithOverrides(command.maybeLogResumeHint);
+
+          verifyNever(() => logger.info(any(that: contains('--patch-id='))));
+        });
+
+        test(
+          'stays silent when the key is the reproducible HEAD SHA',
+          () async {
+            const headSha = '0123456789abcdef0123456789abcdef01234567';
+            final projectRoot = Directory.systemTemp.createTempSync();
+            when(
+              () => shorebirdEnv.getShorebirdProjectRoot(),
+            ).thenReturn(projectRoot);
+            when(
+              () => git.revParse(revision: 'HEAD', directory: projectRoot.path),
+            ).thenAnswer((_) async => headSha);
+            when(
+              () => git.status(
+                directory: projectRoot.path,
+                args: ['--porcelain'],
+              ),
+            ).thenAnswer((_) async => '');
+            command.platformPatches[ReleasePlatform.ios] = publishedPatch;
+            await runWithOverrides(() => command.createPatch(patcher));
+
+            runWithOverrides(command.maybeLogResumeHint);
+
+            verifyNever(() => logger.info(any(that: contains('--patch-id='))));
           },
         );
       });

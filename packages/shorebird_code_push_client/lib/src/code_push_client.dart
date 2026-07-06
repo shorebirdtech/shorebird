@@ -487,16 +487,19 @@ class CodePushClient {
     required int releaseId,
     required Json metadata,
     String? clientPatchId,
+    String? gitSha,
   }) async {
     // Coerce empty to null. A caller that passes an unexpanded template
     // variable or empty flag would otherwise land on the idempotent path
     // keyed on `''` and inherit a stranger's patch.
     final normalizedClientPatchId =
         (clientPatchId == null || clientPatchId.isEmpty) ? null : clientPatchId;
+    final normalizedGitSha = (gitSha == null || gitSha.isEmpty) ? null : gitSha;
     final request = CreatePatchRequest(
       releaseId: releaseId,
       metadata: metadata,
       clientPatchId: normalizedClientPatchId,
+      gitSha: normalizedGitSha,
     );
     final response = await _httpClient.post(
       Uri.parse('$_v1/apps/$appId/patches'),

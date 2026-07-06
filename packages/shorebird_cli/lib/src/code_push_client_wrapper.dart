@@ -943,6 +943,7 @@ aar artifact already exists, continuing...''');
     required int releaseId,
     required Json metadata,
     String? clientPatchId,
+    String? gitSha,
   }) async {
     final createPatchProgress = logger.progress('Creating patch');
     try {
@@ -951,6 +952,7 @@ aar artifact already exists, continuing...''');
         releaseId: releaseId,
         metadata: metadata,
         clientPatchId: clientPatchId,
+        gitSha: gitSha,
       );
       createPatchProgress.complete();
       return patch;
@@ -1081,12 +1083,14 @@ ${artifact.arch} artifact already exists, continuing...''');
     required DeploymentTrack track,
     required Map<Arch, PatchArtifactBundle> patchArtifactBundles,
     String? clientPatchId,
+    String? gitSha,
   }) async {
     final patch = await createPatch(
       appId: appId,
       releaseId: releaseId,
       metadata: metadata,
       clientPatchId: clientPatchId,
+      gitSha: gitSha,
     );
 
     // When the create call was idempotent (a clientPatchId hit on an existing
@@ -1144,7 +1148,18 @@ ${artifact.arch} artifact already exists, continuing...''');
     // doing and the prompt would be spurious.
     if (_patchesPromotedThisRun.contains(patch.id)) return;
 
-    if (patch.channel != DeploymentTrack.stable.channel) return;
+    // A non-null channel means the correlation key matched an existing,
+    // already-promoted patch. Narrate the append so grouping never happens
+    // invisibly — then only the live-on-stable case needs confirmation.
+    if (patch.channel == null) return;
+
+    if (patch.channel != DeploymentTrack.stable.channel) {
+      logger.info(
+        'Found existing patch ${patch.number} (on the ${patch.channel} '
+        'track) — adding ${platform.displayName} artifacts to it.',
+      );
+      return;
+    }
 
     final platformName = platform.displayName;
     final message =

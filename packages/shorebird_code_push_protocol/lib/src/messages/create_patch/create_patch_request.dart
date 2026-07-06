@@ -11,6 +11,7 @@ class CreatePatchRequest {
     required this.releaseId,
     required this.metadata,
     this.clientPatchId,
+    this.gitSha,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchRequest].
@@ -24,6 +25,7 @@ class CreatePatchRequest {
           MapEntry.new,
         ),
         clientPatchId: json['client_patch_id'] as String?,
+        gitSha: json['git_sha'] as String?,
       ),
     );
   }
@@ -49,8 +51,18 @@ class CreatePatchRequest {
   /// the same release supply the same value, the server returns the
   /// existing patch instead of creating a new one — letting
   /// cross-platform builds share one patch number. Most commonly a
-  /// git SHA, but any stable token works.
+  /// git SHA, but any stable token works. At most 255 characters.
   final String? clientPatchId;
+
+  /// The commit SHA the patch was built from, recorded for provenance
+  /// and display. Sent whenever the patch is cut inside a git checkout,
+  /// independent of `client_patch_id` — so the originating commit is
+  /// retained even when grouping was keyed on an explicit correlation
+  /// key. Suffixed with `-dirty` when the working tree had uncommitted
+  /// changes, so the recorded provenance never claims a commit that
+  /// doesn't match the shipped code. Null when the patch was created
+  /// outside a git checkout. At most 255 characters.
+  final String? gitSha;
 
   /// Converts a [CreatePatchRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
@@ -58,6 +70,7 @@ class CreatePatchRequest {
       'release_id': releaseId,
       'metadata': metadata,
       'client_patch_id': clientPatchId,
+      'git_sha': gitSha,
     };
   }
 
@@ -66,6 +79,7 @@ class CreatePatchRequest {
     releaseId,
     mapHash(metadata),
     clientPatchId,
+    gitSha,
   ]);
 
   @override
@@ -74,6 +88,7 @@ class CreatePatchRequest {
     return other is CreatePatchRequest &&
         releaseId == other.releaseId &&
         mapsEqual(metadata, other.metadata) &&
-        clientPatchId == other.clientPatchId;
+        clientPatchId == other.clientPatchId &&
+        gitSha == other.gitSha;
   }
 }

@@ -2695,6 +2695,38 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           expect(result, patch);
           verify(() => progress.complete()).called(1);
         });
+
+        test('forwards gitSha to the client', () async {
+          const gitSha = 'deadbeefcafe';
+          when(
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: any(named: 'metadata'),
+              clientPatchId: any(named: 'clientPatchId'),
+              gitSha: any(named: 'gitSha'),
+            ),
+          ).thenAnswer((_) async => patch);
+
+          await runWithOverrides(
+            () => codePushClientWrapper.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+              gitSha: gitSha,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: any(named: 'metadata'),
+              clientPatchId: null,
+              gitSha: gitSha,
+            ),
+          ).called(1);
+        });
       });
 
       group('promotePatch', () {
@@ -2981,6 +3013,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               releaseId: any(named: 'releaseId'),
               metadata: any(named: 'metadata'),
               clientPatchId: any(named: 'clientPatchId'),
+              gitSha: any(named: 'gitSha'),
             ),
           ).thenAnswer((_) async => patch);
           when(
@@ -3154,6 +3187,35 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 releaseId: releaseId,
                 metadata: {'foo': 'bar'},
                 clientPatchId: clientPatchId,
+              ),
+            ).called(1);
+          },
+        );
+
+        test(
+          'forwards gitSha to the client independent of clientPatchId',
+          () async {
+            const gitSha = 'deadbeefcafe';
+            await runWithOverrides(
+              () => codePushClientWrapper.publishPatch(
+                appId: appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                track: track,
+                patchArtifactBundles: patchArtifactBundles,
+                metadata: {'foo': 'bar'},
+                clientPatchId: 'hotfix-login',
+                gitSha: gitSha,
+              ),
+            );
+
+            verify(
+              () => codePushClient.createPatch(
+                appId: appId,
+                releaseId: releaseId,
+                metadata: {'foo': 'bar'},
+                clientPatchId: 'hotfix-login',
+                gitSha: gitSha,
               ),
             ).called(1);
           },

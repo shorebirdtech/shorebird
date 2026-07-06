@@ -144,6 +144,7 @@ More info: ${troubleshootingUrl.toLink()}.
     required Map<Arch, PatchArtifactBundle> artifacts,
     required DeploymentTrack track,
     String? clientPatchId,
+    String? gitSha,
   }) async {
     return codePushClientWrapper.publishPatch(
       appId: appId,
@@ -153,6 +154,7 @@ More info: ${troubleshootingUrl.toLink()}.
       track: track,
       patchArtifactBundles: artifacts,
       clientPatchId: clientPatchId,
+      gitSha: gitSha,
     );
   }
 

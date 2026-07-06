@@ -109,9 +109,11 @@ across platforms. When two invocations on the same release supply the same
 new number — the iOS and Android halves of the same change end up sharing
 one patch number visible to end users.
 
-When omitted on a multi-platform invocation, the CLI generates a fresh
-correlation key locally so the platforms in this single command share one
-patch.''',
+When omitted, the CLI defaults to the current git commit SHA on CI or when
+the working tree is clean, so separate platform builds of the same commit
+group automatically. On a dirty local tree (uncommitted changes) no
+cross-invocation grouping happens; the platforms within a single
+multi-platform invocation still share a one-time key.''',
       )
       ..addFlag(
         'staging',
@@ -230,20 +232,40 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// The deployment track to publish the patch to.
   DeploymentTrack get track => DeploymentTrack(results['track'] as String);
 
+  /// The commit SHA of `HEAD`, resolved once per invocation and null when the
+  /// patch is not being cut inside a git checkout. Populated by [run] before
+  /// the per-platform fan-out. Recorded on every patch for provenance (see
+  /// [gitShaForProvenance]) and used as the default correlation key when it
+  /// identifies the code being shipped (see [_resolveClientPatchId]).
+  String? _gitSha;
+
+  /// Whether the working tree has uncommitted changes. Resolved once per
+  /// invocation alongside [_gitSha]; false when not in a git checkout, true
+  /// when `git status` cannot be determined (an unknown tree state must never
+  /// auto-group or claim clean provenance).
+  bool? _isTreeDirty;
+
   /// The correlation key used to make patch creation idempotent across
-  /// platforms within this invocation. When the user passes `--patch-id`,
-  /// that value is used as-is. When the user omits it on a multi-platform
-  /// invocation, a fresh UUID is generated so the platforms in this single
-  /// command end up sharing one patch number on the server.
+  /// platforms and invocations. Resolution order:
   ///
-  /// Returns null only for single-platform invocations with no `--patch-id`,
-  /// preserving the legacy behavior where the server allocates a fresh patch
-  /// number per call.
+  /// 1. An explicit `--patch-id` is used as-is.
+  /// 2. The `HEAD` commit SHA, when it identifies the code being shipped:
+  ///    always on CI (tree dirt there is build-generated — lockfiles,
+  ///    pod installs — not authored edits, and separate platform bots at the
+  ///    same commit must converge on one patch number), and on a clean tree
+  ///    locally. A dirty *local* tree means authored edits the SHA does not
+  ///    capture; grouping on it could collide two different builds, so it is
+  ///    skipped.
+  /// 3. A fresh UUID on multi-platform invocations, so the platforms in this
+  ///    single command still share one patch number.
+  /// 4. Null otherwise — legacy behavior, the server allocates a fresh patch
+  ///    number per call.
   ///
   /// Resolved on first read and cached for the rest of the command so every
-  /// platform's `createPatch` sees the same value. Requires `argResults` to
-  /// be wired before first access — every code path through `run()` (and
-  /// every test going through `runWithOverrides`) satisfies that.
+  /// platform's `createPatch` sees the same value. Requires `argResults`,
+  /// [_gitSha], and [_isTreeDirty] to be wired before first access — every
+  /// code path through `run()` (and every test going through
+  /// `runWithOverrides`) satisfies that.
   late final String? clientPatchId = _resolveClientPatchId();
 
   String? _resolveClientPatchId() {
@@ -252,8 +274,66 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     // (`CodePushClient.createPatch`) and stays the single normalizer.
     final explicit = results['patch-id'] as String?;
     if (explicit != null) return explicit;
+    // Default the correlation key to the commit SHA so separate invocations
+    // built from the same commit — e.g. an iOS bot and an Android bot cutting
+    // the same merge commit — converge on one patch number with no flags.
+    // Only when the SHA is honest about the code being shipped: on CI, or on
+    // a clean local tree (see the doc comment on [clientPatchId]).
+    if (_gitSha != null &&
+        (shorebirdEnv.isRunningOnCI || !(_isTreeDirty ?? false))) {
+      return _gitSha;
+    }
+    // No usable SHA: a multi-platform invocation still needs the platforms
+    // in *this* command to share a number, so mint one key for the invocation.
     if (results.releaseTypes.length > 1) return const Uuid().v4();
     return null;
+  }
+
+  /// The commit SHA recorded on created patches for provenance and display,
+  /// independent of the correlation key. Suffixed with `-dirty` when the
+  /// working tree has uncommitted changes so the recorded provenance never
+  /// claims a commit that doesn't match the shipped code. Null outside a git
+  /// checkout.
+  @visibleForTesting
+  String? get gitShaForProvenance {
+    final sha = _gitSha;
+    if (sha == null) return null;
+    return (_isTreeDirty ?? false) ? '$sha-dirty' : sha;
+  }
+
+  /// Resolves the `HEAD` commit SHA for the current project, or null when the
+  /// patch is not being cut inside a git checkout (or git is unavailable).
+  Future<String?> _resolveGitSha() async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
+    if (projectRoot == null) return null;
+    try {
+      return await git.revParse(revision: 'HEAD', directory: projectRoot.path);
+    } on Exception {
+      return null;
+    }
+  }
+
+  /// Resolves whether the working tree has uncommitted changes. Returns false
+  /// when not in a git checkout (dirtiness is meaningless there — [_gitSha]
+  /// is null, so nothing groups and no provenance is recorded).
+  Future<bool> _resolveTreeDirty() async {
+    if (_gitSha == null) return false; // not a git checkout
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
+    if (projectRoot == null) return false;
+    try {
+      final porcelain = await git.status(
+        directory: projectRoot.path,
+        args: ['--porcelain'],
+      );
+      return porcelain.isNotEmpty;
+    } on Exception {
+      // Fail toward dirty: with the tree state unknown, treating it as clean
+      // could group a dirty local build under the commit's patch number and
+      // record provenance claiming code that wasn't shipped. Dirty only
+      // costs auto-grouping (and adds `-dirty` to the recorded SHA), which
+      // is the safe direction.
+      return true;
+    }
   }
 
   /// Patches collected from each platform's [createPatch] run, used to emit
@@ -261,46 +341,83 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   @visibleForTesting
   final platformPatches = <ReleasePlatform, CreatePatchResponse>{};
 
-  /// Warns when `--patch-id` is the current `HEAD` commit but the working
-  /// tree has uncommitted changes — the SHA wouldn't actually identify the
-  /// code being shipped. Detection is intentionally narrow (literal equality
-  /// with `git rev-parse HEAD`) so non-SHA ids like `hotfix-login` or CI run
-  /// IDs never trigger a false positive. Non-blocking: local debug patches
-  /// over uncommitted code are a legitimate flow.
+  /// Narrates the correlation decision so grouping never happens invisibly.
+  ///
+  /// - Explicit `--patch-id` equal to a dirty `HEAD` gets a warning: the user
+  ///   asserted a SHA that does not match the working tree.
+  /// - A defaulted SHA key gets an info line saying grouping is happening —
+  ///   with an extra note on CI when the tree is dirty (build-generated dirt
+  ///   is expected there; grouping proceeds).
+  /// - A dirty local tree gets an info line saying grouping is NOT happening
+  ///   and how to opt in.
+  ///
+  /// `run()` resolves [_gitSha] and [_isTreeDirty] before calling this;
+  /// resolve on demand too so the method is self-contained when invoked
+  /// directly (e.g. in isolation by a test).
   @visibleForTesting
-  Future<void> warnIfDirtyTreeMatchesPatchId() async {
-    final patchId = results['patch-id'] as String?;
-    if (patchId == null || patchId.isEmpty) return;
+  Future<void> logCorrelationDecision() async {
+    final sha = _gitSha ??= await _resolveGitSha();
+    final dirty = _isTreeDirty ??= await _resolveTreeDirty();
+    final explicit = results['patch-id'] as String?;
 
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
-    if (projectRoot == null) return;
-
-    final String head;
-    try {
-      head = await git.revParse(
-        revision: 'HEAD',
-        directory: projectRoot.path,
-      );
-    } on Exception {
+    if (explicit != null) {
+      if (explicit == sha && dirty) {
+        logger.warn(
+          '--patch-id is set to HEAD ($sha), but the working tree has '
+          'uncommitted changes — this SHA does not identify the code being '
+          'shipped.',
+        );
+      }
       return;
     }
-    if (patchId != head) return;
 
-    final String porcelain;
-    try {
-      porcelain = await git.status(
-        directory: projectRoot.path,
-        args: ['--porcelain'],
-      );
-    } on Exception {
+    if (sha != null && clientPatchId == sha) {
+      if (dirty) {
+        // Only reachable on CI: a dirty local tree never defaults to the SHA.
+        logger.info(
+          'Working tree has uncommitted changes (common in CI builds); '
+          'grouping this patch by HEAD ($sha) anyway. Pass --patch-id to set '
+          'a different correlation key.',
+        );
+      } else {
+        logger.info(
+          'Grouping this patch by commit $sha — patches of this release '
+          'built from the same commit will share one patch number.',
+        );
+      }
       return;
     }
-    if (porcelain.isEmpty) return;
 
-    logger.warn(
-      '--patch-id is set to HEAD ($patchId), but the working tree has '
-      'uncommitted changes — this SHA does not identify the code being '
-      'shipped.',
+    if (sha != null && dirty) {
+      logger.info(
+        'Working tree has uncommitted changes, so this patch will not '
+        'auto-group with patches from other invocations. Commit your changes '
+        'or pass --patch-id to group explicitly.',
+      );
+    }
+  }
+
+  /// Logs how to resume a partially-published multi-platform patch when the
+  /// correlation key was minted for this invocation (a UUID that a plain
+  /// re-run cannot reproduce). Without this, a retry would mint a *new* key
+  /// and the remaining platforms would land under a different patch number —
+  /// exactly the split numbering unified patches exist to prevent.
+  @visibleForTesting
+  void maybeLogResumeHint() {
+    final explicit = results['patch-id'] as String?;
+    if (explicit != null) return; // key is user-supplied and reproducible
+    final key = clientPatchId;
+    if (key == null || key == _gitSha) return; // no key, or reproducible SHA
+    if (platformPatches.isEmpty) return; // nothing published yet
+
+    final published = platformPatches.keys.map((p) => p.displayName).toList()
+      ..sort();
+    final number = platformPatches.values.first.number;
+    logger.info(
+      '\nPatch $number was already published for ${published.join(', ')} '
+      'before this failure. To add the remaining platform(s) to patch '
+      '$number, re-run patch for them with '
+      '${lightCyan.wrap('--patch-id=$key')}.',
     );
   }
 
@@ -332,14 +449,27 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return ExitCode.usage.code;
     }
 
-    await warnIfDirtyTreeMatchesPatchId();
+    // Resolve the HEAD SHA and tree dirtiness once, before the per-platform
+    // fan-out. Together they determine the default correlation key (so
+    // separate-invocation platforms group) and the provenance SHA recorded on
+    // every patch. Must precede any `clientPatchId` access, which reads both.
+    _gitSha = await _resolveGitSha();
+    _isTreeDirty = await _resolveTreeDirty();
+    await logCorrelationDecision();
 
     final patcherFutures = results.releaseTypes
         .map(_resolvePatcher)
         .map(createPatch);
 
-    for (final patcherFuture in patcherFutures) {
-      await patcherFuture;
+    try {
+      for (final patcherFuture in patcherFutures) {
+        await patcherFuture;
+      }
+    } catch (_) {
+      // A minted (UUID) correlation key is not reproducible by a plain
+      // re-run; tell the user how to resume before surfacing the failure.
+      maybeLogResumeHint();
+      rethrow;
     }
 
     logUnifiedSuccess();
@@ -435,6 +565,14 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// Creates a patch using the provided [patcher].
   @visibleForTesting
   Future<void> createPatch(Patcher patcher) async {
+    // Ensure the HEAD SHA and tree dirtiness are resolved before
+    // `clientPatchId` (the default correlation key) or `gitShaForProvenance`
+    // are read. `run()` resolves them up front; resolve on demand here too so
+    // the method is self-contained (e.g. when invoked directly by a test) and
+    // every platform in the fan-out shares the same cached values.
+    _gitSha ??= await _resolveGitSha();
+    _isTreeDirty ??= await _resolveTreeDirty();
+
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
     results.assertAbsentOrValidKeyPairOrCommands();
@@ -729,6 +867,7 @@ Building patch with Flutter $flutterVersionString
           track: track,
           artifacts: patchArtifactBundles,
           clientPatchId: clientPatchId,
+          gitSha: gitShaForProvenance,
         );
         platformPatches[patcher.releaseType.releasePlatform] = publishedPatch;
       },

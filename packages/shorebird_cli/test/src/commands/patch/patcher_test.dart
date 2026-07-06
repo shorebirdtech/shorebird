@@ -207,6 +207,7 @@ void main() {
         const artifacts = <Arch, PatchArtifactBundle>{};
         const track = DeploymentTrack.stable;
         const clientPatchId = 'abc123';
+        const gitSha = 'deadbeefcafe';
         const publishedPatch = CreatePatchResponse(id: 7, number: 3);
         final codePushClientWrapper = MockCodePushClientWrapper();
         when(
@@ -218,6 +219,7 @@ void main() {
             track: any(named: 'track'),
             patchArtifactBundles: any(named: 'patchArtifactBundles'),
             clientPatchId: any(named: 'clientPatchId'),
+            gitSha: any(named: 'gitSha'),
           ),
         ).thenAnswer((_) async => publishedPatch);
         final returnedPatch = await runScoped(
@@ -228,6 +230,7 @@ void main() {
             artifacts: artifacts,
             track: track,
             clientPatchId: clientPatchId,
+            gitSha: gitSha,
           ),
           values: {
             codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -242,6 +245,7 @@ void main() {
             track: track,
             patchArtifactBundles: artifacts,
             clientPatchId: clientPatchId,
+            gitSha: gitSha,
           ),
         ).called(1);
         expect(returnedPatch, equals(publishedPatch));

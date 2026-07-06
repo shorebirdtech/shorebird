@@ -1742,6 +1742,61 @@ void main() {
           expect(body['client_patch_id'], isNull);
         },
       );
+
+      test('sends git_sha in body independent of client_patch_id', () async {
+        const gitSha = 'deadbeefcafe';
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(const CreatePatchResponse(id: 0, number: 1)),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+        );
+
+        await codePushClient.createPatch(
+          appId: appId,
+          releaseId: releaseId,
+          metadata: const {'foo': 'bar'},
+          clientPatchId: 'hotfix-login',
+          gitSha: gitSha,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        final body = json.decode(request.body) as Map<String, dynamic>;
+        expect(body['git_sha'], equals(gitSha));
+        expect(body['client_patch_id'], equals('hotfix-login'));
+      });
+
+      test('normalizes empty gitSha to null before sending', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(const CreatePatchResponse(id: 0, number: 1)),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+        );
+
+        await codePushClient.createPatch(
+          appId: appId,
+          releaseId: releaseId,
+          metadata: const {'foo': 'bar'},
+          gitSha: '',
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        final body = json.decode(request.body) as Map<String, dynamic>;
+        expect(body['git_sha'], isNull);
+      });
     });
 
     group('createRelease', () {
