@@ -2601,6 +2601,80 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(() => progress.fail(error)).called(1);
         });
 
+        test(
+          'refuses and exits when the correlation key resolves to a '
+          'rolled-back patch — the build must not be reported as published',
+          () async {
+            const exception = CodePushConflictException(
+              message: 'patch 7 has been rolled back',
+              code: CodePushConflictException.existingPatchRolledBackCode,
+            );
+            when(
+              () => codePushClient.createPatch(
+                appId: appId,
+                releaseId: releaseId,
+                metadata: any(named: 'metadata'),
+              ),
+            ).thenThrow(exception);
+
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.createPatch(
+                  appId: appId,
+                  releaseId: releaseId,
+                  metadata: {'foo': 'bar'},
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail()).called(1);
+            verify(
+              () => logger.err(
+                any(that: contains('Your local build was NOT published')),
+              ),
+            ).called(1);
+            verify(
+              () => logger.info(
+                any(
+                  that: allOf(
+                    contains('patch 7 has been rolled back'),
+                    contains('--patch-id'),
+                  ),
+                ),
+              ),
+            ).called(1);
+          },
+        );
+
+        test(
+          'a conflict without the rolled-back code exits via the generic '
+          'error path',
+          () async {
+            const exception = CodePushConflictException(
+              message: 'some other conflict',
+            );
+            when(
+              () => codePushClient.createPatch(
+                appId: appId,
+                releaseId: releaseId,
+                metadata: any(named: 'metadata'),
+              ),
+            ).thenThrow(exception);
+
+            await expectLater(
+              () async => runWithOverrides(
+                () => codePushClientWrapper.createPatch(
+                  appId: appId,
+                  releaseId: releaseId,
+                  metadata: {'foo': 'bar'},
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail('$exception')).called(1);
+          },
+        );
+
         test('returns patch when patch is successfully created', () async {
           when(
             () => codePushClient.createPatch(
@@ -2730,6 +2804,173 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ),
           ).called(1);
         });
+
+        test(
+          '''continues (does not exit) when the server confirms an identical artifact already exists''',
+          () async {
+            when(
+              () => codePushClient.createPatchArtifact(
+                appId: any(named: 'appId'),
+                patchId: any(named: 'patchId'),
+                artifactPath: any(named: 'artifactPath'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+              ),
+            ).thenThrow(
+              const CodePushConflictException(
+                message: 'already exists',
+                code: CodePushConflictException
+                    .identicalArtifactAlreadyExistsCode,
+              ),
+            );
+
+            await runWithOverrides(
+              () => codePushClientWrapper.createPatchArtifacts(
+                appId: appId,
+                patch: patch,
+                platform: releasePlatform,
+                patchArtifactBundles: patchArtifactBundles,
+              ),
+            );
+
+            // This 409 is treated as "already uploaded" — the run completes
+            // and an informational note is logged instead of failing the
+            // command.
+            verify(() => progress.complete()).called(1);
+            verify(
+              () => logger.info(
+                any(that: contains('already exists, continuing')),
+              ),
+            ).called(1);
+            verifyNever(() => progress.fail(any()));
+          },
+        );
+
+        test(
+          '''exits with an error when the server returns a 409 without a recognized code — only the explicit identical-artifact code grants success''',
+          () async {
+            // A code-less conflict is what an unparseable 409 body (e.g. a
+            // proxy-generated response) surfaces as; a future server conflict
+            // variant would carry an unrecognized code. Neither guarantees
+            // the bytes are published.
+            when(
+              () => codePushClient.createPatchArtifact(
+                appId: any(named: 'appId'),
+                patchId: any(named: 'patchId'),
+                artifactPath: any(named: 'artifactPath'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+              ),
+            ).thenThrow(
+              const CodePushConflictException(message: 'already exists'),
+            );
+
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.createPatchArtifacts(
+                  appId: appId,
+                  patch: patch,
+                  platform: releasePlatform,
+                  patchArtifactBundles: patchArtifactBundles,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(() => progress.fail(any())).called(1);
+            verifyNever(() => progress.complete());
+            verifyNever(
+              () => logger.info(
+                any(that: contains('already exists, continuing')),
+              ),
+            );
+          },
+        );
+
+        test(
+          '''exits with an error when the server fails closed with a 424 (conflict it could not verify)''',
+          () async {
+            // A 424 rides the generic non-2xx path: the client throws a plain
+            // CodePushException, never a conflict — so it can never be
+            // mistaken for "already uploaded". Pin that here.
+            when(
+              () => codePushClient.createPatchArtifact(
+                appId: any(named: 'appId'),
+                patchId: any(named: 'patchId'),
+                artifactPath: any(named: 'artifactPath'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+              ),
+            ).thenThrow(
+              const CodePushException(
+                message: 'Unable to create artifact.',
+                code: 'patch_artifacts_create_error',
+              ),
+            );
+
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.createPatchArtifacts(
+                  appId: appId,
+                  patch: patch,
+                  platform: releasePlatform,
+                  patchArtifactBundles: patchArtifactBundles,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(() => progress.fail(any())).called(1);
+            verifyNever(() => progress.complete());
+          },
+        );
+
+        test(
+          '''exits with an error when the server returns a hash-mismatch 409 (existing artifact was built from different code)''',
+          () async {
+            when(
+              () => codePushClient.createPatchArtifact(
+                appId: any(named: 'appId'),
+                patchId: any(named: 'patchId'),
+                artifactPath: any(named: 'artifactPath'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+              ),
+            ).thenThrow(
+              const CodePushConflictException(
+                message: 'already exists',
+                code: CodePushConflictException.artifactHashMismatchCode,
+              ),
+            );
+
+            await expectLater(
+              runWithOverrides(
+                () => codePushClientWrapper.createPatchArtifacts(
+                  appId: appId,
+                  patch: patch,
+                  platform: releasePlatform,
+                  patchArtifactBundles: patchArtifactBundles,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(() => progress.fail()).called(1);
+            verify(
+              () => logger.err(
+                any(that: contains('built from different code')),
+              ),
+            ).called(1);
+            verify(
+              () => logger.info(any(that: contains('--patch-id'))),
+            ).called(1);
+            verifyNever(() => progress.complete());
+          },
+        );
       });
 
       group('publishPatch', () {

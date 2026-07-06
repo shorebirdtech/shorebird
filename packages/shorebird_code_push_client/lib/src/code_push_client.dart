@@ -13,13 +13,19 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// {@endtemplate}
 class CodePushException implements Exception {
   /// {@macro code_push_exception}
-  const CodePushException({required this.message, this.details});
+  const CodePushException({required this.message, this.details, this.code});
 
   /// The message associated with the exception.
   final String message;
 
   /// The details associated with the exception.
   final String? details;
+
+  /// The machine-readable error code from the server's error response, if
+  /// one was present. Lets callers branch on the specific failure (e.g.
+  /// distinguishing the two artifact-conflict cases) without matching on
+  /// human-readable text.
+  final String? code;
 
   @override
   String toString() => '$message${details != null ? '\n$details' : ''}';
@@ -30,7 +36,11 @@ class CodePushException implements Exception {
 /// {@endtemplate}
 class CodePushForbiddenException extends CodePushException {
   /// {@macro code_push_forbidden_exception}
-  CodePushForbiddenException({required super.message, super.details});
+  CodePushForbiddenException({
+    required super.message,
+    super.details,
+    super.code,
+  });
 }
 
 /// {@template code_push_conflict_exception}
@@ -38,7 +48,48 @@ class CodePushForbiddenException extends CodePushException {
 /// {@endtemplate}
 class CodePushConflictException extends CodePushException {
   /// {@macro code_push_conflict_exception}
-  const CodePushConflictException({required super.message, super.details});
+  const CodePushConflictException({
+    required super.message,
+    super.details,
+    super.code,
+  });
+
+  /// The server error code for an artifact conflict where the existing
+  /// artifact's hash differs from the uploaded one — the existing artifact
+  /// was built from different code, so the caller must not treat the upload
+  /// as published.
+  static const artifactHashMismatchCode =
+      'patch_artifacts_create_existing_artifact_hash_mismatch';
+
+  /// The server error code for an artifact conflict where the existing
+  /// artifact's hash matches the uploaded one — an honest retry of bytes the
+  /// server already has, the only conflict a caller may treat as success.
+  static const identicalArtifactAlreadyExistsCode =
+      'patch_artifacts_create_existing_artifact';
+
+  /// The server error code for a patch-create whose correlation key resolves
+  /// to a patch that has been rolled back. Rolled-back patches are never
+  /// served to devices and rollback is permanent, so the key cannot be reused
+  /// on that release — publishing under it would ship nothing while looking
+  /// like a success.
+  static const existingPatchRolledBackCode =
+      'patches_create_existing_patch_rolled_back';
+
+  /// Whether this conflict is a different-bytes collision (see
+  /// [artifactHashMismatchCode]).
+  bool get isArtifactHashMismatch => code == artifactHashMismatchCode;
+
+  /// Whether this conflict is a correlation-key hit on a rolled-back patch
+  /// (see [existingPatchRolledBackCode]).
+  bool get isExistingPatchRolledBack => code == existingPatchRolledBackCode;
+
+  /// Whether the server explicitly confirmed an identical artifact already
+  /// exists (see [identicalArtifactAlreadyExistsCode]). Only this exact code
+  /// grants success — a conflict with any other (or no) code, such as a
+  /// proxy-generated 409, an unparseable body, or a future server conflict
+  /// variant, carries no guarantee that the bytes are published.
+  bool get isIdenticalArtifactAlreadyExists =>
+      code == identicalArtifactAlreadyExistsCode;
 }
 
 /// {@template code_push_not_found_exception}
@@ -46,7 +97,11 @@ class CodePushConflictException extends CodePushException {
 /// {@endtemplate}
 class CodePushNotFoundException extends CodePushException {
   /// {@macro code_push_not_found_exception}
-  CodePushNotFoundException({required super.message, super.details});
+  CodePushNotFoundException({
+    required super.message,
+    super.details,
+    super.code,
+  });
 }
 
 /// {@template code_push_upgrade_required_exception}
@@ -57,6 +112,7 @@ class CodePushUpgradeRequiredException extends CodePushException {
   const CodePushUpgradeRequiredException({
     required super.message,
     super.details,
+    super.code,
   });
 }
 
@@ -708,7 +764,11 @@ class CodePushClient {
     } on Exception {
       throw exceptionBuilder(message: unknownErrorMessage);
     }
-    return exceptionBuilder(message: error.message, details: error.details);
+    return exceptionBuilder(
+      message: error.message,
+      details: error.details,
+      code: error.code,
+    );
   }
 }
 

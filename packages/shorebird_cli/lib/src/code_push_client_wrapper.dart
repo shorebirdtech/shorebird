@@ -954,6 +954,29 @@ aar artifact already exists, continuing...''');
       );
       createPatchProgress.complete();
       return patch;
+    } on CodePushConflictException catch (error) {
+      // The correlation key resolves to a patch that was rolled back in the
+      // console. Rolled-back patches are never served to devices and nothing
+      // un-rolls them back, so proceeding would upload artifacts and report
+      // success while shipping nothing. Refuse with remediation instead: the
+      // key is permanently unusable on this release.
+      if (!error.isExistingPatchRolledBack) {
+        _handleErrorAndExit(error, progress: createPatchProgress);
+      }
+      createPatchProgress.fail();
+      logger
+        ..err(
+          "This build's correlation key belongs to a rolled-back patch of "
+          'this release, so it cannot be reused. Your local build was NOT '
+          'published.',
+        )
+        ..info('''
+${error.message}
+
+To publish your current code as a new patch, either:
+  - pass a fresh ${lightCyan.wrap('--patch-id')} (for example, a CI run id), or
+  - commit a new change so the default correlation key (your git commit) changes.''');
+      throw ProcessExit(ExitCode.software.code);
     } catch (error) {
       _handleErrorAndExit(error, progress: createPatchProgress);
     }
@@ -980,6 +1003,43 @@ aar artifact already exists, continuing...''');
           hashSignature: artifact.hashSignature,
           podfileLockHash: artifact.podfileLockHash,
         );
+      } on CodePushConflictException catch (error) {
+        // The server rejects a re-upload of an existing
+        // (patch, platform, arch) artifact with 409, and its error code says
+        // whether the existing artifact's hash matches ours. A match is an
+        // honest retry — the bytes we built are already published — so treat
+        // it as success and continue, mirroring the release-artifact path. A
+        // mismatch means this build differs from what the patch already
+        // shipped for this platform: continuing would silently discard the
+        // user's build while reporting success, so refuse loudly instead.
+        if (error.isArtifactHashMismatch) {
+          createArtifactProgress.fail();
+          logger
+            ..err(
+              '''Patch ${patch.number} already has a ${platform.name}/${artifact.arch} artifact built from different code. Your local build was NOT published.''',
+            )
+            ..info('''
+This means two patch invocations used the same correlation key for builds that differ — for example, editing files without committing and patching again, rebuilding the same commit with different build configuration, or a build that is not byte-for-byte reproducible.
+
+To publish your current code as a new patch, either:
+  - pass a fresh ${lightCyan.wrap('--patch-id')} (for example, a CI run id), or
+  - commit any local changes so the default correlation key (your git commit) changes.
+
+If patch ${patch.number} is bad, roll it back in the Shorebird console.''');
+          throw ProcessExit(ExitCode.software.code);
+        }
+        // Only the server's explicit identical-artifact code guarantees the
+        // bytes we built are already published. Any other conflict — an
+        // unparseable body, a proxy-generated 409, a conflict code this
+        // client doesn't know — carries no such guarantee, so fail rather
+        // than report an unpublished build as shipped.
+        if (!error.isIdenticalArtifactAlreadyExists) {
+          _handleErrorAndExit(error, progress: createArtifactProgress);
+        }
+        // Newlines are due to how logger.info interacts with logger.progress.
+        logger.info('''
+
+${artifact.arch} artifact already exists, continuing...''');
       } catch (error) {
         _handleErrorAndExit(error, progress: createArtifactProgress);
       }

@@ -204,6 +204,171 @@ void main() {
         );
       });
 
+      test(
+        'throws a CodePushConflictException carrying the error code on a 409',
+        () async {
+          const mismatchResponse = ErrorResponse(
+            code: CodePushConflictException.artifactHashMismatchCode,
+            message: 'hashes differ',
+          );
+          when(() => httpClient.send(any())).thenAnswer((_) async {
+            return http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(mismatchResponse.toJson()))),
+              HttpStatus.conflict,
+            );
+          });
+
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync();
+
+          await expectLater(
+            codePushClient.createPatchArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              patchId: patchId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+            ),
+            throwsA(
+              isA<CodePushConflictException>()
+                  .having(
+                    (e) => e.code,
+                    'code',
+                    CodePushConflictException.artifactHashMismatchCode,
+                  )
+                  .having(
+                    (e) => e.isArtifactHashMismatch,
+                    'isArtifactHashMismatch',
+                    isTrue,
+                  ),
+            ),
+          );
+        },
+      );
+
+      test(
+        'conflict without the mismatch code is not an artifact hash mismatch',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer((_) async {
+            return http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+              HttpStatus.conflict,
+            );
+          });
+
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync();
+
+          await expectLater(
+            codePushClient.createPatchArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              patchId: patchId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+            ),
+            throwsA(
+              isA<CodePushConflictException>()
+                  .having((e) => e.code, 'code', 'test_code')
+                  .having(
+                    (e) => e.isArtifactHashMismatch,
+                    'isArtifactHashMismatch',
+                    isFalse,
+                  )
+                  .having(
+                    (e) => e.isIdenticalArtifactAlreadyExists,
+                    'isIdenticalArtifactAlreadyExists',
+                    isFalse,
+                  ),
+            ),
+          );
+        },
+      );
+
+      test(
+        'conflict with the identical-artifact code reports '
+        'isIdenticalArtifactAlreadyExists',
+        () async {
+          const existingResponse = ErrorResponse(
+            code: CodePushConflictException.identicalArtifactAlreadyExistsCode,
+            message: 'already exists',
+          );
+          when(() => httpClient.send(any())).thenAnswer((_) async {
+            return http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(existingResponse.toJson()))),
+              HttpStatus.conflict,
+            );
+          });
+
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync();
+
+          await expectLater(
+            codePushClient.createPatchArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              patchId: patchId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+            ),
+            throwsA(
+              isA<CodePushConflictException>()
+                  .having(
+                    (e) => e.isIdenticalArtifactAlreadyExists,
+                    'isIdenticalArtifactAlreadyExists',
+                    isTrue,
+                  )
+                  .having(
+                    (e) => e.isArtifactHashMismatch,
+                    'isArtifactHashMismatch',
+                    isFalse,
+                  ),
+            ),
+          );
+        },
+      );
+
+      test(
+        'a 424 (server could not verify a conflict) throws a plain '
+        'CodePushException, never a conflict — so it cannot be treated as '
+        'already-uploaded success',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer((_) async {
+            return http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+              HttpStatus.failedDependency,
+            );
+          });
+
+          final tempDir = Directory.systemTemp.createTempSync();
+          final fixture = File(path.join(tempDir.path, 'release.txt'))
+            ..createSync();
+
+          await expectLater(
+            codePushClient.createPatchArtifact(
+              appId: appId,
+              artifactPath: fixture.path,
+              patchId: patchId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+            ),
+            throwsA(
+              allOf(
+                isA<CodePushException>(),
+                isNot(isA<CodePushConflictException>()),
+              ),
+            ),
+          );
+        },
+      );
+
       group('when a hash signature is provided', () {
         const hashSignature = 'hash_signature';
         test('makes the correct request', () async {
@@ -1426,6 +1591,50 @@ void main() {
           ),
         );
       });
+
+      test(
+        'a 409 with the rolled-back code reports isExistingPatchRolledBack',
+        () async {
+          const rolledBackResponse = ErrorResponse(
+            code: CodePushConflictException.existingPatchRolledBackCode,
+            message: 'patch 7 has been rolled back',
+          );
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(
+                utf8.encode(json.encode(rolledBackResponse.toJson())),
+              ),
+              HttpStatus.conflict,
+            ),
+          );
+
+          await expectLater(
+            codePushClient.createPatch(
+              appId: appId,
+              releaseId: releaseId,
+              metadata: {'foo': 'bar'},
+            ),
+            throwsA(
+              isA<CodePushConflictException>()
+                  .having(
+                    (e) => e.isExistingPatchRolledBack,
+                    'isExistingPatchRolledBack',
+                    isTrue,
+                  )
+                  .having(
+                    (e) => e.isArtifactHashMismatch,
+                    'isArtifactHashMismatch',
+                    isFalse,
+                  )
+                  .having(
+                    (e) => e.isIdenticalArtifactAlreadyExists,
+                    'isIdenticalArtifactAlreadyExists',
+                    isFalse,
+                  ),
+            ),
+          );
+        },
+      );
 
       test('completes when request succeeds', () async {
         const patchId = 0;
