@@ -130,6 +130,32 @@ void main() {
         ).called(1);
       });
 
+      test('throws StripeApiException carrying status and code on 404', () {
+        when(
+          () => httpClient.get(uri, headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'error': {
+                'type': 'invalid_request_error',
+                'code': 'resource_missing',
+                'message': "No such customer: 'cus_123'",
+              },
+            }),
+            HttpStatus.notFound,
+          ),
+        );
+
+        expect(
+          () => stripeApi.fetchCustomer(customerId: 'cus_123'),
+          throwsA(
+            isA<StripeApiException>()
+                .having((e) => e.statusCode, 'statusCode', HttpStatus.notFound)
+                .having((e) => e.code, 'code', 'resource_missing'),
+          ),
+        );
+      });
+
       test('returns a customer on successful request', () async {
         when(
           () => httpClient.get(uri, headers: any(named: 'headers')),
@@ -169,6 +195,36 @@ void main() {
         verify(
           () => httpClient.get(uri, headers: expectedAuthHeaders),
         ).called(1);
+      });
+
+      test('throws StripeApiException carrying status 429 on rate limit', () {
+        when(
+          () => httpClient.get(uri, headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'error': {
+                'type': 'api_error',
+                'code': 'rate_limit',
+                'message': 'Too many requests',
+              },
+            }),
+            HttpStatus.tooManyRequests,
+          ),
+        );
+
+        expect(
+          () => stripeApi.fetchSubscription(subscriptionId: subscriptionId),
+          throwsA(
+            isA<StripeApiException>()
+                .having(
+                  (e) => e.statusCode,
+                  'statusCode',
+                  HttpStatus.tooManyRequests,
+                )
+                .having((e) => e.code, 'code', 'rate_limit'),
+          ),
+        );
       });
 
       test('returns a subscription on successful request', () async {
@@ -407,6 +463,60 @@ void main() {
           );
         });
       });
+    });
+  });
+
+  group(StripeApiException, () {
+    test('fromResponse parses the Stripe error code from a JSON body', () {
+      final exception = StripeApiException.fromResponse(
+        http.Response(
+          jsonEncode({
+            'error': {
+              'code': 'resource_missing',
+              'message': 'No such customer',
+            },
+          }),
+          HttpStatus.notFound,
+        ),
+        message: 'fallback',
+      );
+
+      expect(exception.statusCode, HttpStatus.notFound);
+      expect(exception.code, 'resource_missing');
+      expect(exception.message, 'fallback');
+    });
+
+    test('fromResponse leaves code null on a non-JSON body', () {
+      final exception = StripeApiException.fromResponse(
+        http.Response('<html>502 Bad Gateway</html>', HttpStatus.badGateway),
+        message: 'fallback',
+      );
+
+      expect(exception.statusCode, HttpStatus.badGateway);
+      expect(exception.code, isNull);
+      expect(exception.message, 'fallback');
+    });
+
+    test('fromResponse leaves code null when the body has no error object', () {
+      final exception = StripeApiException.fromResponse(
+        http.Response(jsonEncode({'ok': true}), HttpStatus.badRequest),
+        message: 'fallback',
+      );
+
+      expect(exception.code, isNull);
+    });
+
+    test('toString includes the status code and error code', () {
+      final exception = StripeApiException(
+        statusCode: HttpStatus.notFound,
+        message: 'No such customer',
+        code: 'resource_missing',
+      );
+
+      expect(
+        exception.toString(),
+        'StripeApiException(404, resource_missing): No such customer',
+      );
     });
   });
 }
