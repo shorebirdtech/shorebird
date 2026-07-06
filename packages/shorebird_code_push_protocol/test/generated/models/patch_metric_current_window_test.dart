@@ -12,7 +12,7 @@ void main() {
           end: DateTime.utc(2024),
         ),
       );
-      final parsed = PatchMetricCurrentWindow.maybeFromJson(instance.toJson());
+      final parsed = PatchMetricCurrentWindow.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

@@ -8,7 +8,7 @@ void main() {
       final instance = GetReleasePatchDownloadsParameter2.values.first;
       final parsed = GetReleasePatchDownloadsParameter2.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

@@ -1,20 +1,18 @@
-/// How a client should upload an artifact's bytes to storage.
-///
-/// Returned by the create-artifact endpoints so the client knows how to use the
-/// `url` it was handed. Absent (null) on responses from older servers, which
-/// always implied [multipart].
+/// How a client should upload an artifact's bytes to storage, returned
+/// by the create-artifact endpoints so the client knows how to use the
+/// `url` it was handed. `multipart` is the legacy single
+/// `multipart/form-data` POST of the file to a signed URL. `resumable`
+/// is a resumable upload: PUT the bytes (chunked, with `Content-Range`)
+/// to a server-initiated GCS resumable session URI given in `url` — the
+/// session is size-bound at initiation, so GCS rejects an oversized
+/// upload.
 enum ArtifactUploadMethod {
-  /// Legacy single `multipart/form-data` POST of the file to a signed URL.
   multipart._('multipart'),
-
-  /// Resumable upload: PUT the bytes (chunked, with `Content-Range`) to a
-  /// server-initiated GCS resumable session URI given in `url`. The session is
-  /// size-bound at initiation, so GCS rejects an oversized upload.
   resumable._('resumable');
 
   const ArtifactUploadMethod._(this.value);
 
-  /// Creates an [ArtifactUploadMethod] from a json value.
+  /// Creates a ArtifactUploadMethod from a json value.
   factory ArtifactUploadMethod.fromJson(String json) {
     return ArtifactUploadMethod.values.firstWhere(
       (value) => value.value == json,
@@ -32,7 +30,8 @@ enum ArtifactUploadMethod {
     return ArtifactUploadMethod.fromJson(json);
   }
 
-  /// The wire value of the enum, used for network transport.
+  /// The value of the enum.  This is the exact value
+  /// from the OpenAPI spec and will be used for network transport.
   final String value;
 
   /// Converts the enum to its json value.

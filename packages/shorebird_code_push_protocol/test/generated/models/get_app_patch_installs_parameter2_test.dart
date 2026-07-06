@@ -8,7 +8,7 @@ void main() {
       final instance = GetAppPatchInstallsParameter2.values.first;
       final parsed = GetAppPatchInstallsParameter2.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

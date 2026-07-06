@@ -16,7 +16,7 @@ void main() {
           ),
         ),
       );
-      final parsed = GetPatchMetricResponse.maybeFromJson(instance.toJson());
+      final parsed = GetPatchMetricResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

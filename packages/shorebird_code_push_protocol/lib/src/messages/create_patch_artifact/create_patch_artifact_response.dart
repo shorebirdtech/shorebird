@@ -69,14 +69,17 @@ class CreatePatchArtifactResponse {
   /// The size of the artifact in bytes.
   final int size;
 
-  /// The upload URL for the artifact (a signed URL for [ArtifactUploadMethod
-  /// .multipart], or a resumable session URI for [ArtifactUploadMethod
-  /// .resumable]).
+  /// The upload URL for the artifact.
   final String url;
 
-  /// How the client should upload the artifact bytes to [url]. Null on
-  /// responses from older servers, which always implied
-  /// [ArtifactUploadMethod.multipart].
+  /// How a client should upload an artifact's bytes to storage, returned
+  /// by the create-artifact endpoints so the client knows how to use the
+  /// `url` it was handed. `multipart` is the legacy single
+  /// `multipart/form-data` POST of the file to a signed URL. `resumable`
+  /// is a resumable upload: PUT the bytes (chunked, with `Content-Range`)
+  /// to a server-initiated GCS resumable session URI given in `url` — the
+  /// session is size-bound at initiation, so GCS rejects an oversized
+  /// upload.
   final ArtifactUploadMethod? uploadMethod;
 
   /// Converts a [CreatePatchArtifactResponse] to a `Map<String, dynamic>`.
