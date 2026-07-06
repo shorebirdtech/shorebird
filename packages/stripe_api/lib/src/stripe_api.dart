@@ -36,7 +36,10 @@ class StripeApi {
 
     final response = await _client.get(uri, headers: _authHeaders);
     if (response.statusCode != HttpStatus.ok) {
-      throw Exception('Failed to retrieve customer with id $customerId');
+      throw StripeApiException.fromResponse(
+        response,
+        message: 'Failed to retrieve customer with id $customerId',
+      );
     }
 
     return StripeCustomer.fromJson(
@@ -55,8 +58,9 @@ class StripeApi {
 
     final response = await _client.get(uri, headers: _authHeaders);
     if (response.statusCode != HttpStatus.ok) {
-      throw Exception(
-        'Failed to retrieve subscription with id $subscriptionId',
+      throw StripeApiException.fromResponse(
+        response,
+        message: 'Failed to retrieve subscription with id $subscriptionId',
       );
     }
 
@@ -96,10 +100,14 @@ class StripeApi {
     );
 
     if (response.statusCode != HttpStatus.ok) {
-      throw Exception('''
+      throw StripeApiException.fromResponse(
+        response,
+        message:
+            '''
 Failed to report $value for customer $customerId. Error:
 ${response.body}
-''');
+''',
+      );
     }
   }
 
@@ -146,10 +154,14 @@ ${response.body}
 
       final response = await _client.get(uri, headers: _authHeaders);
       if (response.statusCode != HttpStatus.ok) {
-        throw Exception('''
+        throw StripeApiException.fromResponse(
+          response,
+          message:
+              '''
 Failed to get paged response from $path with params $queryParameters. Error:
 ${response.body}
-''');
+''',
+        );
       }
 
       final pagedResponse = PagedResponse.fromJson(
