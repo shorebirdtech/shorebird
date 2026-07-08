@@ -6,7 +6,7 @@ void main() {
   group('GetUniqueUsersParameter2', () {
     test('round-trips via maybeFromJson/toJson', () {
       final instance = GetUniqueUsersParameter2.values.first;
-      final parsed = GetUniqueUsersParameter2.maybeFromJson(instance.toJson());
+      final parsed = GetUniqueUsersParameter2.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

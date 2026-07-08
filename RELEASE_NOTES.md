@@ -1,8 +1,40 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES
  -->
+
+## 1.6.111 (July 7, 2026)
+
+- 🐦 Flutter 3.44.5 / Dart 3.12.2 support
+  - Android: fix `libapp.so` sometimes missing from the APK or app bundle when
+    building with flavors, or with older app templates combined with certain
+    plugins.
+  - Impeller: fix text shadows rendering in the wrong position, separate from
+    the text.
+  - Impeller (Vulkan): fix a crash during app shutdown or rotation on some
+    Android devices.
+  - Android: silence spurious Built-in Kotlin migration warnings when building
+    with AGP below 9.
+- 🐛 Updater: report the currently running patch number instead of the last
+  booted patch.
+
+## 1.6.110 (June 25, 2026)
+
+- 🐦 Flutter 3.44.4 / Dart 3.12.2 support
+  - Linux: fix bounds checking in `FlAccessibleTextField`.
+
+## 1.6.109 (June 22, 2026)
+
+- 🐦 Flutter 3.44.3 / Dart 3.12.2 support
+  - Fix a potential buffer overflow in the animated PNG decoder when parsing
+    malformed fdAT chunks.
+  - Swift Package Manager: fix crashes from concurrent directory/file/symlink
+    creation when building iOS or macOS apps.
+  - Impeller (OpenGL ES): fix a texture resource leak by ensuring the
+    TextureGLES destructor releases all objects it holds, including its sync
+    fence.
+  - Print a trace when skipping flavor-specific and platform-specific assets.
 
 ## 1.6.108 (June 12, 2026)
 

@@ -12,6 +12,7 @@ environment:
 dependencies:
   collection: ^1.18.0
   http: ^1.5.0
+  meta: ^1.18.3
   path: ^1.9.0
   shorebird_code_push_protocol:
     path: ../shorebird_code_push_protocol

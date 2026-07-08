@@ -17,11 +17,11 @@ environment:
 
 dependencies:
   args: ^2.6.0
-  meta: ^1.16.0
+  meta: ^1.18.3
   path: ^1.9.0
   pub_semver: ^2.1.0
   yaml: ^3.1.0
 
 dev_dependencies:
   test: ^1.31.1
-  very_good_analysis: ^10.2.0
+  very_good_analysis: ^10.3.0

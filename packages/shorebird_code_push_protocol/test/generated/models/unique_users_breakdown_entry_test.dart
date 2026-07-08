@@ -5,14 +5,14 @@ import 'package:test/test.dart';
 void main() {
   group('UniqueUsersBreakdownEntry', () {
     test('round-trips via maybeFromJson/toJson', () {
-      final instance = UniqueUsersBreakdownEntry(
+      const instance = UniqueUsersBreakdownEntry(
         groupBy: 'example',
         groupValue: 'example',
         uniqueUsers: 0,
       );
       final parsed = UniqueUsersBreakdownEntry.maybeFromJson(
         instance.toJson(),
-      );
+      )!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

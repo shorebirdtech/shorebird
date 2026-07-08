@@ -9,7 +9,7 @@ void main() {
         releaseVersion: 'example',
         isLatest: false,
         granularity: 'example',
-        range: PatchAdoptionRange(
+        range: MetricsRange(
           start: DateTime.utc(2024),
           end: DateTime.utc(2024),
         ),
