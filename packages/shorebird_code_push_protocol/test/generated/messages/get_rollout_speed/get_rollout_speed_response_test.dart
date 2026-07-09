@@ -8,18 +8,16 @@ void main() {
       final instance = GetRolloutSpeedResponse(
         asOf: DateTime.utc(2024),
         lookbackDays: 0,
-        startThreshold: 0,
         rungs: const <double>[0],
         samples: <RolloutSpeedSample>[
           RolloutSpeedSample(
             artifactType: RolloutArtifactType.values.first,
             releaseVersion: 'example',
             patchNumber: 0,
-            startedAt: DateTime.utc(2024),
+            createdAt: DateTime.utc(2024),
             rungCrossings: <RolloutRungCrossing>[
               RolloutRungCrossing(rung: 0, crossedAt: DateTime.utc(2024)),
             ],
-            eligible: false,
           ),
         ],
       );

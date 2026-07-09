@@ -9,11 +9,10 @@ void main() {
         artifactType: RolloutArtifactType.values.first,
         releaseVersion: 'example',
         patchNumber: 0,
-        startedAt: DateTime.utc(2024),
+        createdAt: DateTime.utc(2024),
         rungCrossings: <RolloutRungCrossing>[
           RolloutRungCrossing(rung: 0, crossedAt: DateTime.utc(2024)),
         ],
-        eligible: false,
       );
       final parsed = RolloutSpeedSample.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));

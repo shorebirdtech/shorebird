@@ -4,8 +4,8 @@ import 'package:shorebird_code_push_protocol/src/models/rollout_speed_sample.dar
 
 /// {@template get_rollout_speed_response}
 /// The response body for GET /apps/{appId}/metrics/rollout-speed. One
-/// flat sample per store release and per patch with activity within
-/// the lookback window; comparisons and aggregates are composed by
+/// flat sample per store release and per patch created within the
+/// lookback window; comparisons and aggregates are composed by
 /// consumers.
 /// {@endtemplate}
 @immutable
@@ -14,7 +14,6 @@ class GetRolloutSpeedResponse {
   const GetRolloutSpeedResponse({
     required this.asOf,
     required this.lookbackDays,
-    required this.startThreshold,
     required this.rungs,
     required this.samples,
   });
@@ -27,7 +26,6 @@ class GetRolloutSpeedResponse {
       () => GetRolloutSpeedResponse(
         asOf: DateTime.parse(json['as_of'] as String),
         lookbackDays: json['lookback_days'] as int,
-        startThreshold: (json['start_threshold'] as num).toDouble(),
         rungs: (json['rungs'] as List).cast<double>(),
         samples: (json['samples'] as List)
             .map<RolloutSpeedSample>(
@@ -53,13 +51,10 @@ class GetRolloutSpeedResponse {
   /// may lag by up to ~1 hour.
   final DateTime asOf;
 
-  /// The length of the data window: only activity within this many
-  /// days is considered. Fixed server-side and echoed here.
+  /// The length of the sampling window: only artifacts created
+  /// within this many days are considered. Fixed server-side and
+  /// echoed here.
   final int lookbackDays;
-
-  /// The adoption share that starts a sample's clock (`started_at`).
-  /// Fixed server-side and echoed here.
-  final double startThreshold;
 
   /// The rung shares crossings are reported for, ascending. Fixed
   /// server-side and echoed here.
@@ -74,7 +69,6 @@ class GetRolloutSpeedResponse {
     return {
       'as_of': asOf.toIso8601String(),
       'lookback_days': lookbackDays,
-      'start_threshold': startThreshold,
       'rungs': rungs,
       'samples': samples.map((e) => e.toJson()).toList(),
     };
@@ -84,7 +78,6 @@ class GetRolloutSpeedResponse {
   int get hashCode => Object.hashAll([
     asOf,
     lookbackDays,
-    startThreshold,
     listHash(rungs),
     listHash(samples),
   ]);
@@ -95,7 +88,6 @@ class GetRolloutSpeedResponse {
     return other is GetRolloutSpeedResponse &&
         asOf == other.asOf &&
         lookbackDays == other.lookbackDays &&
-        startThreshold == other.startThreshold &&
         listsEqual(rungs, other.rungs) &&
         listsEqual(samples, other.samples);
   }

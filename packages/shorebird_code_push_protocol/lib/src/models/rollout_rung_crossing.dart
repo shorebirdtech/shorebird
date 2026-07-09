@@ -38,8 +38,10 @@ class RolloutRungCrossing {
   /// The rung that was crossed, as a share (e.g. 0.25).
   final double rung;
 
-  /// The first hour (UTC), at or after `started_at`, whose adoption
-  /// share reached the rung.
+  /// The first hour (UTC) whose adoption share reached the rung.
+  /// Hour-bucketed while `created_at` is exact, so it can precede
+  /// `created_at` by up to an hour; consumers clamp the transit
+  /// at zero.
   final DateTime crossedAt;
 
   /// Converts a [RolloutRungCrossing] to a `Map<String, dynamic>`.
