@@ -1,13 +1,16 @@
 /// Why a rollout-speed sample does not qualify for aggregate statistics.
 /// Ineligible samples are still returned — flagged, never dropped.
 enum RolloutIneligibleReason {
-  /// The patch's parent release never reached the minimum share of the app's
-  /// active fleet, so the patch's audience is not representative.
+  /// The patch's parent release never reached the minimum share of its target
+  /// audience, so the patch's audience is not representative.
   releaseBelowFloor._('release_below_floor'),
 
-  /// The sample's audience has fewer devices than the minimum required for a
-  /// stable share.
-  audienceTooSmall._('audience_too_small');
+  /// The sample's audience never had enough devices for a stable share.
+  audienceTooSmall._('audience_too_small'),
+
+  /// The rollout was already past the start threshold at the edge of the data
+  /// window, so its transit times would measure the window, not the rollout.
+  leftCensored._('left_censored');
 
   const RolloutIneligibleReason._(this.value);
 

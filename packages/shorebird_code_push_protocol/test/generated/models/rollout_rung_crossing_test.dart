@@ -9,7 +9,7 @@ void main() {
         rung: 0,
         crossedAt: DateTime.utc(2024),
       );
-      final parsed = RolloutRungCrossing.maybeFromJson(instance.toJson());
+      final parsed = RolloutRungCrossing.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

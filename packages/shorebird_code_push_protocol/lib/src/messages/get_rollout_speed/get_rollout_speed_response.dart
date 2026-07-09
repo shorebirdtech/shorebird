@@ -4,9 +4,9 @@ import 'package:shorebird_code_push_protocol/src/models/rollout_speed_sample.dar
 
 /// {@template get_rollout_speed_response}
 /// The response body for GET /apps/{appId}/metrics/rollout-speed. One
-/// flat sample per store release and per patch whose rollout started
-/// within the lookback window; comparisons and aggregates are composed
-/// by consumers.
+/// flat sample per store release and per patch with activity within
+/// the lookback window; comparisons and aggregates are composed by
+/// consumers.
 /// {@endtemplate}
 @immutable
 class GetRolloutSpeedResponse {
@@ -53,8 +53,8 @@ class GetRolloutSpeedResponse {
   /// may lag by up to ~1 hour.
   final DateTime asOf;
 
-  /// Only artifacts whose rollout started within this many days are
-  /// included. Fixed server-side and echoed here.
+  /// The length of the data window: only activity within this many
+  /// days is considered. Fixed server-side and echoed here.
   final int lookbackDays;
 
   /// The adoption share that starts a sample's clock (`started_at`).

@@ -9,7 +9,7 @@ void main() {
         asOf: DateTime.utc(2024),
         lookbackDays: 0,
         startThreshold: 0,
-        rungs: <double>[0],
+        rungs: const <double>[0],
         samples: <RolloutSpeedSample>[
           RolloutSpeedSample(
             artifactType: RolloutArtifactType.values.first,
@@ -24,7 +24,7 @@ void main() {
           ),
         ],
       );
-      final parsed = GetRolloutSpeedResponse.maybeFromJson(instance.toJson());
+      final parsed = GetRolloutSpeedResponse.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

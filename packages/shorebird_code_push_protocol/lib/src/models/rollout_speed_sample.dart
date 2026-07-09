@@ -6,10 +6,11 @@ import 'package:shorebird_code_push_protocol/src/models/rollout_rung_crossing.da
 
 /// {@template rollout_speed_sample}
 /// The rollout waypoints for one artifact — a store release or a patch.
-/// All shares are fractions of the sample's *own* audience: the app's
-/// whole active fleet for a release, the distinct devices on the parent
-/// release for a patch. The two audiences differ; consumers must never
-/// present the two sides' percentages as the same population.
+/// All shares are fractions of the sample's *own* target audience: the
+/// app's devices on the release's platform(s) for a release, the
+/// distinct devices on the parent release for a patch. The two
+/// audiences differ; consumers must never present the two sides'
+/// percentages as the same population.
 /// {@endtemplate}
 @immutable
 class RolloutSpeedSample {

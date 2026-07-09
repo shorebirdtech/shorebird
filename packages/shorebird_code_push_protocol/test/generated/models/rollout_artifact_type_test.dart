@@ -6,7 +6,7 @@ void main() {
   group('RolloutArtifactType', () {
     test('round-trips via maybeFromJson/toJson', () {
       final instance = RolloutArtifactType.values.first;
-      final parsed = RolloutArtifactType.maybeFromJson(instance.toJson());
+      final parsed = RolloutArtifactType.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

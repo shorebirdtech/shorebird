@@ -6,7 +6,7 @@ void main() {
   group('RolloutIneligibleReason', () {
     test('round-trips via maybeFromJson/toJson', () {
       final instance = RolloutIneligibleReason.values.first;
-      final parsed = RolloutIneligibleReason.maybeFromJson(instance.toJson());
+      final parsed = RolloutIneligibleReason.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

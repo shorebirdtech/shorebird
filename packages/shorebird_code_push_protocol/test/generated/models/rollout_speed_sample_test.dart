@@ -16,7 +16,7 @@ void main() {
         currentShare: 0,
         eligible: false,
       );
-      final parsed = RolloutSpeedSample.maybeFromJson(instance.toJson());
+      final parsed = RolloutSpeedSample.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));
       expect(parsed.hashCode, equals(instance.hashCode));
     });

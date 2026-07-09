@@ -1,7 +1,7 @@
 /// The kind of artifact a rollout-speed sample describes.
 enum RolloutArtifactType {
-  /// A store release; its adoption share is measured over the app's whole
-  /// active fleet.
+  /// A store release; its adoption share is measured over all of the app's
+  /// devices on the platform(s) the release was observed on.
   release._('release'),
 
   /// A Shorebird patch; its adoption share is measured over the distinct
