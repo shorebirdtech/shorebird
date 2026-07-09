@@ -24,6 +24,7 @@ export 'package:shorebird_code_push_protocol/src/messages/create_release_artifac
 export 'package:shorebird_code_push_protocol/src/messages/create_user/create_user_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/error_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_active_hours/get_active_hours_response.dart';
+export 'package:shorebird_code_push_protocol/src/messages/get_activity_heatmap/get_activity_heatmap_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_apps/get_apps_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_gcp_download_speed_test_url/get_gcp_download_speed_test_url200_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_gcp_upload_speed_test_url/get_gcp_upload_speed_test_url200_response.dart';
@@ -45,6 +46,7 @@ export 'package:shorebird_code_push_protocol/src/messages/update_app_collaborato
 export 'package:shorebird_code_push_protocol/src/messages/update_patch/update_patch_request.dart';
 export 'package:shorebird_code_push_protocol/src/messages/update_release/update_release_request.dart';
 export 'package:shorebird_code_push_protocol/src/models/active_hour_entry.dart';
+export 'package:shorebird_code_push_protocol/src/models/activity_heatmap_cell.dart';
 export 'package:shorebird_code_push_protocol/src/models/app.dart';
 export 'package:shorebird_code_push_protocol/src/models/app_collaborator_role.dart';
 export 'package:shorebird_code_push_protocol/src/models/app_metadata.dart';
