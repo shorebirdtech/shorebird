@@ -48,7 +48,10 @@ class UniqueUsersBreakdownEntry {
   /// The dimension this entry breaks down by (e.g. "platform").
   final String groupBy;
 
-  /// The value within `group_by` (e.g. "android").
+  /// The value within `group_by` (e.g. "android"). For
+  /// `group_by=release_version`, the empty string is the
+  /// unknown-version group — devices whose client is too old to
+  /// report a release version.
   final String groupValue;
 
   /// Distinct active devices for this group over the window (an HLL
