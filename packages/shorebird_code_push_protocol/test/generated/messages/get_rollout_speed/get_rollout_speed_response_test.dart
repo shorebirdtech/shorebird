@@ -19,7 +19,6 @@ void main() {
             rungCrossings: <RolloutRungCrossing>[
               RolloutRungCrossing(rung: 0, crossedAt: DateTime.utc(2024)),
             ],
-            currentShare: 0,
             eligible: false,
           ),
         ],

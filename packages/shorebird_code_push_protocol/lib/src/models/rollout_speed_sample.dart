@@ -21,7 +21,6 @@ class RolloutSpeedSample {
     required this.patchNumber,
     required this.startedAt,
     required this.rungCrossings,
-    required this.currentShare,
     required this.eligible,
     this.ineligibleReason,
   });
@@ -45,7 +44,6 @@ class RolloutSpeedSample {
               (e) => RolloutRungCrossing.fromJson(e as Map<String, dynamic>),
             )
             .toList(),
-        currentShare: (json['current_share'] as num).toDouble(),
         eligible: json['eligible'] as bool,
         ineligibleReason: RolloutIneligibleReason.maybeFromJson(
           json['ineligible_reason'] as String?,
@@ -83,11 +81,6 @@ class RolloutSpeedSample {
   /// are right-censored.
   final List<RolloutRungCrossing> rungCrossings;
 
-  /// The sample's adoption share of its audience at the latest data
-  /// hour, clamped to `[0.0, 1.0]`. Lets consumers describe a rollout
-  /// that is still climbing.
-  final double currentShare;
-
   /// Whether the sample qualifies for aggregate statistics such as
   /// medians. Ineligible samples are still returned — flagged, never
   /// dropped — with the cause in `ineligible_reason`.
@@ -105,7 +98,6 @@ class RolloutSpeedSample {
       'patch_number': patchNumber,
       'started_at': startedAt?.toIso8601String(),
       'rung_crossings': rungCrossings.map((e) => e.toJson()).toList(),
-      'current_share': currentShare,
       'eligible': eligible,
       'ineligible_reason': ineligibleReason?.toJson(),
     };
@@ -118,7 +110,6 @@ class RolloutSpeedSample {
     patchNumber,
     startedAt,
     listHash(rungCrossings),
-    currentShare,
     eligible,
     ineligibleReason,
   ]);
@@ -132,7 +123,6 @@ class RolloutSpeedSample {
         patchNumber == other.patchNumber &&
         startedAt == other.startedAt &&
         listsEqual(rungCrossings, other.rungCrossings) &&
-        currentShare == other.currentShare &&
         eligible == other.eligible &&
         ineligibleReason == other.ineligibleReason;
   }
