@@ -125,13 +125,20 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
   /// Probes the command's help output and caches the result per [command]
   /// so that subsequent calls for the same command are free.
   /// Returns `false` if the help check fails for any reason.
+  ///
+  /// The probe uses verbose help (`-h -v`): `--shorebird-trace` is registered
+  /// with `hide: !verboseHelp` in Flutter, so it does not appear in plain
+  /// `-h` output. Probing with `-h` alone therefore returned `false` even on
+  /// Flutter versions that fully support the flag, silently disabling build
+  /// tracing for everyone. `-h -v` lists hidden options so support is
+  /// detected correctly.
   Future<bool> _supportsTraceFlag(String command) async {
     if (_traceSupport.containsKey(command)) return _traceSupport[command]!;
 
     try {
       final result = await process.run(
         'flutter',
-        ['build', command, '-h'],
+        ['build', command, '-h', '-v'],
         runInShell: false,
       );
       final supported = result.stdout.toString().contains('--shorebird-trace');
