@@ -347,11 +347,77 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         verify(
           () => shorebirdProcess.run(
             'flutter',
-            ['build', 'appbundle', '-h'],
+            ['build', 'appbundle', '-h', '-v'],
             runInShell: false,
           ),
         ).called(1);
       });
+
+      test(
+        'detects --shorebird-trace even though it is hidden from -h',
+        () async {
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => Version(3, 41, 7));
+          // Flutter registers --shorebird-trace with `hide: !verboseHelp`, so it
+          // only appears in verbose help. Model that: plain `-h` omits the flag,
+          // `-h -v` includes it. Probing without `-v` (the original bug) would
+          // miss it and silently disable tracing on every supported build.
+          when(
+            () => shorebirdProcess.run(
+              'flutter',
+              ['build', 'appbundle', '-h'],
+              runInShell: false,
+            ),
+          ).thenAnswer(
+            (_) async => ShorebirdProcessResult(
+              exitCode: ExitCode.success.code,
+              stdout: '--release',
+              stderr: '',
+            ),
+          );
+          when(
+            () => shorebirdProcess.run(
+              'flutter',
+              ['build', 'appbundle', '-h', '-v'],
+              runInShell: false,
+            ),
+          ).thenAnswer(
+            (_) async => ShorebirdProcessResult(
+              exitCode: ExitCode.success.code,
+              stdout: '--release\n--shorebird-trace',
+              stderr: '',
+            ),
+          );
+
+          await runWithOverrides(() async {
+            await builder.prepareBuildTrace(platform: 'android');
+            await builder.buildAppBundle();
+          });
+
+          final expectedTracePath = p.join(
+            projectRoot.path,
+            'build',
+            'shorebird',
+            'debug',
+            'build-trace-android.json',
+          );
+          verify(
+            () => shorebirdProcess.stream(
+              'flutter',
+              [
+                'build',
+                'appbundle',
+                '--release',
+                '--shorebird-trace=$expectedTracePath',
+              ],
+              environment: any(named: 'environment'),
+              runInShell: false,
+              onStart: any(named: 'onStart'),
+            ),
+          ).called(1);
+        },
+      );
 
       test('skips trace when help probe throws', () async {
         when(
@@ -360,7 +426,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
         when(
           () => shorebirdProcess.run(
             'flutter',
-            ['build', 'appbundle', '-h'],
+            ['build', 'appbundle', '-h', '-v'],
             runInShell: false,
           ),
         ).thenThrow(Exception('process failed'));
@@ -921,7 +987,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           when(
             () => shorebirdProcess.run(
               'flutter',
-              ['build', 'aar', '-h'],
+              ['build', 'aar', '-h', '-v'],
               runInShell: false,
             ),
           ).thenAnswer(
@@ -1123,7 +1189,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           when(
             () => shorebirdProcess.run(
               'flutter',
-              ['build', 'linux', '-h'],
+              ['build', 'linux', '-h', '-v'],
               runInShell: false,
             ),
           ).thenAnswer(
@@ -1300,7 +1366,7 @@ Reason: Exited with code 70.'''),
           when(
             () => shorebirdProcess.run(
               'flutter',
-              ['build', 'macos', '-h'],
+              ['build', 'macos', '-h', '-v'],
               runInShell: false,
             ),
           ).thenAnswer(
@@ -1789,7 +1855,7 @@ Reason: Exited with code 70.'''),
           when(
             () => shorebirdProcess.run(
               'flutter',
-              ['build', 'ios-framework', '-h'],
+              ['build', 'ios-framework', '-h', '-v'],
               runInShell: false,
             ),
           ).thenAnswer(
@@ -2081,7 +2147,7 @@ Reason: Exited with code 70.'''),
           when(
             () => shorebirdProcess.run(
               'flutter',
-              ['build', 'windows', '-h'],
+              ['build', 'windows', '-h', '-v'],
               runInShell: false,
             ),
           ).thenAnswer(
