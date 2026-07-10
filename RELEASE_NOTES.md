@@ -4,6 +4,13 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES
  -->
 
+## 1.6.112 (July 10, 2026)
+
+- 🐦 Flutter 3.44.6 / Dart 3.12.2 support
+  - Linux: fix a crash when building asset bundles with native assets enabled
+    but without a native app build directory (missing `CMakeCache.txt`).
+  - Android: fix a crash when running instrumented tests.
+
 ## 1.6.111 (July 7, 2026)
 
 - 🐦 Flutter 3.44.5 / Dart 3.12.2 support
