@@ -4,6 +4,12 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES
  -->
 
+## 1.6.113 (July 10, 2026)
+
+- 🐛 Fix `--shorebird-trace` build tracing being silently disabled even on
+  Flutter versions that support it, caused by probing plain `flutter build -h`
+  output where the flag is hidden.
+
 ## 1.6.112 (July 10, 2026)
 
 - 🐦 Flutter 3.44.6 / Dart 3.12.2 support
