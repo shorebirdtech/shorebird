@@ -28,6 +28,7 @@ export 'package:shorebird_code_push_protocol/src/messages/get_activity_heatmap/g
 export 'package:shorebird_code_push_protocol/src/messages/get_apps/get_apps_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_gcp_download_speed_test_url/get_gcp_download_speed_test_url200_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_gcp_upload_speed_test_url/get_gcp_upload_speed_test_url200_response.dart';
+export 'package:shorebird_code_push_protocol/src/messages/get_new_devices/get_new_devices_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_organization_apps/get_organization_apps_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_organization_users/get_organization_users_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_organizations_response.dart';
