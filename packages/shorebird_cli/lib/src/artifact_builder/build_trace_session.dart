@@ -29,6 +29,19 @@ class BuildTraceSession {
   /// platform-specific accumulators in the summary.
   String? platform;
 
+  /// Whether Flutter's `build/` output directory already existed and was
+  /// non-empty when the build started — a warm-build proxy. A fresh
+  /// checkout (the common CI case) has no `build/`, so this is false; a
+  /// repeat local build is true. Null when tracing wasn't set up or the
+  /// project root couldn't be resolved.
+  ///
+  /// Snapshotted by `ArtifactBuilder.prepareBuildTrace` *before* the build
+  /// runs (the only point at which pre-build state is still observable);
+  /// read by `writeBuildTraceSummary`. Lets field data separate cold
+  /// builds from locally-warm ones, which otherwise skew the release
+  /// baselines a native build cache is measured against.
+  bool? nativeOutputsPresentAtStart;
+
   /// The [BuildTraceSummary] produced by the most recent
   /// `writeBuildTraceSummary` call, or null if no summary was written
   /// (unsupported Flutter pin, trace file malformed, etc.).

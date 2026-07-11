@@ -650,6 +650,50 @@ Reason: Exited with code $exitCode.''',
     );
     traceFile.parent.createSync(recursive: true);
     buildTraceSession.traceFile = traceFile;
+
+    // Snapshot warm-vs-cold *before* the build mutates `build/`. A fresh
+    // checkout (the common CI case) has no `build/` yet; a repeat local
+    // build does. `writeBuildTraceSummary` reads this back later.
+    buildTraceSession.nativeOutputsPresentAtStart = _nativeOutputsPresent();
+  }
+
+  /// Whether Flutter's `build/` output directory already exists and is
+  /// non-empty, a warm-build proxy. Null when the project root can't be
+  /// resolved. Called from [prepareBuildTrace] before the build runs.
+  bool? _nativeOutputsPresent() {
+    final root = shorebirdEnv.getShorebirdProjectRoot();
+    if (root == null) return null;
+    final buildDir = Directory(p.join(root.path, 'build'));
+    if (!buildDir.existsSync()) return false;
+    return buildDir.listSync().isNotEmpty;
+  }
+
+  /// Best-effort size in bytes of the primary build output for [platform]
+  /// (the `.aab` on Android, the `.ipa` on iOS). Searches the standard
+  /// Flutter output locations for the largest matching artifact modified
+  /// since the command started (so a stale artifact from an earlier build
+  /// isn't picked up on warm builds). Null when nothing matches or the
+  /// project root can't be resolved.
+  int? _outputArtifactBytes(String platform) {
+    final root = shorebirdEnv.getShorebirdProjectRoot();
+    if (root == null) return null;
+    final (dir, ext) = switch (platform) {
+      'android' => (p.join(root.path, 'build', 'app', 'outputs'), '.aab'),
+      'ios' => (p.join(root.path, 'build', 'ios', 'ipa'), '.ipa'),
+      _ => (null, null),
+    };
+    if (dir == null || ext == null) return null;
+    final searchDir = Directory(dir);
+    if (!searchDir.existsSync()) return null;
+    final startedAt = buildTraceSession.commandStartedAt;
+    int? largest;
+    for (final entry in searchDir.listSync(recursive: true)) {
+      if (entry is! File || !entry.path.toLowerCase().endsWith(ext)) continue;
+      final stat = entry.statSync();
+      if (stat.modified.isBefore(startedAt)) continue;
+      if (largest == null || stat.size > largest) largest = stat.size;
+    }
+    return largest;
   }
 
   /// Emits a flow-start event (`ph: "s"`) on the shorebird_cli tracer
@@ -735,6 +779,9 @@ Reason: Exited with code $exitCode.''',
           ? Duration.zero
           : shorebirdOverhead,
       environment: environment,
+      nativeOutputsPresentAtStart:
+          buildTraceSession.nativeOutputsPresentAtStart,
+      outputArtifactBytes: _outputArtifactBytes(buildPlatform),
     );
 
     // Cache for the release/patch metadata uploader to read without

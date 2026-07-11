@@ -33,6 +33,8 @@ class BuildTraceSummary {
     this.android,
     this.ios,
     this.environment,
+    this.nativeOutputsPresentAtStart,
+    this.outputArtifactBytes,
   });
 
   /// Build a summary from the raw list of trace events written by Flutter
@@ -47,6 +49,8 @@ class BuildTraceSummary {
     required String platform,
     Duration? shorebirdOverhead,
     BuildEnvironment? environment,
+    bool? nativeOutputsPresentAtStart,
+    int? outputArtifactBytes,
   }) {
     final acc = _Accumulator();
     for (final e in events) {
@@ -61,6 +65,8 @@ class BuildTraceSummary {
       platform: platform,
       shorebirdOverhead: shorebirdOverhead,
       environment: environment,
+      nativeOutputsPresentAtStart: nativeOutputsPresentAtStart,
+      outputArtifactBytes: outputArtifactBytes,
     );
   }
 
@@ -158,6 +164,8 @@ class BuildTraceSummary {
     required String platform,
     Duration? shorebirdOverhead,
     BuildEnvironment? environment,
+    bool? nativeOutputsPresentAtStart,
+    int? outputArtifactBytes,
   }) {
     final flutterBuild = acc.flutterBuild;
     return BuildTraceSummary(
@@ -176,6 +184,8 @@ class BuildTraceSummary {
       android: platform == 'android' ? _androidStats(acc) : null,
       ios: platform == 'ios' ? _iosStats(acc) : null,
       environment: environment,
+      nativeOutputsPresentAtStart: nativeOutputsPresentAtStart,
+      outputArtifactBytes: outputArtifactBytes,
     );
   }
 
@@ -270,6 +280,8 @@ class BuildTraceSummary {
     required String platform,
     Duration? shorebirdOverhead,
     BuildEnvironment? environment,
+    bool? nativeOutputsPresentAtStart,
+    int? outputArtifactBytes,
   }) {
     final events = tryReadEvents(traceFile);
     if (events == null) return null;
@@ -278,6 +290,8 @@ class BuildTraceSummary {
       platform: platform,
       shorebirdOverhead: shorebirdOverhead,
       environment: environment,
+      nativeOutputsPresentAtStart: nativeOutputsPresentAtStart,
+      outputArtifactBytes: outputArtifactBytes,
     );
   }
 
@@ -376,6 +390,20 @@ class BuildTraceSummary {
   /// "slow despite caching being on" in field data.
   final BuildEnvironment? environment;
 
+  /// Whether Flutter's `build/` output directory already existed and was
+  /// non-empty when the build started (a warm-build proxy). Null when it
+  /// couldn't be observed. Lets us drop or bucket locally-warm builds so
+  /// they don't skew the cold-build baselines a native build cache is
+  /// measured against.
+  final bool? nativeOutputsPresentAtStart;
+
+  /// Size in bytes of the primary build output (the `.aab` on Android,
+  /// the `.ipa` on iOS), best-effort. Null when no matching artifact was
+  /// found. Sizes the artifact a remote native-shell cache would move,
+  /// which decides whether a cache pull can beat a rebuild over the
+  /// network.
+  final int? outputArtifactBytes;
+
   /// Shorebird CLI's wall-clock time around Flutter with network I/O
   /// subtracted — i.e. what Shorebird spent doing local work (file I/O,
   /// hashing, archive assembly, aot_tools link/gen_snapshot bookkeeping
@@ -402,7 +430,7 @@ class BuildTraceSummary {
   /// subtraction (`flutterBuildMs - dart.totalMs`) — kept out of the
   /// on-wire shape so there's exactly one way to read each value.
   Map<String, Object?> toJson() => <String, Object?>{
-    'version': 8,
+    'version': 9,
     'platform': platform,
     'totalMs': total.inMilliseconds,
     'flutterBuildMs': flutterBuild.inMilliseconds,
@@ -416,6 +444,8 @@ class BuildTraceSummary {
     'android': ?android?.toJson(),
     'ios': ?ios?.toJson(),
     'environment': ?environment?.toJson(),
+    'nativeOutputsPresentAtStart': ?nativeOutputsPresentAtStart,
+    'outputArtifactBytes': ?outputArtifactBytes,
   };
 }
 

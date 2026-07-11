@@ -303,7 +303,7 @@ void main() {
       ];
       final s = BuildTraceSummary.fromEvents(events, platform: 'android');
       final j = s.toJson();
-      expect(j['version'], 8);
+      expect(j['version'], 9);
       expect(j['platform'], 'android');
       expect(j['android'], isA<Map<String, Object?>>());
       expect(j.containsKey('ios'), isFalse);
@@ -314,6 +314,44 @@ void main() {
       expect(flat.contains('"path"'), isFalse);
       expect(flat.contains('"file"'), isFalse);
       expect(flat.contains('"user"'), isFalse);
+    });
+
+    test('omits warm/cold and artifact-size keys when not provided', () {
+      final events = [
+        _event(
+          name: 'flutter build appbundle',
+          cat: 'flutter',
+          ts: 0,
+          dur: 10_000_000,
+          tid: 1,
+        ),
+      ];
+      final j = BuildTraceSummary.fromEvents(
+        events,
+        platform: 'android',
+      ).toJson();
+      expect(j.containsKey('nativeOutputsPresentAtStart'), isFalse);
+      expect(j.containsKey('outputArtifactBytes'), isFalse);
+    });
+
+    test('emits warm/cold and artifact-size when provided', () {
+      final events = [
+        _event(
+          name: 'flutter build appbundle',
+          cat: 'flutter',
+          ts: 0,
+          dur: 10_000_000,
+          tid: 1,
+        ),
+      ];
+      final j = BuildTraceSummary.fromEvents(
+        events,
+        platform: 'android',
+        nativeOutputsPresentAtStart: false,
+        outputArtifactBytes: 42_000_000,
+      ).toJson();
+      expect(j['nativeOutputsPresentAtStart'], isFalse);
+      expect(j['outputArtifactBytes'], 42_000_000);
     });
 
     group('tryFromFile', () {
