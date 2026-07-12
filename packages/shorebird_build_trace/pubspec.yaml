@@ -13,5 +13,5 @@ environment:
   sdk: ^3.9.0
 
 dev_dependencies:
-  test: ^1.31.1
+  test: ^1.31.2
   very_good_analysis: ^10.3.0

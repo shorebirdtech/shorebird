@@ -20,10 +20,10 @@ dependencies:
   crypto: ^3.0.6
   dex:
     path: ../dex
-  equatable: ^2.0.8
+  equatable: ^2.1.0
   googleapis_auth: ^2.3.2
   http: ^1.5.0
-  intl: ^0.20.2
+  intl: ^0.20.3
   io: ^1.0.5
   json_annotation: ^4.12.0
   json_path: ^0.9.0
@@ -58,7 +58,7 @@ dev_dependencies:
   build_version: ^2.1.1
   json_serializable: ^6.13.2
   mocktail: ^1.0.5
-  test: ^1.31.1
+  test: ^1.31.2
 
 executables:
   shorebird:
