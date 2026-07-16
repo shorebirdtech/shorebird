@@ -750,14 +750,15 @@ ${summary.join('\n')}
     }
   }
 
-  /// Downloads the given [releaseArtifact].
+  /// Downloads the given [releaseArtifact], reusing a cached copy from a
+  /// previous download if one is available.
   Future<File> downloadReleaseArtifact({
     required ReleaseArtifact releaseArtifact,
   }) async {
     final File artifactFile;
     try {
-      artifactFile = await artifactManager.downloadWithProgressUpdates(
-        Uri.parse(releaseArtifact.url),
+      artifactFile = await artifactManager.downloadCachedReleaseArtifact(
+        releaseArtifact,
         message: 'Downloading ${releaseArtifact.arch}',
       );
     } on Exception {

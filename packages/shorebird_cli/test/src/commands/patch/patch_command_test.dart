@@ -215,7 +215,7 @@ void main() {
       when(aotTools.isLinkDebugInfoSupported).thenAnswer((_) async => true);
 
       when(
-        () => artifactManager.downloadWithProgressUpdates(
+        () => artifactManager.downloadCachedReleaseArtifact(
           any(),
           message: any(named: 'message'),
         ),
@@ -1698,7 +1698,7 @@ Please re-run the release command for this version or create a new release.'''),
 
       setUp(() {
         when(
-          () => artifactManager.downloadWithProgressUpdates(
+          () => artifactManager.downloadCachedReleaseArtifact(
             any(),
             message: any(named: 'message'),
           ),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -9,11 +10,13 @@ import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
 import 'fakes.dart';
@@ -36,6 +39,7 @@ void main() {
         body,
         values: {
           cacheRef.overrideWith(() => cache),
+          checksumCheckerRef.overrideWith(ChecksumChecker.new),
           httpClientRef.overrideWith(() => httpClient),
           loggerRef.overrideWith(() => logger),
           patchExecutableRef.overrideWith(() => patchExecutable),
@@ -406,6 +410,123 @@ void main() {
         );
         expect(file.path, equals(outputPath));
         expect(file.lengthSync(), equals(1));
+      });
+    });
+
+    group('downloadCachedReleaseArtifact', () {
+      const artifactBytes = [1, 2, 3, 4, 5];
+      final artifactHash = sha256.convert(artifactBytes).toString();
+      final releaseArtifact = ReleaseArtifact(
+        id: 0,
+        releaseId: 0,
+        arch: 'aab',
+        platform: ReleasePlatform.android,
+        hash: artifactHash,
+        size: artifactBytes.length,
+        url: 'https://example.com/release.aab',
+        canSideload: true,
+      );
+
+      late Progress progress;
+      late File cachedFile;
+
+      setUp(() {
+        progress = MockProgress();
+        when(() => logger.progress(any())).thenReturn(progress);
+        cachedFile = File(p.join(cacheArtifactDirectory.path, artifactHash));
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.fromIterable([artifactBytes]),
+            HttpStatus.ok,
+            contentLength: artifactBytes.length,
+          ),
+        );
+      });
+
+      group('when no cached copy exists', () {
+        test('downloads the artifact into the cache', () async {
+          final file = await runWithOverrides(
+            () => artifactManager.downloadCachedReleaseArtifact(
+              releaseArtifact,
+              message: 'Downloading aab',
+            ),
+          );
+
+          expect(file.path, equals(cachedFile.path));
+          expect(file.readAsBytesSync(), equals(artifactBytes));
+          expect(File('${cachedFile.path}.part').existsSync(), isFalse);
+          verify(() => httpClient.send(any())).called(1);
+        });
+      });
+
+      group('when a valid cached copy exists', () {
+        setUp(() {
+          cachedFile
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(artifactBytes);
+        });
+
+        test('reuses the cached copy without downloading', () async {
+          final file = await runWithOverrides(
+            () => artifactManager.downloadCachedReleaseArtifact(
+              releaseArtifact,
+              message: 'Downloading aab',
+            ),
+          );
+
+          expect(file.path, equals(cachedFile.path));
+          expect(file.readAsBytesSync(), equals(artifactBytes));
+          verifyNever(() => httpClient.send(any()));
+          verify(() => progress.complete('Downloading aab (cached)')).called(1);
+        });
+      });
+
+      group('when the cached copy is corrupt', () {
+        setUp(() {
+          cachedFile
+            ..createSync(recursive: true)
+            ..writeAsBytesSync([9, 9, 9]);
+        });
+
+        test('redownloads the artifact', () async {
+          final file = await runWithOverrides(
+            () => artifactManager.downloadCachedReleaseArtifact(
+              releaseArtifact,
+              message: 'Downloading aab',
+            ),
+          );
+
+          expect(file.path, equals(cachedFile.path));
+          expect(file.readAsBytesSync(), equals(artifactBytes));
+          verify(() => httpClient.send(any())).called(1);
+        });
+      });
+
+      group('when the downloaded artifact does not match its checksum', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.fromIterable([
+                [9, 9, 9],
+              ]),
+              HttpStatus.ok,
+              contentLength: 3,
+            ),
+          );
+        });
+
+        test('returns the downloaded file without caching it', () async {
+          final file = await runWithOverrides(
+            () => artifactManager.downloadCachedReleaseArtifact(
+              releaseArtifact,
+              message: 'Downloading aab',
+            ),
+          );
+
+          expect(file.path, equals('${cachedFile.path}.part'));
+          expect(file.readAsBytesSync(), equals([9, 9, 9]));
+          expect(cachedFile.existsSync(), isFalse);
+        });
       });
     });
 

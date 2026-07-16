@@ -169,8 +169,8 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
     for (final (i, releaseArtifact) in releaseArtifacts.entries.indexed) {
       try {
         final releaseArtifactFile = await artifactManager
-            .downloadWithProgressUpdates(
-              Uri.parse(releaseArtifact.value.url),
+            .downloadCachedReleaseArtifact(
+              releaseArtifact.value,
               message: 'Downloading release artifact ${i + 1}/$numArtifacts',
             );
         releaseArtifactPaths[releaseArtifact.key] = releaseArtifactFile.path;

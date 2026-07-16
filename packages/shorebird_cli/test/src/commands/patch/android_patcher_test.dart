@@ -484,7 +484,7 @@ Looked in:
           },
         );
         when(
-          () => artifactManager.downloadWithProgressUpdates(
+          () => artifactManager.downloadCachedReleaseArtifact(
             any(),
             message: any(named: 'message'),
           ),
@@ -494,7 +494,7 @@ Looked in:
       group('when release artifact fails to download', () {
         setUp(() {
           when(
-            () => artifactManager.downloadWithProgressUpdates(
+            () => artifactManager.downloadCachedReleaseArtifact(
               any(),
               message: any(named: 'message'),
             ),
@@ -810,7 +810,7 @@ Looked in:
         group('when artifacts download takes longer than provided timeout', () {
           setUp(() {
             when(
-              () => artifactManager.downloadWithProgressUpdates(
+              () => artifactManager.downloadCachedReleaseArtifact(
                 any(),
                 message: any(named: 'message'),
               ),

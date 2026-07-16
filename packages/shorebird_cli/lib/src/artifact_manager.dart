@@ -9,10 +9,13 @@ import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:stream_transform/stream_transform.dart';
 
 /// A reference to a [ArtifactManager] instance.
@@ -173,6 +176,54 @@ class ArtifactManager {
     }
 
     return artifactFile;
+  }
+
+  /// Downloads the given [releaseArtifact], logging progress as
+  /// "[message] (XX%)".
+  ///
+  /// Downloaded release artifacts are kept in the Shorebird cache, keyed by
+  /// their checksum. If a previous download of [releaseArtifact] is still
+  /// present and matches its expected checksum, it is reused instead of being
+  /// downloaded again.
+  ///
+  /// Returns the downloaded (or cached) [File].
+  Future<File> downloadCachedReleaseArtifact(
+    ReleaseArtifact releaseArtifact, {
+    required String message,
+  }) async {
+    final artifactDirectory = cache.getArtifactDirectory('release_artifacts');
+    final cachedFile = File(
+      p.join(artifactDirectory.path, releaseArtifact.hash),
+    );
+    if (cachedFile.existsSync() &&
+        checksumChecker.checkFile(cachedFile, releaseArtifact.hash)) {
+      logger
+        ..progress(message).complete('$message (cached)')
+        ..detail('Using cached release artifact at ${cachedFile.path}');
+      return cachedFile;
+    }
+
+    artifactDirectory.createSync(recursive: true);
+    // Download to a partial file so an interrupted download is never treated
+    // as a valid cache entry.
+    final partialFile = await downloadWithProgressUpdates(
+      Uri.parse(releaseArtifact.url),
+      message: message,
+      outputPath: '${cachedFile.path}.part',
+    );
+
+    if (!checksumChecker.checkFile(partialFile, releaseArtifact.hash)) {
+      // The downloaded file doesn't match the checksum recorded when the
+      // release was created. Don't cache it, but hand it back to preserve the
+      // behavior from before caching existed.
+      logger.detail(
+        'Downloaded release artifact does not match its expected checksum '
+        'and will not be cached.',
+      );
+      return partialFile;
+    }
+
+    return partialFile.renameSync(cachedFile.path);
   }
 
   /// Extracts the [zipFile] to the [outputDirectory] directory in a separate
