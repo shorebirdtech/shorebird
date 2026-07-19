@@ -17,5 +17,12 @@ dev_dependencies:
   mocktail: ^1.0.5
   # Only used by `tool/gen.dart` to regenerate lib/src/ from the OpenAPI
   # spec.
-  space_gen: ^1.3.0
+  #
+  # >=1.4.0 required: from that release the generator empties the
+  # directory it is pointed at before generating, which for this package
+  # would delete `lib/extensions/`, `lib/shorebird_code_push_protocol.dart`,
+  # `test/src/`, this pubspec and the README — everything here that is
+  # not generated. `tool/gen.dart` passes `--no-clear` to opt out; that
+  # flag first exists in 1.4.0.
+  space_gen: ^1.4.0
   test: ^1.31.2
