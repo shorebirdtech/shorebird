@@ -513,8 +513,8 @@ Looked in:
       );
       final artifact = File(artifactPath);
       if (!artifact.existsSync()) {
-        logger.detail(
-          'Skipping ${arch.arch}: no libapp.so at $artifactPath. '
+        logger.err(
+          'Expected architecture ${arch.arch} was not found at $artifactPath. '
           'This is expected if the project filters this ABI via '
           'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
         );
