@@ -1,0 +1,20 @@
+name: Mark stale issues as needs triage
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs every day at midnight
+
+permissions:
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: 7
+          days-before-close: -1 # Prevents automatic closing
+          stale-issue-label: 'needs-triage'
+          stale-issue-message: 'This issue has had no activity for 7 days. Adding the `needs-triage` label to help prioritize it.'
+          exempt-issue-labels: 'needs-triage,bug,enhancement,wontfix' # Add any labels that shouldn't be marked stale
