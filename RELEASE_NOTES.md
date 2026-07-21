@@ -4,6 +4,12 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES
  -->
 
+## 1.6.114 (July 20, 2026)
+
+- 🐦 Flutter 3.44.7 / Dart 3.12.2 support
+  - Android: fix a file descriptor leak that could crash apps using external
+    textures (e.g. video) on some GPUs such as Arm Mali.
+
 ## 1.6.113 (July 10, 2026)
 
 - 🐛 Fix `--shorebird-trace` build tracing being silently disabled even on
