@@ -474,6 +474,21 @@ Please create a release using "shorebird release" and try again.
     String? flavor,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
+
+    // When the built .aab never packaged libapp.so, surface that directly
+    // instead of the generic "cannot find artifacts" or abiFilters messages,
+    // which send users down the wrong trail
+    // (https://github.com/shorebirdtech/shorebird/issues/3813).
+    final missingLibappMessage =
+        await ArtifactManager.describeMissingLibappInAab(File(aabPath));
+    if (missingLibappMessage != null) {
+      _handleErrorAndExit(
+        Exception('No architecture artifacts found to upload.'),
+        progress: createArtifactProgress,
+        message: missingLibappMessage,
+      );
+    }
+
     final archsDir = await ArtifactManager.androidArchsDirectoryFromAab(
       projectRoot: Directory(projectRoot),
       flavor: flavor,
