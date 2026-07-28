@@ -1,9 +1,11 @@
+# cspell:words mrgnhnt
 name: scoped_deps
 description: A simple Dart library for managing scoped dependencies built on top of Zones from dart:async.
 version: 0.1.0+2
-homepage: https://shorebird.dev
 repository: https://github.com/shorebirdtech/shorebird/tree/main/packages/scoped_deps
 resolution: workspace
+# pub.dev/packages/scoped_deps is now owned by mrgnhnt96; see README.md.
+publish_to: none
 
 environment:
   sdk: ">=3.9.0 <4.0.0"
