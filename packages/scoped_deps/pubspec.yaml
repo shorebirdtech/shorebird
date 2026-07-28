@@ -1,3 +1,4 @@
+# cspell:words mrgnhnt
 name: scoped_deps
 description: A simple Dart library for managing scoped dependencies built on top of Zones from dart:async.
 version: 0.1.0+2

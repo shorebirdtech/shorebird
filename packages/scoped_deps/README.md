@@ -1,3 +1,5 @@
+<!-- cspell:words Angelov mrgnhnt -->
+
 # Scoped Deps
 
 A simple dependency injection library built on Zones.
