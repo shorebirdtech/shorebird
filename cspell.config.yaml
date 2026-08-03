@@ -19,6 +19,7 @@ words:
   - armeabi
   - Azul
   - backboardd
+  - backpressure
   - bdero
   - bintools
   - bitcode
@@ -103,6 +104,7 @@ words:
   - podspec
   - pointycastle
   - precache
+  - precaching
   - previewable
   - PRNG
   - proguard # Android ProGuard shrinker/obfuscator
@@ -142,6 +144,7 @@ words:
   - tdigest
   - temurin # From .github dir, doesn't show up in "**" check?
   - timebase # Mach timebase (mach_timebase_info)
+  - ttfb
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
   - unanalyzed
