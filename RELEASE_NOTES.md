@@ -4,6 +4,13 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo
  -->
 
+## 1.6.116 (August 7, 2026)
+
+- 🐦 Flutter 3.44.9 / Dart 3.12.2 support
+  - iOS: fix the Flutter CLI hanging when a debugged app crashes. LLDB now
+    detaches and prints a stack trace on process stop, so crashing tests
+    report instead of hanging.
+
 ## 1.6.115 (July 28, 2026)
 
 - 🐦 Flutter 3.44.8 / Dart 3.12.2 support
