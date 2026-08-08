@@ -8,6 +8,7 @@ import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/auth/pkce.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// Exception thrown when the Shorebird auth flow fails.
@@ -45,9 +46,18 @@ Future<oauth2.AccessCredentials> obtainCredentialsViaLoopbackLogin({
   try {
     final port = server.port;
     const callbackPath = '/callback';
+    // The challenge travels in the authorization request. The auth service
+    // binds it to the code it mints and then requires the matching verifier
+    // at the exchange, so a code observed on the loopback redirect cannot be
+    // redeemed by anyone else.
+    final pkce = PkcePair.generate();
     final loginUrl = authBaseUrl.replace(
       path: p.url.join(authBaseUrl.path, 'login'),
-      queryParameters: {'continue': 'http://localhost:$port$callbackPath'},
+      queryParameters: {
+        'continue': 'http://localhost:$port$callbackPath',
+        'code_challenge': pkce.challenge,
+        'code_challenge_method': 'S256',
+      },
     );
 
     userPrompt(loginUrl.toString());
@@ -63,6 +73,7 @@ Future<oauth2.AccessCredentials> obtainCredentialsViaLoopbackLogin({
       httpClient: httpClient,
       authBaseUrl: authBaseUrl,
       code: code,
+      codeVerifier: pkce.verifier,
     );
   } finally {
     await server.close();
@@ -171,10 +182,15 @@ Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
 
 /// Exchanges an auth code for tokens by POSTing to the auth service's
 /// /token endpoint.
+///
+/// [codeVerifier] is the PKCE secret whose challenge accompanied the
+/// authorization request. The auth service requires it whenever a challenge
+/// is bound to the code being redeemed.
 Future<oauth2.AccessCredentials> _exchangeAuthCode({
   required http.Client httpClient,
   required Uri authBaseUrl,
   required String code,
+  required String codeVerifier,
 }) async {
   final tokenUrl = authBaseUrl.replace(
     path: p.url.join(authBaseUrl.path, 'token'),
@@ -185,6 +201,7 @@ Future<oauth2.AccessCredentials> _exchangeAuthCode({
     body: {
       'grant_type': 'authorization_code',
       'code': code,
+      'code_verifier': codeVerifier,
     },
   );
 

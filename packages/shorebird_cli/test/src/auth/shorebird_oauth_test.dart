@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
@@ -163,6 +164,71 @@ void main() {
         allOf(
           startsWith('http://localhost:'),
           contains('/callback'),
+        ),
+      );
+    });
+
+    test('sends a PKCE challenge and the matching verifier', () async {
+      final testJwt = _buildTestJwt();
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            'access_token': testJwt,
+            'refresh_token': 'rt',
+            'token_type': 'Bearer',
+            'expires_in': 900,
+          }),
+          HttpStatus.ok,
+        ),
+      );
+
+      late String capturedUrl;
+      await runWithOverrides(
+        () => obtainCredentialsViaLoopbackLogin(
+          httpClient: httpClient,
+          authBaseUrl: authBaseUrl,
+          userPrompt: (url) {
+            capturedUrl = url;
+            final loginUri = Uri.parse(url);
+            final continueUrl = loginUri.queryParameters['continue']!;
+            unawaited(
+              http.get(Uri.parse('$continueUrl?code=test_code')),
+            );
+          },
+        ),
+      );
+
+      final loginUri = Uri.parse(capturedUrl);
+      final challenge = loginUri.queryParameters['code_challenge'];
+      expect(loginUri.queryParameters['code_challenge_method'], equals('S256'));
+      expect(challenge, isNotNull);
+
+      final body =
+          verify(
+                () => httpClient.post(
+                  any(),
+                  headers: any(named: 'headers'),
+                  body: captureAny(named: 'body'),
+                ),
+              ).captured.single
+              as Map<String, String>;
+      final verifier = body['code_verifier'];
+      expect(verifier, isNotNull);
+
+      // If the pair ever drifts apart, every login fails at the token
+      // endpoint, so assert the relationship rather than mere presence.
+      expect(
+        challenge,
+        equals(
+          base64UrlEncode(
+            sha256.convert(utf8.encode(verifier!)).bytes,
+          ).replaceAll('=', ''),
         ),
       );
     });
