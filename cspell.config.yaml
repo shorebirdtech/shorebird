@@ -98,6 +98,7 @@ words:
   - pbxproj
   - pinact # Third-party action-pinning tool referenced in shorebird_ci
   - Perfetto # Chrome trace viewer at ui.perfetto.dev
+  - pkce # Proof Key for Code Exchange (RFC 7636)
   - pkcs
   - podfile
   - podspec
