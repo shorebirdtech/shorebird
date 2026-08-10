@@ -758,6 +758,83 @@ void main() {
       });
     });
 
+    group('describeMissingLibappInAab', () {
+      late Directory tempDir;
+
+      File aabWith(List<String> entryNames) {
+        final archive = Archive();
+        for (final name in entryNames) {
+          archive.addFile(ArchiveFile.string(name, 'data'));
+        }
+        return File(p.join(tempDir.path, 'app.aab'))
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(ZipEncoder().encode(archive));
+      }
+
+      setUp(() {
+        tempDir = Directory.systemTemp.createTempSync();
+      });
+
+      test('returns null when the aab does not exist', () async {
+        final result = await ArtifactManager.describeMissingLibappInAab(
+          File(p.join(tempDir.path, 'missing.aab')),
+        );
+
+        expect(result, isNull);
+      });
+
+      test('returns null when the aab contains libapp.so', () async {
+        final aab = File(
+          p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'),
+        );
+
+        final result = await ArtifactManager.describeMissingLibappInAab(aab);
+
+        expect(result, isNull);
+      });
+
+      test('returns null when the aab is not a valid zip', () async {
+        // Garbage decodes to an empty archive rather than throwing, and an
+        // empty archive must not be reported as a dropped libapp.so.
+        final invalidAab = File(p.join(tempDir.path, 'invalid.aab'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync('not a zip');
+
+        final result = await ArtifactManager.describeMissingLibappInAab(
+          invalidAab,
+        );
+
+        expect(result, isNull);
+      });
+
+      test('reports the other native libs when libapp.so is missing', () async {
+        final aab = aabWith([
+          'base/manifest/AndroidManifest.xml',
+          'base/lib/arm64-v8a/libflutter.so',
+          'base/lib/armeabi-v7a/libflutter.so',
+        ]);
+
+        final result = await ArtifactManager.describeMissingLibappInAab(aab);
+
+        expect(result, isNotNull);
+        expect(
+          result,
+          contains('does not contain libapp.so for any architecture'),
+        );
+        expect(result, contains('arm64-v8a -> libflutter.so'));
+        expect(result, contains('armeabi-v7a -> libflutter.so'));
+      });
+
+      test('reports no native libs when base/lib is empty', () async {
+        final aab = aabWith(['base/manifest/AndroidManifest.xml']);
+
+        final result = await ArtifactManager.describeMissingLibappInAab(aab);
+
+        expect(result, isNotNull);
+        expect(result, contains('found no native libraries under base/lib'));
+      });
+    });
+
     group('getXcarchiveDirectory', () {
       group('when archive directory exists', () {
         late Directory archiveDirectory;

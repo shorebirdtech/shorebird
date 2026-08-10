@@ -110,6 +110,17 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       base64PublicKey: argResults.encodedPublicKey,
     );
 
+    // When the built .aab never packaged libapp.so, fail fast with an accurate
+    // explanation rather than the generic "cannot find artifacts" message or
+    // silently diffing against a stale strip output
+    // (https://github.com/shorebirdtech/shorebird/issues/3813).
+    final missingLibappMessage =
+        await ArtifactManager.describeMissingLibappInAab(aabFile);
+    if (missingLibappMessage != null) {
+      logger.err(missingLibappMessage);
+      throw ProcessExit(ExitCode.software.code);
+    }
+
     final patchArchsBuildDir = _patchArchsBuildDir =
         await ArtifactManager.androidArchsDirectoryFromAab(
           projectRoot: projectRoot,
@@ -130,6 +141,7 @@ Looked in:
   - build/app/intermediates/stripped_native_libs/{variant}/out/lib''');
       throw ProcessExit(ExitCode.software.code);
     }
+
     return aabFile;
   }
 

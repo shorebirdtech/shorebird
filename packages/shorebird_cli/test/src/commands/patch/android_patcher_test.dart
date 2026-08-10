@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -372,6 +373,38 @@ Looked in:
   - the libapp.so entries inside the built .aab
   - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
   - build/app/intermediates/stripped_native_libs/{variant}/out/lib'''),
+          ).called(1);
+        });
+      });
+
+      group('when the built aab has no libapp.so', () {
+        setUp(() {
+          setUpProjectRootArtifacts();
+          // A real aab that packages a native lib but no libapp.so, as happens
+          // when a custom Gradle build drops the Dart library before bundling.
+          final archive = Archive()
+            ..addFile(
+              ArchiveFile.string('base/lib/arm64-v8a/libflutter.so', 'so'),
+            );
+          aabFile = File(p.join(projectRoot.path, 'no_libapp.aab'))
+            ..createSync(recursive: true)
+            ..writeAsBytesSync(ZipEncoder().encode(archive));
+        });
+
+        test('logs an accurate error and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.buildPatchArtifact),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => logger.err(
+              any(
+                that: contains(
+                  'does not contain libapp.so for any architecture',
+                ),
+              ),
+            ),
           ).called(1);
         });
       });

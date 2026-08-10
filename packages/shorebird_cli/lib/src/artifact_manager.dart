@@ -322,6 +322,95 @@ class ArtifactManager {
     return outDir;
   }
 
+  /// When [aab] is readable but packages no `libapp.so` for any architecture,
+  /// returns a diagnostic message explaining that the Android build dropped
+  /// the Dart library before bundling. Returns null when [aab] does contain a
+  /// `libapp.so`, when it cannot be read, or when it does not exist.
+  ///
+  /// libapp.so is the compiled Dart code. Without it Shorebird has nothing to
+  /// release or diff against, and the resulting app would not run, so this is
+  /// not a recoverable state. The common trigger is a custom Gradle setup that
+  /// relocates build directories so the bundle task runs before libapp.so is
+  /// written. See https://github.com/shorebirdtech/shorebird/issues/3813.
+  static Future<String?> describeMissingLibappInAab(File aab) async {
+    if (!aab.existsSync()) return null;
+
+    final int entryCount;
+    final Map<String, List<String>> libsByArch;
+    try {
+      (entryCount, libsByArch) = await _nativeLibsInAabBaseModule(aab);
+    } on Exception {
+      // Unreadable bundles are handled by the extraction fallback elsewhere.
+      return null;
+    }
+
+    // An empty archive means the file is not a real bundle (corrupt or
+    // garbage input decodes to zero entries rather than throwing), so don't
+    // claim libapp.so was dropped. A real .aab always has many entries.
+    if (entryCount == 0) return null;
+
+    final hasLibapp = libsByArch.values.any(
+      (libs) => libs.contains('libapp.so'),
+    );
+    if (hasLibapp) return null;
+
+    final buffer = StringBuffer()
+      ..writeln(
+        'Your app bundle does not contain libapp.so for any architecture.',
+      )
+      ..writeln()
+      ..writeln('Shorebird read the built .aab at ${aab.path}');
+    if (libsByArch.isEmpty) {
+      buffer.writeln('and found no native libraries under base/lib.');
+    } else {
+      buffer.writeln('and found these native libraries under base/lib');
+      final archs = libsByArch.keys.toList()..sort();
+      for (final arch in archs) {
+        final libs = libsByArch[arch]!..sort();
+        buffer.writeln('  $arch -> ${libs.join(', ')}');
+      }
+    }
+    buffer
+      ..writeln()
+      ..writeln('''
+libapp.so holds your compiled Dart code, so the Android build dropped it before
+packaging the bundle. This is not something Shorebird can recover from, since
+the shipped app itself would be missing its Dart code.
+
+This is usually caused by a custom Android Gradle setup that relocates build
+directories (for example setting layout.buildDirectory alongside
+evaluationDependsOn(":app")), which can make the bundle task run before
+libapp.so is written. Building a plain `flutter build appbundle` and inspecting
+its base/lib for libapp.so will confirm whether the build is dropping it.''');
+    return buffer.toString();
+  }
+
+  /// Returns the total number of file entries in [aab] along with the `.so`
+  /// library file names packaged under the base module, grouped by
+  /// architecture (`base/lib/<arch>/<name>.so`). Matches the path scheme used
+  /// by [extractAndroidLibappsFromAab].
+  static Future<(int, Map<String, List<String>>)> _nativeLibsInAabBaseModule(
+    File aab,
+  ) async {
+    final aabPath = aab.path;
+    return Isolate.run(() {
+      final libEntry = RegExp(r'^base/lib/([^/]+)/([^/]+\.so)$');
+      final inputStream = InputFileStream(aabPath);
+      final archive = ZipDecoder().decodeStream(inputStream);
+      final result = <String, List<String>>{};
+      var entryCount = 0;
+      for (final file in archive.files) {
+        if (!file.isFile) continue;
+        entryCount++;
+        final match = libEntry.firstMatch(file.name);
+        if (match == null) continue;
+        (result[match.group(1)!] ??= []).add(match.group(2)!);
+      }
+      inputStream.closeSync();
+      return (entryCount, result);
+    });
+  }
+
   /// The directory containing the compiled macOS .app file, if it exists.
   Directory? getMacOSAppDirectory({String? flavor}) {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
