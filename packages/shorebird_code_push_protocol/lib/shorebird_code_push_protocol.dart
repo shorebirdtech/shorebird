@@ -38,6 +38,7 @@ export 'package:shorebird_code_push_protocol/src/messages/get_release/get_releas
 export 'package:shorebird_code_push_protocol/src/messages/get_release_artifacts/get_release_artifacts_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_release_patches/get_release_patches_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_releases/get_releases_response.dart';
+export 'package:shorebird_code_push_protocol/src/messages/get_rollout_speed/get_rollout_speed_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_unique_users/get_unique_users_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/get_version_distribution/get_version_distribution_response.dart';
 export 'package:shorebird_code_push_protocol/src/messages/patch_check/patch_check_request.dart';
@@ -89,6 +90,9 @@ export 'package:shorebird_code_push_protocol/src/models/release_patch.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 export 'package:shorebird_code_push_protocol/src/models/release_status.dart';
 export 'package:shorebird_code_push_protocol/src/models/role.dart';
+export 'package:shorebird_code_push_protocol/src/models/rollout_artifact_type.dart';
+export 'package:shorebird_code_push_protocol/src/models/rollout_rung_crossing.dart';
+export 'package:shorebird_code_push_protocol/src/models/rollout_speed_sample.dart';
 export 'package:shorebird_code_push_protocol/src/models/unique_users_breakdown_entry.dart';
 export 'package:shorebird_code_push_protocol/src/models/unique_users_current_window.dart';
 export 'package:shorebird_code_push_protocol/src/models/unique_users_time_series_entry.dart';
