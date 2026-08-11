@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
@@ -61,15 +62,26 @@ class ShorebirdFlutter {
     );
 
     try {
-      // Clone the Shorebird Flutter repo into the target directory.
-      await git.clone(
-        url: flutterGitUrl,
-        outputDirectory: targetDirectory.path,
-        args: ['--filter=tree:0', '--no-checkout'],
-      );
+      // Traced: the clone is a multi-hundred-megabyte transfer and is
+      // one of the two dominant costs of a cold start. It happens in a
+      // git subprocess, so nothing else in the trace can see it.
+      await shorebirdTracer.setupSpan(
+        phase: SetupPhase.flutterInstall,
+        body: () async {
+          // Clone the Shorebird Flutter repo into the target directory.
+          await git.clone(
+            url: flutterGitUrl,
+            outputDirectory: targetDirectory.path,
+            args: ['--filter=tree:0', '--no-checkout'],
+          );
 
-      // Checkout the correct revision.
-      await git.checkout(directory: targetDirectory.path, revision: revision);
+          // Checkout the correct revision.
+          await git.checkout(
+            directory: targetDirectory.path,
+            revision: revision,
+          );
+        },
+      );
       installProgress.complete();
     } catch (error) {
       final short = shortRevisionString(revision);
@@ -85,10 +97,19 @@ class ShorebirdFlutter {
     final precacheArguments = ['precache', ...precacheArgs];
     final ShorebirdProcessResult result;
     try {
-      result = await process.run(
-        executable,
-        precacheArguments,
-        workingDirectory: targetDirectory.path,
+      // Traced: precache downloads the engine artifacts for every target
+      // platform (hundreds of MB) from FLUTTER_STORAGE_BASE_URL. It runs
+      // in the flutter subprocess, and its downloads happen before
+      // flutter_tools installs its own BuildTracer, so this span is the
+      // only record of that time anywhere in the trace.
+      result = await shorebirdTracer.setupSpan(
+        phase: SetupPhase.flutterPrecache,
+        args: {'argv': precacheArguments.join(' ')},
+        body: () => process.run(
+          executable,
+          precacheArguments,
+          workingDirectory: targetDirectory.path,
+        ),
       );
     } on Exception catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');
