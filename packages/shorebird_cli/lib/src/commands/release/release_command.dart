@@ -198,7 +198,14 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         .map(createRelease);
 
     for (final future in releaserFutures) {
-      await future;
+      try {
+        await future;
+      } on ProcessExit {
+        rethrow;
+      } catch (error) {
+        logger.err(error.toString());
+        return ExitCode.software.code;
+      }
     }
 
     return ExitCode.success.code;
