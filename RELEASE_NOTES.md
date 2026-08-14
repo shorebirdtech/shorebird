@@ -4,6 +4,17 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo
  -->
 
+## 1.6.117 (August 14, 2026)
+
+- 🐦 Flutter 3.44.9 / Dart 3.12.2 support
+  - iOS: fix a crash on patch boot when loading a patched snapshot.
+  - iOS: fix a crash in patched apps at call sites that switch between
+    base and patch code.
+  - Fix a null dereference in patched code aborting the process instead
+    of throwing.
+  - Reduce patch artifact size and memory use when creating patches for
+    large apps.
+
 ## 1.6.116 (August 7, 2026)
 
 - 🐦 Flutter 3.44.9 / Dart 3.12.2 support
