@@ -125,22 +125,19 @@ class LinkFailureException implements Exception {
   String? get hint {
     final details = linkFailure['details'];
     if (details is! Map) return null;
-    final dataHash = details['vm_data_hash'];
-    final instructionsHash = details['vm_instructions_hash'];
-    if (dataHash is! Map || instructionsHash is! Map) return null;
-    final dataDiffers = dataHash['base'] != dataHash['patch'];
-    final instructionsMatch =
-        instructionsHash['base'] == instructionsHash['patch'];
-    if (dataDiffers && instructionsMatch) {
+    if (details['dart_version'] is Map || details['snapshot_version'] is Map) {
       return '''
-The VM data section differs between the release and the patch, while the
-instruction section matches. This typically means the release and patch were
-built with different --dart-define values or a different --obfuscate setting,
-since those affect compile-time constants that live in the VM data section.
+The release and the patch were compiled by different Dart SDKs. `shorebird
+patch` builds against the release's Flutter revision, so this usually means the
+release's revision is no longer resolvable, or a local engine is in use.''';
+    }
+    if (details['features'] is Map) {
+      return '''
+The release and the patch were built with different build flags. The reason
+above names which flags differ. These come from the build configuration
+(for example --dwarf-stack-traces), not from your Dart source.
 
-Verify that `shorebird patch` was invoked with the exact same --dart-define
-(and --dart-define-from-file) flags as `shorebird release`, and that the
---obfuscate setting matches.''';
+Re-run `shorebird patch` with the same build flags used for the release.''';
     }
     return null;
   }
