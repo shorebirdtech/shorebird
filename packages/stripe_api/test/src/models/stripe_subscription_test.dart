@@ -11,6 +11,7 @@ void main() {
 
       expect(subscription.id, 'sub_1MvjPuHSA9cXarIcaWYNaezR');
       expect(subscription.cancelAtPeriodEnd, false);
+      expect(subscription.cancelAt, isNull);
       expect(
         subscription.canceledAt,
         DateTime.fromMillisecondsSinceEpoch(1683820054 * 1000),
@@ -40,6 +41,22 @@ void main() {
       final subscription = StripeSubscription.fromJson(updatedSubscriptionJson);
 
       expect(subscription.items, isEmpty);
+    });
+
+    group('when a cancellation is scheduled', () {
+      test('deserializes cancelAt with cancelAtPeriodEnd false', () {
+        final json = subscriptionJson
+          ..['cancel_at'] = 1683820054
+          ..['cancel_at_period_end'] = false;
+
+        final subscription = StripeSubscription.fromJson(json);
+
+        expect(
+          subscription.cancelAt,
+          DateTime.fromMillisecondsSinceEpoch(1683820054 * 1000),
+        );
+        expect(subscription.cancelAtPeriodEnd, isFalse);
+      });
     });
 
     group('trial subscription', () {

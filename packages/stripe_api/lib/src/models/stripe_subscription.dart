@@ -54,6 +54,7 @@ class StripeSubscription {
     required this.status,
     required this.items,
     this.endedAt,
+    this.cancelAt,
     this.canceledAt,
     this.trialStart,
     this.trialEnd,
@@ -71,6 +72,11 @@ class StripeSubscription {
   /// this attribute to determine whether a subscription that has a status of
   /// active is scheduled to be canceled at the end of the current period.
   final bool cancelAtPeriodEnd;
+
+  /// A date in the future at which the subscription will automatically get
+  /// canceled.
+  @TimestampConverter()
+  final DateTime? cancelAt;
 
   /// If the subscription has been canceled, the date of that cancellation. If
   /// the subscription was canceled with cancel_at_period_end, canceled_at will
