@@ -1,8 +1,53 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo
  -->
+
+## 1.6.117 (August 14, 2026)
+
+- 🐦 Flutter 3.44.9 / Dart 3.12.2 support
+  - iOS: fix a crash on patch boot when loading a patched snapshot.
+  - iOS: fix a crash in patched apps at call sites that switch between
+    base and patch code.
+  - Fix a null dereference in patched code aborting the process instead
+    of throwing.
+  - Reduce patch artifact size and memory use when creating patches for
+    large apps.
+
+## 1.6.116 (August 7, 2026)
+
+- 🐦 Flutter 3.44.9 / Dart 3.12.2 support
+  - iOS: fix the Flutter CLI hanging when a debugged app crashes. LLDB now
+    detaches and prints a stack trace on process stop, so crashing tests
+    report instead of hanging.
+
+## 1.6.115 (July 28, 2026)
+
+- 🐦 Flutter 3.44.8 / Dart 3.12.2 support
+  - Android: fix a startup crash on vendor-modified devices caused by the
+    accessibility bridge failing during initialization.
+  - iOS/macOS: fix framework builds failing under Xcode 27 due to a `lipo`
+    architecture verification error.
+
+## 1.6.114 (July 20, 2026)
+
+- 🐦 Flutter 3.44.7 / Dart 3.12.2 support
+  - Android: fix a file descriptor leak that could crash apps using external
+    textures (e.g. video) on some GPUs such as Arm Mali.
+
+## 1.6.113 (July 10, 2026)
+
+- 🐛 Fix `--shorebird-trace` build tracing being silently disabled even on
+  Flutter versions that support it, caused by probing plain `flutter build -h`
+  output where the flag is hidden.
+
+## 1.6.112 (July 10, 2026)
+
+- 🐦 Flutter 3.44.6 / Dart 3.12.2 support
+  - Linux: fix a crash when building asset bundles with native assets enabled
+    but without a native app build directory (missing `CMakeCache.txt`).
+  - Android: fix a crash when running instrumented tests.
 
 ## 1.6.111 (July 7, 2026)
 
