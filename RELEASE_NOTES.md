@@ -4,6 +4,19 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo
  -->
 
+## 1.6.119 (August 21, 2026)
+
+- 🐦 Flutter 3.47.1 / Dart 3.13.1 support
+  - iOS/macOS: fix a Swift Package Manager race condition during parallel
+    Xcode builds.
+  - Android: fix the tool misreading the ADB device list by parsing
+    connection state rather than column position.
+  - Windows: fix an `impellerc` crash on Unicode paths when compiling
+    shaders.
+  - Fix hot reload for workspace member packages under `lib/`.
+  - Validate plugin class and package identifiers, preventing injection
+    into `GeneratedPluginRegistrant`.
+
 ## 1.6.118 (August 18, 2026)
 
 - 🐦 Flutter 3.47.0 / Dart 3.13.0 support
