@@ -2302,8 +2302,7 @@ Reason: Exited with code 70.'''),
         'leaves traceFile null when Flutter pin does not support tracing',
         () async {
           // shorebirdFlutter.resolveFlutterVersion default in setUp is 3.0.0,
-          // which is below buildTraceSupportConstraint.minVersion, and the
-          // default flutterRevision stub ('1234') isn't in the allowlist.
+          // which is below buildTraceSupportConstraint.minVersion.
           await runWithOverrides(() async {
             await builder.prepareBuildTrace(platform: 'android');
             expect(buildTraceSession.traceFile, isNull);
@@ -2312,24 +2311,16 @@ Reason: Exited with code 70.'''),
         },
       );
 
-      test(
-        'sets traceFile for an allowlisted revision below the floor',
-        () async {
-          // Version is strictly below the min floor, so only the
-          // allowlist can admit this combination.
-          when(
-            () => shorebirdFlutter.resolveFlutterVersion(any()),
-          ).thenAnswer((_) async => Version(3, 41, 6));
-          when(() => shorebirdEnv.flutterRevision).thenReturn(
-            buildTraceSupportConstraint.allowedRevisions.first,
-          );
+      test('sets traceFile for a version at the floor', () async {
+        when(
+          () => shorebirdFlutter.resolveFlutterVersion(any()),
+        ).thenAnswer((_) async => buildTraceSupportConstraint.minVersion);
 
-          await runWithOverrides(() async {
-            await builder.prepareBuildTrace(platform: 'android');
-            expect(buildTraceSession.traceFile, isNotNull);
-          });
-        },
-      );
+        await runWithOverrides(() async {
+          await builder.prepareBuildTrace(platform: 'android');
+          expect(buildTraceSession.traceFile, isNotNull);
+        });
+      });
 
       test(
         'treats unresolved Flutter version as new enough (dev pin)',
