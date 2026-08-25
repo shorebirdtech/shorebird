@@ -1,7 +1,7 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc
  -->
 
 ## 1.6.119 (August 21, 2026)
