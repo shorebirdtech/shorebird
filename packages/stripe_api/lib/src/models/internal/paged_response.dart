@@ -7,7 +7,7 @@ part 'paged_response.g.dart';
 /// more data available.
 /// See https://stripe.com/docs/api/pagination.
 /// {@endtemplate}
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 class PagedResponse {
   /// {@macro paged_response}
   PagedResponse({required this.data, required this.hasMore});

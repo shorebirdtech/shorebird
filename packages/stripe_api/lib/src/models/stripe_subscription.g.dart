@@ -75,6 +75,25 @@ StripeSubscription _$StripeSubscriptionFromJson(Map<String, dynamic> json) =>
               const TimestampConverter().fromJson,
             ),
           ),
+          metadata: $checkedConvert(
+            'metadata',
+            (v) =>
+                (v as Map<String, dynamic>?)?.map(
+                  (k, e) => MapEntry(k, e as String),
+                ) ??
+                const {},
+          ),
+          currency: $checkedConvert('currency', (v) => v as String?),
+          defaultPaymentMethod: $checkedConvert(
+            'default_payment_method',
+            (v) => v as String?,
+          ),
+          automaticTaxEnabled: $checkedConvert(
+            'automatic_tax',
+            (v) => v == null
+                ? false
+                : _automaticTaxEnabledFromJson(v as Map<String, dynamic>?),
+          ),
         );
         return val;
       },
@@ -88,6 +107,8 @@ StripeSubscription _$StripeSubscriptionFromJson(Map<String, dynamic> json) =>
         'canceledAt': 'canceled_at',
         'trialStart': 'trial_start',
         'trialEnd': 'trial_end',
+        'defaultPaymentMethod': 'default_payment_method',
+        'automaticTaxEnabled': 'automatic_tax',
       },
     );
 

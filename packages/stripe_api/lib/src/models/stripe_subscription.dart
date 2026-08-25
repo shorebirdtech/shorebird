@@ -58,6 +58,10 @@ class StripeSubscription {
     this.canceledAt,
     this.trialStart,
     this.trialEnd,
+    this.metadata = const {},
+    this.currency,
+    this.defaultPaymentMethod,
+    this.automaticTaxEnabled = false,
   });
 
   /// Converts a `Map<String, dynamic>` to a [StripeSubscription].
@@ -124,6 +128,24 @@ class StripeSubscription {
   @JsonKey(fromJson: _subscriptionItemsFromJson)
   final List<StripeSubscriptionItem> items;
 
+  /// Set of key-value pairs attached to the subscription.
+  final Map<String, String> metadata;
+
+  /// Three-letter ISO currency code, in lowercase.
+  final String? currency;
+
+  /// ID of the payment method used to pay this subscription's invoices.
+  ///
+  /// Not expanded, so this is the payment method id. Null when the
+  /// subscription bills against the customer's default payment method
+  /// instead of one of its own.
+  final String? defaultPaymentMethod;
+
+  /// Whether Stripe calculates tax automatically on this subscription's
+  /// invoices.
+  @JsonKey(name: 'automatic_tax', fromJson: _automaticTaxEnabledFromJson)
+  final bool automaticTaxEnabled;
+
   /// Whether this subscription is in an active or trialing state.
   bool get isActiveOrTrial =>
       status == StripeSubscriptionStatus.active ||
@@ -139,6 +161,9 @@ class StripeSubscription {
   bool get hasMeteredBilling =>
       items.any((item) => item.price.usageType == UsageType.metered);
 }
+
+bool _automaticTaxEnabledFromJson(Map<String, dynamic>? json) =>
+    json?['enabled'] as bool? ?? false;
 
 List<StripeSubscriptionItem> _subscriptionItemsFromJson(
   Map<String, dynamic>? json,
