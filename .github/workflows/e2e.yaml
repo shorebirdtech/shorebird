@@ -27,8 +27,8 @@ env:
 
 jobs:
   patch:
-    # A cli_ref dispatch is verifying the cli job, so the patch matrix would be
-    # dozens of production jobs of pure collateral.
+    # A cli_ref dispatch is verifying the cli job; the patch matrix is dozens of
+    # unrelated jobs that would only burn runner time.
     if: ${{ !inputs.cli_ref }}
     strategy:
       fail-fast: false
