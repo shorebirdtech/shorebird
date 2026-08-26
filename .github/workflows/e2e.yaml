@@ -12,7 +12,9 @@ on:
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
-  FLUTTER_VERSION: 3.41.9
+  # Host toolchain for `dart test integration_test`, not the version under test.
+  # Must ship a Dart new enough for the SDK constraints in the root pubspec.
+  FLUTTER_VERSION: 3.47.1
 
 jobs:
   patch:
