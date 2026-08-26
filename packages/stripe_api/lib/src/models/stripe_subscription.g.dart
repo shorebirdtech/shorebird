@@ -94,6 +94,10 @@ StripeSubscription _$StripeSubscriptionFromJson(Map<String, dynamic> json) =>
                 ? false
                 : _automaticTaxEnabledFromJson(v as Map<String, dynamic>?),
           ),
+          collectionMethod: $checkedConvert(
+            'collection_method',
+            (v) => v as String?,
+          ),
         );
         return val;
       },
@@ -109,6 +113,7 @@ StripeSubscription _$StripeSubscriptionFromJson(Map<String, dynamic> json) =>
         'trialEnd': 'trial_end',
         'defaultPaymentMethod': 'default_payment_method',
         'automaticTaxEnabled': 'automatic_tax',
+        'collectionMethod': 'collection_method',
       },
     );
 

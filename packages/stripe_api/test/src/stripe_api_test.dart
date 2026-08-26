@@ -369,6 +369,35 @@ void main() {
         ).called(1);
       });
 
+      test('sends collection method and days until due when given', () async {
+        await stripeApi.createSubscription(
+          customerId: 'cus_123',
+          priceId: 'price_123',
+          automaticTaxEnabled: true,
+          metadata: const {},
+          idempotencyKey: 'key_123',
+          collectionMethod: 'send_invoice',
+          daysUntilDue: 30,
+        );
+
+        verify(
+          () => httpClient.post(
+            uri,
+            headers: {
+              ...expectedAuthHeaders,
+              'Idempotency-Key': 'key_123',
+            },
+            body: {
+              'customer': 'cus_123',
+              'items[0][price]': 'price_123',
+              'collection_method': 'send_invoice',
+              'days_until_due': '30',
+              'automatic_tax[enabled]': 'true',
+            },
+          ),
+        ).called(1);
+      });
+
       test('omits currency and payment method when null', () async {
         await stripeApi.createSubscription(
           customerId: 'cus_123',
@@ -421,6 +450,53 @@ void main() {
             throwsException,
           );
         });
+      });
+    });
+
+    group('fetchPaymentMethod', () {
+      final uri = Uri.parse('https://api.stripe.com/v1/payment_methods/pm_123');
+
+      test('throws exception if Stripe returns a non-200 response', () {
+        when(
+          () => httpClient.get(uri, headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('Not found', HttpStatus.notFound),
+        );
+
+        expect(
+          () => stripeApi.fetchPaymentMethod(paymentMethodId: 'pm_123'),
+          throwsException,
+        );
+      });
+
+      test('returns a payment method with card country', () async {
+        when(
+          () => httpClient.get(uri, headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(paymentMethodJsonString, HttpStatus.ok),
+        );
+
+        final paymentMethod = await stripeApi.fetchPaymentMethod(
+          paymentMethodId: 'pm_123',
+        );
+
+        expect(paymentMethod.id, equals('pm_123'));
+        expect(paymentMethod.card?.country, equals('IN'));
+      });
+
+      test('returns a null card for a non-card payment method', () async {
+        when(
+          () => httpClient.get(uri, headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async =>
+              http.Response(paymentMethodNoCardJsonString, HttpStatus.ok),
+        );
+
+        final paymentMethod = await stripeApi.fetchPaymentMethod(
+          paymentMethodId: 'pm_123',
+        );
+
+        expect(paymentMethod.card, isNull);
       });
     });
 

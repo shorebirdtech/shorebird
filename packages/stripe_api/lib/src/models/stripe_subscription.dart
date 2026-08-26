@@ -62,6 +62,7 @@ class StripeSubscription {
     this.currency,
     this.defaultPaymentMethod,
     this.automaticTaxEnabled = false,
+    this.collectionMethod,
   });
 
   /// Converts a `Map<String, dynamic>` to a [StripeSubscription].
@@ -145,6 +146,10 @@ class StripeSubscription {
   /// invoices.
   @JsonKey(name: 'automatic_tax', fromJson: _automaticTaxEnabledFromJson)
   final bool automaticTaxEnabled;
+
+  /// How this subscription's invoices collect payment:
+  /// `charge_automatically` or `send_invoice`.
+  final String? collectionMethod;
 
   /// Whether this subscription is in an active or trialing state.
   bool get isActiveOrTrial =>

@@ -69,6 +69,27 @@ class StripeApi {
     );
   }
 
+  /// Retrieves a [StripePaymentMethod] with the given [paymentMethodId].
+  ///
+  /// See https://docs.stripe.com/api/payment_methods/retrieve.
+  Future<StripePaymentMethod> fetchPaymentMethod({
+    required String paymentMethodId,
+  }) async {
+    final uri = _stripeUri(path: 'payment_methods/$paymentMethodId');
+
+    final response = await _client.get(uri, headers: _authHeaders);
+    if (response.statusCode != HttpStatus.ok) {
+      throw StripeApiException.fromResponse(
+        response,
+        message: 'Failed to retrieve payment method with id $paymentMethodId',
+      );
+    }
+
+    return StripePaymentMethod.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   /// Lists every subscription belonging to [customerId] that has not been
   /// canceled, regardless of status.
   ///
@@ -94,6 +115,11 @@ class StripeApi {
   /// rather than sent empty, which leaves Stripe to fall back to the
   /// customer's own currency and default payment method.
   ///
+  /// [collectionMethod] selects how invoices collect: null leaves Stripe's
+  /// default (`charge_automatically`); `send_invoice` emails a hosted invoice
+  /// instead of charging the payment method, and Stripe then requires
+  /// [daysUntilDue].
+  ///
   /// See https://docs.stripe.com/api/subscriptions/create.
   Future<StripeSubscription> createSubscription({
     required String customerId,
@@ -103,6 +129,8 @@ class StripeApi {
     required String idempotencyKey,
     String? currency,
     String? defaultPaymentMethod,
+    String? collectionMethod,
+    int? daysUntilDue,
   }) async {
     final uri = _stripeUri(path: 'subscriptions');
     final response = await _client.post(
@@ -113,6 +141,8 @@ class StripeApi {
         'items[0][price]': priceId,
         'currency': ?currency,
         'default_payment_method': ?defaultPaymentMethod,
+        'collection_method': ?collectionMethod,
+        'days_until_due': ?daysUntilDue?.toString(),
         'automatic_tax[enabled]': '$automaticTaxEnabled',
         for (final entry in metadata.entries)
           'metadata[${entry.key}]': entry.value,

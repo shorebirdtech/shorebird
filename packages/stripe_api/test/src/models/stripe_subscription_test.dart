@@ -33,6 +33,15 @@ void main() {
       expect(subscription.status, StripeSubscriptionStatus.active);
       expect(subscription.trialStart, isNull);
       expect(subscription.trialEnd, isNull);
+      expect(subscription.collectionMethod, 'charge_automatically');
+    });
+
+    test('deserializes a null collection method when absent', () {
+      final json = subscriptionJson..remove('collection_method');
+
+      final subscription = StripeSubscription.fromJson(json);
+
+      expect(subscription.collectionMethod, isNull);
     });
 
     test('deserializes metadata', () {
@@ -105,6 +114,7 @@ void main() {
         expect(subscription.endedAt, null);
         expect(subscription.startDate, isNotNull);
         expect(subscription.status, StripeSubscriptionStatus.trialing);
+        expect(subscription.collectionMethod, 'send_invoice');
         expect(
           subscription.trialStart,
           DateTime.fromMillisecondsSinceEpoch(1725845719000),

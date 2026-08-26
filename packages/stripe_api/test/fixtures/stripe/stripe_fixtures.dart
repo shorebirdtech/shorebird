@@ -37,6 +37,12 @@ String get customerWithInactiveSubscriptionJsonString => File(
   '$stripeJsonPath/customer_with_inactive_subscription.json',
 ).readAsStringSync();
 
+String get paymentMethodJsonString =>
+    File('$stripeJsonPath/payment_method.json').readAsStringSync();
+
+String get paymentMethodNoCardJsonString =>
+    File('$stripeJsonPath/payment_method_no_card.json').readAsStringSync();
+
 String get subscriptionJsonString =>
     File('$stripeJsonPath/subscription.json').readAsStringSync();
 
