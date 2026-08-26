@@ -6,6 +6,15 @@ concurrency:
 
 on:
   workflow_dispatch:
+    inputs:
+      cli_ref:
+        description: >-
+          Ref the cli job checks out, for verifying a fix before it lands.
+          Defaults to each matrix branch. Setting it skips the patch matrix
+          and pins the cli job to the dev API, so a dispatch never writes to
+          production.
+        required: false
+        type: string
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
@@ -18,6 +27,9 @@ env:
 
 jobs:
   patch:
+    # A cli_ref dispatch is verifying the cli job, so the patch matrix would be
+    # dozens of production jobs of pure collateral.
+    if: ${{ !inputs.cli_ref }}
     strategy:
       fail-fast: false
       matrix:
@@ -135,7 +147,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        branch: [stable, main]
+        # branch selects the API host as well as the ref, so a cli_ref dispatch
+        # drops the stable leg rather than pointing unreleased code at prod.
+        branch: ${{ inputs.cli_ref && fromJSON('["main"]') || fromJSON('["stable", "main"]') }}
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
@@ -147,7 +161,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ matrix.branch }}
+          ref: ${{ inputs.cli_ref || matrix.branch }}
 
       - name: 🖥️ Add Shorebird to macOS/Linux PATH
         shell: bash
