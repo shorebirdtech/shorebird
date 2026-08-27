@@ -78,7 +78,11 @@ class ShorebirdFlutter {
     );
     try {
       _reclaimStrandedStagingDirectories(targetDirectory);
-      _deleteIgnoringErrors(stagingDirectory);
+      // A normal install has nothing here, and reporting a failure to remove
+      // what was never there would put a spurious error in every run's log.
+      if (stagingDirectory.existsSync()) {
+        _deleteIgnoringErrors(stagingDirectory);
+      }
 
       // Clone the Shorebird Flutter repo into the staging directory.
       await git.clone(

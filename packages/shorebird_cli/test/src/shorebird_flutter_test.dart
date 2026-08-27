@@ -1005,6 +1005,11 @@ origin/flutter_release/3.10.6''';
         ).called(1);
         expect(Directory(cloneDirectory).existsSync(), isFalse);
         expect(targetDirectory.existsSync(), isTrue);
+        // A clean install has no cleanup to report; saying otherwise would
+        // put a failure line in the log support asks users to attach.
+        verifyNever(
+          () => logger.detail(any(that: contains('Failed to remove'))),
+        );
       });
 
       group('when an earlier install was killed before publishing', () {
@@ -1016,6 +1021,19 @@ origin/flutter_release/3.10.6''';
         });
 
         test('reclaims the stranded staging directory', () async {
+          // The sweep runs over every sibling of the target, so the name
+          // filter is all that keeps it off other installs.
+          final otherInstall = Directory(
+            p.join(flutterDirectory.parent.path, 'another-revision'),
+          )..createSync(recursive: true);
+          final notStaging = Directory('${targetDirectory.path}.notstaging')
+            ..createSync(recursive: true);
+          // Another revision's staging directory. Each install reclaims only
+          // its own strays, so this one is not ours to remove.
+          final otherStaging = Directory(
+            p.join(flutterDirectory.parent.path, 'another-revision.9999.tmp'),
+          )..createSync(recursive: true);
+
           // A stranded directory is only distinguishable from a concurrent
           // install's by how long it has sat untouched.
           await withClock(
@@ -1026,6 +1044,9 @@ origin/flutter_release/3.10.6''';
           );
 
           expect(strandedStaging.existsSync(), isFalse);
+          expect(otherInstall.existsSync(), isTrue);
+          expect(notStaging.existsSync(), isTrue);
+          expect(otherStaging.existsSync(), isTrue);
           expect(targetDirectory.existsSync(), isTrue);
         });
 
@@ -1039,6 +1060,29 @@ origin/flutter_release/3.10.6''';
             expect(strandedStaging.existsSync(), isTrue);
           },
         );
+      });
+
+      group('when nothing has been installed yet', () {
+        setUp(() {
+          // No cache directory at all, so there are no siblings to sweep.
+          when(() => shorebirdEnv.flutterDirectory).thenReturn(
+            Directory(p.join(shorebirdRoot.path, 'missing', flutterRevision)),
+          );
+          targetDirectory = Directory(
+            p.join(shorebirdRoot.path, 'missing', revision),
+          );
+        });
+
+        test('installs without tripping over the absent directory', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            completes,
+          );
+
+          expect(targetDirectory.existsSync(), isTrue);
+        });
       });
 
       group('when the precache stamp cannot be written', () {
