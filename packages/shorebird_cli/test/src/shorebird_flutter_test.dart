@@ -915,14 +915,9 @@ origin/flutter_release/3.10.6''';
       late Directory targetDirectory;
       late File precacheStamp;
 
-      /// Puts [targetDirectory] in the state left by a checkout that reached
-      /// [head], without the precache stamp.
-      void createCheckout({String head = revision}) {
-        targetDirectory.createSync(recursive: true);
-        when(
-          () => git.revParse(revision: 'HEAD', directory: targetDirectory.path),
-        ).thenAnswer((_) async => head);
-      }
+      /// Puts [targetDirectory] in the state left by a published checkout,
+      /// without the precache stamp.
+      void createCheckout() => targetDirectory.createSync(recursive: true);
 
       setUp(() {
         targetDirectory = Directory(
@@ -949,7 +944,11 @@ origin/flutter_release/3.10.6''';
           ),
         );
         verifyNever(
-          () => process.run('flutter', any(that: contains('precache'))),
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
         );
       });
 
@@ -979,63 +978,95 @@ origin/flutter_release/3.10.6''';
         });
       });
 
-      group('when the checkout did not complete', () {
-        // HEAD never reached the requested revision, which is what an
-        // interrupted `git checkout` leaves behind.
-        setUp(() => createCheckout(head: 'some-other-revision'));
+      test('clones and checks out away from the target directory', () async {
+        late String cloneDirectory;
+        when(
+          () => git.clone(
+            url: any(named: 'url'),
+            outputDirectory: any(named: 'outputDirectory'),
+            args: any(named: 'args'),
+          ),
+        ).thenAnswer((invocation) async {
+          cloneDirectory =
+              invocation.namedArguments[#outputDirectory] as String;
+          Directory(cloneDirectory).createSync(recursive: true);
+        });
 
-        test('discards the directory and reinstalls', () async {
-          final leftover = File(p.join(targetDirectory.path, 'leftover'))
-            ..createSync(recursive: true);
+        await runWithOverrides(
+          () => shorebirdFlutter.installRevision(revision: revision),
+        );
 
-          await runWithOverrides(
-            () => shorebirdFlutter.installRevision(revision: revision),
+        // The target directory must never hold an in-progress checkout, so
+        // that its existence is proof of a finished one.
+        expect(cloneDirectory, isNot(targetDirectory.path));
+        verify(
+          () => git.checkout(directory: cloneDirectory, revision: revision),
+        ).called(1);
+        expect(Directory(cloneDirectory).existsSync(), isFalse);
+        expect(targetDirectory.existsSync(), isTrue);
+      });
+
+      group('when the install is interrupted', () {
+        setUp(() {
+          when(
+            () => git.checkout(
+              directory: any(named: 'directory'),
+              revision: any(named: 'revision'),
+            ),
+          ).thenThrow(Exception('interrupted'));
+        });
+
+        test('leaves no target directory and no staging directory', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            throwsException,
           );
 
-          expect(leftover.existsSync(), isFalse);
-          verify(
-            () => git.clone(
-              url: ShorebirdFlutter.flutterGitUrl,
-              outputDirectory: targetDirectory.path,
-              args: ['--filter=tree:0', '--no-checkout'],
+          expect(targetDirectory.existsSync(), isFalse);
+          expect(
+            targetDirectory.parent.listSync().where(
+              (e) => p.basename(e.path).startsWith(revision),
             ),
-          ).called(1);
-          verify(
+            isEmpty,
+          );
+        });
+      });
+
+      group('when another process publishes the revision first', () {
+        setUp(() {
+          when(
             () => git.checkout(
-              directory: targetDirectory.path,
-              revision: revision,
+              directory: any(named: 'directory'),
+              revision: any(named: 'revision'),
             ),
-          ).called(1);
+          ).thenAnswer((_) async {
+            // Publishing makes this process's rename onto it fail.
+            File(
+              p.join(targetDirectory.path, 'already-here'),
+            ).createSync(recursive: true);
+          });
+        });
+
+        test('adopts the published checkout instead of failing', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            completes,
+          );
+
+          verifyNever(() => progress.fail(any()));
+          expect(
+            File(p.join(targetDirectory.path, 'already-here')).existsSync(),
+            isTrue,
+          );
           verify(
             () => process.run(
               'flutter',
               any(that: contains('precache')),
               workingDirectory: targetDirectory.path,
-            ),
-          ).called(1);
-        });
-      });
-
-      group('when the directory is not a readable git repository', () {
-        // What a clone that died before writing a valid repository leaves.
-        setUp(() {
-          targetDirectory.createSync(recursive: true);
-          when(
-            () =>
-                git.revParse(revision: 'HEAD', directory: targetDirectory.path),
-          ).thenThrow(const ProcessException('git', ['rev-parse']));
-        });
-
-        test('discards the directory and reinstalls', () async {
-          await runWithOverrides(
-            () => shorebirdFlutter.installRevision(revision: revision),
-          );
-
-          verify(
-            () => git.clone(
-              url: ShorebirdFlutter.flutterGitUrl,
-              outputDirectory: targetDirectory.path,
-              args: ['--filter=tree:0', '--no-checkout'],
             ),
           ).called(1);
         });
@@ -1061,12 +1092,16 @@ origin/flutter_release/3.10.6''';
         verify(
           () => git.clone(
             url: ShorebirdFlutter.flutterGitUrl,
-            outputDirectory: p.join(flutterDirectory.parent.path, revision),
+            outputDirectory: any(named: 'outputDirectory'),
             args: ['--filter=tree:0', '--no-checkout'],
           ),
         ).called(1);
         verifyNever(
-          () => process.run('flutter', any(that: contains('precache'))),
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
         );
       });
 
@@ -1088,13 +1123,13 @@ origin/flutter_release/3.10.6''';
         verify(
           () => git.clone(
             url: ShorebirdFlutter.flutterGitUrl,
-            outputDirectory: p.join(flutterDirectory.parent.path, revision),
+            outputDirectory: any(named: 'outputDirectory'),
             args: ['--filter=tree:0', '--no-checkout'],
           ),
         ).called(1);
         verify(
           () => git.checkout(
-            directory: p.join(flutterDirectory.parent.path, revision),
+            directory: any(named: 'directory'),
             revision: revision,
           ),
         ).called(1);
