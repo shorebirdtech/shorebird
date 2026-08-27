@@ -93,16 +93,13 @@ void main() {
     });
 
     group('sanitizeCarJson', () {
-      test('strips Timestamp lines', () {
-        final input = [
-          '{',
-          '  "Timestamp" : 1234567890',
-          '  "Name" : "AppIcon"',
-          '}',
-        ];
+      test('strips Timestamp', () {
+        const withTimestamp = '''
+[{"Timestamp" : 1234567890, "Name" : "AppIcon"}]''';
+        const withoutTimestamp = '[{"Name" : "AppIcon"}]';
         expect(
-          AppleArchiveDiffer.sanitizeCarJson(input),
-          '{\n  "Name" : "AppIcon"\n}',
+          AppleArchiveDiffer.sanitizeCarJson(withTimestamp),
+          AppleArchiveDiffer.sanitizeCarJson(withoutTimestamp),
         );
       });
 
@@ -112,14 +109,12 @@ void main() {
         // RenditionName/Name fields of the assetutil --info output.
         const uuidA = '1FB87FB1-9D9F-4F60-B3C3-6E63B0B0E3DD';
         const uuidB = 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE';
-        final buildA = [
-          '  "Name" : "AppIcon-$uuidA"',
-          '  "RenditionName" : "AppIcon-$uuidA.png"',
-        ];
-        final buildB = [
-          '  "Name" : "AppIcon-$uuidB"',
-          '  "RenditionName" : "AppIcon-$uuidB.png"',
-        ];
+        const buildA =
+            '''
+[{"Name" : "AppIcon-$uuidA", "RenditionName" : "AppIcon-$uuidA.png"}]''';
+        const buildB =
+            '''
+[{"Name" : "AppIcon-$uuidB", "RenditionName" : "AppIcon-$uuidB.png"}]''';
         expect(
           AppleArchiveDiffer.sanitizeCarJson(buildA),
           AppleArchiveDiffer.sanitizeCarJson(buildB),
@@ -128,12 +123,39 @@ void main() {
 
       test('still detects rendition name changes that are not just UUIDs', () {
         const uuid = '1FB87FB1-9D9F-4F60-B3C3-6E63B0B0E3DD';
-        final before = ['  "RenditionName" : "AppIcon-$uuid.png"'];
-        final after = ['  "RenditionName" : "AppIconDark-$uuid.png"'];
+        const before = '[{"RenditionName" : "AppIcon-$uuid.png"}]';
+        const after = '[{"RenditionName" : "AppIconDark-$uuid.png"}]';
         expect(
           AppleArchiveDiffer.sanitizeCarJson(before),
           isNot(AppleArchiveDiffer.sanitizeCarJson(after)),
         );
+      });
+
+      test('keeps keys that differ only by UUID distinct', () {
+        const uuidA = '1FB87FB1-9D9F-4F60-B3C3-6E63B0B0E3DD';
+        const uuidB = 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE';
+        const both = '[{"Icon-$uuidA" : 1, "Icon-$uuidB" : 2}]';
+        // Matches what `both` would reduce to if the keys were normalized
+        // and collapsed, so this fails rather than passes if that returns.
+        const one = '[{"Icon-$uuidB" : 2}]';
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(both),
+          isNot(AppleArchiveDiffer.sanitizeCarJson(one)),
+        );
+      });
+
+      test('is insensitive to the order assetutil emits fields in', () {
+        const orderA = '[{"Name" : "AppIcon", "Scale" : 1}]';
+        const orderB = '[{"Scale" : 1, "Name" : "AppIcon"}]';
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(orderA),
+          AppleArchiveDiffer.sanitizeCarJson(orderB),
+        );
+      });
+
+      test('hashes unparseable output verbatim rather than throwing', () {
+        const notJson = 'assetutil: unable to read archive';
+        expect(AppleArchiveDiffer.sanitizeCarJson(notJson), notJson);
       });
     });
 
