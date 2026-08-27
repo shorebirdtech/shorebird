@@ -199,8 +199,8 @@ class AppleArchiveDiffer extends ArchiveDiffer {
   ///
   /// Keys are sorted so the hash does not depend on the order assetutil
   /// happens to emit fields in. `assetutil` writes a JSON array, but its
-  /// output is not part of any documented contract, so unparseable content
-  /// falls back to being hashed verbatim rather than failing the patch.
+  /// output is not part of any documented contract, so content that does not
+  /// parse is hashed verbatim rather than failing the patch.
   @visibleForTesting
   static String sanitizeCarJson(String contents) {
     final Object? decoded;

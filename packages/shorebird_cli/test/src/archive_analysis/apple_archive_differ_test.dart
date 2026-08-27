@@ -154,7 +154,7 @@ void main() {
         );
       });
 
-      test('hashes unparseable output verbatim rather than throwing', () {
+      test('hashes non-JSON output verbatim rather than throwing', () {
         const notJson = 'assetutil: unable to read archive';
         expect(AppleArchiveDiffer.sanitizeCarJson(notJson), notJson);
       });
