@@ -42,40 +42,93 @@ class ShorebirdFlutter {
     return p.join(shorebirdEnv.flutterDirectory.parent.path, revision);
   }
 
+  /// Marker written once `flutter precache` has succeeded for an installed
+  /// revision.
+  ///
+  /// Untracked, and [isUnmodified] passes `--untracked-files=no`, so its
+  /// presence does not make the checkout look dirty.
+  static const precacheStampName = '.shorebird_precache';
+
+  /// Whether [directory] holds a checkout that reached [revision].
+  ///
+  /// `git checkout` moves HEAD last, under a ref lock, so HEAD pointing at
+  /// [revision] means the checkout ran to completion. Anything interrupted
+  /// earlier leaves HEAD on the clone's default branch or on its previous
+  /// value, and a clone that died before writing a valid repository fails
+  /// the lookup outright.
+  Future<bool> _isCheckedOut({
+    required Directory directory,
+    required String revision,
+  }) async {
+    if (!directory.existsSync()) return false;
+    try {
+      final head = await git.revParse(
+        revision: 'HEAD',
+        directory: directory.path,
+      );
+      return head == revision;
+    } on ProcessException {
+      return false;
+    }
+  }
+
   /// Install the provided Flutter [revision].
   ///
-  /// Runs `flutter precache` on first install as a convenience so the first
-  /// build is not unexpectedly slow. A precache failure is treated as a
-  /// corrupted install: Flutter's stamp-based cache will otherwise trust a
-  /// partial extraction and surface the missing artifact later as an opaque
-  /// Gradle error (see shorebirdtech/shorebird#3783). The user is directed
-  /// to run `shorebird cache clean` to start over.
+  /// Installing is two independent steps, each with its own durable record,
+  /// so an interrupted run resumes instead of leaving a directory that later
+  /// runs mistake for a finished install. Checking out is recorded by git
+  /// itself (see [_isCheckedOut]) and precaching by [precacheStampName]. A
+  /// checkout that did not finish cannot be resumed, so it is discarded and
+  /// redone; precache is idempotent and is simply re-run.
+  ///
+  /// Precache runs on install as a convenience so the first build is not
+  /// unexpectedly slow. A precache failure is treated as a corrupted install:
+  /// Flutter's stamp-based cache will otherwise trust a partial extraction and
+  /// surface the missing artifact later as an opaque Gradle error (see
+  /// shorebirdtech/shorebird#3783).
   Future<void> installRevision({required String revision}) async {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
-    if (targetDirectory.existsSync()) return;
+    final precacheStamp = File(
+      p.join(targetDirectory.path, precacheStampName),
+    );
+
+    final isCheckedOut = await _isCheckedOut(
+      directory: targetDirectory,
+      revision: revision,
+    );
+    if (isCheckedOut && precacheStamp.existsSync()) return;
 
     final version = await getVersionForRevision(flutterRevision: revision);
 
-    final installProgress = logger.progress(
-      'Installing Flutter $version (${shortRevisionString(revision)})',
-    );
+    if (!isCheckedOut) {
+      if (targetDirectory.existsSync()) {
+        logger.detail(
+          '''${targetDirectory.path} is not a complete checkout of $revision. Reinstalling.''',
+        );
+        targetDirectory.deleteSync(recursive: true);
+      }
 
-    try {
-      // Clone the Shorebird Flutter repo into the target directory.
-      await git.clone(
-        url: flutterGitUrl,
-        outputDirectory: targetDirectory.path,
-        args: ['--filter=tree:0', '--no-checkout'],
+      final installProgress = logger.progress(
+        'Installing Flutter $version (${shortRevisionString(revision)})',
       );
 
-      // Checkout the correct revision.
-      await git.checkout(directory: targetDirectory.path, revision: revision);
-      installProgress.complete();
-    } catch (error) {
-      final short = shortRevisionString(revision);
-      installProgress.fail('Failed to install Flutter $version ($short)');
-      logger.err('$error');
-      rethrow;
+      try {
+        // Clone the Shorebird Flutter repo into the target directory.
+        await git.clone(
+          url: flutterGitUrl,
+          outputDirectory: targetDirectory.path,
+          args: ['--filter=tree:0', '--no-checkout'],
+        );
+
+        // Checkout the correct revision.
+        await git.checkout(directory: targetDirectory.path, revision: revision);
+        installProgress.complete();
+      } catch (error) {
+        final short = shortRevisionString(revision);
+        installProgress.fail('Failed to install Flutter $version ($short)');
+        logger.err('$error');
+        rethrow;
+      }
     }
 
     final precacheProgress = logger.progress(
@@ -116,6 +169,7 @@ class ShorebirdFlutter {
         'flutter precache exited with code ${result.exitCode}: $stderr.',
       );
     }
+    precacheStamp.createSync();
     precacheProgress.complete();
   }
 
