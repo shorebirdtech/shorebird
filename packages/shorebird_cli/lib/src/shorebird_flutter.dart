@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
@@ -49,6 +50,13 @@ class ShorebirdFlutter {
   /// presence does not make the checkout look dirty.
   static const precacheStampName = '.shorebird_precache';
 
+  /// Suffix identifying a directory an install is still writing into.
+  static const _stagingSuffix = '.tmp';
+
+  /// How long a staging directory must sit untouched before another install
+  /// treats it as abandoned rather than as a peer's work in progress.
+  static const _stagingMaxAge = Duration(days: 1);
+
   /// Clones and checks out [revision], publishing it at [targetDirectory]
   /// only once both have succeeded.
   ///
@@ -65,11 +73,12 @@ class ShorebirdFlutter {
       'Installing Flutter $version (${shortRevisionString(revision)})',
     );
 
-    final stagingDirectory = Directory('${targetDirectory.path}.$pid.tmp');
+    final stagingDirectory = Directory(
+      '${targetDirectory.path}.$pid$_stagingSuffix',
+    );
     try {
-      if (stagingDirectory.existsSync()) {
-        stagingDirectory.deleteSync(recursive: true);
-      }
+      _reclaimStrandedStagingDirectories(targetDirectory);
+      _deleteIgnoringErrors(stagingDirectory);
 
       // Clone the Shorebird Flutter repo into the staging directory.
       await git.clone(
@@ -102,9 +111,36 @@ class ShorebirdFlutter {
 
   void _deleteIgnoringErrors(Directory directory) {
     try {
-      if (directory.existsSync()) directory.deleteSync(recursive: true);
+      directory.deleteSync(recursive: true);
     } on FileSystemException catch (error) {
       logger.detail('Failed to remove ${directory.path}: $error');
+    }
+  }
+
+  /// Removes staging directories left by runs that were killed before they
+  /// could publish.
+  ///
+  /// Publishing by rename means an interrupted install strands its staging
+  /// directory instead of poisoning the target, so something has to reclaim
+  /// it. A concurrent install's staging directory looks identical to a
+  /// stranded one, so only entries untouched for [_stagingMaxAge] are
+  /// removed. A clone finishes in minutes.
+  void _reclaimStrandedStagingDirectories(Directory targetDirectory) {
+    final prefix = '${p.basename(targetDirectory.path)}.';
+    final cutoff = clock.now().subtract(_stagingMaxAge);
+
+    final List<FileSystemEntity> siblings;
+    try {
+      siblings = targetDirectory.parent.listSync();
+    } on FileSystemException {
+      return;
+    }
+
+    for (final sibling in siblings.whereType<Directory>()) {
+      final name = p.basename(sibling.path);
+      if (!name.startsWith(prefix) || !name.endsWith(_stagingSuffix)) continue;
+      if (sibling.statSync().modified.isAfter(cutoff)) continue;
+      _deleteIgnoringErrors(sibling);
     }
   }
 

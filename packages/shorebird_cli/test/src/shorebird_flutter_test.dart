@@ -1,6 +1,7 @@
 // cspell:words revis
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -1004,6 +1005,64 @@ origin/flutter_release/3.10.6''';
         ).called(1);
         expect(Directory(cloneDirectory).existsSync(), isFalse);
         expect(targetDirectory.existsSync(), isTrue);
+      });
+
+      group('when an earlier install was killed before publishing', () {
+        late Directory strandedStaging;
+
+        setUp(() {
+          strandedStaging = Directory('${targetDirectory.path}.9999.tmp')
+            ..createSync(recursive: true);
+        });
+
+        test('reclaims the stranded staging directory', () async {
+          // A stranded directory is only distinguishable from a concurrent
+          // install's by how long it has sat untouched.
+          await withClock(
+            Clock.fixed(DateTime.now().add(const Duration(days: 2))),
+            () => runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+          );
+
+          expect(strandedStaging.existsSync(), isFalse);
+          expect(targetDirectory.existsSync(), isTrue);
+        });
+
+        test(
+          'leaves a concurrent install\'s staging directory alone',
+          () async {
+            await runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            );
+
+            expect(strandedStaging.existsSync(), isTrue);
+          },
+        );
+      });
+
+      group('when the precache stamp cannot be written', () {
+        setUp(() {
+          createCheckout();
+          // Occupying the stamp path with a directory makes createSync throw.
+          Directory(
+            p.join(targetDirectory.path, ShorebirdFlutter.precacheStampName),
+          ).createSync(recursive: true);
+        });
+
+        test('fails loudly instead of exiting silently', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            throwsA(isA<CacheCorruptedException>()),
+          );
+
+          verify(
+            () => progress.fail('Failed to precache Flutter 3.10.6'),
+          ).called(1);
+          verify(() => logger.err(any())).called(1);
+        });
       });
 
       group('when the install is interrupted', () {
