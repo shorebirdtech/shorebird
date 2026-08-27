@@ -148,6 +148,20 @@ class ShorebirdFlutter {
     }
   }
 
+  /// Whether [directory] definitely does not hold a usable install.
+  ///
+  /// A finished checkout always contains the Flutter launcher, so its absence
+  /// is proof the directory is unusable. The converse does not hold, which is
+  /// why this only ever condemns a directory and never certifies one: a
+  /// checkout interrupted after the launcher was written looks identical to a
+  /// finished one from the outside. Installs published by [_cloneAndCheckout]
+  /// do not need certifying, since a partial one is never published at all.
+  bool _isUnusableInstall(Directory directory) {
+    if (!directory.existsSync()) return false;
+    final launcher = platform.isWindows ? 'flutter.bat' : 'flutter';
+    return !File(p.join(directory.path, 'bin', launcher)).existsSync();
+  }
+
   /// Install the provided Flutter [revision].
   ///
   /// Installing is two steps, each with its own durable record, so an
@@ -160,6 +174,11 @@ class ShorebirdFlutter {
   /// Precache is idempotent, so a missing stamp re-runs it rather than
   /// re-cloning.
   ///
+  /// Directories left by versions that installed in place predate that
+  /// guarantee, so a demonstrably unusable one is discarded and reinstalled
+  /// rather than sending the user to `shorebird cache clean`, which would
+  /// take every other installed revision with it.
+  ///
   /// Precache runs on install as a convenience so the first build is not
   /// unexpectedly slow. A precache failure is treated as a corrupted install:
   /// Flutter's stamp-based cache will otherwise trust a partial extraction and
@@ -168,6 +187,18 @@ class ShorebirdFlutter {
   Future<void> installRevision({required String revision}) async {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
     final precacheStamp = File(p.join(targetDirectory.path, precacheStampName));
+
+    if (_isUnusableInstall(targetDirectory)) {
+      logger.info(
+        '''Flutter ${shortRevisionString(revision)} is incompletely installed. Reinstalling it.''',
+      );
+      _deleteIgnoringErrors(targetDirectory);
+      if (targetDirectory.existsSync()) {
+        throw CacheCorruptedException(
+          'Could not remove ${targetDirectory.path}.',
+        );
+      }
+    }
 
     final isCheckedOut = targetDirectory.existsSync();
     if (isCheckedOut && precacheStamp.existsSync()) return;

@@ -106,6 +106,7 @@ void main() {
       ).thenAnswer((_) async => 'origin/flutter_release/3.10.6');
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.isMacOS).thenReturn(false);
+      when(() => platform.isWindows).thenReturn(false);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
@@ -918,7 +919,11 @@ origin/flutter_release/3.10.6''';
 
       /// Puts [targetDirectory] in the state left by a published checkout,
       /// without the precache stamp.
-      void createCheckout() => targetDirectory.createSync(recursive: true);
+      void createCheckout() {
+        File(
+          p.join(targetDirectory.path, 'bin', 'flutter'),
+        ).createSync(recursive: true);
+      }
 
       setUp(() {
         targetDirectory = Directory(
@@ -1009,6 +1014,62 @@ origin/flutter_release/3.10.6''';
         // put a failure line in the log support asks users to attach.
         verifyNever(
           () => logger.detail(any(that: contains('Failed to remove'))),
+        );
+      });
+
+      group('when an older version left an incomplete install', () {
+        setUp(() {
+          // Installed in place by a version that did not publish by rename,
+          // so the directory exists without the launcher a checkout writes.
+          targetDirectory.createSync(recursive: true);
+        });
+
+        test('says so and reinstalls that revision alone', () async {
+          final otherInstall = Directory(
+            p.join(flutterDirectory.parent.path, 'another-revision'),
+          )..createSync(recursive: true);
+          final leftover = File(p.join(targetDirectory.path, 'leftover'))
+            ..createSync(recursive: true);
+
+          await runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          );
+
+          verify(
+            () => logger.info(
+              any(that: contains('is incompletely installed')),
+            ),
+          ).called(1);
+          expect(leftover.existsSync(), isFalse);
+          // `shorebird cache clean` would have taken this with it.
+          expect(otherInstall.existsSync(), isTrue);
+          verify(
+            () => git.clone(
+              url: ShorebirdFlutter.flutterGitUrl,
+              outputDirectory: any(named: 'outputDirectory'),
+              args: any(named: 'args'),
+            ),
+          ).called(1);
+          expect(targetDirectory.existsSync(), isTrue);
+        });
+
+        test(
+          'reports when the incomplete install cannot be removed',
+          () async {
+            // Making the parent read-only is the portable way to block the
+            // unlink of a child that is otherwise perfectly deletable.
+            final parent = targetDirectory.parent;
+            Process.runSync('chmod', ['a-w', parent.path]);
+            addTearDown(() => Process.runSync('chmod', ['u+w', parent.path]));
+
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdFlutter.installRevision(revision: revision),
+              ),
+              throwsA(isA<CacheCorruptedException>()),
+            );
+          },
+          testOn: 'linux || mac-os',
         );
       });
 
