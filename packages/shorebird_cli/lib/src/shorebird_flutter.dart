@@ -83,12 +83,25 @@ class ShorebirdFlutter {
     );
 
     final precacheArguments = ['precache', ...precacheArgs];
+
+    // Flutter's launcher derives FLUTTER_ROOT from its own script path, so
+    // `workingDirectory` cannot aim precache at [revision]. The vended binary
+    // path is what decides which cache is warmed, and it resolves from the
+    // ambient revision, which is the active one rather than [revision]:
+    // callers install before entering their own override scope.
+    final targetShorebirdEnv = shorebirdEnv.copyWith(
+      flutterRevisionOverride: revision,
+    );
+
     final ShorebirdProcessResult result;
     try {
-      result = await process.run(
-        executable,
-        precacheArguments,
-        workingDirectory: targetDirectory.path,
+      result = await runScoped(
+        () => process.run(
+          executable,
+          precacheArguments,
+          workingDirectory: targetDirectory.path,
+        ),
+        values: {shorebirdEnvRef.overrideWith(() => targetShorebirdEnv)},
       );
     } on Exception catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');

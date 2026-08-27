@@ -28,6 +28,7 @@ void main() {
     late Platform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdEnv targetShorebirdEnv;
     late ShorebirdProcess process;
     late ShorebirdProcessResult versionProcessResult;
     late ShorebirdProcessResult precacheProcessResult;
@@ -53,6 +54,7 @@ void main() {
       logger = MockShorebirdLogger();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
+      targetShorebirdEnv = MockShorebirdEnv();
       platform = MockPlatform();
       process = MockShorebirdProcess();
       versionProcessResult = MockShorebirdProcessResult();
@@ -99,6 +101,16 @@ void main() {
       when(() => platform.isMacOS).thenReturn(false);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(
+        () => shorebirdEnv.copyWith(
+          flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
+        ),
+      ).thenAnswer((invocation) {
+        when(() => targetShorebirdEnv.flutterRevision).thenReturn(
+          invocation.namedArguments[#flutterRevisionOverride] as String,
+        );
+        return targetShorebirdEnv;
+      });
       when(
         () => process.run('flutter', ['--version'], useVendedFlutter: false),
       ).thenAnswer((_) async => versionProcessResult);
@@ -1040,6 +1052,30 @@ origin/flutter_release/3.10.6''';
             ).called(1);
           },
         );
+      });
+
+      test('precaches the target revision, not the active revision', () async {
+        ShorebirdEnv? envDuringPrecache;
+        when(
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async {
+          envDuringPrecache = read(shorebirdEnvRef);
+          return precacheProcessResult;
+        });
+
+        await runWithOverrides(
+          () => shorebirdFlutter.installRevision(revision: revision),
+        );
+
+        // The vended `flutter` binary is resolved from the ambient revision,
+        // so precache only warms [revision] if the scope says so.
+        expect(envDuringPrecache, same(targetShorebirdEnv));
+        expect(envDuringPrecache!.flutterRevision, revision);
+        expect(shorebirdEnv.flutterRevision, isNot(revision));
       });
 
       group('when clone and checkout succeed', () {
