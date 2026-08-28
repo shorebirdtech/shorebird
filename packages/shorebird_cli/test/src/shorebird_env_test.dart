@@ -16,6 +16,34 @@ import 'package:test/test.dart';
 import 'mocks.dart';
 
 void main() {
+  group(CacheCorruptedException, () {
+    test('defaults to advising a full cache wipe', () {
+      const exception = CacheCorruptedException('Could not read a file.');
+
+      expect(
+        exception.toString(),
+        'Could not read a file. Your Shorebird installation may be corrupted. '
+        "Try running 'shorebird cache clean' and retrying.",
+      );
+    });
+
+    test('uses a caller-supplied remedy in place of the wipe', () {
+      const exception = CacheCorruptedException(
+        'Could not move /cache/abc123 aside.',
+        remedy: 'Remove /cache/abc123 and run this command again.',
+      );
+
+      // Wiping the cache takes every other installed revision with it, so a
+      // caller that knows the smaller repair has to be able to say so.
+      expect(
+        exception.toString(),
+        'Could not move /cache/abc123 aside. '
+        'Remove /cache/abc123 and run this command again.',
+      );
+      expect(exception.toString(), isNot(contains('shorebird cache clean')));
+    });
+  });
+
   group(ShorebirdEnv, () {
     const flutterRevision = 'test-flutter-revision';
     late Platform platform;
