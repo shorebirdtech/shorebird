@@ -2520,9 +2520,9 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               releaseId: any(named: 'releaseId'),
               patchId: any(named: 'patchId'),
             ),
-          ).thenAnswer((_) async {});
+          ).thenAnswer((_) async => true);
 
-          await runWithOverrides(
+          final changed = await runWithOverrides(
             () => codePushClientWrapper.rollbackPatch(
               appId: appId,
               releaseId: releaseId,
@@ -2531,7 +2531,34 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ),
           );
 
+          expect(changed, isTrue);
           verify(() => progress.complete()).called(1);
+        });
+
+        test('forwards the no-op result from the client', () async {
+          when(
+            () => codePushClient.rollbackPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenAnswer((_) async => false);
+
+          final changed = await runWithOverrides(
+            () => codePushClientWrapper.rollbackPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+            ),
+          );
+
+          expect(changed, isFalse);
+          verify(
+            () => progress.complete(
+              'No change: patch $patchNumber was already rolled back',
+            ),
+          ).called(1);
         });
 
         test(
@@ -2543,7 +2570,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 releaseId: any(named: 'releaseId'),
                 patchId: any(named: 'patchId'),
               ),
-            ).thenAnswer((_) async {});
+            ).thenAnswer((_) async => true);
 
             await runWithOverrides(
               () => codePushClientWrapper.rollbackPatch(
@@ -2593,9 +2620,9 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               releaseId: any(named: 'releaseId'),
               patchId: any(named: 'patchId'),
             ),
-          ).thenAnswer((_) async {});
+          ).thenAnswer((_) async => true);
 
-          await runWithOverrides(
+          final changed = await runWithOverrides(
             () => codePushClientWrapper.rollforwardPatch(
               appId: appId,
               releaseId: releaseId,
@@ -2604,8 +2631,58 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ),
           );
 
+          expect(changed, isTrue);
           verify(() => progress.complete()).called(1);
         });
+
+        test('forwards the no-op result from the client', () async {
+          when(
+            () => codePushClient.rollforwardPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenAnswer((_) async => false);
+
+          final changed = await runWithOverrides(
+            () => codePushClientWrapper.rollforwardPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+            ),
+          );
+
+          expect(changed, isFalse);
+          verify(
+            () => progress.complete(
+              'No change: patch $patchNumber was already active',
+            ),
+          ).called(1);
+        });
+
+        test(
+          'omits patch number from progress label when not provided',
+          () async {
+            when(
+              () => codePushClient.rollforwardPatch(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                patchId: any(named: 'patchId'),
+              ),
+            ).thenAnswer((_) async => true);
+
+            await runWithOverrides(
+              () => codePushClientWrapper.rollforwardPatch(
+                appId: appId,
+                releaseId: releaseId,
+                patchId: patchId,
+              ),
+            );
+
+            verify(() => logger.progress('Rolling forward patch')).called(1);
+          },
+        );
       });
 
       group('createPatchArtifacts', () {

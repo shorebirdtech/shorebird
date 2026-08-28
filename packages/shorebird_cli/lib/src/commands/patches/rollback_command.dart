@@ -2,6 +2,8 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/formatters/formatters.dart';
+import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -19,7 +21,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// shorebird patches rollback --release-version=1.0.0+1 --patch-number=1
 /// ```
 /// {@endtemplate}
-class RollbackCommand extends ShorebirdCommand {
+class RollbackCommand extends ShorebirdCommand with PatchNumberArgument {
   /// {@macro rollback_command}
   RollbackCommand() {
     argParser
@@ -40,6 +42,14 @@ class RollbackCommand extends ShorebirdCommand {
       ..addOption(
         CommonArguments.flavorArg.name,
         help: 'The product flavor to use (e.g. "prod").',
+      )
+      ..addFlag(
+        'require-change',
+        help:
+            'Exit with a non-zero status if the patch is already rolled back. '
+            'Without this flag, an already rolled-back patch is reported and '
+            'exits successfully.',
+        negatable: false,
       );
   }
 
@@ -50,7 +60,11 @@ class RollbackCommand extends ShorebirdCommand {
   String get description =>
       'Rolls back a patch on a release.\n\n'
       'Example output:\n'
-      '  Patch 1 on release 1.0.0+1 has been rolled back.\n\n'
+      '  Patch 1 on release 1.0.0+1 has been rolled back.\n'
+      '  ID:          42\n'
+      '  Number:      1\n'
+      '  Track:       stable\n'
+      '  Rolled back: yes\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird patches rollback --release-version 1.0.0+1 '
         '--patch-number 1 --app-id <id> --json',
@@ -63,7 +77,8 @@ class RollbackCommand extends ShorebirdCommand {
 
     final releaseVersion =
         results[CommonArguments.releaseVersionArg.name] as String;
-    final patchNumber = int.parse(results['patch-number'] as String);
+    final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber();
+    if (patchNumber == null) return patchNumberError!;
 
     final Release release;
     final List<ReleasePatch> patches;
@@ -106,20 +121,11 @@ class RollbackCommand extends ShorebirdCommand {
       return ExitCode.usage.code;
     }
 
-    if (patch.isRolledBack) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message: 'Patch $patchNumber is already rolled back.',
-        );
-        return ExitCode.usage.code;
-      }
-      logger.err('Patch $patchNumber is already rolled back');
-      return ExitCode.usage.code;
-    }
-
+    // Only the POST can say whether the patch changed: the read above can go
+    // stale, and the server answers 304 when there was nothing to do.
+    final bool changed;
     try {
-      await codePushClientWrapper.rollbackPatch(
+      changed = await codePushClientWrapper.rollbackPatch(
         appId: appId,
         releaseId: release.id,
         patchId: patch.id,
@@ -138,18 +144,42 @@ class RollbackCommand extends ShorebirdCommand {
       rethrow;
     }
 
+    if (!changed && results['require-change'] as bool) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.usageError,
+          message: 'Patch $patchNumber is already rolled back.',
+        );
+        return ExitCode.usage.code;
+      }
+      logger.err('Patch $patchNumber is already rolled back');
+      return ExitCode.usage.code;
+    }
+
+    final rolledBackPatch = patch.copyWith(isRolledBack: true);
+
     if (isJsonMode) {
       emitJsonSuccess({
         'release_version': releaseVersion,
         'patch_number': patchNumber,
         'action': 'rollback',
+        'changed': changed,
+        'patch': rolledBackPatch.toJson(),
       });
       return ExitCode.success.code;
     }
 
-    logger.success(
-      'Patch $patchNumber on release $releaseVersion has been rolled back.',
-    );
+    if (changed) {
+      logger.success(
+        'Patch $patchNumber on release $releaseVersion has been rolled back.',
+      );
+    } else {
+      logger.info('Patch $patchNumber is already rolled back');
+    }
+    _logPatch(rolledBackPatch);
     return ExitCode.success.code;
   }
+
+  void _logPatch(ReleasePatch patch) =>
+      formatPatchDetails(patch).forEach(logger.info);
 }

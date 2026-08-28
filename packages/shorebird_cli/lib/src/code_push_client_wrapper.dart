@@ -958,11 +958,13 @@ aar artifact already exists, continuing...''');
     }
   }
 
-  /// Rolls back the patch identified by [patchId] under [releaseId].
+  /// Rolls back the patch identified by [patchId] under [releaseId]. Returns
+  /// whether the server changed the patch, which is `false` when it was
+  /// already rolled back.
   ///
   /// [patchNumber] is used purely for the human-readable progress message;
   /// pass it through when the caller already has it on hand.
-  Future<void> rollbackPatch({
+  Future<bool> rollbackPatch({
     required String appId,
     required int releaseId,
     required int patchId,
@@ -971,24 +973,31 @@ aar artifact already exists, continuing...''');
     final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
     final progress = logger.progress('Rolling back $label');
     try {
-      await codePushClient.rollbackPatch(
+      final changed = await codePushClient.rollbackPatch(
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
       );
-      progress.complete();
+      // A completed spinner would claim the rollback happened, so say so when
+      // the server reported there was nothing to change.
+      progress.complete(
+        changed ? null : 'No change: $label was already rolled back',
+      );
+      return changed;
     } catch (error) {
       _handleErrorAndExit(error, progress: progress);
     }
   }
 
   /// Rolls forward (un-rolls-back) the patch identified by [patchId] under
-  /// [releaseId]. Returns the patch to its active state; the server resends
-  /// the same patch artifact to devices on the next patch check.
+  /// [releaseId], returning it to its active state so the server resends the
+  /// same patch artifact to devices on the next patch check. Returns whether
+  /// the server changed the patch, which is `false` when it was already
+  /// active.
   ///
   /// [patchNumber] is used purely for the human-readable progress message;
   /// pass it through when the caller already has it on hand.
-  Future<void> rollforwardPatch({
+  Future<bool> rollforwardPatch({
     required String appId,
     required int releaseId,
     required int patchId,
@@ -997,12 +1006,17 @@ aar artifact already exists, continuing...''');
     final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
     final progress = logger.progress('Rolling forward $label');
     try {
-      await codePushClient.rollforwardPatch(
+      final changed = await codePushClient.rollforwardPatch(
         appId: appId,
         releaseId: releaseId,
         patchId: patchId,
       );
-      progress.complete();
+      // A completed spinner would claim the rollforward happened, so say so
+      // when the server reported there was nothing to change.
+      progress.complete(
+        changed ? null : 'No change: $label was already active',
+      );
+      return changed;
     } catch (error) {
       _handleErrorAndExit(error, progress: progress);
     }

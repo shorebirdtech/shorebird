@@ -2037,7 +2037,7 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
-      test('treats 304 Not Modified as success (idempotent)', () async {
+      test('returns false on 304 Not Modified (idempotent)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             const Stream.empty(),
@@ -2051,11 +2051,11 @@ void main() {
             releaseId: releaseId,
             patchId: patchId,
           ),
-          completes,
+          completion(isFalse),
         );
       });
 
-      test('treats 204 No Content as success', () async {
+      test('returns true on 204 No Content', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             const Stream.empty(),
@@ -2069,7 +2069,7 @@ void main() {
             releaseId: releaseId,
             patchId: patchId,
           ),
-          completes,
+          completion(isTrue),
         );
       });
 
@@ -2156,7 +2156,7 @@ void main() {
         expect(request.hasHeaders(expectedHeaders), isTrue);
       });
 
-      test('treats 304 Not Modified as success (idempotent)', () async {
+      test('returns false on 304 Not Modified (idempotent)', () async {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             const Stream.empty(),
@@ -2170,7 +2170,25 @@ void main() {
             releaseId: releaseId,
             patchId: patchId,
           ),
-          completes,
+          completion(isFalse),
+        );
+      });
+
+      test('returns true on 204 No Content', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollforwardPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completion(isTrue),
         );
       });
 
@@ -2197,6 +2215,33 @@ void main() {
           ),
         );
       });
+
+      test(
+        'throws a parsed exception on a structured error response',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+              HttpStatus.failedDependency,
+            ),
+          );
+
+          expect(
+            codePushClient.rollforwardPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+            ),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                errorResponse.message,
+              ),
+            ),
+          );
+        },
+      );
     });
 
     group('getOrganizationMemberships', () {

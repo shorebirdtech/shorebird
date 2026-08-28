@@ -491,9 +491,11 @@ class CodePushClient {
   /// which signals the updater to revert to the prior patch (or the base
   /// release if none).
   ///
-  /// Idempotent: the server returns `304 Not Modified` if the patch is
-  /// already rolled back; this method treats that as success.
-  Future<void> rollbackPatch({
+  /// Idempotent. Returns whether the server changed the patch: `false` when it
+  /// answers `304 Not Modified` because the patch was already rolled back,
+  /// `true` when it changed the patch. The server is the only authority on this,
+  /// since another actor may roll the patch back between a read and this call.
+  Future<bool> rollbackPatch({
     required String appId,
     required int releaseId,
     required int patchId,
@@ -504,11 +506,11 @@ class CodePushClient {
       ),
     );
 
-    // 304 means the patch was already rolled back — treat as a no-op success.
-    if (response.statusCode == HttpStatus.notModified) return;
+    if (response.statusCode == HttpStatus.notModified) return false;
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
+    return true;
   }
 
   /// Rolls forward (un-rolls-back) the patch with [patchId] under [releaseId]
@@ -516,9 +518,11 @@ class CodePushClient {
   /// on the same patch row, so the same patch artifact (same hash) becomes
   /// active again.
   ///
-  /// Idempotent: the server returns `304 Not Modified` if the patch is
-  /// already active; this method treats that as success.
-  Future<void> rollforwardPatch({
+  /// Idempotent. Returns whether the server changed the patch: `false` when it
+  /// answers `304 Not Modified` because the patch was already active, `true`
+  /// when it changed the patch. The server is the only authority on this, since
+  /// another actor may roll the patch forward between a read and this call.
+  Future<bool> rollforwardPatch({
     required String appId,
     required int releaseId,
     required int patchId,
@@ -529,11 +533,11 @@ class CodePushClient {
       ),
     );
 
-    // 304 means the patch was already active — treat as a no-op success.
-    if (response.statusCode == HttpStatus.notModified) return;
+    if (response.statusCode == HttpStatus.notModified) return false;
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
+    return true;
   }
 
   /// Gets the list of organizations the user is a member of, along with the

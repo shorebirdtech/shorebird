@@ -85,6 +85,7 @@ void main() {
       when(
         () => argResults['patch-number'],
       ).thenReturn(patchNumber.toString());
+      when(() => argResults['require-change']).thenReturn(false);
 
       when(
         () => shorebirdValidator.validatePreconditions(
@@ -113,7 +114,7 @@ void main() {
           patchId: any(named: 'patchId'),
           patchNumber: any(named: 'patchNumber'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => true);
 
       command = runWithOverrides(RollbackCommand.new)
         ..testArgResults = argResults;
@@ -173,6 +174,56 @@ void main() {
       });
     });
 
+    group('when --patch-number is not an integer', () {
+      setUp(() {
+        when(() => argResults['patch-number']).thenReturn('one');
+      });
+
+      test('exits with usage error and does not fetch', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err('"one" is not a valid patch number'),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'Patch numbers are integers, e.g. --patch-number 1.',
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+
+      test('in --json mode, emits usage_error envelope', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runScoped(
+            command.run,
+            values: {
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.usage.code));
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(decoded['status'], 'error');
+        final error = decoded['error'] as Map<String, dynamic>;
+        expect(error['code'], 'usage_error');
+        expect(error['message'], '"one" is not a valid patch number.');
+      });
+    });
+
     group('when no matching patch is found', () {
       setUp(() {
         when(
@@ -202,7 +253,70 @@ void main() {
       });
     });
 
-    group('when patch is already rolled back', () {
+    group('when the server reports no change', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.rollbackPatch(
+            appId: any(named: 'appId'),
+            releaseId: any(named: 'releaseId'),
+            patchId: any(named: 'patchId'),
+            patchNumber: any(named: 'patchNumber'),
+          ),
+        ).thenAnswer((_) async => false);
+      });
+
+      test('exits successfully and reports the patch as rolled back', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.info('Patch $patchNumber is already rolled back'),
+        ).called(1);
+        verifyNever(
+          () => logger.success(any()),
+        );
+      });
+
+      test('prints the patch details', () async {
+        await runWithOverrides(command.run);
+        verify(() => logger.info('Rolled back: yes')).called(1);
+      });
+
+      group('when --require-change is passed', () {
+        setUp(() {
+          when(() => argResults['require-change']).thenReturn(true);
+        });
+
+        test('exits with usage error', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err('Patch $patchNumber is already rolled back'),
+          ).called(1);
+        });
+      });
+    });
+
+    group(
+      'when --require-change is passed and the server changed the patch',
+      () {
+        setUp(() {
+          when(() => argResults['require-change']).thenReturn(true);
+        });
+
+        test('exits successfully', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.success(
+              'Patch $patchNumber on release $releaseVersion '
+              'has been rolled back.',
+            ),
+          ).called(1);
+        });
+      },
+    );
+
+    group('when the patch was already rolled back at read time', () {
       setUp(() {
         when(
           () => codePushClientWrapper.getReleasePatches(
@@ -212,20 +326,17 @@ void main() {
         ).thenAnswer((_) async => [rolledBackPatch]);
       });
 
-      test('exits with usage error and does not POST', () async {
+      test('still POSTs and lets the server decide', () async {
         final result = await runWithOverrides(command.run);
-        expect(result, equals(ExitCode.usage.code));
+        expect(result, equals(ExitCode.success.code));
         verify(
-          () => logger.err('Patch $patchNumber is already rolled back'),
-        ).called(1);
-        verifyNever(
           () => codePushClientWrapper.rollbackPatch(
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            patchId: any(named: 'patchId'),
-            patchNumber: any(named: 'patchNumber'),
+            appId: appId,
+            releaseId: release.id,
+            patchId: rolledBackPatch.id,
+            patchNumber: patchNumber,
           ),
-        );
+        ).called(1);
       });
     });
 
@@ -247,6 +358,13 @@ void main() {
             'has been rolled back.',
           ),
         ).called(1);
+      });
+
+      test('prints the patch details with the post-rollback state', () async {
+        await runWithOverrides(command.run);
+        verify(() => logger.info('ID:          ${activePatch.id}')).called(1);
+        verify(() => logger.info('Number:      $patchNumber')).called(1);
+        verify(() => logger.info('Rolled back: yes')).called(1);
       });
     });
 
@@ -370,32 +488,59 @@ void main() {
           expect(data['release_version'], releaseVersion);
           expect(data['patch_number'], patchNumber);
           expect(data['action'], 'rollback');
+          expect(data['changed'], isTrue);
+          expect(
+            data['patch'],
+            equals(rolledBackPatch.toJson()),
+          );
         },
       );
 
-      group('when patch is already rolled back', () {
+      group('when the server reports no change', () {
         setUp(() {
           when(
-            () => codePushClientWrapper.getReleasePatches(
+            () => codePushClientWrapper.rollbackPatch(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+              patchNumber: any(named: 'patchNumber'),
             ),
-          ).thenAnswer((_) async => [rolledBackPatch]);
+          ).thenAnswer((_) async => false);
         });
 
-        test('emits usage_error envelope', () async {
+        test('emits a success envelope with changed: false', () async {
           final captured = <String>[];
           final result = await captureStdout(
             () => runJsonMode(command.run),
             captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
+          expect(result, equals(ExitCode.success.code));
           final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
-          expect(
-            (decoded['error'] as Map<String, dynamic>)['code'],
-            'usage_error',
-          );
+          expect(decoded['status'], 'success');
+          final data = decoded['data'] as Map<String, dynamic>;
+          expect(data['changed'], isFalse);
+          expect(data['patch'], equals(rolledBackPatch.toJson()));
+        });
+
+        group('when --require-change is passed', () {
+          setUp(() {
+            when(() => argResults['require-change']).thenReturn(true);
+          });
+
+          test('emits usage_error envelope', () async {
+            final captured = <String>[];
+            final result = await captureStdout(
+              () => runJsonMode(command.run),
+              captured: captured,
+            );
+            expect(result, equals(ExitCode.usage.code));
+            final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+            expect(decoded['status'], 'error');
+            expect(
+              (decoded['error'] as Map<String, dynamic>)['code'],
+              'usage_error',
+            );
+          });
         });
       });
 
