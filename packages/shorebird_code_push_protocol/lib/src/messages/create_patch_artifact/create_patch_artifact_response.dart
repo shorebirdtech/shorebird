@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/artifact_upload_method.dart';
 import 'package:shorebird_code_push_protocol/src/models/release_platform.dart';
 
 /// {@template create_patch_artifact_response}
@@ -16,6 +17,7 @@ class CreatePatchArtifactResponse {
     required this.hash,
     required this.size,
     required this.url,
+    this.uploadMethod,
   });
 
   /// Converts a `Map<String, dynamic>` to a [CreatePatchArtifactResponse].
@@ -31,6 +33,9 @@ class CreatePatchArtifactResponse {
         hash: json['hash'] as String,
         size: json['size'] as int,
         url: json['url'] as String,
+        uploadMethod: ArtifactUploadMethod.maybeFromJson(
+          json['upload_method'] as String?,
+        ),
       ),
     );
   }
@@ -64,8 +69,15 @@ class CreatePatchArtifactResponse {
   /// The size of the artifact in bytes.
   final int size;
 
-  /// The upload URL for the artifact.
+  /// The upload URL for the artifact (a signed URL for [ArtifactUploadMethod
+  /// .multipart], or a resumable session URI for [ArtifactUploadMethod
+  /// .resumable]).
   final String url;
+
+  /// How the client should upload the artifact bytes to [url]. Null on
+  /// responses from older servers, which always implied
+  /// [ArtifactUploadMethod.multipart].
+  final ArtifactUploadMethod? uploadMethod;
 
   /// Converts a [CreatePatchArtifactResponse] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
@@ -77,6 +89,7 @@ class CreatePatchArtifactResponse {
       'hash': hash,
       'size': size,
       'url': url,
+      'upload_method': uploadMethod?.toJson(),
     };
   }
 
@@ -89,6 +102,7 @@ class CreatePatchArtifactResponse {
     hash,
     size,
     url,
+    uploadMethod,
   ]);
 
   @override
@@ -101,6 +115,7 @@ class CreatePatchArtifactResponse {
         platform == other.platform &&
         hash == other.hash &&
         size == other.size &&
-        url == other.url;
+        url == other.url &&
+        uploadMethod == other.uploadMethod;
   }
 }

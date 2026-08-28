@@ -358,6 +358,41 @@ $body
       });
     });
 
+    group('addObfuscationMapArgs', () {
+      // The libapp.so strip gating only applies to Android; on iOS AGP is
+      // not in the pipeline. iOS must continue to pre-strip the snapshot in
+      // gen_snapshot regardless of the Flutter version to prevent the
+      // DWARF debug sections from leaking the identifiers obfuscation is
+      // meant to hide.
+      setUp(() {
+        when(() => argResults['obfuscate']).thenReturn(true);
+        when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+        when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        when(
+          () => shorebirdEnv.getShorebirdProjectRoot(),
+        ).thenReturn(projectRoot);
+      });
+
+      test('passes --strip on Flutter 3.44+ for iOS', () async {
+        when(
+          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+            platform: any(named: 'platform'),
+            flutterRevision: any(named: 'flutterRevision'),
+          ),
+        ).thenAnswer((_) async => true);
+
+        final buildArgs = <String>[];
+        await runWithOverrides(
+          () => iosReleaser.addObfuscationMapArgs(buildArgs),
+        );
+
+        expect(
+          buildArgs,
+          contains('--extra-gen-snapshot-options=--strip'),
+        );
+      });
+    });
+
     group('buildReleaseArtifacts', () {
       const flutterVersionAndRevision = '3.10.6 (83305b5088)';
       const base64PublicKey = 'base64PublicKey';
@@ -388,6 +423,9 @@ $body
         when(
           () => artifactManager.getXcarchiveDirectory(),
         ).thenReturn(xcarchiveDirectory);
+        when(
+          () => artifactManager.getIpa(),
+        ).thenReturn(File(p.join(Directory.systemTemp.path, 'app.ipa')));
 
         when(
           () => codeSigner.base64PublicKeyFromPem(any()),
@@ -625,10 +663,54 @@ $body
         });
       });
 
+      group('when codesigning and ipa not found after build', () {
+        setUp(() {
+          when(() => argResults['codesign']).thenReturn(true);
+          when(() => artifactManager.getIpa()).thenReturn(null);
+        });
+
+        test('logs message and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => logger.err(
+              any(that: contains('Unable to find generated IPA')),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when not codesigning and ipa not found after build', () {
+        setUp(() {
+          when(() => argResults['codesign']).thenReturn(false);
+          when(() => artifactManager.getIpa()).thenReturn(null);
+        });
+
+        test('does not check for the ipa and returns xcarchive path', () async {
+          expect(
+            await runWithOverrides(iosReleaser.buildReleaseArtifacts),
+            equals(xcarchiveDirectory),
+          );
+
+          verifyNever(() => artifactManager.getIpa());
+        });
+      });
+
       group('when --obfuscate is passed', () {
         setUp(() {
           when(() => argResults['obfuscate']).thenReturn(true);
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+          // iOS always pre-strips in gen_snapshot (AGP isn't in the pipeline).
+          when(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => true);
           // By default, simulate the build creating the obfuscation map.
           when(
             () => artifactBuilder.buildIpa(

@@ -7,10 +7,12 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// A reference to a [ShorebirdFlutter] instance.
 final shorebirdFlutterRef = create(ShorebirdFlutter.new);
@@ -41,6 +43,13 @@ class ShorebirdFlutter {
   }
 
   /// Install the provided Flutter [revision].
+  ///
+  /// Runs `flutter precache` on first install as a convenience so the first
+  /// build is not unexpectedly slow. A precache failure is treated as a
+  /// corrupted install: Flutter's stamp-based cache will otherwise trust a
+  /// partial extraction and surface the missing artifact later as an opaque
+  /// Gradle error (see shorebirdtech/shorebird#3783). The user is directed
+  /// to run `shorebird cache clean` to start over.
   Future<void> installRevision({required String revision}) async {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
     if (targetDirectory.existsSync()) return;
@@ -63,9 +72,8 @@ class ShorebirdFlutter {
       await git.checkout(directory: targetDirectory.path, revision: revision);
       installProgress.complete();
     } catch (error) {
-      installProgress.fail(
-        'Failed to install Flutter $version (${shortRevisionString(revision)})',
-      );
+      final short = shortRevisionString(revision);
+      installProgress.fail('Failed to install Flutter $version ($short)');
       logger.err('$error');
       rethrow;
     }
@@ -74,18 +82,28 @@ class ShorebirdFlutter {
       'Running ${lightCyan.wrap('flutter precache')}',
     );
 
+    final precacheArguments = ['precache', ...precacheArgs];
+    final ShorebirdProcessResult result;
     try {
-      await process.run(executable, [
-        'precache',
-        ...precacheArgs,
-      ], workingDirectory: targetDirectory.path);
-      precacheProgress.complete();
-    } on Exception {
+      result = await process.run(
+        executable,
+        precacheArguments,
+        workingDirectory: targetDirectory.path,
+      );
+    } on Exception catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');
-      logger.info(
-        '''This is not a critical error, but your next build make take longer than usual.''',
+      throw CacheCorruptedException(
+        'Failed to precache Flutter $version: $error.',
       );
     }
+    if (result.exitCode != ExitCode.success.code) {
+      precacheProgress.fail('Failed to precache Flutter $version');
+      final stderr = '${result.stderr}'.trim();
+      throw CacheCorruptedException(
+        'flutter precache exited with code ${result.exitCode}: $stderr.',
+      );
+    }
+    precacheProgress.complete();
   }
 
   /// Whether the current revision is unmodified.
@@ -266,6 +284,33 @@ class ShorebirdFlutter {
     } on Exception {
       return null;
     }
+  }
+
+  /// Whether `gen_snapshot` should be invoked with `--strip` for a build
+  /// targeting [platform] on the Flutter pin identified by [flutterRevision].
+  ///
+  /// On non-Android platforms (iOS, macOS, Linux, Windows, iOS framework,
+  /// AAR), AGP is not in the pipeline, so we always pre-strip in gen_snapshot.
+  ///
+  /// On Android, the answer depends on the Flutter version: from 3.44 onward
+  /// AGP performs the strip and emits the matching `.sym` companion;
+  /// pre-stripping in gen_snapshot on those versions leaves AGP with nothing
+  /// to strip and trips flutter_tools' post-build verification. See
+  /// [libappStrippedByAgpConstraint].
+  ///
+  /// An unresolvable [flutterRevision] (e.g. a development branch) is treated
+  /// as satisfying the constraint, since the alternative — pre-stripping —
+  /// would fail the post-build check on any 3.44+ pin.
+  Future<bool> shouldPreStripLibappInGenSnapshot({
+    required ReleasePlatform platform,
+    required String flutterRevision,
+  }) async {
+    if (platform != ReleasePlatform.android) return true;
+    final version = await resolveFlutterVersion(flutterRevision);
+    return !libappStrippedByAgpConstraint.isSatisfiedBy(
+      version: version ?? libappStrippedByAgpConstraint.minVersion,
+      revision: flutterRevision,
+    );
   }
 
   /// Fetches the latest remote refs for the Flutter clone so that

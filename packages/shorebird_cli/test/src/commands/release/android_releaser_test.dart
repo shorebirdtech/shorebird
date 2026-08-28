@@ -342,6 +342,89 @@ To change the version of this release, change your app's version in your pubspec
       });
     });
 
+    group('addObfuscationMapArgs', () {
+      // Flutter PR https://github.com/flutter/flutter/pull/181275 (3.44)
+      // moved libapp.so stripping responsibility from gen_snapshot to AGP.
+      // Passing --strip on 3.44+ pre-strips the snapshot, blocks AGP from
+      // emitting the `.sym` companion, and trips flutter_tools' new
+      // post-build verification. The releaser must therefore conditionally
+      // omit --strip on Android for 3.44+ pins.
+      setUp(() {
+        when(() => argResults['obfuscate']).thenReturn(true);
+        when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+        when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+      });
+
+      test(
+        'on Flutter < 3.44, passes --strip so gen_snapshot strips libapp.so',
+        () async {
+          when(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => true);
+
+          final buildArgs = <String>[];
+          await runWithOverrides(
+            () => androidReleaser.addObfuscationMapArgs(buildArgs),
+          );
+
+          expect(
+            buildArgs,
+            containsAll([
+              startsWith(
+                '--extra-gen-snapshot-options=--save-obfuscation-map=',
+              ),
+              '--extra-gen-snapshot-options=--strip',
+            ]),
+          );
+        },
+      );
+
+      test(
+        '''on Flutter 3.44+ Android, omits --strip so AGP can strip libapp.so and emit libapp.so.sym''',
+        () async {
+          when(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => false);
+
+          final buildArgs = <String>[];
+          await runWithOverrides(
+            () => androidReleaser.addObfuscationMapArgs(buildArgs),
+          );
+
+          expect(
+            buildArgs,
+            contains(
+              startsWith(
+                '--extra-gen-snapshot-options=--save-obfuscation-map=',
+              ),
+            ),
+          );
+          expect(
+            buildArgs,
+            isNot(contains('--extra-gen-snapshot-options=--strip')),
+          );
+        },
+      );
+
+      test('is a no-op when --obfuscate is not set', () async {
+        when(() => argResults['obfuscate']).thenReturn(false);
+        when(() => argResults.wasParsed('obfuscate')).thenReturn(false);
+
+        final buildArgs = <String>[];
+        await runWithOverrides(
+          () => androidReleaser.addObfuscationMapArgs(buildArgs),
+        );
+
+        expect(buildArgs, isEmpty);
+      });
+    });
+
     group('buildReleaseArtifacts', () {
       late File aabFile;
 

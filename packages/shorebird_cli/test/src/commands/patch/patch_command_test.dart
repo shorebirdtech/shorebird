@@ -588,6 +588,76 @@ void main() {
               ).called(1);
             });
           });
+
+          group('when the supplement contains an obfuscation map', () {
+            // Wire up extractZip to actually write the obfuscation_map.json
+            // so PatchCommand's `if (obfuscationMapFile != null)` block
+            // fires. The flutter-version gating that drops --strip on
+            // Android 3.44+ depends on `release.flutterRevision` resolving
+            // to a Version, so we mock that per-test.
+            setUp(() {
+              when(
+                () => artifactManager.extractZip(
+                  zipFile: any(named: 'zipFile'),
+                  outputDirectory: any(named: 'outputDirectory'),
+                ),
+              ).thenAnswer((invocation) async {
+                final outputDirectory =
+                    invocation.namedArguments[#outputDirectory] as Directory;
+                File(
+                  p.join(outputDirectory.path, 'obfuscation_map.json'),
+                ).writeAsStringSync('{}');
+              });
+            });
+
+            test(
+              '''on Android with Flutter < 3.44, passes --strip in extraBuildArgs''',
+              () async {
+                when(
+                  () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                    platform: any(named: 'platform'),
+                    flutterRevision: any(named: 'flutterRevision'),
+                  ),
+                ).thenAnswer((_) async => true);
+
+                await runWithOverrides(() => command.createPatch(patcher));
+
+                final captured =
+                    verify(
+                          () => patcher.extraBuildArgs = captureAny(),
+                        ).captured.last
+                        as List<String>;
+                expect(
+                  captured,
+                  contains('--extra-gen-snapshot-options=--strip'),
+                );
+              },
+            );
+
+            test(
+              '''on Android with Flutter 3.44+, omits --strip in extraBuildArgs''',
+              () async {
+                when(
+                  () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                    platform: any(named: 'platform'),
+                    flutterRevision: any(named: 'flutterRevision'),
+                  ),
+                ).thenAnswer((_) async => false);
+
+                await runWithOverrides(() => command.createPatch(patcher));
+
+                final captured =
+                    verify(
+                          () => patcher.extraBuildArgs = captureAny(),
+                        ).captured.last
+                        as List<String>;
+                expect(
+                  captured,
+                  isNot(contains('--extra-gen-snapshot-options=--strip')),
+                );
+              },
+            );
+          });
         });
 
         group(

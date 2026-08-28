@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_client/src/version.dart';
@@ -91,19 +92,35 @@ class CodePushClient {
     http.Client? httpClient,
     Uri? hostedUri,
     Map<String, String>? customHeaders,
+    @visibleForTesting
+    Duration uploadRetryBaseDelay = const Duration(seconds: 1),
   }) : _httpClient = _CodePushHttpClient(httpClient ?? http.Client(), {
          ...standardHeaders,
          ...?customHeaders,
        }),
+       _uploadRetryBaseDelay = uploadRetryBaseDelay,
        hostedUri = hostedUri ?? Uri.https('api.shorebird.dev');
 
   /// The standard headers applied to all requests.
+  @visibleForTesting
   static const standardHeaders = <String, String>{'x-version': packageVersion};
 
   /// The default error message to use when an unknown error occurs.
+  @visibleForTesting
   static const unknownErrorMessage = 'An unknown error occurred.';
 
+  /// The status GCS returns ("Resume Incomplete") between resumable chunks.
+  static const _resumeIncompleteStatus = 308;
+
+  /// The maximum number of consecutive failures tolerated while uploading a
+  /// single resumable session before the upload is abandoned.
+  static const _maxUploadFailures = 5;
+
   final http.Client _httpClient;
+
+  /// The base delay for exponential backoff between resumable upload retries.
+  /// Doubles with each consecutive failure.
+  final Duration _uploadRetryBaseDelay;
 
   /// The hosted uri for the Shorebird CodePush API.
   final Uri hostedUri;
@@ -160,17 +177,12 @@ class CodePushClient {
       json.decode(body) as Map<String, dynamic>,
     );
 
-    final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
-      ..files.add(file);
-
-    final uploadResponse = await _httpClient.send(uploadRequest);
-
-    if (!uploadResponse.isSuccess) {
-      throw CodePushException(
-        message:
-            '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
-      );
-    }
+    await _uploadArtifact(
+      artifactPath: artifactPath,
+      multipartFile: file,
+      url: decoded.url,
+      uploadMethod: decoded.uploadMethod,
+    );
   }
 
   /// Create a new artifact for a specific [releaseId].
@@ -219,17 +231,152 @@ class CodePushClient {
       json.decode(body) as Map<String, dynamic>,
     );
 
-    final uploadRequest = http.MultipartRequest('POST', Uri.parse(decoded.url))
-      ..files.add(file);
+    await _uploadArtifact(
+      artifactPath: artifactPath,
+      multipartFile: file,
+      url: decoded.url,
+      uploadMethod: decoded.uploadMethod,
+    );
+  }
 
-    final uploadResponse = await _httpClient.send(uploadRequest);
-
-    if (!uploadResponse.isSuccess) {
-      throw CodePushException(
-        message:
-            '''Failed to upload artifact (${uploadResponse.reasonPhrase} '${uploadResponse.statusCode})''',
+  /// Uploads an artifact's bytes to storage using the method the server
+  /// selected in the create response.
+  Future<void> _uploadArtifact({
+    required String artifactPath,
+    required http.MultipartFile multipartFile,
+    required String url,
+    required ArtifactUploadMethod? uploadMethod,
+  }) async {
+    if (uploadMethod == ArtifactUploadMethod.resumable) {
+      await _resumableUpload(
+        sessionUri: Uri.parse(url),
+        artifactPath: artifactPath,
       );
+      return;
     }
+
+    // Legacy single multipart POST. Remove once the server no longer returns
+    // ArtifactUploadMethod.multipart (i.e. all supported clients are new
+    // enough to receive a resumable session).
+    final uploadRequest = http.MultipartRequest('POST', Uri.parse(url))
+      ..files.add(multipartFile);
+    final uploadResponse = await _httpClient.send(uploadRequest);
+    if (!uploadResponse.isSuccess) {
+      throw _uploadFailed(uploadResponse);
+    }
+  }
+
+  /// Uploads [artifactPath] to a GCS resumable session at [sessionUri] by
+  /// PUTing the bytes in fixed-size chunks with a `Content-Range` header,
+  /// resuming from the last byte GCS acknowledged if a chunk fails. The
+  /// session was initiated (and size-bound) server-side.
+  Future<void> _resumableUpload({
+    required Uri sessionUri,
+    required String artifactPath,
+  }) async {
+    // GCS requires chunk sizes to be a multiple of 256 KiB (except the last).
+    const chunkSize = 8 * 1024 * 1024;
+
+    final file = File(artifactPath);
+    final total = await file.length();
+    final raf = await file.open();
+    var failures = 0;
+    try {
+      var offset = 0;
+      while (offset < total) {
+        final end = offset + chunkSize < total ? offset + chunkSize : total;
+        await raf.setPosition(offset);
+        final chunk = await raf.read(end - offset);
+
+        final http.StreamedResponse response;
+        try {
+          response = await _httpClient.send(
+            http.Request('PUT', sessionUri)
+              ..bodyBytes = chunk
+              ..headers['content-range'] = 'bytes $offset-${end - 1}/$total',
+          );
+        } on Exception {
+          // Network failure mid-chunk: back off, ask GCS how far it got, and
+          // resume from there.
+          if (++failures > _maxUploadFailures) rethrow;
+          await _backoff(failures);
+          offset = await _queryResumeOffset(sessionUri, total);
+          continue;
+        }
+
+        final status = response.statusCode;
+        await response.stream.drain<void>();
+
+        if (status == HttpStatus.ok || status == HttpStatus.created) return;
+
+        if (status == _resumeIncompleteStatus) {
+          // A 308 reports GCS's stored byte count in the `range` header. Its
+          // absence means GCS has no bytes yet, so we must restart from 0
+          // (per the resumable upload status-check docs). Treat a lack of
+          // forward progress as a failure so a stuck session can't spin
+          // forever.
+          final next = _parseRangeEnd(response.headers['range']) ?? 0;
+          if (next > offset) {
+            failures = 0;
+          } else if (++failures > _maxUploadFailures) {
+            throw _uploadFailed(response);
+          } else {
+            await _backoff(failures);
+          }
+          offset = next;
+        } else if (status >= HttpStatus.internalServerError) {
+          // Transient server error (5xx): recover the same way as a mid-chunk
+          // network failure — back off, then resume from where GCS left off
+          // rather than re-sending bytes it has already persisted.
+          if (++failures > _maxUploadFailures) throw _uploadFailed(response);
+          await _backoff(failures);
+          offset = await _queryResumeOffset(sessionUri, total);
+        } else {
+          throw _uploadFailed(response);
+        }
+      }
+    } finally {
+      await raf.close();
+    }
+  }
+
+  /// Waits with exponential backoff before retrying a resumable upload,
+  /// doubling [_uploadRetryBaseDelay] with each consecutive [failures].
+  Future<void> _backoff(int failures) =>
+      Future<void>.delayed(_uploadRetryBaseDelay * (1 << (failures - 1)));
+
+  /// Queries a resumable [sessionUri] for the number of bytes GCS has received
+  /// so far, returning the offset to resume from.
+  Future<int> _queryResumeOffset(Uri sessionUri, int total) async {
+    final response = await _httpClient.send(
+      http.Request('PUT', sessionUri)
+        ..headers['content-range'] = 'bytes */$total',
+    );
+    final status = response.statusCode;
+    await response.stream.drain<void>();
+    if (status == HttpStatus.ok || status == HttpStatus.created) return total;
+    if (status == _resumeIncompleteStatus) {
+      return _parseRangeEnd(response.headers['range']) ?? 0;
+    }
+    throw _uploadFailed(response);
+  }
+
+  /// Parses the next byte offset from a GCS `Range: bytes=0-X` header,
+  /// returning `X + 1`, or null if the header is absent/malformed.
+  int? _parseRangeEnd(String? range) {
+    if (range == null) return null;
+    final dash = range.lastIndexOf('-');
+    if (dash == -1) return null;
+    final last = int.tryParse(range.substring(dash + 1));
+    return last == null ? null : last + 1;
+  }
+
+  /// The exception thrown when an artifact upload request fails.
+  CodePushException _uploadFailed(http.BaseResponse response) {
+    final reason = response.reasonPhrase;
+    return CodePushException(
+      message: 'Failed to upload artifact ($reason ${response.statusCode})',
+    );
   }
 
   /// Create a new app with the provided [displayName].

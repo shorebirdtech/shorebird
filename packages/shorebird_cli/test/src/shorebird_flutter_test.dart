@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 import 'mocks.dart';
@@ -109,7 +110,10 @@ void main() {
           workingDirectory: any(named: 'workingDirectory'),
         ),
       ).thenAnswer((_) async => precacheProcessResult);
-      when(() => versionProcessResult.exitCode).thenReturn(0);
+      when(
+        () => precacheProcessResult.exitCode,
+      ).thenReturn(ExitCode.success.code);
+      when(() => precacheProcessResult.stderr).thenReturn('');
     });
 
     group('precacheArgs', () {
@@ -453,6 +457,90 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
           expect(revision, equals(Version(1, 2, 3)));
         });
       });
+    });
+
+    group('shouldPreStripLibappInGenSnapshot', () {
+      test('returns true on iOS regardless of Flutter version', () async {
+        when(
+          () => git.forEachRef(
+            directory: any(named: 'directory'),
+            contains: any(named: 'contains'),
+            format: any(named: 'format'),
+            pattern: any(named: 'pattern'),
+          ),
+        ).thenAnswer((_) async => 'origin/flutter_release/3.44.0');
+
+        final result = await runWithOverrides(
+          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+            platform: ReleasePlatform.ios,
+            flutterRevision: 'deadbeef',
+          ),
+        );
+        expect(result, isTrue);
+      });
+
+      test('returns true on Android when Flutter is older than 3.44', () async {
+        when(
+          () => git.forEachRef(
+            directory: any(named: 'directory'),
+            contains: any(named: 'contains'),
+            format: any(named: 'format'),
+            pattern: any(named: 'pattern'),
+          ),
+        ).thenAnswer((_) async => 'origin/flutter_release/3.43.0');
+
+        final result = await runWithOverrides(
+          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+            platform: ReleasePlatform.android,
+            flutterRevision: 'deadbeef',
+          ),
+        );
+        expect(result, isTrue);
+      });
+
+      test('returns false on Android when Flutter is 3.44 or newer', () async {
+        when(
+          () => git.forEachRef(
+            directory: any(named: 'directory'),
+            contains: any(named: 'contains'),
+            format: any(named: 'format'),
+            pattern: any(named: 'pattern'),
+          ),
+        ).thenAnswer((_) async => 'origin/flutter_release/3.44.0');
+
+        final result = await runWithOverrides(
+          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+            platform: ReleasePlatform.android,
+            flutterRevision: 'deadbeef',
+          ),
+        );
+        expect(result, isFalse);
+      });
+
+      test(
+        '''returns false on Android when the version cannot be resolved (development pin)''',
+        () async {
+          // Unresolvable revisions (e.g. development branches) fall back to the
+          // constraint's min version, so users on bleeding-edge pins get the
+          // 3.44+ AGP-stripped behavior rather than the pre-strip path.
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((_) async => '');
+
+          final result = await runWithOverrides(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: ReleasePlatform.android,
+              flutterRevision: 'deadbeef',
+            ),
+          );
+          expect(result, isFalse);
+        },
+      );
     });
 
     group('fetchRemoteRefs', () {
@@ -893,7 +981,7 @@ origin/flutter_release/3.10.6''';
         ).called(1);
       });
 
-      group('when unable to precache', () {
+      group('when precache throws', () {
         setUp(() {
           when(
             () => process.run(
@@ -904,33 +992,54 @@ origin/flutter_release/3.10.6''';
           ).thenThrow(Exception('oh no!'));
         });
 
-        test('logs error and continues', () async {
-          await expectLater(
-            runWithOverrides(
-              () => shorebirdFlutter.installRevision(revision: revision),
-            ),
-            completes,
-          );
-          verify(
-            () => process.run(
-              'flutter',
-              [
-                'precache',
-                ...runWithOverrides(() => shorebirdFlutter.precacheArgs),
-              ],
-              workingDirectory: p.join(flutterDirectory.parent.path, revision),
-            ),
-          ).called(1);
+        test(
+          'throws CacheCorruptedException directing to shorebird cache clean',
+          () async {
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdFlutter.installRevision(revision: revision),
+              ),
+              throwsA(
+                isA<CacheCorruptedException>().having(
+                  (e) => e.toString(),
+                  'toString',
+                  contains('shorebird cache clean'),
+                ),
+              ),
+            );
+            verify(
+              () => progress.fail('Failed to precache Flutter 3.10.6'),
+            ).called(1);
+          },
+        );
+      });
 
-          verify(
-            () => progress.fail('Failed to precache Flutter 3.10.6'),
-          ).called(1);
-          verify(
-            () => logger.info(
-              '''This is not a critical error, but your next build make take longer than usual.''',
-            ),
-          ).called(1);
+      group('when precache exits with a non-zero code', () {
+        setUp(() {
+          when(() => precacheProcessResult.exitCode).thenReturn(1);
+          when(() => precacheProcessResult.stderr).thenReturn('boom');
         });
+
+        test(
+          'throws CacheCorruptedException directing to shorebird cache clean',
+          () async {
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdFlutter.installRevision(revision: revision),
+              ),
+              throwsA(
+                isA<CacheCorruptedException>().having(
+                  (e) => e.toString(),
+                  'toString',
+                  contains('shorebird cache clean'),
+                ),
+              ),
+            );
+            verify(
+              () => progress.fail('Failed to precache Flutter 3.10.6'),
+            ).called(1);
+          },
+        );
       });
 
       group('when clone and checkout succeed', () {

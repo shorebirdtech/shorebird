@@ -19,6 +19,7 @@ class Doctor {
   /// Validators that verify shorebird will work on Android.
   final List<Validator> androidCommandValidators = [
     AndroidInternetPermissionValidator(),
+    LegacyKeepDebugSymbolsValidator(),
   ];
 
   /// Validators that verify shorebird will work on iOS.
@@ -41,6 +42,7 @@ class Doctor {
   List<Validator> initAndDoctorValidators = [
     ShorebirdVersionValidator(),
     AndroidInternetPermissionValidator(),
+    LegacyKeepDebugSymbolsValidator(),
     XcodeprojFlutterOverrideValidator(),
     MacosEntitlementsValidator(),
     ShorebirdYamlAssetValidator(),

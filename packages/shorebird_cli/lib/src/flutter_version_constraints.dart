@@ -93,3 +93,20 @@ final buildTraceSupportConstraint = FlutterSupportConstraint(
     '3b10eecea184bb381f1045a878eeff36548ed11e',
   },
 );
+
+/// Flutter versions where the Android Gradle Plugin (AGP) is the entity
+/// responsible for stripping `libapp.so` and emitting the matching
+/// `libapp.so.sym` companion into the AAB's BUNDLE-METADATA.
+///
+/// Background: upstream Flutter PR
+/// https://github.com/flutter/flutter/pull/181275 (merged 2026-01-26, first
+/// shipped in 3.44) inverted the strip responsibility. Before 3.44, Flutter
+/// stripped `libapp.so` itself before bundling. From 3.44 onward, Flutter
+/// leaves debug symbols in `libapp.so` and expects AGP's
+/// `stripReleaseDebugSymbols` task to strip them and produce a `.sym`
+/// companion file used by Play Console for native crash symbolication.
+/// flutter_tools adds a post-build verification that fatal-errors when the
+/// `.sym` companion is missing.
+final libappStrippedByAgpConstraint = FlutterSupportConstraint(
+  minVersion: Version(3, 44, 0),
+);

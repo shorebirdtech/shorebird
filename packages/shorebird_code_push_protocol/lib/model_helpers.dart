@@ -1,5 +1,22 @@
 import 'package:collection/collection.dart';
 
+/// Parse a nullable string as a DateTime.
+DateTime? maybeParseDateTime(String? value) {
+  if (value == null) {
+    return null;
+  }
+  return DateTime.parse(value);
+}
+
+/// Parse a nullable RFC 3339 full-date string (`YYYY-MM-DD`) as a DateTime.
+/// Time and timezone components are zero.
+DateTime? maybeParseDate(String? value) {
+  if (value == null) {
+    return null;
+  }
+  return DateTime.parse(value);
+}
+
 /// Runs [build] to construct a `fromJson`-parsed value of type [T],
 /// converting any `TypeError` (e.g. an unexpected null or a cast
 /// failure on a required field) into a `FormatException` that names
@@ -18,6 +35,18 @@ T parseFromJson<T>(
   } on TypeError catch (error) {
     throw FormatException('Failed to parse $className from JSON: $error', json);
   }
+}
+
+/// Reads a key that is required to be present in [json] but whose value
+/// may legitimately be null (OpenAPI 3.1 `type: [T, "null"]` combined
+/// with `required`). A plain `json[key] as T?` cast would otherwise
+/// accept a missing key as a null value, silently violating `required`.
+/// Throws [FormatException] when the key is absent.
+dynamic checkedKey(Map<String, dynamic> json, String key) {
+  if (!json.containsKey(key)) {
+    throw FormatException("Missing required key '$key'", json);
+  }
+  return json[key];
 }
 
 /// Check if two nullable lists are deeply equal.

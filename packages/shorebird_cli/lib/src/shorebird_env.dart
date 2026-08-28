@@ -12,19 +12,22 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// Exception thrown when a required file in the Shorebird cache is missing or
-/// unreadable, indicating a corrupted installation.
+/// Exception thrown when the Shorebird cache appears to be corrupted.
+///
+/// Surfaces a user-actionable message directing the user to run
+/// `shorebird cache clean` and retry.
 class CacheCorruptedException implements Exception {
-  /// Creates a [CacheCorruptedException] for the given [filePath].
-  const CacheCorruptedException(this.filePath);
+  /// Creates a [CacheCorruptedException] explaining why the cache is
+  /// considered corrupted via [reason] (a complete sentence).
+  const CacheCorruptedException(this.reason);
 
-  /// The path to the missing or unreadable file.
-  final String filePath;
+  /// Human-readable explanation of why the cache is considered corrupted.
+  final String reason;
 
   @override
   String toString() =>
-      'Could not read $filePath. Your Shorebird installation may be '
-      "corrupted. Try running 'shorebird cache clean' and retrying.";
+      '$reason Your Shorebird installation may be corrupted. '
+      "Try running 'shorebird cache clean' and retrying.";
 }
 
 /// A reference to a [ShorebirdEnv] instance.
@@ -78,7 +81,7 @@ class ShorebirdEnv {
     try {
       return file.readAsStringSync().trim();
     } on FileSystemException {
-      throw CacheCorruptedException(file.path);
+      throw CacheCorruptedException('Could not read ${file.path}.');
     }
   }
 
@@ -91,7 +94,7 @@ class ShorebirdEnv {
     try {
       return file.readAsStringSync().trim();
     } on FileSystemException {
-      throw CacheCorruptedException(file.path);
+      throw CacheCorruptedException('Could not read ${file.path}.');
     }
   }
 

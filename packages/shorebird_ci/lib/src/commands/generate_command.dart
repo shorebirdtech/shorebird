@@ -40,11 +40,11 @@ class GenerateCommand extends Command<int> with RepoRootOption {
       )
       ..addFlag(
         'no-update-actions',
-        help:
-            'Skip the post-generate step that queries GitHub for current '
-            'action versions and bumps pins in place. By default, generate '
-            'auto-bumps action versions to current latest. Pass this flag '
-            'in offline environments.',
+        help: '''
+Skip the post-generate step that queries GitHub for current action
+versions and bumps pins in place. By default, generate auto-bumps
+action versions to current latest. Pass this flag in offline
+environments.''',
         negatable: false,
       )
       ..addOption(
@@ -58,6 +58,19 @@ additionally emits `secrets: inherit` on each reusable workflow call
 so the secret is reachable inside the reusable workflow. When unset
 (the default), no token plumbing is emitted. Refer to Codecov's docs
 for whether your repo requires a token to upload.''',
+      )
+      ..addFlag(
+        'required',
+        help: '''
+Emit a `required` aggregator job at the end of the workflow that
+depends on every other job. Use it as the single required check in
+branch protection: the aggregator fails when any dependency reports
+`failure` or `cancelled`, and passes when dependencies succeed or
+were skipped. Skipped sub-jobs are the common case since per-package
+jobs only run on touched paths. The `required` job key is reserved
+when this flag is set, so generation fails if any package slug
+resolves to `required`. Skip the flag and any package slug is fine.''',
+        negatable: false,
       );
   }
 
@@ -75,6 +88,7 @@ for whether your repo requires a token to upload.''',
     final dryRun = argResults!.flag('dry-run');
     final style = argResults!['style'] as String;
     final codecovTokenSecret = argResults!['codecov-token-secret'] as String?;
+    final emitRequiredJob = argResults!.flag('required');
 
     final analyzer = RepositoryAnalyzer();
     final repoDir = Directory(repoRoot);
@@ -85,6 +99,44 @@ for whether your repo requires a token to upload.''',
     if (repository.packages.isEmpty) {
       stderr.writeln('No Dart packages found in $repoRoot');
       return 1;
+    }
+
+    final sortedPackages = repository.packages.toList()
+      ..sort(
+        (PackageDescription a, PackageDescription b) =>
+            a.name.compareTo(b.name),
+      );
+
+    // Slugs only matter for static-mode workflow generation: in dynamic
+    // mode jobs are keyed `setup` / `dart_ci` / `flutter_ci` / `cspell`,
+    // never by per-package slug, so a package named `required` cannot
+    // collide w/ the aggregator there. Compute (and collision-check)
+    // only when static.
+    Map<PackageDescription, String>? slugs;
+    if (style == 'static') {
+      slugs = computePackageSlugs(
+        packages: sortedPackages,
+        repoRoot: repoRoot,
+      );
+      if (emitRequiredJob) {
+        // `required` is the reserved job key for the --required
+        // aggregator. A package slug that resolves to `required` would
+        // emit a duplicate YAML key and silently overwrite the
+        // aggregator. Fail loudly so the user renames the package
+        // before generation.
+        final colliding = slugs.entries
+            .where((e) => e.value == 'required')
+            .map((e) => e.key.name)
+            .toList();
+        if (colliding.isNotEmpty) {
+          stderr.writeln(
+            'Package slug `required` collides with the --required '
+            'aggregator job. Rename the colliding package(s): '
+            '${colliding.join(', ')}',
+          );
+          return 1;
+        }
+      }
     }
 
     // Each builder returns a map of repo-relative path → file content.
@@ -98,11 +150,15 @@ for whether your repo requires a token to upload.''',
             repository,
             outputPath: outputPath,
             codecovTokenSecret: codecovTokenSecret,
+            emitRequiredJob: emitRequiredJob,
+            packages: sortedPackages,
+            slugs: slugs!,
           )
         : {
             outputPath: _buildDynamicYaml(
               repository,
               codecovTokenSecret: codecovTokenSecret,
+              emitRequiredJob: emitRequiredJob,
             ),
           };
 
@@ -197,13 +253,10 @@ updates:
     RepositoryDescription repository, {
     required String outputPath,
     required String? codecovTokenSecret,
+    required bool emitRequiredJob,
+    required List<PackageDescription> packages,
+    required Map<PackageDescription, String> slugs,
   }) {
-    final packages = repository.packages.toList()
-      ..sort(
-        (PackageDescription a, PackageDescription b) =>
-            a.name.compareTo(b.name),
-      );
-
     final hasDart = packages.any(
       (pkg) => !RepositoryAnalyzer.dependsOnFlutter(root: pkg.root),
     );
@@ -216,6 +269,8 @@ updates:
         repository: repository,
         packages: packages,
         codecovTokenSecret: codecovTokenSecret,
+        emitRequiredJob: emitRequiredJob,
+        slugs: slugs,
       ),
     };
     if (hasDart) {
@@ -239,16 +294,14 @@ updates:
     required RepositoryDescription repository,
     required List<PackageDescription> packages,
     required String? codecovTokenSecret,
+    required bool emitRequiredJob,
+    required Map<PackageDescription, String> slugs,
   }) {
     final emitSecretsInherit =
         codecovTokenSecret != null &&
         codecovTokenSecret.isNotEmpty &&
         repository.hasCodecov;
     final resolver = DependencyResolver(repository.root.path);
-    final slugs = computePackageSlugs(
-      packages: packages,
-      repoRoot: repository.root.path,
-    );
 
     final buffer = StringBuffer()
       ..write('''
@@ -361,6 +414,15 @@ jobs:
 
     if (repository.cspellConfig != null) {
       _writeCspellJob(buffer, repository);
+    }
+
+    if (emitRequiredJob) {
+      final needs = <String>[
+        'changes',
+        for (final package in packages) slugs[package]!,
+        if (repository.cspellConfig != null) 'cspell',
+      ];
+      _writeRequiredJob(buffer, needs);
     }
 
     return buffer.toString();
@@ -541,6 +603,7 @@ $testStep      - name: Integration Tests
   String _buildDynamicYaml(
     RepositoryDescription repository, {
     required String? codecovTokenSecret,
+    required bool emitRequiredJob,
   }) {
     final hasDart = repository.packages.any(
       (pkg) => !RepositoryAnalyzer.dependsOnFlutter(root: pkg.root),
@@ -597,6 +660,16 @@ jobs:
 
     if (repository.cspellConfig != null) {
       _writeCspellJob(buffer, repository);
+    }
+
+    if (emitRequiredJob) {
+      final needs = <String>[
+        'setup',
+        if (hasDart) 'dart_ci',
+        if (hasFlutter) 'flutter_ci',
+        if (repository.cspellConfig != null) 'cspell',
+      ];
+      _writeRequiredJob(buffer, needs);
     }
 
     return buffer.toString();
@@ -838,6 +911,35 @@ ${_codecovTokenLine(codecovTokenSecret)}''';
         with:
           incremental_files_only: false
           config: $configPath
+''')
+      ..writeln();
+  }
+
+  /// Emits an aggregator job that depends on every other job in the
+  /// workflow. Designed as the single check to require in branch
+  /// protection: per-package jobs only run on touched paths, so we
+  /// need a job that succeeds when its dependencies are either
+  /// `success` or `skipped`, and fails on `failure` or `cancelled`.
+  void _writeRequiredJob(StringBuffer buffer, List<String> needs) {
+    buffer
+      ..writeln('  required:')
+      ..writeln('    name: required')
+      ..writeln(r'    if: ${{ always() }}')
+      ..writeln('    needs:');
+    for (final need in needs) {
+      buffer.writeln('      - $need');
+    }
+    buffer
+      ..write(r'''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required jobs
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more required jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed (or were skipped because nothing changed)."
 ''')
       ..writeln();
   }

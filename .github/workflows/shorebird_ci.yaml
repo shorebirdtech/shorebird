@@ -28,7 +28,7 @@ jobs:
       shorebird_redis_client: ${{ steps.filter.outputs.shorebird_redis_client }}
       stripe_api: ${{ steps.filter.outputs.stripe_api }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Full history so dorny/paths-filter can diff on push events.
           fetch-depth: 0
@@ -204,6 +204,7 @@ jobs:
       has_bloc_lint: false
       has_unit_tests: true
       subpackages: ""
+      needs_redis: true
 
   stripe_api:
     needs: changes
@@ -220,11 +221,40 @@ jobs:
     name: CSpell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - uses: streetsidesoftware/cspell-action@v8
         with:
           incremental_files_only: false
           config: cspell.config.yaml
+
+  required:
+    name: required
+    if: ${{ always() }}
+    needs:
+      - changes
+      - artifact_proxy
+      - dex
+      - discord_gcp_alerts
+      - flutter_version_resolver
+      - jwt
+      - scoped_deps
+      - shorebird_build_trace
+      - shorebird_ci
+      - shorebird_cli
+      - shorebird_code_push_client
+      - shorebird_code_push_protocol
+      - shorebird_redis_client
+      - stripe_api
+      - cspell
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required jobs
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more required jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed (or were skipped because nothing changed)."
 

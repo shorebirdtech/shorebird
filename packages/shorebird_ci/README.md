@@ -1,62 +1,69 @@
 # shorebird_ci
 
-CI tooling for Dart and Flutter monorepos. Scans your repo, generates a
-GitHub Actions workflow, and verifies that every package has coverage.
-Designed to be used by both humans and AI agents.
+CI tooling for Dart and Flutter monorepos. Discovers packages, builds
+the dep graph, and generates a GitHub Actions workflow that runs the
+right CI on the right packages. `verify` keeps the workflow honest as
+the repo evolves.
 
-## Install
+## Installation
 
 ```sh
 dart pub global activate shorebird_ci
 ```
 
-Or from a local checkout:
+## Quick Start
 
 ```sh
-dart pub global activate --source path packages/shorebird_ci
+shorebird_ci generate --dry-run            # review what it would write
+shorebird_ci generate --required           # write + add a single aggregator check
 ```
+
+Commit the result, push, and in branch protection require the single
+check named `required`. That one check passes when every per-package
+job either succeeds or was skipped (because nothing in its paths
+changed) and fails on any real failure. No need to update branch
+protection when packages come or go.
 
 ## Commands
 
-| Command | Used by | Purpose |
-|---|---|---|
-| `generate` | human / Claude at setup | Write `.github/workflows/shorebird_ci.yaml` |
-| `verify` | human / Claude for health checks | Fail if any package is missing CI coverage |
-| `affected_packages` | CI runtime (dynamic workflows) | Emit JSON `[{name, path, ...}]` for affected packages |
-| `flutter_version` | CI runtime (Flutter packages) | Resolve Flutter version from pubspec (see note below) |
-| `update_actions` | human / Claude for maintenance | Bump `uses:` versions in workflow files to latest major |
+You run these locally:
 
-## Using it
+| Command | Purpose |
+|---|---|
+| `generate` | Write `.github/workflows/shorebird_ci.yaml` (plus reusable workflows in `--style static`) |
+| `verify` | Check that every package has CI coverage, and that any `required` aggregator stays in sync with the rest of the workflow |
+| `update_actions` | Rewrite `uses:` pins in workflow files to current latest majors. `generate` already calls this after writing; run it standalone to bump pins in hand-maintained workflows |
 
-```sh
-shorebird_ci generate --repo-root . --dry-run   # review
-shorebird_ci generate --repo-root .             # write
-```
+CI runs these inside the generated workflow. You don't usually invoke
+them by hand:
 
-The tool auto-detects Dart vs. Flutter, Dart workspaces, codecov,
-cspell, nested subpackages, bloc_lint, integration tests, and pinned
-Flutter versions. The generated workflow includes `shorebird_ci verify`
-in its setup job, so CI coverage is checked on every PR.
-
-`generate` also writes `.github/dependabot.yml` (if missing) so action
-versions stay current over time.
+| Command | Purpose |
+|---|---|
+| `affected_packages` | Emit a JSON matrix of packages touched by the PR, including transitive dependents via the Dart dep graph |
+| `flutter_version` | Resolve an exact Flutter version from a pubspec's `environment.flutter` constraint, which `subosito/flutter-action` requires |
 
 ## How the generated workflow works
 
-Two-stage structure. A `setup` job checks out the code, runs
-`shorebird_ci verify` as a sanity check, then runs
-`shorebird_ci affected_packages` to compute which packages the PR
-touches (including transitive dependents via the Dart dep graph). A
-matrix job fans out over only the affected packages, running per
-entry: checkout, SDK setup, pub get (plus nested subpackages), format,
-analyze, bloc lint (if bloc_lint is a dep), tests (with coverage if
-codecov is configured), integration tests (if Flutter + `integration_test/`
-exists), codecov upload.
+Two stages. A `setup` job checks out the repo with full history (needed
+for the diff against `origin/main`), installs Dart, `pub global
+activate`s `shorebird_ci`, runs `verify` as a sanity check, then runs
+`affected_packages` to compute which packages the PR touches. A matrix
+job fans out over only those packages, running per entry: checkout,
+SDK setup, `pub get` (plus any nested subpackages), format, analyze,
+bloc lint (if `bloc_lint` is a dependency), tests (with coverage if
+Codecov is configured), integration tests (if Flutter and an
+`integration_test/` directory exists), Codecov upload.
 
-Plus a CSpell job if a cspell config file exists.
+A `cspell` job is added if a cspell config file is present at the repo
+root.
 
-Adding or removing packages requires no workflow changes — the setup
-job discovers them at runtime.
+Auto-detected: Dart vs. Flutter, Dart workspaces, Codecov, cspell,
+nested subpackages, `bloc_lint`, integration tests, pinned Flutter
+versions. Adding or removing packages requires no workflow changes;
+the setup job discovers them at runtime.
+
+`generate` also writes `.github/dependabot.yml` (if missing) so action
+versions stay current over time.
 
 ### Manual runs and the empty-diff case
 
@@ -74,88 +81,123 @@ For normal `push: main` events where the diff is empty, setup emits a
 GitHub notice pointing at the manual button so a green-but-skipped run
 isn't confused for a full pass.
 
-### `--no-update-actions`
+### Subpackage double-coverage
 
-`generate` auto-bumps action pins by querying GitHub for current
-latest majors. `--no-update-actions` skips that network call and
-leaves the static pins in the template as-is. Use it in offline
-environments. Once you push, Dependabot picks up bumps on its weekly
-schedule.
+Subpackages of a Flutter root get CI'd twice: once in their own matrix
+job, once inside the root's job. Intentional. The root needs them for
+`pub get`, and the standalone job gives focused per-package pass/fail.
+Cost is a duplicate analyze/test on affected PRs.
+
+## Options
+
+### `--required`
+
+Adds an aggregator job named `required` that depends on every other
+job in the workflow and uses `if: ${{ always() }}` so it runs even
+when sub-jobs are skipped. The aggregator fails when any dependency
+reports `failure` or `cancelled` and passes when dependencies succeed
+or were skipped.
+
+Use it as the single required check in branch protection. Per-package
+jobs only run on touched paths, so most PRs leave most jobs skipped.
+Treating skipped as pass is what makes a single static check viable
+without re-listing every job in branch protection every time the
+package set changes.
+
+`verify` enforces consistency: if a workflow file has a top-level
+`required` job, every other top-level job in that file must appear in
+its `needs:`, and every entry in `needs:` must match a real job. Drift
+in either direction silently breaks the gate, so `verify` fails loudly
+when it finds it.
+
+In `--style static`, the `required` job key is reserved when this flag
+is set: generation fails if any package's slug resolves to `required`
+(rename the package). Dynamic mode keys jobs by `setup`, `dart_ci`,
+`flutter_ci`, and `cspell`, so the collision can't happen there.
 
 ### `--codecov-token-secret <NAME>`
 
-Pass the name of the GitHub Actions secret holding your Codecov
-upload token. When set:
+Pass the name of the GitHub Actions secret holding your Codecov upload
+token. The codecov-action step gets `token: ${{ secrets.<NAME> }}` in
+both `--style static` and `--style dynamic` (the default). In static,
+`secrets: inherit` is also emitted on each reusable workflow call so
+the secret is reachable from inside the reusable workflow.
 
-- `--style static`: the orchestrator emits `secrets: inherit` on each
-  reusable workflow call, and the codecov-action step in the reusable
-  workflows receives `token: ${{ secrets.<NAME> }}`.
-- `--style dynamic` (default): the single codecov-action step receives
-  the same `token:` line.
-
-When unset (the default), no token plumbing is emitted. Whether you
-need a token is a Codecov question — refer to their docs for whether
-your repo requires one to upload.
-
-```bash
+```sh
 shorebird_ci generate --codecov-token-secret CODECOV_TOKEN
 ```
 
-### `--style static` (advanced)
+When unset, no token plumbing is emitted. Whether you need one is a
+Codecov question; refer to their docs for whether your repo requires
+it.
 
-`generate --style static` emits a pre-computed dorny `filters:` block,
-not a full workflow. You paste it into your own workflow, wire up the
-dorny step and per-package jobs yourself, and run `verify` to catch
-path drift. This is for people who already have a dorny-based pipeline
-and want help keeping the filter paths in sync with the Dart dep
-graph — not a drop-in alternative to the default.
+### `--no-update-actions`
 
-The dynamic default pays a small setup cost per PR — roughly 15–30
-seconds to check out, install the Dart SDK, `pub global activate`
-shorebird_ci, and run `affected_packages`. That cost can probably be
-cut a lot in the future (prebuilt snapshot, a composite action), but
-it's what you pay today. For most repos it's noise. If you have a
-high-volume monorepo where most PRs don't touch Dart, static lets the
-workflow skip entirely at the trigger level.
+By default, `generate` queries GitHub for current latest majors and
+bumps action pins after writing the workflow. `--no-update-actions`
+skips the network call and leaves the static pins in the template
+as-is. Use it in offline environments. Once you push, Dependabot picks
+up bumps on its weekly schedule.
 
-### A note on subpackage double-coverage
+### `--style static`
 
-Subpackages of a Flutter root get CI'd twice: once in their own
-matrix job, once inside the root's job. Intentional. The root needs
-them for `pub get`, and the standalone job gives focused per-package
-pass/fail. Cost is a duplicate analyze/test on affected PRs.
+Emits a full main workflow plus one or two reusable workflows (one for
+Dart, one for Flutter, depending on what the repo contains). The main
+workflow uses `dorny/paths-filter` to pick which packages are affected
+on each push or PR, and a thin per-package job calls into the matching
+reusable workflow.
+
+The choice between styles is a maintenance-vs-CI-minutes trade-off:
+
+- **Dynamic (default).** Less to maintain, more CI minutes. The dep
+  graph is computed at runtime, so adding a package, renaming one, or
+  changing a `path:` dependency just works. Pays ~15-30s of setup per
+  PR for checkout, Dart SDK, `pub global activate`, and
+  `affected_packages`.
+- **Static.** More to maintain, fewer CI minutes. The dep graph is
+  baked into YAML at generate time, so any change to packages or
+  `path:` dependencies needs a re-run of `generate` or a hand-patch
+  of the filters. `verify` catches drift the next time it runs in CI.
+  In exchange the workflow can skip entirely at the trigger level
+  when no paths-filter group matches.
+
+### `verify --ignore`
+
+For packages that intentionally have no CI (for example, `e2e` test
+packages):
+
+```sh
+shorebird_ci verify --ignore e2e,other_package
+```
+
+## Customization
+
+The generated file is a normal YAML file, not a locked artifact. Edit
+freely. The tool's ongoing role is `verify`, not regeneration. Common
+edits the tool doesn't make for you:
+
+- **Branch name.** The workflow triggers on `pull_request` and `push`
+  against `main` only. Repos using `master`, `trunk`, etc. need to
+  swap the branch in both triggers.
+- **Runner.** Every job is `ubuntu-latest`. Self-hosted, ARM, or macOS
+  runners need a manual change to `runs-on:`.
+- **Non-Codecov secrets.** Only the Codecov token has first-class flag
+  support. Anything else (private pub registries, integration-test
+  credentials) needs to be plumbed through by hand.
 
 ## For AI agents
 
-This tool handles the **deterministic parts** (package discovery, dep
-graph, workflow generation). You handle the **judgment calls** —
-merging with existing workflows, naming, resolving conflicts.
+This tool handles the deterministic parts (package discovery, dep
+graph, workflow generation). You handle the judgment calls: merging
+with existing workflows, naming, resolving conflicts.
 
 If the repo already has `.github/workflows/*.yaml`, read them before
 generating. Look for existing Dart CI that would be superseded,
-duplicate job names, overlapping path filters. Ask the user whether
-to replace existing CI or run alongside.
+duplicate job names, overlapping path filters. Ask the user whether to
+replace existing CI or run alongside.
 
-**Watch for:** custom runner requirements (self-hosted, ARM, etc.).
-Generated workflow defaults to `ubuntu-latest`.
+When `verify` reports missing packages (only possible in repos using
+`--style static`), it outputs the exact dorny entry with transitive
+deps computed. You decide which workflow file and which filter group
+to add it to; read the existing structure and make the call.
 
-**When `verify` reports missing packages** (only possible in repos
-using static dorny filters): the tool outputs the exact dorny entry
-with transitive deps computed. You decide which workflow file and
-which filter group to add it to — read the existing structure and
-make the call.
-
-**`--ignore`:** for packages that intentionally have no CI (e.g.,
-`e2e` test packages): `shorebird_ci verify --ignore e2e`.
-
-**Generated file is safe to edit.** It's a normal YAML file, not a
-locked artifact. The tool's ongoing role is `verify`, not
-regeneration.
-
-## A note on `flutter_version`
-
-This command exists because `subosito/flutter-action` accepts only
-exact version strings — it can't resolve constraints like
-`>=3.19.0 <4.0.0` from `environment.flutter`. This arguably belongs
-upstream. If `flutter-action` (or the Flutter SDK) ships equivalent
-resolution, this command should be deprecated.

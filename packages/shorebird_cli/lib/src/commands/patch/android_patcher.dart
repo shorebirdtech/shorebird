@@ -45,6 +45,14 @@ This issue was fixed in Flutter 3.24.2. Please upgrade to a newer version of Flu
 See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebirdtech/updater/issues/211'), message: 'on Github')}
 ''';
 
+  /// The `<arch>/libapp.so` directory resolved by [buildPatchArtifact] —
+  /// a temporary directory extracted from the built patch AAB or, when the
+  /// AAB is unreadable, AGP's stripped output. Cached so
+  /// [createPatchArtifacts] reuses it instead of decoding the AAB a second
+  /// time.
+  /// See https://github.com/shorebirdtech/shorebird/issues/3388.
+  Directory? _patchArchsBuildDir;
+
   @override
   ReleaseType get releaseType => ReleaseType.android;
 
@@ -102,10 +110,12 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       base64PublicKey: argResults.encodedPublicKey,
     );
 
-    final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
-      projectRoot: projectRoot,
-      flavor: flavor,
-    );
+    final patchArchsBuildDir = _patchArchsBuildDir =
+        await ArtifactManager.androidArchsDirectoryFromAab(
+          projectRoot: projectRoot,
+          flavor: flavor,
+          aab: aabFile,
+        );
 
     if (patchArchsBuildDir == null) {
       logger
@@ -115,10 +125,9 @@ Please run `shorebird cache clean` and try again. If the issue persists, please
 file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
 
 Looked in:
-  - build/app/intermediates/stripped_native_libs/stripReleaseDebugSymbols/release/out/lib
-  - build/app/intermediates/stripped_native_libs/strip{flavor}ReleaseDebugSymbols/{flavor}Release/out/lib
-  - build/app/intermediates/stripped_native_libs/release/out/lib
-  - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib''');
+  - the libapp.so entries inside the built .aab
+  - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
+  - build/app/intermediates/stripped_native_libs/{variant}/out/lib''');
       throw ProcessExit(ExitCode.software.code);
     }
     return aabFile;
@@ -172,10 +181,15 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
 
     artifactsDownloadCompleted = true;
 
-    final patchArchsBuildDir = ArtifactManager.androidArchsDirectory(
-      projectRoot: projectRoot,
-      flavor: flavor,
-    );
+    // [buildPatchArtifact] runs before this and caches the resolved
+    // directory; the fallback only covers a direct call without it, in which
+    // case no patch AAB exists to extract from.
+    final patchArchsBuildDir =
+        _patchArchsBuildDir ??
+        ArtifactManager.androidArchsDirectory(
+          projectRoot: projectRoot,
+          flavor: flavor,
+        );
     if (patchArchsBuildDir == null) {
       logger.err('Could not find patch artifacts');
       throw ProcessExit(ExitCode.software.code);
@@ -192,6 +206,18 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
       );
       logger.detail('Creating artifact for $patchArtifactPath');
       final patchArtifact = File(patchArtifactPath);
+      // Skip archs the build didn't produce (ndk.abiFilters / splits.abi /
+      // jniLibs.excludes). Without this, a release built for a subset of
+      // archs can't be patched without hitting PathNotFoundException
+      // (https://github.com/shorebirdtech/shorebird/issues/3388).
+      if (!patchArtifact.existsSync()) {
+        logger.detail(
+          'Skipping ${arch.arch}: no libapp.so at $patchArtifactPath. '
+          'This is expected if the project filters this ABI via '
+          'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
+        );
+        continue;
+      }
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
       final hashSignature = await signHash(hash);
 
@@ -211,6 +237,13 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
         createDiffProgress.fail('$error');
         throw ProcessExit(ExitCode.software.code);
       }
+    }
+    if (patchArtifactBundles.isEmpty) {
+      createDiffProgress.fail(
+        'No patch artifacts produced: no libapp.so found for any architecture '
+        'under ${patchArchsBuildDir.path}.',
+      );
+      throw ProcessExit(ExitCode.software.code);
     }
     createDiffProgress.complete();
     return patchArtifactBundles;

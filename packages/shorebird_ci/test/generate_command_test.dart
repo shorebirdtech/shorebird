@@ -798,6 +798,184 @@ void main() {
       expect(yaml, contains('fetch-depth: 0'));
     });
   });
+
+  group('--required aggregator job', () {
+    test('omitted by default in static mode', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+      final yaml = _readMain(tempDir);
+
+      expect(yaml, isNot(contains('required:')));
+    });
+
+    test('omitted by default in dynamic mode', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+
+      expect(yaml, isNot(contains('  required:')));
+    });
+
+    test('static --required depends on changes + every package job', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/bar', 'bar');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--required'],
+      );
+      final yaml = _readMain(tempDir);
+
+      expect(yaml, contains('  required:'));
+      // `needs:` lists changes + every per-package slug.
+      expect(
+        yaml,
+        matches(
+          RegExp(
+            'required:[^#]*needs:[^#]*- changes[^#]*- bar[^#]*- foo',
+            dotAll: true,
+          ),
+        ),
+      );
+      // Always-run and treats skipped sub-jobs as success.
+      expect(yaml, contains(r'if: ${{ always() }}'));
+      expect(yaml, contains("contains(needs.*.result, 'failure')"));
+      expect(yaml, contains("contains(needs.*.result, 'cancelled')"));
+    });
+
+    test('static --required includes cspell when present', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      File(p.join(tempDir.path, '.cspell.json')).writeAsStringSync('{}');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--required'],
+      );
+      final yaml = _readMain(tempDir);
+
+      expect(
+        yaml,
+        matches(
+          RegExp(
+            'required:[^#]*needs:[^#]*- cspell',
+            dotAll: true,
+          ),
+        ),
+      );
+    });
+
+    test('dynamic --required depends on setup + matrix jobs', () async {
+      createPackage(tempDir, 'packages/dart_pkg', 'dart_pkg');
+      createPackage(
+        tempDir,
+        'packages/flutter_pkg',
+        'flutter_pkg',
+        flutterLine: 'any',
+      );
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--required']);
+      final yaml = _readMain(tempDir);
+
+      expect(yaml, contains('  required:'));
+      expect(
+        yaml,
+        matches(
+          RegExp(
+            'required:[^#]*needs:[^#]*- setup[^#]*'
+            '- dart_ci[^#]*- flutter_ci',
+            dotAll: true,
+          ),
+        ),
+      );
+    });
+
+    test('dynamic --required includes cspell when present', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      File(p.join(tempDir.path, '.cspell.json')).writeAsStringSync('{}');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--required']);
+      final yaml = _readMain(tempDir);
+
+      expect(
+        yaml,
+        matches(
+          RegExp(
+            'required:[^#]*needs:[^#]*- cspell',
+            dotAll: true,
+          ),
+        ),
+      );
+    });
+
+    test('generated workflow with --required is valid YAML', () async {
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--required'],
+      );
+      final yaml = _readMain(tempDir);
+      expect(() => loadYaml(yaml), returnsNormally);
+    });
+
+    test('--required + package named `required` → fails at generate', () async {
+      // `required` is the reserved aggregator job key. A package slug
+      // that resolves to `required` would duplicate the YAML key and
+      // silently overwrite the aggregator. Generate must refuse.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      createPackage(tempDir, 'packages/required', 'required');
+      initGitRepo(tempDir);
+
+      final exitCode = await runGenerate(
+        tempDir,
+        extra: ['--style', 'static', '--required'],
+      );
+
+      expect(exitCode, 1);
+    });
+
+    test(
+      '--required + package named `required` is fine in dynamic mode',
+      () async {
+        // Dynamic mode keys jobs by `setup` / `dart_ci` / `flutter_ci`
+        // / `cspell`, never by per-package slug, so a package named
+        // `required` cannot collide w/ the aggregator. The collision
+        // check only fires for --style static.
+        createPackage(tempDir, 'packages/required', 'required');
+        initGitRepo(tempDir);
+
+        final exitCode = await runGenerate(
+          tempDir,
+          extra: ['--required'],
+        );
+
+        expect(exitCode, 0);
+      },
+    );
+
+    test('collision check does not fire when --required is absent', () async {
+      // The reserved-name contract only applies when the user opts into
+      // the aggregator. A package named `required` is fine on its own.
+      createPackage(tempDir, 'packages/required', 'required');
+      initGitRepo(tempDir);
+
+      final exitCode = await runGenerate(
+        tempDir,
+        extra: ['--style', 'static'],
+      );
+
+      expect(exitCode, 0);
+    });
+  });
 }
 
 String _readMain(Directory repoRoot) {

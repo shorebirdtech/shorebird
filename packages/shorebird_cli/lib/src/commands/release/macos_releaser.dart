@@ -71,7 +71,7 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
 
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
-    addObfuscationMapArgs(buildArgs);
+    await addObfuscationMapArgs(buildArgs);
 
     await artifactBuilder.buildMacos(
       codesign: codesign,

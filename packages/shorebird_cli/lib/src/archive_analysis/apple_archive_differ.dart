@@ -1,10 +1,10 @@
 // cspell:words xcframeworks xcasset unsign codesign assetutil pubspec xcassets actool
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:archive/archive_io.dart';
-import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
@@ -162,33 +162,90 @@ class AppleArchiveDiffer extends ArchiveDiffer {
   }
 
   /// Uses assetutil to write a json description of a .car file to disk and
-  /// hashes the contents of that file, less the lines that vary build-to-build
-  /// for reasons unrelated to asset content.
+  /// hashes the contents of that file, less the values that vary
+  /// build-to-build for reasons unrelated to asset content.
   Future<String> _sanitizedCarFileHash(ArchiveFile file) async {
     final jsonFile = await _carJsonFile(file);
-    final lines = jsonFile.readAsLinesSync();
-    return _hash(sanitizeCarJson(lines).codeUnits);
+    return _hash(sanitizeCarJson(jsonFile.readAsStringSync()).codeUnits);
   }
 
-  /// Strips non-deterministic content from the lines of an
-  /// `assetutil --info` JSON dump so two builds of the same assets hash the
-  /// same. Currently removes:
+  static final _uuidRegex = RegExp(
+    '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-'
+    '[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}',
+  );
+
+  /// The `_<uuid>-<pid>-<counter>` suffix `actool` appends to the rendition
+  /// file names it generates for a layered icon (.icon) bundle. Every part of
+  /// it is regenerated per build, including the trailing pid and counter that
+  /// sit outside the uuid.
+  static final _generatedRenditionSuffixRegex = RegExp(
+    '_[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-'
+    r'[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}-\d+-[0-9A-Fa-f]+',
+  );
+
+  /// Strips non-deterministic content from an `assetutil --info` JSON dump so
+  /// two builds of the same assets hash the same. Currently removes:
   ///
-  ///   * The `Timestamp` line, which records when the .car file was built.
-  ///   * UUIDs that `actool` embeds in the rendition file names of iOS 18
-  ///     layered icon (.icon) bundles, which are regenerated every build.
+  ///   * `Timestamp`, which records when the .car file was built.
+  ///   * The generated suffix in the rendition file names of iOS 18 layered
+  ///     icon (.icon) bundles, which `actool` regenerates every build.
+  ///   * `SHA1Digest` on those renditions only. Two builds of one unchanged
+  ///     icon produce byte-identical payloads but different digests, so the
+  ///     digest covers a region that includes the generated name and cannot
+  ///     be compared. The other rendition attributes still are, including
+  ///     `SizeOnDisk`, `Encoding`, `Compression` and both dimensions. A real
+  ///     edit therefore goes unreported only if it preserves every one of
+  ///     them, down to the exact compressed byte count.
+  ///
+  /// Keys are sorted so the hash does not depend on the order assetutil
+  /// happens to emit fields in. `assetutil` writes a JSON array, but its
+  /// output is not part of any documented contract, so content that does not
+  /// parse is hashed verbatim rather than failing the patch.
   @visibleForTesting
-  static String sanitizeCarJson(List<String> lines) {
-    final timestampRegex = RegExp(r'^\W+"Timestamp" : \d+$');
-    final uuidRegex = RegExp(
-      '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-'
-      '[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}',
-    );
-    return lines
-        .whereNot(timestampRegex.hasMatch)
-        .map((line) => line.replaceAll(uuidRegex, '<uuid>'))
-        .join('\n');
+  static String sanitizeCarJson(String contents) {
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(contents);
+    } on FormatException {
+      return contents;
+    }
+    return jsonEncode(_sanitizeJson(decoded));
   }
+
+  static Object? _sanitizeJson(Object? value) {
+    switch (value) {
+      case final Map<String, dynamic> map:
+        final renditionName = map['RenditionName'];
+        final isGenerated =
+            renditionName is String &&
+            _generatedRenditionSuffixRegex.hasMatch(renditionName);
+        // Keys are assetutil's fixed field names, so they are ordered but
+        // not sanitized. Normalizing them would leave keys that normalize
+        // alike tied under the sort, falling back to assetutil's emission
+        // order, and would let two such keys collapse into one.
+        final keys =
+            map.keys
+                .where((key) => key != 'Timestamp')
+                .where((key) => !(isGenerated && key == 'SHA1Digest'))
+                .toList()
+              ..sort();
+        return <String, Object?>{
+          for (final key in keys) key: _sanitizeJson(map[key]),
+        };
+      case final List<dynamic> list:
+        return list.map(_sanitizeJson).toList();
+      case final String string:
+        return _sanitizeString(string);
+      case _:
+        return value;
+    }
+  }
+
+  // The generated-suffix pattern is applied first because it is the more
+  // specific of the two and contains a uuid of its own.
+  static String _sanitizeString(String value) => value
+      .replaceAll(_generatedRenditionSuffixRegex, '_<generated>')
+      .replaceAll(_uuidRegex, '<uuid>');
 
   @override
   Future<String> availableAssetDiffs({
