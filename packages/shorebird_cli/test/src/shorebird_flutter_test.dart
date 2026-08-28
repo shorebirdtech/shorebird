@@ -1,4 +1,4 @@
-// cspell:words revis
+// cspell:words revis precaches
 import 'dart:io';
 
 import 'package:clock/clock.dart';
@@ -1240,14 +1240,14 @@ origin/flutter_release/3.10.6''';
           final otherInstall = Directory(
             p.join(flutterDirectory.parent.path, 'another-revision'),
           )..createSync(recursive: true);
-          final notStaging = Directory('${targetDirectory.path}.notstaging')
+          final notStaging = Directory('${targetDirectory.path}.sibling')
             ..createSync(recursive: true);
-          // Suffixed like a staging directory but carrying no timestamp this
-          // code wrote, so its age is unknown and it is not ours to remove.
+          // Suffixed like a staging directory but carrying no timestamp the
+          // install wrote, so its age is unknown and it is not safe to remove.
           final unstamped = Directory('${targetDirectory.path}.mystery.tmp')
             ..createSync(recursive: true);
           // Another revision's staging directory. Each install reclaims only
-          // its own strays, so this one is not ours either.
+          // its own strays, so this one belongs to a different revision.
           final otherStaging = stray(
             p.join(flutterDirectory.parent.path, 'another-revision'),
             const Duration(days: 2),

@@ -1,3 +1,4 @@
+// cspell:words precaching unparseable
 import 'dart:convert';
 import 'dart:io';
 
@@ -60,7 +61,7 @@ class ShorebirdFlutter {
   /// Names a directory the sweep can reclaim once it is old enough.
   ///
   /// The creation time is carried in the name rather than read back from the
-  /// filesystem. A directory's mtime is not ours to depend on: an unrelated
+  /// filesystem. A directory's mtime is not a dependable record: an unrelated
   /// write can bump it, a rename does not touch it at all, and what it means
   /// varies across platforms. This name is written once, by this code, and
   /// never changes afterwards.
@@ -116,7 +117,7 @@ class ShorebirdFlutter {
       installProgress.complete();
     } catch (error) {
       // Another process publishing the same revision first is not a failure.
-      // Its checkout is as good as ours, so adopt it. A directory that is
+      // The winner's checkout is as good, so adopt it. A directory that is
       // demonstrably unusable is not a peer's finished work, so it does not
       // count: the shell bootstrap clones into this path in place, and
       // adopting it mid-clone would precache and stamp a partial checkout.
