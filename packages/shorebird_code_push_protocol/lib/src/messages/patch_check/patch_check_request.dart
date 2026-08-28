@@ -15,7 +15,6 @@ class PatchCheckRequest {
     required this.appId,
     required this.channel,
     this.patchNumber,
-    this.patchHash,
     this.clientId,
     this.currentPatchNumber,
   });
@@ -28,7 +27,6 @@ class PatchCheckRequest {
       () => PatchCheckRequest(
         releaseVersion: json['release_version'] as String,
         patchNumber: json['patch_number'] as int?,
-        patchHash: json['patch_hash'] as String?,
         platform: ReleasePlatform.fromJson(json['platform'] as String),
         arch: json['arch'] as String,
         appId: json['app_id'] as String,
@@ -56,9 +54,6 @@ class PatchCheckRequest {
   /// number. If omitted, the server returns the latest available.
   final int? patchNumber;
 
-  /// The current patch hash of the app.
-  final String? patchHash;
-
   /// A platform to which a Shorebird release can be deployed.
   final ReleasePlatform platform;
 
@@ -85,7 +80,6 @@ class PatchCheckRequest {
     return {
       'release_version': releaseVersion,
       'patch_number': patchNumber,
-      'patch_hash': patchHash,
       'platform': platform.toJson(),
       'arch': arch,
       'app_id': appId,
@@ -99,7 +93,6 @@ class PatchCheckRequest {
   int get hashCode => Object.hashAll([
     releaseVersion,
     patchNumber,
-    patchHash,
     platform,
     arch,
     appId,
@@ -114,7 +107,6 @@ class PatchCheckRequest {
     return other is PatchCheckRequest &&
         releaseVersion == other.releaseVersion &&
         patchNumber == other.patchNumber &&
-        patchHash == other.patchHash &&
         platform == other.platform &&
         arch == other.arch &&
         appId == other.appId &&
