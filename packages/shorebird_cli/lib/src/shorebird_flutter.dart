@@ -53,9 +53,34 @@ class ShorebirdFlutter {
   /// Suffix identifying a directory an install is still writing into.
   static const _stagingSuffix = '.tmp';
 
-  /// How long a staging directory must sit untouched before another install
+  /// How long a staging directory must have existed before another install
   /// treats it as abandoned rather than as a peer's work in progress.
   static const _stagingMaxAge = Duration(days: 1);
+
+  /// Names a directory the sweep can reclaim once it is old enough.
+  ///
+  /// The creation time is carried in the name rather than read back from the
+  /// filesystem. A directory's mtime is not ours to depend on: an unrelated
+  /// write can bump it, a rename does not touch it at all, and what it means
+  /// varies across platforms. This name is written once, by this code, and
+  /// never changes afterwards.
+  String _reclaimablePath(String path, {String? tag}) {
+    final stamp = clock.now().millisecondsSinceEpoch;
+    return '${[path, '$pid', ?tag].join('.')}.$stamp$_stagingSuffix';
+  }
+
+  /// Reads back the time [_reclaimablePath] wrote into [name], or null if
+  /// [name] was not written by it.
+  DateTime? _reclaimableSince({required String name, required String prefix}) {
+    if (!name.startsWith(prefix) || !name.endsWith(_stagingSuffix)) return null;
+    final stamp = name
+        .substring(prefix.length, name.length - _stagingSuffix.length)
+        .split('.')
+        .last;
+    final millis = int.tryParse(stamp);
+    if (millis == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
 
   /// Clones and checks out [revision], publishing it at [targetDirectory]
   /// only once both have succeeded.
@@ -73,17 +98,10 @@ class ShorebirdFlutter {
       'Installing Flutter $version (${shortRevisionString(revision)})',
     );
 
-    final stagingDirectory = Directory(
-      '${targetDirectory.path}.$pid$_stagingSuffix',
-    );
+    // Carries this instant, so no earlier run's staging directory can share
+    // the name and no directory has to be cleared before the clone.
+    final stagingDirectory = Directory(_reclaimablePath(targetDirectory.path));
     try {
-      _reclaimStrandedStagingDirectories(targetDirectory);
-      // A normal install has nothing here, and reporting a failure to remove
-      // what was never there would put a spurious error in every run's log.
-      if (stagingDirectory.existsSync()) {
-        _deleteIgnoringErrors(stagingDirectory);
-      }
-
       // Clone the Shorebird Flutter repo into the staging directory.
       await git.clone(
         url: flutterGitUrl,
@@ -98,8 +116,13 @@ class ShorebirdFlutter {
       installProgress.complete();
     } catch (error) {
       // Another process publishing the same revision first is not a failure.
-      // Its checkout is as good as ours, so adopt it.
-      if (targetDirectory.existsSync()) {
+      // Its checkout is as good as ours, so adopt it. A directory that is
+      // demonstrably unusable is not a peer's finished work, so it does not
+      // count: the shell bootstrap clones into this path in place, and
+      // adopting it mid-clone would precache and stamp a partial checkout.
+      final published =
+          targetDirectory.existsSync() && !_isUnusableInstall(targetDirectory);
+      if (published) {
         installProgress.complete();
         _deleteIgnoringErrors(stagingDirectory);
         return;
@@ -126,9 +149,12 @@ class ShorebirdFlutter {
   ///
   /// Publishing by rename means an interrupted install strands its staging
   /// directory instead of poisoning the target, so something has to reclaim
-  /// it. A concurrent install's staging directory looks identical to a
-  /// stranded one, so only entries untouched for [_stagingMaxAge] are
-  /// removed. A clone finishes in minutes.
+  /// it. A concurrent install's staging directory is indistinguishable from a
+  /// stranded one except by age, so only entries older than [_stagingMaxAge]
+  /// are removed. A clone finishes in minutes.
+  ///
+  /// A name this code did not write is left alone, so an unparseable or
+  /// unrecognized sibling is never a candidate.
   void _reclaimStrandedStagingDirectories(Directory targetDirectory) {
     final prefix = '${p.basename(targetDirectory.path)}.';
     final cutoff = clock.now().subtract(_stagingMaxAge);
@@ -141,9 +167,11 @@ class ShorebirdFlutter {
     }
 
     for (final sibling in siblings.whereType<Directory>()) {
-      final name = p.basename(sibling.path);
-      if (!name.startsWith(prefix) || !name.endsWith(_stagingSuffix)) continue;
-      if (sibling.statSync().modified.isAfter(cutoff)) continue;
+      final since = _reclaimableSince(
+        name: p.basename(sibling.path),
+        prefix: prefix,
+      );
+      if (since == null || since.isAfter(cutoff)) continue;
       _deleteIgnoringErrors(sibling);
     }
   }
@@ -162,6 +190,31 @@ class ShorebirdFlutter {
     return !File(p.join(directory.path, 'bin', launcher)).existsSync();
   }
 
+  /// Moves an unusable install out of the way so a fresh one can take its
+  /// place, and hands the remains to [_reclaimStrandedStagingDirectories].
+  ///
+  /// Renamed rather than deleted because a launcher-less directory is also
+  /// what the shell bootstrap's in-place `git clone --no-checkout` looks like
+  /// while it runs, and there is no lock this side can take to tell the two
+  /// apart. A rename never destroys bytes another process is still writing.
+  /// The new name stamps this instant, so the sweep's age gate starts from
+  /// the rename rather than from whenever the directory was first written.
+  void _discardUnusableInstall(Directory directory) {
+    try {
+      directory.renameSync(_reclaimablePath(directory.path, tag: 'old'));
+    } on PathNotFoundException {
+      // A peer condemned it first. Its absence is the outcome wanted here.
+      return;
+    } on FileSystemException catch (error) {
+      final exception = CacheCorruptedException(
+        'Could not move ${directory.path} aside: $error.',
+        remedy: 'Remove ${directory.path} and run this command again.',
+      );
+      logger.err('$exception');
+      throw exception;
+    }
+  }
+
   /// Install the provided Flutter [revision].
   ///
   /// Installing is two steps, each with its own durable record, so an
@@ -169,8 +222,8 @@ class ShorebirdFlutter {
   /// for a finished install.
   ///
   /// The checkout records itself by existing: [_cloneAndCheckout] publishes
-  /// [targetDirectory] with a rename, so the directory is either a finished
-  /// checkout or absent. Precaching records itself with [precacheStampName].
+  /// the target directory with a rename, so it is either a finished checkout
+  /// or absent. Precaching records itself with [precacheStampName].
   /// Precache is idempotent, so a missing stamp re-runs it rather than
   /// re-cloning.
   ///
@@ -188,22 +241,31 @@ class ShorebirdFlutter {
     final targetDirectory = Directory(_workingDirectory(revision: revision));
     final precacheStamp = File(p.join(targetDirectory.path, precacheStampName));
 
-    if (_isUnusableInstall(targetDirectory)) {
+    // Runs ahead of the already-installed early return below. A run killed
+    // mid-clone publishes on its retry, and nothing would ever clone that
+    // revision again to reclaim what the killed run left behind.
+    _reclaimStrandedStagingDirectories(targetDirectory);
+
+    final isUnusable = _isUnusableInstall(targetDirectory);
+    if (!isUnusable &&
+        targetDirectory.existsSync() &&
+        precacheStamp.existsSync()) {
+      return;
+    }
+
+    // Read the version before condemning anything. getVersionForRevision runs
+    // git in the active revision's checkout, which is this very directory
+    // whenever the revision being installed is the active one.
+    final version = await getVersionForRevision(flutterRevision: revision);
+
+    if (isUnusable) {
       logger.info(
         '''Flutter ${shortRevisionString(revision)} is incompletely installed. Reinstalling it.''',
       );
-      _deleteIgnoringErrors(targetDirectory);
-      if (targetDirectory.existsSync()) {
-        throw CacheCorruptedException(
-          'Could not remove ${targetDirectory.path}.',
-        );
-      }
+      _discardUnusableInstall(targetDirectory);
     }
 
     final isCheckedOut = targetDirectory.existsSync();
-    if (isCheckedOut && precacheStamp.existsSync()) return;
-
-    final version = await getVersionForRevision(flutterRevision: revision);
 
     if (!isCheckedOut) {
       await _cloneAndCheckout(
@@ -240,25 +302,35 @@ class ShorebirdFlutter {
       );
     } on Exception catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');
-      throw CacheCorruptedException(
+      // The checkout itself is intact and precache re-runs on a missing
+      // stamp, so retrying is the whole repair.
+      final exception = CacheCorruptedException(
         'Failed to precache Flutter $version: $error.',
+        remedy: 'Run this command again to retry the precache.',
       );
+      logger.err('$exception');
+      throw exception;
     }
     if (result.exitCode != ExitCode.success.code) {
       precacheProgress.fail('Failed to precache Flutter $version');
       final stderr = '${result.stderr}'.trim();
-      throw CacheCorruptedException(
+      final exception = CacheCorruptedException(
         'flutter precache exited with code ${result.exitCode}: $stderr.',
+        remedy: 'Run this command again to retry the precache.',
       );
+      logger.err('$exception');
+      throw exception;
     }
     try {
       precacheStamp.createSync();
     } on FileSystemException catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');
-      logger.err('$error');
-      throw CacheCorruptedException(
+      final exception = CacheCorruptedException(
         'Failed to record the precache for Flutter $version: $error.',
+        remedy: 'Make sure ${precacheStamp.path} is writable and retry.',
       );
+      logger.err('$exception');
+      throw exception;
     }
     precacheProgress.complete();
   }
