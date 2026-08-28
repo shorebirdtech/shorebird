@@ -4,6 +4,23 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc
  -->
 
+## 1.6.120 (August 28, 2026)
+
+- 🐦 Flutter 3.47.2 / Dart 3.13.2 support
+  - iOS/macOS: always update Swift package dependencies, and remove the Xcode
+    environment when building Swift tools in the pre-action.
+  - Windows: fix hot reload failing on mtime truncation.
+  - Fix crashes in the symbolize command on stream errors and during VM
+    service connection.
+  - Fix a crash migrating flow-style exclude lists in `analysis_options.yaml`.
+  - Forward `--build-name` and `--build-number` to the desktop `version.json`.
+  - Linux: read heading text through the AtkText interface, fix a GList leak
+    in FlTouchManager.
+  - Roll libpng to 1.6.58.
+- ✨ New `shorebird patches rollback` and `shorebird patches rollforward`
+  commands.
+- 🐛 Stop reporting layered icons as changed assets.
+
 ## 1.6.119 (August 21, 2026)
 
 - 🐦 Flutter 3.47.1 / Dart 3.13.1 support
