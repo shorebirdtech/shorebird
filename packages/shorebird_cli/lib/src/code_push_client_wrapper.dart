@@ -996,6 +996,70 @@ aar artifact already exists, continuing...''');
     }
   }
 
+  /// Rolls back the patch identified by [patchId] under [releaseId]. Returns
+  /// whether the server changed the patch, which is `false` when it was
+  /// already rolled back.
+  ///
+  /// [patchNumber] is used purely for the human-readable progress message;
+  /// pass it through when the caller already has it on hand.
+  Future<bool> rollbackPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+    int? patchNumber,
+  }) async {
+    final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
+    final progress = logger.progress('Rolling back $label');
+    try {
+      final changed = await codePushClient.rollbackPatch(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patchId,
+      );
+      // A completed spinner would claim the rollback happened, so say so when
+      // the server reported there was nothing to change.
+      progress.complete(
+        changed ? null : 'No change: $label was already rolled back',
+      );
+      return changed;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+  }
+
+  /// Rolls forward (un-rolls-back) the patch identified by [patchId] under
+  /// [releaseId], returning it to its active state so the server resends the
+  /// same patch artifact to devices on the next patch check. Returns whether
+  /// the server changed the patch, which is `false` when it was already
+  /// active.
+  ///
+  /// [patchNumber] is used purely for the human-readable progress message;
+  /// pass it through when the caller already has it on hand.
+  Future<bool> rollforwardPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+    int? patchNumber,
+  }) async {
+    final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
+    final progress = logger.progress('Rolling forward $label');
+    try {
+      final changed = await codePushClient.rollforwardPatch(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patchId,
+      );
+      // A completed spinner would claim the rollforward happened, so say so
+      // when the server reported there was nothing to change.
+      progress.complete(
+        changed ? null : 'No change: $label was already active',
+      );
+      return changed;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+  }
+
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track].

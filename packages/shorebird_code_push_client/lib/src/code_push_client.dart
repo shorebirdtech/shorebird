@@ -631,6 +631,62 @@ class CodePushClient {
     }
   }
 
+  /// Rolls back the patch with [patchId] under [releaseId] for [appId].
+  ///
+  /// Devices on the affected release_version that next call the patch-check
+  /// endpoint will receive the patch number in `rolled_back_patch_numbers`,
+  /// which signals the updater to revert to the prior patch (or the base
+  /// release if none).
+  ///
+  /// Idempotent. Returns whether the server changed the patch: `false` when it
+  /// answers `304 Not Modified` because the patch was already rolled back,
+  /// `true` when it changed the patch. The server is the only authority on this,
+  /// since another actor may roll the patch back between a read and this call.
+  Future<bool> rollbackPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse(
+        '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollback',
+      ),
+    );
+
+    if (response.statusCode == HttpStatus.notModified) return false;
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+    return true;
+  }
+
+  /// Rolls forward (un-rolls-back) the patch with [patchId] under [releaseId]
+  /// for [appId]. The server flips `is_rolled_back` from `true` to `false`
+  /// on the same patch row, so the same patch artifact (same hash) becomes
+  /// active again.
+  ///
+  /// Idempotent. Returns whether the server changed the patch: `false` when it
+  /// answers `304 Not Modified` because the patch was already active, `true`
+  /// when it changed the patch. The server is the only authority on this, since
+  /// another actor may roll the patch forward between a read and this call.
+  Future<bool> rollforwardPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse(
+        '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollforward',
+      ),
+    );
+
+    if (response.statusCode == HttpStatus.notModified) return false;
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+    return true;
+  }
+
   /// Gets the list of organizations the user is a member of, along with the
   /// user's role in each organization.
   Future<List<OrganizationMembership>> getOrganizationMemberships() async {
