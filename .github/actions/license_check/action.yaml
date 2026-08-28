@@ -18,6 +18,9 @@ runs:
       uses: dart-lang/setup-dart@v1
       with:
         sdk: ${{ inputs.dart_sdk }}
+        # Its matcher path resolves against the calling composite action rather
+        # than setup-dart itself, so the file is never found. setup-dart#198.
+        problem-matcher: false
 
     - name: 📦 Install Dependencies
       working-directory: ${{ inputs.working_directory }}
