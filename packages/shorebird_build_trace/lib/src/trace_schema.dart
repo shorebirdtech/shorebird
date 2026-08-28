@@ -51,6 +51,12 @@ enum TraceCategory {
   /// HTTP request spans (artifact fetches + auth/upload).
   network('network'),
 
+  /// Shorebird-side install work that happens outside `flutter build`:
+  /// installing the Flutter fork, precaching engine artifacts, and
+  /// refreshing shorebird's own cached artifacts. Emitted by
+  /// shorebird_cli itself rather than by a subprocess producer.
+  setup('setup'),
+
   /// Consumer-side fallback for a category emitted by a future
   /// producer version that this consumer doesn't yet recognize. Never
   /// emitted on the wire.
@@ -169,6 +175,55 @@ class TraceNames {
   /// Name of the outer `pod install` span (emitted separately from
   /// phase sub-spans).
   static const String podInstallSpanName = 'pod install';
+
+  /// Name prefix for [SetupPhase] spans. Full span name shorebird
+  /// matches is `"setup: <phase>"`.
+  static const String setupNamePrefix = 'setup';
+}
+
+/// Shorebird-side setup steps, each emitted as a `setup`-category span
+/// named `"setup: <wireName>"`.
+///
+/// These run before `flutter build` and therefore land inside
+/// `shorebirdOverhead`, which is a subtraction (total minus Flutter's
+/// reported build time) and so attributes nothing on its own. On a cold
+/// CI runner these steps are dominated by downloads — the Flutter fork
+/// clone, the engine artifacts precache pulls, and shorebird's own
+/// cached artifacts — none of which any other span or the `network`
+/// category can see, because they happen in subprocesses. Without these
+/// spans a network-bound cold start is indistinguishable from slow local
+/// work. Same forward-compat rules as [TraceCategory].
+enum SetupPhase {
+  /// Cloning the Shorebird Flutter fork and checking out the pinned
+  /// revision.
+  flutterInstall('flutter_install'),
+
+  /// The `flutter precache` subprocess, which downloads engine
+  /// artifacts for the target platforms.
+  flutterPrecache('flutter_precache'),
+
+  /// Refreshing shorebird's own cached artifacts (aot-tools, patch,
+  /// bundletool).
+  shorebirdCache('shorebird_cache'),
+
+  /// Consumer-side fallback for a phase a future producer emits that
+  /// this consumer doesn't recognize. Never emitted on the wire.
+  other('');
+
+  const SetupPhase(this.wireName);
+
+  /// The phase name used in the emitted span (`"setup: <wireName>"`).
+  final String wireName;
+
+  /// Total parse: returns [other] for a null or unrecognized wire
+  /// value so consumers can bucket uniformly without coercing.
+  static SetupPhase parse(String? wire) {
+    if (wire == null) return other;
+    for (final p in values) {
+      if (p != other && p.wireName == wire) return p;
+    }
+    return other;
+  }
 }
 
 /// Phases identified by the CocoaPods verbose-output parser. Producer

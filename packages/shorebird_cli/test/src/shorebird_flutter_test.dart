@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -42,6 +43,7 @@ void main() {
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdTracerRef.overrideWith(ShorebirdTracer.new),
         },
       );
     }
