@@ -20,7 +20,11 @@ on:
     - cron: "0 0 * * *"
 
 env:
-  SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+  # SHOREBIRD_TOKEN is set per job, next to the SHOREBIRD_HOSTED_URL it has to
+  # match. An API key is a row in one environment's database, so unlike the
+  # Google-refresh-token format it replaced it does not authenticate against
+  # both. A single workflow-level token would silently 401 half the matrix.
+  #
   # Host toolchain for `dart test integration_test`, not the version under test.
   # Must ship a Dart new enough for the SDK constraints in the root pubspec.
   FLUTTER_VERSION: 3.47.1
@@ -72,6 +76,7 @@ jobs:
 
     env:
       SHOREBIRD_HOSTED_URL: https://api-dev.shorebird.dev
+      SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN_DEV }}
 
     steps:
       - name: 📚 Git Checkout
@@ -156,6 +161,7 @@ jobs:
 
     env:
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
+      SHOREBIRD_TOKEN: ${{ matrix.branch == 'stable' && secrets.SHOREBIRD_TOKEN_PROD || secrets.SHOREBIRD_TOKEN_DEV }}
 
     steps:
       - name: 📚 Git Checkout
