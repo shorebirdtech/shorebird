@@ -8,6 +8,7 @@ class AppsCommand extends ShorebirdCommand {
   /// {@macro apps_command}
   AppsCommand() {
     addSubcommand(AppsDeleteCommand());
+    addSubcommand(AppsListCommand());
     addSubcommand(AppsRenameCommand());
     addSubcommand(AppsTransferCommand());
   }
