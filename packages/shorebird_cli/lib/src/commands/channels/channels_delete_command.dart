@@ -12,8 +12,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// The channels backing Shorebird's built-in deployment tracks.
 ///
-/// Deleting one stops patch delivery for every device on that track, so the
-/// CLI calls it out ahead of the confirmation gate.
+/// These are permanent, so the CLI names them ahead of the confirmation gate.
 final _defaultTrackNames = <String>{
   DeploymentTrack.stable.value,
   DeploymentTrack.beta.value,
@@ -55,8 +54,9 @@ class ChannelsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
   @override
   String get description =>
       'Deletes a channel from an app.\n\n'
-      'Devices on the channel stop receiving patches. Deleting stable, beta, '
-      'or staging affects every device on that track.\n\n'
+      'Devices on the channel stop receiving patches.\n\n'
+      'The built-in tracks stable, beta, and staging are permanent and cannot '
+      'be deleted.\n\n'
       'Requires --$confirmNameArgName=<channel name>; there is no prompt, so '
       'this behaves the same in a terminal and in CI. Run '
       '"shorebird channels list" to see the names an app has.\n\n'

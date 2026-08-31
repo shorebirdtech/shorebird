@@ -255,9 +255,8 @@ void main() {
         ).called(1);
       });
 
-      // Cleaning up a built-in track is a legitimate operation, so the CLI
-      // warns rather than blocks.
-      test('still deletes when the name is confirmed', () async {
+      // The CLI documents permanence in help rather than enforcing it here.
+      test('sends the delete rather than blocking locally', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
         verify(
