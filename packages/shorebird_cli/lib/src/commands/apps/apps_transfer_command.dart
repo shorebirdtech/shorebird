@@ -84,9 +84,7 @@ class AppsTransferCommand extends ShorebirdCommand {
       rethrow;
     }
 
-    // Catch a wrong org id before the write, so the failure names the
-    // organization the caller is not in rather than surfacing a generic
-    // permission error.
+    // Fail fast on an org the caller is not in, so the message can name it.
     final membership = memberships.firstWhereOrNull(
       (m) => m.organization.id == organizationId,
     );
@@ -126,8 +124,8 @@ class AppsTransferCommand extends ShorebirdCommand {
     }
 
     if (isJsonMode) {
-      // The source organization is resolved server-side; AppMetadata does not
-      // carry it, and finding it here would mean walking every organization.
+      // AppMetadata does not carry the source organization, and finding it
+      // here would mean walking every organization.
       emitJsonSuccess({
         'app_id': appId,
         'display_name': app.displayName,

@@ -38,8 +38,8 @@ class AppsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
   @override
   String get description =>
       'Permanently deletes an app.\n\n'
-      'Every release and patch artifact belonging to the app is deleted from '
-      'storage. This cannot be undone.\n\n'
+      'Every release and patch belonging to the app is permanently removed. '
+      'This cannot be undone.\n\n'
       'Requires --$confirmNameArgName=<current display name>; there is no '
       'prompt, so this behaves the same in a terminal and in CI. Run '
       '"shorebird apps list" to get the exact name.\n\n'

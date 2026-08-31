@@ -1873,7 +1873,7 @@ void main() {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
-            HttpStatus.forbidden,
+            HttpStatus.failedDependency,
           ),
         );
 
@@ -1927,7 +1927,7 @@ void main() {
         when(() => httpClient.send(any())).thenAnswer(
           (_) async => http.StreamedResponse(
             Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
-            HttpStatus.notFound,
+            HttpStatus.failedDependency,
           ),
         );
 

@@ -255,8 +255,7 @@ void main() {
         ).called(1);
       });
 
-      // The CLI documents permanence in help rather than enforcing it here.
-      test('sends the delete rather than blocking locally', () async {
+      test('resolves a built-in track name to its channel id', () async {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.success.code));
         verify(

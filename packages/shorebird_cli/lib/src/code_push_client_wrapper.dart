@@ -258,7 +258,7 @@ This app may not exist or you may not have permission to view it.''');
   }
 
   /// Deletes the app with the provided [appId], along with every release and
-  /// patch artifact belonging to it.
+  /// patch belonging to it.
   Future<void> deleteApp({required String appId}) async {
     final deleteAppProgress = logger.progress('Deleting app');
     try {

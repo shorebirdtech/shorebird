@@ -535,9 +535,8 @@ class CodePushClient {
 
   /// Move the app with the provided [appId] into [organizationId].
   ///
-  /// The caller must be able to transfer apps out of the app's current
-  /// organization as well as into the target one; the server resolves the
-  /// source organization and rejects the request otherwise.
+  /// Requires permission to transfer apps in both the source and destination
+  /// organizations.
   Future<void> transferApp({
     required int organizationId,
     required String appId,
