@@ -1865,7 +1865,7 @@ void main() {
         expect(request.method, equals('POST'));
         expect(request.url, equals(v1('organizations/$organizationId/apps')));
         expect(request.hasHeaders(expectedHeaders), isTrue);
-        // The server expects snake_case here.
+        // Sent as snake_case; do not "fix" this to camelCase.
         expect(json.decode(request.body), equals({'app_id': appId}));
       });
 

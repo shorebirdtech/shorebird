@@ -105,12 +105,12 @@ class ChannelsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
     }
 
     final isDefaultTrack = _defaultTrackNames.contains(channelName);
-    // Warn ahead of the confirmation gate so a caller who has not yet passed
-    // --confirm-name sees the stakes before echoing the name back.
+    // Say so before the gate, so a caller does not go hunting for a
+    // confirmation value that will not help them.
     if (isDefaultTrack && !isJsonMode) {
       logger.warn(
-        '"$channelName" is one of Shorebird\'s built-in tracks. Deleting it '
-        'affects every device on that track.',
+        '"$channelName" is one of Shorebird\'s built-in tracks and cannot be '
+        'deleted.',
       );
     }
 
