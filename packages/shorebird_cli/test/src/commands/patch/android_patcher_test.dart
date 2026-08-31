@@ -595,8 +595,8 @@ Looked in:
 
       group('when one arch is missing from the patch build', () {
         setUp(() {
-          // Create every arch's libapp.so, then delete one to simulate AGP
-          // filtering a single ABI via ndk.abiFilters / splits.abi.
+          // Create every arch's libapp.so, then delete one to simulate a
+          // packaging rule excluding a single ABI.
           setUpProjectRootArtifacts();
           patchArtifactForArch(Arch.arm32).deleteSync();
 
@@ -627,6 +627,32 @@ Looked in:
           expect(result.keys, isNot(contains(Arch.arm32)));
           expect(result, hasLength(Arch.values.length - 1));
           verifyNever(() => progress.fail(any()));
+        });
+
+        test('warns which archs the patch leaves behind', () async {
+          await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: 'appId',
+              releaseId: 0,
+              releaseArtifact: File('release.aab'),
+            ),
+          );
+
+          final captured = verify(() => logger.warn(captureAny())).captured;
+          expect(captured, hasLength(1));
+          expect(
+            captured.single,
+            allOf(
+              contains(
+                'This patch does not cover every architecture in the release.',
+              ),
+              contains(
+                'Patched: ${Arch.arm64.androidBuildPath}, '
+                '${Arch.x86_64.androidBuildPath}',
+              ),
+              contains('Skipped: ${Arch.arm32.androidBuildPath}'),
+            ),
+          );
         });
       });
 
@@ -778,6 +804,18 @@ Looked in:
           for (final bundle in result.values) {
             expect(bundle.hashSignature, isNull);
           }
+        });
+
+        test('does not warn about skipped archs', () async {
+          await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: 'appId',
+              releaseId: 0,
+              releaseArtifact: File('release.aab'),
+            ),
+          );
+
+          verifyNever(() => logger.warn(any()));
         });
 
         group('when a private key is provided', () {

@@ -339,10 +339,16 @@ class ArtifactManager {
     final Map<String, List<String>> libsByArch;
     try {
       (entryCount, libsByArch) = await _nativeLibsInAabBaseModule(aab);
-    } on Exception {
+    }
+    // A name-only walk of the zip central directory decodes corrupt input to an
+    // empty archive rather than throwing, so this is only reachable via a
+    // filesystem I/O failure that cannot be forced on every CI platform.
+    // coverage:ignore-start
+    on Exception {
       // Unreadable bundles are handled by the extraction fallback elsewhere.
       return null;
     }
+    // coverage:ignore-end
 
     // An empty archive means the file is not a real bundle (corrupt or
     // garbage input decodes to zero entries rather than throwing), so don't
