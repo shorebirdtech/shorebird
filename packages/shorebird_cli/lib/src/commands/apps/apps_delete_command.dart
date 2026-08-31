@@ -41,7 +41,8 @@ class AppsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
       'Every release and patch artifact belonging to the app is deleted from '
       'storage. This cannot be undone.\n\n'
       'Requires --$confirmNameArgName=<current display name>; there is no '
-      'prompt, so this behaves the same in a terminal and in CI.\n\n'
+      'prompt, so this behaves the same in a terminal and in CI. Run '
+      '"shorebird apps list" to get the exact name.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird apps delete --app-id <id> --confirm-name "Acme Mobile" '
         '--json',

@@ -58,7 +58,8 @@ class ChannelsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
       'Devices on the channel stop receiving patches. Deleting stable, beta, '
       'or staging affects every device on that track.\n\n'
       'Requires --$confirmNameArgName=<channel name>; there is no prompt, so '
-      'this behaves the same in a terminal and in CI.\n\n'
+      'this behaves the same in a terminal and in CI. Run '
+      '"shorebird channels list" to see the names an app has.\n\n'
       '${ShorebirdCommand.jsonHint(
         'shorebird channels delete --app-id <id> --name qa '
         '--confirm-name qa --json',

@@ -17,7 +17,9 @@ class AppsRenameCommand extends ShorebirdCommand {
     argParser
       ..addOption(
         'name',
-        help: 'The new display name for the app (e.g. "Acme Mobile").',
+        help:
+            'The new display name for the app (e.g. "Acme Mobile"), up to '
+            '${CommonArguments.appDisplayNameMaxLength} characters.',
         mandatory: true,
       )
       ..addOption(
