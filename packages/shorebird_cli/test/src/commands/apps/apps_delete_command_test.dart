@@ -159,6 +159,35 @@ void main() {
       });
     });
 
+    group('when the delete fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.deleteApp(appId: any(named: 'appId')),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('rethrows in human-readable mode', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(isA<ProcessExit>()),
+        );
+      });
+
+      test('emits a JSON error envelope in --json mode', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runWithOverrides(command.run, jsonMode: true),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.software.code));
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(
+          (decoded['error'] as Map<String, dynamic>)['code'],
+          'software_error',
+        );
+      });
+    });
+
     group('when the fetch fails', () {
       setUp(() {
         when(

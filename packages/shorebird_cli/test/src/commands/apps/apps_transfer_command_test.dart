@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -187,6 +188,68 @@ void main() {
         final error = decoded['error'] as Map<String, dynamic>;
         expect(error['code'], 'usage_error');
         expect(error['hint'], 'Run: shorebird account orgs');
+      });
+    });
+
+    group('when the fetch fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('rethrows in human-readable mode', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(isA<ProcessExit>()),
+        );
+      });
+
+      test('emits a JSON error envelope in --json mode', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runWithOverrides(command.run, jsonMode: true),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.software.code));
+        verifyNeverTransferred();
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(
+          (decoded['error'] as Map<String, dynamic>)['code'],
+          'fetch_failed',
+        );
+      });
+    });
+
+    group('when the transfer fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.transferApp(
+            organizationId: any(named: 'organizationId'),
+            appId: any(named: 'appId'),
+          ),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('rethrows in human-readable mode', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(isA<ProcessExit>()),
+        );
+      });
+
+      test('emits a JSON error envelope in --json mode', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runWithOverrides(command.run, jsonMode: true),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.software.code));
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(
+          (decoded['error'] as Map<String, dynamic>)['code'],
+          'software_error',
+        );
       });
     });
 
