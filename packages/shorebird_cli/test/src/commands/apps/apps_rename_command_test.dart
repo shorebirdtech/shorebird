@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/apps/apps.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
@@ -136,6 +137,39 @@ void main() {
           ),
         );
       });
+
+      test('emits a JSON error envelope in --json mode', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runWithOverrides(command.run, jsonMode: true),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.usage.code));
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(
+          (decoded['error'] as Map<String, dynamic>)['code'],
+          'usage_error',
+        );
+      });
+    });
+
+    group('when the new name is too long', () {
+      setUp(() {
+        when(() => argResults['name']).thenReturn(
+          'a' * (CommonArguments.appDisplayNameMaxLength + 1),
+        );
+      });
+
+      test('exits with usage and does not write', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verifyNever(
+          () => codePushClientWrapper.updateApp(
+            appId: any(named: 'appId'),
+            displayName: any(named: 'displayName'),
+          ),
+        );
+      });
     });
 
     group('when the name is unchanged', () {
@@ -149,6 +183,52 @@ void main() {
             appId: any(named: 'appId'),
             displayName: any(named: 'displayName'),
           ),
+        );
+      });
+
+      test('emits a JSON error envelope in --json mode', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runWithOverrides(command.run, jsonMode: true),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.usage.code));
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(
+          (decoded['error'] as Map<String, dynamic>)['code'],
+          'usage_error',
+        );
+      });
+    });
+
+    group('when the rename fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.updateApp(
+            appId: any(named: 'appId'),
+            displayName: any(named: 'displayName'),
+          ),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('rethrows in human-readable mode', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(isA<ProcessExit>()),
+        );
+      });
+
+      test('emits a JSON error envelope in --json mode', () async {
+        final captured = <String>[];
+        final result = await captureStdout(
+          () => runWithOverrides(command.run, jsonMode: true),
+          captured: captured,
+        );
+        expect(result, equals(ExitCode.software.code));
+        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(
+          (decoded['error'] as Map<String, dynamic>)['code'],
+          'software_error',
         );
       });
     });

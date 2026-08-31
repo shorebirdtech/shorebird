@@ -48,8 +48,11 @@ class AppsRenameCommand extends ShorebirdCommand {
     if (errorCode != null) return errorCode;
 
     final displayName = results['name'] as String;
-    if (displayName.trim().isEmpty) {
-      const message = 'The new name must not be empty.';
+    if (displayName.trim().isEmpty ||
+        displayName.length > CommonArguments.appDisplayNameMaxLength) {
+      const message =
+          'App display name must be between 1 and '
+          '${CommonArguments.appDisplayNameMaxLength} characters.';
       if (isJsonMode) {
         emitJsonError(code: JsonErrorCode.usageError, message: message);
         return ExitCode.usage.code;
