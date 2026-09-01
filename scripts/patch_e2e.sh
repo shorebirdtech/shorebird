@@ -100,7 +100,11 @@ shorebird release android "${FLUTTER_VERSION_ARGS[@]}" --split-debug-info=./buil
 # Run the app on Android and ensure that the print statement is printed.
 wait_for_line "I flutter : hello world" \
     shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v
+# Killing the adb server is what breaks `shorebird preview` out of its logcat
+# tail. Wait for the device to come back so later adb commands don't race the
+# restarted daemon and see it as "offline".
 adb kill-server
+adb wait-for-device
 echo "✅ 'hello world' was printed"
 
 # Replace lib/main.dart "hello world" to "hello shorebird"
