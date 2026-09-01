@@ -13,21 +13,29 @@ import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// Exception thrown when the Shorebird cache appears to be corrupted.
-///
-/// Surfaces a user-actionable message directing the user to run
-/// `shorebird cache clean` and retry.
 class CacheCorruptedException implements Exception {
   /// Creates a [CacheCorruptedException] explaining why the cache is
   /// considered corrupted via [reason] (a complete sentence).
-  const CacheCorruptedException(this.reason);
+  ///
+  /// [remedy] is the advice shown after [reason]. It defaults to wiping the
+  /// whole cache, which is the right answer only when nothing narrower is
+  /// known: that wipe takes every installed Flutter revision with it, so a
+  /// caller that can name a smaller repair should pass it.
+  const CacheCorruptedException(
+    this.reason, {
+    this.remedy =
+        'Your Shorebird installation may be corrupted. '
+        "Try running 'shorebird cache clean' and retrying.",
+  });
 
   /// Human-readable explanation of why the cache is considered corrupted.
   final String reason;
 
+  /// Human-readable advice on how to recover.
+  final String remedy;
+
   @override
-  String toString() =>
-      '$reason Your Shorebird installation may be corrupted. '
-      "Try running 'shorebird cache clean' and retrying.";
+  String toString() => '$reason $remedy';
 }
 
 /// A reference to a [ShorebirdEnv] instance.

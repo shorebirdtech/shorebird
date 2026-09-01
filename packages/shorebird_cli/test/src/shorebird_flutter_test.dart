@@ -1,6 +1,7 @@
-// cspell:words revis
+// cspell:words revis precaches
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -28,6 +29,7 @@ void main() {
     late Platform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
+    late ShorebirdEnv targetShorebirdEnv;
     late ShorebirdProcess process;
     late ShorebirdProcessResult versionProcessResult;
     late ShorebirdProcessResult precacheProcessResult;
@@ -53,6 +55,7 @@ void main() {
       logger = MockShorebirdLogger();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
+      targetShorebirdEnv = MockShorebirdEnv();
       platform = MockPlatform();
       process = MockShorebirdProcess();
       versionProcessResult = MockShorebirdProcessResult();
@@ -65,7 +68,13 @@ void main() {
           outputDirectory: any(named: 'outputDirectory'),
           args: any(named: 'args'),
         ),
-      ).thenAnswer((_) async => {});
+      ).thenAnswer((invocation) async {
+        // Real `git clone` creates the output directory; installRevision
+        // writes into it afterwards.
+        Directory(
+          invocation.namedArguments[#outputDirectory] as String,
+        ).createSync(recursive: true);
+      });
       when(
         () => git.checkout(
           directory: any(named: 'directory'),
@@ -97,8 +106,19 @@ void main() {
       ).thenAnswer((_) async => 'origin/flutter_release/3.10.6');
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => platform.isMacOS).thenReturn(false);
+      when(() => platform.isWindows).thenReturn(false);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
+      when(
+        () => shorebirdEnv.copyWith(
+          flutterRevisionOverride: any(named: 'flutterRevisionOverride'),
+        ),
+      ).thenAnswer((invocation) {
+        when(() => targetShorebirdEnv.flutterRevision).thenReturn(
+          invocation.namedArguments[#flutterRevisionOverride] as String,
+        );
+        return targetShorebirdEnv;
+      });
       when(
         () => process.run('flutter', ['--version'], useVendedFlutter: false),
       ).thenAnswer((_) async => versionProcessResult);
@@ -894,11 +914,29 @@ origin/flutter_release/3.10.6''';
 
     group('installRevision', () {
       const revision = 'test-revision';
+      late Directory targetDirectory;
+      late File precacheStamp;
+
+      /// Puts [targetDirectory] in the state left by a published checkout,
+      /// without the precache stamp.
+      void createCheckout() {
+        File(
+          p.join(targetDirectory.path, 'bin', 'flutter'),
+        ).createSync(recursive: true);
+      }
+
+      setUp(() {
+        targetDirectory = Directory(
+          p.join(flutterDirectory.parent.path, revision),
+        );
+        precacheStamp = File(
+          p.join(targetDirectory.path, ShorebirdFlutter.precacheStampName),
+        );
+      });
 
       test('does nothing if the revision is already installed', () async {
-        Directory(
-          p.join(flutterDirectory.parent.path, revision),
-        ).createSync(recursive: true);
+        createCheckout();
+        precacheStamp.createSync();
 
         await runWithOverrides(
           () => shorebirdFlutter.installRevision(revision: revision),
@@ -912,8 +950,512 @@ origin/flutter_release/3.10.6''';
           ),
         );
         verifyNever(
-          () => process.run('flutter', any(that: contains('precache'))),
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
         );
+      });
+
+      group('when the checkout completed but precache did not', () {
+        setUp(createCheckout);
+
+        test('precaches without re-cloning', () async {
+          await runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          );
+
+          verifyNever(
+            () => git.clone(
+              url: any(named: 'url'),
+              outputDirectory: any(named: 'outputDirectory'),
+              args: any(named: 'args'),
+            ),
+          );
+          verify(
+            () => process.run(
+              'flutter',
+              any(that: contains('precache')),
+              workingDirectory: targetDirectory.path,
+            ),
+          ).called(1);
+          expect(precacheStamp.existsSync(), isTrue);
+        });
+      });
+
+      test('clones and checks out away from the target directory', () async {
+        late String cloneDirectory;
+        when(
+          () => git.clone(
+            url: any(named: 'url'),
+            outputDirectory: any(named: 'outputDirectory'),
+            args: any(named: 'args'),
+          ),
+        ).thenAnswer((invocation) async {
+          cloneDirectory =
+              invocation.namedArguments[#outputDirectory] as String;
+          Directory(cloneDirectory).createSync(recursive: true);
+        });
+
+        await runWithOverrides(
+          () => shorebirdFlutter.installRevision(revision: revision),
+        );
+
+        // The target directory must never hold an in-progress checkout, so
+        // that its existence is proof of a finished one.
+        expect(cloneDirectory, isNot(targetDirectory.path));
+        // The sweep finds strays by name alone, so the name the install
+        // writes and the name the sweep matches are one contract.
+        expect(p.basename(cloneDirectory), startsWith('$revision.'));
+        expect(cloneDirectory, endsWith('.tmp'));
+        verify(
+          () => git.checkout(directory: cloneDirectory, revision: revision),
+        ).called(1);
+        expect(Directory(cloneDirectory).existsSync(), isFalse);
+        expect(targetDirectory.existsSync(), isTrue);
+        // A clean install has no cleanup to report; saying otherwise would
+        // put a failure line in the log support asks users to attach.
+        verifyNever(
+          () => logger.detail(any(that: contains('Failed to remove'))),
+        );
+      });
+
+      group('when an older version left an incomplete install', () {
+        setUp(() {
+          // Installed in place by a version that did not publish by rename,
+          // so the directory exists without the launcher a checkout writes.
+          targetDirectory.createSync(recursive: true);
+        });
+
+        test('says so and reinstalls that revision alone', () async {
+          final otherInstall = Directory(
+            p.join(flutterDirectory.parent.path, 'another-revision'),
+          )..createSync(recursive: true);
+          final leftover = File(p.join(targetDirectory.path, 'leftover'))
+            ..createSync(recursive: true);
+
+          await runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          );
+
+          verify(
+            () => logger.info(
+              any(that: contains('is incompletely installed')),
+            ),
+          ).called(1);
+          expect(leftover.existsSync(), isFalse);
+          // Moved aside rather than deleted, under a name the sweep reclaims
+          // once nothing can still be writing into it.
+          final debris = targetDirectory.parent.listSync().where(
+            (e) =>
+                p.basename(e.path).startsWith('$revision.') &&
+                e.path.endsWith('.tmp'),
+          );
+          expect(debris, hasLength(1));
+          expect(
+            File(p.join(debris.single.path, 'leftover')).existsSync(),
+            isTrue,
+          );
+          // `shorebird cache clean` would have taken this with it.
+          expect(otherInstall.existsSync(), isTrue);
+          verify(
+            () => git.clone(
+              url: ShorebirdFlutter.flutterGitUrl,
+              outputDirectory: any(named: 'outputDirectory'),
+              args: any(named: 'args'),
+            ),
+          ).called(1);
+          expect(targetDirectory.existsSync(), isTrue);
+        });
+
+        test(
+          'reports when the incomplete install cannot be moved aside',
+          () async {
+            // Making the parent read-only is the portable way to block a
+            // rename of a child that is otherwise perfectly movable.
+            final parent = targetDirectory.parent;
+            Process.runSync('chmod', ['a-w', parent.path]);
+            addTearDown(() => Process.runSync('chmod', ['u+w', parent.path]));
+
+            await expectLater(
+              runWithOverrides(
+                () => shorebirdFlutter.installRevision(revision: revision),
+              ),
+              throwsA(isA<CacheCorruptedException>()),
+            );
+
+            // Both callers discard the exception and exit 70, so the reason
+            // has to reach the user from here or not at all, and the advice
+            // has to name this one directory rather than the whole cache.
+            verify(
+              () => logger.err(
+                any(
+                  that: allOf(
+                    contains('Could not move ${targetDirectory.path} aside'),
+                    contains('Remove ${targetDirectory.path}'),
+                    isNot(contains('shorebird cache clean')),
+                  ),
+                ),
+              ),
+            ).called(1);
+          },
+          testOn: 'linux || mac-os',
+        );
+
+        test('quarantines the debris from the moment it moves', () async {
+          Directory debris() => targetDirectory.parent
+              .listSync()
+              .whereType<Directory>()
+              .firstWhere(
+                (e) =>
+                    p.basename(e.path).startsWith('$revision.') &&
+                    e.path.endsWith('.tmp'),
+              );
+
+          await runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          );
+          final quarantined = debris().path;
+
+          // The condemned directory can be arbitrarily old, and a rename does
+          // not touch its mtime, so the sweep has to measure from the move
+          // rather than from whenever the directory was last written.
+          await runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          );
+          expect(Directory(quarantined).existsSync(), isTrue);
+
+          await withClock(
+            Clock.fixed(DateTime.now().add(const Duration(days: 2))),
+            () => runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+          );
+          expect(Directory(quarantined).existsSync(), isFalse);
+        });
+
+        test('carries on when a peer condemns it first', () async {
+          // logger.info runs in the window between deciding the install is
+          // unusable and moving it aside, which is where a peer's rename
+          // lands. Losing that race is not a failure: the directory being
+          // gone is the outcome this process wanted.
+          when(() => logger.info(any())).thenAnswer((_) {
+            targetDirectory.deleteSync(recursive: true);
+          });
+
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            completes,
+          );
+
+          verifyNever(() => logger.err(any()));
+          expect(targetDirectory.existsSync(), isTrue);
+        });
+
+        test('reads the version before moving the install aside', () async {
+          // getVersionForRevision runs git in the ACTIVE revision's checkout,
+          // which is the directory being condemned when the revision being
+          // installed is the active one.
+          final activeDirectory = Directory(
+            p.join(flutterDirectory.parent.path, flutterRevision),
+          )..createSync(recursive: true);
+          when(
+            () => git.forEachRef(
+              directory: any(named: 'directory'),
+              contains: any(named: 'contains'),
+              format: any(named: 'format'),
+              pattern: any(named: 'pattern'),
+            ),
+          ).thenAnswer((invocation) async {
+            final directory = invocation.namedArguments[#directory] as String;
+            if (!Directory(directory).existsSync()) {
+              throw const ProcessException(
+                'git',
+                ['for-each-ref'],
+                'no such path',
+              );
+            }
+            return 'origin/flutter_release/3.10.6';
+          });
+
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: flutterRevision),
+            ),
+            completes,
+          );
+
+          expect(activeDirectory.existsSync(), isTrue);
+        });
+
+        test(
+          'keeps a Windows install whose launcher is flutter.bat',
+          () async {
+            when(() => platform.isWindows).thenReturn(true);
+            File(
+              p.join(targetDirectory.path, 'bin', 'flutter.bat'),
+            ).createSync(recursive: true);
+
+            await runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            );
+
+            verifyNever(
+              () => logger.info(
+                any(that: contains('is incompletely installed')),
+              ),
+            );
+            verifyNever(
+              () => git.clone(
+                url: any(named: 'url'),
+                outputDirectory: any(named: 'outputDirectory'),
+                args: any(named: 'args'),
+              ),
+            );
+          },
+        );
+      });
+
+      group('when an earlier install was killed before publishing', () {
+        late Directory strandedStaging;
+
+        /// The name an install running [age] ago would have written. The age
+        /// lives in the name, never in the directory's mtime.
+        Directory stray(String path, Duration age) => Directory(
+          '$path.9999.${DateTime.now().subtract(age).millisecondsSinceEpoch}'
+          '.tmp',
+        );
+
+        setUp(() {
+          strandedStaging = stray(targetDirectory.path, const Duration(days: 2))
+            ..createSync(recursive: true);
+        });
+
+        test('reclaims the stranded staging directory', () async {
+          // The sweep runs over every sibling of the target, so the name is
+          // all that keeps it off other installs.
+          final otherInstall = Directory(
+            p.join(flutterDirectory.parent.path, 'another-revision'),
+          )..createSync(recursive: true);
+          final notStaging = Directory('${targetDirectory.path}.sibling')
+            ..createSync(recursive: true);
+          // Suffixed like a staging directory but carrying no timestamp the
+          // install wrote, so its age is unknown and it is not safe to remove.
+          final unstamped = Directory('${targetDirectory.path}.mystery.tmp')
+            ..createSync(recursive: true);
+          // Another revision's staging directory. Each install reclaims only
+          // its own strays, so this one belongs to a different revision.
+          final otherStaging = stray(
+            p.join(flutterDirectory.parent.path, 'another-revision'),
+            const Duration(days: 2),
+          )..createSync(recursive: true);
+
+          await runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          );
+
+          expect(strandedStaging.existsSync(), isFalse);
+          expect(otherInstall.existsSync(), isTrue);
+          expect(notStaging.existsSync(), isTrue);
+          expect(unstamped.existsSync(), isTrue);
+          expect(otherStaging.existsSync(), isTrue);
+          expect(targetDirectory.existsSync(), isTrue);
+        });
+
+        test(
+          "leaves a concurrent install's staging directory alone",
+          () async {
+            final live = stray(targetDirectory.path, const Duration(minutes: 5))
+              ..createSync(recursive: true);
+
+            await runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            );
+
+            expect(live.existsSync(), isTrue);
+          },
+        );
+
+        test(
+          'reclaims it even when the revision is already installed',
+          () async {
+            createCheckout();
+            precacheStamp.createSync();
+
+            // Nothing clones this revision again, so an install that returns
+            // early is the only thing left that can reclaim the stray.
+            await runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            );
+
+            expect(strandedStaging.existsSync(), isFalse);
+            verifyNever(
+              () => git.clone(
+                url: any(named: 'url'),
+                outputDirectory: any(named: 'outputDirectory'),
+                args: any(named: 'args'),
+              ),
+            );
+          },
+        );
+      });
+
+      group('when nothing has been installed yet', () {
+        setUp(() {
+          // No cache directory at all, so there are no siblings to sweep.
+          when(() => shorebirdEnv.flutterDirectory).thenReturn(
+            Directory(p.join(shorebirdRoot.path, 'missing', flutterRevision)),
+          );
+          targetDirectory = Directory(
+            p.join(shorebirdRoot.path, 'missing', revision),
+          );
+        });
+
+        test('installs without tripping over the absent directory', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            completes,
+          );
+
+          expect(targetDirectory.existsSync(), isTrue);
+        });
+      });
+
+      group('when the precache stamp cannot be written', () {
+        setUp(() {
+          createCheckout();
+          // Occupying the stamp path with a directory makes createSync throw.
+          Directory(
+            p.join(targetDirectory.path, ShorebirdFlutter.precacheStampName),
+          ).createSync(recursive: true);
+        });
+
+        test('fails loudly instead of exiting silently', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            throwsA(isA<CacheCorruptedException>()),
+          );
+
+          verify(
+            () => progress.fail('Failed to precache Flutter 3.10.6'),
+          ).called(1);
+          verify(() => logger.err(any())).called(1);
+        });
+      });
+
+      group('when the install is interrupted', () {
+        setUp(() {
+          when(
+            () => git.checkout(
+              directory: any(named: 'directory'),
+              revision: any(named: 'revision'),
+            ),
+          ).thenThrow(Exception('interrupted'));
+        });
+
+        test('leaves no target directory and no staging directory', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            throwsException,
+          );
+
+          expect(targetDirectory.existsSync(), isFalse);
+          expect(
+            targetDirectory.parent.listSync().where(
+              (e) => p.basename(e.path).startsWith(revision),
+            ),
+            isEmpty,
+          );
+        });
+      });
+
+      group('when another process publishes the revision first', () {
+        setUp(() {
+          when(
+            () => git.checkout(
+              directory: any(named: 'directory'),
+              revision: any(named: 'revision'),
+            ),
+          ).thenAnswer((_) async {
+            // Publishing makes this process's rename onto it fail. The peer
+            // publishes a finished checkout, launcher and all, which is what
+            // separates it from a directory being written in place.
+            createCheckout();
+            File(
+              p.join(targetDirectory.path, 'already-here'),
+            ).createSync(recursive: true);
+          });
+        });
+
+        test('adopts the published checkout instead of failing', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            completes,
+          );
+
+          verifyNever(() => progress.fail(any()));
+          expect(
+            File(p.join(targetDirectory.path, 'already-here')).existsSync(),
+            isTrue,
+          );
+          verify(
+            () => process.run(
+              'flutter',
+              any(that: contains('precache')),
+              workingDirectory: targetDirectory.path,
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when another process is cloning into the target in place', () {
+        setUp(() {
+          when(
+            () => git.checkout(
+              directory: any(named: 'directory'),
+              revision: any(named: 'revision'),
+            ),
+          ).thenAnswer((_) async {
+            // The shell bootstrap clones into this path with --no-checkout,
+            // so the directory exists and blocks the rename long before a
+            // launcher is written to it.
+            File(
+              p.join(targetDirectory.path, '.git', 'config'),
+            ).createSync(recursive: true);
+          });
+        });
+
+        test('fails instead of adopting the half-written checkout', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            throwsA(isA<FileSystemException>()),
+          );
+
+          // Adopting it would precache into a directory with no Flutter in
+          // it and then stamp it, so every later run would return early on a
+          // broken install.
+          verifyNever(
+            () => process.run(
+              'flutter',
+              any(that: contains('precache')),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          );
+          expect(precacheStamp.existsSync(), isFalse);
+        });
       });
 
       test('throws exception if unable to clone', () async {
@@ -936,12 +1478,16 @@ origin/flutter_release/3.10.6''';
         verify(
           () => git.clone(
             url: ShorebirdFlutter.flutterGitUrl,
-            outputDirectory: p.join(flutterDirectory.parent.path, revision),
+            outputDirectory: any(named: 'outputDirectory'),
             args: ['--filter=tree:0', '--no-checkout'],
           ),
         ).called(1);
         verifyNever(
-          () => process.run('flutter', any(that: contains('precache'))),
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
         );
       });
 
@@ -963,13 +1509,13 @@ origin/flutter_release/3.10.6''';
         verify(
           () => git.clone(
             url: ShorebirdFlutter.flutterGitUrl,
-            outputDirectory: p.join(flutterDirectory.parent.path, revision),
+            outputDirectory: any(named: 'outputDirectory'),
             args: ['--filter=tree:0', '--no-checkout'],
           ),
         ).called(1);
         verify(
           () => git.checkout(
-            directory: p.join(flutterDirectory.parent.path, revision),
+            directory: any(named: 'directory'),
             revision: revision,
           ),
         ).called(1);
@@ -992,26 +1538,32 @@ origin/flutter_release/3.10.6''';
           ).thenThrow(Exception('oh no!'));
         });
 
-        test(
-          'throws CacheCorruptedException directing to shorebird cache clean',
-          () async {
-            await expectLater(
-              runWithOverrides(
-                () => shorebirdFlutter.installRevision(revision: revision),
-              ),
-              throwsA(
-                isA<CacheCorruptedException>().having(
-                  (e) => e.toString(),
-                  'toString',
-                  contains('shorebird cache clean'),
+        test('reports the reason and says to retry, not to wipe', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            throwsA(
+              isA<CacheCorruptedException>().having(
+                (e) => e.toString(),
+                'toString',
+                allOf(
+                  contains('oh no!'),
+                  contains('Run this command again'),
+                  isNot(contains('shorebird cache clean')),
                 ),
               ),
-            );
-            verify(
-              () => progress.fail('Failed to precache Flutter 3.10.6'),
-            ).called(1);
-          },
-        );
+            ),
+          );
+          verify(
+            () => progress.fail('Failed to precache Flutter 3.10.6'),
+          ).called(1);
+          // Both callers discard the exception, so the reason only reaches
+          // the user if it is logged here.
+          verify(() => logger.err(any(that: contains('oh no!')))).called(1);
+          // No stamp, so the next run retries precache.
+          expect(precacheStamp.existsSync(), isFalse);
+        });
       });
 
       group('when precache exits with a non-zero code', () {
@@ -1020,26 +1572,54 @@ origin/flutter_release/3.10.6''';
           when(() => precacheProcessResult.stderr).thenReturn('boom');
         });
 
-        test(
-          'throws CacheCorruptedException directing to shorebird cache clean',
-          () async {
-            await expectLater(
-              runWithOverrides(
-                () => shorebirdFlutter.installRevision(revision: revision),
-              ),
-              throwsA(
-                isA<CacheCorruptedException>().having(
-                  (e) => e.toString(),
-                  'toString',
-                  contains('shorebird cache clean'),
+        test('reports the stderr and says to retry, not to wipe', () async {
+          await expectLater(
+            runWithOverrides(
+              () => shorebirdFlutter.installRevision(revision: revision),
+            ),
+            throwsA(
+              isA<CacheCorruptedException>().having(
+                (e) => e.toString(),
+                'toString',
+                allOf(
+                  contains('boom'),
+                  contains('Run this command again'),
+                  isNot(contains('shorebird cache clean')),
                 ),
               ),
-            );
-            verify(
-              () => progress.fail('Failed to precache Flutter 3.10.6'),
-            ).called(1);
-          },
+            ),
+          );
+          verify(
+            () => progress.fail('Failed to precache Flutter 3.10.6'),
+          ).called(1);
+          verify(() => logger.err(any(that: contains('boom')))).called(1);
+          // No stamp, so the next run retries precache.
+          expect(precacheStamp.existsSync(), isFalse);
+        });
+      });
+
+      test('precaches the target revision, not the active revision', () async {
+        ShorebirdEnv? envDuringPrecache;
+        when(
+          () => process.run(
+            'flutter',
+            any(that: contains('precache')),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async {
+          envDuringPrecache = read(shorebirdEnvRef);
+          return precacheProcessResult;
+        });
+
+        await runWithOverrides(
+          () => shorebirdFlutter.installRevision(revision: revision),
         );
+
+        // The vended `flutter` binary is resolved from the ambient revision,
+        // so precache only warms [revision] if the scope says so.
+        expect(envDuringPrecache, same(targetShorebirdEnv));
+        expect(envDuringPrecache!.flutterRevision, revision);
+        expect(shorebirdEnv.flutterRevision, isNot(revision));
       });
 
       group('when clone and checkout succeed', () {
@@ -1065,6 +1645,7 @@ origin/flutter_release/3.10.6''';
           ).called(1);
           // Once for the installation and once for the precache.
           verify(progress.complete).called(2);
+          expect(precacheStamp.existsSync(), isTrue);
         });
       });
     });

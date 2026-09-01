@@ -6,7 +6,6 @@ void main() {
     const request = PatchCheckRequest(
       releaseVersion: '1',
       patchNumber: 2,
-      patchHash: '3',
       platform: ReleasePlatform.android,
       arch: 'arm64',
       appId: 'app_123',
@@ -26,7 +25,6 @@ void main() {
       const copy = PatchCheckRequest(
         releaseVersion: '1',
         patchNumber: 2,
-        patchHash: '3',
         platform: ReleasePlatform.android,
         arch: 'arm64',
         appId: 'app_123',
@@ -37,7 +35,6 @@ void main() {
       const different = PatchCheckRequest(
         releaseVersion: '1',
         patchNumber: 2,
-        patchHash: '3',
         platform: ReleasePlatform.android,
         arch: 'arm64',
         appId: 'app_123',

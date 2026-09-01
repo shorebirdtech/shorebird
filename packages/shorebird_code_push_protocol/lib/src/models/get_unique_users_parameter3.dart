@@ -1,5 +1,6 @@
 enum GetUniqueUsersParameter3 {
-  platform._('platform');
+  platform._('platform'),
+  releaseVersion._('release_version');
 
   const GetUniqueUsersParameter3._(this.value);
 
