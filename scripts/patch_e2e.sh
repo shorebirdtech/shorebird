@@ -51,13 +51,28 @@ keytool -genkey -v -keystore ~/.android/debug.keystore -keyalg RSA \
 shorebird release android --flutter-version=$FLUTTER_VERSION --split-debug-info=./build/symbols -v
 
 # Run the app on Android and ensure that the print statement is printed.
+# `shorebird preview` runs in a process substitution, so its exit code is lost:
+# if it fails (a 5xx from the API, say) the loop simply ends and the script
+# would otherwise carry on and fail later with an unrelated error. Track
+# whether the marker was seen and fail here instead.
+saw_hello_world=0
 while IFS= read line; do
     if [[ "$line" == *"I flutter : hello world"* ]]; then
+        # Killing the adb server is what breaks `shorebird preview` out of its
+        # logcat tail. Wait for the device to come back so later adb commands
+        # don't race the restarted daemon and see it as "offline".
         adb kill-server
+        adb wait-for-device
+        saw_hello_world=1
         echo "✅ 'hello world' was printed"
         break
     fi
 done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v)
+
+if [[ "$saw_hello_world" != "1" ]]; then
+    echo "❌ 'shorebird preview' never printed 'hello world' (see its output above)"
+    exit 1
+fi
 
 # Replace lib/main.dart "hello world" to "hello shorebird"
 sed -i 's/hello world/hello shorebird/g' lib/main.dart
@@ -69,14 +84,21 @@ cat lib/main.dart
 shorebird patch android --release-version 0.1.0+1 --split-debug-info=./build/symbols -v
 
 # Run the app on Android and ensure that the original print statement is printed.
+saw_patch_installed=0
 while IFS= read line; do
     if [[ "$line" == *"Patch 1 successfully"* ]]; then
         # Kill the app so we can boot the patch
         adb shell am force-stop com.example.e2e_test.e2e_test
+        saw_patch_installed=1
         echo "✅ Patch 1 successfully installed"
         break
     fi
 done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v)
+
+if [[ "$saw_patch_installed" != "1" ]]; then
+    echo "❌ 'shorebird preview' never installed patch 1 (see its output above)"
+    exit 1
+fi
 
 # Re-run the app, *not* using shorebird preview, as that installs the base release.
 adb shell monkey -p com.example.e2e_test.e2e_test -c android.intent.category.LAUNCHER 1
@@ -84,13 +106,22 @@ adb shell monkey -p com.example.e2e_test.e2e_test -c android.intent.category.LAU
 # Re-run the app on Android and ensure that the new print statement is printed,
 # tailing adb logs and printing the last 10 seconds of logs in case the
 # "hello shorebird" statement was printed before entering the loop.
+# `adb logcat` never exits on its own, so bound the wait rather than letting the
+# job burn its whole timeout when the patch didn't take.
+saw_hello_shorebird=0
 while IFS= read line; do
     if [[ "$line" == *"I flutter : hello shorebird"* ]]; then
         adb kill-server
+        saw_hello_shorebird=1
         echo "✅ 'hello shorebird' was printed"
         break
     fi
-done < <(adb logcat -T '10.0')
+done < <(timeout 120 adb logcat -T '10.0')
+
+if [[ "$saw_hello_shorebird" != "1" ]]; then
+    echo "❌ 'hello shorebird' was never printed; the patch did not boot"
+    exit 1
+fi
 
 echo "✅ All tests passed!"
 exit 0
