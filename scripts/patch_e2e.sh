@@ -16,6 +16,36 @@
 
 FLUTTER_VERSION=$1
 
+# The environment this script exercises. `shorebird release` and `shorebird
+# patch` pick this up from shorebird.yaml below; the cleanup trap calls the API
+# directly and needs it too.
+API_BASE_URL="https://api-dev.shorebird.dev"
+
+# `shorebird init` mints a brand new app on every leg, and the nightly runs 30
+# of them. Left alone the e2e account's app list grows by ~30 a night forever,
+# and every `shorebird release` fetches that whole list up front -- by Aug 2026
+# it was a 7.7MB response taking 10s under load, which saturated api-dev and
+# made it shed requests with a 429. Delete the app this leg created, whether or
+# not the test passed, so the list stays flat.
+#
+# There is no `shorebird apps delete` command, so this goes straight to the API.
+# The x-version value must satisfy the server's `supportedClientVersions`; it is
+# the same value the CLI sends, from
+# packages/shorebird_code_push_client/lib/src/version.dart.
+cleanup_app() {
+    local status=$?
+    if [[ -n "${APP_ID:-}" ]]; then
+        echo "Deleting e2e app $APP_ID"
+        curl --silent --show-error --fail-with-body -X DELETE \
+            -H "Authorization: Bearer $SHOREBIRD_TOKEN" \
+            -H "x-version: 0.9.0+1" \
+            "$API_BASE_URL/api/v1/apps/$APP_ID" ||
+            echo "⚠️  Failed to delete e2e app $APP_ID; it will need pruning."
+    fi
+    return $status
+}
+trap cleanup_app EXIT
+
 # Intentionally including a space in the path.
 TEMP_DIR=$(mktemp -d -t 'shorebird workspace-XXXXX')
 cd "$TEMP_DIR"
@@ -35,7 +65,7 @@ flutter doctor --verbose
 shorebird doctor --verbose
 
 # Point to the development environment
-echo "base_url: https://api-dev.shorebird.dev" >>shorebird.yaml
+echo "base_url: $API_BASE_URL" >>shorebird.yaml
 
 # Extract the app_id from the "shorebird.yaml"
 APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
