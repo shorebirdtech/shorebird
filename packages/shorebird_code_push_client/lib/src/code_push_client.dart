@@ -531,7 +531,28 @@ class CodePushClient {
     }
   }
 
+  /// Fetches the app with the provided [appId], or `null` if no such app is
+  /// visible to the current account.
+  ///
+  /// Prefer this over filtering [getApps] when the app id is already known:
+  /// [getApps] returns every app on the account, which is unbounded.
+  Future<AppMetadata?> getApp({required String appId}) async {
+    final response = await _httpClient.get(Uri.parse('$_v1/apps/$appId'));
+
+    if (response.statusCode == HttpStatus.notFound) return null;
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return AppMetadata.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   /// List all apps for the current account.
+  ///
+  /// This is unpaginated and returns every app the account can see. Use
+  /// [getApp] when you already know the app id.
   Future<List<AppMetadata>> getApps() async {
     final response = await _httpClient.get(Uri.parse('$_v1/apps'));
 

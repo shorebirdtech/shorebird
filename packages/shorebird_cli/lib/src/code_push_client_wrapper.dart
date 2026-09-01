@@ -175,9 +175,27 @@ This app may not exist or you may not have permission to view it.''');
 
   /// Returns [AppMetadata] for the provided [appId] or null if the app does not
   /// exist.
+  ///
+  /// This asks the server for the one app rather than downloading the whole
+  /// account and filtering locally. `getApps` is unpaginated, so the old
+  /// approach cost O(apps on the account) on every `release`, `patch` and
+  /// `init` -- on a large account that is megabytes and seconds to resolve an
+  /// id the caller already had.
   Future<AppMetadata?> maybeGetApp({required String appId}) async {
-    final apps = await getApps();
-    return apps.firstWhereOrNull((a) => a.appId == appId);
+    final fetchAppProgress = logger.progress('Fetching app');
+    try {
+      final app = await codePushClient.getApp(appId: appId);
+      fetchAppProgress.complete();
+      return app;
+    } on CodePushForbiddenException {
+      // The app exists but belongs to someone else. Callers surface this the
+      // same way as "no such app", which is what the list-and-filter approach
+      // did: an app you cannot see simply was not in the list.
+      fetchAppProgress.complete();
+      return null;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: fetchAppProgress);
+    }
   }
 
   /// Fetches the channels for the given [appId] and channel [name].
