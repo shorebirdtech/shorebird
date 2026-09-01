@@ -137,10 +137,82 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
+      });
+
+      group('when the error body is not JSON', () {
+        test('surfaces the status code and the body as details', () {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(
+                utf8.encode('<html><body>\n  502 Bad Gateway\n</body></html>'),
+              ),
+              HttpStatus.badGateway,
+            ),
+          );
+
+          expect(
+            codePushClient.getCurrentUser(),
+            throwsA(
+              isA<CodePushException>()
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    CodePushClient.unknownErrorMessageFor(
+                      HttpStatus.badGateway,
+                    ),
+                  )
+                  .having(
+                    (e) => e.details,
+                    'details',
+                    '<html><body> 502 Bad Gateway </body></html>',
+                  ),
+            ),
+          );
+        });
+
+        test('truncates a long body', () {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('x' * 500)),
+              HttpStatus.badGateway,
+            ),
+          );
+
+          expect(
+            codePushClient.getCurrentUser(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.details,
+                'details',
+                '${'x' * 200}...',
+              ),
+            ),
+          );
+        });
+
+        test('omits details when the body is empty', () {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('   \n  ')),
+              HttpStatus.badGateway,
+            ),
+          );
+
+          expect(
+            codePushClient.getCurrentUser(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.details,
+                'details',
+                isNull,
+              ),
+            ),
+          );
+        });
       });
 
       test('returns a deserialize user if the request succeeds', () async {
@@ -307,7 +379,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -644,7 +718,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -1201,7 +1277,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -1294,7 +1370,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -1397,7 +1473,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -1508,7 +1584,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -1655,7 +1731,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -1713,7 +1789,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -1758,7 +1836,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -1828,7 +1908,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -1926,7 +2008,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -2026,7 +2110,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -2126,7 +2212,9 @@ void main() {
               isA<CodePushException>().having(
                 (e) => e.message,
                 'message',
-                CodePushClient.unknownErrorMessage,
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
               ),
             ),
           );
@@ -2213,7 +2301,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -2314,7 +2404,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -2457,7 +2547,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -2576,7 +2666,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -2628,7 +2718,9 @@ void main() {
               isA<CodePushException>().having(
                 (e) => e.message,
                 'message',
-                CodePushClient.unknownErrorMessage,
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
               ),
             ),
           );
@@ -2678,7 +2770,9 @@ void main() {
               isA<CodePushException>().having(
                 (e) => e.message,
                 'message',
-                CodePushClient.unknownErrorMessage,
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
               ),
             ),
           );
@@ -2722,7 +2816,9 @@ void main() {
               isA<CodePushException>().having(
                 (e) => e.message,
                 'message',
-                CodePushClient.unknownErrorMessage,
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
               ),
             ),
           );
