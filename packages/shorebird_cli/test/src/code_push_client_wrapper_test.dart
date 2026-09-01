@@ -417,7 +417,9 @@ void main() {
       group('getApp', () {
         test('exits with code 70 when getting app fails', () async {
           const error = 'something went wrong';
-          when(() => codePushClient.getApps()).thenThrow(error);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
 
           await expectLater(
             () async => runWithOverrides(
@@ -429,7 +431,9 @@ void main() {
         });
 
         test('exits with code 70 when app does not exist', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => null);
 
           await expectLater(
             () async => runWithOverrides(
@@ -447,7 +451,9 @@ void main() {
         });
 
         test('returns app when app exists', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => app);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.getApp(appId: appId),
@@ -459,9 +465,24 @@ void main() {
       });
 
       group('maybeGetApp', () {
-        test('exits with code 70 when fetching apps fails', () async {
+        test('requests the single app rather than the whole account', () async {
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => app);
+
+          await runWithOverrides(
+            () => codePushClientWrapper.maybeGetApp(appId: appId),
+          );
+
+          verify(() => codePushClient.getApp(appId: appId)).called(1);
+          verifyNever(() => codePushClient.getApps());
+        });
+
+        test('exits with code 70 when fetching the app fails', () async {
           const error = 'something went wrong';
-          when(() => codePushClient.getApps()).thenThrow(error);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
 
           await expectLater(
             () async => runWithOverrides(
@@ -473,7 +494,23 @@ void main() {
         });
 
         test('succeeds if app does not exist', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => null);
+
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetApp(appId: appId),
+          );
+
+          expect(result, isNull);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => logger.err(any()));
+        });
+
+        test('returns null if the app belongs to someone else', () async {
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenThrow(CodePushForbiddenException(message: 'nope'));
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetApp(appId: appId),
@@ -485,7 +522,9 @@ void main() {
         });
 
         test('returns app when app exists', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => app);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetApp(appId: appId),
