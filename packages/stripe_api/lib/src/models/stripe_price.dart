@@ -39,6 +39,25 @@ enum UsageType {
   metered,
 }
 
+/// {@template recurring_interval}
+/// The unit of time between a recurring [StripePrice]'s billings.
+/// https://docs.stripe.com/api/prices/object#price_object-recurring-interval
+/// {@endtemplate}
+@JsonEnum()
+enum RecurringInterval {
+  /// Bills every [StripePrice.intervalCount] days.
+  day,
+
+  /// Bills every [StripePrice.intervalCount] weeks.
+  week,
+
+  /// Bills every [StripePrice.intervalCount] months.
+  month,
+
+  /// Bills every [StripePrice.intervalCount] years.
+  year,
+}
+
 /// {@template stripe_price}
 /// A partial Dart representation of the Price object from Stripe's API.
 ///
@@ -56,6 +75,8 @@ class StripePrice {
     this.unitAmountDecimal,
     this.tiers,
     this.usageType,
+    this.interval,
+    this.intervalCount,
     this.metadata = const {},
     this.meterId,
     this.nickname,
@@ -116,6 +137,25 @@ class StripePrice {
   static Object? _readUsageType(Map<dynamic, dynamic> json, String _) {
     final recurring = json['recurring'] as Map<String, dynamic>?;
     return recurring?['usage_type'];
+  }
+
+  /// The unit of time between billings. Null for a one-time price.
+  @JsonKey(readValue: _readInterval)
+  final RecurringInterval? interval;
+
+  static Object? _readInterval(Map<dynamic, dynamic> json, String _) {
+    final recurring = json['recurring'] as Map<String, dynamic>?;
+    return recurring?['interval'];
+  }
+
+  /// How many [interval]s pass between billings: `3` with
+  /// [RecurringInterval.month] bills quarterly. Null for a one-time price.
+  @JsonKey(readValue: _readIntervalCount)
+  final int? intervalCount;
+
+  static Object? _readIntervalCount(Map<dynamic, dynamic> json, String _) {
+    final recurring = json['recurring'] as Map<String, dynamic>?;
+    return recurring?['interval_count'];
   }
 }
 

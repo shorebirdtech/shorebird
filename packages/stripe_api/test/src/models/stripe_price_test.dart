@@ -21,7 +21,24 @@ void main() {
         expect(price.unitAmountDecimal, Decimal.fromInt(1500));
         expect(price.tiers, isNull);
         expect(price.usageType, UsageType.licensed);
+        expect(price.interval, RecurringInterval.month);
+        expect(price.intervalCount, 1);
         expect(price.meterId, isNull);
+      });
+
+      test('deserializes a one-time price with no interval', () {
+        final items =
+            (subscriptionJson['items'] as Map<String, dynamic>)['data'] as List;
+        final priceJson =
+            ((items.first as Map<String, dynamic>)['price']
+                  as Map<String, dynamic>)
+              ..remove('recurring');
+
+        final price = StripePrice.fromJson(priceJson);
+
+        expect(price.usageType, isNull);
+        expect(price.interval, isNull);
+        expect(price.intervalCount, isNull);
       });
 
       test('can be deserialized from json (pay as you go)', () {
@@ -40,6 +57,8 @@ void main() {
         expect(price.unitAmountDecimal, Decimal.parse('0.04'));
         expect(price.tiers, isNull);
         expect(price.usageType, UsageType.metered);
+        expect(price.interval, RecurringInterval.month);
+        expect(price.intervalCount, 1);
         expect(price.meterId, 'mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144');
       });
     });
