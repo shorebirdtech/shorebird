@@ -96,7 +96,7 @@ StripeSubscription _$StripeSubscriptionFromJson(Map<String, dynamic> json) =>
           ),
           collectionMethod: $checkedConvert(
             'collection_method',
-            (v) => v as String?,
+            (v) => $enumDecodeNullable(_$StripeCollectionMethodEnumMap, v),
           ),
         );
         return val;
@@ -132,3 +132,8 @@ Value? _$JsonConverterFromJson<Json, Value>(
   Object? json,
   Value? Function(Json json) fromJson,
 ) => json == null ? null : fromJson(json as Json);
+
+const _$StripeCollectionMethodEnumMap = {
+  StripeCollectionMethod.chargeAutomatically: 'charge_automatically',
+  StripeCollectionMethod.sendInvoice: 'send_invoice',
+};

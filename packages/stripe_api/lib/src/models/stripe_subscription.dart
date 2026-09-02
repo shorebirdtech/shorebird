@@ -36,6 +36,23 @@ enum StripeSubscriptionStatus {
   paused,
 }
 
+/// How a [StripeSubscription]'s invoices collect payment.
+///
+/// See https://docs.stripe.com/api/subscriptions/object#subscription_object-collection_method.
+@JsonEnum(fieldRename: FieldRename.snake)
+enum StripeCollectionMethod {
+  /// Stripe charges the payment method on file when an invoice finalizes.
+  chargeAutomatically('charge_automatically'),
+
+  /// Stripe emails a hosted invoice and waits for the customer to pay it.
+  sendInvoice('send_invoice');
+
+  const StripeCollectionMethod(this.value);
+
+  /// The value Stripe uses for this method on the wire.
+  final String value;
+}
+
 /// {@template stripe_subscription}
 /// A partial Dart representation of the Subscription object from Stripe's API.
 ///
@@ -147,9 +164,8 @@ class StripeSubscription {
   @JsonKey(name: 'automatic_tax', fromJson: _automaticTaxEnabledFromJson)
   final bool automaticTaxEnabled;
 
-  /// How this subscription's invoices collect payment:
-  /// `charge_automatically` or `send_invoice`.
-  final String? collectionMethod;
+  /// How this subscription's invoices collect payment.
+  final StripeCollectionMethod? collectionMethod;
 
   /// Whether this subscription is in an active or trialing state.
   bool get isActiveOrTrial =>

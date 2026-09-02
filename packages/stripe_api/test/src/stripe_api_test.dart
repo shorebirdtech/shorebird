@@ -376,7 +376,7 @@ void main() {
           automaticTaxEnabled: true,
           metadata: const {},
           idempotencyKey: 'key_123',
-          collectionMethod: 'send_invoice',
+          collectionMethod: StripeCollectionMethod.sendInvoice,
           daysUntilDue: 30,
         );
 
@@ -515,13 +515,15 @@ void main() {
         );
       });
 
-      test('sends the correct request', () async {
-        await stripeApi.cancelSubscription(
+      test('sends the correct request and returns the subscription', () async {
+        final subscription = await stripeApi.cancelSubscription(
           subscriptionId: 'sub_123',
           invoiceNow: true,
           prorate: true,
         );
 
+        // cspell:disable-next-line
+        expect(subscription.id, 'sub_1MvjPuHSA9cXarIcaWYNaezR');
         verify(
           () => httpClient.delete(
             uri,

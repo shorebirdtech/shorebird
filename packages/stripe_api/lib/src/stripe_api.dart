@@ -116,9 +116,9 @@ class StripeApi {
   /// customer's own currency and default payment method.
   ///
   /// [collectionMethod] selects how invoices collect: null leaves Stripe's
-  /// default (`charge_automatically`); `send_invoice` emails a hosted invoice
-  /// instead of charging the payment method, and Stripe then requires
-  /// [daysUntilDue].
+  /// default ([StripeCollectionMethod.chargeAutomatically]);
+  /// [StripeCollectionMethod.sendInvoice] emails a hosted invoice instead of
+  /// charging the payment method, and Stripe then requires [daysUntilDue].
   ///
   /// See https://docs.stripe.com/api/subscriptions/create.
   Future<StripeSubscription> createSubscription({
@@ -129,7 +129,7 @@ class StripeApi {
     required String idempotencyKey,
     String? currency,
     String? defaultPaymentMethod,
-    String? collectionMethod,
+    StripeCollectionMethod? collectionMethod,
     int? daysUntilDue,
   }) async {
     final uri = _stripeUri(path: 'subscriptions');
@@ -141,7 +141,7 @@ class StripeApi {
         'items[0][price]': priceId,
         'currency': ?currency,
         'default_payment_method': ?defaultPaymentMethod,
-        'collection_method': ?collectionMethod,
+        'collection_method': ?collectionMethod?.value,
         'days_until_due': ?daysUntilDue?.toString(),
         'automatic_tax[enabled]': '$automaticTaxEnabled',
         for (final entry in metadata.entries)
@@ -163,13 +163,14 @@ class StripeApi {
     );
   }
 
-  /// Immediately cancels the subscription with the given [subscriptionId].
+  /// Immediately cancels the subscription with the given [subscriptionId] and
+  /// returns it as Stripe reports it after the cancellation.
   ///
   /// [invoiceNow] and [prorate] control whether pending metered usage is
   /// invoiced on cancellation; Stripe does neither by default.
   ///
   /// See https://docs.stripe.com/api/subscriptions/cancel.
-  Future<void> cancelSubscription({
+  Future<StripeSubscription> cancelSubscription({
     required String subscriptionId,
     required bool invoiceNow,
     required bool prorate,
@@ -187,6 +188,10 @@ class StripeApi {
         message: 'Failed to cancel subscription with id $subscriptionId',
       );
     }
+
+    return StripeSubscription.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   /// Retrieves all [StripeBillingMeter]s associated with the Stripe account.
