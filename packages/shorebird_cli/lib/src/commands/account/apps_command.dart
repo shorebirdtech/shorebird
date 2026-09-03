@@ -7,13 +7,13 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
-/// {@template apps_command}
+/// {@template account_apps_command}
 /// `shorebird account apps`
 /// List the apps the current user has access to.
 /// {@endtemplate}
-class AppsCommand extends ShorebirdCommand {
-  /// {@macro apps_command}
-  AppsCommand();
+class AccountAppsCommand extends ShorebirdCommand {
+  /// {@macro account_apps_command}
+  AccountAppsCommand();
 
   @override
   String get name => 'apps';

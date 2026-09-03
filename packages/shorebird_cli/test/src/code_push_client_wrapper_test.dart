@@ -495,6 +495,117 @@ void main() {
           verify(() => progress.complete()).called(1);
         });
       });
+
+      group('updateApp', () {
+        test('exits with code 70 when renaming app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.updateApp(
+              appId: any(named: 'appId'),
+              displayName: any(named: 'displayName'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.updateApp(
+                appId: appId,
+                displayName: displayName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when app is successfully renamed', () async {
+          when(
+            () => codePushClient.updateApp(
+              appId: appId,
+              displayName: displayName,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.updateApp(
+              appId: appId,
+              displayName: displayName,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('deleteApp', () {
+        test('exits with code 70 when deleting app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.deleteApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteApp(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when app is successfully deleted', () async {
+          when(
+            () => codePushClient.deleteApp(appId: appId),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteApp(appId: appId),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('transferApp', () {
+        test('exits with code 70 when transferring app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.transferApp(
+              organizationId: any(named: 'organizationId'),
+              appId: any(named: 'appId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.transferApp(
+                organizationId: organizationId,
+                appId: appId,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when app is successfully transferred', () async {
+          when(
+            () => codePushClient.transferApp(
+              organizationId: organizationId,
+              appId: appId,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.transferApp(
+              organizationId: organizationId,
+              appId: appId,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
     });
 
     group('channel', () {
@@ -588,6 +699,77 @@ void main() {
           );
 
           expect(result, channel);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('getChannels', () {
+        test('exits with code 70 when fetching channels fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getChannels(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getChannels(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns channels when channels are fetched', () async {
+          when(
+            () => codePushClient.getChannels(appId: appId),
+          ).thenAnswer((_) async => [channel]);
+
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.getChannels(appId: appId),
+          );
+
+          expect(result, [channel]);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('deleteChannel', () {
+        test('exits with code 70 when deleting channel fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.deleteChannel(
+              appId: any(named: 'appId'),
+              channelId: any(named: 'channelId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteChannel(
+                appId: appId,
+                channelId: channel.id,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when channel is successfully deleted', () async {
+          when(
+            () => codePushClient.deleteChannel(
+              appId: appId,
+              channelId: channel.id,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteChannel(
+              appId: appId,
+              channelId: channel.id,
+            ),
+          );
+
           verify(() => progress.complete()).called(1);
         });
       });

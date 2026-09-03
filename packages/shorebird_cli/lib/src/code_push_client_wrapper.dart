@@ -199,6 +199,18 @@ This app may not exist or you may not have permission to view it.''');
     }
   }
 
+  /// Fetches all channels for the provided [appId].
+  Future<List<Channel>> getChannels({required String appId}) async {
+    final fetchChannelsProgress = logger.progress('Fetching channels');
+    try {
+      final channels = await codePushClient.getChannels(appId: appId);
+      fetchChannelsProgress.complete();
+      return channels;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: fetchChannelsProgress);
+    }
+  }
+
   /// Creates a channel for the provided [appId] with the given [name].
   Future<Channel> createChannel({
     required String appId,
@@ -214,6 +226,63 @@ This app may not exist or you may not have permission to view it.''');
       return channel;
     } catch (error) {
       _handleErrorAndExit(error, progress: createChannelProgress);
+    }
+  }
+
+  /// Deletes the channel with the provided [channelId] from [appId].
+  Future<void> deleteChannel({
+    required String appId,
+    required int channelId,
+  }) async {
+    final deleteChannelProgress = logger.progress('Deleting channel');
+    try {
+      await codePushClient.deleteChannel(appId: appId, channelId: channelId);
+      deleteChannelProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: deleteChannelProgress);
+    }
+  }
+
+  /// Renames the app with the provided [appId] to [displayName].
+  Future<void> updateApp({
+    required String appId,
+    required String displayName,
+  }) async {
+    final updateAppProgress = logger.progress('Renaming app');
+    try {
+      await codePushClient.updateApp(appId: appId, displayName: displayName);
+      updateAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: updateAppProgress);
+    }
+  }
+
+  /// Deletes the app with the provided [appId], along with every release and
+  /// patch belonging to it.
+  Future<void> deleteApp({required String appId}) async {
+    final deleteAppProgress = logger.progress('Deleting app');
+    try {
+      await codePushClient.deleteApp(appId: appId);
+      deleteAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: deleteAppProgress);
+    }
+  }
+
+  /// Moves the app with the provided [appId] into [organizationId].
+  Future<void> transferApp({
+    required int organizationId,
+    required String appId,
+  }) async {
+    final transferAppProgress = logger.progress('Transferring app');
+    try {
+      await codePushClient.transferApp(
+        organizationId: organizationId,
+        appId: appId,
+      );
+      transferAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: transferAppProgress);
     }
   }
 

@@ -17,7 +17,7 @@ import '../../helpers.dart';
 import '../../mocks.dart';
 
 void main() {
-  group(AppsCommand, () {
+  group(AccountAppsCommand, () {
     final appWithReleases = AppMetadata(
       appId: '01H000000000000000000ABCDE',
       displayName: 'Acme Mobile',
@@ -37,7 +37,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdValidator shorebirdValidator;
     late ShorebirdLogger logger;
-    late AppsCommand command;
+    late AccountAppsCommand command;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -56,7 +56,8 @@ void main() {
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
       shorebirdValidator = MockShorebirdValidator();
-      command = runWithOverrides(AppsCommand.new)..testArgResults = argResults;
+      command = runWithOverrides(AccountAppsCommand.new)
+        ..testArgResults = argResults;
 
       when(() => argResults.rest).thenReturn([]);
       when(
