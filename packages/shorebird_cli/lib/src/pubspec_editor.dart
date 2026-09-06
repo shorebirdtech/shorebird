@@ -77,7 +77,7 @@ class PubspecEditor {
     final lastEntry = flutter.nodes[flutter.keys.last]!;
 
     // A scalar's span stops at the value itself; a nested block's already
-    // includes the newline that closed it. Normalise both to the position just
+    // includes the newline that closed it. Land both on the position just
     // before that newline, or a nested block gains a blank line above the
     // insertion.
     var end = lastEntry.span.end.offset;
@@ -90,11 +90,10 @@ class PubspecEditor {
     }
 
     // Taken from the document rather than assumed, the way `yaml_edit` takes
-    // it, so a pubspec written with a different indent does not come back
-    // reindented in one section only. The keys of `flutter` sit exactly one
-    // step in, which makes that column the step.
-    final step =
-        (flutter.nodes.keys.first as YamlScalar).span.start.column;
+    // it, so a pubspec written with a different indent keeps that indent
+    // here instead of gaining a section in some other one. The keys of
+    // `flutter` sit exactly one step in, which makes that column the step.
+    final step = (flutter.nodes.keys.first as YamlScalar).span.start.column;
     final key = ' ' * step;
     final item = ' ' * (step * 2);
 
