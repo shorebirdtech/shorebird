@@ -23,15 +23,23 @@ class LoginCommand extends ShorebirdCommand {
 
       if (hasValidCredentials) {
         final emailDisplay = auth.email;
-        logger
-          ..info(
-            emailDisplay != null
-                ? 'You are already logged in as <$emailDisplay>.'
-                : 'You are already authenticated via API key.',
-          )
-          ..info(
-            '''Run ${lightCyan.wrap('shorebird logout')} to log out and try again.''',
-          );
+        if (emailDisplay != null) {
+          logger
+            ..info('You are already logged in as <$emailDisplay>.')
+            ..info(
+              '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
+            );
+        } else {
+          // Env-var auth wins over stored credentials, so `shorebird logout`
+          // would not change who this machine is authenticated as.
+          logger
+            ..info(
+              '''You are already authenticated via the $shorebirdTokenEnvVar environment variable.''',
+            )
+            ..info(
+              '''Unset $shorebirdTokenEnvVar to log in as a different user.''',
+            );
+        }
         return ExitCode.success.code;
       }
 
