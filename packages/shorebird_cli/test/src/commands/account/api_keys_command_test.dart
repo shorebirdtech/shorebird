@@ -188,7 +188,7 @@ void main() {
       when(() => argResults['expires-in-days']).thenReturn(null);
     });
 
-    test('prints the secret exactly once, with storage guidance', () async {
+    test('writes the key alone to stdout so it pipes cleanly', () async {
       when(
         () => auth.createApiKey(
           name: any(named: 'name'),
@@ -197,13 +197,42 @@ void main() {
         ),
       ).thenAnswer((_) async => (secret: 'sb_api_abc', metadata: ciKey));
 
-      final result = await runWithOverrides(command.run);
+      final out = <String>[];
+      final err = <String>[];
+      final result = await captureStdout(
+        () => runWithOverrides(command.run),
+        captured: out,
+        stderrCaptured: err,
+      );
 
       expect(result, equals(ExitCode.success.code));
-      verify(() => logger.info('sb_api_abc')).called(1);
-      verify(
-        () => logger.info(any(that: contains('SHOREBIRD_TOKEN'))),
-      ).called(1);
+      // Everything a pipe receives, and nothing else.
+      expect(out.join().trim(), equals('sb_api_abc'));
+    });
+
+    test('keeps the guidance on stderr, out of the pipe', () async {
+      when(
+        () => auth.createApiKey(
+          name: any(named: 'name'),
+          scope: any(named: 'scope'),
+          expiresInDays: any(named: 'expiresInDays'),
+        ),
+      ).thenAnswer((_) async => (secret: 'sb_api_abc', metadata: ciKey));
+
+      final out = <String>[];
+      final err = <String>[];
+      await captureStdout(
+        () => runWithOverrides(command.run),
+        captured: out,
+        stderrCaptured: err,
+      );
+
+      final diagnostics = err.join();
+      expect(diagnostics, contains('SHOREBIRD_TOKEN'));
+      expect(diagnostics, contains('Production CI'));
+      expect(diagnostics, contains('release-and-patch'));
+      // The secret must never appear on the diagnostic channel.
+      expect(diagnostics, isNot(contains('sb_api_abc')));
     });
 
     test('passes the requested scope and expiry through', () async {

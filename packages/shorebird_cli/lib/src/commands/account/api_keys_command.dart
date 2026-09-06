@@ -1,3 +1,5 @@
+import 'dart:io' as io;
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -120,6 +122,10 @@ class ApiKeysCreateCommand extends ShorebirdCommand {
   String get description =>
       'Create an API key.\n\n'
       'The key is shown once and cannot be retrieved again.\n\n'
+      'The key is written to stdout on its own; everything else goes to '
+      'stderr, so the command pipes cleanly:\n'
+      '  shorebird account api-keys create --name CI '
+      '--scope release-and-patch | pbcopy\n\n'
       '${ShorebirdCommand.jsonHint(_createJsonExample)}';
 
   @override
@@ -165,13 +171,22 @@ class ApiKeysCreateCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
-    logger
-      ..info('')
-      ..info(created.secret)
-      ..info('')
-      ..info(
-        'This is the only time the key will be shown. Store it now — in CI, '
-        'as the ${lightCyan.wrap('SHOREBIRD_TOKEN')} environment variable.',
+    // The key is content; everything around it is diagnostic. Content goes to
+    // stdout by itself so the command composes —
+    //
+    //   shorebird account api-keys create … | op item create …
+    //
+    // gets the key and nothing else. The guidance goes to stderr, where a
+    // human still reads it and a pipe never sees it. Same split the logger
+    // already applies to progress ("progress is diagnostic, never content"),
+    // and the same shape as `gh auth token` and `kubectl create token`.
+    io.stdout.writeln(created.secret);
+    io.stderr
+      ..writeln()
+      ..writeln('Created "${created.metadata.name}" (${scope.flagName}).')
+      ..writeln(
+        'This is the only time the key will be shown. In CI, set it as the '
+        'SHOREBIRD_TOKEN environment variable.',
       );
     return ExitCode.success.code;
   }
