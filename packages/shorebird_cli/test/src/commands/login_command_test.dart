@@ -121,7 +121,7 @@ void main() {
         expect(result, equals(ExitCode.success.code));
         verify(
           () => logger.info(
-            'Your credentials have expired. Please log in again.',
+            'Your credentials have expired. Logging you in again...',
           ),
         ).called(1);
         verify(() => auth.clearCredentials()).called(1);

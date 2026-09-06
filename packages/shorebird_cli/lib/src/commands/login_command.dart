@@ -37,7 +37,7 @@ class LoginCommand extends ShorebirdCommand {
 
       // The stored credentials have expired or been revoked, so discard them
       // and log in again.
-      logger.info('Your credentials have expired. Please log in again.');
+      logger.info('Your credentials have expired. Logging you in again...');
       auth.clearCredentials();
     }
 
