@@ -142,6 +142,23 @@ class CodePushClient {
     return PrivateUser.fromJson(json);
   }
 
+  /// Fetches the plan level for the currently logged-in user, e.g. `free`,
+  /// `pro`, `business` or `enterprise`.
+  ///
+  /// The plan itself is a server-local model with billing fields that are
+  /// deliberately not part of this package, so only the level is read here.
+  /// Returns null if the server does not report one.
+  Future<String?> getPlanLevel() async {
+    final response = await _httpClient.get(Uri.parse('$_v1/plan'));
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return json['level'] as String?;
+  }
+
   /// Create a new artifact for a specific [patchId].
   Future<void> createPatchArtifact({
     required String artifactPath,
