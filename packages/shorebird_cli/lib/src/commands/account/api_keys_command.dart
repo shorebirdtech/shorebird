@@ -64,8 +64,11 @@ class ApiKeysListCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
+    // Diagnostic, not content: `list` emits one line per key, so an empty
+    // account should emit nothing a pipe can count. On stdout this line would
+    // make `list | wc -l` report 1 key where there are none.
     if (keys.isEmpty) {
-      logger.info('No API keys.');
+      io.stderr.writeln('No API keys.');
       return ExitCode.success.code;
     }
 

@@ -112,13 +112,21 @@ void main() {
       ).called(1);
     });
 
-    test('says so when there are no keys', () async {
+    test('says so on stderr when there are no keys', () async {
       when(auth.listApiKeys).thenAnswer((_) async => []);
 
-      final result = await runWithOverrides(command.run);
+      final out = <String>[];
+      final err = <String>[];
+      final result = await captureStdout(
+        () => runWithOverrides(command.run),
+        captured: out,
+        stderrCaptured: err,
+      );
 
       expect(result, equals(ExitCode.success.code));
-      verify(() => logger.info('No API keys.')).called(1);
+      expect(err.join(), contains('No API keys.'));
+      // Nothing on stdout, so `list | wc -l` counts zero keys.
+      expect(out.join().trim(), isEmpty);
     });
 
     test('emits JSON when --json is set', () async {
