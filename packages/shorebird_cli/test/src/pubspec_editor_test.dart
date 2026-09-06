@@ -158,13 +158,60 @@ flutter:
                 equals('''
 $basePubspecContents
 flutter:
+ uses-material-design: true
  assets:
   - shorebird.yaml
- uses-material-design: true
 '''),
               );
             },
           );
+          // `flutter create` emits a `flutter` section holding exactly one
+          // key with a comment block above it describing that key. Appending
+          // is what keeps the two together: inserting before the only key
+          // leaves the comment sitting on top of `assets:`, describing
+          // something it has nothing to do with.
+          test('keeps a comment attached to the key it documents', () {
+            pubspecFile
+              ..createSync()
+              ..writeAsStringSync('''
+$basePubspecContents
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+''');
+            IOOverrides.runZoned(
+              () => runWithOverrides(
+                pubspecEditor.addShorebirdYamlToPubspecAssets,
+              ),
+              getCurrentDirectory: () => tempDir,
+            );
+            expect(
+              pubspecFile.readAsStringSync(),
+              equals('''
+$basePubspecContents
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+  assets:
+    - shorebird.yaml
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+'''),
+            );
+          });
+
           test('adds shorebird.yaml to assets (existing assets)', () {
             pubspecFile
               ..createSync()
