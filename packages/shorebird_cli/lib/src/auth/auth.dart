@@ -11,6 +11,7 @@ import 'package:jwt/jwt.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/auth/api_key.dart';
 import 'package:shorebird_cli/src/auth/ci_token.dart';
 import 'package:shorebird_cli/src/auth/endpoints/endpoints.dart';
 import 'package:shorebird_cli/src/auth/shorebird_oauth.dart' as shorebird_oauth;
@@ -23,6 +24,7 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+export 'api_key.dart';
 export 'ci_token.dart';
 
 /// A reference to an [Auth] instance.
@@ -334,6 +336,116 @@ class Auth {
       // Best-effort — don't block logout if the server is unreachable.
       logger.detail('Failed to revoke session: $e');
     }
+  }
+
+  /// Lists the current user's API keys, newest first.
+  ///
+  /// Metadata only — the auth service never returns a key's secret after
+  /// creation.
+  Future<List<ApiKeyMetadata>> listApiKeys() async {
+    final response = await _sendApiKeyRequest('GET');
+    final body = json.decode(response.body) as Map<String, dynamic>;
+    final keys = body['api_keys'] as List<dynamic>? ?? <dynamic>[];
+    return keys
+        .map((k) => ApiKeyMetadata.fromJson(k as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Creates an API key named [name] with the permissions of [scope] and
+  /// returns the new key's secret alongside its metadata.
+  ///
+  /// [expiresInDays] must be between 1 and 3650 when supplied; a null value
+  /// creates a key that never expires.
+  ///
+  /// Throws [ApiKeyScopeMismatchException] if the server minted a key whose
+  /// scope differs from the one requested. That happens when this CLI is
+  /// talking to a server predating scope-by-name, which silently defaults to
+  /// full access — a wider key than the caller asked for, so it is surfaced
+  /// as an error rather than accepted.
+  Future<({String secret, ApiKeyMetadata metadata})> createApiKey({
+    required String name,
+    required ApiKeyScope scope,
+    int? expiresInDays,
+  }) async {
+    final response = await _sendApiKeyRequest(
+      'POST',
+      body: {
+        'name': name,
+        'scope': scope.wireName,
+        if (expiresInDays != null) 'expires_in_days': expiresInDays,
+      },
+    );
+    final body = json.decode(response.body) as Map<String, dynamic>;
+    final metadata = ApiKeyMetadata.fromJson(body);
+    if (metadata.scope != scope) {
+      throw ApiKeyScopeMismatchException(
+        requested: scope,
+        granted: metadata.scope,
+      );
+    }
+    return (secret: body['api_key'] as String, metadata: metadata);
+  }
+
+  /// Revokes the API key with the given [id].
+  Future<void> revokeApiKey({required String id}) async {
+    await _sendApiKeyRequest('DELETE', body: {'id': id});
+  }
+
+  /// Sends [method] to the auth service's `api/api-keys` endpoint,
+  /// authenticated with the current session's refresh token.
+  ///
+  /// Key management is deliberately session-only: the auth service looks the
+  /// bearer up in `session_`, which an API key and a legacy CI token are both
+  /// absent from. That is why this reads [_credentials] rather than going
+  /// through [client] — in CI there is no session to use, and pretending
+  /// otherwise would only produce a confusing 401.
+  Future<http.Response> _sendApiKeyRequest(
+    String method, {
+    Map<String, Object?>? body,
+  }) async {
+    final refreshToken = _credentials?.refreshToken;
+    if (refreshToken == null) throw const ApiKeySessionRequiredException();
+
+    final uri = _authServiceUri.replace(
+      path: p.url.join(_authServiceUri.path, 'api/api-keys'),
+    );
+    final request = http.Request(method, uri)
+      ..headers['Authorization'] = 'Bearer $refreshToken';
+    if (body != null) {
+      request
+        ..headers['Content-Type'] = 'application/json'
+        ..body = json.encode(body);
+    }
+
+    final http.Response response;
+    try {
+      response = await http.Response.fromStream(
+        await _httpClient.send(request),
+      );
+    } on Exception catch (error) {
+      throw ApiKeyRequestException('Failed to reach the auth service: $error');
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiKeyRequestException(_describeFailure(response));
+    }
+    return response;
+  }
+
+  /// Turns an auth service error response into something worth printing.
+  ///
+  /// The service answers errors as `{error, error_description}`; fall back to
+  /// the status code when the body is not that shape, so a proxy's HTML error
+  /// page does not get echoed at the user.
+  static String _describeFailure(http.Response response) {
+    try {
+      final body = json.decode(response.body) as Map<String, dynamic>;
+      final description = body['error_description'] ?? body['error'];
+      if (description is String) return description;
+    } on Exception {
+      // Fall through to the status-code message.
+    }
+    return 'The auth service returned ${response.statusCode}.';
   }
 
   oauth2.AccessCredentials? _credentials;
