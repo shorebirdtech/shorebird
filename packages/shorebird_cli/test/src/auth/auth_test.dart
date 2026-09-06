@@ -196,6 +196,7 @@ void main() {
     late Auth auth;
     late Platform platform;
     late ShorebirdEnv shorebirdEnv;
+    late RefreshCredentials refreshCredentials;
 
     setUpAll(() {
       registerFallbackValue(FakeBaseRequest());
@@ -219,6 +220,7 @@ void main() {
         () => Auth(
           credentialsDir: credentialsDir,
           httpClient: httpClient,
+          refreshCredentials: refreshCredentials,
           buildCodePushClient: ({Uri? hostedUri, http.Client? httpClient}) {
             return codePushClient;
           },
@@ -254,6 +256,13 @@ void main() {
       logger = MockShorebirdLogger();
       platform = MockPlatform();
       shorebirdEnv = MockShorebirdEnv();
+      refreshCredentials =
+          (
+            clientId,
+            credentials,
+            client, {
+            AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+          }) async => accessCredentials;
 
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
       when(() => platform.environment).thenReturn(<String, String>{});
@@ -992,6 +1001,88 @@ void main() {
           expect(client, isNot(isA<oauth2.AutoRefreshingAuthClient>()));
         },
       );
+    });
+
+    group('hasValidCredentials', () {
+      group('when there are no credentials', () {
+        test('returns false', () async {
+          expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+        });
+      });
+
+      group('when authenticated via API key', () {
+        setUp(() {
+          when(() => platform.environment).thenReturn(<String, String>{
+            shorebirdTokenEnvVar: 'sb_api_abc123',
+          });
+          auth = buildAuth();
+        });
+
+        test('returns true without refreshing', () async {
+          expect(await runWithOverrides(auth.hasValidCredentials), isTrue);
+        });
+      });
+
+      group('when authenticated via a legacy CI token', () {
+        setUp(() {
+          when(() => platform.environment).thenReturn(<String, String>{
+            shorebirdTokenEnvVar: ciToken.toBase64(),
+          });
+          auth = buildAuth();
+        });
+
+        test('returns true without refreshing', () async {
+          expect(await runWithOverrides(auth.hasValidCredentials), isTrue);
+        });
+      });
+
+      group('when stored credentials are malformed', () {
+        setUp(() {
+          accessCredentials = oauth2.AccessCredentials(
+            accessToken,
+            refreshToken,
+            scopes,
+            idToken: 'not a valid jwt',
+          );
+          writeCredentials();
+          auth = buildAuth();
+        });
+
+        test('returns false', () async {
+          expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+        });
+      });
+
+      group('when stored credentials can be refreshed', () {
+        setUp(() {
+          writeCredentials();
+          auth = buildAuth();
+        });
+
+        test('returns true and persists the refreshed credentials', () async {
+          expect(await runWithOverrides(auth.hasValidCredentials), isTrue);
+          expect(auth.email, equals(email));
+          expect(File(auth.credentialsFilePath).existsSync(), isTrue);
+        });
+      });
+
+      group('when stored credentials cannot be refreshed', () {
+        setUp(() {
+          writeCredentials();
+          refreshCredentials =
+              (
+                clientId,
+                credentials,
+                client, {
+                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+              }) async => throw Exception('expired');
+          auth = buildAuth();
+        });
+
+        test('returns false', () async {
+          expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+        });
+      });
     });
 
     group('login', () {

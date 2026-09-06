@@ -17,17 +17,28 @@ class LoginCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     if (auth.isAuthenticated) {
-      final emailDisplay = auth.email;
-      logger
-        ..info(
-          emailDisplay != null
-              ? 'You are already logged in as <$emailDisplay>.'
-              : 'You are already authenticated via API key.',
-        )
-        ..info(
-          'Run ${lightCyan.wrap('shorebird logout')} to log out and try again.',
-        );
-      return ExitCode.success.code;
+      final progress = logger.progress('Checking existing credentials');
+      final hasValidCredentials = await auth.hasValidCredentials();
+      progress.complete();
+
+      if (hasValidCredentials) {
+        final emailDisplay = auth.email;
+        logger
+          ..info(
+            emailDisplay != null
+                ? 'You are already logged in as <$emailDisplay>.'
+                : 'You are already authenticated via API key.',
+          )
+          ..info(
+            '''Run ${lightCyan.wrap('shorebird logout')} to log out and try again.''',
+          );
+        return ExitCode.success.code;
+      }
+
+      // The stored credentials have expired or been revoked, so discard them
+      // and log in again.
+      logger.info('Your credentials have expired. Please log in again.');
+      auth.clearCredentials();
     }
 
     try {
