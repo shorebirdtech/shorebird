@@ -64,6 +64,35 @@ typedef ObtainCredentialsViaLoopbackLogin =
 typedef OnRefreshCredentials =
     void Function(oauth2.AccessCredentials credentials);
 
+/// Refreshes [credentials] using the flow appropriate for [authProvider].
+///
+/// Throws if the refresh fails, e.g. because the session has expired or been
+/// revoked.
+Future<oauth2.AccessCredentials> _refreshCredentialsForProvider({
+  required AuthProvider authProvider,
+  required oauth2.AccessCredentials credentials,
+  required http.Client httpClient,
+  required Uri authServiceUri,
+  required RefreshCredentials refreshCredentials,
+}) async {
+  // Shorebird uses its own refresh flow; Google and Microsoft use the
+  // standard OAuth refresh. This branching can be removed once the
+  // Google/Microsoft providers are fully removed from the CLI.
+  if (authProvider == AuthProvider.shorebird) {
+    return shorebird_oauth.refreshShorebirdCredentials(
+      credentials,
+      httpClient,
+      authBaseUrl: authServiceUri,
+    );
+  }
+  return refreshCredentials(
+    authProvider.clientId,
+    credentials,
+    httpClient,
+    authEndpoints: authProvider.authEndpoints,
+  );
+}
+
 /// A client that automatically refreshes OAuth 2.0 credentials.
 class AuthenticatedClient extends http.BaseClient {
   /// Creates a new [AuthenticatedClient] with the given [httpClient] and
@@ -156,21 +185,12 @@ class AuthenticatedClient extends http.BaseClient {
     oauth2.AccessCredentials credentials,
   ) async {
     try {
-      // Shorebird uses its own refresh flow; Google and Microsoft use the
-      // standard OAuth refresh. This branching can be removed once the
-      // Google/Microsoft providers are fully removed from the CLI.
-      if (authProvider == AuthProvider.shorebird) {
-        return await shorebird_oauth.refreshShorebirdCredentials(
-          credentials,
-          _baseClient,
-          authBaseUrl: _authServiceUri,
-        );
-      }
-      return await _refreshCredentials(
-        authProvider.clientId,
-        credentials,
-        _baseClient,
-        authEndpoints: authProvider.authEndpoints,
+      return await _refreshCredentialsForProvider(
+        authProvider: authProvider,
+        credentials: credentials,
+        httpClient: _baseClient,
+        authServiceUri: _authServiceUri,
+        refreshCredentials: _refreshCredentials,
       );
     } on Exception catch (e, s) {
       logger
@@ -216,7 +236,9 @@ class Auth {
     Uri? authServiceUri,
     ObtainCredentialsViaLoopbackLogin? obtainCredentialsViaLoopbackLogin,
     CodePushClientBuilder? buildCodePushClient,
-  }) : _httpClient = httpClient ?? _defaultHttpClient,
+    RefreshCredentials refreshCredentials = oauth2.refreshCredentials,
+  }) : _refreshCredentials = refreshCredentials,
+       _httpClient = httpClient ?? _defaultHttpClient,
        _credentialsDir =
            credentialsDir ?? applicationConfigHome(executableName),
        _authServiceUri = authServiceUri ?? shorebirdEnv.authServiceUri,
@@ -234,6 +256,7 @@ class Auth {
   final Uri _authServiceUri;
   final ObtainCredentialsViaLoopbackLogin _obtainCredentialsViaLoopbackLogin;
   final CodePushClientBuilder _buildCodePushClient;
+  final RefreshCredentials _refreshCredentials;
   CiToken? _token;
   String? _apiKey;
 
@@ -266,6 +289,38 @@ class Auth {
     }
 
     return _httpClient;
+  }
+
+  /// Whether the locally stored credentials are still usable.
+  ///
+  /// API keys and CI tokens are validated server-side on every request and are
+  /// always reported as valid. Stored OAuth credentials are verified by
+  /// refreshing them against the auth service, which fails once the session
+  /// has expired or been revoked. Refreshed credentials are persisted so the
+  /// check doubles as a refresh.
+  Future<bool> hasValidCredentials() async {
+    if (_apiKey != null || _token != null) return true;
+
+    final credentials = _credentials;
+    final idToken = credentials?.idToken;
+    if (credentials == null || idToken == null) return false;
+
+    try {
+      final refreshed = await _refreshCredentialsForProvider(
+        authProvider: Jwt.parse(idToken).authProvider,
+        credentials: credentials,
+        httpClient: _httpClient,
+        authServiceUri: _authServiceUri,
+        refreshCredentials: _refreshCredentials,
+      );
+      _credentials = refreshed;
+      _email = refreshed.email ?? _email;
+      _flushCredentials(refreshed);
+      return true;
+    } on Exception catch (error) {
+      logger.detail('Stored credentials are no longer valid: $error');
+      return false;
+    }
   }
 
   /// Logs in the user via the Shorebird loopback OAuth flow.
@@ -306,7 +361,7 @@ class Auth {
   /// cleared even if the server call fails.
   Future<void> logout() async {
     await _revokeSession();
-    _clearCredentials();
+    clearCredentials();
   }
 
   /// Sends the current refresh token to the auth service's logout endpoint
@@ -404,7 +459,9 @@ class Auth {
       ..writeAsStringSync(json.encode(credentials.toJson()));
   }
 
-  void _clearCredentials() {
+  /// Deletes the locally stored credentials without revoking the server-side
+  /// session.
+  void clearCredentials() {
     _credentials = null;
     _email = null;
 

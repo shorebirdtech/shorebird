@@ -39,7 +39,10 @@ void main() {
       logger = MockShorebirdLogger();
 
       when(() => auth.isAuthenticated).thenReturn(false);
+      when(() => auth.hasValidCredentials()).thenAnswer((_) async => true);
+      when(() => auth.clearCredentials()).thenReturn(null);
       when(() => auth.client).thenReturn(httpClient);
+      when(() => logger.progress(any())).thenReturn(MockProgress());
       when(
         () => auth.credentialsFilePath,
       ).thenReturn(p.join(applicationConfigHome.path, 'credentials.json'));
@@ -102,6 +105,30 @@ void main() {
           ),
         ).called(1);
         verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+      });
+    });
+
+    group('when stored credentials have expired', () {
+      setUp(() {
+        when(() => auth.isAuthenticated).thenReturn(true);
+        when(() => auth.email).thenReturn(email);
+        when(() => auth.hasValidCredentials()).thenAnswer((_) async => false);
+      });
+
+      test('clears credentials and logs in again', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.info(
+            'Your credentials have expired. Please log in again.',
+          ),
+        ).called(1);
+        verify(() => auth.clearCredentials()).called(1);
+        verify(() => auth.login(prompt: any(named: 'prompt'))).called(1);
+        verifyNever(
+          () => logger.info('You are already logged in as <$email>.'),
+        );
       });
     });
 
