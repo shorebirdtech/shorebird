@@ -1,4 +1,5 @@
 import 'package:shorebird_cli/src/auth/api_key.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {

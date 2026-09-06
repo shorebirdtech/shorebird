@@ -1,36 +1,16 @@
 import 'package:equatable/equatable.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
-/// The permission preset an API key is minted with.
+/// The `--scope` spelling of an [ApiKeyScope].
 ///
-/// These are the only scopes the auth service accepts. Arbitrary permission
-/// combinations are deliberately not offered — a key is one of these two
-/// shapes so that what a key can do is legible from its scope alone.
-enum ApiKeyScope {
-  /// Everything the minting user can do.
-  fullAccess('full-access', wireName: 'full_access'),
-
-  /// Create and publish releases and patches, and read insights. No deletes,
-  /// no member management, no billing.
-  releaseAndPatch('release-and-patch', wireName: 'release_and_patch');
-
-  const ApiKeyScope(this.flagName, {required this.wireName});
-
+/// Command-line spelling is a CLI concern, so it lives here rather than on
+/// the protocol enum, which carries only the wire value.
+extension ApiKeyScopeFlagName on ApiKeyScope {
   /// The value accepted by `--scope` on the command line.
-  final String flagName;
-
-  /// The value the auth service uses for this scope.
-  final String wireName;
-
-  /// The scope whose [wireName] is [value], or null if none matches.
-  ///
-  /// Returns null for a scope this CLI does not know about, which is what a
-  /// newer server introducing a preset looks like from here.
-  static ApiKeyScope? fromWireName(String value) {
-    for (final scope in ApiKeyScope.values) {
-      if (scope.wireName == value) return scope;
-    }
-    return null;
-  }
+  String get flagName => switch (this) {
+    ApiKeyScope.fullAccess => 'full-access',
+    ApiKeyScope.releaseAndPatch => 'release-and-patch',
+  };
 }
 
 /// {@template api_key_metadata}

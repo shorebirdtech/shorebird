@@ -13,7 +13,7 @@ import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart'
-    show AuthProvider;
+    show ApiKeyScope, AuthProvider;
 import 'package:test/test.dart';
 
 import '../fakes.dart';
