@@ -2813,6 +2813,62 @@ void main() {
       });
     });
 
+    group('getPlanLevel', () {
+      group('when request fails', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.failedDependency,
+            ),
+          );
+        });
+
+        test('throws exception', () async {
+          expect(
+            () async => codePushClient.getPlanLevel(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                CodePushClient.unknownErrorMessage,
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when request succeeds', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('{"level": "enterprise"}')),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('returns the level', () async {
+          expect(await codePushClient.getPlanLevel(), equals('enterprise'));
+        });
+      });
+
+      group('when the response has no level', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('{}')),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('returns null', () async {
+          expect(await codePushClient.getPlanLevel(), isNull);
+        });
+      });
+    });
+
     group('getGCPUploadSpeedTestUrl', () {
       group('when request fails', () {
         setUp(() {

@@ -322,6 +322,32 @@ void main() {
         });
       });
 
+      group('getPlanLevel', () {
+        test('exits with code 70 when getting the plan fails', () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getPlanLevel()).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(codePushClientWrapper.getPlanLevel),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns the plan level on success', () async {
+          when(
+            () => codePushClient.getPlanLevel(),
+          ).thenAnswer((_) async => 'enterprise');
+
+          final level = await runWithOverrides(
+            codePushClientWrapper.getPlanLevel,
+          );
+
+          expect(level, equals('enterprise'));
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('getOrganizationMemberships', () {
         test(
           'exits with code 70 when getting organization memberships fails',
