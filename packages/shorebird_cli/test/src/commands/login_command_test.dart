@@ -78,7 +78,7 @@ void main() {
           ).called(1);
           verify(
             () => logger.info(
-              '''Run ${lightCyan.wrap('shorebird logout')} to log out and try again.''',
+              '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
             ),
           ).called(1);
           verifyNever(() => auth.login(prompt: any(named: 'prompt')));
@@ -92,16 +92,18 @@ void main() {
         when(() => auth.email).thenReturn(null);
       });
 
-      test('prints API key message and exits with code 0', () async {
+      test('points at the environment variable and exits with code 0', () async {
         final result = await runWithOverrides(command.run);
 
         expect(result, equals(ExitCode.success.code));
         verify(
-          () => logger.info('You are already authenticated via API key.'),
+          () => logger.info(
+            '''You are already authenticated via the $shorebirdTokenEnvVar environment variable.''',
+          ),
         ).called(1);
         verify(
           () => logger.info(
-            '''Run ${lightCyan.wrap('shorebird logout')} to log out and try again.''',
+            '''Unset $shorebirdTokenEnvVar to log in as a different user.''',
           ),
         ).called(1);
         verifyNever(() => auth.login(prompt: any(named: 'prompt')));
