@@ -224,7 +224,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
-      - uses: streetsidesoftware/cspell-action@v8
+      - uses: streetsidesoftware/cspell-action@v9
         with:
           incremental_files_only: false
           config: cspell.config.yaml
