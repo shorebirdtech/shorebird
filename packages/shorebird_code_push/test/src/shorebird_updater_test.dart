@@ -12,6 +12,20 @@ void main() {
       }),
     );
 
+    group(UpdateTrack, () {
+      test('wraps the track name it is given', () {
+        // The predefined tracks are const references, so constructing a
+        // custom track — the usage the class documents — is what actually
+        // exercises the constructor at runtime.
+        const names = ['staging', 'beta', 'stable', 'my_custom_track'];
+        for (final name in names) {
+          final track = UpdateTrack(name);
+          expect(track.value, equals(name));
+          expect(track.name, equals(name));
+        }
+      });
+    });
+
     group(UpdateException, () {
       test('overrides toString', () {
         const message = 'message';

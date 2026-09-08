@@ -13,7 +13,7 @@ dependencies:
   meta: ^1.9.1
 
 dev_dependencies:
-  ffigen: ">=8.0.2 <21.0.0"
+  ffigen: ">=8.0.2 <22.0.0"
   mocktail: ^1.0.0
   # Used by integration tests under test/integration/ for FakePatchServer.
   # Not part of the package's public API or runtime dependencies.

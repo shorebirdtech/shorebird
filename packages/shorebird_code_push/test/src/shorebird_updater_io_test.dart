@@ -304,8 +304,9 @@ void main() {
 
       group('when current patch has been rolled back', () {
         setUp(() {
-          // The app is currently running patch 1, but checkForDownloadableUpdate
-          // triggered a rollback which set next_boot_patch to None (0).
+          // The app is currently running patch 1, but
+          // checkForDownloadableUpdate triggered a rollback which set
+          // next_boot_patch to None (0).
           when(updater.currentPatchNumber).thenReturn(1);
           when(updater.nextPatchNumber).thenReturn(0);
           when(updater.checkForDownloadableUpdate).thenReturn(false);
