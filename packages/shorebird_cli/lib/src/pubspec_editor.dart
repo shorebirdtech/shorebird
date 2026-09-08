@@ -38,6 +38,7 @@ class PubspecEditor {
       );
     } else {
       if (!(yaml['flutter'] as Map).containsKey('assets')) {
+        final flutter = (yaml as YamlMap).nodes['flutter'];
         // Not `editor.update`, which chooses where a new key goes and chooses
         // wrong when the map has exactly one key: it inserts *before* that
         // key rather than after it, which separates the key from the comment
@@ -47,15 +48,27 @@ class PubspecEditor {
         // `shorebird init` rewrote a comment onto the wrong line. With two or
         // more keys the same call appends correctly, which is why this went
         // unnoticed: it only misfires on the default project.
-        pubspecFile.writeAsStringSync(
-          _appendAssetsToFlutterSection(pubspecContents, yaml as YamlMap),
-        );
-        return;
-      }
-
-      final assets = (yaml['flutter'] as Map)['assets'] as List;
-      if (!assets.contains('shorebird.yaml')) {
-        editor.update(['flutter', 'assets'], [...assets, 'shorebird.yaml']);
+        //
+        // Only for a block map with something in it. An empty one has no last
+        // entry to append after, and a flow one (`flutter: {a: b}`) has no
+        // block layout to match, so appending a block key to it would produce
+        // something that no longer parses. `yaml_edit` handles both of those
+        // correctly, and neither can hit the misplacement above, so they keep
+        // going through it.
+        if (flutter is YamlMap &&
+            flutter.style == CollectionStyle.BLOCK &&
+            flutter.isNotEmpty) {
+          pubspecFile.writeAsStringSync(
+            _appendAssetsToFlutterSection(pubspecContents, flutter),
+          );
+          return;
+        }
+        editor.update(['flutter', 'assets'], ['shorebird.yaml']);
+      } else {
+        final assets = (yaml['flutter'] as Map)['assets'] as List;
+        if (!assets.contains('shorebird.yaml')) {
+          editor.update(['flutter', 'assets'], [...assets, 'shorebird.yaml']);
+        }
       }
     }
 
@@ -72,8 +85,7 @@ class PubspecEditor {
   /// attached to the line it documents: a comment is not part of the YAML
   /// tree, so anything choosing a position from the tree alone is free to land
   /// between a comment and its key.
-  String _appendAssetsToFlutterSection(String contents, YamlMap yaml) {
-    final flutter = yaml.nodes['flutter']! as YamlMap;
+  String _appendAssetsToFlutterSection(String contents, YamlMap flutter) {
     final lastEntry = flutter.nodes[flutter.keys.last]!;
 
     // A scalar's span stops at the value itself; a nested block's already
