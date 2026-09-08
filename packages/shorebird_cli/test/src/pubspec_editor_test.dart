@@ -213,10 +213,48 @@ flutter:
             );
           });
 
+          // A block collection's span runs on past itself to the end of the
+          // document, so appending at the last entry's own end put `assets:`
+          // underneath a comment belonging to nothing.
+          test('appends above a trailing comment, not below it', () {
+            pubspecFile
+              ..createSync()
+              ..writeAsStringSync('''
+$basePubspecContents
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: Foo
+
+# Some unrelated comment
+''');
+            IOOverrides.runZoned(
+              () => runWithOverrides(
+                pubspecEditor.addShorebirdYamlToPubspecAssets,
+              ),
+              getCurrentDirectory: () => tempDir,
+            );
+            expect(
+              pubspecFile.readAsStringSync(),
+              equals('''
+$basePubspecContents
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: Foo
+  assets:
+    - shorebird.yaml
+
+# Some unrelated comment
+'''),
+            );
+          });
+
           // Neither of these can hit the misplacement the append avoids, and
           // neither has a last entry to append after or a block layout to
           // match, so both stay on `yaml_edit`. Appending to them by hand
-          // threw on the first and produced YAML that no longer parses on the second.
+          // threw on the first, and produced YAML that no longer parses on
+          // the second.
           test('handles an empty flutter map', () {
             pubspecFile
               ..createSync()

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:yaml/yaml.dart';
@@ -77,6 +79,29 @@ class PubspecEditor {
     pubspecFile.writeAsStringSync(editor.toString());
   }
 
+  /// The offset just past the deepest scalar under [node].
+  ///
+  /// Recurses rather than reading [node]'s own span because only a scalar's
+  /// span is tight; a collection's extends to whatever comes after it. Keys
+  /// count as well as values, so a mapping whose last entry has an empty
+  /// collection for a value still lands on that key.
+  ///
+  /// A block scalar is a scalar, so text inside one that merely looks like a
+  /// comment stays part of the document rather than being walked over.
+  int _lastLeafEnd(YamlNode node) {
+    if (node is YamlMap && node.nodes.isNotEmpty) {
+      return node.nodes.entries
+          .map(
+            (e) => max(_lastLeafEnd(e.key as YamlNode), _lastLeafEnd(e.value)),
+          )
+          .reduce(max);
+    }
+    if (node is YamlList && node.nodes.isNotEmpty) {
+      return node.nodes.map(_lastLeafEnd).reduce(max);
+    }
+    return node.span.end.offset;
+  }
+
   /// Splices an `assets` block in directly after the last entry of an existing
   /// `flutter` section, which is where `yaml_edit` puts it whenever it has
   /// more than one entry to reason about.
@@ -86,13 +111,13 @@ class PubspecEditor {
   /// tree, so anything choosing a position from the tree alone is free to land
   /// between a comment and its key.
   String _appendAssetsToFlutterSection(String contents, YamlMap flutter) {
-    final lastEntry = flutter.nodes[flutter.keys.last]!;
-
-    // A scalar's span stops at the value itself; a nested block's already
-    // includes the newline that closed it. Land both on the position just
-    // before that newline, or a nested block gains a blank line above the
-    // insertion.
-    var end = lastEntry.span.end.offset;
+    // The last leaf's end, not the last entry's. A scalar's span stops at its
+    // own text, but a block collection's runs on through whatever follows it,
+    // and for the last entry of a mapping that is the rest of the document --
+    // blank lines and any trailing comment included. Appending at the entry's
+    // own end would put `assets:` underneath a comment that has nothing to do
+    // with it, which is the thing this method exists to avoid.
+    var end = _lastLeafEnd(flutter.nodes[flutter.keys.last]!);
     if (end > 0 && contents[end - 1] == '\n') {
       end -= 1;
     } else {
