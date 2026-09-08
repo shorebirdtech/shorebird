@@ -133,6 +133,20 @@ class CodePushClientWrapper {
     return user;
   }
 
+  /// Fetches the plan level for the current user, e.g. `free`, `pro`,
+  /// `business` or `enterprise`. Null when the server does not report one.
+  Future<String?> getPlanLevel() async {
+    final progress = logger.progress('Fetching plan');
+    final String? level;
+    try {
+      level = await codePushClient.getPlanLevel();
+      progress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+    return level;
+  }
+
   /// Fetches the organization memberships for the current user.
   Future<List<OrganizationMembership>> getOrganizationMemberships() async {
     final progress = logger.progress('Fetching organizations');
