@@ -169,6 +169,22 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     return _hash(sanitizeCarJson(jsonFile.readAsStringSync()).codeUnits);
   }
 
+  /// Keys in the `assetutil --info` header block that describe the toolchain
+  /// that compiled the asset catalog rather than its contents. Xcode 26.3
+  /// bumped `CoreUIVersion` from 972 to 973, for example, which changes every
+  /// one of these strings without changing a single asset.
+  ///
+  /// `PlatformVersion` and `SchemaVersion` are deliberately not here. They
+  /// describe the catalog a developer asked for, not the tool that built it,
+  /// so a change in either is worth reporting.
+  static const _toolchainVersionKeys = {
+    'AssetStorageVersion',
+    'Authoring Tool',
+    'CoreUIVersion',
+    'DumpToolVersion',
+    'MainVersion',
+  };
+
   static final _uuidRegex = RegExp(
     '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-'
     '[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}',
@@ -187,6 +203,14 @@ class AppleArchiveDiffer extends ArchiveDiffer {
   /// two builds of the same assets hash the same. Currently removes:
   ///
   ///   * `Timestamp`, which records when the .car file was built.
+  ///   * The toolchain version keys in the header block, which record the
+  ///     versions of Xcode and CoreUI that compiled the catalog rather than
+  ///     anything about the assets themselves. They move on every Xcode
+  ///     upgrade, so leaving them in makes an unchanged catalog look changed
+  ///     to any developer who upgrades between a release and its patch. A
+  ///     re-encode that actually alters a rendition still shows up, because
+  ///     `SizeOnDisk`, `Encoding`, `Compression`, both dimensions and
+  ///     `SHA1Digest` are all still compared.
   ///   * The generated suffix in the rendition file names of iOS 18 layered
   ///     icon (.icon) bundles, which `actool` regenerates every build.
   ///   * `SHA1Digest` on those renditions only. Two builds of one unchanged
@@ -226,6 +250,7 @@ class AppleArchiveDiffer extends ArchiveDiffer {
         final keys =
             map.keys
                 .where((key) => key != 'Timestamp')
+                .where((key) => !_toolchainVersionKeys.contains(key))
                 .where((key) => !(isGenerated && key == 'SHA1Digest'))
                 .toList()
               ..sort();
