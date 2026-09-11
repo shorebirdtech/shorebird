@@ -33,6 +33,48 @@ void main() {
       expect(subscription.status, StripeSubscriptionStatus.active);
       expect(subscription.trialStart, isNull);
       expect(subscription.trialEnd, isNull);
+      expect(
+        subscription.collectionMethod,
+        StripeCollectionMethod.chargeAutomatically,
+      );
+    });
+
+    test('deserializes a null collection method when absent', () {
+      final json = subscriptionJson..remove('collection_method');
+
+      final subscription = StripeSubscription.fromJson(json);
+
+      expect(subscription.collectionMethod, isNull);
+    });
+
+    test('deserializes metadata', () {
+      final json = subscriptionJson
+        ..['metadata'] = {'shorebird_role': 'overage'};
+
+      final subscription = StripeSubscription.fromJson(json);
+
+      expect(subscription.metadata, {'shorebird_role': 'overage'});
+    });
+
+    test('deserializes currency, payment method, and automatic tax', () {
+      final json = subscriptionJson
+        ..['default_payment_method'] = 'pm_123'
+        ..['automatic_tax'] = {'enabled': true};
+
+      final subscription = StripeSubscription.fromJson(json);
+
+      expect(subscription.currency, 'usd');
+      expect(subscription.defaultPaymentMethod, 'pm_123');
+      expect(subscription.automaticTaxEnabled, isTrue);
+    });
+
+    test('defaults automaticTaxEnabled to false when unset', () {
+      final json = subscriptionJson..['automatic_tax'] = <String, dynamic>{};
+
+      final subscription = StripeSubscription.fromJson(json);
+
+      expect(subscription.defaultPaymentMethod, isNull);
+      expect(subscription.automaticTaxEnabled, isFalse);
     });
 
     test('deserializes from json with missing items data', () {
@@ -75,6 +117,10 @@ void main() {
         expect(subscription.endedAt, null);
         expect(subscription.startDate, isNotNull);
         expect(subscription.status, StripeSubscriptionStatus.trialing);
+        expect(
+          subscription.collectionMethod,
+          StripeCollectionMethod.sendInvoice,
+        );
         expect(
           subscription.trialStart,
           DateTime.fromMillisecondsSinceEpoch(1725845719000),

@@ -155,6 +155,23 @@ class CodePushClient {
     return PrivateUser.fromJson(json);
   }
 
+  /// Fetches the plan level for the currently logged-in user, e.g. `free`,
+  /// `pro`, `business` or `enterprise`.
+  ///
+  /// The plan itself is a server-local model with billing fields that are
+  /// deliberately not part of this package, so only the level is read here.
+  /// Returns null if the server does not report one.
+  Future<String?> getPlanLevel() async {
+    final response = await _httpClient.get(Uri.parse('$_v1/plan'));
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return json['level'] as String?;
+  }
+
   /// Create a new artifact for a specific [patchId].
   Future<void> createPatchArtifact({
     required String artifactPath,
@@ -547,6 +564,53 @@ class CodePushClient {
     return AppMetadata.fromJson(
       json.decode(response.body) as Map<String, dynamic>,
     );
+  }
+
+  /// Rename the app with the provided [appId] to [displayName].
+  Future<void> updateApp({
+    required String appId,
+    required String displayName,
+  }) async {
+    final response = await _httpClient.patch(
+      Uri.parse('$_v1/apps/$appId'),
+      body: json.encode({'name': displayName}),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Move the app with the provided [appId] into [organizationId].
+  ///
+  /// Requires permission to transfer apps in both the source and destination
+  /// organizations.
+  Future<void> transferApp({
+    required int organizationId,
+    required String appId,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/organizations/$organizationId/apps'),
+      body: json.encode({'app_id': appId}),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Delete the channel with the provided [channelId] from [appId].
+  Future<void> deleteChannel({
+    required String appId,
+    required int channelId,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse('$_v1/apps/$appId/channels/$channelId'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
   }
 
   /// List all apps for the current account.
