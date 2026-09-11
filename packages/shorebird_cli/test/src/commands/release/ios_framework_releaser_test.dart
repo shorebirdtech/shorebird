@@ -319,6 +319,8 @@ void main() {
       }
 
       setUp(() {
+        // The podspec carries this through as s.version.
+        when(() => argResults['release-version']).thenReturn('1.2.3');
         when(
           () => artifactBuilder.buildIosFramework(args: any(named: 'args')),
         ).thenAnswer(
@@ -488,15 +490,74 @@ void main() {
           p.join(projectRoot.path, 'release', 'ShorebirdFlutter.podspec'),
         );
         expect(podspecFile.existsSync(), isTrue);
-        final content = podspecFile.readAsStringSync();
-        expect(content, contains("s.name         = 'ShorebirdFlutter'"));
+
+        // Compared whole rather than by `contains`, so a heredoc typo -- a
+        // dropped `end`, a mismatched quote -- fails here instead of at the
+        // user's `pod install`.
         expect(
-          content,
-          contains(
-            "s.vendored_frameworks = 'App.xcframework', "
-            "'ShorebirdFlutter.xcframework'",
-          ),
+          podspecFile.readAsStringSync(),
+          equals('''
+Pod::Spec.new do |s|
+  s.name         = 'ShorebirdFlutter'
+  s.version      = '1.2.3'
+  s.summary      = "Shorebird's patched Flutter engine, for add-to-app iOS integration."
+  s.homepage     = 'https://shorebird.dev'
+  s.license      = { :type => 'BSD-3-Clause' }
+  s.author       = 'Shorebird'
+  s.source       = { :path => '.' }
+  s.platform     = :ios, '12.0'
+  s.vendored_frameworks = 'App.xcframework', 'ShorebirdFlutter.xcframework'
+end
+'''),
         );
+      });
+
+      test('podspec version tracks --release-version', () async {
+        when(() => argResults['release-version']).thenReturn('9.8.7');
+
+        await runWithOverrides(iosFrameworkReleaser.buildReleaseArtifacts);
+
+        expect(
+          File(
+            p.join(projectRoot.path, 'release', 'ShorebirdFlutter.podspec'),
+          ).readAsStringSync(),
+          contains("s.version      = '9.8.7'"),
+        );
+      });
+
+      group('podspecVersion', () {
+        test('drops SemVer build metadata CocoaPods cannot parse', () {
+          // Gem::Version rejects `+`, and Flutter release versions carry it.
+          expect(
+            IosFrameworkReleaser.podspecVersion('1.2.3+4'),
+            equals('1.2.3'),
+          );
+        });
+
+        test('passes through a plain version', () {
+          expect(IosFrameworkReleaser.podspecVersion('1.2.3'), equals('1.2.3'));
+        });
+
+        test('keeps a pre-release tail', () {
+          expect(
+            IosFrameworkReleaser.podspecVersion('1.2.3-beta.1'),
+            equals('1.2.3-beta.1'),
+          );
+        });
+
+        test('falls back when the version is not Gem-parseable', () {
+          // `--release-version` is free-form here, so a git hash is reachable.
+          // A podspec CocoaPods cannot parse fails `pod install` outright,
+          // which is worse than a stale version.
+          expect(
+            IosFrameworkReleaser.podspecVersion('deadbeef'),
+            equals(IosFrameworkReleaser.fallbackPodspecVersion),
+          );
+          expect(
+            IosFrameworkReleaser.podspecVersion(''),
+            equals(IosFrameworkReleaser.fallbackPodspecVersion),
+          );
+        });
       });
 
       group('when --obfuscate is passed', () {

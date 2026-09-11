@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -130,6 +131,32 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
     await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
 
+  /// The version written to the podspec when [podspecVersion] cannot derive
+  /// one from `--release-version`.
+  @visibleForTesting
+  static const fallbackPodspecVersion = '0.0.1';
+
+  /// A CocoaPods-acceptable spelling of [releaseVersion], or
+  /// [fallbackPodspecVersion] when there is not one.
+  ///
+  /// CocoaPods parses versions with RubyGems' `Gem::Version`, which is
+  /// stricter than pub's: it takes dot-separated numbers with an optional
+  /// pre-release tail and rejects SemVer build metadata outright. A Flutter
+  /// release version routinely carries that metadata (`1.2.3+4`), so the
+  /// `+build` part is dropped rather than passed through — an unparseable
+  /// version makes `pod install` fail, which is worse than a stale one.
+  ///
+  /// `--release-version` is a free-form string for this platform, so anything
+  /// still unrecognizable after that falls back rather than being guessed at.
+  @visibleForTesting
+  static String podspecVersion(String releaseVersion) {
+    final withoutBuildMetadata = releaseVersion.split('+').first;
+    final isGemVersion = RegExp(
+      r'^\d+(\.\d+)*([-.][0-9A-Za-z-]+)*$',
+    ).hasMatch(withoutBuildMetadata);
+    return isGemVersion ? withoutBuildMetadata : fallbackPodspecVersion;
+  }
+
   /// Writes a podspec that wraps the release xcframework output, enabling
   /// CocoaPods-based integration as an alternative to manual Xcode embedding.
   void _writePodspec(Directory releaseDir) {
@@ -137,11 +164,12 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
       releaseDir.path,
       'ShorebirdFlutter.podspec',
     );
+    final version = podspecVersion(argResults['release-version'] as String);
     File(podspecPath).writeAsStringSync('''
 Pod::Spec.new do |s|
   s.name         = 'ShorebirdFlutter'
-  s.version      = '0.0.1'
-  s.summary      = 'Shorebird Flutter framework for add-to-app integration.'
+  s.version      = '$version'
+  s.summary      = "Shorebird's patched Flutter engine, for add-to-app iOS integration."
   s.homepage     = 'https://shorebird.dev'
   s.license      = { :type => 'BSD-3-Clause' }
   s.author       = 'Shorebird'
@@ -159,7 +187,7 @@ end
 
 Your next step is to add the .xcframework files found in the ${lightCyan.wrap(relativeFrameworkDirectoryPath)} directory to your iOS app.
 
-${styleBold.wrap('Option A: CocoaPods')}
+${styleBold.wrap('Option A: CocoaPods (recommended)')}
     Add the following to your app's Podfile:
     ${lightCyan.wrap("pod 'ShorebirdFlutter', :path => '$relativeFrameworkDirectoryPath'")}
     Then run ${lightCyan.wrap('pod install')}.
