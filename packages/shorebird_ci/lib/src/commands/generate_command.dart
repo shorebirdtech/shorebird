@@ -313,6 +313,11 @@ on:
   pull_request:
     branches:
       - main
+  # Checks run on the queue's own temp branch, not the PR. Without this
+  # trigger the required contexts never report there and the queue
+  # ejects every PR at the timeout.
+  merge_group:
+    types: [checks_requested]
   push:
     branches:
       - main
@@ -341,7 +346,7 @@ jobs:
       - run: dart pub global activate shorebird_ci
       - name: Verify CI coverage
         run: shorebird_ci verify
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -623,6 +628,11 @@ on:
   pull_request:
     branches:
       - main
+  # Checks run on the queue's own temp branch, not the PR. Without this
+  # trigger the required contexts never report there and the queue
+  # ejects every PR at the timeout.
+  merge_group:
+    types: [checks_requested]
   push:
     branches:
       - main
