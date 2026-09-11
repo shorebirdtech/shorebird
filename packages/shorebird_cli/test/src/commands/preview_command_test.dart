@@ -431,7 +431,25 @@ void main() {
         ).called(1);
         verify(
           () => logger.info(
-            '''Platforms previewable from this machine: Android, Linux, macOS, Windows. iOS releases can only be previewed from macOS.''',
+            '''Platforms previewable from this machine: Android, Windows. iOS releases can only be previewed from macOS.''',
+          ),
+        ).called(1);
+      });
+
+      test('refuses a macOS release from Windows', () async {
+        // A desktop preview launches the release's own executable, so macOS
+        // is no more previewable from Windows than iOS is. It used to be
+        // offered here: the supported list excluded iOS and nothing else.
+        when(
+          () => release.platformStatuses,
+        ).thenReturn({ReleasePlatform.macos: ReleaseStatus.active});
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, ExitCode.usage.code);
+        verify(
+          () => logger.err(
+            '''Release $releaseVersion only has macOS artifacts, which cannot be previewed from windows.''',
           ),
         ).called(1);
       });
@@ -2151,6 +2169,8 @@ channel: ${DeploymentTrack.staging.channel}
         process = MockProcess();
         linuxReleaseArtifact = MockReleaseArtifact();
 
+        when(() => platform.isLinux).thenReturn(true);
+
         final tempDir = Directory.systemTemp.createTempSync();
         releaseArtifactFile = File(p.join(tempDir.path, 'Release.zip'));
 
@@ -2707,6 +2727,8 @@ channel: ${DeploymentTrack.staging.channel}
         shorebirdProcess = MockShorebirdProcess();
         process = MockProcess();
         windowsMock = MockWindows();
+
+        when(() => platform.isWindows).thenReturn(true);
         when(
           () => windowsMock.findExecutable(
             releaseDirectory: any(named: 'releaseDirectory'),
