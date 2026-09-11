@@ -8,6 +8,7 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
@@ -102,15 +103,23 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Returns the platforms that can be previewed on the current OS.
-  static List<ReleasePlatform> get supportedReleasePlatforms {
-    if (platform.isMacOS) {
-      return ReleasePlatform.values;
-    } else {
-      return ReleasePlatform.values
-          .where((p) => p != ReleasePlatform.ios)
-          .toList();
-    }
-  }
+  static List<ReleasePlatform> get supportedReleasePlatforms =>
+      ReleasePlatform.values.where(_isPreviewableHere).toList();
+
+  /// Whether a release built for [releasePlatform] can be launched from the
+  /// machine running this command.
+  ///
+  /// A desktop preview runs the release's own executable, so only its own OS
+  /// can launch it -- this used to exclude iOS alone, which left macOS in the
+  /// list on Windows and Linux and let `--platform macos` past the guard
+  /// there. Android is the exception: `adb` talks to the device from any host.
+  static bool _isPreviewableHere(ReleasePlatform releasePlatform) =>
+      switch (releasePlatform) {
+        ReleasePlatform.android => true,
+        ReleasePlatform.ios || ReleasePlatform.macos => platform.isMacOS,
+        ReleasePlatform.linux => platform.isLinux,
+        ReleasePlatform.windows => platform.isWindows,
+      };
 
   @override
   String get name => 'preview';
@@ -134,10 +143,9 @@ This is only applicable when previewing Android releases.''',
     }
 
     if (results.wasParsed('staging')) {
-      logger.err(
-        '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
+      usageException(
+        'The --staging flag has been removed. Use --track=staging instead.',
       );
-      return ExitCode.usage.code;
     }
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
@@ -202,10 +210,28 @@ This is only applicable when previewing Android releases.''',
     if (platformReleases.isEmpty) {
       if (maybePlatform != null) {
         logger.err(
-          '''No previewable ${maybePlatform.displayName} releases found''',
+          '''No previewable ${maybePlatform.displayName} releases found for app $appId.''',
         );
+        if (sideloadableReleases.isNotEmpty) {
+          final otherPlatforms = sideloadableReleases
+              .expand((r) => r.activePlatforms)
+              .toSet()
+              .map((p) => p.name)
+              .join(', ');
+          logger.info(
+            '''Previewable releases exist for: $otherPlatforms. Pass --platform=<one of those> or omit --platform to choose interactively.''',
+          );
+        } else {
+          logger.info(
+            '''Create one with ${lightCyan.wrap('shorebird release ${maybePlatform.name}')}.''',
+          );
+        }
       } else {
-        logger.err('No previewable releases found for this app');
+        logger
+          ..err('No previewable releases found for app $appId.')
+          ..info(
+            '''Create one with ${lightCyan.wrap('shorebird release <platform>')}, or pass --app-id=<app-id> to preview a different app.''',
+          );
       }
       return ExitCode.usage.code;
     }
@@ -219,7 +245,12 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (release == null) {
-      logger.err('No previewable releases found for version $releaseVersion');
+      final versions = platformReleases.map((r) => r.version).join(', ');
+      logger
+        ..err('No previewable release found for version $releaseVersion.')
+        ..info(
+          '''Previewable versions: $versions. Pass one with --release-version=<version> or omit it to choose interactively.''',
+        );
       return ExitCode.usage.code;
     }
 
@@ -231,9 +262,16 @@ This is only applicable when previewing Android releases.''',
       final activePlatformsString = release.activePlatforms
           .map((p) => p.displayName)
           .join(', ');
-      logger.err(
-        '''This release can only be previewed on platforms that support $activePlatformsString''',
-      );
+      final supportedString = supportedReleasePlatforms
+          .map((p) => p.displayName)
+          .join(', ');
+      logger
+        ..err(
+          '''Release $releaseVersion only has $activePlatformsString artifacts, which cannot be previewed from ${platform.operatingSystem}.''',
+        )
+        ..info(
+          '''Platforms previewable from this machine: $supportedString. iOS releases can only be previewed from macOS.''',
+        );
       return ExitCode.usage.code;
     }
 
@@ -341,24 +379,15 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.linux;
-    late Directory appDirectory;
-    late ReleaseArtifact releaseArtifact;
+    // getReleaseArtifact reports its own failure and throws ProcessExit.
+    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: 'bundle',
+      platform: platform,
+    );
 
-    try {
-      releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
-        appId: appId,
-        releaseId: release.id,
-        arch: 'bundle',
-        platform: platform,
-      );
-    } on Exception catch (e, s) {
-      logger
-        ..err('Error getting release artifact: $e')
-        ..detail('Stack trace: $s');
-      return ExitCode.software.code;
-    }
-
-    appDirectory = Directory(
+    final appDirectory = Directory(
       getArtifactPath(
         appId: appId,
         release: release,
@@ -367,25 +396,10 @@ This is only applicable when previewing Android releases.''',
       ),
     );
 
-    if (!appDirectory.existsSync()) {
-      try {
-        if (!appDirectory.existsSync()) {
-          appDirectory.createSync(recursive: true);
-        }
-
-        final archiveFile = await artifactManager.downloadWithProgressUpdates(
-          Uri.parse(releaseArtifact.url),
-          message: 'Downloading ${releaseArtifact.arch}',
-        );
-        await artifactManager.extractZip(
-          zipFile: archiveFile,
-          outputDirectory: appDirectory,
-        );
-      } on Exception catch (error) {
-        logger.err('$error');
-        return ExitCode.software.code;
-      }
-    }
+    await downloadAndExtractIfNeeded(
+      artifact: releaseArtifact,
+      outputDirectory: appDirectory,
+    );
 
     final progress = logger.progress('Using $track track');
     try {
@@ -416,24 +430,15 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.windows;
-    late Directory appDirectory;
-    late ReleaseArtifact releaseExeArtifact;
+    // getReleaseArtifact reports its own failure and throws ProcessExit.
+    final releaseExeArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: primaryWindowsReleaseArtifactArch,
+      platform: platform,
+    );
 
-    try {
-      releaseExeArtifact = await codePushClientWrapper.getReleaseArtifact(
-        appId: appId,
-        releaseId: release.id,
-        arch: primaryWindowsReleaseArtifactArch,
-        platform: platform,
-      );
-    } on Exception catch (e, s) {
-      logger
-        ..err('Error getting release artifact: $e')
-        ..detail('Stack trace: $s');
-      return ExitCode.software.code;
-    }
-
-    appDirectory = Directory(
+    final appDirectory = Directory(
       getArtifactPath(
         appId: appId,
         release: release,
@@ -443,25 +448,10 @@ This is only applicable when previewing Android releases.''',
       ),
     );
 
-    if (!appDirectory.existsSync()) {
-      try {
-        if (!appDirectory.existsSync()) {
-          appDirectory.createSync(recursive: true);
-        }
-
-        final archiveFile = await artifactManager.downloadWithProgressUpdates(
-          Uri.parse(releaseExeArtifact.url),
-          message: 'Downloading ${releaseExeArtifact.arch}',
-        );
-        await artifactManager.extractZip(
-          zipFile: archiveFile,
-          outputDirectory: appDirectory,
-        );
-      } on Exception catch (error) {
-        logger.err('$error');
-        return ExitCode.software.code;
-      }
-    }
+    await downloadAndExtractIfNeeded(
+      artifact: releaseExeArtifact,
+      outputDirectory: appDirectory,
+    );
 
     await setChannelOnWindowsApp(
       appDirectory: appDirectory,
@@ -485,24 +475,16 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.macos;
-    late Directory appDirectory;
-    late ReleaseArtifact releaseRunnerArtifact;
+    // getReleaseArtifact reports its own failure and throws ProcessExit.
+    final releaseRunnerArtifact = await codePushClientWrapper
+        .getReleaseArtifact(
+          appId: appId,
+          releaseId: release.id,
+          arch: 'app',
+          platform: platform,
+        );
 
-    try {
-      releaseRunnerArtifact = await codePushClientWrapper.getReleaseArtifact(
-        appId: appId,
-        releaseId: release.id,
-        arch: 'app',
-        platform: platform,
-      );
-    } on Exception catch (e, s) {
-      logger
-        ..err('Error getting release artifact: $e')
-        ..detail('Stack trace: $s');
-      return ExitCode.software.code;
-    }
-
-    appDirectory = Directory(
+    final appDirectory = Directory(
       getArtifactPath(
         appId: appId,
         release: release,
@@ -512,25 +494,14 @@ This is only applicable when previewing Android releases.''',
       ),
     );
 
-    if (!appDirectory.existsSync()) {
-      try {
-        if (!appDirectory.existsSync()) {
-          appDirectory.createSync(recursive: true);
-        }
-
-        final archiveFile = await artifactManager.downloadWithProgressUpdates(
-          Uri.parse(releaseRunnerArtifact.url),
-          message: 'Downloading ${releaseRunnerArtifact.arch}',
-        );
-        await ditto.extract(
-          source: archiveFile.path,
-          destination: appDirectory.path,
-        );
-      } on Exception catch (error) {
-        logger.err('$error');
-        return ExitCode.software.code;
-      }
-    }
+    await downloadAndExtractIfNeeded(
+      artifact: releaseRunnerArtifact,
+      outputDirectory: appDirectory,
+      extract: (archive, outputDirectory) => ditto.extract(
+        source: archive.path,
+        destination: outputDirectory.path,
+      ),
+    );
 
     await setChannelOnMacosApp(
       appDirectory: appDirectory,
@@ -595,68 +566,64 @@ This is only applicable when previewing Android releases.''',
     // Ensure keystore options are valid.
     if (keystore != null) {
       if (keystorePassword == null) {
-        logger.err('You must provide a keystore password.');
-        return ExitCode.usage.code;
+        usageException(
+          '--ks requires --ks-pass (e.g. --ks-pass=pass:<password> or '
+          '--ks-pass=file:<path>).',
+        );
       }
       if (keyAlias == null) {
-        logger.err('You must provide a key alias.');
-        return ExitCode.usage.code;
+        usageException('--ks requires --ks-key-alias=<alias>.');
       }
 
       if (!keystorePassword.startsWith('pass:') &&
           !keystorePassword.startsWith('file:')) {
-        logger.err('Keystore password must start with "pass:" or "file:".');
-        return ExitCode.usage.code;
+        usageException(
+          '--ks-pass must start with "pass:" or "file:" '
+          '(e.g. --ks-pass=pass:<password> or --ks-pass=file:<path>).',
+        );
       }
 
       if (keyPassword != null &&
           !keyPassword.startsWith('pass:') &&
           !keyPassword.startsWith('file:')) {
-        logger.err('Key password must start with "pass:" or "file:".');
-        return ExitCode.usage.code;
+        usageException(
+          '--ks-key-pass must start with "pass:" or "file:" '
+          '(e.g. --ks-key-pass=pass:<password> or --ks-key-pass=file:<path>).',
+        );
       }
     }
 
-    late File aabFile;
-    late ReleaseArtifact releaseAabArtifact;
+    // getReleaseArtifact reports its own failure and throws ProcessExit.
+    final releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: 'aab',
+      platform: platform,
+    );
 
-    try {
-      releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
+    final aabFile = File(
+      getArtifactPath(
         appId: appId,
-        releaseId: release.id,
-        arch: 'aab',
+        release: release,
+        artifact: releaseAabArtifact,
         platform: platform,
-      );
-    } on Exception catch (e, s) {
-      logger
-        ..err('Error getting release artifact: $e')
-        ..detail('Stack trace: $s');
-      return ExitCode.software.code;
-    }
+        fileExtension: 'aab',
+      ),
+    );
 
-    try {
-      aabFile = File(
-        getArtifactPath(
-          appId: appId,
-          release: release,
-          artifact: releaseAabArtifact,
-          platform: platform,
-          fileExtension: 'aab',
-        ),
-      );
-
-      if (!aabFile.existsSync()) {
+    if (!aabFile.existsSync()) {
+      try {
         aabFile.createSync(recursive: true);
-
         await artifactManager.downloadWithProgressUpdates(
           Uri.parse(releaseAabArtifact.url),
           message: 'Downloading ${releaseAabArtifact.arch}',
           outputPath: aabFile.path,
         );
+      } on Exception catch (error) {
+        // Remove the partial file so the next run does not treat it as cached.
+        if (aabFile.existsSync()) aabFile.deleteSync();
+        reportDownloadFailure(releaseAabArtifact, error);
       }
-    } on Exception catch (error) {
-      logger.err('$error');
-      return ExitCode.software.code;
     }
 
     final apksPath = getArtifactPath(
@@ -750,24 +717,16 @@ This is only applicable when previewing Android releases.''',
     await iosDeploy.installIfNeeded();
 
     const platform = ReleasePlatform.ios;
-    late Directory runnerDirectory;
-    late ReleaseArtifact releaseRunnerArtifact;
+    // getReleaseArtifact reports its own failure and throws ProcessExit.
+    final releaseRunnerArtifact = await codePushClientWrapper
+        .getReleaseArtifact(
+          appId: appId,
+          releaseId: release.id,
+          arch: 'runner',
+          platform: platform,
+        );
 
-    try {
-      releaseRunnerArtifact = await codePushClientWrapper.getReleaseArtifact(
-        appId: appId,
-        releaseId: release.id,
-        arch: 'runner',
-        platform: platform,
-      );
-    } on Exception catch (e, s) {
-      logger
-        ..err('Error getting release artifact: $e')
-        ..detail('Stack trace: $s');
-      return ExitCode.software.code;
-    }
-
-    runnerDirectory = Directory(
+    final runnerDirectory = Directory(
       getArtifactPath(
         appId: appId,
         release: release,
@@ -777,25 +736,10 @@ This is only applicable when previewing Android releases.''',
       ),
     );
 
-    if (!runnerDirectory.existsSync()) {
-      try {
-        if (!runnerDirectory.existsSync()) {
-          runnerDirectory.createSync(recursive: true);
-        }
-
-        final archiveFile = await artifactManager.downloadWithProgressUpdates(
-          Uri.parse(releaseRunnerArtifact.url),
-          message: 'Downloading ${releaseRunnerArtifact.arch}',
-        );
-        await artifactManager.extractZip(
-          zipFile: archiveFile,
-          outputDirectory: runnerDirectory,
-        );
-      } on Exception catch (error) {
-        logger.err('$error');
-        return ExitCode.software.code;
-      }
-    }
+    await downloadAndExtractIfNeeded(
+      artifact: releaseRunnerArtifact,
+      outputDirectory: runnerDirectory,
+    );
 
     final progress = logger.progress('Using $track track');
     try {
@@ -1103,6 +1047,50 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
     return true;
   }
 
+  /// Downloads the zipped [artifact] and extracts it into [outputDirectory]
+  /// (with [extract], defaulting to [ArtifactManager.extractZip]) unless the
+  /// directory already exists.
+  ///
+  /// Removes [outputDirectory] if the download or extraction fails so the
+  /// next run does not treat the partial download as a cached artifact.
+  /// Throws [ProcessExit] on failure.
+  @visibleForTesting
+  Future<void> downloadAndExtractIfNeeded({
+    required ReleaseArtifact artifact,
+    required Directory outputDirectory,
+    Future<void> Function(File archive, Directory outputDirectory)? extract,
+  }) async {
+    if (outputDirectory.existsSync()) return;
+    try {
+      outputDirectory.createSync(recursive: true);
+      final archiveFile = await artifactManager.downloadWithProgressUpdates(
+        Uri.parse(artifact.url),
+        message: 'Downloading ${artifact.arch}',
+      );
+      if (extract != null) {
+        await extract(archiveFile, outputDirectory);
+      } else {
+        await artifactManager.extractZip(
+          zipFile: archiveFile,
+          outputDirectory: outputDirectory,
+        );
+      }
+    } on Exception catch (error) {
+      if (outputDirectory.existsSync()) {
+        outputDirectory.deleteSync(recursive: true);
+      }
+      reportDownloadFailure(artifact, error);
+    }
+  }
+
+  /// Logs a failed download of [artifact] and throws [ProcessExit].
+  Never reportDownloadFailure(ReleaseArtifact artifact, Object error) {
+    logger
+      ..err('Failed to download the ${artifact.arch} artifact: $error')
+      ..info('Re-run the command to try the download again.');
+    throw ProcessExit(ExitCode.software.code);
+  }
+
   /// Starts a process and forwards its stdout/stderr to the logger.
   ///
   /// Returns the process exit code.
@@ -1150,7 +1138,11 @@ void assertPreviewableReleases({
     // If the user explicitly specified a platform and it matches a non
     // previewable platform, we early exit to avoid duplicated warnings/errors.
     if (targetPlatform?.name == platform.name) {
-      logger.err(message);
+      logger
+        ..err(message)
+        ..info(
+          '''iOS releases built with --no-codesign and add-to-app releases (aar, ios-framework) cannot be previewed. Create a new release with ${lightCyan.wrap('shorebird release ${platform.name}')}, or pick another with --release-version.''',
+        );
       throw ProcessExit(ExitCode.software.code);
       // We only WARN if the user didn't specify a platform.
     } else if (targetPlatform == null) {
