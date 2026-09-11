@@ -103,15 +103,23 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Returns the platforms that can be previewed on the current OS.
-  static List<ReleasePlatform> get supportedReleasePlatforms {
-    if (platform.isMacOS) {
-      return ReleasePlatform.values;
-    } else {
-      return ReleasePlatform.values
-          .where((p) => p != ReleasePlatform.ios)
-          .toList();
-    }
-  }
+  static List<ReleasePlatform> get supportedReleasePlatforms =>
+      ReleasePlatform.values.where(_isPreviewableHere).toList();
+
+  /// Whether a release built for [releasePlatform] can be launched from the
+  /// machine running this command.
+  ///
+  /// A desktop preview runs the release's own executable, so only its own OS
+  /// can launch it -- this used to exclude iOS alone, which left macOS in the
+  /// list on Windows and Linux and let `--platform macos` past the guard
+  /// there. Android is the exception: `adb` talks to the device from any host.
+  static bool _isPreviewableHere(ReleasePlatform releasePlatform) =>
+      switch (releasePlatform) {
+        ReleasePlatform.android => true,
+        ReleasePlatform.ios || ReleasePlatform.macos => platform.isMacOS,
+        ReleasePlatform.linux => platform.isLinux,
+        ReleasePlatform.windows => platform.isWindows,
+      };
 
   @override
   String get name => 'preview';
@@ -371,8 +379,6 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.linux;
-    late Directory appDirectory;
-
     // getReleaseArtifact reports its own failure and throws ProcessExit.
     final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: appId,
@@ -381,7 +387,7 @@ This is only applicable when previewing Android releases.''',
       platform: platform,
     );
 
-    appDirectory = Directory(
+    final appDirectory = Directory(
       getArtifactPath(
         appId: appId,
         release: release,
@@ -424,8 +430,6 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.windows;
-    late Directory appDirectory;
-
     // getReleaseArtifact reports its own failure and throws ProcessExit.
     final releaseExeArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: appId,
@@ -434,7 +438,7 @@ This is only applicable when previewing Android releases.''',
       platform: platform,
     );
 
-    appDirectory = Directory(
+    final appDirectory = Directory(
       getArtifactPath(
         appId: appId,
         release: release,
@@ -471,8 +475,6 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.macos;
-    late Directory appDirectory;
-
     // getReleaseArtifact reports its own failure and throws ProcessExit.
     final releaseRunnerArtifact = await codePushClientWrapper
         .getReleaseArtifact(
@@ -482,7 +484,7 @@ This is only applicable when previewing Android releases.''',
           platform: platform,
         );
 
-    appDirectory = Directory(
+    final appDirectory = Directory(
       getArtifactPath(
         appId: appId,
         release: release,
@@ -715,8 +717,6 @@ This is only applicable when previewing Android releases.''',
     await iosDeploy.installIfNeeded();
 
     const platform = ReleasePlatform.ios;
-    late Directory runnerDirectory;
-
     // getReleaseArtifact reports its own failure and throws ProcessExit.
     final releaseRunnerArtifact = await codePushClientWrapper
         .getReleaseArtifact(
@@ -726,7 +726,7 @@ This is only applicable when previewing Android releases.''',
           platform: platform,
         );
 
-    runnerDirectory = Directory(
+    final runnerDirectory = Directory(
       getArtifactPath(
         appId: appId,
         release: release,
