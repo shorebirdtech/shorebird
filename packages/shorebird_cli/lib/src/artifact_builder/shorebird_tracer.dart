@@ -5,7 +5,12 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_build_trace/shorebird_build_trace.dart';
 
 export 'package:shorebird_build_trace/shorebird_build_trace.dart'
-    show currentProcessId, BuildTraceEvent, BuildTracer, PhaseTracker;
+    show
+        BuildTraceEvent,
+        BuildTracer,
+        PhaseTracker,
+        SetupPhase,
+        currentProcessId;
 
 /// Perfetto row id for network (HTTP) spans within the shorebird_cli
 /// process. Local tid; no cross-repo coordination.
@@ -66,6 +71,22 @@ class ShorebirdTracer {
     cat: category,
     pid: _pid,
     tid: _shorebirdTid,
+    body: body,
+    args: args,
+  );
+
+  /// Run [body], time it, and record a `setup`-category span for
+  /// [phase] on the shorebird_cli row.
+  ///
+  /// Setup runs before `flutter build`, so these spans are the only
+  /// thing that attributes cold-start cost; see [SetupPhase].
+  Future<T> setupSpan<T>({
+    required SetupPhase phase,
+    required Future<T> Function() body,
+    Map<String, Object?>? args,
+  }) => span(
+    name: '${TraceNames.setupNamePrefix}: ${phase.wireName}',
+    category: TraceCategory.setup.wireName,
     body: body,
     args: args,
   );

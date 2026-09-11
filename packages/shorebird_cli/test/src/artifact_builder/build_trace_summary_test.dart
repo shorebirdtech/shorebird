@@ -303,7 +303,7 @@ void main() {
       ];
       final s = BuildTraceSummary.fromEvents(events, platform: 'android');
       final j = s.toJson();
-      expect(j['version'], 8);
+      expect(j['version'], 9);
       expect(j['platform'], 'android');
       expect(j['android'], isA<Map<String, Object?>>());
       expect(j.containsKey('ios'), isFalse);
@@ -314,6 +314,100 @@ void main() {
       expect(flat.contains('"path"'), isFalse);
       expect(flat.contains('"file"'), isFalse);
       expect(flat.contains('"user"'), isFalse);
+    });
+
+    group('setup phases', () {
+      List<Map<String, Object?>> setupEvents() => [
+        _event(
+          name: 'setup: flutter_install',
+          cat: 'setup',
+          ts: 0,
+          dur: 90_000_000,
+          tid: 2,
+        ),
+        _event(
+          name: 'setup: flutter_precache',
+          cat: 'setup',
+          ts: 90_000_000,
+          dur: 240_000_000,
+          tid: 2,
+        ),
+        // Emitted once per `updateAll` call; the later ones no-op.
+        _event(
+          name: 'setup: shorebird_cache',
+          cat: 'setup',
+          ts: 330_000_000,
+          dur: 30_000_000,
+          tid: 2,
+        ),
+        _event(
+          name: 'setup: shorebird_cache',
+          cat: 'setup',
+          ts: 360_000_000,
+          dur: 1_000_000,
+          tid: 2,
+        ),
+      ];
+
+      test('bucket by phase and sum repeated phases', () {
+        final s = BuildTraceSummary.fromEvents(
+          setupEvents(),
+          platform: 'android',
+        );
+        expect(s.setup.flutterInstall, const Duration(seconds: 90));
+        expect(s.setup.flutterPrecache, const Duration(seconds: 240));
+        expect(s.setup.shorebirdCache, const Duration(seconds: 31));
+        expect(s.setup.total, const Duration(seconds: 361));
+      });
+
+      test('are a subset of overhead, not of flutterBuild', () {
+        // The case this exists for: a cold CI runner where setup
+        // dominates and Flutter's own build is comparatively quick.
+        final s = BuildTraceSummary.fromEvents(
+          [
+            ...setupEvents(),
+            _event(
+              name: 'flutter build appbundle',
+              cat: 'flutter',
+              ts: 361_000_000,
+              dur: 60_000_000,
+              tid: 1,
+            ),
+          ],
+          platform: 'android',
+          shorebirdOverhead: const Duration(seconds: 380),
+        );
+        expect(s.flutterBuild, const Duration(seconds: 60));
+        expect(s.setup.total, lessThan(s.shorebirdOverhead!));
+        // Without the setup breakdown this whole 361s reads as local work.
+        expect(s.shorebirdLocal, const Duration(seconds: 380));
+      });
+
+      test('unknown phase does not land in a named bucket', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'setup: from_the_future',
+            cat: 'setup',
+            ts: 0,
+            dur: 5_000_000,
+            tid: 2,
+          ),
+        ], platform: 'android');
+        expect(s.setup.total, Duration.zero);
+      });
+
+      test('toJson serializes all fields', () {
+        final s = BuildTraceSummary.fromEvents(
+          setupEvents(),
+          platform: 'android',
+        );
+        expect(s.toJson()['setup'], {
+          'totalMs': 361_000,
+          'flutterInstallMs': 90_000,
+          'flutterPrecacheMs': 240_000,
+          'shorebirdCacheMs': 31_000,
+        });
+      });
     });
 
     group('tryFromFile', () {
