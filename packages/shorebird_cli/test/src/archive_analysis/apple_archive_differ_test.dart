@@ -1,4 +1,7 @@
 // cspell:words xcarchive xcarchives xcframeworks xcframework actool assetutil
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
@@ -93,16 +96,13 @@ void main() {
     });
 
     group('sanitizeCarJson', () {
-      test('strips Timestamp lines', () {
-        final input = [
-          '{',
-          '  "Timestamp" : 1234567890',
-          '  "Name" : "AppIcon"',
-          '}',
-        ];
+      test('strips Timestamp', () {
+        const withTimestamp = '''
+[{"Timestamp" : 1234567890, "Name" : "AppIcon"}]''';
+        const withoutTimestamp = '[{"Name" : "AppIcon"}]';
         expect(
-          AppleArchiveDiffer.sanitizeCarJson(input),
-          '{\n  "Name" : "AppIcon"\n}',
+          AppleArchiveDiffer.sanitizeCarJson(withTimestamp),
+          AppleArchiveDiffer.sanitizeCarJson(withoutTimestamp),
         );
       });
 
@@ -112,14 +112,10 @@ void main() {
         // RenditionName/Name fields of the assetutil --info output.
         const uuidA = '1FB87FB1-9D9F-4F60-B3C3-6E63B0B0E3DD';
         const uuidB = 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE';
-        final buildA = [
-          '  "Name" : "AppIcon-$uuidA"',
-          '  "RenditionName" : "AppIcon-$uuidA.png"',
-        ];
-        final buildB = [
-          '  "Name" : "AppIcon-$uuidB"',
-          '  "RenditionName" : "AppIcon-$uuidB.png"',
-        ];
+        const buildA = '''
+[{"Name" : "AppIcon-$uuidA", "RenditionName" : "AppIcon-$uuidA.png"}]''';
+        const buildB = '''
+[{"Name" : "AppIcon-$uuidB", "RenditionName" : "AppIcon-$uuidB.png"}]''';
         expect(
           AppleArchiveDiffer.sanitizeCarJson(buildA),
           AppleArchiveDiffer.sanitizeCarJson(buildB),
@@ -128,12 +124,133 @@ void main() {
 
       test('still detects rendition name changes that are not just UUIDs', () {
         const uuid = '1FB87FB1-9D9F-4F60-B3C3-6E63B0B0E3DD';
-        final before = ['  "RenditionName" : "AppIcon-$uuid.png"'];
-        final after = ['  "RenditionName" : "AppIconDark-$uuid.png"'];
+        const before = '[{"RenditionName" : "AppIcon-$uuid.png"}]';
+        const after = '[{"RenditionName" : "AppIconDark-$uuid.png"}]';
         expect(
           AppleArchiveDiffer.sanitizeCarJson(before),
           isNot(AppleArchiveDiffer.sanitizeCarJson(after)),
         );
+      });
+
+      test('keeps keys that differ only by UUID distinct', () {
+        const uuidA = '1FB87FB1-9D9F-4F60-B3C3-6E63B0B0E3DD';
+        const uuidB = 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE';
+        const both = '[{"Icon-$uuidA" : 1, "Icon-$uuidB" : 2}]';
+        // Matches what `both` would reduce to if the keys were normalized
+        // and collapsed, so this fails rather than passes if that returns.
+        const one = '[{"Icon-$uuidB" : 2}]';
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(both),
+          isNot(AppleArchiveDiffer.sanitizeCarJson(one)),
+        );
+      });
+
+      test('is insensitive to the order assetutil emits fields in', () {
+        const orderA = '[{"Name" : "AppIcon", "Scale" : 1}]';
+        const orderB = '[{"Scale" : 1, "Name" : "AppIcon"}]';
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(orderA),
+          AppleArchiveDiffer.sanitizeCarJson(orderB),
+        );
+      });
+
+      test('hashes non-JSON output verbatim rather than throwing', () {
+        const notJson = 'assetutil: unable to read archive';
+        expect(AppleArchiveDiffer.sanitizeCarJson(notJson), notJson);
+      });
+
+      group('layered icon renditions', () {
+        final fixturesPath = p.join('test', 'fixtures', 'assetutil');
+        String readFixture(String name) =>
+            File(p.join(fixturesPath, name)).readAsStringSync();
+
+        // Matched independently of the production pattern, so that a test
+        // targeting a generated rendition cannot be fooled into targeting
+        // something else by the very regex it is checking.
+        final generatedName = RegExp(
+          '_[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-'
+          r'[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}-\d+-[0-9A-Fa-f]+',
+        );
+
+        /// Rewrites [key] on the first rendition carrying a generated name, so
+        /// the edit lands on an entry whose `SHA1Digest` was stripped rather
+        /// than one still compared on its digest alone.
+        String editGeneratedRendition(
+          String contents,
+          String key,
+          Object? value,
+        ) {
+          final entries = jsonDecode(contents) as List<dynamic>;
+          final target = entries.cast<Map<String, dynamic>>().firstWhere(
+            (entry) =>
+                entry['RenditionName'] is String &&
+                generatedName.hasMatch(entry['RenditionName'] as String) &&
+                entry.containsKey('SHA1Digest') &&
+                entry.containsKey(key),
+          );
+          target[key] = value;
+          return jsonEncode(entries);
+        }
+
+        late String buildA;
+        late String buildB;
+
+        setUp(() {
+          buildA = readFixture('layered_icon_build_a.json');
+          buildB = readFixture('layered_icon_build_b.json');
+        });
+
+        test('two builds of an unchanged icon sanitize identically', () {
+          // These two dumps differ only in Timestamp, RenditionName and
+          // SHA1Digest, all regenerated by actool. Treating that as an asset
+          // change is what blocks a patch for a user who changed nothing.
+          expect(buildA, isNot(buildB));
+          expect(
+            AppleArchiveDiffer.sanitizeCarJson(buildA),
+            AppleArchiveDiffer.sanitizeCarJson(buildB),
+          );
+        });
+
+        test('still detects an icon whose byte count changed', () {
+          final edited = editGeneratedRendition(buildA, 'SizeOnDisk', 1);
+          expect(
+            AppleArchiveDiffer.sanitizeCarJson(buildA),
+            isNot(AppleArchiveDiffer.sanitizeCarJson(edited)),
+          );
+        });
+
+        test('still detects an icon whose dimensions changed', () {
+          final edited = editGeneratedRendition(buildA, 'PixelWidth', 512);
+          expect(
+            AppleArchiveDiffer.sanitizeCarJson(buildA),
+            isNot(AppleArchiveDiffer.sanitizeCarJson(edited)),
+          );
+        });
+
+        test('still compares SHA1Digest on renditions actool did not '
+            'generate a name for', () {
+          const before =
+              '[{"RenditionName" : "asset.png", "SHA1Digest" : "AAAA"}]';
+          const after =
+              '[{"RenditionName" : "asset.png", "SHA1Digest" : "BBBB"}]';
+          expect(
+            AppleArchiveDiffer.sanitizeCarJson(before),
+            isNot(AppleArchiveDiffer.sanitizeCarJson(after)),
+          );
+        });
+
+        test('normalizes the pid and counter, not just the uuid', () {
+          // The uuid is held constant here so that the pid and counter, which
+          // sit outside it and which the original fix did not cover, are the
+          // only thing the two dumps disagree on.
+          const uuid = '1FB87FB1-9D9F-4F60-B3C3-6E63B0B0E3DD';
+          String dump(String pid, String counter) =>
+              '[{"RenditionName" : "AppIcon_$uuid-$pid-$counter.png"}]';
+          expect(
+            AppleArchiveDiffer.sanitizeCarJson(dump('38834', '00000317C82E5')),
+            AppleArchiveDiffer.sanitizeCarJson(dump('43420', '0000031A230EE')),
+          );
+        });
       });
     });
 

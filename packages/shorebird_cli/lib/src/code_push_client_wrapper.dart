@@ -133,6 +133,20 @@ class CodePushClientWrapper {
     return user;
   }
 
+  /// Fetches the plan level for the current user, e.g. `free`, `pro`,
+  /// `business` or `enterprise`. Null when the server does not report one.
+  Future<String?> getPlanLevel() async {
+    final progress = logger.progress('Fetching plan');
+    final String? level;
+    try {
+      level = await codePushClient.getPlanLevel();
+      progress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+    return level;
+  }
+
   /// Fetches the organization memberships for the current user.
   Future<List<OrganizationMembership>> getOrganizationMemberships() async {
     final progress = logger.progress('Fetching organizations');
@@ -199,6 +213,18 @@ This app may not exist or you may not have permission to view it.''');
     }
   }
 
+  /// Fetches all channels for the provided [appId].
+  Future<List<Channel>> getChannels({required String appId}) async {
+    final fetchChannelsProgress = logger.progress('Fetching channels');
+    try {
+      final channels = await codePushClient.getChannels(appId: appId);
+      fetchChannelsProgress.complete();
+      return channels;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: fetchChannelsProgress);
+    }
+  }
+
   /// Creates a channel for the provided [appId] with the given [name].
   Future<Channel> createChannel({
     required String appId,
@@ -214,6 +240,63 @@ This app may not exist or you may not have permission to view it.''');
       return channel;
     } catch (error) {
       _handleErrorAndExit(error, progress: createChannelProgress);
+    }
+  }
+
+  /// Deletes the channel with the provided [channelId] from [appId].
+  Future<void> deleteChannel({
+    required String appId,
+    required int channelId,
+  }) async {
+    final deleteChannelProgress = logger.progress('Deleting channel');
+    try {
+      await codePushClient.deleteChannel(appId: appId, channelId: channelId);
+      deleteChannelProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: deleteChannelProgress);
+    }
+  }
+
+  /// Renames the app with the provided [appId] to [displayName].
+  Future<void> updateApp({
+    required String appId,
+    required String displayName,
+  }) async {
+    final updateAppProgress = logger.progress('Renaming app');
+    try {
+      await codePushClient.updateApp(appId: appId, displayName: displayName);
+      updateAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: updateAppProgress);
+    }
+  }
+
+  /// Deletes the app with the provided [appId], along with every release and
+  /// patch belonging to it.
+  Future<void> deleteApp({required String appId}) async {
+    final deleteAppProgress = logger.progress('Deleting app');
+    try {
+      await codePushClient.deleteApp(appId: appId);
+      deleteAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: deleteAppProgress);
+    }
+  }
+
+  /// Moves the app with the provided [appId] into [organizationId].
+  Future<void> transferApp({
+    required int organizationId,
+    required String appId,
+  }) async {
+    final transferAppProgress = logger.progress('Transferring app');
+    try {
+      await codePushClient.transferApp(
+        organizationId: organizationId,
+        appId: appId,
+      );
+      transferAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: transferAppProgress);
     }
   }
 
@@ -993,6 +1076,70 @@ aar artifact already exists, continuing...''');
       promotePatchProgress.complete();
     } catch (error) {
       _handleErrorAndExit(error, progress: promotePatchProgress);
+    }
+  }
+
+  /// Rolls back the patch identified by [patchId] under [releaseId]. Returns
+  /// whether the server changed the patch, which is `false` when it was
+  /// already rolled back.
+  ///
+  /// [patchNumber] is used purely for the human-readable progress message;
+  /// pass it through when the caller already has it on hand.
+  Future<bool> rollbackPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+    int? patchNumber,
+  }) async {
+    final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
+    final progress = logger.progress('Rolling back $label');
+    try {
+      final changed = await codePushClient.rollbackPatch(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patchId,
+      );
+      // A completed spinner would claim the rollback happened, so say so when
+      // the server reported there was nothing to change.
+      progress.complete(
+        changed ? null : 'No change: $label was already rolled back',
+      );
+      return changed;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+  }
+
+  /// Rolls forward (un-rolls-back) the patch identified by [patchId] under
+  /// [releaseId], returning it to its active state so the server resends the
+  /// same patch artifact to devices on the next patch check. Returns whether
+  /// the server changed the patch, which is `false` when it was already
+  /// active.
+  ///
+  /// [patchNumber] is used purely for the human-readable progress message;
+  /// pass it through when the caller already has it on hand.
+  Future<bool> rollforwardPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+    int? patchNumber,
+  }) async {
+    final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
+    final progress = logger.progress('Rolling forward $label');
+    try {
+      final changed = await codePushClient.rollforwardPatch(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patchId,
+      );
+      // A completed spinner would claim the rollforward happened, so say so
+      // when the server reported there was nothing to change.
+      progress.complete(
+        changed ? null : 'No change: $label was already active',
+      );
+      return changed;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
     }
   }
 

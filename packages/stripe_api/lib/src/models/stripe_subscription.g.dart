@@ -47,6 +47,13 @@ StripeSubscription _$StripeSubscriptionFromJson(Map<String, dynamic> json) =>
               const TimestampConverter().fromJson,
             ),
           ),
+          cancelAt: $checkedConvert(
+            'cancel_at',
+            (v) => _$JsonConverterFromJson<int, DateTime>(
+              v,
+              const TimestampConverter().fromJson,
+            ),
+          ),
           canceledAt: $checkedConvert(
             'canceled_at',
             (v) => _$JsonConverterFromJson<int, DateTime>(
@@ -68,6 +75,29 @@ StripeSubscription _$StripeSubscriptionFromJson(Map<String, dynamic> json) =>
               const TimestampConverter().fromJson,
             ),
           ),
+          metadata: $checkedConvert(
+            'metadata',
+            (v) =>
+                (v as Map<String, dynamic>?)?.map(
+                  (k, e) => MapEntry(k, e as String),
+                ) ??
+                const {},
+          ),
+          currency: $checkedConvert('currency', (v) => v as String?),
+          defaultPaymentMethod: $checkedConvert(
+            'default_payment_method',
+            (v) => v as String?,
+          ),
+          automaticTaxEnabled: $checkedConvert(
+            'automatic_tax',
+            (v) => v == null
+                ? false
+                : _automaticTaxEnabledFromJson(v as Map<String, dynamic>?),
+          ),
+          collectionMethod: $checkedConvert(
+            'collection_method',
+            (v) => $enumDecodeNullable(_$StripeCollectionMethodEnumMap, v),
+          ),
         );
         return val;
       },
@@ -77,9 +107,13 @@ StripeSubscription _$StripeSubscriptionFromJson(Map<String, dynamic> json) =>
         'currentPeriodStart': 'current_period_start',
         'startDate': 'start_date',
         'endedAt': 'ended_at',
+        'cancelAt': 'cancel_at',
         'canceledAt': 'canceled_at',
         'trialStart': 'trial_start',
         'trialEnd': 'trial_end',
+        'defaultPaymentMethod': 'default_payment_method',
+        'automaticTaxEnabled': 'automatic_tax',
+        'collectionMethod': 'collection_method',
       },
     );
 
@@ -98,3 +132,8 @@ Value? _$JsonConverterFromJson<Json, Value>(
   Object? json,
   Value? Function(Json json) fromJson,
 ) => json == null ? null : fromJson(json as Json);
+
+const _$StripeCollectionMethodEnumMap = {
+  StripeCollectionMethod.chargeAutomatically: 'charge_automatically',
+  StripeCollectionMethod.sendInvoice: 'send_invoice',
+};

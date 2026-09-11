@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -19,7 +20,16 @@ import 'package:uuid/uuid.dart';
 R runWithOverrides<R>(R Function() body) {
   return runScoped(
     body,
-    values: {authRef, httpClientRef, loggerRef, platformRef, shorebirdEnvRef},
+    values: {
+      authRef,
+      httpClientRef,
+      loggerRef,
+      platformRef,
+      shorebirdEnvRef,
+      // TracingClient wraps the auth client and reads the ambient tracer on
+      // every request, so any scope that issues HTTP has to seed it.
+      shorebirdTracerRef,
+    },
   );
 }
 
