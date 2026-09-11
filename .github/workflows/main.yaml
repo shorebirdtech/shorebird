@@ -246,6 +246,7 @@ jobs:
   ci:
     needs:
       [
+        changes,
         license_check,
         semantic_pull_request,
         build_cross_platform_dart_packages,
@@ -258,6 +259,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: ⛔️ exit(1) on failure
-        if: ${{ contains(join(needs.*.result, ','), 'failure') }}
+      - name: ⛔️ exit(1) on failure or cancellation
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
         run: exit 1

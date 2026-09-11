@@ -346,7 +346,7 @@ jobs:
       - run: dart pub global activate shorebird_ci
       - name: Verify CI coverage
         run: shorebird_ci verify
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
