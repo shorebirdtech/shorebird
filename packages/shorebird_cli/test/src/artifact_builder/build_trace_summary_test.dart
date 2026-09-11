@@ -291,6 +291,164 @@ void main() {
       );
     });
 
+    test('macos trace → xcode stats populated under the ios key', () {
+      final events = [
+        _event(
+          name: 'pod install',
+          cat: 'subprocess',
+          ts: 0,
+          dur: 4_000_000,
+          tid: 1,
+        ),
+        _event(
+          name: 'Build target Runner',
+          cat: 'xcode_subsection',
+          ts: 5_000_000,
+          dur: 20_000_000,
+          tid: 1,
+        ),
+        _event(
+          name: 'xcode build',
+          cat: 'xcode',
+          ts: 4_000_000,
+          dur: 30_000_000,
+          tid: 2,
+        ),
+        _event(
+          name: 'flutter build macos',
+          cat: 'flutter',
+          ts: 0,
+          dur: 40_000_000,
+          tid: 1,
+        ),
+      ];
+      final s = BuildTraceSummary.fromEvents(events, platform: 'macos');
+
+      expect(s.platform, 'macos');
+      expect(s.android, isNull);
+      expect(s.ios, isNotNull);
+      expect(s.ios!.podInstall.duration, const Duration(seconds: 4));
+      expect(s.ios!.xcode.subsectionDistribution.count, 1);
+      expect(s.native.build, const Duration(seconds: 30));
+      expect(s.toJson()['ios'], isNotNull);
+    });
+
+    test('linux trace → no platform-specific stats', () {
+      final s = BuildTraceSummary.fromEvents([], platform: 'linux');
+      expect(s.android, isNull);
+      expect(s.ios, isNull);
+    });
+
+    group('native.compile', () {
+      // gen_snapshot inside gradle: [10s, 13s) within [5s, 35s).
+      final nested = _event(
+        name: 'aot_android_asset_bundle',
+        cat: 'assemble',
+        ts: 10_000_000,
+        dur: 3_000_000,
+        tid: 1,
+      );
+      final gradle = _event(
+        name: 'gradle bundleRelease',
+        cat: 'gradle',
+        ts: 5_000_000,
+        dur: 30_000_000,
+        tid: 2,
+      );
+
+      test('subtracts assemble time that ran inside the native build', () {
+        final s = BuildTraceSummary.fromEvents([
+          nested,
+          gradle,
+        ], platform: 'android');
+        expect(s.native.build, const Duration(seconds: 30));
+        expect(s.native.compile, const Duration(seconds: 27));
+      });
+
+      test('does not subtract assemble time that ran beside it', () {
+        // ios-framework builds App.framework in-process ([0s, 8s)), then
+        // runs xcodebuild for plugins ([10s, 20s)). None of the assemble
+        // work is inside xcodebuild, so native compile is the full span.
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 0,
+            dur: 8_000_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'xcode build plugins (iphoneos)',
+            cat: 'xcode',
+            ts: 10_000_000,
+            dur: 10_000_000,
+            tid: 2,
+          ),
+        ], platform: 'ios');
+        expect(s.native.build, const Duration(seconds: 10));
+        expect(s.native.compile, const Duration(seconds: 10));
+      });
+
+      test('subtracts only the overlapping portion', () {
+        // assemble [0s, 8s) straddles the start of xcode [6s, 16s).
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 0,
+            dur: 8_000_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'xcode build',
+            cat: 'xcode',
+            ts: 6_000_000,
+            dur: 10_000_000,
+            tid: 2,
+          ),
+        ], platform: 'ios');
+        expect(s.native.compile, const Duration(seconds: 8));
+      });
+
+      test('treats an assemble event without ts as nested', () {
+        // Older producers emitted no timestamps; they all nested
+        // assemble inside the native build, so keep subtracting.
+        final s = BuildTraceSummary.fromEvents([
+          {
+            'ph': 'X',
+            'name': 'kernel_snapshot',
+            'cat': 'assemble',
+            'dur': 3_000_000,
+            'pid': 1,
+            'tid': 1,
+          },
+          gradle,
+        ], platform: 'android');
+        expect(s.native.compile, const Duration(seconds: 27));
+      });
+
+      test('clamps at zero', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 5_000_000,
+            dur: 30_000_000,
+            tid: 1,
+          ),
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 5_000_000,
+            dur: 30_000_000,
+            tid: 1,
+          ),
+          gradle,
+        ], platform: 'android');
+        expect(s.native.compile, Duration.zero);
+      });
+    });
+
     test('toJson shape is nested and omits the other platform', () {
       final events = [
         _event(
