@@ -419,7 +419,7 @@ void main() {
         ).thenAnswer((_) async => release);
       });
 
-      test('emits the published release, refetched after finalize', () async {
+      test('emits the published release, re-fetched after finalize', () async {
         final finalized = Release(
           id: release.id,
           appId: release.appId,
