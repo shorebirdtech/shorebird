@@ -306,7 +306,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   Future<void> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
-    results.assertAbsentOrValidKeyPairOrCommands(usage: () => usage);
+    assertSigningArgsValid();
 
     try {
       await shorebirdValidator.validateFlavors(

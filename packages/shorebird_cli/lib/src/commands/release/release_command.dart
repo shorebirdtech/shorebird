@@ -403,7 +403,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   /// Validates arguments that are common to all release types.
   Future<void> assertArgsAreValid(Releaser releaser) async {
-    results.assertAbsentOrValidPublicKeyOrCmd(usage: () => usage);
+    assertPublicKeyArgsValid();
 
     final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
     final hasPublicKey =

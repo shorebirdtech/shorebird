@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:args/command_runner.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
@@ -70,55 +69,7 @@ extension OptionFinder on ArgResults {
 }
 
 /// Extension on [ArgResults] to provide code signing related extensions.
-///
-/// The `assert*` methods throw a [UsageException] (exit code 64, usage
-/// printed, `usage_error` in `--json`) whose message names the flag to fix.
-/// Callers pass a thunk returning the command's `usage` so the exception can
-/// print it; it is only evaluated on failure.
 extension CodeSign on ArgResults {
-  /// Throws a [UsageException] unless the file passed to the option [name]
-  /// exists. Does nothing when the option was not provided.
-  void _assertFileArgExists(String name, {required String Function() usage}) {
-    final path = this[name] as String?;
-    if (path != null && !File(path).existsSync()) {
-      throw UsageException('--$name: no file found at $path.', usage());
-    }
-  }
-
-  /// Asserts that either there is no public key argument
-  /// or that the path received exists.
-  void assertAbsentOrValidPublicKey({required String Function() usage}) {
-    _assertFileArgExists(CommonArguments.publicKeyArg.name, usage: usage);
-  }
-
-  /// Asserts that either there is no private key argument
-  /// or that the path received exists.
-  void assertAbsentOrValidPrivateKey({required String Function() usage}) {
-    _assertFileArgExists(CommonArguments.privateKeyArg.name, usage: usage);
-  }
-
-  /// Asserts that both public and private keys are either absent or
-  /// when provided, that both of them are pointing to existing files.
-  void assertAbsentOrValidKeyPair({required String Function() usage}) {
-    final publicKeyWasParsed = wasParsed(CommonArguments.publicKeyArg.name);
-    final privateKeyWasParsed = wasParsed(CommonArguments.privateKeyArg.name);
-
-    if (publicKeyWasParsed == privateKeyWasParsed) {
-      assertAbsentOrValidPublicKey(usage: usage);
-      assertAbsentOrValidPrivateKey(usage: usage);
-    } else {
-      final missing = publicKeyWasParsed
-          ? CommonArguments.privateKeyArg.name
-          : CommonArguments.publicKeyArg.name;
-      throw UsageException(
-        '--${CommonArguments.publicKeyArg.name} and '
-        '--${CommonArguments.privateKeyArg.name} must be passed together '
-        '(missing --$missing).',
-        usage(),
-      );
-    }
-  }
-
   /// Resolves the public key PEM string from the configured source.
   ///
   /// Returns null if no public key is configured. Throws
@@ -145,91 +96,6 @@ extension CodeSign on ArgResults {
     return publicKeyFile != null
         ? codeSigner.base64PublicKey(publicKeyFile)
         : null;
-  }
-
-  /// Validates key arguments for patch commands.
-  ///
-  /// Valid configurations:
-  /// - No signing (nothing provided)
-  /// - File-based: --public-key-path + --private-key-path
-  /// - Command-based: --public-key-cmd + --sign-cmd
-  /// - Mixed: --public-key-path + --sign-cmd
-  ///
-  /// Invalid configurations:
-  /// - Both --public-key-path and --public-key-cmd (ambiguous public key)
-  /// - Both --private-key-path and --sign-cmd (ambiguous signing method)
-  /// - --sign-cmd without a public key source
-  /// - --private-key-path without --public-key-path
-  void assertAbsentOrValidKeyPairOrCommands({
-    required String Function() usage,
-  }) {
-    final hasPublicKeyFile = wasParsed(CommonArguments.publicKeyArg.name);
-    final hasPrivateKeyFile = wasParsed(CommonArguments.privateKeyArg.name);
-    final hasPublicKeyCmd = wasParsed(CommonArguments.publicKeyCmd.name);
-    final hasSignCmd = wasParsed(CommonArguments.signCmd.name);
-
-    // Can't have two public key sources
-    if (hasPublicKeyFile && hasPublicKeyCmd) {
-      throw UsageException(
-        'Pass either --${CommonArguments.publicKeyArg.name} or '
-        '--${CommonArguments.publicKeyCmd.name}, not both.',
-        usage(),
-      );
-    }
-
-    // Can't have two signing methods
-    if (hasPrivateKeyFile && hasSignCmd) {
-      throw UsageException(
-        'Pass either --${CommonArguments.privateKeyArg.name} or '
-        '--${CommonArguments.signCmd.name}, not both.',
-        usage(),
-      );
-    }
-
-    // File-based signing requires both file args
-    if (hasPrivateKeyFile || (hasPublicKeyFile && !hasSignCmd)) {
-      assertAbsentOrValidKeyPair(usage: usage);
-    }
-
-    // --sign-cmd requires a public key source
-    if (hasSignCmd && !hasPublicKeyFile && !hasPublicKeyCmd) {
-      throw UsageException(
-        '--${CommonArguments.signCmd.name} requires a public key: add '
-        '--${CommonArguments.publicKeyArg.name}=<path> or '
-        '--${CommonArguments.publicKeyCmd.name}=<command>.',
-        usage(),
-      );
-    }
-
-    // Validate the public key file exists if provided
-    if (hasPublicKeyFile && hasSignCmd) {
-      assertAbsentOrValidPublicKey(usage: usage);
-    }
-  }
-
-  /// Validates public key arguments for release commands.
-  ///
-  /// Valid configurations:
-  /// - No public key (no signing)
-  /// - --public-key-path with valid file
-  /// - --public-key-cmd
-  ///
-  /// Invalid: mixing --public-key-path and --public-key-cmd
-  void assertAbsentOrValidPublicKeyOrCmd({required String Function() usage}) {
-    final hasFilePath = wasParsed(CommonArguments.publicKeyArg.name);
-    final hasCmd = wasParsed(CommonArguments.publicKeyCmd.name);
-
-    if (hasFilePath && hasCmd) {
-      throw UsageException(
-        'Pass either --${CommonArguments.publicKeyArg.name} or '
-        '--${CommonArguments.publicKeyCmd.name}, not both.',
-        usage(),
-      );
-    }
-
-    if (hasFilePath) {
-      assertAbsentOrValidPublicKey(usage: usage);
-    }
   }
 
   /// Get base64-encoded public key from either file or command.
