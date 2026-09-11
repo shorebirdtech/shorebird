@@ -96,7 +96,7 @@ final arm64PatchSupportConstraint = FlutterSupportConstraint(
 ///
 /// A revision that isn't on any `flutter_release/*` branch resolves to no
 /// version and is gated *off* unless allowlisted — passing the flag to a
-/// Flutter that doesn't register it is a hard argparse failure, so
+/// Flutter that doesn't register it is a hard argument-parsing failure, so
 /// "unknown" must not mean "new enough". Add the hash to
 /// [FlutterSupportConstraint.allowedRevisions] whenever
 /// `bin/internal/flutter.version` is bumped to a dev revision (one not yet
