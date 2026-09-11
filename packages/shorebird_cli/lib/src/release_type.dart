@@ -66,20 +66,72 @@ enum ReleaseType {
   }
 }
 
+/// Thrown when the positional platform arguments cannot be parsed. [message]
+/// is written for the user.
+class PlatformArgumentException implements Exception {
+  /// Creates an exception carrying the user-facing [message].
+  const PlatformArgumentException(this.message);
+
+  /// Why the arguments were rejected, and what to do instead.
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// The platform names accepted on the command line, sorted, for error text.
+String get validPlatformNames =>
+    (ReleaseType.values.map((t) => t.cliName).toList()..sort()).join(', ');
+
 /// Extension on [ArgResults] to get the release types from the CLI arguments.
 extension ReleaseTypeArgs on ArgResults {
+  /// The positional arguments the user typed before any `--` separator.
+  /// [rest] also contains everything after `--`, which is forwarded to
+  /// Flutter and must not be validated here.
+  List<String> get _ownPositionalArgs {
+    final separator = arguments.indexOf('--');
+    if (separator == -1) return rest;
+    final forwardedCount = arguments.length - separator - 1;
+    return rest.sublist(0, rest.length - forwardedCount);
+  }
+
   /// The release types specified in the CLI arguments.
+  ///
+  /// Throws a [PlatformArgumentException] when the positional platform is
+  /// not a valid platform, or when more than one positional argument is
+  /// given.
   Iterable<ReleaseType> get releaseTypes {
     List<String>? releaseTypeCliNames;
     if (wasParsed('platforms')) {
       releaseTypeCliNames = this['platforms'] as List<String>;
     } else {
-      if (arguments.isNotEmpty) {
-        final platformCliName = arguments.first;
+      final positionalArgs = _ownPositionalArgs;
+      if (positionalArgs.isNotEmpty) {
+        final platformCliName = positionalArgs.first;
         if (ReleaseType.values.none(
           (target) => target.cliName == platformCliName,
         )) {
-          throw ArgumentError('Invalid platform: $platformCliName');
+          throw PlatformArgumentException(
+            '''
+Invalid platform: "$platformCliName".
+Valid platforms: $validPlatformNames''',
+          );
+        }
+        if (positionalArgs.length > 1) {
+          final unexpected = positionalArgs[1];
+          final String hint;
+          if (RegExp(r'^\d+\.\d+').hasMatch(unexpected)) {
+            hint = 'Did you mean --release-version=$unexpected?';
+          } else if (ReleaseType.values.any((t) => t.cliName == unexpected)) {
+            hint = 'Did you mean --platforms=$platformCliName,$unexpected?';
+          } else {
+            hint = 'Arguments for Flutter go after --.';
+          }
+          throw PlatformArgumentException(
+            '''
+Unexpected argument: "$unexpected".
+$hint''',
+          );
         }
         releaseTypeCliNames = [platformCliName];
       }

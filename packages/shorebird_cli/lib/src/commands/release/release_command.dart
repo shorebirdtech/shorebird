@@ -186,14 +186,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   @override
   Future<int> run() async {
-    if (results.releaseTypes.isEmpty) {
-      logger.err(
-        '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
-      );
-      return ExitCode.usage.code;
-    }
+    final releaseTypes = releaseTypesOrUsageError(siblingCommand: 'releases');
 
-    final releaserFutures = results.releaseTypes
+    final releaserFutures = releaseTypes
         .map(_resolveReleaser)
         .map(createRelease);
 

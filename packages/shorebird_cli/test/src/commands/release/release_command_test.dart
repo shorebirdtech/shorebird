@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -747,18 +748,46 @@ $exception'''),
     group('when no platform argument is provided', () {
       setUp(() {
         when(() => argResults['platforms']).thenReturn(const <String>[]);
+        command.testRunner = usageRunner();
       });
 
-      test('fails and log the correct message', () async {
-        final exitCode = await runWithOverrides(command.run);
-
-        expect(exitCode, equals(ExitCode.usage.code));
-
-        verify(
-          () => logger.err(
-            '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
+      test('throws a usage exception listing the valid platforms', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+No platform was provided.
+Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
+            ),
           ),
-        ).called(1);
+        );
+      });
+    });
+
+    group('when the platform argument is invalid', () {
+      setUp(() {
+        when(() => argResults.wasParsed('platforms')).thenReturn(false);
+        when(() => argResults.arguments).thenReturn(['list']);
+        when(() => argResults.rest).thenReturn(['list']);
+        command.testRunner = usageRunner(commands: {});
+      });
+
+      test('throws a usage exception without a subcommand hint', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+Invalid platform: "list".
+Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
+            ),
+          ),
+        );
       });
     });
 
