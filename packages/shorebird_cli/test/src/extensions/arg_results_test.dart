@@ -2,20 +2,17 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:test/test.dart';
 
 class MockCodeSigner extends Mock implements CodeSigner {}
-
-class MockShorebirdLogger extends Mock implements ShorebirdLogger {}
 
 class FakeFile extends Fake implements File {}
 
@@ -423,10 +420,8 @@ void main() {
     final publicKeyFile = File(p.join(cryptoFixturesBasePath, 'public.pem'));
 
     late ArgParser parser;
-    late ShorebirdLogger logger;
 
     setUp(() {
-      logger = MockShorebirdLogger();
       parser = ArgParser()
         ..addOption(CommonArguments.publicKeyArg.name)
         ..addOption(CommonArguments.privateKeyArg.name)
@@ -434,29 +429,34 @@ void main() {
         ..addOption(CommonArguments.signCmd.name);
     });
 
+    String usage() => 'usage text';
+
+    Matcher throwsUsage(String message) => throwsA(
+      isA<UsageException>()
+          .having((e) => e.message, 'message', message)
+          .having((e) => e.usage, 'usage', 'usage text'),
+    );
+
     group('assertAbsentOrValidKeyPairOrCommands', () {
       test('succeeds when no signing arguments provided', () {
-        final args = <String>[];
-        final result = parser.parse(args);
-        expect(result.assertAbsentOrValidKeyPairOrCommands, returnsNormally);
+        final result = parser.parse(<String>[]);
+        expect(
+          () => result.assertAbsentOrValidKeyPairOrCommands(usage: usage),
+          returnsNormally,
+        );
       });
 
       test('throws when both public key sources provided', () {
-        final args = [
+        final result = parser.parse([
           '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
           '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
           '--${CommonArguments.signCmd.name}=sign-cmd',
-        ];
-        final result = parser.parse(args);
-
-        runScoped(
-          () {
-            expect(
-              result.assertAbsentOrValidKeyPairOrCommands,
-              throwsA(isA<ProcessExit>()),
-            );
-          },
-          values: {loggerRef.overrideWith(() => logger)},
+        ]);
+        expect(
+          () => result.assertAbsentOrValidKeyPairOrCommands(usage: usage),
+          throwsUsage(
+            'Pass either --public-key-path or --public-key-cmd, not both.',
+          ),
         );
       });
 
@@ -464,106 +464,144 @@ void main() {
         final privateKeyFile = File(
           p.join(cryptoFixturesBasePath, 'private.pem'),
         );
-        final args = [
+        final result = parser.parse([
           '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
           '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
           '--${CommonArguments.signCmd.name}=sign-cmd',
-        ];
-        final result = parser.parse(args);
-
-        runScoped(
-          () {
-            expect(
-              result.assertAbsentOrValidKeyPairOrCommands,
-              throwsA(isA<ProcessExit>()),
-            );
-          },
-          values: {loggerRef.overrideWith(() => logger)},
+        ]);
+        expect(
+          () => result.assertAbsentOrValidKeyPairOrCommands(usage: usage),
+          throwsUsage(
+            'Pass either --private-key-path or --sign-cmd, not both.',
+          ),
         );
       });
 
       test('throws when sign-cmd provided without any public key', () {
-        final args = ['--${CommonArguments.signCmd.name}=sign-cmd'];
-        final result = parser.parse(args);
+        final result = parser.parse([
+          '--${CommonArguments.signCmd.name}=sign-cmd',
+        ]);
+        expect(
+          () => result.assertAbsentOrValidKeyPairOrCommands(usage: usage),
+          throwsUsage(
+            '--sign-cmd requires a public key: add --public-key-path=<path> '
+            'or --public-key-cmd=<command>.',
+          ),
+        );
+      });
 
-        runScoped(
-          () {
-            expect(
-              result.assertAbsentOrValidKeyPairOrCommands,
-              throwsA(isA<ProcessExit>()),
-            );
-          },
-          values: {loggerRef.overrideWith(() => logger)},
+      test('throws naming the missing key when only one file is given', () {
+        final result = parser.parse([
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+        ]);
+        expect(
+          () => result.assertAbsentOrValidKeyPairOrCommands(usage: usage),
+          throwsUsage(
+            '--public-key-path and --private-key-path must be passed '
+            'together (missing --private-key-path).',
+          ),
+        );
+      });
+
+      test('throws naming the flag when a key file does not exist', () {
+        final result = parser.parse([
+          '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
+          '--${CommonArguments.privateKeyArg.name}=/nope/private.pem',
+        ]);
+        expect(
+          () => result.assertAbsentOrValidKeyPairOrCommands(usage: usage),
+          throwsUsage(
+            '--private-key-path: no file found at /nope/private.pem.',
+          ),
         );
       });
 
       test('succeeds when both cmd arguments provided', () {
-        final args = [
+        final result = parser.parse([
           '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
           '--${CommonArguments.signCmd.name}=sign-cmd',
-        ];
-        final result = parser.parse(args);
-        expect(result.assertAbsentOrValidKeyPairOrCommands, returnsNormally);
+        ]);
+        expect(
+          () => result.assertAbsentOrValidKeyPairOrCommands(usage: usage),
+          returnsNormally,
+        );
       });
 
       test('succeeds with public-key-path + sign-cmd (mixed)', () {
-        final args = [
+        final result = parser.parse([
           '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
           '--${CommonArguments.signCmd.name}=sign-cmd',
-        ];
-        final result = parser.parse(args);
-        expect(result.assertAbsentOrValidKeyPairOrCommands, returnsNormally);
+        ]);
+        expect(
+          () => result.assertAbsentOrValidKeyPairOrCommands(usage: usage),
+          returnsNormally,
+        );
       });
 
       test('succeeds when both file arguments provided with valid files', () {
         final privateKeyFile = File(
           p.join(cryptoFixturesBasePath, 'private.pem'),
         );
-        final args = [
+        final result = parser.parse([
           '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
           '--${CommonArguments.privateKeyArg.name}=${privateKeyFile.path}',
-        ];
-        final result = parser.parse(args);
-        expect(result.assertAbsentOrValidKeyPairOrCommands, returnsNormally);
+        ]);
+        expect(
+          () => result.assertAbsentOrValidKeyPairOrCommands(usage: usage),
+          returnsNormally,
+        );
       });
     });
 
     group('assertAbsentOrValidPublicKeyOrCmd', () {
       test('succeeds when no public key arguments provided', () {
-        final args = <String>[];
-        final result = parser.parse(args);
-        expect(result.assertAbsentOrValidPublicKeyOrCmd, returnsNormally);
+        final result = parser.parse(<String>[]);
+        expect(
+          () => result.assertAbsentOrValidPublicKeyOrCmd(usage: usage),
+          returnsNormally,
+        );
       });
 
       test('succeeds when only public-key-path provided', () {
-        final args = [
+        final result = parser.parse([
           '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
-        ];
-        final result = parser.parse(args);
-        expect(result.assertAbsentOrValidPublicKeyOrCmd, returnsNormally);
+        ]);
+        expect(
+          () => result.assertAbsentOrValidPublicKeyOrCmd(usage: usage),
+          returnsNormally,
+        );
       });
 
       test('succeeds when only public-key-cmd provided', () {
-        final args = ['--${CommonArguments.publicKeyCmd.name}=get-key-cmd'];
-        final result = parser.parse(args);
-        expect(result.assertAbsentOrValidPublicKeyOrCmd, returnsNormally);
+        final result = parser.parse([
+          '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
+        ]);
+        expect(
+          () => result.assertAbsentOrValidPublicKeyOrCmd(usage: usage),
+          returnsNormally,
+        );
       });
 
       test('throws when both public-key-path and public-key-cmd provided', () {
-        final args = [
+        final result = parser.parse([
           '--${CommonArguments.publicKeyArg.name}=${publicKeyFile.path}',
           '--${CommonArguments.publicKeyCmd.name}=get-key-cmd',
-        ];
-        final result = parser.parse(args);
+        ]);
+        expect(
+          () => result.assertAbsentOrValidPublicKeyOrCmd(usage: usage),
+          throwsUsage(
+            'Pass either --public-key-path or --public-key-cmd, not both.',
+          ),
+        );
+      });
 
-        runScoped(
-          () {
-            expect(
-              result.assertAbsentOrValidPublicKeyOrCmd,
-              throwsA(isA<ProcessExit>()),
-            );
-          },
-          values: {loggerRef.overrideWith(() => logger)},
+      test('throws naming the flag when the public key does not exist', () {
+        final result = parser.parse([
+          '--${CommonArguments.publicKeyArg.name}=/nope/public.pem',
+        ]);
+        expect(
+          () => result.assertAbsentOrValidPublicKeyOrCmd(usage: usage),
+          throwsUsage('--public-key-path: no file found at /nope/public.pem.'),
         );
       });
     });

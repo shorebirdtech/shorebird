@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
-import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
@@ -70,31 +70,52 @@ extension OptionFinder on ArgResults {
 }
 
 /// Extension on [ArgResults] to provide code signing related extensions.
+///
+/// The `assert*` methods throw a [UsageException] (exit code 64, usage
+/// printed, `usage_error` in `--json`) whose message names the flag to fix.
+/// Callers pass a thunk returning the command's `usage` so the exception can
+/// print it; it is only evaluated on failure.
 extension CodeSign on ArgResults {
+  /// Throws a [UsageException] unless the file passed to the option [name]
+  /// exists. Does nothing when the option was not provided.
+  void _assertFileArgExists(String name, {required String Function() usage}) {
+    final path = this[name] as String?;
+    if (path != null && !File(path).existsSync()) {
+      throw UsageException('--$name: no file found at $path.', usage());
+    }
+  }
+
   /// Asserts that either there is no public key argument
   /// or that the path received exists.
-  void assertAbsentOrValidPublicKey() {
-    file(CommonArguments.publicKeyArg.name)?.assertExists();
+  void assertAbsentOrValidPublicKey({required String Function() usage}) {
+    _assertFileArgExists(CommonArguments.publicKeyArg.name, usage: usage);
   }
 
   /// Asserts that either there is no private key argument
   /// or that the path received exists.
-  void assertAbsentOrValidPrivateKey() {
-    file(CommonArguments.privateKeyArg.name)?.assertExists();
+  void assertAbsentOrValidPrivateKey({required String Function() usage}) {
+    _assertFileArgExists(CommonArguments.privateKeyArg.name, usage: usage);
   }
 
   /// Asserts that both public and private keys are either absent or
   /// when provided, that both of them are pointing to existing files.
-  void assertAbsentOrValidKeyPair() {
+  void assertAbsentOrValidKeyPair({required String Function() usage}) {
     final publicKeyWasParsed = wasParsed(CommonArguments.publicKeyArg.name);
     final privateKeyWasParsed = wasParsed(CommonArguments.privateKeyArg.name);
 
     if (publicKeyWasParsed == privateKeyWasParsed) {
-      assertAbsentOrValidPublicKey();
-      assertAbsentOrValidPrivateKey();
+      assertAbsentOrValidPublicKey(usage: usage);
+      assertAbsentOrValidPrivateKey(usage: usage);
     } else {
-      logger.err('Both public and private keys must be provided.');
-      throw ProcessExit(ExitCode.usage.code);
+      final missing = publicKeyWasParsed
+          ? CommonArguments.privateKeyArg.name
+          : CommonArguments.publicKeyArg.name;
+      throw UsageException(
+        '--${CommonArguments.publicKeyArg.name} and '
+        '--${CommonArguments.privateKeyArg.name} must be passed together '
+        '(missing --$missing).',
+        usage(),
+      );
     }
   }
 
@@ -139,7 +160,9 @@ extension CodeSign on ArgResults {
   /// - Both --private-key-path and --sign-cmd (ambiguous signing method)
   /// - --sign-cmd without a public key source
   /// - --private-key-path without --public-key-path
-  void assertAbsentOrValidKeyPairOrCommands() {
+  void assertAbsentOrValidKeyPairOrCommands({
+    required String Function() usage,
+  }) {
     final hasPublicKeyFile = wasParsed(CommonArguments.publicKeyArg.name);
     final hasPrivateKeyFile = wasParsed(CommonArguments.privateKeyArg.name);
     final hasPublicKeyCmd = wasParsed(CommonArguments.publicKeyCmd.name);
@@ -147,40 +170,40 @@ extension CodeSign on ArgResults {
 
     // Can't have two public key sources
     if (hasPublicKeyFile && hasPublicKeyCmd) {
-      logger.err(
-        'Cannot specify both --${CommonArguments.publicKeyArg.name} and '
-        '--${CommonArguments.publicKeyCmd.name}.',
+      throw UsageException(
+        'Pass either --${CommonArguments.publicKeyArg.name} or '
+        '--${CommonArguments.publicKeyCmd.name}, not both.',
+        usage(),
       );
-      throw ProcessExit(ExitCode.usage.code);
     }
 
     // Can't have two signing methods
     if (hasPrivateKeyFile && hasSignCmd) {
-      logger.err(
-        'Cannot specify both --${CommonArguments.privateKeyArg.name} and '
-        '--${CommonArguments.signCmd.name}.',
+      throw UsageException(
+        'Pass either --${CommonArguments.privateKeyArg.name} or '
+        '--${CommonArguments.signCmd.name}, not both.',
+        usage(),
       );
-      throw ProcessExit(ExitCode.usage.code);
     }
 
     // File-based signing requires both file args
     if (hasPrivateKeyFile || (hasPublicKeyFile && !hasSignCmd)) {
-      assertAbsentOrValidKeyPair();
+      assertAbsentOrValidKeyPair(usage: usage);
     }
 
     // --sign-cmd requires a public key source
     if (hasSignCmd && !hasPublicKeyFile && !hasPublicKeyCmd) {
-      logger.err(
-        '--${CommonArguments.signCmd.name} requires a public key '
-        '(--${CommonArguments.publicKeyArg.name} or '
-        '--${CommonArguments.publicKeyCmd.name}).',
+      throw UsageException(
+        '--${CommonArguments.signCmd.name} requires a public key: add '
+        '--${CommonArguments.publicKeyArg.name}=<path> or '
+        '--${CommonArguments.publicKeyCmd.name}=<command>.',
+        usage(),
       );
-      throw ProcessExit(ExitCode.usage.code);
     }
 
     // Validate the public key file exists if provided
     if (hasPublicKeyFile && hasSignCmd) {
-      assertAbsentOrValidPublicKey();
+      assertAbsentOrValidPublicKey(usage: usage);
     }
   }
 
@@ -192,20 +215,20 @@ extension CodeSign on ArgResults {
   /// - --public-key-cmd
   ///
   /// Invalid: mixing --public-key-path and --public-key-cmd
-  void assertAbsentOrValidPublicKeyOrCmd() {
+  void assertAbsentOrValidPublicKeyOrCmd({required String Function() usage}) {
     final hasFilePath = wasParsed(CommonArguments.publicKeyArg.name);
     final hasCmd = wasParsed(CommonArguments.publicKeyCmd.name);
 
     if (hasFilePath && hasCmd) {
-      logger.err(
-        'Cannot specify both --${CommonArguments.publicKeyArg.name} and '
-        '--${CommonArguments.publicKeyCmd.name}.',
+      throw UsageException(
+        'Pass either --${CommonArguments.publicKeyArg.name} or '
+        '--${CommonArguments.publicKeyCmd.name}, not both.',
+        usage(),
       );
-      throw ProcessExit(ExitCode.usage.code);
     }
 
     if (hasFilePath) {
-      assertAbsentOrValidPublicKey();
+      assertAbsentOrValidPublicKey(usage: usage);
     }
   }
 
@@ -218,25 +241,38 @@ extension CodeSign on ArgResults {
       if (pem == null) return null;
       return codeSigner.base64PublicKeyFromPem(pem);
     } on ProcessException catch (e) {
-      logger.err(
-        'Failed to run '
-        '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
-      );
+      logger
+        ..err(
+          'Failed to run '
+          '--${CommonArguments.publicKeyCmd.name}: ${e.message}',
+        )
+        ..info(
+          'Run the command in your shell to see why it fails; it must print '
+          'a PEM-encoded public key to stdout and exit 0.',
+        );
       throw ProcessExit(ExitCode.software.code);
     } on FormatException catch (e) {
-      logger.err(
-        '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
-        '${e.message}',
-      );
+      logger
+        ..err(
+          '--${CommonArguments.publicKeyCmd.name} produced invalid output: '
+          '${e.message}',
+        )
+        ..info(
+          'The command must print only a PEM-encoded public key to stdout.',
+        );
       throw ProcessExit(ExitCode.software.code);
       // Malformed PEM content causes ASN1 parsing errors (RangeError, etc.)
       // ignore: avoid_catching_errors
     } on Error catch (e) {
       // ASN1 parsing errors for malformed PEM content
-      logger.err(
-        '--${CommonArguments.publicKeyCmd.name} output is not a valid '
-        'public key: $e',
-      );
+      logger
+        ..err(
+          '--${CommonArguments.publicKeyCmd.name} output is not a valid '
+          'public key: $e',
+        )
+        ..info(
+          'The command must print only a PEM-encoded public key to stdout.',
+        );
       throw ProcessExit(ExitCode.software.code);
     }
   }
