@@ -1072,15 +1072,30 @@ origin/flutter_release/3.10.6''';
         test(
           'reports when the incomplete install cannot be moved aside',
           () async {
-            // Making the parent read-only is the portable way to block a
-            // rename of a child that is otherwise perfectly movable.
-            final parent = targetDirectory.parent;
-            Process.runSync('chmod', ['a-w', parent.path]);
-            addTearDown(() => Process.runSync('chmod', ['u+w', parent.path]));
+            // The rename is blocked by occupying the name it moves to, not by
+            // locking the parent's mode bits. `chmod a-w` only stops a process
+            // without CAP_DAC_OVERRIDE, so a mode-based version of this test
+            // passes as an unprivileged CI user and fails as root -- in a
+            // container, a devcontainer, or a root self-hosted runner.
+            // Renaming onto a non-empty directory is ENOTEMPTY for every uid,
+            // and reaches the same FileSystemException on the same line.
+            //
+            // The destination is _reclaimablePath(dir, tag: 'old'), which is
+            // this pid and this instant, so a fixed clock is what makes it
+            // nameable from out here.
+            final now = DateTime.now();
+            final asideDirectory = Directory(
+              '${targetDirectory.path}.$pid.old'
+              '.${now.millisecondsSinceEpoch}.tmp',
+            )..createSync(recursive: true);
+            File(p.join(asideDirectory.path, 'occupied')).createSync();
 
             await expectLater(
-              runWithOverrides(
-                () => shorebirdFlutter.installRevision(revision: revision),
+              withClock(
+                Clock.fixed(now),
+                () => runWithOverrides(
+                  () => shorebirdFlutter.installRevision(revision: revision),
+                ),
               ),
               throwsA(isA<CacheCorruptedException>()),
             );
