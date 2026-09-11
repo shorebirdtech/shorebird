@@ -18,10 +18,21 @@ class LoginCommand extends ShorebirdCommand {
   Future<int> run() async {
     if (auth.isAuthenticated) {
       final progress = logger.progress('Checking existing credentials');
-      final hasValidCredentials = await auth.hasValidCredentials();
-      progress.complete();
-
+      final bool hasValidCredentials;
+      try {
+        hasValidCredentials = await auth.hasValidCredentials();
+      } on Exception catch (error) {
+        // The auth service could not answer, which says nothing about the
+        // stored credentials. Discarding them here would log a user out for
+        // running this off wifi.
+        progress.fail('Could not reach the Shorebird auth service.');
+        logger
+          ..err('$error')
+          ..info('Check your network connection and try again.');
+        return ExitCode.tempFail.code;
+      }
       if (hasValidCredentials) {
+        progress.complete();
         final emailDisplay = auth.email;
         if (emailDisplay != null) {
           logger
@@ -45,7 +56,8 @@ class LoginCommand extends ShorebirdCommand {
 
       // The stored credentials have expired or been revoked, so discard them
       // and log in again.
-      logger.info('Your credentials have expired. Logging you in again...');
+      progress.fail('Your credentials have expired.');
+      logger.info('Logging you in again...');
       auth.clearCredentials();
     }
 
