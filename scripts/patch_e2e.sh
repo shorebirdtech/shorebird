@@ -16,10 +16,13 @@
 
 FLUTTER_VERSION=$1
 
-# The environment this script exercises. `shorebird release` and `shorebird
-# patch` pick this up from shorebird.yaml below; the cleanup trap calls the API
+# The environment this script exercises. This is the name the CLI itself reads
+# (see ShorebirdEnv.hostedUri), and the e2e workflow already sets it per job, so
+# take it from the environment when it is there and default to dev for local
+# runs. `shorebird release` and `shorebird patch` pick it up from the
+# environment or from shorebird.yaml below; the cleanup trap calls the API
 # directly and needs it too.
-API_BASE_URL="https://api-dev.shorebird.dev"
+export SHOREBIRD_HOSTED_URL="${SHOREBIRD_HOSTED_URL:-https://api-dev.shorebird.dev}"
 
 # `shorebird init` mints a brand new app on every leg, and the nightly runs 30
 # of them. Left alone the e2e account's app list grows by ~30 a night forever,
@@ -39,7 +42,7 @@ cleanup_app() {
         curl --silent --show-error --fail-with-body -X DELETE \
             -H "Authorization: Bearer $SHOREBIRD_TOKEN" \
             -H "x-version: 0.9.0+1" \
-            "$API_BASE_URL/api/v1/apps/$APP_ID" ||
+            "$SHOREBIRD_HOSTED_URL/api/v1/apps/$APP_ID" ||
             echo "⚠️  Failed to delete e2e app $APP_ID; it will need pruning."
     fi
     return $status
@@ -65,7 +68,7 @@ flutter doctor --verbose
 shorebird doctor --verbose
 
 # Point to the development environment
-echo "base_url: $API_BASE_URL" >>shorebird.yaml
+echo "base_url: $SHOREBIRD_HOSTED_URL" >>shorebird.yaml
 
 # Extract the app_id from the "shorebird.yaml"
 APP_ID=$(cat shorebird.yaml | grep 'app_id:' | awk '{print $2}')
