@@ -296,6 +296,13 @@ class ShorebirdProcessResult {
 // coverage:ignore-start
 @visibleForTesting
 class ProcessWrapper {
+  List<String> _prepareArgs(List<String> args, bool runInShell) {
+    if (Platform.isWindows && runInShell) {
+      return args.map((arg) => arg.contains(' ') ? '"$arg"' : arg).toList();
+    }
+    return args;
+  }
+
   /// Runs the process and returns the result.
   Future<ShorebirdProcessResult> run(
     String executable,
@@ -304,12 +311,13 @@ class ProcessWrapper {
     String? workingDirectory,
     bool? runInShell,
   }) async {
+    final useShell = runInShell ?? Platform.isWindows;
     final result = await Process.run(
       executable,
-      arguments,
+      _prepareArgs(arguments, useShell),
       environment: environment,
       // TODO(felangel): refactor to never runInShell
-      runInShell: runInShell ?? Platform.isWindows,
+      runInShell: useShell,
       workingDirectory: workingDirectory,
     );
     return ShorebirdProcessResult(
@@ -326,11 +334,12 @@ class ProcessWrapper {
     Map<String, String>? environment,
     String? workingDirectory,
   }) {
+    final useShell = Platform.isWindows;
     final result = Process.runSync(
       executable,
-      arguments,
+      _prepareArgs(arguments, useShell),
       environment: environment,
-      runInShell: Platform.isWindows,
+      runInShell: useShell,
       workingDirectory: workingDirectory,
     );
     return ShorebirdProcessResult(
@@ -349,16 +358,7 @@ class ProcessWrapper {
     String? workingDirectory,
     ProcessStartMode mode = ProcessStartMode.normal,
   }) {
+    final useShell = runInShell ?? Platform.isWindows;
     return Process.start(
       executable,
-      arguments,
-      // TODO(felangel): refactor to never runInShell
-      runInShell: runInShell ?? Platform.isWindows,
-      environment: environment,
-      workingDirectory: workingDirectory,
-      mode: mode,
-    );
-  }
-}
-
 // coverage:ignore-end
