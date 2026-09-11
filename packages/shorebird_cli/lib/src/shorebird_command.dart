@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
@@ -10,6 +11,7 @@ import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -73,6 +75,41 @@ abstract class ShorebirdCommand extends Command<int> {
   /// See [interactive_mode.isInteractive].
   bool get isInteractive => interactive_mode.isInteractive;
   // coverage:ignore-end
+
+  /// The release types named by the positional platform or `--platforms`.
+  ///
+  /// Throws a [UsageException] when no platform was given, the platform is
+  /// not valid, or an extra positional argument was passed. When the invalid
+  /// platform is a subcommand of [siblingCommand] (e.g. `rollback` under
+  /// `patches`), the message points there.
+  Iterable<ReleaseType> releaseTypesOrUsageError({
+    required String siblingCommand,
+  }) {
+    final List<ReleaseType> types;
+    try {
+      types = results.releaseTypes.toList();
+    } on PlatformArgumentException catch (e) {
+      final positional = results.rest.firstOrNull;
+      final sibling = runner!.commands[siblingCommand];
+      if (positional != null &&
+          (sibling?.subcommands.containsKey(positional) ?? false)) {
+        usageException(
+          '''
+${e.message}
+Did you mean "shorebird $siblingCommand $positional"?''',
+        );
+      }
+      usageException(e.message);
+    }
+    if (types.isEmpty) {
+      usageException(
+        '''
+No platform was provided.
+Valid platforms: $validPlatformNames''',
+      );
+    }
+    return types;
+  }
 
   /// The full command name including parent commands (e.g. "releases list").
   String get fullCommandName {

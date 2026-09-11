@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -1781,18 +1782,73 @@ Please re-run the release command for this version or create a new release.'''),
     group('when no platform argument is provided', () {
       setUp(() {
         when(() => argResults['platforms']).thenReturn(const <String>[]);
+        command.testRunner = usageRunner();
       });
 
-      test('fails and log the correct message', () async {
-        final exitCode = await runWithOverrides(command.run);
-
-        expect(exitCode, equals(ExitCode.usage.code));
-
-        verify(
-          () => logger.err(
-            '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
+      test('throws a usage exception listing the valid platforms', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+No platform was provided.
+Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
+            ),
           ),
-        ).called(1);
+        );
+      });
+    });
+
+    group('when the platform argument is invalid', () {
+      late MockShorebirdCliCommandRunner runner;
+      late MockCommand patchesCommand;
+
+      setUp(() {
+        runner = usageRunner();
+        patchesCommand = MockCommand();
+        when(() => argResults.wasParsed('platforms')).thenReturn(false);
+        when(() => argResults.arguments).thenReturn(['rollback']);
+        when(() => argResults.rest).thenReturn(['rollback']);
+        when(() => runner.commands).thenReturn({'patches': patchesCommand});
+        when(
+          () => patchesCommand.subcommands,
+        ).thenReturn({'rollback': MockCommand()});
+        command.testRunner = runner;
+      });
+
+      test('points at the patches subcommand of the same name', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+Invalid platform: "rollback".
+Valid platforms: aar, android, ios, ios-framework, linux, macos, windows
+Did you mean "shorebird patches rollback"?''',
+            ),
+          ),
+        );
+      });
+
+      test('reports the invalid platform when no subcommand matches', () async {
+        when(() => argResults.arguments).thenReturn(['andriod']);
+        when(() => argResults.rest).thenReturn(['andriod']);
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '''
+Invalid platform: "andriod".
+Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
+            ),
+          ),
+        );
       });
     });
 
