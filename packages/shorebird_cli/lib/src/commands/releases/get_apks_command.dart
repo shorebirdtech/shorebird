@@ -26,16 +26,18 @@ class GetApksCommand extends ShorebirdCommand {
     argParser
       ..addOption(
         CommonArguments.releaseVersionArg.name,
-        help: 'The release version to generate apks for',
+        help:
+            'The version of the release to generate APKs for '
+            '(e.g. "1.0.0+1"). Prompts for selection if omitted.',
       )
       ..addOption(
         CommonArguments.flavorArg.name,
-        help: 'The build flavor to generate an apks for',
+        help: 'The build flavor to generate apks for.',
       )
       ..addOption(
         'out',
         abbr: 'o',
-        help: 'The output directory for the generated apks',
+        help: 'The output directory for the generated apks.',
       )
       ..addFlag(
         'universal',
@@ -49,7 +51,7 @@ class GetApksCommand extends ShorebirdCommand {
 
   @override
   String get description =>
-      'Generates apk(s) for the specified release version';
+      'Generates apk(s) for the specified release version.';
 
   /// The shorebird app ID for the current project.
   String get appId => shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);

@@ -10,7 +10,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 /// {@endtemplate}
 class LogoutCommand extends ShorebirdCommand {
   @override
-  String get description => 'Logout of the current Shorebird user';
+  String get description => 'Logout of the current Shorebird user.';
 
   @override
   String get name => 'logout';

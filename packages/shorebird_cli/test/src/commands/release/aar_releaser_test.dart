@@ -397,6 +397,7 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).thenAnswer((_) async => File(''));
 
@@ -439,6 +440,7 @@ void main() {
                 targetPlatforms: any(named: 'targetPlatforms'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).thenAnswer((_) async => File(''));
 
@@ -477,6 +479,19 @@ void main() {
           setUp(() {
             when(() => argResults['obfuscate']).thenReturn(true);
             when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+            when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+            when(
+              () => shorebirdFlutter.resolveFlutterVersion(any()),
+            ).thenAnswer((_) async => Version(3, 41, 2));
+            // AAR is an Android pipeline target; addObfuscationMapArgs
+            // consults this helper to decide whether to pass --strip.
+            // On pre-3.44 Flutter we still pre-strip in gen_snapshot.
+            when(
+              () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                platform: any(named: 'platform'),
+                flutterRevision: any(named: 'flutterRevision'),
+              ),
+            ).thenAnswer((_) async => true);
             // Simulate the build creating the obfuscation map.
             when(
               () => artifactBuilder.buildAar(

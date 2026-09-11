@@ -84,7 +84,9 @@ void main() {
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
       );
 
-      when(() => logger.confirm(any())).thenReturn(true);
+      when(
+        () => logger.confirm(any(), hint: any(named: 'hint')),
+      ).thenReturn(true);
       when(() => logger.progress(any())).thenReturn(progress);
 
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
@@ -146,7 +148,9 @@ void main() {
             ),
           );
 
-          verify(() => logger.confirm('Continue anyway?')).called(1);
+          verify(
+            () => logger.confirm('Continue anyway?', hint: any(named: 'hint')),
+          ).called(1);
         });
 
         test('does not prompt user if allowNativeChanges is true', () async {
@@ -160,13 +164,17 @@ void main() {
             ),
           );
 
-          verifyNever(() => logger.confirm('Continue anyway?'));
+          verifyNever(
+            () => logger.confirm('Continue anyway?', hint: any(named: 'hint')),
+          );
         });
 
         test(
           'throws UserCancelledException if user declines to continue',
           () async {
-            when(() => logger.confirm(any())).thenReturn(false);
+            when(
+              () => logger.confirm(any(), hint: any(named: 'hint')),
+            ).thenReturn(false);
 
             await expectLater(
               runWithOverrides(
@@ -181,7 +189,10 @@ void main() {
               throwsA(isA<UserCancelledException>()),
             );
 
-            verify(() => logger.confirm('Continue anyway?')).called(1);
+            verify(
+              () =>
+                  logger.confirm('Continue anyway?', hint: any(named: 'hint')),
+            ).called(1);
           },
         );
 
@@ -201,7 +212,9 @@ void main() {
             throwsA(isA<UnpatchableChangeException>()),
           );
 
-          verifyNever(() => logger.confirm(any()));
+          verifyNever(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          );
         });
       });
 
@@ -251,7 +264,9 @@ void main() {
             ),
           );
 
-          verify(() => logger.confirm('Continue anyway?')).called(1);
+          verify(
+            () => logger.confirm('Continue anyway?', hint: any(named: 'hint')),
+          ).called(1);
         });
 
         test('does not prompt user if allowAssetChanges is true', () async {
@@ -265,13 +280,17 @@ void main() {
             ),
           );
 
-          verifyNever(() => logger.confirm('Continue anyway?'));
+          verifyNever(
+            () => logger.confirm('Continue anyway?', hint: any(named: 'hint')),
+          );
         });
 
         test(
           'throws UserCancelledException if user declines to continue',
           () async {
-            when(() => logger.confirm(any())).thenReturn(false);
+            when(
+              () => logger.confirm(any(), hint: any(named: 'hint')),
+            ).thenReturn(false);
 
             await expectLater(
               runWithOverrides(
@@ -286,7 +305,10 @@ void main() {
               throwsA(isA<UserCancelledException>()),
             );
 
-            verify(() => logger.confirm('Continue anyway?')).called(1);
+            verify(
+              () =>
+                  logger.confirm('Continue anyway?', hint: any(named: 'hint')),
+            ).called(1);
           },
         );
 
@@ -306,7 +328,9 @@ void main() {
             throwsA(isA<UnpatchableChangeException>()),
           );
 
-          verifyNever(() => logger.confirm(any()));
+          verifyNever(
+            () => logger.confirm(any(), hint: any(named: 'hint')),
+          );
         });
       });
 

@@ -9,6 +9,16 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 
+/// Hint shown when a user can bypass a native-diff warning interactively.
+const String allowNativeDiffsHint =
+    'Warning: Native changes in a patch are likely to crash your app. '
+    'Pass --allow-native-diffs to force this patch.';
+
+/// Hint shown when a user can bypass an asset-diff warning interactively.
+const String allowAssetDiffsHint =
+    'Warning: Asset changes will not be included in this patch. '
+    'Pass --allow-asset-diffs to force this patch.';
+
 /// {@template diff_status}
 /// Describes the types of changes that have been detected between a patch
 /// and its release.
@@ -117,7 +127,10 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
           throw UnpatchableChangeException();
         }
 
-        if (!logger.confirm('Continue anyway?')) {
+        if (!logger.confirm(
+          'Continue anyway?',
+          hint: allowNativeDiffsHint,
+        )) {
           throw UserCancelledException();
         }
       }
@@ -156,7 +169,10 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
           throw UnpatchableChangeException();
         }
 
-        if (!logger.confirm('Continue anyway?')) {
+        if (!logger.confirm(
+          'Continue anyway?',
+          hint: allowAssetDiffsHint,
+        )) {
           throw UserCancelledException();
         }
       }

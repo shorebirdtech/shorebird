@@ -3,6 +3,8 @@
 import 'dart:io';
 
 import 'package:propertylistserialization/propertylistserialization.dart';
+import 'package:shorebird_cli/src/platform/apple/invalid_export_options_plist_exception.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 
 /// Exception thrown when a plist file cannot be parsed.
 class PlistParseException implements Exception {
@@ -57,6 +59,16 @@ class Plist {
   /// This nesting is not present in Info.plist files in app bundles.
   static const applicationPropertiesKey = 'ApplicationProperties';
 
+  /// The key in an ExportOptions.plist that, when true, instructs Xcode to
+  /// rewrite CFBundleVersion in the exported IPA based on the latest build
+  /// number on App Store Connect. This breaks Shorebird, because the build
+  /// number that ships will not match the one Shorebird recorded for the
+  /// release.
+  ///
+  /// See https://developer.apple.com/documentation/xcode/distributing-your-app-for-beta-testing-and-releases
+  static const manageAppVersionAndBuildNumberKey =
+      'manageAppVersionAndBuildNumber';
+
   /// The properties contained in the Info.plist file.
   late final Map<String, Object> properties;
 
@@ -80,4 +92,34 @@ class Plist {
   @override
   String toString() =>
       PropertyListSerialization.stringWithPropertyList(properties);
+}
+
+/// Asserts that the user-supplied `--export-options-plist` at [file] is
+/// compatible with Shorebird.
+///
+/// Throws [InvalidExportOptionsPlistException] if the plist sets
+/// `manageAppVersionAndBuildNumber` to `true`. When that key is true, Xcode
+/// rewrites `CFBundleVersion` in the exported IPA, so the build number that
+/// ships to App Store Connect will not match the build number Shorebird
+/// recorded for the release. Patches will then fail to match the release.
+///
+/// Throws [PlistParseException] if the file cannot be parsed. Returns
+/// without doing anything if the file does not exist; flutter will surface
+/// a clearer error when it fails to read it.
+void assertValidExportOptionsPlist(File file) {
+  if (!file.existsSync()) return;
+  final plist = Plist(file: file);
+  final value = plist.properties[Plist.manageAppVersionAndBuildNumberKey];
+  if (value == true) {
+    throw InvalidExportOptionsPlistException(
+      '''
+Exported options plist ${file.path} sets "${Plist.manageAppVersionAndBuildNumberKey}" to true.
+
+Xcode will rewrite the build number in the exported IPA, so the version that ships to App Store Connect will not match the version Shorebird recorded for this release. Patches will fail to apply.
+
+Set "${Plist.manageAppVersionAndBuildNumberKey}" to false (or remove the key) and try again.
+
+See $troubleshootingUrl#patch-not-showing-up for details.''',
+    );
+  }
 }

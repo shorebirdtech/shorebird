@@ -108,6 +108,20 @@ void main() {
           ),
         );
       });
+
+      test('execute throws StateError when closed', () async {
+        await client.close();
+        await expectLater(
+          client.execute(['PING']),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              'RedisClient has been closed.',
+            ),
+          ),
+        );
+      });
     });
 
     group('disconnect', () {

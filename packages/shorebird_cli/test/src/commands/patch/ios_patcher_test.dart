@@ -267,6 +267,81 @@ void main() {
       });
     });
 
+    group('assertArgsAreValid', () {
+      test('returns normally when --export-options-plist is absent', () async {
+        await expectLater(
+          runWithOverrides(patcher.assertArgsAreValid),
+          completes,
+        );
+      });
+
+      group('when --export-options-plist is provided', () {
+        late Directory tempDir;
+
+        setUp(() {
+          tempDir = Directory.systemTemp.createTempSync(
+            'export_options_patcher_',
+          );
+        });
+
+        tearDown(() {
+          tempDir.deleteSync(recursive: true);
+        });
+
+        File writePlist(String body) {
+          return File(p.join(tempDir.path, 'ExportOptions.plist'))
+            ..writeAsStringSync('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+$body
+</dict>
+</plist>
+''');
+        }
+
+        test(
+          'returns normally when manageAppVersionAndBuildNumber is absent',
+          () async {
+            final file = writePlist(
+              '<key>method</key><string>app-store</string>',
+            );
+            when(
+              () => argResults[CommonArguments.exportOptionsPlistArg.name],
+            ).thenReturn(file.path);
+
+            await expectLater(
+              runWithOverrides(patcher.assertArgsAreValid),
+              completes,
+            );
+          },
+        );
+
+        test(
+          '''logs error and exits with usage when manageAppVersionAndBuildNumber is true''',
+          () async {
+            final file = writePlist(
+              '<key>manageAppVersionAndBuildNumber</key><true/>',
+            );
+            when(
+              () => argResults[CommonArguments.exportOptionsPlistArg.name],
+            ).thenReturn(file.path);
+
+            await expectLater(
+              () => runWithOverrides(patcher.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+            verify(
+              () => logger.err(
+                any(that: contains('manageAppVersionAndBuildNumber')),
+              ),
+            ).called(1);
+          },
+        );
+      });
+    });
+
     group('assertUnpatchableDiffs', () {
       group('when no native changes are detected', () {
         const noChangeDiffStatus = DiffStatus(
@@ -396,7 +471,9 @@ Your ios/Podfile.lock is different from the one used to build the release.
 This may indicate that the patch contains native changes, which cannot be applied with a patch. Proceeding may result in unexpected behavior or crashes.''',
                     ),
                   ).called(1);
-                  verifyNever(() => logger.confirm(any()));
+                  verifyNever(
+                    () => logger.confirm(any(), hint: any(named: 'hint')),
+                  );
                 },
               );
             });
@@ -409,7 +486,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
                 group('when user opts to continue at prompt', () {
                   setUp(() {
-                    when(() => logger.confirm(any())).thenReturn(true);
+                    when(
+                      () => logger.confirm(any(), hint: any(named: 'hint')),
+                    ).thenReturn(true);
                   });
 
                   test('returns diff status from patchDiffChecker', () async {
@@ -426,7 +505,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
                 group('when user aborts at prompt', () {
                   setUp(() {
-                    when(() => logger.confirm(any())).thenReturn(false);
+                    when(
+                      () => logger.confirm(any(), hint: any(named: 'hint')),
+                    ).thenReturn(false);
                   });
 
                   test('throws UserCancelledException', () async {
@@ -609,6 +690,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(() => artifactManager.getXcarchiveDirectory()).thenReturn(
@@ -791,6 +873,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).captured;
 
@@ -821,6 +904,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).captured;
 

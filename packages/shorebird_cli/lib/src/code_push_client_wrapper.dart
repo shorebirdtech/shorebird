@@ -102,6 +102,9 @@ class CodePushClientWrapper {
       displayName = logger.prompt(
         '${lightGreen.wrap('?')} How should we refer to this app?',
         defaultValue: defaultAppName,
+        hint:
+            'Pass --display-name=<name> to set the app name without '
+            'prompting.',
       );
     } else {
       displayName = appName;
@@ -111,6 +114,37 @@ class CodePushClientWrapper {
       displayName: displayName,
       organizationId: organizationId,
     );
+  }
+
+  /// Fetches the currently authenticated user.
+  Future<PrivateUser> getCurrentUser() async {
+    final progress = logger.progress('Fetching account');
+    final PrivateUser? user;
+    try {
+      user = await codePushClient.getCurrentUser();
+      progress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+    if (user == null) {
+      logger.err('Could not find current user.');
+      throw ProcessExit(ExitCode.software.code);
+    }
+    return user;
+  }
+
+  /// Fetches the plan level for the current user, e.g. `free`, `pro`,
+  /// `business` or `enterprise`. Null when the server does not report one.
+  Future<String?> getPlanLevel() async {
+    final progress = logger.progress('Fetching plan');
+    final String? level;
+    try {
+      level = await codePushClient.getPlanLevel();
+      progress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+    return level;
   }
 
   /// Fetches the organization memberships for the current user.
@@ -179,6 +213,18 @@ This app may not exist or you may not have permission to view it.''');
     }
   }
 
+  /// Fetches all channels for the provided [appId].
+  Future<List<Channel>> getChannels({required String appId}) async {
+    final fetchChannelsProgress = logger.progress('Fetching channels');
+    try {
+      final channels = await codePushClient.getChannels(appId: appId);
+      fetchChannelsProgress.complete();
+      return channels;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: fetchChannelsProgress);
+    }
+  }
+
   /// Creates a channel for the provided [appId] with the given [name].
   Future<Channel> createChannel({
     required String appId,
@@ -194,6 +240,63 @@ This app may not exist or you may not have permission to view it.''');
       return channel;
     } catch (error) {
       _handleErrorAndExit(error, progress: createChannelProgress);
+    }
+  }
+
+  /// Deletes the channel with the provided [channelId] from [appId].
+  Future<void> deleteChannel({
+    required String appId,
+    required int channelId,
+  }) async {
+    final deleteChannelProgress = logger.progress('Deleting channel');
+    try {
+      await codePushClient.deleteChannel(appId: appId, channelId: channelId);
+      deleteChannelProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: deleteChannelProgress);
+    }
+  }
+
+  /// Renames the app with the provided [appId] to [displayName].
+  Future<void> updateApp({
+    required String appId,
+    required String displayName,
+  }) async {
+    final updateAppProgress = logger.progress('Renaming app');
+    try {
+      await codePushClient.updateApp(appId: appId, displayName: displayName);
+      updateAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: updateAppProgress);
+    }
+  }
+
+  /// Deletes the app with the provided [appId], along with every release and
+  /// patch belonging to it.
+  Future<void> deleteApp({required String appId}) async {
+    final deleteAppProgress = logger.progress('Deleting app');
+    try {
+      await codePushClient.deleteApp(appId: appId);
+      deleteAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: deleteAppProgress);
+    }
+  }
+
+  /// Moves the app with the provided [appId] into [organizationId].
+  Future<void> transferApp({
+    required int organizationId,
+    required String appId,
+  }) async {
+    final transferAppProgress = logger.progress('Transferring app');
+    try {
+      await codePushClient.transferApp(
+        organizationId: organizationId,
+        appId: appId,
+      );
+      transferAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: transferAppProgress);
     }
   }
 
@@ -454,9 +557,10 @@ Please create a release using "shorebird release" and try again.
     String? flavor,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
-    final archsDir = ArtifactManager.androidArchsDirectory(
+    final archsDir = await ArtifactManager.androidArchsDirectoryFromAab(
       projectRoot: Directory(projectRoot),
       flavor: flavor,
+      aab: File(aabPath),
     );
 
     if (archsDir == null) {
@@ -470,13 +574,20 @@ Please run `shorebird cache clean` and try again. If the issue persists, please
 file a bug report at https://github.com/shorebirdtech/shorebird/issues/new.
 
 Looked in:
-  - build/app/intermediates/stripped_native_libs/stripReleaseDebugSymbols/release/out/lib
-  - build/app/intermediates/stripped_native_libs/strip{flavor}ReleaseDebugSymbols/{flavor}Release/out/lib
-  - build/app/intermediates/stripped_native_libs/release/out/lib
-  - build/app/intermediates/stripped_native_libs/{flavor}Release/out/lib''',
+  - the libapp.so entries inside the built .aab
+  - build/app/intermediates/stripped_native_libs/{variant}/strip{Variant}ReleaseDebugSymbols/out/lib
+  - build/app/intermediates/stripped_native_libs/{variant}/out/lib''',
       );
     }
 
+    // Track which arch paths AGP didn't produce, so we can surface them at
+    // the end if zero archs uploaded. AGP omits an arch directory whenever
+    // the project filters it out via `ndk.abiFilters`, `splits.abi`, or
+    // `jniLibs.excludes`. Iterating only over present files lets a filtered
+    // release succeed instead of crashing on the first missing arch
+    // (https://github.com/shorebirdtech/shorebird/issues/3388).
+    final missingArchPaths = <String>[];
+    var uploadedArchCount = 0;
     for (final arch in architectures) {
       final artifactPath = p.join(
         archsDir.path,
@@ -484,6 +595,15 @@ Looked in:
         'libapp.so',
       );
       final artifact = File(artifactPath);
+      if (!artifact.existsSync()) {
+        logger.detail(
+          'Skipping ${arch.arch}: no libapp.so at $artifactPath. '
+          'This is expected if the project filters this ABI via '
+          'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
+        );
+        missingArchPaths.add(artifactPath);
+        continue;
+      }
       final hash = sha256.convert(await artifact.readAsBytes()).toString();
       logger.detail('Uploading artifact for $artifactPath');
 
@@ -498,7 +618,9 @@ Looked in:
           canSideload: false,
           podfileLockHash: null,
         );
+        uploadedArchCount++;
       } on CodePushConflictException catch (_) {
+        uploadedArchCount++;
         // Newlines are due to how logger.info interacts with logger.progress.
         logger.info('''
 
@@ -510,6 +632,25 @@ ${arch.arch} artifact already exists, continuing...''');
           message: 'Error uploading ${artifact.path}: $error',
         );
       }
+    }
+
+    if (uploadedArchCount == 0) {
+      _handleErrorAndExit(
+        Exception('No architecture artifacts found to upload.'),
+        progress: createArtifactProgress,
+        message:
+            '''
+No architecture artifacts found to upload.
+
+Shorebird looked for libapp.so under ${archsDir.path} but every requested
+architecture was missing:
+${missingArchPaths.map((p) => '  - $p').join('\n')}
+
+This usually means your project's ndk.abiFilters / splits.abi / jniLibs.excludes
+configuration excludes every architecture Shorebird was asked to build. Either
+relax those filters or pass `--target-platform=<archs>` to restrict Shorebird
+to the architectures your project actually builds.''',
+      );
     }
 
     try {
@@ -935,6 +1076,70 @@ aar artifact already exists, continuing...''');
       promotePatchProgress.complete();
     } catch (error) {
       _handleErrorAndExit(error, progress: promotePatchProgress);
+    }
+  }
+
+  /// Rolls back the patch identified by [patchId] under [releaseId]. Returns
+  /// whether the server changed the patch, which is `false` when it was
+  /// already rolled back.
+  ///
+  /// [patchNumber] is used purely for the human-readable progress message;
+  /// pass it through when the caller already has it on hand.
+  Future<bool> rollbackPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+    int? patchNumber,
+  }) async {
+    final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
+    final progress = logger.progress('Rolling back $label');
+    try {
+      final changed = await codePushClient.rollbackPatch(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patchId,
+      );
+      // A completed spinner would claim the rollback happened, so say so when
+      // the server reported there was nothing to change.
+      progress.complete(
+        changed ? null : 'No change: $label was already rolled back',
+      );
+      return changed;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+  }
+
+  /// Rolls forward (un-rolls-back) the patch identified by [patchId] under
+  /// [releaseId], returning it to its active state so the server resends the
+  /// same patch artifact to devices on the next patch check. Returns whether
+  /// the server changed the patch, which is `false` when it was already
+  /// active.
+  ///
+  /// [patchNumber] is used purely for the human-readable progress message;
+  /// pass it through when the caller already has it on hand.
+  Future<bool> rollforwardPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+    int? patchNumber,
+  }) async {
+    final label = patchNumber != null ? 'patch $patchNumber' : 'patch';
+    final progress = logger.progress('Rolling forward $label');
+    try {
+      final changed = await codePushClient.rollforwardPatch(
+        appId: appId,
+        releaseId: releaseId,
+        patchId: patchId,
+      );
+      // A completed spinner would claim the rollforward happened, so say so
+      // when the server reported there was nothing to change.
+      progress.complete(
+        changed ? null : 'No change: $label was already active',
+      );
+      return changed;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
     }
   }
 

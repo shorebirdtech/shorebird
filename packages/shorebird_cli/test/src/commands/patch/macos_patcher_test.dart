@@ -413,7 +413,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
                 group('when user opts to continue at prompt', () {
                   setUp(() {
-                    when(() => logger.confirm(any())).thenReturn(true);
+                    when(
+                      () => logger.confirm(any(), hint: any(named: 'hint')),
+                    ).thenReturn(true);
                   });
 
                   test('returns diff status from patchDiffChecker', () async {
@@ -430,7 +432,9 @@ This may indicate that the patch contains native changes, which cannot be applie
 
                 group('when user aborts at prompt', () {
                   setUp(() {
-                    when(() => logger.confirm(any())).thenReturn(false);
+                    when(
+                      () => logger.confirm(any(), hint: any(named: 'hint')),
+                    ).thenReturn(false);
                   });
 
                   test('throws UserCancelledException', () async {
@@ -743,6 +747,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               flavor: any(named: 'flavor'),
               target: any(named: 'target'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           when(
@@ -908,6 +913,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).captured;
 
@@ -938,6 +944,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 flavor: any(named: 'flavor'),
                 target: any(named: 'target'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).captured;
 

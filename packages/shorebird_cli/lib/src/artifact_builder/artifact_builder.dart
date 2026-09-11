@@ -11,6 +11,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_environment.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_summary.dart';
+import 'package:shorebird_cli/src/artifact_builder/legacy_flutter_jar.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -60,15 +61,27 @@ final artifactBuilderRef = create(ArtifactBuilder.new);
 /// The [ArtifactBuilder] instance available in the current zone.
 ArtifactBuilder get artifactBuilder => read(artifactBuilderRef);
 
-extension on String {
-  /// Converts this base64-encoded public key into the `Map<String, String>`:
-  ///   {'SHOREBIRD_PUBLIC_KEY': this}
-  ///
-  /// SHOREBIRD_PUBLIC_KEY is the name expected by the Shorebird's Flutter tool
-  ///
-  /// This allow us to just call var?.toPublicKeyEnv() instead of doing
-  /// a ternary operation to check if the value is null.
-  Map<String, String> toPublicKeyEnv() => {'SHOREBIRD_PUBLIC_KEY': this};
+/// Builds the environment map for Flutter build subprocesses.
+///
+/// Merges the public key (if present) with any additional environment
+/// variables (e.g. DD table configuration).
+///
+/// Environment variables are used (rather than command-line flags) for
+/// backwards compatibility: older Flutter builds that don't recognize a
+/// variable will silently ignore it, whereas an unknown flag would cause
+/// a build failure.
+Map<String, String>? buildEnvironment({
+  String? base64PublicKey,
+  int? ddMaxBytes,
+}) {
+  final env = <String, String>{};
+  if (base64PublicKey != null) {
+    env['SHOREBIRD_PUBLIC_KEY'] = base64PublicKey;
+  }
+  if (ddMaxBytes != null) {
+    env['SHOREBIRD_DD_MAX_BYTES'] = ddMaxBytes.toString();
+  }
+  return env.isEmpty ? null : env;
 }
 
 /// @{template artifact_builder}
@@ -103,6 +116,67 @@ fails when using the same flutter version, please file an issue:
 ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
 ''';
 
+  /// The fix recommendation for a failed Android build.
+  ///
+  /// Prepends a targeted hint to [runVanillaFlutterBuildRecommendation] when a
+  /// plugin in the project still references the legacy `flutter.jar` artifact
+  /// (see [LegacyFlutterJarReference]), which is the most common cause of an
+  /// Android build that succeeds under `flutter build` but fails under
+  /// `shorebird release`.
+  String _androidBuildFixRecommendation(String buildCommand) {
+    final vanilla = runVanillaFlutterBuildRecommendation(buildCommand);
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot();
+    if (projectRoot == null) return vanilla;
+    final offenders = LegacyFlutterJarReference.findInProject(projectRoot);
+    if (offenders.isEmpty) return vanilla;
+    return '${LegacyFlutterJarReference.recommendation(offenders)}\n$vanilla';
+  }
+
+  /// Cache of `flutter build <command>` help output checks for
+  /// `--shorebird-trace` support. Populated lazily by
+  /// [_supportsTraceFlag].
+  final _traceSupport = <String, bool>{};
+
+  /// Returns whether `flutter build <command>` accepts `--shorebird-trace`.
+  ///
+  /// Probes the command's help output and caches the result per [command]
+  /// so that subsequent calls for the same command are free.
+  /// Returns `false` if the help check fails for any reason.
+  ///
+  /// The probe uses verbose help (`-h -v`): `--shorebird-trace` is registered
+  /// with `hide: !verboseHelp` in Flutter, so it does not appear in plain
+  /// `-h` output. Probing with `-h` alone therefore returned `false` even on
+  /// Flutter versions that fully support the flag, silently disabling build
+  /// tracing for everyone. `-h -v` lists hidden options so support is
+  /// detected correctly.
+  Future<bool> _supportsTraceFlag(String command) async {
+    if (_traceSupport.containsKey(command)) return _traceSupport[command]!;
+
+    try {
+      final result = await process.run(
+        'flutter',
+        ['build', command, '-h', '-v'],
+        runInShell: false,
+      );
+      final supported = result.stdout.toString().contains('--shorebird-trace');
+      _traceSupport[command] = supported;
+      return supported;
+    } on Exception {
+      _traceSupport[command] = false;
+      return false;
+    }
+  }
+
+  /// Returns the `--shorebird-trace` argument if the current
+  /// [BuildTraceSession] has a trace file and the given [command]
+  /// supports it, or an empty list otherwise.
+  Future<List<String>> _traceArgs(String command) async {
+    final traceFile = buildTraceSession.traceFile;
+    if (traceFile == null) return const [];
+    if (!await _supportsTraceFlag(command)) return const [];
+    return ['--shorebird-trace=${traceFile.path}'];
+  }
+
   /// Builds an aab using `flutter build appbundle`. Runs `flutter pub get` with
   /// the system installation of Flutter to reset
   /// `.dart_tool/package_config.json` after the build completes or fails.
@@ -112,11 +186,11 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'appbundle',
@@ -124,14 +198,17 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
+        ...await _traceArgs('appbundle'),
         ...args,
       ];
 
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -144,7 +221,7 @@ ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebird/issues/new'))}
 Failed to build AAB.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
+          fixRecommendation: _androidBuildFixRecommendation(
             [executable, ...arguments].join(' '),
           ),
         );
@@ -180,11 +257,11 @@ Reason: Exited with code $exitCode.''',
     bool splitPerAbi = false,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'apk',
@@ -197,14 +274,17 @@ Reason: Exited with code $exitCode.''',
         // coverage:ignore-start
         if (splitPerAbi) '--split-per-abi',
         // coverage:ignore-end
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
+        ...await _traceArgs('apk'),
         ...args,
       ];
 
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -217,7 +297,7 @@ Reason: Exited with code $exitCode.''',
 Failed to build APK.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
+          fixRecommendation: _androidBuildFixRecommendation(
             [executable, ...arguments].join(' '),
           ),
         );
@@ -250,11 +330,11 @@ Reason: Exited with code $exitCode.''',
     Iterable<Arch>? targetPlatforms,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     return _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
       final targetPlatformArgs = targetPlatforms?.targetPlatformArg;
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'aar',
@@ -262,14 +342,17 @@ Reason: Exited with code $exitCode.''',
         '--no-profile',
         '--build-number=$buildNumber',
         if (targetPlatformArgs != null) '--target-platform=$targetPlatformArgs',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
+        ...await _traceArgs('aar'),
         ...args,
       ];
 
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -282,7 +365,7 @@ Reason: Exited with code $exitCode.''',
 Failed to build AAR.
 Command: $executable ${arguments.join(' ')}
 Reason: Exited with code $exitCode.''',
-          fixRecommendation: runVanillaFlutterBuildRecommendation(
+          fixRecommendation: _androidBuildFixRecommendation(
             [executable, ...arguments].join(' '),
           ),
         );
@@ -296,23 +379,26 @@ Reason: Exited with code $exitCode.''',
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'linux',
         '--release',
         if (target != null) '--target=$target',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
+        ...await _traceArgs('linux'),
         ...args,
       ];
 
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -342,6 +428,7 @@ Reason: Exited with code $exitCode.''',
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt. This
@@ -353,7 +440,6 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'macos',
@@ -361,14 +447,17 @@ Reason: Exited with code $exitCode.''',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
+        ...await _traceArgs('macos'),
         ...args,
       ];
       final buildStart = clock.now();
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -409,6 +498,7 @@ Reason: Exited with code $exitCode.''',
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt. This
@@ -421,7 +511,6 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'ipa',
@@ -429,7 +518,7 @@ Reason: Exited with code $exitCode.''',
         if (flavor != null) '--flavor=$flavor',
         if (target != null) '--target=$target',
         if (!codesign) '--no-codesign',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
+        ...await _traceArgs('ipa'),
         ...args,
       ];
 
@@ -437,7 +526,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -474,6 +566,7 @@ Reason: Exited with code $exitCode.''',
   Future<AppleBuildResult> buildIosFramework({
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     // Delete the .dart_tool directory to ensure that the app is rebuilt. This
@@ -485,13 +578,12 @@ Reason: Exited with code $exitCode.''',
     String? appDillPath;
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'ios-framework',
         '--no-debug',
         '--no-profile',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
+        ...await _traceArgs('ios-framework'),
         ...args,
       ];
 
@@ -499,7 +591,10 @@ Reason: Exited with code $exitCode.''',
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,
@@ -759,23 +854,26 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
     String? target,
     List<String> args = const [],
     String? base64PublicKey,
+    int? ddMaxBytes,
   }) async {
     await _runShorebirdBuildCommand(() async {
       const executable = 'flutter';
-      final traceFile = buildTraceSession.traceFile;
       final arguments = [
         'build',
         'windows',
         '--release',
         if (target != null) '--target=$target',
-        if (traceFile != null) '--shorebird-trace=${traceFile.path}',
+        ...await _traceArgs('windows'),
         ...args,
       ];
 
       final exitCode = await process.stream(
         executable,
         arguments,
-        environment: base64PublicKey?.toPublicKeyEnv(),
+        environment: buildEnvironment(
+          base64PublicKey: base64PublicKey,
+          ddMaxBytes: ddMaxBytes,
+        ),
         // Never run in shell because we always have a fully resolved
         // executable path.
         runInShell: false,

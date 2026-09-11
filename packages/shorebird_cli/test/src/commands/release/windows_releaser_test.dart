@@ -356,6 +356,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async => projectRoot);
           when(
@@ -388,6 +389,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async => projectRoot);
           when(
@@ -424,12 +426,21 @@ To change the version of this release, change your app's version in your pubspec
         setUp(() {
           when(() => argResults['obfuscate']).thenReturn(true);
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+          // Non-Android pipelines always pre-strip in gen_snapshot.
+          when(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => true);
           // Simulate the build creating the obfuscation map.
           when(
             () => artifactBuilder.buildWindowsApp(
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async {
             final mapPath = p.join(
@@ -453,6 +464,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: captureAny(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).captured;
 
@@ -485,6 +497,7 @@ To change the version of this release, change your app's version in your pubspec
                 target: any(named: 'target'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).thenAnswer((_) async => projectRoot);
           });

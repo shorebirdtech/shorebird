@@ -112,7 +112,7 @@ Defaults to "latest" which builds using the latest stable Flutter version.''',
       ..addMultiOption(
         'platforms',
         abbr: 'p',
-        help: 'The platform(s) to to build this release for.',
+        help: 'The platform(s) to build this release for.',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),
         // TODO(bryanoltman): uncomment this once https://github.com/dart-lang/args/pull/273 lands
         // mandatory: true.
@@ -159,6 +159,19 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         CommonArguments.obfuscateArg.name,
         help: CommonArguments.obfuscateArg.description,
         negatable: false,
+      )
+      ..addOption(
+        'dd-max-bytes',
+        defaultsTo: '10000',
+        // Hidden from --help: changing this off the default is almost never
+        // the right call for end users. The flag is here for internal
+        // testing of the cascade limiter against patch flows.
+        hide: true,
+        help:
+            'Dynamic Dispatch table cascade byte threshold. '
+            'Functions whose transitive caller tree exceeds this many bytes '
+            'are routed through the indirect dispatch table. '
+            'Set to 0 to disable.',
       );
   }
 
@@ -166,7 +179,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   @override
   String get description =>
-      'Creates a shorebird release for the provided target platforms';
+      'Creates a shorebird release for the provided target platforms.';
 
   @override
   String get name => 'release';

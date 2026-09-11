@@ -99,7 +99,7 @@ environment:
         (_) async => [
           OrganizationMembership(
             role: Role.owner,
-            organization: Organization.forTest(id: organizationId),
+            organization: organizationForTest(id: organizationId),
           ),
         ],
       );
@@ -112,7 +112,7 @@ environment:
       when(
         () => doctor.runValidators(any(), applyFixes: any(named: 'applyFixes')),
       ).thenAnswer((_) async => {});
-      when(() => doctor.generalValidators).thenReturn([]);
+      when(() => doctor.initAndDoctorValidators).thenReturn([]);
       when(
         () => gradlew.isDaemonAvailable(any()),
       ).thenAnswer((_) async => true);
@@ -130,7 +130,11 @@ environment:
         () => pubspecYamlFile.uri,
       ).thenReturn(File(p.join('pubspec.yaml')).uri);
       when(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+        () => logger.prompt(
+          any(),
+          defaultValue: any(named: 'defaultValue'),
+          hint: any(named: 'hint'),
+        ),
       ).thenReturn(appName);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
@@ -254,7 +258,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
       await runWithOverrides(command.run);
       verifyNever(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+        () => logger.prompt(
+          any(),
+          defaultValue: any(named: 'defaultValue'),
+          hint: any(named: 'hint'),
+        ),
       );
       verify(
         () => codePushClientWrapper.createApp(
@@ -268,7 +276,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       when(() => argResults['force']).thenReturn(true);
       await runWithOverrides(command.run);
       verifyNever(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+        () => logger.prompt(
+          any(),
+          defaultValue: any(named: 'defaultValue'),
+          hint: any(named: 'hint'),
+        ),
       );
       verify(
         () => codePushClientWrapper.createApp(
@@ -358,7 +370,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       ).thenThrow(error);
       final exitCode = await runWithOverrides(command.run);
       verify(
-        () => logger.prompt(any(), defaultValue: any(named: 'defaultValue')),
+        () => logger.prompt(
+          any(),
+          defaultValue: any(named: 'defaultValue'),
+          hint: any(named: 'hint'),
+        ),
       ).called(1);
       verify(() => logger.err('$error')).called(1);
       expect(exitCode, ExitCode.software.code);
@@ -442,7 +458,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           (_) async => [
             OrganizationMembership(
               role: Role.owner,
-              organization: Organization.forTest(id: organizationId),
+              organization: organizationForTest(id: organizationId),
             ),
           ],
         );
@@ -457,6 +473,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             () => logger.chooseOne(
               'Which organization should this app belong to?',
               choices: any(named: 'choices'),
+              hint: any(named: 'hint'),
             ),
           );
           verify(
@@ -470,8 +487,8 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     });
 
     group('when user has multiple organizations', () {
-      final org1 = Organization.forTest(name: 'org1', id: 1);
-      final org2 = Organization.forTest(
+      final org1 = organizationForTest(name: 'org1', id: 1);
+      final org2 = organizationForTest(
         name: 'org2',
         id: 2,
         organizationType: OrganizationType.team,
@@ -497,6 +514,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             'Which organization should this app belong to?',
             choices: any(named: 'choices'),
             display: any(named: 'display'),
+            hint: any(named: 'hint'),
           ),
         ).thenReturn(org2);
       });
@@ -512,6 +530,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                       'Which organization should this app belong to?',
                       choices: [org1, org2],
                       display: captureAny(named: 'display'),
+                      hint: any(named: 'hint'),
                     ),
                   ).captured.single
                   as String Function(Organization);
@@ -556,6 +575,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                 any(),
                 choices: any(named: 'choices'),
                 display: any(named: 'display'),
+                hint: any(named: 'hint'),
               ),
             );
           },
@@ -621,7 +641,13 @@ Please make sure you are running "shorebird init" from within your Flutter proje
                 any(that: contains('app_id: $appId')),
               ),
             ).called(1);
-            verifyNever(() => logger.prompt(any()));
+            verifyNever(
+              () => logger.prompt(
+                any(),
+                defaultValue: any(named: 'defaultValue'),
+                hint: any(named: 'hint'),
+              ),
+            );
             verify(
               () => codePushClientWrapper.createApp(
                 appName: displayName,
@@ -630,6 +656,49 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             ).called(1);
           },
         );
+
+        group('when display name is empty', () {
+          setUp(() {
+            when(() => argResults['display-name']).thenReturn('');
+          });
+
+          test('exits with usage error', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                'App display name must be between 1 and 128 characters.',
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when display name exceeds max length', () {
+          setUp(() {
+            when(() => argResults['display-name']).thenReturn('a' * 129);
+          });
+
+          test('exits with usage error', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.usage.code));
+            verify(
+              () => logger.err(
+                'App display name must be between 1 and 128 characters.',
+              ),
+            ).called(1);
+          });
+        });
+
+        group('when display name is exactly max length', () {
+          setUp(() {
+            when(() => argResults['display-name']).thenReturn('a' * 128);
+          });
+
+          test('succeeds', () async {
+            final exitCode = await runWithOverrides(command.run);
+            expect(exitCode, equals(ExitCode.success.code));
+          });
+        });
       });
 
       test('creates shorebird for an app without flavors', () async {

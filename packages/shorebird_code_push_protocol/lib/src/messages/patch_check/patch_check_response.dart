@@ -1,13 +1,12 @@
-import 'package:equatable/equatable.dart';
-import 'package:json_annotation/json_annotation.dart';
-
-part 'patch_check_response.g.dart';
+import 'package:meta/meta.dart';
+import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/patch_check_metadata.dart';
 
 /// {@template patch_check_response}
-/// The response body for POST /api/v1/patches/check
+/// The response body for POST /patches/check.
 /// {@endtemplate}
-@JsonSerializable()
-class PatchCheckResponse extends Equatable {
+@immutable
+class PatchCheckResponse {
   /// {@macro patch_check_response}
   const PatchCheckResponse({
     required this.patchAvailable,
@@ -15,61 +14,64 @@ class PatchCheckResponse extends Equatable {
     this.rolledBackPatchNumbers,
   });
 
-  /// Converts a `Map<String, dynamic>` to a [PatchCheckResponse]
-  factory PatchCheckResponse.fromJson(Map<String, dynamic> json) =>
-      _$PatchCheckResponseFromJson(json);
+  /// Converts a `Map<String, dynamic>` to a [PatchCheckResponse].
+  factory PatchCheckResponse.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'PatchCheckResponse',
+      json,
+      () => PatchCheckResponse(
+        patchAvailable: json['patch_available'] as bool,
+        patch: PatchCheckMetadata.maybeFromJson(
+          json['patch'] as Map<String, dynamic>?,
+        ),
+        rolledBackPatchNumbers: (json['rolled_back_patch_numbers'] as List?)
+            ?.cast<int>(),
+      ),
+    );
+  }
 
-  /// Converts a [PatchCheckResponse] to a `Map<String, dynamic>`
-  Map<String, dynamic> toJson() => _$PatchCheckResponseToJson(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static PatchCheckResponse? maybeFromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+    return PatchCheckResponse.fromJson(json);
+  }
 
   /// Whether a patch is available.
   final bool patchAvailable;
 
-  /// The patch metadata.
+  /// Patch metadata representing the contents of a patch for a
+  /// specific platform and architecture.
   final PatchCheckMetadata? patch;
 
   /// The numbers of all patches that have been rolled back for the current
   /// release.
   final List<int>? rolledBackPatchNumbers;
 
-  @override
-  List<Object?> get props => [patchAvailable, patch, rolledBackPatchNumbers];
-}
-
-/// {@template patch_check_metadata}
-/// Patch metadata represents the contents of an update (patch) for a specific
-/// platform and architecture.
-/// {@endtemplate}
-@JsonSerializable()
-class PatchCheckMetadata extends Equatable {
-  /// {@macro patch_check_metadata}
-  const PatchCheckMetadata({
-    required this.number,
-    required this.downloadUrl,
-    required this.hash,
-    required this.hashSignature,
-  });
-
-  /// Converts a `Map<String, dynamic>` to an [PatchCheckMetadata]
-  factory PatchCheckMetadata.fromJson(Map<String, dynamic> json) =>
-      _$PatchCheckMetadataFromJson(json);
-
-  /// Converts an [PatchCheckMetadata] to a `Map<String, dynamic>`
-  Map<String, dynamic> toJson() => _$PatchCheckMetadataToJson(this);
-
-  /// The patch number associated with the artifact.
-  final int number;
-
-  /// The URL of the artifact.
-  final String downloadUrl;
-
-  /// The hash of the artifact.
-  final String hash;
-
-  /// The signature of the [hash].
-  @JsonKey(includeIfNull: false)
-  final String? hashSignature;
+  /// Converts a [PatchCheckResponse] to a `Map<String, dynamic>`.
+  Map<String, dynamic> toJson() {
+    return {
+      'patch_available': patchAvailable,
+      'patch': patch?.toJson(),
+      'rolled_back_patch_numbers': rolledBackPatchNumbers,
+    };
+  }
 
   @override
-  List<Object?> get props => [number, downloadUrl, hash, hashSignature];
+  int get hashCode => Object.hashAll([
+    patchAvailable,
+    patch,
+    listHash(rolledBackPatchNumbers),
+  ]);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is PatchCheckResponse &&
+        patchAvailable == other.patchAvailable &&
+        patch == other.patch &&
+        listsEqual(rolledBackPatchNumbers, other.rolledBackPatchNumbers);
+  }
 }

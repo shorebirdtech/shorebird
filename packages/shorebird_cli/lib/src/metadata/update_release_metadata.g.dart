@@ -17,7 +17,7 @@ UpdateReleaseMetadata _$UpdateReleaseMetadataFromJson(
     final val = UpdateReleaseMetadata(
       releasePlatform: $checkedConvert(
         'release_platform',
-        (v) => $enumDecode(_$ReleasePlatformEnumMap, v),
+        (v) => ReleasePlatform.fromJson(v as String),
       ),
       flutterVersionOverride: $checkedConvert(
         'flutter_version_override',
@@ -51,18 +51,10 @@ UpdateReleaseMetadata _$UpdateReleaseMetadataFromJson(
 Map<String, dynamic> _$UpdateReleaseMetadataToJson(
   UpdateReleaseMetadata instance,
 ) => <String, dynamic>{
-  'release_platform': _$ReleasePlatformEnumMap[instance.releasePlatform]!,
+  'release_platform': instance.releasePlatform.toJson(),
   'flutter_version_override': instance.flutterVersionOverride,
   'generated_apks': instance.generatedApks,
   'includes_public_key': instance.includesPublicKey,
   'environment': instance.environment.toJson(),
   'build_trace_summary': instance.buildTraceSummary,
-};
-
-const _$ReleasePlatformEnumMap = {
-  ReleasePlatform.android: 'android',
-  ReleasePlatform.ios: 'ios',
-  ReleasePlatform.linux: 'linux',
-  ReleasePlatform.macos: 'macos',
-  ReleasePlatform.windows: 'windows',
 };

@@ -1,0 +1,99 @@
+import 'package:mason_logger/mason_logger.dart';
+import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
+import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
+import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+
+/// {@template patches_list_command}
+/// `shorebird patches list`
+/// List patches for a release.
+/// {@endtemplate}
+class PatchesListCommand extends ShorebirdCommand {
+  /// {@macro patches_list_command}
+  PatchesListCommand() {
+    argParser
+      ..addOption(
+        CommonArguments.releaseVersionArg.name,
+        help: CommonArguments.patchReleaseVersionDescription,
+        mandatory: true,
+      )
+      ..addOption(
+        CommonArguments.appIdArg.name,
+        help: CommonArguments.appIdArg.description,
+      )
+      ..addOption(
+        CommonArguments.flavorArg.name,
+        help: 'The product flavor to list patches for (e.g. "prod").',
+      );
+  }
+
+  @override
+  String get name => 'list';
+
+  @override
+  String get description =>
+      'List patches for a release.\n\n'
+      'Example output (one line per patch):\n'
+      '  42  #1  track: stable\n'
+      '  43  #2  [no track]\n'
+      '  44  #3  track: beta  [rolled back]\n\n'
+      '${ShorebirdCommand.jsonHint('shorebird patches list --release-version 1.0.0+1 --app-id <id> --json')}';
+
+  @override
+  Future<int> run() async {
+    final (:appId, :errorCode) = await resolveAppId();
+    if (errorCode != null) return errorCode;
+
+    final releaseVersion =
+        results[CommonArguments.releaseVersionArg.name] as String;
+
+    final Release release;
+    final List<ReleasePatch> patches;
+    try {
+      release = await codePushClientWrapper.getRelease(
+        appId: appId,
+        releaseVersion: releaseVersion,
+      );
+      patches = await codePushClientWrapper.getReleasePatches(
+        appId: appId,
+        releaseId: release.id,
+      );
+    } on ProcessExit catch (e) {
+      if (isJsonMode) {
+        emitJsonError(
+          code: JsonErrorCode.fetchFailed,
+          message: 'Failed to fetch patches for release "$releaseVersion".',
+        );
+        return e.exitCode;
+      }
+      rethrow;
+    }
+
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'patches': patches.map((p) => p.toJson()).toList(),
+      });
+      return ExitCode.success.code;
+    }
+
+    if (patches.isEmpty) {
+      logger.info('No patches found.');
+      return ExitCode.success.code;
+    }
+
+    for (final patch in patches) {
+      final id = patch.id;
+      final number = lightCyan.wrap('#${patch.number}');
+      final channel = patch.channel != null
+          ? '  track: ${patch.channel}'
+          : '  [no track]';
+      final rolledBack = patch.isRolledBack ? '  [rolled back]' : '';
+      logger.info('$id  $number$channel$rolledBack');
+    }
+
+    return ExitCode.success.code;
+  }
+}

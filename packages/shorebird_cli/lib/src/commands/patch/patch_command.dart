@@ -54,7 +54,7 @@ class PatchCommand extends ShorebirdCommand {
       ..addMultiOption(
         'platforms',
         abbr: 'p',
-        help: 'The platform(s) to to build this release for.',
+        help: 'The platform(s) to build this patch for.',
         allowed: ReleaseType.values.map((e) => e.cliName).toList(),
       )
       ..addOption(
@@ -165,7 +165,6 @@ To target the latest release (e.g. the release that was most recently updated) u
         CommonArguments.minLinkPercentage.name,
         help: CommonArguments.minLinkPercentage.description,
         defaultsTo: CommonArguments.minLinkPercentage.defaultValue,
-        allowed: [for (var i = 0; i <= 100; i++) '$i'],
       );
   }
 
@@ -183,7 +182,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   @override
   String get description =>
-      'Creates a shorebird patch for the provided target platforms';
+      'Creates a shorebird patch for the provided target platforms.';
 
   @override
   String get name => 'patch';
@@ -433,11 +432,7 @@ Building with Flutter $flutterVersionString to determine the release version...
     // If the user explicitly passed --obfuscate but the release has no
     // obfuscation map, the patch would be obfuscated against a non-obfuscated
     // release, producing a broken patch.
-    // Also check rest for `-- --obfuscate`, which bypasses the parser but
-    // still flows through forwardedArgs to the Flutter build command.
-    final userPassedObfuscate =
-        (results.wasParsed('obfuscate') && results['obfuscate'] == true) ||
-        results.rest.any((a) => a == '--obfuscate');
+    final userPassedObfuscate = results.flagPresent('obfuscate');
     if (userPassedObfuscate && obfuscationMapFile == null) {
       logger.err(
         '--obfuscate was passed, but the release was not built with '
@@ -467,18 +462,35 @@ Building with Flutter $flutterVersionString to determine the release version...
         '--obfuscate',
         '--extra-gen-snapshot-options='
             '--load-obfuscation-map=${obfuscationMapFile.path}',
-        // Strip unobfuscated DWARF debug info from the compiled snapshot so
-        // it doesn't leak identifiers that obfuscation was meant to hide.
-        '--extra-gen-snapshot-options=--strip',
       ]);
+
+      // Gate --strip on the release's Flutter revision (not the user's
+      // currently-installed pin) so the patch's gen_snapshot behavior
+      // matches the release's. On Android with Flutter 3.44+ AGP performs
+      // the strip; passing --strip here would pre-strip the snapshot,
+      // leaving AGP nothing to strip and tripping flutter_tools'
+      // post-build "libapp.so.sym or libapp.so.dbg not present" check.
+      final shouldPreStripInGenSnapshot = await shorebirdFlutter
+          .shouldPreStripLibappInGenSnapshot(
+            platform: patcher.releaseType.releasePlatform,
+            flutterRevision: release.flutterRevision,
+          );
+
+      if (shouldPreStripInGenSnapshot) {
+        // Strip unobfuscated DWARF debug info from the compiled snapshot
+        // so it doesn't leak identifiers that obfuscation was meant to
+        // hide. On Android 3.44+ this is handled by AGP instead; see the
+        // block above.
+        extraBuildArgs.add('--extra-gen-snapshot-options=--strip');
+      }
     }
     // Flutter requires --split-debug-info with --obfuscate. Auto-add it
     // if --obfuscate will be in the build args (from the user or from
     // the obfuscation map injection above) but --split-debug-info is not.
     final hasObfuscate =
-        (results.wasParsed('obfuscate') && results['obfuscate'] == true) ||
+        results.flagPresent('obfuscate') ||
         extraBuildArgs.contains('--obfuscate');
-    final hasSplitDebugInfo = results.wasParsed('split-debug-info');
+    final hasSplitDebugInfo = results.optionPresent('split-debug-info');
     if (hasObfuscate && !hasSplitDebugInfo) {
       extraBuildArgs.add(
         '--split-debug-info=${p.join('build', 'shorebird', 'symbols')}',
@@ -651,7 +663,9 @@ Please re-run the release command for this version or create a new release.''');
     required Patcher patcher,
   }) async {
     try {
-      return patcher.assertUnpatchableDiffs(
+      // Must be awaited inside the try, otherwise the catch clauses below never
+      // see the failure and the patch exits with an unhandled exception.
+      return await patcher.assertUnpatchableDiffs(
         releaseArtifact: releaseArtifact,
         releaseArchive: releaseArchive,
         patchArchive: patchArchive,
@@ -691,9 +705,20 @@ Please re-run the release command for this version or create a new release.''');
     })();
 
     final linkPercentage = patcher.linkPercentage;
-    final minLinkPercentage = int.parse(
-      results[CommonArguments.minLinkPercentage.name] as String,
-    );
+    final minLinkPercentageRaw =
+        results[CommonArguments.minLinkPercentage.name] as String;
+    final minLinkPercentage = int.tryParse(minLinkPercentageRaw);
+    if (minLinkPercentage == null ||
+        minLinkPercentage < CommonArguments.minLinkPercentageMin ||
+        minLinkPercentage > CommonArguments.minLinkPercentageMax) {
+      logger.err(
+        '--min-link-percentage must be an integer between '
+        '${CommonArguments.minLinkPercentageMin} and '
+        '${CommonArguments.minLinkPercentageMax} '
+        '(got $minLinkPercentageRaw).',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
     if (linkPercentage != null && linkPercentage < minLinkPercentage) {
       logger.err(
         '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold ($minLinkPercentage%). Exiting.''',

@@ -290,6 +290,107 @@ To change the version of this release, change your app's version in your pubspec
           );
         });
       });
+
+      group('when --export-options-plist is provided', () {
+        late Directory tempDir;
+
+        setUp(() {
+          tempDir = Directory.systemTemp.createTempSync(
+            'export_options_releaser_',
+          );
+        });
+
+        tearDown(() {
+          tempDir.deleteSync(recursive: true);
+        });
+
+        File writePlist(String body) {
+          return File(p.join(tempDir.path, 'ExportOptions.plist'))
+            ..writeAsStringSync('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+$body
+</dict>
+</plist>
+''');
+        }
+
+        test(
+          'returns normally when manageAppVersionAndBuildNumber is absent',
+          () async {
+            final file = writePlist(
+              '<key>method</key><string>app-store</string>',
+            );
+            when(
+              () => argResults[CommonArguments.exportOptionsPlistArg.name],
+            ).thenReturn(file.path);
+
+            await expectLater(
+              runWithOverrides(iosReleaser.assertArgsAreValid),
+              completes,
+            );
+          },
+        );
+
+        test(
+          '''logs error and exits with usage when manageAppVersionAndBuildNumber is true''',
+          () async {
+            final file = writePlist(
+              '<key>manageAppVersionAndBuildNumber</key><true/>',
+            );
+            when(
+              () => argResults[CommonArguments.exportOptionsPlistArg.name],
+            ).thenReturn(file.path);
+
+            await expectLater(
+              () => runWithOverrides(iosReleaser.assertArgsAreValid),
+              exitsWithCode(ExitCode.usage),
+            );
+            verify(
+              () => logger.err(
+                any(that: contains('manageAppVersionAndBuildNumber')),
+              ),
+            ).called(1);
+          },
+        );
+      });
+    });
+
+    group('addObfuscationMapArgs', () {
+      // The libapp.so strip gating only applies to Android; on iOS AGP is
+      // not in the pipeline. iOS must continue to pre-strip the snapshot in
+      // gen_snapshot regardless of the Flutter version to prevent the
+      // DWARF debug sections from leaking the identifiers obfuscation is
+      // meant to hide.
+      setUp(() {
+        when(() => argResults['obfuscate']).thenReturn(true);
+        when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+        when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+        when(
+          () => shorebirdEnv.getShorebirdProjectRoot(),
+        ).thenReturn(projectRoot);
+      });
+
+      test('passes --strip on Flutter 3.44+ for iOS', () async {
+        when(
+          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+            platform: any(named: 'platform'),
+            flutterRevision: any(named: 'flutterRevision'),
+          ),
+        ).thenAnswer((_) async => true);
+
+        final buildArgs = <String>[];
+        await runWithOverrides(
+          () => iosReleaser.addObfuscationMapArgs(buildArgs),
+        );
+
+        expect(
+          buildArgs,
+          contains('--extra-gen-snapshot-options=--strip'),
+        );
+      });
     });
 
     group('buildReleaseArtifacts', () {
@@ -322,6 +423,9 @@ To change the version of this release, change your app's version in your pubspec
         when(
           () => artifactManager.getXcarchiveDirectory(),
         ).thenReturn(xcarchiveDirectory);
+        when(
+          () => artifactManager.getIpa(),
+        ).thenReturn(File(p.join(Directory.systemTemp.path, 'app.ipa')));
 
         when(
           () => codeSigner.base64PublicKeyFromPem(any()),
@@ -357,6 +461,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -398,6 +503,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -452,6 +558,16 @@ To change the version of this release, change your app's version in your pubspec
           verify(
             () => logger.warn(
               '''shorebird preview will not work for releases created with "--no-codesign". However, you can still preview your app by signing the generated .xcarchive in Xcode.''',
+            ),
+          ).called(1);
+          verify(
+            () => logger.warn(
+              any(
+                that: allOf(
+                  contains('Manage Version and Build Number'),
+                  contains('Patches will then fail to apply'),
+                ),
+              ),
             ),
           ).called(1);
         });
@@ -547,10 +663,54 @@ To change the version of this release, change your app's version in your pubspec
         });
       });
 
+      group('when codesigning and ipa not found after build', () {
+        setUp(() {
+          when(() => argResults['codesign']).thenReturn(true);
+          when(() => artifactManager.getIpa()).thenReturn(null);
+        });
+
+        test('logs message and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => logger.err(
+              any(that: contains('Unable to find generated IPA')),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when not codesigning and ipa not found after build', () {
+        setUp(() {
+          when(() => argResults['codesign']).thenReturn(false);
+          when(() => artifactManager.getIpa()).thenReturn(null);
+        });
+
+        test('does not check for the ipa and returns xcarchive path', () async {
+          expect(
+            await runWithOverrides(iosReleaser.buildReleaseArtifacts),
+            equals(xcarchiveDirectory),
+          );
+
+          verifyNever(() => artifactManager.getIpa());
+        });
+      });
+
       group('when --obfuscate is passed', () {
         setUp(() {
           when(() => argResults['obfuscate']).thenReturn(true);
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+          // iOS always pre-strips in gen_snapshot (AGP isn't in the pipeline).
+          when(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => true);
           // By default, simulate the build creating the obfuscation map.
           when(
             () => artifactBuilder.buildIpa(
@@ -836,7 +996,6 @@ To change the version of this release, change your app's version in your pubspec
       late Directory xcarchiveDirectory;
       late Directory iosAppDirectory;
       late Directory supplementDirectory;
-      late File podfileLockFile;
 
       setUp(() {
         when(() => argResults['codesign']).thenReturn(codesign);
@@ -847,15 +1006,6 @@ To change the version of this release, change your app's version in your pubspec
         xcarchiveDirectory = Directory.systemTemp.createTempSync();
         iosAppDirectory = Directory.systemTemp.createTempSync();
         supplementDirectory = Directory.systemTemp.createTempSync();
-        podfileLockFile =
-            File(
-                p.join(
-                  Directory.systemTemp.createTempSync().path,
-                  'Podfile.lock',
-                ),
-              )
-              ..createSync(recursive: true)
-              ..writeAsStringSync(podfileLockContent);
         when(
           artifactManager.getXcarchiveDirectory,
         ).thenReturn(xcarchiveDirectory);
@@ -877,7 +1027,9 @@ To change the version of this release, change your app's version in your pubspec
             podfileLockHash: any(named: 'podfileLockHash'),
           ),
         ).thenAnswer((_) async => {});
-        when(() => shorebirdEnv.iosPodfileLockFile).thenReturn(podfileLockFile);
+        when(
+          () => shorebirdEnv.iosPodfileLockHash,
+        ).thenReturn('${sha256.convert(utf8.encode(podfileLockContent))}');
       });
 
       test('forwards call to codePushClientWrapper', () async {
@@ -1033,7 +1185,8 @@ Your next step is to submit the archive at ${lightCyan.wrap(p.relative(xcarchive
 You can open the archive in Xcode by running:
     ${lightCyan.wrap('open ${p.relative(xcarchiveDirectory.path)}')}
 
-${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
+${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number" in the Distribute App dialog.')}
+If left checked, Xcode will rewrite the build number in the uploaded IPA, so the version that ships will not match the one Shorebird recorded for this release, and patches will fail to apply.
 '''),
           );
         });

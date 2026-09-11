@@ -1,0 +1,64 @@
+{
+  "info": {
+    "arguments": ["devicectl", "list", "devices", "--json-output=out.json"],
+    "commandType": "devicectl.list.devices",
+    "environment": {
+      "TERM": "xterm-256color"
+    },
+    "jsonVersion": 2,
+    "outcome": "success",
+    "version": "443.24"
+  },
+  "result": {
+    "devices": [
+      {
+        "connectionProperties": {
+          "authenticationType": "manualPairing",
+          "pairingState": "paired",
+          "transportType": "wired",
+          "tunnelState": "connected"
+        },
+        "deviceProperties": {
+          "bootState": "booted",
+          "name": "Reachable iPhone",
+          "osBuildUpdate": "22F76",
+          "osVersionNumber": "18.5"
+        },
+        "hardwareProperties": {
+          "deviceType": "iPhone",
+          "marketingName": "iPhone 16 Pro Max",
+          "platform": "iOS",
+          "productType": "iPhone17,2",
+          "udid": "11111111-1111111111111111"
+        },
+        "identifier": "11111111-1111111111111111",
+        "tags": [],
+        "visibilityClass": "default"
+      },
+      {
+        "connectionProperties": {
+          "authenticationType": "manualPairing",
+          "lastConnectionDate": "2026-04-15T18:22:11.000Z",
+          "pairingState": "paired",
+          "tunnelState": "unavailable"
+        },
+        "deviceProperties": {
+          "bootState": "booted",
+          "name": "Unreachable iPhone",
+          "osBuildUpdate": "21E236",
+          "osVersionNumber": "17.4.1"
+        },
+        "hardwareProperties": {
+          "deviceType": "iPhone",
+          "marketingName": "iPhone 15",
+          "platform": "iOS",
+          "productType": "iPhone15,4",
+          "udid": "22222222-2222222222222222"
+        },
+        "identifier": "22222222-2222222222222222",
+        "tags": [],
+        "visibilityClass": "default"
+      }
+    ]
+  }
+}

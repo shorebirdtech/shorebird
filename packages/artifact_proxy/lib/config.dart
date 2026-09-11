@@ -122,6 +122,7 @@ final engineArtifactPatterns = {
 
 /// Patterns for Flutter artifacts which don't depend on an engine revision.
 final flutterArtifactPatterns = {
+  // Pre-3.44 layout: ios-usb-dependencies/<artifact>/<hash>/<artifact>.zip
   r'flutter_infra_release\/ios-usb-dependencies\/usbmuxd\/(.*)\/usbmuxd\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/libusbmuxd\/(.*)\/libusbmuxd\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/openssl\/(.*)\/openssl\.zip',
@@ -129,6 +130,17 @@ final flutterArtifactPatterns = {
   r'flutter_infra_release\/ios-usb-dependencies\/libimobiledevice\/(.*)\/libimobiledevice\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/libimobiledeviceglue\/(.*)\/libimobiledeviceglue\.zip',
   r'flutter_infra_release\/ios-usb-dependencies\/ios-deploy\/(.*)\/ios-deploy\.zip',
+  // 3.44+ layout: ios-usb-dependencies/arm64_x86_64/<artifact>/<hash>/<artifact>.zip
+  // Flutter 3.44 (flutter/flutter#181539 + related) reorganized iOS USB
+  // dependency URLs to namespace by architecture. Upstream GCS serves both
+  // layouts; we list both so customers on either Flutter version resolve.
+  r'flutter_infra_release\/ios-usb-dependencies\/arm64_x86_64\/usbmuxd\/(.*)\/usbmuxd\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/arm64_x86_64\/libusbmuxd\/(.*)\/libusbmuxd\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/arm64_x86_64\/openssl\/(.*)\/openssl\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/arm64_x86_64\/libplist\/(.*)\/libplist\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/arm64_x86_64\/libimobiledevice\/(.*)\/libimobiledevice\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/arm64_x86_64\/libimobiledeviceglue\/(.*)\/libimobiledeviceglue\.zip',
+  r'flutter_infra_release\/ios-usb-dependencies\/arm64_x86_64\/ios-deploy\/(.*)\/ios-deploy\.zip',
   r'flutter_infra_release\/gradle-wrapper\/(.*)\/gradle-wrapper\.tgz',
   r'flutter_infra_release\/flutter\/fonts\/(.*)\/fonts\.zip',
   r'flutter_infra_release\/cipd\/flutter\/web\/canvaskit_bundle\/\+\/(.*)',

@@ -1,25 +1,53 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-
-part 'create_user_request.g.dart';
+import 'package:meta/meta.dart';
+import 'package:shorebird_code_push_protocol/model_helpers.dart';
 
 /// {@template create_user_request}
-/// The request body for POST /api/v1/users, which creates a new User.
-///
-/// Email is retrieved from the user's auth token.
+/// The request body for POST /users. The user's email is taken
+/// from the auth token; only the display name is provided here.
 /// {@endtemplate}
-@JsonSerializable()
+@immutable
 class CreateUserRequest {
   /// {@macro create_user_request}
-  const CreateUserRequest({required this.name});
+  const CreateUserRequest({
+    required this.name,
+  });
 
-  /// Converts a JSON object to a [CreateUserRequest].
-  factory CreateUserRequest.fromJson(Json json) =>
-      _$CreateUserRequestFromJson(json);
+  /// Converts a `Map<String, dynamic>` to a [CreateUserRequest].
+  factory CreateUserRequest.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'CreateUserRequest',
+      json,
+      () => CreateUserRequest(
+        name: json['name'] as String,
+      ),
+    );
+  }
 
-  /// Converts a [CreateUserRequest] to a JSON object.
-  Json toJson() => _$CreateUserRequestToJson(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static CreateUserRequest? maybeFromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+    return CreateUserRequest.fromJson(json);
+  }
 
   /// The new user's display name.
   final String name;
+
+  /// Converts a [CreateUserRequest] to a `Map<String, dynamic>`.
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+    };
+  }
+
+  @override
+  int get hashCode => name.hashCode;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is CreateUserRequest && name == other.name;
+  }
 }

@@ -68,6 +68,10 @@ void main() {
       );
     }
 
+    setUpAll(() {
+      registerFallbackValue(ReleasePlatform.macos);
+    });
+
     setUp(() {
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
@@ -289,6 +293,7 @@ To change the version of this release, change your app's version in your pubspec
             target: any(named: 'target'),
             args: any(named: 'args'),
             base64PublicKey: any(named: 'base64PublicKey'),
+            ddMaxBytes: any(named: 'ddMaxBytes'),
           ),
         ).thenAnswer(
           (_) async => AppleBuildResult(kernelFile: File('/path/to/app.dill')),
@@ -454,6 +459,14 @@ To change the version of this release, change your app's version in your pubspec
         setUp(() {
           when(() => argResults['obfuscate']).thenReturn(true);
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+          // Non-Android pipelines always pre-strip in gen_snapshot.
+          when(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => true);
           // By default, simulate the build creating the obfuscation map.
           when(
             () => artifactBuilder.buildMacos(
@@ -462,6 +475,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: any(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer((_) async {
             final mapPath = p.join(
@@ -489,6 +503,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: captureAny(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).captured;
 
@@ -513,6 +528,7 @@ To change the version of this release, change your app's version in your pubspec
               target: any(named: 'target'),
               args: captureAny(named: 'args'),
               base64PublicKey: any(named: 'base64PublicKey'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).captured;
 
@@ -545,6 +561,7 @@ To change the version of this release, change your app's version in your pubspec
                 target: any(named: 'target'),
                 args: captureAny(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).captured;
 
@@ -581,6 +598,7 @@ To change the version of this release, change your app's version in your pubspec
                 target: any(named: 'target'),
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).thenAnswer(
               (_) async =>
@@ -744,7 +762,6 @@ To change the version of this release, change your app's version in your pubspec
       );
 
       late Directory appDirectory;
-      late File podfileLockFile;
 
       setUp(() {
         when(() => argResults['codesign']).thenReturn(codesign);
@@ -753,16 +770,6 @@ To change the version of this release, change your app's version in your pubspec
         ).thenReturn(projectRoot);
 
         appDirectory = Directory.systemTemp.createTempSync();
-
-        podfileLockFile =
-            File(
-                p.join(
-                  Directory.systemTemp.createTempSync().path,
-                  'Podfile.lock',
-                ),
-              )
-              ..createSync(recursive: true)
-              ..writeAsStringSync(podfileLockContent);
 
         when(
           () => artifactManager.getMacOSAppDirectory(),
@@ -778,8 +785,8 @@ To change the version of this release, change your app's version in your pubspec
         ).thenAnswer((_) async => {});
 
         when(
-          () => shorebirdEnv.macosPodfileLockFile,
-        ).thenReturn(podfileLockFile);
+          () => shorebirdEnv.macosPodfileLockHash,
+        ).thenReturn('${sha256.convert(utf8.encode(podfileLockContent))}');
       });
 
       group('when app directory does not exist', () {

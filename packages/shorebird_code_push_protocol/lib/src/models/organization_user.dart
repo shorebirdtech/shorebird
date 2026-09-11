@@ -1,26 +1,65 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-
-part 'organization_user.g.dart';
+import 'package:meta/meta.dart';
+import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/public_user.dart';
+import 'package:shorebird_code_push_protocol/src/models/role.dart';
 
 /// {@template organization_user}
-/// A member of an organization and their role in that organization.
+/// A member of an organization and their role.
 /// {@endtemplate}
-@JsonSerializable()
+@immutable
 class OrganizationUser {
   /// {@macro organization_user}
-  OrganizationUser({required this.user, required this.role});
+  const OrganizationUser({
+    required this.user,
+    required this.role,
+  });
 
-  /// Converts this [OrganizationUser] to a JSON map.
-  factory OrganizationUser.fromJson(Map<String, dynamic> json) =>
-      _$OrganizationUserFromJson(json);
+  /// Converts a `Map<String, dynamic>` to an [OrganizationUser].
+  factory OrganizationUser.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'OrganizationUser',
+      json,
+      () => OrganizationUser(
+        user: PublicUser.fromJson(json['user'] as Map<String, dynamic>),
+        role: Role.fromJson(json['role'] as String),
+      ),
+    );
+  }
 
-  /// Converts a JSON map to an [OrganizationUser].
-  Map<String, dynamic> toJson() => _$OrganizationUserToJson(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static OrganizationUser? maybeFromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+    return OrganizationUser.fromJson(json);
+  }
 
-  /// The user that is a member of the organization.
+  /// A Shorebird user with non-sensitive information only.
   final PublicUser user;
 
-  /// The role [user] has in the organization.
+  /// A role that a user can have relative to an Organization or App.
   final Role role;
+
+  /// Converts an [OrganizationUser] to a `Map<String, dynamic>`.
+  Map<String, dynamic> toJson() {
+    return {
+      'user': user.toJson(),
+      'role': role.toJson(),
+    };
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    user,
+    role,
+  ]);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is OrganizationUser &&
+        user == other.user &&
+        role == other.role;
+  }
 }

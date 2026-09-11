@@ -17,6 +17,7 @@ import 'package:xml/xml.dart';
 
 export 'apple_platform.dart';
 export 'export_method.dart';
+export 'invalid_export_options_plist_exception.dart';
 export 'link_result.dart';
 export 'macho.dart';
 export 'missing_xcode_project_exception.dart';
@@ -55,6 +56,11 @@ class Apple {
       'App.field_table.json',
       'App.dt.link',
       'App.dispatch_table.json',
+      // DD table files for cascade limiter (produced by 2-pass release build).
+      'App.dd.link',
+      'App.dd_callers.link',
+      // Per-slot DD resolution outcome diagnostic (TSV).
+      'App.dd_resolution.tsv',
     ];
 
     // This uses maybeCopy because not all versions of gen_snapshot/aot_tools
@@ -146,6 +152,7 @@ class Apple {
     required List<String> splitDebugInfoArgs,
     required File aotOutputFile,
     required File vmCodeFile,
+    int? ddMaxBytes,
   }) async {
     final patch = aotOutputFile;
     final buildDirectory = shorebirdEnv.buildDirectory;
@@ -180,7 +187,14 @@ class Apple {
       if (dumpDebugInfoDir == null) return;
 
       // Copy snapshots into the debug dump for offline diagnosis.
-      // 1 release snapshot + 3 patch compilation stages.
+      // 1 release snapshot + up to 5 patch compilation stages:
+      //   - out.aot:                 initial patch gen_snapshot output
+      //   - out.ct.aot:              CT-sorted intermediate
+      //   - out.preDdOptimized.aot:  CT + OP sort, no DD activation (voted on)
+      //   - out.ddOnly.aot:          CT + DD activation, no OP sort
+      //                              (source of the patch op.link consumed
+      //                               by the final pass's VM linker)
+      //   - out.optimized.aot:       final CT + OP sort + DD activation
       final snapshotsDir = Directory(p.join(dumpDebugInfoDir.path, 'snapshots'))
         ..createSync(recursive: true);
       void maybeCopySnapshot(File file, {String? destName}) {
@@ -198,6 +212,12 @@ class Apple {
       final patchBaseName = p.basenameWithoutExtension(aotOutputFile.path);
       maybeCopySnapshot(
         File(p.join(patchDir, '$patchBaseName.ct.aot')),
+      );
+      maybeCopySnapshot(
+        File(p.join(patchDir, '$patchBaseName.preDdOptimized.aot')),
+      );
+      maybeCopySnapshot(
+        File(p.join(patchDir, '$patchBaseName.ddOnly.aot')),
       );
       maybeCopySnapshot(
         File(p.join(patchDir, '$patchBaseName.optimized.aot')),
@@ -236,6 +256,7 @@ $error''');
         workingDirectory: buildDirectory.path,
         kernel: kernelFile.path,
         dumpDebugInfoPath: dumpDebugInfoDir?.path,
+        ddMaxBytes: ddMaxBytes,
         additionalArgs: splitDebugInfoArgs,
       );
     } on Exception catch (error) {

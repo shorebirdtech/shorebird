@@ -1,23 +1,54 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-
-part 'create_release_response.g.dart';
+import 'package:meta/meta.dart';
+import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/release.dart';
 
 /// {@template create_release_response}
-/// The response body for POST /api/v1/apps/:appId/releases
+/// The response body for POST /apps/{appId}/releases.
 /// {@endtemplate}
-@JsonSerializable()
+@immutable
 class CreateReleaseResponse {
   /// {@macro create_release_response}
-  const CreateReleaseResponse({required this.release});
+  const CreateReleaseResponse({
+    required this.release,
+  });
 
-  /// Converts a `Map<String, dynamic>` to a [CreateReleaseResponse]
-  factory CreateReleaseResponse.fromJson(Map<String, dynamic> json) =>
-      _$CreateReleaseResponseFromJson(json);
+  /// Converts a `Map<String, dynamic>` to a [CreateReleaseResponse].
+  factory CreateReleaseResponse.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'CreateReleaseResponse',
+      json,
+      () => CreateReleaseResponse(
+        release: Release.fromJson(json['release'] as Map<String, dynamic>),
+      ),
+    );
+  }
 
-  /// Converts a [CreateReleaseResponse] to a `Map<String, dynamic>`
-  Map<String, dynamic> toJson() => _$CreateReleaseResponseToJson(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static CreateReleaseResponse? maybeFromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+    return CreateReleaseResponse.fromJson(json);
+  }
 
-  /// The newly-created release.
+  /// A release build of an application that is distributed to devices.
+  /// A release can have zero or more patches applied to it.
   final Release release;
+
+  /// Converts a [CreateReleaseResponse] to a `Map<String, dynamic>`.
+  Map<String, dynamic> toJson() {
+    return {
+      'release': release.toJson(),
+    };
+  }
+
+  @override
+  int get hashCode => release.hashCode;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is CreateReleaseResponse && release == other.release;
+  }
 }

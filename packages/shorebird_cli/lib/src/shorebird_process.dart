@@ -30,6 +30,19 @@ class ShorebirdProcess {
 
   /// Starts a process, streams the output in real-time, and returns the exit
   /// code.
+  ///
+  /// Uses `ProcessStartMode.inheritStdio` so the child (flutter, gradlew,
+  /// gen_snapshot) shares our terminal fds and can render its spinner + ANSI
+  /// output the way users expect. The cost: the child's bytes never pass
+  /// through the `LoggingStdout` `IOOverrides` installed in
+  /// `bin/shorebird.dart`, so `flutter build` stderr is absent from the
+  /// shorebird log file — on a build failure users see the real error on
+  /// screen but the log only has `Failed to build AAB. Exited with code 1`
+  /// (https://github.com/shorebirdtech/shorebird/issues/3703). Piping
+  /// through Dart would capture stderr but turns `stdout.hasTerminal` false
+  /// on the child side, regressing the interactive UX; a pty or per-fd
+  /// shell tee would fix both but costs a dependency / POSIX-only path.
+  /// Accepting the logging gap for now.
   Future<int> stream(
     String executable,
     List<String> arguments, {

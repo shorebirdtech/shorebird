@@ -1,23 +1,58 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
-
-part 'get_release_patches_response.g.dart';
+import 'package:meta/meta.dart';
+import 'package:shorebird_code_push_protocol/model_helpers.dart';
+import 'package:shorebird_code_push_protocol/src/models/release_patch.dart';
 
 /// {@template get_release_patches_response}
-/// The response to /api/v1/apps/$appId/releases/$releaseId/patches
+/// The response to GET /apps/{appId}/releases/{releaseId}/patches.
 /// {@endtemplate}
-@JsonSerializable()
+@immutable
 class GetReleasePatchesResponse {
   /// {@macro get_release_patches_response}
-  const GetReleasePatchesResponse({required this.patches});
+  const GetReleasePatchesResponse({
+    required this.patches,
+  });
 
-  /// Converts a `Map<String, dynamic>` to a [GetReleasePatchesResponse]
-  factory GetReleasePatchesResponse.fromJson(Map<String, dynamic> json) =>
-      _$GetReleasePatchesResponseFromJson(json);
+  /// Converts a `Map<String, dynamic>` to a [GetReleasePatchesResponse].
+  factory GetReleasePatchesResponse.fromJson(Map<String, dynamic> json) {
+    return parseFromJson(
+      'GetReleasePatchesResponse',
+      json,
+      () => GetReleasePatchesResponse(
+        patches: (json['patches'] as List)
+            .map<ReleasePatch>(
+              (e) => ReleasePatch.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+      ),
+    );
+  }
 
-  /// Converts a [GetReleasePatchesResponse] to a `Map<String, dynamic>`
-  Json toJson() => _$GetReleasePatchesResponseToJson(this);
+  /// Convenience to create a nullable type from a nullable json object.
+  /// Useful when parsing optional fields.
+  static GetReleasePatchesResponse? maybeFromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+    return GetReleasePatchesResponse.fromJson(json);
+  }
 
   /// List of patches.
   final List<ReleasePatch> patches;
+
+  /// Converts a [GetReleasePatchesResponse] to a `Map<String, dynamic>`.
+  Map<String, dynamic> toJson() {
+    return {
+      'patches': patches.map((e) => e.toJson()).toList(),
+    };
+  }
+
+  @override
+  int get hashCode => listHash(patches).hashCode;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is GetReleasePatchesResponse &&
+        listsEqual(patches, other.patches);
+  }
 }

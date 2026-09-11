@@ -1,0 +1,15 @@
+name: Publish shorebird_ci
+
+on:
+  push:
+    tags:
+      - "shorebird_ci-v[0-9]+.[0-9]+.[0-9]+*"
+
+jobs:
+  publish:
+    uses: ./.github/workflows/publish_dart_package.yaml
+    with:
+      working_directory: packages/shorebird_ci
+      tag_prefix: shorebird_ci-v
+    permissions:
+      id-token: write

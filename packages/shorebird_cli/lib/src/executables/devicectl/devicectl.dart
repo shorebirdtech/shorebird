@@ -206,8 +206,22 @@ class Devicectl {
     return ExitCode.success.code;
   }
 
-  /// Lists iOS devices that we can install and launch apps on.
-  Future<List<AppleDevice>> listAvailableIosDevices() async {
+  /// Lists iOS devices that we can install and launch apps on. Excludes
+  /// devices that devicectl reports as unavailable (e.g. paired but
+  /// currently disconnected).
+  Future<List<AppleDevice>> listAvailableIosDevices() =>
+      _listIosDevices(availableOnly: true);
+
+  /// Lists every iOS device devicectl knows about, including ones that are
+  /// paired but currently unreachable (e.g. unplugged and locked, or
+  /// momentarily off the local network). Useful for diagnosing why
+  /// [listAvailableIosDevices] returned nothing.
+  Future<List<AppleDevice>> listAllIosDevices() =>
+      _listIosDevices(availableOnly: false);
+
+  Future<List<AppleDevice>> _listIosDevices({
+    required bool availableOnly,
+  }) async {
     const failureErrorMessage = 'Failed to list devices';
     const timeout = Duration(seconds: 5);
 
@@ -240,7 +254,11 @@ class Devicectl {
         .whereType<Json>()
         .map(AppleDevice.tryParse)
         .whereType<AppleDevice>()
-        .where((device) => device.platform == 'iOS' && device.isAvailable)
+        .where(
+          (device) =>
+              device.platform == 'iOS' &&
+              (!availableOnly || device.isAvailable),
+        )
         .toList();
   }
 

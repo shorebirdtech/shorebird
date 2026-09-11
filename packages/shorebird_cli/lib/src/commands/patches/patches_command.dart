@@ -7,7 +7,11 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 class PatchesCommand extends ShorebirdCommand {
   /// {@macro patches_command}
   PatchesCommand() {
+    addSubcommand(PatchesInfoCommand());
+    addSubcommand(PatchesListCommand());
     addSubcommand(PromoteCommand());
+    addSubcommand(RollbackCommand());
+    addSubcommand(RollforwardCommand());
     addSubcommand(SetTrackCommand());
   }
 
@@ -15,5 +19,5 @@ class PatchesCommand extends ShorebirdCommand {
   String get name => 'patches';
 
   @override
-  String get description => 'Manage Shorebird patches';
+  String get description => 'Manage Shorebird patches.';
 }

@@ -19,10 +19,13 @@ class Doctor {
   /// Validators that verify shorebird will work on Android.
   final List<Validator> androidCommandValidators = [
     AndroidInternetPermissionValidator(),
+    LegacyKeepDebugSymbolsValidator(),
   ];
 
   /// Validators that verify shorebird will work on iOS.
-  final List<Validator> iosCommandValidators = [];
+  final List<Validator> iosCommandValidators = [
+    XcodeprojFlutterOverrideValidator(),
+  ];
 
   /// Validators that verify shorebird will work on Linux.
   final List<Validator> linuxCommandValidators = [];
@@ -35,10 +38,12 @@ class Doctor {
     // Check whether powershell is installed?
   ];
 
-  /// Validators that should run on all commands.
-  List<Validator> generalValidators = [
+  /// Validators that should run during `shorebird doctor` and `shorebird init`.
+  List<Validator> initAndDoctorValidators = [
     ShorebirdVersionValidator(),
     AndroidInternetPermissionValidator(),
+    LegacyKeepDebugSymbolsValidator(),
+    XcodeprojFlutterOverrideValidator(),
     MacosEntitlementsValidator(),
     ShorebirdYamlAssetValidator(),
     TrackedLockFilesValidator(),

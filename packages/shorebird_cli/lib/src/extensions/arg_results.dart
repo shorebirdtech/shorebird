@@ -12,6 +12,31 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 
 /// Extension on [ArgResults] to make it easier to work with options.
 extension OptionFinder on ArgResults {
+  /// Whether the boolean flag [name] is set, checking both the parsed
+  /// arguments and any `--$name` that appears after a `--` separator (which
+  /// lands in [rest] to be forwarded to the underlying Flutter command).
+  ///
+  /// Use this for flags that Shorebird and Flutter both understand
+  /// (e.g. `--obfuscate`), so users can pass them either before or after
+  /// `--` without changing behavior.
+  ///
+  /// Does not handle negation in [rest]: `--no-$name` after `--` is ignored,
+  /// and `-- --$name --no-$name` would incorrectly report the flag as set.
+  /// Safe for non-negatable flags; use a smarter scan if negation matters.
+  bool flagPresent(String name) =>
+      (wasParsed(name) && this[name] == true) ||
+      rest.any((a) => a == '--$name');
+
+  /// Whether the value-bearing option [name] was provided, checking both
+  /// the parsed arguments and any `--$name=value` or `--$name value` form
+  /// in [rest] (forwarded to the underlying Flutter command via `--`).
+  ///
+  /// Companion to [flagPresent] for options rather than boolean flags
+  /// (e.g. `--split-debug-info=path`). Abbreviations are not considered.
+  bool optionPresent(String name) =>
+      wasParsed(name) ||
+      rest.any((a) => a == '--$name' || a.startsWith('--$name='));
+
   /// Detects flags even when passed to underlying commands via a `--`
   /// separator.
   String? findOption(String name, {required ArgParser argParser}) {

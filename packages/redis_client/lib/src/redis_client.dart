@@ -6,6 +6,8 @@ import 'package:resp_client/resp_client.dart';
 import 'package:resp_client/resp_commands.dart';
 import 'package:resp_client/resp_server.dart';
 
+part 'redis_connection.dart';
+
 /// {@template redis_exception}
 /// An exception thrown by the Redis client.
 /// {@endtemplate}
@@ -116,43 +118,18 @@ class RedisClient {
     RedisSocketOptions socket = const RedisSocketOptions(),
     RedisCommandOptions command = const RedisCommandOptions(),
     RedisLogger logger = const _NoopRedisLogger(),
-  }) : _socketOptions = socket,
-       _commandOptions = command,
-       _logger = logger;
-
-  /// The socket options for the Redis server.
-  final RedisSocketOptions _socketOptions;
+  }) : _commandOptions = command,
+       _logger = logger,
+       _connection = RedisConnection(options: socket, logger: logger);
 
   /// The command options for the Redis client.
   final RedisCommandOptions _commandOptions;
 
-  /// The underlying connection to the Redis server.
-  RespServerConnection? _connection;
-
   /// The logger for the Redis client.
   final RedisLogger _logger;
 
-  /// The underlying client for interacting with the Redis server.
-  RespClient? _client;
-
-  /// Whether the client has been closed.
-  var _closed = false;
-
-  /// A completer which completes when the client establishes a connection.
-  var _connected = Completer<void>();
-
-  /// Whether the client is connected.
-  var _isConnected = false;
-
-  /// A completer which completes when the client disconnects.
-  /// Begins in a completed state since the client is initially disconnected.
-  var _disconnected = Completer<void>()..complete();
-
-  /// A future which completes when the client establishes a connection.
-  Future<void> get _untilConnected => _connected.future;
-
-  /// A future which completes when the client disconnects.
-  Future<void> get _untilDisconnected => _disconnected.future;
+  /// The underlying connection to the Redis server.
+  final RedisConnection _connection;
 
   /// The Redis JSON commands.
   RedisJson get json => RedisJson._(client: this);
@@ -265,137 +242,34 @@ class RedisClient {
   }
 
   /// Send a command to the Redis server.
-  Future<dynamic> execute(List<Object?> command) async {
-    return _runWithRetry(() async {
-      final result = await RespCommandsTier0(_client!).execute(command);
-      if (result.isError) throw RedisException(result.toString());
-      return result.payload;
-    }, command: command.join(' '));
+  Future<dynamic> execute(List<Object?> command) {
+    return _runWithRetry(
+      () => _connection.execute(command),
+      command: command.join(' '),
+    );
   }
 
   /// Establish a connection to the Redis server.
   /// The delay between connection attempts.
-  Future<void> connect() async {
-    if (_closed) throw StateError('RedisClient has been closed.');
-
-    unawaited(_reconnect(retryAttempts: _socketOptions.retryAttempts));
-
-    return _untilConnected;
-  }
+  Future<void> connect() => _connection.connect();
 
   /// Terminate the connection to the Redis server.
-  Future<void> disconnect() async {
-    _logger.info('Disconnecting.');
-    await _connection?.close();
-    _reset();
-    await _untilDisconnected;
-    _logger.info('Disconnected.');
-  }
+  Future<void> disconnect() => _connection.disconnect();
 
   /// Terminate the connection to the Redis server and close the client.
   /// After this method is called, the client instance is no longer usable.
   /// Call this method when you are done using the client and/or wish to
   /// prevent reconnection attempts.
-  Future<void> close() {
-    _logger.info('Closing connection.');
-    _closed = true;
-    return disconnect();
-  }
-
-  Future<void> _reconnect({required int retryAttempts}) async {
-    if (retryAttempts <= 0) {
-      _connected.completeError(
-        const SocketException('Connection retry limit exceeded'),
-        StackTrace.current,
-      );
-      return;
-    }
-
-    Future<void> onConnectionOpened(RespServerConnection connection) async {
-      _logger.info('Connection opened.');
-      _disconnected = Completer<void>();
-      _connection = connection;
-      _client = RespClient(connection);
-      if (_socketOptions.password != null) {
-        _logger.info('Authenticating.');
-        final username = _socketOptions.username;
-        final password = _socketOptions.password!;
-        await RespCommandsTier0(_client!).execute(['AUTH', username, password]);
-      }
-      _isConnected = true;
-      if (!_connected.isCompleted) _connected.complete();
-      _logger.info('Connected.');
-    }
-
-    void onConnectionClosed([Object? error, StackTrace? stackTrace]) {
-      if (error == null) {
-        _logger.info('Connection closed.');
-      } else {
-        _logger.error(
-          'Connection closed with error.',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-
-      if (_closed) return;
-
-      final wasConnected = _isConnected;
-      _isConnected = false;
-
-      final retryInterval = _socketOptions.retryInterval;
-      final totalAttempts = _socketOptions.retryAttempts;
-      final remainingAttempts = wasConnected
-          ? totalAttempts
-          : retryAttempts - 1;
-      final attemptsMade = totalAttempts - remainingAttempts;
-      final attemptInfo = attemptsMade > 0
-          ? ' ($attemptsMade/$totalAttempts attempts)'
-          : '';
-
-      if (wasConnected) _reset();
-
-      _logger.info(
-        'Reconnecting in ${retryInterval.inMilliseconds}ms$attemptInfo.',
-      );
-      Future<void>.delayed(
-        retryInterval,
-        () => _reconnect(retryAttempts: remainingAttempts),
-      );
-    }
-
-    try {
-      _logger.info('Connecting to ${_socketOptions.connectionUri}.');
-      final uri = _socketOptions.connectionUri;
-      final connection = await connectSocket(
-        uri.host,
-        port: uri.port,
-        timeout: _socketOptions.timeout,
-      );
-      unawaited(onConnectionOpened(connection));
-      unawaited(
-        connection.outputSink.done
-            .then((_) => onConnectionClosed())
-            .catchError(onConnectionClosed),
-      );
-    } on Exception catch (error, stackTrace) {
-      onConnectionClosed(error, stackTrace);
-    }
-  }
-
-  void _reset() {
-    _connected = Completer<void>();
-    _connection = null;
-    _client = null;
-    if (!_disconnected.isCompleted) _disconnected.complete();
-  }
+  Future<void> close() => _connection.close();
 
   Future<T> _runWithRetry<T>(
     Future<T> Function() fn, {
     required String command,
     int? remainingAttempts,
   }) async {
-    if (_closed) throw StateError('RedisClient has been closed.');
+    if (_connection.isClosed) {
+      throw StateError('RedisClient has been closed.');
+    }
 
     final totalAttempts = _commandOptions.retryAttempts;
     remainingAttempts ??= _commandOptions.retryAttempts;
@@ -407,10 +281,7 @@ class RedisClient {
     _logger.debug('Executing "$command"$attemptInfo.');
 
     try {
-      return await Future<T>.sync(() async {
-        await _untilConnected;
-        return fn();
-      }).timeout(_commandOptions.timeout);
+      return await Future<T>.sync(fn).timeout(_commandOptions.timeout);
     } catch (error, stackTrace) {
       if (error is RedisException) rethrow;
       if (remainingAttempts > 0) {
@@ -431,7 +302,7 @@ class RedisClient {
         error: error,
         stackTrace: stackTrace,
       );
-      await _connection?.close();
+      await _connection.recycle();
       rethrow;
     }
   }
@@ -986,11 +857,6 @@ class RedisTDigest {
       return null;
     }).toList();
   }
-}
-
-extension on RedisSocketOptions {
-  /// The connection URI for the Redis server derived from the socket options.
-  Uri get connectionUri => Uri.parse('redis://$host:$port');
 }
 
 final class _NoopRedisLogger implements RedisLogger {

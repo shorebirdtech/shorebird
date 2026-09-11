@@ -10,13 +10,12 @@ environment:
   sdk: ">=3.9.0 <4.0.0"
 
 dependencies:
-  decimal: ^3.2.4
-  equatable: ^2.0.8
-  json_annotation: ^4.11.0
-  meta: ^1.16.0
+  collection: ^1.19.1
+  meta: ^1.19.0
 
 dev_dependencies:
-  build_runner: ^2.13.1
-  json_serializable: ^6.13.1
   mocktail: ^1.0.5
-  test: ^1.31.0
+  # Only used by `tool/gen.dart` to regenerate lib/src/ from the OpenAPI
+  # spec.
+  space_gen: ^1.4.0
+  test: ^1.31.2

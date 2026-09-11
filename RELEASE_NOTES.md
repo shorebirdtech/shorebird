@@ -1,8 +1,258 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc
  -->
+
+## 1.6.120 (August 28, 2026)
+
+- 🐦 Flutter 3.47.2 / Dart 3.13.2 support
+  - iOS/macOS: always update Swift package dependencies, and remove the Xcode
+    environment when building Swift tools in the pre-action.
+  - Windows: fix hot reload failing on mtime truncation.
+  - Fix crashes in the symbolize command on stream errors and during VM
+    service connection.
+  - Fix a crash migrating flow-style exclude lists in `analysis_options.yaml`.
+  - Forward `--build-name` and `--build-number` to the desktop `version.json`.
+  - Linux: read heading text through the AtkText interface, fix a GList leak
+    in FlTouchManager.
+  - Roll libpng to 1.6.58.
+- ✨ New `shorebird patches rollback` and `shorebird patches rollforward`
+  commands.
+- 🐛 Stop reporting layered icons as changed assets.
+
+## 1.6.119 (August 21, 2026)
+
+- 🐦 Flutter 3.47.1 / Dart 3.13.1 support
+  - iOS/macOS: fix a Swift Package Manager race condition during parallel
+    Xcode builds.
+  - Android: fix the tool misreading the ADB device list by parsing
+    connection state rather than column position.
+  - Windows: fix an `impellerc` crash on Unicode paths when compiling
+    shaders.
+  - Fix hot reload for workspace member packages under `lib/`.
+  - Validate plugin class and package identifiers, preventing injection
+    into `GeneratedPluginRegistrant`.
+
+## 1.6.118 (August 18, 2026)
+
+- 🐦 Flutter 3.47.0 / Dart 3.13.0 support
+  - 💥 Android: Gradle 8.14, AGP 8.11.1 and Kotlin 2.2.20 are now required,
+    not recommended. Builds that previously warned will now fail. Java 17
+    remains the minimum, unchanged. Pass
+    `-- --android-skip-build-dependency-validation` to bypass temporarily.
+- 📉 Better patch link percentages, with the largest gains on obfuscated
+  builds and on patches that shift dynamic dispatch.
+- 🔧 Updater (rolled into the Flutter 3.47 engine):
+  - Mark a patch bad and fall forward to the next one when it fails to load,
+    instead of silently running base code and retrying it every launch.
+- 🐛 Link failures now name the checks that actually ran (Dart SDK version,
+  build features) instead of the stale --dart-define/--obfuscate hint.
+
+## 1.6.117 (August 14, 2026)
+
+- 🐦 Flutter 3.44.9 / Dart 3.12.2 support
+  - iOS: fix a crash on patch boot when loading a patched snapshot.
+  - iOS: fix a crash in patched apps at call sites that switch between
+    base and patch code.
+  - Fix a null dereference in patched code aborting the process instead
+    of throwing.
+  - Reduce patch artifact size and memory use when creating patches for
+    large apps.
+
+## 1.6.116 (August 7, 2026)
+
+- 🐦 Flutter 3.44.9 / Dart 3.12.2 support
+  - iOS: fix the Flutter CLI hanging when a debugged app crashes. LLDB now
+    detaches and prints a stack trace on process stop, so crashing tests
+    report instead of hanging.
+
+## 1.6.115 (July 28, 2026)
+
+- 🐦 Flutter 3.44.8 / Dart 3.12.2 support
+  - Android: fix a startup crash on vendor-modified devices caused by the
+    accessibility bridge failing during initialization.
+  - iOS/macOS: fix framework builds failing under Xcode 27 due to a `lipo`
+    architecture verification error.
+
+## 1.6.114 (July 20, 2026)
+
+- 🐦 Flutter 3.44.7 / Dart 3.12.2 support
+  - Android: fix a file descriptor leak that could crash apps using external
+    textures (e.g. video) on some GPUs such as Arm Mali.
+
+## 1.6.113 (July 10, 2026)
+
+- 🐛 Fix `--shorebird-trace` build tracing being silently disabled even on
+  Flutter versions that support it, caused by probing plain `flutter build -h`
+  output where the flag is hidden.
+
+## 1.6.112 (July 10, 2026)
+
+- 🐦 Flutter 3.44.6 / Dart 3.12.2 support
+  - Linux: fix a crash when building asset bundles with native assets enabled
+    but without a native app build directory (missing `CMakeCache.txt`).
+  - Android: fix a crash when running instrumented tests.
+
+## 1.6.111 (July 7, 2026)
+
+- 🐦 Flutter 3.44.5 / Dart 3.12.2 support
+  - Android: fix `libapp.so` sometimes missing from the APK or app bundle when
+    building with flavors, or with older app templates combined with certain
+    plugins.
+  - Impeller: fix text shadows rendering in the wrong position, separate from
+    the text.
+  - Impeller (Vulkan): fix a crash during app shutdown or rotation on some
+    Android devices.
+  - Android: silence spurious Built-in Kotlin migration warnings when building
+    with AGP below 9.
+- 🐛 Updater: report the currently running patch number instead of the last
+  booted patch.
+
+## 1.6.110 (June 25, 2026)
+
+- 🐦 Flutter 3.44.4 / Dart 3.12.2 support
+  - Linux: fix bounds checking in `FlAccessibleTextField`.
+
+## 1.6.109 (June 22, 2026)
+
+- 🐦 Flutter 3.44.3 / Dart 3.12.2 support
+  - Fix a potential buffer overflow in the animated PNG decoder when parsing
+    malformed fdAT chunks.
+  - Swift Package Manager: fix crashes from concurrent directory/file/symlink
+    creation when building iOS or macOS apps.
+  - Impeller (OpenGL ES): fix a texture resource leak by ensuring the
+    TextureGLES destructor releases all objects it holds, including its sync
+    fence.
+  - Print a trace when skipping flavor-specific and platform-specific assets.
+
+## 1.6.108 (June 12, 2026)
+
+- 🐦 Flutter 3.44.2 / Dart 3.12.2 support
+  - Swift Package Manager: fix remote package dependencies sometimes failing
+    to download when building iOS or macOS apps, and silence spurious SwiftPM
+    warnings on non-Apple builds.
+  - Android: fix system bars unexpectedly staying invisible when switching to
+    edge-to-edge mode.
+  - The `flutter` tool now exits gracefully instead of crashing when the
+    widget-preview DTD connection is lost or fails at startup.
+
+## 1.6.107 (June 5, 2026)
+
+- 🐛 Fix arm64 FFI callback crashers affecting async and isolate-group-bound
+  callbacks (follow-up to the 1.6.105 FFI fixes).
+- 🐛 Android: read `libapp.so` from the `.aab` instead of the Gradle strip task
+  output.
+- 🐛 Fix a potential `gen_snapshot` crash.
+
+## 1.6.106 (June 1, 2026)
+
+- 🐦 Flutter 3.44.1 / Dart 3.12.1 support
+  - The `flutter` tool now prints a descriptive error instead of crashing when
+    the analysis server exits unexpectedly, or when it fails to connect to a
+    Chrome instance on Windows.
+  - Dart 3.12.1: ignore socket deletion errors on shutdown; preserve
+    ThreadLocal values when a VM thread is reclaimed.
+
+## 1.6.105 (May 22, 2026)
+
+- 🐛 Fix FFI crashers on iOS and Android.
+
+## 1.6.104 (May 22, 2026)
+
+- 🐛 Fix FFI-related crashers.
+
+## 1.6.103 (May 20, 2026)
+
+- 🐛 Fix iOS release/patch crashers.
+- 🐛 Android: handle missing-arch `libapp.so` gracefully.
+- 🔧 Surface `flutter precache` failures.
+
+## 1.6.102 (May 19, 2026)
+
+- 🐛 macOS: fix `shorebird release --platforms macos` failing with "could not find an analyze_snapshot binary whose --sdk_version matches gen_snapshot". DD activation is skipped on macOS for now (patches will compute DD on the fly when applied, matching pre-1.6.99 behavior). iOS / Android / Linux / Windows are unaffected.
+
+## 1.6.101 (May 19, 2026)
+
+- 🐦 Flutter 3.44.0 / Dart 3.12.0 support
+  - 💥 Android: AGP now strips `libapp.so` and emits `libapp.so.sym` (for Play Console crash symbolication). If your `android/app/build.gradle(.kts)` contains a legacy `packaging.jniLibs.keepDebugSymbols.add("**/libapp.so")` line, remove it — `shorebird doctor` flags it for you.
+- 🔧 Updater (rolled into Flutter 3.44 engine):
+  - 📉 mmap `libapp.so` out of the APK instead of buffering in RAM (Android memory win)
+  - Enhanced patch-apply diagnostic events
+
+## 1.6.100 (May 16, 2026)
+
+- 🐦 Refreshed Flutter 3.41.9 engine pin with a fix for exception-related crashes
+- 💥 BREAKING: `shorebird login:ci` now hard-errors. Use API keys instead.
+
+## 1.6.99 (May 15, 2026)
+
+- 📉 Link percentage improvements (for Flutter 3.41.9)
+  - 💥 Contain the blast radius of unlinking caused by small code changes.
+- 🔧 Updater (rolled into Flutter 3.41.9 engine):
+  - Enhanced logging and diagnostics for patch-apply errors
+- ✨ New `shorebird account apps` subcommand
+- 🐛 Fix: `isInteractive` falls back to `stdioType` for unsized PTYs
+- ⏪ Reverted the 1.6.98 `--flavor` forward for `flutter build aar` / `flutter build ios-framework`
+
+## 1.6.98 (May 7, 2026)
+
+- ✨ New `account` command: `shorebird account whoami` and `shorebird account orgs`
+- ✨ New `patches list` and `patches info` commands; `set-track` gains `--json`
+- ✨ Hint at unreachable iOS 17+ devices instead of silently falling back to ios-deploy
+- 🔧 Updater (rolled into Flutter 3.41.9 engine):
+  - Android: mmap `libapp.so` out of the APK instead of buffering in RAM
+  - Internal C API split (Dart-stable vs engine surfaces) and per-patch lifecycle state machine refactor
+- 🐛 Fix: forward `--flavor` to `flutter build aar` and `flutter build ios-framework`
+
+## 1.6.97 (May 5, 2026)
+
+- ✨ New `releases list` and `releases info` commands
+- ✨ Protocol: include `current_patch_number` in `PatchCheckRequest`
+- 🔧 Updater (rolled into Flutter 3.41.9 engine):
+  - Patch survives server-driven rollback
+  - Skip refetch when prior download is already complete on disk
+- 🐛 Fix: download arm64 patch binary on Apple Silicon
+- 🐛 Fix: ignore non-deterministic UUIDs in `Assets.car` diff
+- 🐛 Fix: improve help text and add input validation for agentic use
+
+## 1.6.96 (April 30, 2026)
+
+- 🐦 Support for Flutter 3.41.9
+  - Fixes a potential integer overflow when handling some animated PNG files
+- ✨ Non-interactive mode hardening (`--no-input` flag, non-TTY detection)
+  - Prompts fail fast with per-site hints instead of blocking on stdin
+  - Spinners replaced with static `Starting / Done` lines; ANSI escapes suppressed
+  - Parse-time errors now emit JSON envelopes under `--json`
+
+## 1.6.95 (April 29, 2026)
+
+- 🩺 Doctor: allow `FLUTTER_TARGET` override (commonly customized for flavor-specific entry points) and downgrade other `FLUTTER_*` build setting overrides from error to warning
+
+## 1.6.94 (April 28, 2026)
+
+- 🐦 Support for Flutter 3.41.8
+  - Fixes iOS profile mode failing to connect to the Dart VM
+  - Updater: enrich patch install failure messages with diagnostics
+  - Updater: smaller binary via `panic=abort` and dropped backtrace features
+  - Updater: atomic state writes and surface flush errors in disk_io
+  - shorebird_code_push v2.0.6
+- ✨ Add `--json` output mode for agentic CLI consumption
+- 🩺 Doctor: detect hard-coded `FLUTTER_*` build settings in `Runner.xcodeproj/project.pbxproj` (covers both standard apps and Flutter modules)
+
+## 1.6.93 (April 21, 2026)
+
+- 🐦 Support for Flutter 3.41.7 & Dart 3.11.5
+- 🔧 Updater: resumable downloads with streaming to disk
+- 🔧 Updater: replace serde_yaml with hand-rolled parser for smaller binary
+- 🔧 Updater: graceful handling of concurrent updates and SHOREBIRD_NO_UPDATE
+- ✨ Capture build trace + privacy-safe summary on release
+- ✨ Hint at --dart-define/--obfuscate mismatch on link failure
+- ✨ Reject ExportOptions.plist with manageAppVersionAndBuildNumber
+- ✨ Include snapshots in patch debug dump
+- 🐛 Fix: only pass --shorebird-trace to build commands that support it
+- 🐛 Fix: detect --obfuscate and --split-debug-info after --
+- 🐛 Fix: fetch latest refs before resolving --flutter-version
 
 ## 1.6.92 (March 26, 2026)
 

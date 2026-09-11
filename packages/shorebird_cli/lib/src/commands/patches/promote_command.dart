@@ -1,9 +1,11 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -22,12 +24,12 @@ class PromoteCommand extends ShorebirdCommand {
       )
       ..addOption(
         'release-version',
-        help: 'The release being patched',
+        help: CommonArguments.patchReleaseVersionDescription,
         mandatory: true,
       )
       ..addOption(
         'patch-number',
-        help: 'The number of the patch to promote to the stable channel',
+        help: 'The number of the patch to promote to the stable channel.',
         mandatory: true,
       );
   }
@@ -40,8 +42,22 @@ class PromoteCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
+    // Deprecated commands don't grow new surface area. Refuse --json with
+    // a structured envelope that points to the replacement command, instead
+    // of leaking a free-form deprecation warning to stdout.
+    if (isJsonMode) {
+      emitJsonError(
+        code: JsonErrorCode.usageError,
+        message:
+            'shorebird patches promote is deprecated and does not support '
+            '--json output.',
+        hint: 'Use `shorebird patches set-track --track=stable` instead.',
+      );
+      return ExitCode.usage.code;
+    }
+
     logger.warn(
-      '''This command is deprecated and will be removed in a future release. Use `shorebird patches set-channel --channel=stable` instead.''',
+      '''This command is deprecated and will be removed in a future release. Use `shorebird patches set-track --track=stable` instead.''',
     );
 
     try {

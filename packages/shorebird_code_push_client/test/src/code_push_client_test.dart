@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
@@ -48,6 +47,8 @@ void main() {
       codePushClient = CodePushClient(
         httpClient: httpClient,
         customHeaders: customHeaders,
+        // Disable backoff delays so retry paths run instantly under test.
+        uploadRetryBaseDelay: Duration.zero,
       );
       when(() => httpClient.send(any())).thenAnswer(
         (_) async => http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
@@ -457,6 +458,62 @@ void main() {
           ),
         );
       });
+
+      test('uploads via a resumable session when the server '
+          'selects resumable', () async {
+        const artifactId = 42;
+        const sessionUrl = 'https://storage.googleapis.com/session?upload_id=a';
+        final responses = [
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  const CreatePatchArtifactResponse(
+                    id: artifactId,
+                    patchId: patchId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: sessionUrl,
+                    uploadMethod: ArtifactUploadMethod.resumable,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+          http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        ];
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'patch.txt'))
+          ..writeAsBytesSync([1, 2, 3, 4, 5]);
+
+        await expectLater(
+          codePushClient.createPatchArtifact(
+            appId: appId,
+            artifactPath: fixture.path,
+            patchId: patchId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+          ),
+          completes,
+        );
+
+        final requests = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
+        expect(requests, hasLength(2));
+        final uploadRequest = requests.last;
+        expect(uploadRequest.method, equals('PUT'));
+        expect(uploadRequest.url, equals(Uri.parse(sessionUrl)));
+        expect(uploadRequest.headers['content-range'], equals('bytes 0-4/5'));
+      });
     });
 
     group('createReleaseArtifact', () {
@@ -468,21 +525,18 @@ void main() {
       const size = 5;
       const canSideload = true;
 
-      group('when podfileLockHash is provided', () {
+      // Multipart form fields are always strings on the wire, so the
+      // expected payloads are spelled out as Map<String, String>.
+      // CreateReleaseArtifactRequest.toJson() returns JSON types (bool,
+      // int, enum→string, etc.); the client stringifies at the multipart
+      // boundary and drops null-valued keys (see createReleaseArtifact
+      // in code_push_client.dart).
+      group('when podfileLockHash is null', () {
         test('makes the correct request', () async {
           final tempDir = Directory.systemTemp.createTempSync();
           final fixture = File(path.join(tempDir.path, 'release.txt'))
             ..createSync()
             ..writeAsStringSync('hello');
-          const expectedRequest = CreateReleaseArtifactRequest(
-            arch: arch,
-            platform: platform,
-            hash: hash,
-            size: size,
-            canSideload: canSideload,
-            filename: 'release.txt',
-            podfileLockHash: null,
-          );
 
           try {
             await codePushClient.createReleaseArtifact(
@@ -508,31 +562,24 @@ void main() {
             equals(v1('apps/$appId/releases/$releaseId/artifacts')),
           );
           expect(request.hasHeaders(expectedHeaders), isTrue);
-          expect(
-            const MapEquality<String, dynamic>().equals(
-              request.fields,
-              expectedRequest.toJson(),
-            ),
-            isTrue,
-          );
+          expect(request.fields, <String, String>{
+            'arch': arch,
+            'platform': platform.name,
+            'hash': hash,
+            'filename': 'release.txt',
+            'can_sideload': 'true',
+            'size': '$size',
+            // podfile_lock_hash absent.
+          });
         });
       });
 
-      group('when podfileLockHash is null', () {
+      group('when podfileLockHash is provided', () {
         test('makes the correct request', () async {
           final tempDir = Directory.systemTemp.createTempSync();
           final fixture = File(path.join(tempDir.path, 'release.txt'))
             ..createSync()
             ..writeAsStringSync('hello');
-          const expectedRequest = CreateReleaseArtifactRequest(
-            arch: arch,
-            platform: platform,
-            hash: hash,
-            size: size,
-            canSideload: canSideload,
-            filename: 'release.txt',
-            podfileLockHash: podfileLockHash,
-          );
 
           try {
             await codePushClient.createReleaseArtifact(
@@ -558,13 +605,15 @@ void main() {
             equals(v1('apps/$appId/releases/$releaseId/artifacts')),
           );
           expect(request.hasHeaders(expectedHeaders), isTrue);
-          expect(
-            const MapEquality<String, dynamic>().equals(
-              request.fields,
-              expectedRequest.toJson(),
-            ),
-            isTrue,
-          );
+          expect(request.fields, <String, String>{
+            'arch': arch,
+            'platform': platform.name,
+            'hash': hash,
+            'filename': 'release.txt',
+            'can_sideload': 'true',
+            'size': '$size',
+            'podfile_lock_hash': podfileLockHash,
+          });
         });
       });
 
@@ -811,6 +860,314 @@ void main() {
             path: '/api/v1/apps/$appId/releases/$releaseId/artifacts',
           ),
         );
+      });
+
+      test('uploads via a resumable session when the server '
+          'selects resumable', () async {
+        const artifactId = 42;
+        const sessionUrl = 'https://storage.googleapis.com/session?upload_id=a';
+        final responses = [
+          http.StreamedResponse(
+            Stream.value(
+              utf8.encode(
+                json.encode(
+                  const CreateReleaseArtifactResponse(
+                    id: artifactId,
+                    releaseId: releaseId,
+                    arch: arch,
+                    platform: platform,
+                    hash: hash,
+                    size: size,
+                    url: sessionUrl,
+                    uploadMethod: ArtifactUploadMethod.resumable,
+                  ),
+                ),
+              ),
+            ),
+            HttpStatus.ok,
+          ),
+          http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        ];
+        when(
+          () => httpClient.send(any()),
+        ).thenAnswer((_) async => responses.removeAt(0));
+
+        final tempDir = Directory.systemTemp.createTempSync();
+        final fixture = File(path.join(tempDir.path, 'release.txt'))
+          ..writeAsBytesSync([1, 2, 3, 4, 5]);
+
+        await expectLater(
+          codePushClient.createReleaseArtifact(
+            appId: appId,
+            artifactPath: fixture.path,
+            releaseId: releaseId,
+            arch: arch,
+            platform: platform,
+            hash: hash,
+            canSideload: canSideload,
+            podfileLockHash: podfileLockHash,
+          ),
+          completes,
+        );
+
+        final requests = verify(
+          () => httpClient.send(captureAny()),
+        ).captured.cast<http.BaseRequest>();
+        expect(requests, hasLength(2));
+        final uploadRequest = requests.last;
+        expect(uploadRequest.method, equals('PUT'));
+        expect(uploadRequest.url, equals(Uri.parse(sessionUrl)));
+        expect(uploadRequest.headers['content-range'], equals('bytes 0-4/5'));
+      });
+
+      group('resumable upload driver', () {
+        const sessionUrl = 'https://storage.googleapis.com/session?id=abc';
+
+        http.StreamedResponse resumableMeta() => http.StreamedResponse(
+          Stream.value(
+            utf8.encode(
+              json.encode(
+                const CreateReleaseArtifactResponse(
+                  id: 42,
+                  releaseId: releaseId,
+                  arch: arch,
+                  platform: platform,
+                  hash: hash,
+                  size: size,
+                  url: sessionUrl,
+                  uploadMethod: ArtifactUploadMethod.resumable,
+                ),
+              ),
+            ),
+          ),
+          HttpStatus.ok,
+        );
+
+        String fiveByteFixture() {
+          final dir = Directory.systemTemp.createTempSync();
+          return (File(
+            path.join(dir.path, 'release.txt'),
+          )..writeAsBytesSync([1, 2, 3, 4, 5])).path;
+        }
+
+        void stubActions(
+          List<Future<http.StreamedResponse> Function()> actions,
+        ) {
+          when(
+            () => httpClient.send(any()),
+          ).thenAnswer((_) => actions.removeAt(0)());
+        }
+
+        Future<void> upload(String artifactPath) =>
+            codePushClient.createReleaseArtifact(
+              appId: appId,
+              artifactPath: artifactPath,
+              releaseId: releaseId,
+              arch: arch,
+              platform: platform,
+              hash: hash,
+              canSideload: canSideload,
+              podfileLockHash: null,
+            );
+
+        List<http.BaseRequest> capturedPuts() =>
+            verify(
+                  () => httpClient.send(captureAny()),
+                ).captured
+                .cast<http.BaseRequest>()
+                .where((r) => r.method == 'PUT')
+                .toList();
+
+        test('continues to the next chunk on a 308 response', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              308,
+              headers: const {'range': 'bytes=0-2'},
+            ),
+            () async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+          ]);
+
+          await expectLater(upload(fiveByteFixture()), completes);
+
+          final puts = capturedPuts();
+          expect(puts, hasLength(2));
+          expect(puts[0].headers['content-range'], 'bytes 0-4/5');
+          expect(puts[1].headers['content-range'], 'bytes 3-4/5');
+        });
+
+        test('throws when a chunk returns an error status', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.badRequest,
+            ),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                contains('Failed to upload artifact'),
+              ),
+            ),
+          );
+        });
+
+        test(
+          'queries the offset and resumes after a network failure',
+          () async {
+            stubActions([
+              () async => resumableMeta(),
+              () async => throw http.ClientException('connection reset'),
+              () async => http.StreamedResponse(
+                const Stream.empty(),
+                308,
+                headers: const {'range': 'bytes=0-1'},
+              ),
+              () async =>
+                  http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+            ]);
+
+            await expectLater(upload(fiveByteFixture()), completes);
+
+            final puts = capturedPuts();
+            // failed chunk, status query, resumed chunk from offset 2.
+            expect(puts, hasLength(3));
+            expect(puts[1].headers['content-range'], 'bytes */5');
+            expect(puts[2].headers['content-range'], 'bytes 2-4/5');
+          },
+        );
+
+        test('throws when the status query returns an error', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => throw http.ClientException('connection reset'),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.badRequest,
+            ),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
+        });
+
+        test('restarts from the beginning on a 308 with no range', () async {
+          stubActions([
+            () async => resumableMeta(),
+            // 308 without a `range` header: GCS stored nothing, restart at 0.
+            () async => http.StreamedResponse(const Stream.empty(), 308),
+            () async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+          ]);
+
+          await expectLater(upload(fiveByteFixture()), completes);
+
+          final puts = capturedPuts();
+          expect(puts, hasLength(2));
+          expect(puts[0].headers['content-range'], 'bytes 0-4/5');
+          // Restarts from offset 0 rather than advancing.
+          expect(puts[1].headers['content-range'], 'bytes 0-4/5');
+        });
+
+        test('throws when a 308 never makes forward progress', () async {
+          // A session stuck at offset 0 keeps returning a 308 with no range;
+          // the upload must give up rather than spin forever.
+          stubActions([
+            () async => resumableMeta(),
+            for (var i = 0; i < 6; i++)
+              () async => http.StreamedResponse(const Stream.empty(), 308),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
+        });
+
+        test('queries the offset and resumes after a 5xx', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.serviceUnavailable,
+            ),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              308,
+              headers: const {'range': 'bytes=0-1'},
+            ),
+            () async =>
+                http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+          ]);
+
+          await expectLater(upload(fiveByteFixture()), completes);
+
+          final puts = capturedPuts();
+          // failed chunk, status query, resumed chunk from offset 2.
+          expect(puts, hasLength(3));
+          expect(puts[0].headers['content-range'], 'bytes 0-4/5');
+          expect(puts[1].headers['content-range'], 'bytes */5');
+          expect(puts[2].headers['content-range'], 'bytes 2-4/5');
+        });
+
+        test('throws when a 5xx persists through the status query', () async {
+          stubActions([
+            () async => resumableMeta(),
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.serviceUnavailable,
+            ),
+            // The status query also fails, so we surface the error.
+            () async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.serviceUnavailable,
+            ),
+          ]);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
+        });
+
+        test('throws after exhausting retries on repeated 5xx', () async {
+          // Each chunk PUT fails with a 5xx while the status query reports no
+          // forward progress, so failures accumulate until we give up.
+          final actions = <Future<http.StreamedResponse> Function()>[
+            () async => resumableMeta(),
+          ];
+          for (var i = 0; i < 6; i++) {
+            actions
+              ..add(
+                () async => http.StreamedResponse(
+                  const Stream.empty(),
+                  HttpStatus.serviceUnavailable,
+                ),
+              )
+              ..add(
+                () async => http.StreamedResponse(
+                  const Stream.empty(),
+                  308,
+                  headers: const {'range': 'bytes=0-1'},
+                ),
+              );
+          }
+          stubActions(actions);
+
+          await expectLater(
+            upload(fiveByteFixture()),
+            throwsA(isA<CodePushException>()),
+          );
+        });
       });
     });
 
@@ -1446,6 +1803,159 @@ void main() {
       });
     });
 
+    group('updateApp', () {
+      const displayName = 'New Name';
+
+      test('makes the correct request', () async {
+        codePushClient
+            .updateApp(appId: appId, displayName: displayName)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('PATCH'));
+        expect(request.url, equals(v1('apps/$appId')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(json.decode(request.body), equals({'name': displayName}));
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.updateApp(appId: appId, displayName: displayName),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        );
+
+        await expectLater(
+          codePushClient.updateApp(appId: appId, displayName: displayName),
+          completes,
+        );
+      });
+    });
+
+    group('transferApp', () {
+      const organizationId = 42;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .transferApp(organizationId: organizationId, appId: appId)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('organizations/$organizationId/apps')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        // Sent as snake_case; do not "fix" this to camelCase.
+        expect(json.decode(request.body), equals({'app_id': appId}));
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.transferApp(
+            organizationId: organizationId,
+            appId: appId,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        );
+
+        await expectLater(
+          codePushClient.transferApp(
+            organizationId: organizationId,
+            appId: appId,
+          ),
+          completes,
+        );
+      });
+    });
+
+    group('deleteChannel', () {
+      const channelId = 7;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .deleteChannel(appId: appId, channelId: channelId)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('apps/$appId/channels/$channelId')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteChannel(appId: appId, channelId: channelId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(
+          codePushClient.deleteChannel(appId: appId, channelId: channelId),
+          completes,
+        );
+      });
+    });
+
     group('getApps', () {
       test('makes the correct request', () async {
         codePushClient.getApps().ignore();
@@ -2015,6 +2525,244 @@ void main() {
       });
     });
 
+    group('rollbackPatch', () {
+      const releaseId = 7;
+      const patchId = 11;
+
+      test('makes the correct request', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await codePushClient.rollbackPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(
+          request.url,
+          equals(
+            v1('apps/$appId/releases/$releaseId/patches/$patchId/rollback'),
+          ),
+        );
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('returns false on 304 Not Modified (idempotent)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.notModified,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollbackPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completion(isFalse),
+        );
+      });
+
+      test('returns true on 204 No Content', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollbackPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completion(isTrue),
+        );
+      });
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          codePushClient.rollbackPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test(
+        'throws a parsed exception on a structured error response',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+              HttpStatus.failedDependency,
+            ),
+          );
+
+          expect(
+            codePushClient.rollbackPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+            ),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                errorResponse.message,
+              ),
+            ),
+          );
+        },
+      );
+    });
+
+    group('rollforwardPatch', () {
+      const releaseId = 7;
+      const patchId = 11;
+
+      test('makes the correct request', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await codePushClient.rollforwardPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(
+          request.url,
+          equals(
+            v1('apps/$appId/releases/$releaseId/patches/$patchId/rollforward'),
+          ),
+        );
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('returns false on 304 Not Modified (idempotent)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.notModified,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollforwardPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completion(isFalse),
+        );
+      });
+
+      test('returns true on 204 No Content', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollforwardPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completion(isTrue),
+        );
+      });
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          codePushClient.rollforwardPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test(
+        'throws a parsed exception on a structured error response',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+              HttpStatus.failedDependency,
+            ),
+          );
+
+          expect(
+            codePushClient.rollforwardPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+            ),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                errorResponse.message,
+              ),
+            ),
+          );
+        },
+      );
+    });
+
     group('getOrganizationMemberships', () {
       group('when response is not success', () {
         setUp(() {
@@ -2047,7 +2795,7 @@ void main() {
         setUp(() {
           membership = OrganizationMembership(
             role: Role.admin,
-            organization: Organization.forTest(),
+            organization: organizationForTest(),
           );
           response = GetOrganizationsResponse(organizations: [membership]);
           when(() => httpClient.send(any())).thenAnswer(
@@ -2061,6 +2809,62 @@ void main() {
         test('deserializes GetOrganizationMembershipsResponse', () async {
           final memberships = await codePushClient.getOrganizationMemberships();
           expect(memberships, equals([membership]));
+        });
+      });
+    });
+
+    group('getPlanLevel', () {
+      group('when request fails', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.failedDependency,
+            ),
+          );
+        });
+
+        test('throws exception', () async {
+          expect(
+            () async => codePushClient.getPlanLevel(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                CodePushClient.unknownErrorMessage,
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when request succeeds', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('{"level": "enterprise"}')),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('returns the level', () async {
+          expect(await codePushClient.getPlanLevel(), equals('enterprise'));
+        });
+      });
+
+      group('when the response has no level', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('{}')),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('returns null', () async {
+          expect(await codePushClient.getPlanLevel(), isNull);
         });
       });
     });

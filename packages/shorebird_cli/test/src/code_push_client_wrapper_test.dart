@@ -226,7 +226,9 @@ void main() {
         test('prompts for displayName when not provided', () async {
           const appName = 'test app';
           const app = App(id: appId, displayName: 'Test App');
-          when(() => logger.prompt(any())).thenReturn(appName);
+          when(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).thenReturn(appName);
           when(
             () => codePushClient.createApp(
               displayName: appName,
@@ -239,7 +241,9 @@ void main() {
                 codePushClientWrapper.createApp(organizationId: organizationId),
           );
 
-          verify(() => logger.prompt(any())).called(1);
+          verify(
+            () => logger.prompt(any(), hint: any(named: 'hint')),
+          ).called(1);
           verify(
             () => codePushClient.createApp(
               displayName: appName,
@@ -265,13 +269,82 @@ void main() {
             ),
           );
 
-          verifyNever(() => logger.prompt(any()));
+          verifyNever(() => logger.prompt(any(), hint: any(named: 'hint')));
           verify(
             () => codePushClient.createApp(
               displayName: appName,
               organizationId: organizationId,
             ),
           ).called(1);
+        });
+      });
+
+      group('getCurrentUser', () {
+        test('exits with code 70 when fetching the user fails', () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getCurrentUser()).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(codePushClientWrapper.getCurrentUser),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('exits with code 70 when no current user is found', () async {
+          when(
+            () => codePushClient.getCurrentUser(),
+          ).thenAnswer((_) async => null);
+
+          await expectLater(
+            () async => runWithOverrides(codePushClientWrapper.getCurrentUser),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => logger.err('Could not find current user.')).called(1);
+        });
+
+        test('returns the current user on success', () async {
+          const expectedUser = PrivateUser(
+            id: 1,
+            email: 'user@example.com',
+            jwtIssuer: 'https://accounts.google.com',
+          );
+          when(
+            () => codePushClient.getCurrentUser(),
+          ).thenAnswer((_) async => expectedUser);
+
+          final user = await runWithOverrides(
+            codePushClientWrapper.getCurrentUser,
+          );
+
+          expect(user, equals(expectedUser));
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('getPlanLevel', () {
+        test('exits with code 70 when getting the plan fails', () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getPlanLevel()).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(codePushClientWrapper.getPlanLevel),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns the plan level on success', () async {
+          when(
+            () => codePushClient.getPlanLevel(),
+          ).thenAnswer((_) async => 'enterprise');
+
+          final level = await runWithOverrides(
+            codePushClientWrapper.getPlanLevel,
+          );
+
+          expect(level, equals('enterprise'));
+          verify(() => progress.complete()).called(1);
         });
       });
 
@@ -297,11 +370,11 @@ void main() {
         test('returns organization memberships on success', () async {
           final expectedMemberships = [
             OrganizationMembership(
-              organization: Organization.forTest(),
+              organization: organizationForTest(),
               role: Role.admin,
             ),
             OrganizationMembership(
-              organization: Organization.forTest(),
+              organization: organizationForTest(),
               role: Role.developer,
             ),
           ];
@@ -448,6 +521,117 @@ void main() {
           verify(() => progress.complete()).called(1);
         });
       });
+
+      group('updateApp', () {
+        test('exits with code 70 when renaming app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.updateApp(
+              appId: any(named: 'appId'),
+              displayName: any(named: 'displayName'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.updateApp(
+                appId: appId,
+                displayName: displayName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when app is successfully renamed', () async {
+          when(
+            () => codePushClient.updateApp(
+              appId: appId,
+              displayName: displayName,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.updateApp(
+              appId: appId,
+              displayName: displayName,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('deleteApp', () {
+        test('exits with code 70 when deleting app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.deleteApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteApp(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when app is successfully deleted', () async {
+          when(
+            () => codePushClient.deleteApp(appId: appId),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteApp(appId: appId),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('transferApp', () {
+        test('exits with code 70 when transferring app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.transferApp(
+              organizationId: any(named: 'organizationId'),
+              appId: any(named: 'appId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.transferApp(
+                organizationId: organizationId,
+                appId: appId,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when app is successfully transferred', () async {
+          when(
+            () => codePushClient.transferApp(
+              organizationId: organizationId,
+              appId: appId,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.transferApp(
+              organizationId: organizationId,
+              appId: appId,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
     });
 
     group('channel', () {
@@ -541,6 +725,77 @@ void main() {
           );
 
           expect(result, channel);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('getChannels', () {
+        test('exits with code 70 when fetching channels fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getChannels(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getChannels(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns channels when channels are fetched', () async {
+          when(
+            () => codePushClient.getChannels(appId: appId),
+          ).thenAnswer((_) async => [channel]);
+
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.getChannels(appId: appId),
+          );
+
+          expect(result, [channel]);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('deleteChannel', () {
+        test('exits with code 70 when deleting channel fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.deleteChannel(
+              appId: any(named: 'appId'),
+              channelId: any(named: 'channelId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteChannel(
+                appId: appId,
+                channelId: channel.id,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when channel is successfully deleted', () async {
+          when(
+            () => codePushClient.deleteChannel(
+              appId: appId,
+              channelId: channel.id,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteChannel(
+              appId: appId,
+              channelId: channel.id,
+            ),
+          );
+
           verify(() => progress.complete()).called(1);
         });
       });
@@ -1442,6 +1697,189 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
         });
+
+        test(
+          'skips arches whose libapp.so is missing (abiFilters case)',
+          () async {
+            setUpProjectRoot();
+            // Simulate AGP filtering: remove armeabi-v7a libapp.so to mirror
+            // a project with ndk.abiFilters that excludes arm32.
+            final missingArch = Arch.arm32;
+            File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'app',
+                'intermediates',
+                'stripped_native_libs',
+                'release',
+                'out',
+                'lib',
+                missingArch.androidBuildPath,
+                'libapp.so',
+              ),
+            ).deleteSync();
+
+            await runWithOverrides(
+              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                projectRoot: projectRoot.path,
+                aabPath: p.join(projectRoot.path, aabPath),
+                architectures: Arch.values,
+              ),
+            );
+
+            // One upload per surviving arch, plus one for the aab.
+            final expectedUploads = Arch.values.length - 1 + 1;
+            verify(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).called(expectedUploads);
+            verifyNever(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: missingArch.arch,
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            );
+            verify(() => progress.complete()).called(1);
+            verifyNever(() => progress.fail(any()));
+          },
+        );
+
+        test(
+          'exits with code 70 when every requested arch is missing',
+          () async {
+            // Create the archs directory but no libapp.so files inside it.
+            // This mirrors AGP producing an empty strip output (all archs
+            // filtered out).
+            for (final archMetadata in Arch.values) {
+              Directory(
+                p.join(
+                  projectRoot.path,
+                  'build',
+                  'app',
+                  'intermediates',
+                  'stripped_native_libs',
+                  'release',
+                  'out',
+                  'lib',
+                  archMetadata.androidBuildPath,
+                ),
+              ).createSync(recursive: true);
+            }
+            File(p.join(projectRoot.path, aabPath)).createSync(recursive: true);
+
+            await expectLater(
+              () async => runWithOverrides(
+                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: p.join(projectRoot.path, aabPath),
+                  architectures: Arch.values,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => progress.fail(
+                any(
+                  that: contains('No architecture artifacts found to upload'),
+                ),
+              ),
+            ).called(1);
+            verifyNever(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(named: 'artifactPath'),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            );
+          },
+        );
+
+        test(
+          'extracts libapp.so from the aab when the strip output is empty',
+          () async {
+            // The strip output dirs exist but contain no libapp.so, as happens
+            // when AGP's strip task emits nothing on Flutter 3.44+. The
+            // libraries still ship inside the aab, which is read first, so the
+            // upload succeeds regardless of the strip output.
+            for (final archMetadata in Arch.values) {
+              Directory(
+                p.join(
+                  projectRoot.path,
+                  'build',
+                  'app',
+                  'intermediates',
+                  'stripped_native_libs',
+                  'release',
+                  'out',
+                  'lib',
+                  archMetadata.androidBuildPath,
+                ),
+              ).createSync(recursive: true);
+            }
+            // A real aab containing base/lib/<arch>/libapp.so for three arches.
+            final aab = File(
+              p.join('test', 'fixtures', 'aabs', 'changed_asset.aab'),
+            );
+
+            await runWithOverrides(
+              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                appId: app.appId,
+                releaseId: releaseId,
+                platform: releasePlatform,
+                projectRoot: projectRoot.path,
+                aabPath: aab.path,
+                architectures: Arch.values,
+              ),
+            );
+
+            // Each per-arch artifact was uploaded from the directory the aab
+            // was extracted into, not from the empty strip output.
+            verify(
+              () => codePushClient.createReleaseArtifact(
+                appId: any(named: 'appId'),
+                artifactPath: any(
+                  named: 'artifactPath',
+                  that: contains('shorebird_aab_libapps'),
+                ),
+                releaseId: any(named: 'releaseId'),
+                arch: any(named: 'arch'),
+                platform: any(named: 'platform'),
+                hash: any(named: 'hash'),
+                canSideload: any(named: 'canSideload'),
+                podfileLockHash: any(named: 'podfileLockHash'),
+              ),
+            ).called(3);
+            verify(() => progress.complete()).called(1);
+            verifyNever(() => progress.fail(any()));
+          },
+        );
       });
 
       group('createWindowsReleaseArtifacts', () {
@@ -2436,6 +2874,206 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
 
           verify(() => progress.complete()).called(1);
         });
+      });
+
+      group('rollbackPatch', () {
+        const releaseId = 7;
+        const patchNumber = 1;
+
+        test('exits with code 70 when rollback fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.rollbackPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.rollbackPatch(
+                appId: appId,
+                releaseId: releaseId,
+                patchId: patchId,
+                patchNumber: patchNumber,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes progress when patch is rolled back', () async {
+          when(
+            () => codePushClient.rollbackPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenAnswer((_) async => true);
+
+          final changed = await runWithOverrides(
+            () => codePushClientWrapper.rollbackPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+            ),
+          );
+
+          expect(changed, isTrue);
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('forwards the no-op result from the client', () async {
+          when(
+            () => codePushClient.rollbackPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenAnswer((_) async => false);
+
+          final changed = await runWithOverrides(
+            () => codePushClientWrapper.rollbackPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+            ),
+          );
+
+          expect(changed, isFalse);
+          verify(
+            () => progress.complete(
+              'No change: patch $patchNumber was already rolled back',
+            ),
+          ).called(1);
+        });
+
+        test(
+          'omits patch number from progress label when not provided',
+          () async {
+            when(
+              () => codePushClient.rollbackPatch(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                patchId: any(named: 'patchId'),
+              ),
+            ).thenAnswer((_) async => true);
+
+            await runWithOverrides(
+              () => codePushClientWrapper.rollbackPatch(
+                appId: appId,
+                releaseId: releaseId,
+                patchId: patchId,
+              ),
+            );
+
+            verify(() => logger.progress('Rolling back patch')).called(1);
+          },
+        );
+      });
+
+      group('rollforwardPatch', () {
+        const releaseId = 7;
+        const patchNumber = 1;
+
+        test('exits with code 70 when rollforward fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.rollforwardPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.rollforwardPatch(
+                appId: appId,
+                releaseId: releaseId,
+                patchId: patchId,
+                patchNumber: patchNumber,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes progress when patch is rolled forward', () async {
+          when(
+            () => codePushClient.rollforwardPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenAnswer((_) async => true);
+
+          final changed = await runWithOverrides(
+            () => codePushClientWrapper.rollforwardPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+            ),
+          );
+
+          expect(changed, isTrue);
+          verify(() => progress.complete()).called(1);
+        });
+
+        test('forwards the no-op result from the client', () async {
+          when(
+            () => codePushClient.rollforwardPatch(
+              appId: any(named: 'appId'),
+              releaseId: any(named: 'releaseId'),
+              patchId: any(named: 'patchId'),
+            ),
+          ).thenAnswer((_) async => false);
+
+          final changed = await runWithOverrides(
+            () => codePushClientWrapper.rollforwardPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+              patchNumber: patchNumber,
+            ),
+          );
+
+          expect(changed, isFalse);
+          verify(
+            () => progress.complete(
+              'No change: patch $patchNumber was already active',
+            ),
+          ).called(1);
+        });
+
+        test(
+          'omits patch number from progress label when not provided',
+          () async {
+            when(
+              () => codePushClient.rollforwardPatch(
+                appId: any(named: 'appId'),
+                releaseId: any(named: 'releaseId'),
+                patchId: any(named: 'patchId'),
+              ),
+            ).thenAnswer((_) async => true);
+
+            await runWithOverrides(
+              () => codePushClientWrapper.rollforwardPatch(
+                appId: appId,
+                releaseId: releaseId,
+                patchId: patchId,
+              ),
+            );
+
+            verify(() => logger.progress('Rolling forward patch')).called(1);
+          },
+        );
       });
 
       group('createPatchArtifacts', () {

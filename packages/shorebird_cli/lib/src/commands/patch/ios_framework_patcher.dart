@@ -4,32 +4,31 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/executables/aot_tools.dart';
-import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template ios_framework_patcher}
 /// Functions to patch an iOS Framework release.
 /// {@endtemplate}
-class IosFrameworkPatcher extends Patcher {
+class IosFrameworkPatcher extends Patcher with ApplePatcherMixin {
   /// {@macro ios_framework_patcher}
   IosFrameworkPatcher({
     required super.argResults,
@@ -56,30 +55,22 @@ class IosFrameworkPatcher extends Patcher {
   @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
 
+  @override
+  List<Validator> get applePlatformValidators => doctor.iosCommandValidators;
+
   /// The last build's link metadata.
   @visibleForTesting
-  Map<String, dynamic>? lastBuildLinkMetadata;
+  Json? lastBuildLinkMetadata;
 
   @override
   double? get linkPercentage => lastBuildLinkPercentage;
 
+  @override
+  Json? get linkMetadata => lastBuildLinkMetadata;
+
   /// The last build link percentage.
   @visibleForTesting
   double? lastBuildLinkPercentage;
-
-  @override
-  Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-        validators: doctor.iosCommandValidators,
-        supportedOperatingSystems: {Platform.macOS},
-      );
-    } on PreconditionFailedException catch (e) {
-      throw ProcessExit(e.exitCode.code);
-    }
-  }
 
   @override
   Future<void> assertArgsAreValid() async {
@@ -118,7 +109,7 @@ class IosFrameworkPatcher extends Patcher {
       outFilePath: _aotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
       additionalArgs: [
-        ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+        ...ApplePatcherMixin.splitDebugInfoArgs(splitDebugInfoPath),
         ...obfuscationGenSnapshotArgs,
       ],
     );
@@ -180,7 +171,7 @@ class IosFrameworkPatcher extends Patcher {
         kernelFile: File(_appDillCopyPath),
         releaseArtifact: releaseArtifactFile,
         splitDebugInfoArgs: [
-          ...IosPatcher.splitDebugInfoArgs(splitDebugInfoPath),
+          ...ApplePatcherMixin.splitDebugInfoArgs(splitDebugInfoPath),
           ...obfuscationGenSnapshotArgs,
         ],
         aotOutputFile: File(_aotOutputPath),
@@ -253,15 +244,4 @@ class IosFrameworkPatcher extends Patcher {
       'Release version must be specified using --release-version.',
     );
   }
-
-  @override
-  Future<CreatePatchMetadata> updatedCreatePatchMetadata(
-    CreatePatchMetadata metadata,
-  ) async => metadata.copyWith(
-    linkPercentage: lastBuildLinkPercentage,
-    linkMetadata: lastBuildLinkMetadata,
-    environment: metadata.environment.copyWith(
-      xcodeVersion: await xcodeBuild.version(),
-    ),
-  );
 }

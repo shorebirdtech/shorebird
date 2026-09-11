@@ -113,7 +113,7 @@ Please comment and upvote ${link(uri: Uri.parse('https://github.com/shorebirdtec
     final base64PublicKey = await getEncodedPublicKey();
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
-    addObfuscationMapArgs(buildArgs);
+    await addObfuscationMapArgs(buildArgs);
     final aab = await artifactBuilder.buildAppBundle(
       flavor: flavor,
       target: target,

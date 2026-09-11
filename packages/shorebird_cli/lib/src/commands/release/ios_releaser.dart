@@ -1,30 +1,28 @@
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
+import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform/apple/apple.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template ios_releaser}
 /// Functions to build and publish an iOS release.
 /// {@endtemplate}
-class IosReleaser extends Releaser {
+class IosReleaser extends Releaser with AppleReleaserMixin {
   /// {@macro ios_releaser}
   IosReleaser({
     required super.argResults,
@@ -48,36 +46,29 @@ class IosReleaser extends Releaser {
   String get artifactDisplayName => 'iOS app';
 
   @override
-  Future<void> assertArgsAreValid() async {
-    if (argResults.wasParsed('release-version')) {
-      logger.err(
-        '''
-The "--release-version" flag is only supported for aar and ios-framework releases.
+  List<Validator> get applePlatformValidators => doctor.iosCommandValidators;
 
-To change the version of this release, change your app's version in your pubspec.yaml.''',
-      );
-      throw ProcessExit(ExitCode.usage.code);
-    }
+  @override
+  Future<void> assertArgsAreValid() async {
+    assertReleaseVersionFlagNotProvided();
 
     await assertObfuscationIsSupported();
+
+    final exportOptionsPlistFile = argResults.file(
+      CommonArguments.exportOptionsPlistArg.name,
+    );
+    if (exportOptionsPlistFile != null) {
+      try {
+        assertValidExportOptionsPlist(exportOptionsPlistFile);
+      } on InvalidExportOptionsPlistException catch (error) {
+        logger.err(error.message);
+        throw ProcessExit(ExitCode.usage.code);
+      }
+    }
   }
 
   @override
   Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
-
-  @override
-  Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkUserIsAuthenticated: true,
-        checkShorebirdInitialized: true,
-        validators: doctor.iosCommandValidators,
-        supportedOperatingSystems: {Platform.macOS},
-      );
-    } on PreconditionFailedException catch (e) {
-      throw ProcessExit(e.exitCode.code);
-    }
-  }
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
@@ -88,6 +79,12 @@ To change the version of this release, change your app's version in your pubspec
         )
         ..warn(
           '''shorebird preview will not work for releases created with "--no-codesign". However, you can still preview your app by signing the generated .xcarchive in Xcode.''',
+        )
+        ..warn(
+          '''
+When you distribute the .xcarchive in Xcode, you MUST uncheck "Manage Version and Build Number" in the Distribute App dialog.
+
+If left checked, Xcode will rewrite the build number in the uploaded IPA, so the version that ships to App Store Connect will not match the version Shorebird recorded for this release. Patches will then fail to apply.''',
         );
     }
 
@@ -104,7 +101,7 @@ To change the version of this release, change your app's version in your pubspec
 
     final buildArgs = [...argResults.forwardedArgs];
     addSplitDebugInfoDefault(buildArgs);
-    addObfuscationMapArgs(buildArgs);
+    await addObfuscationMapArgs(buildArgs);
 
     await artifactBuilder.buildIpa(
       codesign: codesign,
@@ -112,6 +109,7 @@ To change the version of this release, change your app's version in your pubspec
       target: target,
       args: buildArgs,
       base64PublicKey: base64PublicKey,
+      ddMaxBytes: ddMaxBytes,
     );
 
     verifyObfuscationMap();
@@ -128,6 +126,22 @@ To change the version of this release, change your app's version in your pubspec
 
     if (appDirectory == null) {
       logger.err('Unable to find .app directory');
+      throw ProcessExit(ExitCode.software.code);
+    }
+
+    // When code signing is requested (the default), `flutter build ipa` is
+    // expected to export a signed .ipa. Flutter treats the export step as
+    // optional and exits 0 even when it fails (e.g. no signing certificate),
+    // so we must verify the .ipa was actually produced. Otherwise we would
+    // report a successful release and point the user at an .ipa that does not
+    // exist. See https://github.com/shorebirdtech/shorebird/issues/3807.
+    if (codesign && artifactManager.getIpa() == null) {
+      logger.err(
+        '''
+Unable to find generated IPA. This usually means that the IPA export step of "flutter build ipa" failed (for example, due to a missing or invalid code signing certificate). Review the build output above for the underlying error.
+
+If you do not need a signed IPA (for example, you will sign the .xcarchive in Xcode), re-run this command with --no-codesign.''',
+      );
       throw ProcessExit(ExitCode.software.code);
     }
 
@@ -160,14 +174,6 @@ To change the version of this release, change your app's version in your pubspec
     required String appId,
   }) async {
     final xcarchiveDirectory = artifactManager.getXcarchiveDirectory()!;
-    final String? podfileLockHash;
-    if (shorebirdEnv.iosPodfileLockFile.existsSync()) {
-      podfileLockHash = sha256
-          .convert(shorebirdEnv.iosPodfileLockFile.readAsBytesSync())
-          .toString();
-    } else {
-      podfileLockHash = null;
-    }
     await codePushClientWrapper.createIosReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
@@ -176,20 +182,11 @@ To change the version of this release, change your app's version in your pubspec
           .getIosAppDirectory(xcarchiveDirectory: xcarchiveDirectory)!
           .path,
       isCodesigned: codesign,
-      podfileLockHash: podfileLockHash,
+      podfileLockHash: shorebirdEnv.iosPodfileLockHash,
     );
 
     await uploadSupplementArtifact(appId: appId, releaseId: release.id);
   }
-
-  @override
-  Future<UpdateReleaseMetadata> updatedReleaseMetadata(
-    UpdateReleaseMetadata metadata,
-  ) async => metadata.copyWith(
-    environment: metadata.environment.copyWith(
-      xcodeVersion: await xcodeBuild.version(),
-    ),
-  );
 
   @override
   String get postReleaseInstructions {
@@ -216,7 +213,8 @@ Your next step is to submit the archive at ${lightCyan.wrap(relativeArchivePath)
 You can open the archive in Xcode by running:
     ${lightCyan.wrap('open $relativeArchivePath')}
 
-${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number", or else shorebird will not work.')}
+${styleBold.wrap('Make sure to uncheck "Manage Version and Build Number" in the Distribute App dialog.')}
+If left checked, Xcode will rewrite the build number in the uploaded IPA, so the version that ships will not match the one Shorebird recorded for this release, and patches will fail to apply.
 ''';
     }
   }

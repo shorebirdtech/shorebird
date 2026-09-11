@@ -35,7 +35,6 @@ void main() {
           ReleasePatch(
             id: 43,
             number: 2,
-            channel: null,
             isRolledBack: false,
             artifacts: [
               PatchArtifact(

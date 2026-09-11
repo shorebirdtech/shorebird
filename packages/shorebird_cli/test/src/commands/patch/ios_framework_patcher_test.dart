@@ -514,6 +514,7 @@ void main() {
               () => artifactBuilder.buildIosFramework(
                 args: any(named: 'args'),
                 base64PublicKey: any(named: 'base64PublicKey'),
+                ddMaxBytes: any(named: 'ddMaxBytes'),
               ),
             ).thenAnswer((_) async => AppleBuildResult(kernelFile: kernelFile));
           });

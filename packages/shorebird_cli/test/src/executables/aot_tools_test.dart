@@ -667,6 +667,214 @@ stderr: error'''),
             ], workingDirectory: any(named: 'workingDirectory')),
           ).called(1);
         });
+
+        test(
+          'throws LinkFailureException when VM sections differ',
+          () async {
+            workingDirectory = Directory.systemTemp.createTempSync();
+            when(
+              () => process.start(aotToolsPath, [
+                '--version',
+              ], workingDirectory: any(named: 'workingDirectory')),
+            ).thenAnswer((_) async {
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => Stream.value(utf8.encode('0.0.1')));
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
+              return mockProcess;
+            });
+            when(
+              () => process.run(
+                aotToolsPath,
+                any(that: contains('--gen-snapshot=$genSnapshot')),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer(
+              (_) async => const ShorebirdProcessResult(
+                exitCode: 1,
+                stdout: '',
+                stderr: 'error',
+              ),
+            );
+            when(
+              () => process.start(
+                aotToolsPath,
+                any(that: contains('--gen-snapshot=$genSnapshot')),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer((_) async {
+              final linkFailure = jsonEncode({
+                'type': 'link_failure',
+                'reason': 'base and patch snapshots have differing VM sections',
+                'details': {
+                  'vm_data_length': {'base': 39296, 'patch': 39296},
+                  'vm_instructions_length': {'base': 65280, 'patch': 65280},
+                  'vm_data_hash': {'base': 4272422645, 'patch': 2308514119},
+                  'vm_instructions_hash': {
+                    'base': 1550369841,
+                    'patch': 1550369841,
+                  },
+                },
+              });
+              File(
+                p.join(workingDirectory.path, 'link.jsonl'),
+              ).writeAsStringSync('$linkFailure\n');
+
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 1);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => Stream.value(utf8.encode('error')));
+              return mockProcess;
+            });
+
+            await expectLater(
+              runWithOverrides(
+                () => aotTools.link(
+                  base: base,
+                  patch: patch,
+                  analyzeSnapshot: analyzeSnapshot,
+                  genSnapshot: genSnapshot,
+                  kernel: kernel,
+                  workingDirectory: workingDirectory.path,
+                  outputPath: outputPath,
+                ),
+              ),
+              throwsA(
+                isA<LinkFailureException>()
+                    .having(
+                      (e) => '$e',
+                      'toString',
+                      contains('differing VM sections'),
+                    )
+                    // The version and features checks are what carry a
+                    // remediation hint. Neither reports on this signature, so
+                    // the failure surfaces without one.
+                    .having((e) => e.hint, 'hint', isNull),
+              ),
+            );
+          },
+        );
+
+        test(
+          'rethrows AotToolsExecutionFailure when jsonl is malformed',
+          () async {
+            workingDirectory = Directory.systemTemp.createTempSync();
+            when(
+              () => process.start(aotToolsPath, [
+                '--version',
+              ], workingDirectory: any(named: 'workingDirectory')),
+            ).thenAnswer((_) async {
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => Stream.value(utf8.encode('0.0.1')));
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
+              return mockProcess;
+            });
+            when(
+              () => process.start(
+                aotToolsPath,
+                any(that: contains('--gen-snapshot=$genSnapshot')),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer((_) async {
+              File(
+                p.join(workingDirectory.path, 'link.jsonl'),
+              ).writeAsStringSync('this is not json\n');
+
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 1);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => Stream.value(utf8.encode('boom')));
+              return mockProcess;
+            });
+
+            await expectLater(
+              runWithOverrides(
+                () => aotTools.link(
+                  base: base,
+                  patch: patch,
+                  analyzeSnapshot: analyzeSnapshot,
+                  genSnapshot: genSnapshot,
+                  kernel: kernel,
+                  workingDirectory: workingDirectory.path,
+                  outputPath: outputPath,
+                ),
+              ),
+              throwsA(isA<AotToolsExecutionFailure>()),
+            );
+          },
+        );
+
+        test(
+          'rethrows AotToolsExecutionFailure when no link_failure event',
+          () async {
+            workingDirectory = Directory.systemTemp.createTempSync();
+            when(
+              () => process.start(aotToolsPath, [
+                '--version',
+              ], workingDirectory: any(named: 'workingDirectory')),
+            ).thenAnswer((_) async {
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 0);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => Stream.value(utf8.encode('0.0.1')));
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => const Stream.empty());
+              return mockProcess;
+            });
+            when(
+              () => process.start(
+                aotToolsPath,
+                any(that: contains('--gen-snapshot=$genSnapshot')),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).thenAnswer((_) async {
+              // No link.jsonl written — simulates a crash before reporting.
+              final mockProcess = MockProcess();
+              when(() => mockProcess.exitCode).thenAnswer((_) async => 1);
+              when(
+                () => mockProcess.stdout,
+              ).thenAnswer((_) => const Stream.empty());
+              when(
+                () => mockProcess.stderr,
+              ).thenAnswer((_) => Stream.value(utf8.encode('boom')));
+              return mockProcess;
+            });
+
+            await expectLater(
+              runWithOverrides(
+                () => aotTools.link(
+                  base: base,
+                  patch: patch,
+                  analyzeSnapshot: analyzeSnapshot,
+                  genSnapshot: genSnapshot,
+                  kernel: kernel,
+                  workingDirectory: workingDirectory.path,
+                  outputPath: outputPath,
+                ),
+              ),
+              throwsA(isA<AotToolsExecutionFailure>()),
+            );
+          },
+        );
       });
 
       group('isLinkDebugInfoSupported', () {
@@ -1184,6 +1392,86 @@ Run "aot_tools help <command>" for more information about a command.
           expect(captured.any((a) => a.startsWith('--trace=')), isFalse);
         },
       );
+    });
+  });
+
+  group(LinkFailureException, () {
+    const execFailure = AotToolsExecutionFailure(
+      exitCode: 1,
+      stdout: '',
+      stderr: '',
+      command: 'aot_tools link',
+    );
+
+    LinkFailureException build(Map<String, dynamic> linkFailure) =>
+        LinkFailureException(
+          execFailure: execFailure,
+          linkFailure: linkFailure,
+        );
+
+    group('hint', () {
+      test('is null when details is missing', () {
+        expect(build({'type': 'link_failure'}).hint, isNull);
+      });
+
+      test('is null when no check that carries a hint reported', () {
+        expect(
+          build({
+            'details': {
+              'vm_data_hash': {'base': 1, 'patch': 2},
+              'vm_instructions_hash': {'base': 3, 'patch': 3},
+            },
+          }).hint,
+          isNull,
+        );
+      });
+
+      test('blames the SDK when dart_version differs', () {
+        expect(
+          build({
+            'details': {
+              'dart_version': {'base': '3.9.0', 'patch': '3.10.0'},
+            },
+          }).hint,
+          contains('different Dart SDKs'),
+        );
+      });
+
+      test('blames the SDK when snapshot_version differs', () {
+        expect(
+          build({
+            'details': {
+              'snapshot_version': {'base': 'abc', 'patch': 'def'},
+            },
+          }).hint,
+          contains('different Dart SDKs'),
+        );
+      });
+
+      test('blames build flags when features differ', () {
+        final hint = build({
+          'details': {
+            'features': {'base': 'a', 'patch': 'b'},
+          },
+        }).hint;
+        expect(hint, contains('different build flags'));
+        expect(hint, contains('--dwarf-stack-traces'));
+      });
+    });
+
+    group('toString', () {
+      test('uses a fallback reason when none is present', () {
+        expect(
+          build({}).toString(),
+          contains('aot_tools link reported a failure'),
+        );
+      });
+
+      test('includes the reason and underlying execFailure', () {
+        final out = build({'reason': 'nope'}).toString();
+        expect(out, contains('nope'));
+        expect(out, contains('aot_tools link failed with exit code 1'));
+      });
     });
   });
 }
