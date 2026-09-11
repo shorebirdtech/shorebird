@@ -1332,7 +1332,7 @@ flavors:
           var index = 0;
 
           when(
-            () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+            () => codePushClientWrapper.maybeGetApp(appId: any(named: 'appId')),
           ).thenAnswer(
             (_) async => AppMetadata(
               appId: appId,
@@ -1398,23 +1398,41 @@ flavors:
           when(() => shorebirdYaml.flavors).thenReturn(existingFlavors);
         });
 
-        test(
-          'names the fix and rethrows if retrieving existing app fails',
-          () async {
-            when(
-              () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
-            ).thenThrow(ProcessExit(ExitCode.software.code));
-            await expectLater(
-              runWithOverrides(command.run),
-              throwsA(isA<ProcessExit>()),
-            );
-            verify(
-              () => logger.info(
-                '''Fix the app_id in shorebird.yaml, or run ${lightCyan.wrap('shorebird init --force')} to create a new app.''',
-              ),
-            ).called(1);
-          },
-        );
+        test('names the fix when the existing app is gone', () async {
+          when(
+            () => codePushClientWrapper.maybeGetApp(
+              appId: any(named: 'appId'),
+            ),
+          ).thenAnswer((_) async => null);
+
+          await expectLater(
+            runWithOverrides(command.run),
+            completion(equals(ExitCode.software.code)),
+          );
+          verify(
+            () => logger.info(
+              '''Fix the app_id in shorebird.yaml, or run ${lightCyan.wrap('shorebird init --force')} to create a new app.''',
+            ),
+          ).called(1);
+        });
+
+        test('does not blame app_id when the lookup itself fails', () async {
+          when(
+            () => codePushClientWrapper.maybeGetApp(
+              appId: any(named: 'appId'),
+            ),
+          ).thenThrow(ProcessExit(ExitCode.software.code));
+
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
+          verifyNever(
+            () => logger.info(
+              '''Fix the app_id in shorebird.yaml, or run ${lightCyan.wrap('shorebird init --force')} to create a new app.''',
+            ),
+          );
+        });
 
         test('creates new flavor entries in shorebird.yaml', () async {
           const newAppIds = ['test-appId-3', 'test-appId-4'];
@@ -1422,7 +1440,7 @@ flavors:
           var index = 0;
 
           when(
-            () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+            () => codePushClientWrapper.maybeGetApp(appId: any(named: 'appId')),
           ).thenAnswer(
             (_) async => AppMetadata(
               appId: appId,
