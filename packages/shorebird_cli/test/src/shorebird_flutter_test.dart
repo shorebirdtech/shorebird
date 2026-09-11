@@ -1,4 +1,4 @@
-// cspell:words revis precaches
+// cspell:words revis precaches ENOTEMPTY
 import 'dart:io';
 
 import 'package:clock/clock.dart';
