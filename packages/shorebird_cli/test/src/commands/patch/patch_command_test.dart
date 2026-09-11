@@ -1835,8 +1835,8 @@ Did you mean "shorebird patches rollback"?''',
       });
 
       test('reports the invalid platform when no subcommand matches', () async {
-        when(() => argResults.arguments).thenReturn(['andriod']);
-        when(() => argResults.rest).thenReturn(['andriod']);
+        when(() => argResults.arguments).thenReturn(['web']);
+        when(() => argResults.rest).thenReturn(['web']);
         await expectLater(
           runWithOverrides(command.run),
           throwsA(
@@ -1844,7 +1844,7 @@ Did you mean "shorebird patches rollback"?''',
               (e) => e.message,
               'message',
               '''
-Invalid platform: "andriod".
+Invalid platform: "web".
 Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
             ),
           ),
