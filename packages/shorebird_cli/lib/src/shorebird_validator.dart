@@ -71,7 +71,7 @@ class ShorebirdValidator {
     if (supportedOperatingSystems != null &&
         !supportedOperatingSystems.contains(platform.operatingSystem)) {
       logger.err(
-        '''This command is only supported on ${supportedOperatingSystems.join(' ,')}.''',
+        '''This command is only supported on ${supportedOperatingSystems.join(', ')} (this machine is running ${platform.operatingSystem}).''',
       );
       throw UnsupportedOperatingSystemException();
     }
