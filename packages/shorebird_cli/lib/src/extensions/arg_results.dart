@@ -8,6 +8,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/extensions/file.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 
 /// Extension on [ArgResults] to make it easier to work with options.
@@ -276,6 +277,30 @@ extension ForwardedArgs on ArgResults {
     }
   }
 
+  /// All parsed args with the given name, interpreted as file paths.
+  /// Resolves the paths to absolute paths and verifies they exist.
+  Iterable<String> _fileArgsNamed(String name) {
+    if (!wasParsed(name)) {
+      return [];
+    }
+
+    String resolveAndCheck(String pathStr) {
+      final absolutePath = p.absolute(pathStr);
+      if (!File(absolutePath).existsSync()) {
+        logger.err('Error: File \'$pathStr\' specified in --$name not found.');
+        throw ProcessExit(ExitCode.usage.code);
+      }
+      return absolutePath;
+    }
+
+    final value = this[name];
+    if (value is List) {
+      return value.map((a) => '--$name=${resolveAndCheck(a.toString())}');
+    } else {
+      return ['--$name=${resolveAndCheck(value.toString())}'];
+    }
+  }
+
   /// Returns `['--$name']` when the boolean flag [name] was parsed and is
   /// `true`, or an empty iterable otherwise.
   Iterable<String> _flagNamed(String name) {
@@ -298,7 +323,7 @@ extension ForwardedArgs on ArgResults {
 
     forwarded.addAll([
       ..._argsNamed(CommonArguments.dartDefineArg.name),
-      ..._argsNamed(CommonArguments.dartDefineFromFileArg.name),
+      ..._fileArgsNamed(CommonArguments.dartDefineFromFileArg.name),
       ..._argsNamed(CommonArguments.buildNameArg.name),
       ..._argsNamed(CommonArguments.buildNumberArg.name),
       ..._argsNamed(CommonArguments.splitDebugInfoArg.name),
