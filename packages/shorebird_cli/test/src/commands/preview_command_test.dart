@@ -5,6 +5,7 @@ import 'dart:io' hide Platform;
 
 import 'package:archive/archive_io.dart';
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -233,7 +234,9 @@ void main() {
       releaseArtifact = MockReleaseArtifact();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
-      command = PreviewCommand()..testArgResults = argResults;
+      command = PreviewCommand()
+        ..testArgResults = argResults
+        ..testRunner = usageRunner();
 
       when(() => argResults.wasParsed('app-id')).thenReturn(true);
       when(() => argResults['app-id']).thenReturn(appId);
@@ -294,20 +297,19 @@ void main() {
         when(() => argResults.wasParsed('staging')).thenReturn(true);
       });
 
-      test(
-        '''warns that staging flag will be deprecated and exits with usage code''',
-        () async {
-          await expectLater(
-            runWithOverrides(command.run),
-            completion(equals(ExitCode.usage.code)),
-          );
-          verify(
-            () => logger.err(
-              '''The --staging flag is deprecated and will be removed in a future release. Use --track=staging instead.''',
+      test('throws a usage exception naming --track=staging', () async {
+        await expectLater(
+          runWithOverrides(command.run),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              'The --staging flag has been removed. '
+                  'Use --track=staging instead.',
             ),
-          ).called(1);
-        },
-      );
+          ),
+        );
+      });
     });
 
     group('when validation fails', () {
@@ -368,7 +370,12 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, ExitCode.usage.code);
         verify(
-          () => logger.err('No previewable releases found for this app'),
+          () => logger.err('No previewable releases found for app $appId.'),
+        ).called(1);
+        verify(
+          () => logger.info(
+            '''Create one with ${lightCyan.wrap('shorebird release <platform>')}, or pass --app-id=<app-id> to preview a different app.''',
+          ),
         ).called(1);
       });
     });
@@ -391,7 +398,12 @@ void main() {
         expect(result, ExitCode.usage.code);
         verify(
           () => logger.err(
-            'No previewable releases found for version not-a-real-version',
+            'No previewable release found for version not-a-real-version.',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            '''Previewable versions: $releaseVersion. Pass one with --release-version=<version> or omit it to choose interactively.''',
           ),
         ).called(1);
       });
@@ -402,18 +414,24 @@ void main() {
         when(() => platform.isLinux).thenReturn(false);
         when(() => platform.isMacOS).thenReturn(false);
         when(() => platform.isWindows).thenReturn(true);
+        when(() => platform.operatingSystem).thenReturn('windows');
 
         when(
           () => release.platformStatuses,
         ).thenReturn({ReleasePlatform.ios: ReleaseStatus.active});
       });
 
-      test('prints error message and exits with code 70', () async {
+      test('prints error message and exits with usage code', () async {
         final result = await runWithOverrides(command.run);
         expect(result, ExitCode.usage.code);
         verify(
           () => logger.err(
-            'This release can only be previewed on platforms that support iOS',
+            '''Release $releaseVersion only has iOS artifacts, which cannot be previewed from windows.''',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            '''Platforms previewable from this machine: Android, Linux, macOS, Windows. iOS releases can only be previewed from macOS.''',
           ),
         ).called(1);
       });
@@ -602,12 +620,16 @@ void main() {
             });
 
             test('exits with usage error', () async {
-              final result = await runWithOverrides(command.run);
-              expect(result, equals(ExitCode.usage.code));
-
-              verify(
-                () => logger.err('You must provide a keystore password.'),
-              ).called(1);
+              await expectLater(
+                runWithOverrides(command.run),
+                throwsA(
+                  isA<UsageException>().having(
+                    (e) => e.message,
+                    'message',
+                    '''--ks requires --ks-pass (e.g. --ks-pass=pass:<password> or --ks-pass=file:<path>).''',
+                  ),
+                ),
+              );
 
               verifyNever(
                 () => bundletool.buildApks(
@@ -632,12 +654,16 @@ void main() {
             });
 
             test('exits with usage error', () async {
-              final result = await runWithOverrides(command.run);
-              expect(result, equals(ExitCode.usage.code));
-
-              verify(
-                () => logger.err('You must provide a key alias.'),
-              ).called(1);
+              await expectLater(
+                runWithOverrides(command.run),
+                throwsA(
+                  isA<UsageException>().having(
+                    (e) => e.message,
+                    'message',
+                    '--ks requires --ks-key-alias=<alias>.',
+                  ),
+                ),
+              );
 
               verifyNever(
                 () => bundletool.buildApks(
@@ -666,14 +692,16 @@ void main() {
             });
 
             test('exits with usage error', () async {
-              final result = await runWithOverrides(command.run);
-              expect(result, equals(ExitCode.usage.code));
-
-              verify(
-                () => logger.err(
-                  'Keystore password must start with "pass:" or "file:".',
+              await expectLater(
+                runWithOverrides(command.run),
+                throwsA(
+                  isA<UsageException>().having(
+                    (e) => e.message,
+                    'message',
+                    '''--ks-pass must start with "pass:" or "file:" (e.g. --ks-pass=pass:<password> or --ks-pass=file:<path>).''',
+                  ),
                 ),
-              ).called(1);
+              );
 
               verifyNever(
                 () => bundletool.buildApks(
@@ -702,14 +730,16 @@ void main() {
             });
 
             test('exits with usage error', () async {
-              final result = await runWithOverrides(command.run);
-              expect(result, equals(ExitCode.usage.code));
-
-              verify(
-                () => logger.err(
-                  'Key password must start with "pass:" or "file:".',
+              await expectLater(
+                runWithOverrides(command.run),
+                throwsA(
+                  isA<UsageException>().having(
+                    (e) => e.message,
+                    'message',
+                    '''--ks-key-pass must start with "pass:" or "file:" (e.g. --ks-key-pass=pass:<password> or --ks-key-pass=file:<path>).''',
+                  ),
                 ),
-              ).called(1);
+              );
 
               verifyNever(
                 () => bundletool.buildApks(
@@ -841,7 +871,6 @@ channel: ${track.channel}
       });
 
       group('when querying for release artifact fails', () {
-        final exception = Exception('oops');
         setUp(() {
           when(
             () => codePushClientWrapper.getReleaseArtifact(
@@ -850,12 +879,14 @@ channel: ${track.channel}
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenThrow(exception);
+          ).thenThrow(ProcessExit(ExitCode.software.code));
         });
 
-        test('exits with code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
+        test('propagates the ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
           verify(
             () => codePushClientWrapper.getReleaseArtifact(
               appId: appId,
@@ -879,10 +910,22 @@ channel: ${track.channel}
           ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
-          verify(() => logger.err('$exception')).called(1);
+        test('logs the failure and throws ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
+          final arch = releaseArtifact.arch;
+          verify(
+            () => logger.err(
+              'Failed to download the $arch artifact: $exception',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info('Re-run the command to try the download again.'),
+          ).called(1);
+          // The partial .aab must not be mistaken for a cached download.
+          expect(File(aabPath()).existsSync(), isFalse);
         });
       });
 
@@ -1329,7 +1372,9 @@ channel: ${track.channel}
             ),
           ).called(1);
           verify(
-            () => logger.err('No previewable Android releases found'),
+            () => logger.err(
+              'No previewable Android releases found for app $appId.',
+            ),
           ).called(1);
         });
       });
@@ -1434,15 +1479,14 @@ channel: ${track.channel}
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenThrow(Exception('oops'));
+          ).thenThrow(ProcessExit(ExitCode.software.code));
         });
 
-        test('returns error and logs', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
-          verify(
-            () => logger.err('Error getting release artifact: Exception: oops'),
-          ).called(1);
+        test('propagates the ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
         });
       });
     });
@@ -1535,7 +1579,6 @@ channel: ${track.channel}
 
       group('when querying for release artifact fails', () {
         setUp(() {
-          final exception = Exception('oops');
           when(
             () => codePushClientWrapper.getReleaseArtifact(
               appId: any(named: 'appId'),
@@ -1543,12 +1586,14 @@ channel: ${track.channel}
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenThrow(exception);
+          ).thenThrow(ProcessExit(ExitCode.software.code));
         });
 
-        test('exits with code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
+        test('propagates the ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
           verify(
             () => codePushClientWrapper.getReleaseArtifact(
               appId: appId,
@@ -1572,10 +1617,20 @@ channel: ${track.channel}
           ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
-          verify(() => logger.err('$exception')).called(1);
+        test('logs the failure and throws ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
+          final arch = releaseArtifact.arch;
+          verify(
+            () => logger.err(
+              'Failed to download the $arch artifact: $exception',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info('Re-run the command to try the download again.'),
+          ).called(1);
         });
       });
 
@@ -1590,10 +1645,20 @@ channel: ${track.channel}
           ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
-          verify(() => logger.err('$exception')).called(1);
+        test('logs the failure and throws ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
+          final arch = releaseArtifact.arch;
+          verify(
+            () => logger.err(
+              'Failed to download the $arch artifact: $exception',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info('Re-run the command to try the download again.'),
+          ).called(1);
         });
       });
 
@@ -1942,21 +2007,14 @@ channel: ${DeploymentTrack.staging.channel}
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenThrow(Exception('oops'));
+          ).thenThrow(ProcessExit(ExitCode.software.code));
         });
 
-        test('returns error and logs', () async {
-          when(
-            () => iosDeploy.installAndLaunchApp(
-              bundlePath: any(named: 'bundlePath'),
-              deviceId: any(named: 'deviceId'),
-            ),
-          ).thenAnswer((_) async => ExitCode.success.code);
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
-          verify(
-            () => logger.err('Error getting release artifact: Exception: oops'),
-          ).called(1);
+        test('propagates the ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
         });
       });
 
@@ -2031,7 +2089,9 @@ channel: ${DeploymentTrack.staging.channel}
             );
 
             verify(
-              () => logger.err('No previewable iOS releases found'),
+              () => logger.err(
+                'No previewable iOS releases found for app $appId.',
+              ),
             ).called(1);
           },
         );
@@ -2142,12 +2202,14 @@ channel: ${DeploymentTrack.staging.channel}
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenThrow(Exception('oops'));
+          ).thenThrow(ProcessExit(ExitCode.software.code));
         });
 
-        test('returns code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
+        test('propagates the ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
           verify(
             () => codePushClientWrapper.getReleaseArtifact(
               appId: appId,
@@ -2170,15 +2232,29 @@ channel: ${DeploymentTrack.staging.channel}
           ).thenThrow(Exception('oops'));
         });
 
-        test('returns code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
+        test('logs the failure, removes the partial download, and throws '
+            'ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
           verify(
             () => artifactManager.downloadWithProgressUpdates(
               Uri.parse(releaseArtifactUrl),
               message: 'Downloading app',
             ),
           ).called(1);
+          verify(
+            () => logger.err(
+              'Failed to download the app artifact: Exception: oops',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info('Re-run the command to try the download again.'),
+          ).called(1);
+          // Nothing should be left behind that a later run would treat as a
+          // cached artifact.
+          expect(previewDirectory.listSync(recursive: true), isEmpty);
         });
       });
 
@@ -2396,7 +2472,6 @@ channel: ${DeploymentTrack.staging.channel}
 
       group('when querying for release artifact fails', () {
         setUp(() {
-          final exception = Exception('oops');
           when(
             () => codePushClientWrapper.getReleaseArtifact(
               appId: any(named: 'appId'),
@@ -2404,12 +2479,14 @@ channel: ${DeploymentTrack.staging.channel}
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenThrow(exception);
+          ).thenThrow(ProcessExit(ExitCode.software.code));
         });
 
-        test('exits with code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
+        test('propagates the ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
           verify(
             () => codePushClientWrapper.getReleaseArtifact(
               appId: appId,
@@ -2433,10 +2510,20 @@ channel: ${DeploymentTrack.staging.channel}
           ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
-          verify(() => logger.err('$exception')).called(1);
+        test('logs the failure and throws ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
+          final arch = releaseArtifact.arch;
+          verify(
+            () => logger.err(
+              'Failed to download the $arch artifact: $exception',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info('Re-run the command to try the download again.'),
+          ).called(1);
         });
       });
 
@@ -2451,10 +2538,15 @@ channel: ${DeploymentTrack.staging.channel}
           ).thenThrow(exception);
         });
 
-        test('exits with code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
-          verify(() => logger.err('$exception')).called(1);
+        test('logs the failure and throws ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
+          verify(
+            () => logger.err('Failed to download the app artifact: $exception'),
+          ).called(1);
+          expect(previewDirectory.listSync(recursive: true), isEmpty);
         });
       });
 
@@ -2679,12 +2771,14 @@ channel: ${DeploymentTrack.staging.channel}
               arch: any(named: 'arch'),
               platform: any(named: 'platform'),
             ),
-          ).thenThrow(Exception('oops'));
+          ).thenThrow(ProcessExit(ExitCode.software.code));
         });
 
-        test('returns code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
+        test('propagates the ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
           verify(
             () => codePushClientWrapper.getReleaseArtifact(
               appId: appId,
@@ -2707,15 +2801,29 @@ channel: ${DeploymentTrack.staging.channel}
           ).thenThrow(Exception('oops'));
         });
 
-        test('returns code 70', () async {
-          final result = await runWithOverrides(command.run);
-          expect(result, equals(ExitCode.software.code));
+        test('logs the failure, removes the partial download, and throws '
+            'ProcessExit', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
           verify(
             () => artifactManager.downloadWithProgressUpdates(
               Uri.parse(releaseArtifactUrl),
               message: 'Downloading app',
             ),
           ).called(1);
+          verify(
+            () => logger.err(
+              'Failed to download the app artifact: Exception: oops',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info('Re-run the command to try the download again.'),
+          ).called(1);
+          // Nothing should be left behind that a later run would treat as a
+          // cached artifact.
+          expect(previewDirectory.listSync(recursive: true), isEmpty);
         });
       });
 
