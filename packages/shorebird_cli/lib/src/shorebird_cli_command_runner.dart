@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:cli_completion/cli_completion.dart';
+import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -189,37 +190,23 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     } on UsageException catch (e) {
       // On usage errors, show the commands usage message and
       // exit with an error code
+      final unknownOption = _unknownOptionName(e.message);
+      final hint = unknownOption == null
+          ? null
+          : _unknownOptionHint(unknownOption, argsList);
+
       if (jsonModeFromArgs) {
         JsonResult.error(
           code: JsonErrorCode.usageError,
           message: e.message,
-          hint: 'Run: shorebird --help',
+          hint: hint ?? 'Run: shorebird --help',
           command: executableName,
         ).write();
         return ExitCode.usage.code;
       }
 
       logger.err(e.message);
-      if (e.message.contains('Could not find an option named')) {
-        final String errorMessage;
-        if (platform.isWindows) {
-          errorMessage = '''
-To proxy an option to the flutter command, use the '--' --<option> syntax.
-
-Example:
-
-${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}''';
-        } else {
-          errorMessage = '''
-To proxy an option to the flutter command, use the -- --<option> syntax.
-
-Example:
-
-${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}''';
-        }
-
-        logger.err(errorMessage);
-      }
+      if (hint != null) logger.err(hint);
 
       logger
         ..info('')
@@ -360,6 +347,44 @@ ${currentRunLogFile.absolute.path}
     }
 
     return exitCode;
+  }
+
+  /// The option name (without leading dashes) from an args-package
+  /// "Could not find an option named" message, or null for other messages.
+  static String? _unknownOptionName(String message) {
+    final match = RegExp(
+      'Could not find an option named "(?:--)?([^"]+)"',
+    ).firstMatch(message);
+    return match?.group(1);
+  }
+
+  /// Option names people reach for to bypass a safety check.
+  static final _safetyOverridePattern = RegExp(
+    r'^(?:f|y|force|yes|no-confirm)$|allow|skip|ignore',
+  );
+
+  /// The hint to print under an unknown-option error.
+  ///
+  /// `shorebird patch --force` (or any override-shaped option) gets the
+  /// flags that actually bypass the patch safety checks; everything else
+  /// gets the `--` pass-through explanation.
+  String _unknownOptionHint(String option, List<String> args) {
+    final commandName = args.firstWhereOrNull((a) => !a.startsWith('-'));
+    if (commandName == 'patch' && _safetyOverridePattern.hasMatch(option)) {
+      return '''
+shorebird patch has no --$option flag. The patch safety checks are bypassed per check:
+  ${lightCyan.wrap('--allow-native-diffs')}  publish even though native code changed
+  ${lightCyan.wrap('--allow-asset-diffs')}   publish even though assets changed
+The warning that fails the patch names the one that applies.''';
+    }
+
+    final separator = platform.isWindows ? "'--'" : '--';
+    return '''
+To proxy an option to the flutter command, use the $separator --<option> syntax.
+
+Example:
+
+${lightCyan.wrap("shorebird release android $separator --no-pub lib/main.dart")}''';
   }
 
   Future<String?> _tryGetFlutterVersion() async {
