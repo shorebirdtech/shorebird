@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -68,7 +69,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         return ExitCode.noInput.code;
       }
     } on Exception catch (error) {
-      logger.err('Error parsing "pubspec.yaml": $error');
+      logger
+        ..err('Error parsing "pubspec.yaml": $error')
+        ..info('Fix the YAML error above and re-run "shorebird init".');
       return ExitCode.software.code;
     }
 
@@ -86,27 +89,29 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     if (orgIdArg != null) {
       final orgId = int.tryParse(orgIdArg);
       if (orgId == null) {
-        logger.err('Invalid organization ID: "$orgIdArg"');
-        return ExitCode.usage.code;
+        usageException(
+          'Invalid --organization-id "$orgIdArg": expected a number.\n'
+          '${_availableOrganizations(organizationMemberships)}',
+        );
       }
 
       final organizationMembership = organizationMemberships.firstWhereOrNull(
         (o) => o.organization.id == orgId,
       );
       if (organizationMembership == null) {
-        logger.err('Organization with ID "$orgId" not found.');
-        _logAvailableOrganizations(organizationMemberships);
-        return ExitCode.usage.code;
+        usageException(
+          'You are not a member of an organization with id $orgId.\n'
+          '${_availableOrganizations(organizationMemberships)}',
+        );
       }
       organization = organizationMembership.organization;
     } else if (organizationMemberships.length > 1) {
       if (!shorebirdEnv.canAcceptUserInput) {
-        logger.err(
-          'Multiple organizations found. '
-          'Use --organization-id to specify one:',
+        usageException(
+          'You belong to multiple organizations. '
+          'Pass --organization-id=<id> to choose one.\n'
+          '${_availableOrganizations(organizationMemberships)}',
         );
-        _logAvailableOrganizations(organizationMemberships);
-        return ExitCode.usage.code;
       }
       organization = logger.chooseOne(
         'Which organization should this app belong to?',
@@ -133,9 +138,13 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       shouldStartGradleDaemon = await _shouldStartGradleDaemon(
         projectRoot.path,
       );
-    } on Exception {
+    } on Exception catch (error) {
       initializeGradleProgress.fail();
-      logger.err('Unable to initialize gradlew.');
+      logger
+        ..err('Unable to initialize gradlew: $error')
+        ..info(
+          '''Fix the Gradle error above (run ${lightCyan.wrap('./gradlew --status')} in the android directory to reproduce it), then re-run "shorebird init".''',
+        );
       return ExitCode.software.code;
     }
     initializeGradleProgress.complete();
@@ -143,8 +152,12 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     if (shouldStartGradleDaemon) {
       try {
         await gradlew.startDaemon(projectRoot.path);
-      } on Exception {
-        logger.err('Unable to start gradle daemon.');
+      } on Exception catch (error) {
+        logger
+          ..err('Unable to start the gradle daemon: $error')
+          ..info(
+            '''Fix the Gradle error above (run ${lightCyan.wrap('./gradlew --daemon')} in the android directory to reproduce it), then re-run "shorebird init".''',
+          );
         return ExitCode.software.code;
       }
     }
@@ -171,7 +184,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       }
     } on Exception catch (error) {
       detectFlavorsProgress.fail();
-      logger.err('Unable to extract product flavors.\n$error');
+      logger
+        ..err('Unable to detect product flavors.\n$error')
+        ..info(
+          '''Fix the build error above (run ${lightCyan.wrap('./gradlew app:tasks --all')} in the android directory to reproduce it), then re-run "shorebird init".''',
+        );
       return ExitCode.software.code;
     }
 
@@ -204,9 +221,13 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         existingApp = await codePushClientWrapper.getApp(
           appId: shorebirdYaml!.appId,
         );
-      } on Exception catch (e) {
-        updateShorebirdYamlProgress.fail('Failed to get existing app info: $e');
-        return ExitCode.software.code;
+      } on ProcessExit {
+        // getApp has already explained which app is missing.
+        updateShorebirdYamlProgress.fail();
+        logger.info(
+          '''Fix the app_id in shorebird.yaml, or run ${lightCyan.wrap('shorebird init --force')} to create a new app.''',
+        );
+        rethrow;
       }
 
       final deflavoredAppName = existingApp.displayName
@@ -238,29 +259,30 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       return ExitCode.software.code;
     }
 
+    final needsConfirmation = !force && shorebirdEnv.canAcceptUserInput;
+    final pubspecName = shorebirdEnv.getPubspecYaml()!.name;
+    var displayName = results['display-name'] as String?;
+    displayName ??= needsConfirmation
+        ? logger.prompt(
+            '${lightGreen.wrap('?')} How should we refer to this app?',
+            defaultValue: pubspecName,
+            hint:
+                'Pass --display-name=<name> to set the app name without '
+                'prompting.',
+          )
+        : pubspecName;
+    if (displayName.isEmpty ||
+        displayName.length > CommonArguments.appDisplayNameMaxLength) {
+      usageException(
+        '--display-name must be between 1 and '
+        '${CommonArguments.appDisplayNameMaxLength} characters '
+        '(got ${displayName.length}).',
+      );
+    }
+
     final String appId;
     Map<String, String>? flavors;
     try {
-      final needsConfirmation = !force && shorebirdEnv.canAcceptUserInput;
-      final pubspecName = shorebirdEnv.getPubspecYaml()!.name;
-      var displayName = results['display-name'] as String?;
-      displayName ??= needsConfirmation
-          ? logger.prompt(
-              '${lightGreen.wrap('?')} How should we refer to this app?',
-              defaultValue: pubspecName,
-              hint:
-                  'Pass --display-name=<name> to set the app name without '
-                  'prompting.',
-            )
-          : pubspecName;
-      if (displayName.isEmpty ||
-          displayName.length > CommonArguments.appDisplayNameMaxLength) {
-        logger.err(
-          'App display name must be between 1 and '
-          '${CommonArguments.appDisplayNameMaxLength} characters.',
-        );
-        return ExitCode.usage.code;
-      }
       final hasNoFlavors = productFlavors.isEmpty;
       final hasSomeFlavors =
           productFlavors.isNotEmpty &&
@@ -307,7 +329,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         appId = flavors.values.first;
       }
     } on Exception catch (error) {
-      logger.err('$error');
+      logger
+        ..err('Failed to create the app: $error')
+        ..info(
+          '''Re-run "shorebird init" once the error above is resolved. If it persists, contact us on Discord or at contact@shorebird.dev.''',
+        );
       return ExitCode.software.code;
     }
 
@@ -398,13 +424,10 @@ app_id:
     return ShorebirdYaml(appId: appId);
   }
 
-  void _logAvailableOrganizations(
-    List<OrganizationMembership> memberships,
-  ) {
-    logger.info('Available organizations:');
-    for (final membership in memberships) {
-      final org = membership.organization;
-      logger.info('  ${org.name} (id: ${org.id})');
-    }
+  String _availableOrganizations(List<OrganizationMembership> memberships) {
+    final lines = memberships.map(
+      (m) => '  ${m.organization.name} (id: ${m.organization.id})',
+    );
+    return 'Available organizations:\n${lines.join('\n')}';
   }
 }
