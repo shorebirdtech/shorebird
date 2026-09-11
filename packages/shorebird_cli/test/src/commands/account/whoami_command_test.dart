@@ -65,6 +65,9 @@ void main() {
       when(
         () => codePushClientWrapper.getCurrentUser(),
       ).thenAnswer((_) async => user);
+      when(
+        () => codePushClientWrapper.getPlanLevel(),
+      ).thenAnswer((_) async => 'enterprise');
     });
 
     test('has correct description', () {
@@ -111,7 +114,10 @@ void main() {
           () => logger.info(any(that: contains('Example User'))),
         ).called(1);
         verify(
-          () => logger.info(any(that: contains('Plan:           paid'))),
+          () => logger.info(any(that: contains('Plan:           enterprise'))),
+        ).called(1);
+        verify(
+          () => logger.info(any(that: contains('Subscription:   active'))),
         ).called(1);
         verify(
           () => logger.info(any(that: contains('Overage limit:  10000'))),
@@ -140,6 +146,22 @@ void main() {
         });
       });
 
+      group('when the server reports no plan level', () {
+        setUp(() {
+          when(
+            () => codePushClientWrapper.getPlanLevel(),
+          ).thenAnswer((_) async => null);
+        });
+
+        test('prints the plan as unknown', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.success.code));
+          verify(
+            () => logger.info(any(that: contains('Plan:           unknown'))),
+          ).called(1);
+        });
+      });
+
       group('when user is on the free plan', () {
         const userNoSub = PrivateUser(
           id: 3,
@@ -151,13 +173,19 @@ void main() {
           when(
             () => codePushClientWrapper.getCurrentUser(),
           ).thenAnswer((_) async => userNoSub);
+          when(
+            () => codePushClientWrapper.getPlanLevel(),
+          ).thenAnswer((_) async => 'free');
         });
 
-        test('prints plan as free', () async {
+        test('prints plan level and no subscription', () async {
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
           verify(
             () => logger.info(any(that: contains('Plan:           free'))),
+          ).called(1);
+          verify(
+            () => logger.info(any(that: contains('Subscription:   none'))),
           ).called(1);
         });
 
@@ -168,6 +196,21 @@ void main() {
             () => logger.info(any(that: contains('Overage limit:  none'))),
           ).called(1);
         });
+      });
+    });
+
+    group('when the plan fetch fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getPlanLevel(),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('rethrows ProcessExit', () async {
+        await expectLater(
+          () => runWithOverrides(command.run),
+          throwsA(isA<ProcessExit>()),
+        );
       });
     });
 
@@ -237,6 +280,7 @@ void main() {
         expect(userData['email'], 'user@example.com');
         expect(userData['display_name'], 'Example User');
         expect(userData['plan'], 'paid');
+        expect(userData['plan_level'], 'enterprise');
         expect(userData['overage_limit'], 10000);
       });
 

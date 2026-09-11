@@ -36,6 +36,23 @@ enum StripeSubscriptionStatus {
   paused,
 }
 
+/// How a [StripeSubscription]'s invoices collect payment.
+///
+/// See https://docs.stripe.com/api/subscriptions/object#subscription_object-collection_method.
+@JsonEnum(fieldRename: FieldRename.snake)
+enum StripeCollectionMethod {
+  /// Stripe charges the payment method on file when an invoice finalizes.
+  chargeAutomatically('charge_automatically'),
+
+  /// Stripe emails a hosted invoice and waits for the customer to pay it.
+  sendInvoice('send_invoice');
+
+  const StripeCollectionMethod(this.value);
+
+  /// The value Stripe uses for this method on the wire.
+  final String value;
+}
+
 /// {@template stripe_subscription}
 /// A partial Dart representation of the Subscription object from Stripe's API.
 ///
@@ -54,9 +71,15 @@ class StripeSubscription {
     required this.status,
     required this.items,
     this.endedAt,
+    this.cancelAt,
     this.canceledAt,
     this.trialStart,
     this.trialEnd,
+    this.metadata = const {},
+    this.currency,
+    this.defaultPaymentMethod,
+    this.automaticTaxEnabled = false,
+    this.collectionMethod,
   });
 
   /// Converts a `Map<String, dynamic>` to a [StripeSubscription].
@@ -71,6 +94,11 @@ class StripeSubscription {
   /// this attribute to determine whether a subscription that has a status of
   /// active is scheduled to be canceled at the end of the current period.
   final bool cancelAtPeriodEnd;
+
+  /// A date in the future at which the subscription will automatically get
+  /// canceled.
+  @TimestampConverter()
+  final DateTime? cancelAt;
 
   /// If the subscription has been canceled, the date of that cancellation. If
   /// the subscription was canceled with cancel_at_period_end, canceled_at will
@@ -118,6 +146,27 @@ class StripeSubscription {
   @JsonKey(fromJson: _subscriptionItemsFromJson)
   final List<StripeSubscriptionItem> items;
 
+  /// Set of key-value pairs attached to the subscription.
+  final Map<String, String> metadata;
+
+  /// Three-letter ISO currency code, in lowercase.
+  final String? currency;
+
+  /// ID of the payment method used to pay this subscription's invoices.
+  ///
+  /// Not expanded, so this is the payment method id. Null when the
+  /// subscription bills against the customer's default payment method
+  /// instead of one of its own.
+  final String? defaultPaymentMethod;
+
+  /// Whether Stripe calculates tax automatically on this subscription's
+  /// invoices.
+  @JsonKey(name: 'automatic_tax', fromJson: _automaticTaxEnabledFromJson)
+  final bool automaticTaxEnabled;
+
+  /// How this subscription's invoices collect payment.
+  final StripeCollectionMethod? collectionMethod;
+
   /// Whether this subscription is in an active or trialing state.
   bool get isActiveOrTrial =>
       status == StripeSubscriptionStatus.active ||
@@ -133,6 +182,9 @@ class StripeSubscription {
   bool get hasMeteredBilling =>
       items.any((item) => item.price.usageType == UsageType.metered);
 }
+
+bool _automaticTaxEnabledFromJson(Map<String, dynamic>? json) =>
+    json?['enabled'] as bool? ?? false;
 
 List<StripeSubscriptionItem> _subscriptionItemsFromJson(
   Map<String, dynamic>? json,
