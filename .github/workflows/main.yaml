@@ -254,7 +254,11 @@ jobs:
         build_redis,
         verify_packages,
       ]
-    if: ${{ always() }}
+    # Not always(): that keeps this job alive through a run cancellation,
+    # so a superseded push would report ci red on the stale commit. A
+    # skipped required check reports success, which is the right answer
+    # for a run nothing is waiting on.
+    if: ${{ !cancelled() }}
 
     runs-on: ubuntu-latest
 
