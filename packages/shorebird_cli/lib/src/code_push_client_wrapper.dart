@@ -1161,7 +1161,7 @@ aar artifact already exists, continuing...''');
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track].
-  Future<void> publishPatch({
+  Future<Patch> publishPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
@@ -1189,6 +1189,7 @@ aar artifact already exists, continuing...''');
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);
 
     logger.success('\n✅ Published Patch ${patch.number}!');
+    return patch;
   }
 
   /// Returns a GCP download link for measuring download speed.

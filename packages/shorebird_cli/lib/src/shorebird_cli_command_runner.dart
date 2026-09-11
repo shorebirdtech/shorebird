@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' as io;
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
@@ -148,6 +149,13 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       final shorebirdArtifacts = engineConfig.localEngineSrcPath != null
           ? const ShorebirdLocalEngineArtifacts()
           : const ShorebirdCachedArtifacts();
+      // In JSON mode stdout carries the envelope and nothing else. Both
+      // sinks are bound here, outside the redirect below: the envelope goes
+      // to the real stdout, and everything else that would have reached
+      // stdout (human log lines, progress, subprocess output) goes to stderr,
+      // where a caller parsing stdout as JSON will not trip over it.
+      final jsonSink = io.stdout;
+      final humanSink = io.stderr;
       // Suppress ANSI escape codes when the user has opted into a
       // non-interactive output mode. When stdout/stderr aren't TTYs the io
       // package already disables ANSI automatically.
@@ -156,12 +164,19 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         values: {
           engineConfigRef.overrideWith(() => engineConfig),
           isJsonModeRef.overrideWith(() => jsonMode),
+          jsonSinkRef.overrideWith(() => jsonSink),
           processRef.overrideWith(() => process),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
         },
       );
       final exitCode = jsonMode
-          ? await overrideAnsiOutput<Future<int?>>(false, runWithRefs)
+          ? await overrideAnsiOutput<Future<int?>>(
+              false,
+              () => io.IOOverrides.runZoned(
+                runWithRefs,
+                stdout: () => humanSink,
+              ),
+            )
           : await runWithRefs();
       return exitCode ?? ExitCode.success.code;
     } on FormatException catch (e, stackTrace) {
