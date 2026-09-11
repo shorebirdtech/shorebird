@@ -2983,7 +2983,9 @@ void main() {
               isA<CodePushException>().having(
                 (e) => e.message,
                 'message',
-                CodePushClient.unknownErrorMessage,
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
               ),
             ),
           );
