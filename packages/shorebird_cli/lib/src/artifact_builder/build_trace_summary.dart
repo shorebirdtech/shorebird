@@ -210,7 +210,7 @@ class BuildTraceSummary {
     // time that actually ran inside it. On apk/appbundle/ios/macos,
     // assemble is a child of gradle/xcodebuild so that's all of it; on
     // ios-framework the App.framework targets are built in-process
-    // beside the plugin xcodebuilds, so only their overlap (typically
+    // beside the plugin xcodebuild runs, so only their overlap (typically
     // none) is subtracted. Overlap is measured from timestamps; an
     // assemble event with no `ts` is assumed nested, matching the
     // pre-timestamp behavior. Clamped at 0 for edge cases.
