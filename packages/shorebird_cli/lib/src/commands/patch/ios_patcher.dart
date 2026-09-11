@@ -108,7 +108,8 @@ class IosPatcher extends Patcher
     if ((flutterVersion ?? minimumSupportedIosFlutterVersion) <
         minimumSupportedIosFlutterVersion) {
       logger.err('''
-iOS patches are not supported with Flutter versions older than $minimumSupportedIosFlutterVersion.
+This release was built with Flutter $flutterVersionAndRevision, but iOS patches need Flutter $minimumSupportedIosFlutterVersion or newer.
+A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release ios --flutter-version=<version>')} and patch that one.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       throw ProcessExit(ExitCode.software.code);
     }
@@ -158,8 +159,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
   }) async {
     // Verify that we have built a patch .xcarchive
     if (artifactManager.getXcarchiveDirectory()?.path == null) {
-      logger.err('Unable to find .xcarchive directory');
-      throw ProcessExit(ExitCode.software.code);
+      _noXcarchiveFound();
     }
 
     final unzipProgress = logger.progress('Extracting release artifact');
@@ -182,7 +182,16 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       xcarchiveDirectory: Directory(releaseXcarchivePath),
     );
     if (appDirectory == null) {
-      logger.err('Unable to find release artifact .app directory');
+      logger
+        ..err(
+          'The release .xcarchive downloaded from Shorebird has no '
+          'Products/Applications/*.app directory.',
+        )
+        ..info(
+          'Re-run to download it again. If this persists, the release '
+          'artifact is damaged; create a new release with '
+          '${lightCyan.wrap('shorebird release ios')} and patch that one.',
+        );
       throw ProcessExit(ExitCode.software.code);
     }
     final releaseArtifactFile = File(
@@ -274,14 +283,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
   @override
   Future<String> extractReleaseVersionFromArtifact(File artifact) async {
     final archivePath = artifactManager.getXcarchiveDirectory()?.path;
-    if (archivePath == null) {
-      logger.err('Unable to find .xcarchive directory');
-      throw ProcessExit(ExitCode.software.code);
-    }
+    if (archivePath == null) _noXcarchiveFound();
 
     final plistFile = File(p.join(archivePath, 'Info.plist'));
     if (!plistFile.existsSync()) {
-      logger.err('No Info.plist file found at ${plistFile.path}.');
+      logger
+        ..err('No Info.plist file found at ${plistFile.path}.')
+        ..info(_passReleaseVersionHint);
       throw ProcessExit(ExitCode.software.code);
     }
 
@@ -289,10 +297,37 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     try {
       return plist.versionNumber;
     } on Exception catch (error) {
-      logger.err(
-        'Failed to determine release version from ${plistFile.path}: $error',
-      );
+      logger
+        ..err(
+          'Failed to determine release version from ${plistFile.path}: $error',
+        )
+        ..info(_passReleaseVersionHint);
       throw ProcessExit(ExitCode.software.code);
     }
+  }
+
+  /// The release version is only read from the archive when the user did not
+  /// pass one, so passing one is always a way around a broken read.
+  static const _passReleaseVersionHint =
+      'Pass --release-version=<version> (or --release-version=latest) to '
+      'skip reading the version from the archive.';
+
+  /// Logs that `flutter build ipa` left no .xcarchive where Shorebird looks
+  /// for it and throws [ProcessExit].
+  Never _noXcarchiveFound() {
+    final archiveDirectory = p.join(
+      shorebirdEnv.getShorebirdProjectRoot()!.path,
+      'build',
+      'ios',
+      'archive',
+    );
+    logger
+      ..err('No .xcarchive found in $archiveDirectory after the build.')
+      ..info(
+        'Shorebird looks for the archive that '
+        '${lightCyan.wrap('flutter build ipa')} writes there. '
+        'Re-run with --verbose to see the build output.',
+      );
+    throw ProcessExit(ExitCode.software.code);
   }
 }
