@@ -195,7 +195,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     }
 
     // One Release can carry several platforms, so releases are collected by
-    // id: each platform's pass refetches the release, and the last fetch is
+    // id: each platform's pass re-fetches the release, and the last fetch is
     // the one whose platform statuses are complete.
     final releases = <int, Release>{};
     for (final releaseType in results.releaseTypes) {
