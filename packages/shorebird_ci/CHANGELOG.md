@@ -3,7 +3,7 @@
 # 0.2.5
 
 - Generated workflows now trigger on `merge_group`, in both `--style static` and `--style dynamic`. Without it, a repo that turns on GitHub's merge queue produces no check runs on the queue's temp branch, the `required` context never reports, and the queue ejects every PR at the timeout.
-- Static action pin bumped to `dorny/paths-filter@v4`. v3 has no `merge_group` case and falls back to diffing the default branch by merge-base rather than the queue's base commit; merge-queue support landed in v4.0.1. Only reachable via `--no-update-actions`, since `generate` resolves pins at write time by default.
+- Static action pin bumped to `dorny/paths-filter@v4`. v3 has no `merge_group` case and falls back to diffing the default branch by merge-base rather than the queue's base commit. Merge-queue support landed in v4.0.1. Only reachable via `--no-update-actions`, since `generate` resolves pins at write time by default.
 
 # 0.2.4
 
