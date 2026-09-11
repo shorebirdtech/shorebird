@@ -498,11 +498,19 @@ No daemons are running.
         });
       });
 
-      test('throws when the process exits with non-zero exit code', () async {
+      test('throws with the output when the process fails', () async {
         when(() => result.exitCode).thenReturn(1);
+        when(() => result.stdout).thenReturn('some stdout');
+        when(() => result.stderr).thenReturn('some stderr');
         await expectLater(
           runWithOverrides(() => gradlew.isDaemonAvailable(projectRoot.path)),
-          throwsA(isA<Exception>()),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('some stdout\nsome stderr'),
+            ),
+          ),
         );
       });
     }, testOn: 'linux || mac-os');

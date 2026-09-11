@@ -176,7 +176,10 @@ class Gradlew {
     // 23432 STOPPED  (by user or operating system)
     final status = await _run(['--status'], projectRoot);
     if (status.exitCode != 0) {
-      throw Exception('Unable to determine gradle daemon status');
+      throw Exception(
+        'Unable to determine gradle daemon status:\n'
+        '${status.stdout}\n${status.stderr}',
+      );
     }
 
     // If we have a daemon that is either IDLE or BUSY then subsequent
