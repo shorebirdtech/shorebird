@@ -14,7 +14,6 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
@@ -216,18 +215,24 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         'Adding flavors to shorebird.yaml',
       );
 
-      final AppMetadata existingApp;
-      try {
-        existingApp = await codePushClientWrapper.getApp(
-          appId: shorebirdYaml!.appId,
-        );
-      } on ProcessExit {
-        // getApp has already explained which app is missing.
+      // maybeGetApp rather than getApp, because getApp reports a missing app
+      // and a failed lookup the same way -- both exit through ProcessExit --
+      // and the remedy below is only right for the first. A network failure,
+      // an expired token, or a required upgrade still exits from the fetch
+      // with its own message, and without advice about app_id.
+      final existingApp = await codePushClientWrapper.maybeGetApp(
+        appId: shorebirdYaml!.appId,
+      );
+      if (existingApp == null) {
         updateShorebirdYamlProgress.fail();
-        logger.info(
-          '''Fix the app_id in shorebird.yaml, or run ${lightCyan.wrap('shorebird init --force')} to create a new app.''',
-        );
-        rethrow;
+        logger
+          ..err('''
+Could not find app with id: "${shorebirdYaml.appId}".
+This app may not exist or you may not have permission to view it.''')
+          ..info(
+            '''Fix the app_id in shorebird.yaml, or run ${lightCyan.wrap('shorebird init --force')} to create a new app.''',
+          );
+        return ExitCode.software.code;
       }
 
       final deflavoredAppName = existingApp.displayName
