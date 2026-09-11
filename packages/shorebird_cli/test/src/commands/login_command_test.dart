@@ -20,6 +20,7 @@ void main() {
     late http.Client httpClient;
     late Directory applicationConfigHome;
     late ShorebirdLogger logger;
+    late Progress progress;
     late LoginCommand command;
 
     R runWithOverrides<R>(R Function() body) {
@@ -37,12 +38,13 @@ void main() {
       auth = MockAuth();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
+      progress = MockProgress();
 
       when(() => auth.isAuthenticated).thenReturn(false);
       when(() => auth.hasValidCredentials()).thenAnswer((_) async => true);
       when(() => auth.clearCredentials()).thenReturn(null);
       when(() => auth.client).thenReturn(httpClient);
-      when(() => logger.progress(any())).thenReturn(MockProgress());
+      when(() => logger.progress(any())).thenReturn(progress);
       when(
         () => auth.credentialsFilePath,
       ).thenReturn(p.join(applicationConfigHome.path, 'credentials.json'));
@@ -121,16 +123,40 @@ void main() {
         final result = await runWithOverrides(command.run);
 
         expect(result, equals(ExitCode.success.code));
-        verify(
-          () => logger.info(
-            'Your credentials have expired. Logging you in again...',
-          ),
-        ).called(1);
+        verify(() => progress.fail('Your credentials have expired.')).called(1);
+        verify(() => logger.info('Logging you in again...')).called(1);
         verify(() => auth.clearCredentials()).called(1);
         verify(() => auth.login(prompt: any(named: 'prompt'))).called(1);
         verifyNever(
           () => logger.info('You are already logged in as <$email>.'),
         );
+        verifyNever(() => progress.complete(any()));
+      });
+    });
+
+    // Treating an unreachable auth service as a rejection would log a user
+    // out for running `shorebird login` off wifi.
+    group('when the credential check cannot reach the auth service', () {
+      setUp(() {
+        when(() => auth.isAuthenticated).thenReturn(true);
+        when(() => auth.email).thenReturn(email);
+        when(
+          () => auth.hasValidCredentials(),
+        ).thenThrow(const SocketException('no route to host'));
+      });
+
+      test('keeps the credentials and asks the user to retry', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.tempFail.code));
+        verify(
+          () => progress.fail('Could not reach the Shorebird auth service.'),
+        ).called(1);
+        verify(
+          () => logger.info('Check your network connection and try again.'),
+        ).called(1);
+        verifyNever(() => auth.clearCredentials());
+        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
       });
     });
 

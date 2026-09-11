@@ -13,10 +13,28 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 /// Exception thrown when the Shorebird auth flow fails.
 class ShorebirdAuthException implements Exception {
   /// Creates a [ShorebirdAuthException] with the given [message].
-  const ShorebirdAuthException(this.message);
+  const ShorebirdAuthException(this.message, {this.statusCode});
 
   /// The error message.
   final String message;
+
+  /// The HTTP status the auth service answered with, where there was one.
+  ///
+  /// Null when the request never got an answer -- no network, DNS failure, a
+  /// connection reset -- or when the failure is local, such as having no
+  /// refresh token to send.
+  final int? statusCode;
+
+  /// Whether the auth service refused the credentials themselves, as opposed
+  /// to failing to answer.
+  ///
+  /// Only a 4xx says anything about the credentials. A 5xx, or no answer at
+  /// all, says the service is having a bad day; reading that as a rejection
+  /// would log a user out because their wifi dropped.
+  bool get isCredentialRejection {
+    final status = statusCode;
+    return status != null && status >= 400 && status < 500;
+  }
 
   @override
   String toString() => 'ShorebirdAuthException: $message';
@@ -163,6 +181,7 @@ Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
   if (response.statusCode != HttpStatus.ok) {
     throw ShorebirdAuthException(
       'Token refresh failed (${response.statusCode}): ${response.body}',
+      statusCode: response.statusCode,
     );
   }
 

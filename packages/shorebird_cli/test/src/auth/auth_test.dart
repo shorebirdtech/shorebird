@@ -1066,8 +1066,8 @@ void main() {
         });
       });
 
-      group('when stored credentials cannot be refreshed', () {
-        setUp(() {
+      group('when the refresh is refused', () {
+        void refuseWith(Exception error) {
           writeCredentials();
           refreshCredentials =
               (
@@ -1075,12 +1075,63 @@ void main() {
                 credentials,
                 client, {
                 AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
-              }) async => throw Exception('expired');
+              }) async => throw error;
           auth = buildAuth();
+        }
+
+        test('returns false on access denied', () async {
+          refuseWith(AccessDeniedException('access_denied'));
+          expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
         });
 
-        test('returns false', () async {
+        // An expired or revoked refresh token comes back 400 `invalid_grant`.
+        test('returns false on a 4xx', () async {
+          refuseWith(
+            ServerRequestFailedException(
+              'invalid_grant',
+              statusCode: 400,
+              responseContent: null,
+            ),
+          );
           expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+        });
+      });
+
+      // Answering false here would log the user out over a bad connection,
+      // which is not what a failure to reach the auth service means.
+      group('when the auth service cannot answer', () {
+        void failWith(Exception error) {
+          writeCredentials();
+          refreshCredentials =
+              (
+                clientId,
+                credentials,
+                client, {
+                AuthEndpoints authEndpoints = const GoogleAuthEndpoints(),
+              }) async => throw error;
+          auth = buildAuth();
+        }
+
+        test('rethrows a 5xx', () async {
+          failWith(
+            ServerRequestFailedException(
+              'bad gateway',
+              statusCode: 502,
+              responseContent: null,
+            ),
+          );
+          await expectLater(
+            runWithOverrides(auth.hasValidCredentials),
+            throwsA(isA<ServerRequestFailedException>()),
+          );
+        });
+
+        test('rethrows a network failure', () async {
+          failWith(const SocketException('no route to host'));
+          await expectLater(
+            runWithOverrides(auth.hasValidCredentials),
+            throwsA(isA<SocketException>()),
+          );
         });
       });
     });

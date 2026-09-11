@@ -298,6 +298,11 @@ class Auth {
   /// refreshing them against the auth service, which fails once the session
   /// has expired or been revoked. Refreshed credentials are persisted so the
   /// check doubles as a refresh.
+  ///
+  /// Throws when the auth service could not be reached, or answered with
+  /// something other than a refusal of these credentials. That says nothing
+  /// about whether they are still good, and answering `false` would log a
+  /// user out for running `shorebird login` off wifi.
   Future<bool> hasValidCredentials() async {
     if (_apiKey != null || _token != null) return true;
 
@@ -305,9 +310,19 @@ class Auth {
     final idToken = credentials?.idToken;
     if (credentials == null || idToken == null) return false;
 
+    final AuthProvider authProvider;
+    try {
+      authProvider = Jwt.parse(idToken).authProvider;
+    } on Exception catch (error) {
+      // A stored token we cannot parse is not one we can refresh, and that is
+      // a fact about the credentials rather than about the network.
+      logger.detail('Stored credentials are no longer valid: $error');
+      return false;
+    }
+
     try {
       final refreshed = await _refreshCredentialsForProvider(
-        authProvider: Jwt.parse(idToken).authProvider,
+        authProvider: authProvider,
         credentials: credentials,
         httpClient: _httpClient,
         authServiceUri: _authServiceUri,
@@ -317,7 +332,22 @@ class Auth {
       _email = refreshed.email ?? _email;
       _flushCredentials(refreshed);
       return true;
-    } on Exception catch (error) {
+    } on shorebird_oauth.ShorebirdAuthException catch (error) {
+      if (!error.isCredentialRejection) rethrow;
+      logger.detail('Stored credentials are no longer valid: $error');
+      return false;
+    } on AccessDeniedException catch (error) {
+      // The Google/Microsoft refresh path's spelling of a refused grant.
+      logger.detail('Stored credentials are no longer valid: $error');
+      return false;
+    } on ServerRequestFailedException catch (error) {
+      // Its other failures carry a status; only a 4xx (an expired or revoked
+      // refresh token comes back 400 `invalid_grant`) says the credentials
+      // are done. A 5xx, or a SocketException from the client below it,
+      // travels on so the caller can say "try again" instead of logging the
+      // user out.
+      final status = error.statusCode;
+      if (status == null || status < 400 || status >= 500) rethrow;
       logger.detail('Stored credentials are no longer valid: $error');
       return false;
     }
