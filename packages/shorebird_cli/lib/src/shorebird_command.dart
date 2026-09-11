@@ -125,6 +125,75 @@ abstract class ShorebirdCommand extends Command<int> {
     return (appId: appId, errorCode: null);
   }
 
+  /// Validates the patch-signing arguments.
+  ///
+  /// Valid configurations:
+  /// - No signing (nothing provided)
+  /// - File-based: --public-key-path + --private-key-path
+  /// - Command-based: --public-key-cmd + --sign-cmd
+  /// - Mixed: --public-key-path + --sign-cmd
+  ///
+  /// Anything else is a usage error whose message names the flag to add,
+  /// drop, or fix.
+  void assertSigningArgsValid() {
+    final publicKeyPath = CommonArguments.publicKeyArg.name;
+    final privateKeyPath = CommonArguments.privateKeyArg.name;
+    final publicKeyCmd = CommonArguments.publicKeyCmd.name;
+    final signCmd = CommonArguments.signCmd.name;
+
+    final hasPublicKeyFile = results.wasParsed(publicKeyPath);
+    final hasPrivateKeyFile = results.wasParsed(privateKeyPath);
+    final hasPublicKeyCmd = results.wasParsed(publicKeyCmd);
+    final hasSignCmd = results.wasParsed(signCmd);
+
+    if (hasPublicKeyFile && hasPublicKeyCmd) {
+      usageException(
+        'Pass either --$publicKeyPath or --$publicKeyCmd, not both.',
+      );
+    }
+    if (hasPrivateKeyFile && hasSignCmd) {
+      usageException('Pass either --$privateKeyPath or --$signCmd, not both.');
+    }
+    if (hasSignCmd && !hasPublicKeyFile && !hasPublicKeyCmd) {
+      usageException(
+        '--$signCmd requires a public key: add --$publicKeyPath=<path> or '
+        '--$publicKeyCmd=<command>.',
+      );
+    }
+    // File-based signing needs both files.
+    if (hasPublicKeyFile != hasPrivateKeyFile && !hasSignCmd) {
+      final missing = hasPublicKeyFile ? privateKeyPath : publicKeyPath;
+      usageException(
+        '--$publicKeyPath and --$privateKeyPath must be passed together '
+        '(missing --$missing).',
+      );
+    }
+    _assertFileArgExists(publicKeyPath);
+    _assertFileArgExists(privateKeyPath);
+  }
+
+  /// Validates the release-signing arguments: at most one public key source,
+  /// and if it is a file, the file exists.
+  void assertPublicKeyArgsValid() {
+    final publicKeyPath = CommonArguments.publicKeyArg.name;
+    final publicKeyCmd = CommonArguments.publicKeyCmd.name;
+    if (results.wasParsed(publicKeyPath) && results.wasParsed(publicKeyCmd)) {
+      usageException(
+        'Pass either --$publicKeyPath or --$publicKeyCmd, not both.',
+      );
+    }
+    _assertFileArgExists(publicKeyPath);
+  }
+
+  /// Usage error unless the file passed to the option [name] exists. Does
+  /// nothing when the option was not provided.
+  void _assertFileArgExists(String name) {
+    final path = results[name] as String?;
+    if (path != null && !File(path).existsSync()) {
+      usageException('--$name: no file found at $path.');
+    }
+  }
+
   /// Emits a JSON error envelope to stdout.
   ///
   /// Only call this when [isJsonMode] is true.
