@@ -404,12 +404,49 @@ void main() {
 
       setUp(() {
         when(
-          () => codePushClientWrapper.getRelease(
+          () => codePushClientWrapper.maybeGetRelease(
             appId: any(named: 'appId'),
             releaseVersion: any(named: 'releaseVersion'),
           ),
         ).thenAnswer((_) async => release);
       });
+
+      // The release is already published by the time the refresh runs, so a
+      // failure there must not turn a successful run into a failed one --
+      // and getRelease, which this used to call, exits the process with a
+      // message about publishing patches.
+      test(
+        'falls back to the release in hand when the refetch fails',
+        () async {
+          var calls = 0;
+          when(
+            () => codePushClientWrapper.maybeGetRelease(
+              appId: any(named: 'appId'),
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenAnswer((_) async {
+            // ensureVersionIsReleasable and getOrCreateRelease each look the
+            // version up before the build; the refresh is the one after it.
+            if (++calls <= 2) return release;
+            throw ProcessExit(ExitCode.software.code);
+          });
+
+          final captured = <String>[];
+          final exitCode = await captureStdout(
+            () => runJson(() => runWithOverrides(command.run)),
+            captured: captured,
+          );
+
+          expect(exitCode, equals(ExitCode.success.code));
+          expect(captured, hasLength(1));
+          final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+          expect(envelope['status'], equals('success'));
+          expect(
+            (envelope['data'] as Map<String, dynamic>)['releases'],
+            equals([release.toJson()]),
+          );
+        },
+      );
 
       test('emits the published release, re-fetched after finalize', () async {
         final finalized = Release(
@@ -425,7 +462,7 @@ void main() {
           updatedAt: release.updatedAt,
         );
         when(
-          () => codePushClientWrapper.getRelease(
+          () => codePushClientWrapper.maybeGetRelease(
             appId: any(named: 'appId'),
             releaseVersion: any(named: 'releaseVersion'),
           ),

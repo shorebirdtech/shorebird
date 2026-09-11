@@ -1,4 +1,5 @@
 // cspell:ignore asdfasdf
+import 'dart:convert';
 import 'dart:io' hide Platform;
 
 import 'package:mason_logger/mason_logger.dart';
@@ -7,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -468,6 +470,76 @@ void main() {
         expect(exit, ExitCode.success.code);
         expect(identical(received, streamProcess), isTrue);
       });
+
+      group('in json mode', () {
+        late _CapturingIOSink capturedStderr;
+
+        R runInJsonMode<R>(R Function() body) {
+          return runScoped(
+            () => IOOverrides.runZoned(body, stderr: () => capturedStderr),
+            values: {
+              engineConfigRef.overrideWith(() => engineConfig),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              platformRef.overrideWith(() => platform),
+              shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+            },
+          );
+        }
+
+        setUp(() {
+          capturedStderr = _CapturingIOSink();
+          when(
+            () => processWrapper.start(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              mode: ProcessStartMode.normal,
+            ),
+          ).thenAnswer((_) async => streamProcess);
+          when(
+            () => streamProcess.stdout,
+          ).thenAnswer((_) => Stream.value(utf8.encode('built app.aab')));
+          when(
+            () => streamProcess.stderr,
+          ).thenAnswer((_) => Stream.value(utf8.encode('a gradle warning')));
+        });
+
+        // inheritStdio hands the child our real fd 1, where IOOverrides
+        // cannot follow it -- the one stream the caller is parsing as JSON.
+        test('pipes rather than inheriting stdio', () async {
+          await expectLater(
+            runInJsonMode(() => shorebirdProcess.stream('git', ['pull'])),
+            completion(equals(ExitCode.success.code)),
+          );
+
+          verify(
+            () => processWrapper.start(
+              'git',
+              ['pull'],
+              environment: {},
+              mode: ProcessStartMode.normal,
+            ),
+          ).called(1);
+          verifyNever(
+            () => processWrapper.start(
+              any(),
+              any(),
+              environment: any(named: 'environment'),
+              mode: ProcessStartMode.inheritStdio,
+            ),
+          );
+        });
+
+        test("forwards both of the child's streams to stderr", () async {
+          await runInJsonMode(() => shorebirdProcess.stream('git', ['pull']));
+
+          expect(
+            utf8.decode(capturedStderr.bytes),
+            allOf(contains('built app.aab'), contains('a gradle warning')),
+          );
+        });
+      });
     });
 
     group('start', () {
@@ -598,4 +670,19 @@ void main() {
       );
     });
   });
+}
+
+/// A [Stdout] that keeps what was written to it, so a test can read back
+/// what a child process's output was forwarded to.
+class _CapturingIOSink implements Stdout {
+  final bytes = <int>[];
+
+  @override
+  void add(List<int> data) => bytes.addAll(data);
+
+  @override
+  Future<void> flush() async {}
+
+  @override
+  void noSuchMethod(Invocation invocation) {}
 }

@@ -152,8 +152,12 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
       // In JSON mode stdout carries the envelope and nothing else. Both
       // sinks are bound here, outside the redirect below: the envelope goes
       // to the real stdout, and everything else that would have reached
-      // stdout (human log lines, progress, subprocess output) goes to stderr,
-      // where a caller parsing stdout as JSON will not trip over it.
+      // stdout (human log lines, progress) goes to stderr, where a caller
+      // parsing stdout as JSON will not trip over it. Subprocess output
+      // takes a second path to the same place -- a child started with
+      // `inheritStdio` writes to our real fd 1, past any `IOOverrides`, so
+      // `ShorebirdProcess.stream` pipes instead in JSON mode and forwards
+      // the child's bytes to stderr itself.
       final jsonSink = io.stdout;
       final humanSink = io.stderr;
       // Suppress ANSI escape codes when the user has opted into a

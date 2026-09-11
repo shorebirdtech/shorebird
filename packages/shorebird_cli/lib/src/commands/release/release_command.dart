@@ -426,11 +426,23 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         // this platform still reads draft. A caller reading the envelope
         // should see the release as it is now, which costs one fetch and is
         // only paid when there is an envelope to fill.
+        //
+        // Best-effort, because by this point the release is published: a
+        // refresh that fails must not turn a run that succeeded into a
+        // failed one. getRelease would do exactly that -- it exits the
+        // process, and does it with a message about publishing patches,
+        // which is not what the user just ran. Falling back to the release
+        // in hand costs the envelope a stale status, no more.
         if (!isJsonMode) return release;
-        return codePushClientWrapper.getRelease(
-          appId: appId,
-          releaseVersion: release.version,
-        );
+        try {
+          final refreshed = await codePushClientWrapper.maybeGetRelease(
+            appId: appId,
+            releaseVersion: release.version,
+          );
+          return refreshed ?? release;
+        } on Exception {
+          return release;
+        }
       },
       values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
     );
