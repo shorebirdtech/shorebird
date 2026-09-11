@@ -1053,6 +1053,22 @@ void main() {
     });
 
     group('getIpa', () {
+      const distributionSummary = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>My App.ipa</key>
+	<array>
+		<dict>
+			<key>buildNumber</key>
+			<string>1</string>
+		</dict>
+	</array>
+</dict>
+</plist>
+''';
+
       group('when ipa build directory does not exist', () {
         test('returns null', () {
           expect(runWithOverrides(artifactManager.getIpa), isNull);
@@ -1062,6 +1078,15 @@ void main() {
       group('when ipa build directory exists', () {
         late Directory ipaBuildDirectory;
         late File ipaFile;
+
+        File writeDistributionSummary(String contents) {
+          return File(
+            p.join(
+              ipaBuildDirectory.path,
+              ArtifactManager.distributionSummaryFileName,
+            ),
+          )..writeAsStringSync(contents);
+        }
 
         setUp(() {
           ipaBuildDirectory = Directory(
@@ -1078,17 +1103,6 @@ void main() {
           expect(result!.path, equals(ipaFile.path));
         });
 
-        test('returns null when multiple ipa files exist', () {
-          File(p.join(ipaBuildDirectory.path, 'Runner2.ipa')).createSync();
-
-          expect(runWithOverrides(artifactManager.getIpa), isNull);
-          verify(
-            () => logger.detail(
-              'More than one .ipa file found in ${ipaBuildDirectory.path}',
-            ),
-          );
-        });
-
         test('returns null when no ipa files exist', () {
           ipaFile.deleteSync();
 
@@ -1099,6 +1113,80 @@ void main() {
               'No .ipa files found in ${ipaBuildDirectory.path}',
             ),
           );
+        });
+
+        group('when multiple ipa files exist', () {
+          late File exportedIpaFile;
+
+          setUp(() {
+            exportedIpaFile = File(
+              p.join(ipaBuildDirectory.path, 'My App.ipa'),
+            )..createSync();
+          });
+
+          test('returns the ipa named in the distribution summary', () {
+            writeDistributionSummary(distributionSummary);
+
+            final result = runWithOverrides(artifactManager.getIpa);
+
+            expect(result, isNotNull);
+            expect(result!.path, equals(exportedIpaFile.path));
+          });
+
+          test('returns null when there is no distribution summary', () {
+            expect(runWithOverrides(artifactManager.getIpa), isNull);
+
+            verify(
+              () => logger.detail(
+                '''No ${ArtifactManager.distributionSummaryFileName} found in ${ipaBuildDirectory.path}''',
+              ),
+            ).called(1);
+          });
+
+          test('returns null when the distribution summary is malformed', () {
+            final file = writeDistributionSummary('not a plist');
+
+            expect(runWithOverrides(artifactManager.getIpa), isNull);
+
+            verify(
+              () => logger.detail(
+                any(that: contains('Failed to parse ${file.path}')),
+              ),
+            ).called(1);
+          });
+
+          test('returns null when the distribution summary has no ipa', () {
+            final file = writeDistributionSummary('''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>My App.pkg</key>
+	<array/>
+</dict>
+</plist>
+''');
+
+            expect(runWithOverrides(artifactManager.getIpa), isNull);
+
+            verify(
+              () => logger.detail('No .ipa referenced in ${file.path}'),
+            ).called(1);
+          });
+
+          test('returns null when the exported ipa no longer exists', () {
+            writeDistributionSummary(distributionSummary);
+            exportedIpaFile.deleteSync();
+            File(p.join(ipaBuildDirectory.path, 'Runner2.ipa')).createSync();
+
+            expect(runWithOverrides(artifactManager.getIpa), isNull);
+
+            verify(
+              () => logger.detail(
+                '''${ArtifactManager.distributionSummaryFileName} refers to My App.ipa, which was not found in ${ipaBuildDirectory.path}''',
+              ),
+            ).called(1);
+          });
         });
       });
     });
