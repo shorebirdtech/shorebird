@@ -135,14 +135,14 @@ More info: ${troubleshootingUrl.toLink()}.
   }
 
   /// Uploads the patch artifacts to the CodePush server.
-  Future<void> uploadPatchArtifacts({
+  Future<Patch> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
     required Map<String, dynamic> metadata,
     required Map<Arch, PatchArtifactBundle> artifacts,
     required DeploymentTrack track,
-  }) async {
-    await codePushClientWrapper.publishPatch(
+  }) {
+    return codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: releaseId,
       metadata: metadata,

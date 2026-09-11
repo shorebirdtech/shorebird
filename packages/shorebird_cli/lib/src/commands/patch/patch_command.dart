@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -231,12 +232,17 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return ExitCode.usage.code;
     }
 
-    final patcherFutures = results.releaseTypes
-        .map(_resolvePatcher)
-        .map(createPatch);
+    final published = <PublishedPatch>[];
+    for (final releaseType in results.releaseTypes) {
+      published.add(await createPatch(_resolvePatcher(releaseType)));
+    }
 
-    for (final patcherFuture in patcherFutures) {
-      await patcherFuture;
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'app_id': appId,
+        'track': track.channel,
+        'patches': [for (final p in published) p.toJson()],
+      });
     }
 
     return ExitCode.success.code;
@@ -302,8 +308,11 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   String? lastBuiltFlutterRevision;
 
   /// Creates a patch using the provided [patcher].
+  ///
+  /// Returns what was published. A dry run does not return: it exits the
+  /// process with success once the patch has been checked.
   @visibleForTesting
-  Future<void> createPatch(Patcher patcher) async {
+  Future<PublishedPatch> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
     results.assertAbsentOrValidKeyPairOrCommands();
@@ -543,9 +552,20 @@ Building patch with Flutter $flutterVersionString
 
         final dryRun = results['dry-run'] == true;
         if (dryRun) {
-          logger
-            ..info('No issues detected.')
-            ..info('The server may enforce additional checks.');
+          if (isJsonMode) {
+            emitJsonSuccess({
+              'dry_run': true,
+              'app_id': appId,
+              'platform': patcher.releaseType.releasePlatform.name,
+              'release_id': release.id,
+              'release_version': release.version,
+              'link_percentage': patcher.linkPercentage,
+            });
+          } else {
+            logger
+              ..info('No issues detected.')
+              ..info('The server may enforce additional checks.');
+          }
           throw ProcessExit(ExitCode.success.code);
         }
 
@@ -591,12 +611,19 @@ Building patch with Flutter $flutterVersionString
           baseMetadata,
         );
 
-        await patcher.uploadPatchArtifacts(
+        final patch = await patcher.uploadPatchArtifacts(
           appId: appId,
           releaseId: release.id,
           metadata: updateMetadata.toJson(),
           track: track,
           artifacts: patchArtifactBundles,
+        );
+
+        return PublishedPatch(
+          platform: patcher.releaseType.releasePlatform,
+          release: release,
+          patch: patch,
+          linkPercentage: patcher.linkPercentage,
         );
       },
       values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
@@ -791,4 +818,42 @@ Future<R> _tryBuildingArtifact<R>(Future<R> Function() build) async {
 extension SortReleases on List<Release> {
   /// Sort the list of releases by when they were last updated ascending.
   void sortByUpdatedAt() => sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+}
+
+/// {@template published_patch}
+/// One platform's outcome of `shorebird patch`: which release it patched,
+/// the patch that resulted, and how much of the release's Dart code the
+/// patch could share with it.
+/// {@endtemplate}
+class PublishedPatch {
+  /// {@macro published_patch}
+  const PublishedPatch({
+    required this.platform,
+    required this.release,
+    required this.patch,
+    required this.linkPercentage,
+  });
+
+  /// The platform the patch was built for.
+  final ReleasePlatform platform;
+
+  /// The release the patch applies to.
+  final Release release;
+
+  /// The patch as the server created it.
+  final Patch patch;
+
+  /// The share of Dart code linked against the release, as a percentage,
+  /// where the platform reports one.
+  final double? linkPercentage;
+
+  /// The shape written into the `--json` envelope.
+  Map<String, dynamic> toJson() => {
+    'platform': platform.name,
+    'release_id': release.id,
+    'release_version': release.version,
+    'patch_id': patch.id,
+    'patch_number': patch.number,
+    'link_percentage': linkPercentage,
+  };
 }

@@ -13,6 +13,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -193,12 +194,23 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
       return ExitCode.usage.code;
     }
 
-    final releaserFutures = results.releaseTypes
-        .map(_resolveReleaser)
-        .map(createRelease);
+    // One Release can carry several platforms, so releases are collected by
+    // id: each platform's pass refetches the release, and the last fetch is
+    // the one whose platform statuses are complete.
+    final releases = <int, Release>{};
+    for (final releaseType in results.releaseTypes) {
+      final release = await createRelease(_resolveReleaser(releaseType));
+      releases[release.id] = release;
+    }
 
-    for (final future in releaserFutures) {
-      await future;
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'app_id': appId,
+        'platforms': [
+          for (final type in results.releaseTypes) type.releasePlatform.name,
+        ],
+        'releases': [for (final release in releases.values) release.toJson()],
+      });
     }
 
     return ExitCode.success.code;
@@ -270,6 +282,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
   /// The workflow to create a new release for a Shorebird app.
   ///
+  /// Returns the published [Release]. A dry run does not return: it exits
+  /// the process with success once the build has been checked.
+  ///
   /// Expectations for methods invoked by this command:
   ///  - They perform their own logging. If an error occurs, they are
   ///    responsible for properly logging the error, cleaning up running
@@ -277,7 +292,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   ///  - They handle their own exceptions and exit with a non-zero exit code if
   ///    an error occurs *instead of* throwing an exception.
   @visibleForTesting
-  Future<void> createRelease(Releaser releaser) async {
+  Future<Release> createRelease(Releaser releaser) async {
     await releaser.assertPreconditions();
     await assertArgsAreValid(releaser);
 
@@ -362,9 +377,19 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
 
         final dryRun = results['dry-run'] == true;
         if (dryRun) {
-          logger
-            ..info('No issues detected.')
-            ..info('The server may enforce additional checks.');
+          if (isJsonMode) {
+            emitJsonSuccess({
+              'dry_run': true,
+              'app_id': appId,
+              'platform': releaser.releaseType.releasePlatform.name,
+              'release_version': releaseVersion,
+              'flutter_revision': targetFlutterRevision,
+            });
+          } else {
+            logger
+              ..info('No issues detected.')
+              ..info('The server may enforce additional checks.');
+          }
           throw ProcessExit(ExitCode.success.code);
         }
 
@@ -395,6 +420,16 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
           releaseType: releaser.releaseType,
           flavor: flavor,
           target: target,
+        );
+
+        // The Release in hand predates finalizeRelease, so its status for
+        // this platform still reads draft. A caller reading the envelope
+        // should see the release as it is now, which costs one fetch and is
+        // only paid when there is an envelope to fill.
+        if (!isJsonMode) return release;
+        return codePushClientWrapper.getRelease(
+          appId: appId,
+          releaseVersion: release.version,
         );
       },
       values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},

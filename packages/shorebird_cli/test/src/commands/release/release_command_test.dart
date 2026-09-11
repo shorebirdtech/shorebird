@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -12,6 +13,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -25,6 +27,7 @@ import 'package:test/test.dart';
 
 import '../../matchers.dart';
 import '../../mocks.dart';
+import '../../helpers.dart';
 
 void main() {
   group(ReleaseCommand, () {
@@ -389,6 +392,108 @@ void main() {
             );
             verify(() => logger.info('fix it')).called(1);
           });
+        });
+      });
+    });
+
+    group('--json', () {
+      Future<T> runJson<T>(Future<T> Function() body) => runScoped(
+        body,
+        values: {isJsonModeRef.overrideWith(() => true)},
+      );
+
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => release);
+      });
+
+      test('emits the published release, refetched after finalize', () async {
+        final finalized = Release(
+          id: release.id,
+          appId: release.appId,
+          version: release.version,
+          flutterRevision: release.flutterRevision,
+          displayName: release.displayName,
+          platformStatuses: const {
+            ReleasePlatform.android: ReleaseStatus.active,
+          },
+          createdAt: release.createdAt,
+          updatedAt: release.updatedAt,
+        );
+        when(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => finalized);
+
+        final captured = <String>[];
+        final exitCode = await captureStdout(
+          () => runJson(() => runWithOverrides(command.run)),
+          captured: captured,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(captured, hasLength(1));
+        final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+        expect(envelope['status'], equals('success'));
+        expect(
+          envelope['data'],
+          equals({
+            'app_id': appId,
+            'platforms': ['android'],
+            'releases': [finalized.toJson()],
+          }),
+        );
+      });
+
+      test('emits nothing but the envelope on stdout', () async {
+        // Human progress lines are still logged; the runner routes them to
+        // stderr in JSON mode. Here the logger is a mock, so the check is
+        // that the command itself writes only the envelope.
+        final captured = <String>[];
+        await captureStdout(
+          () => runJson(() => runWithOverrides(command.run)),
+          captured: captured,
+        );
+
+        expect(captured, hasLength(1));
+        expect(() => jsonDecode(captured.single), returnsNormally);
+      });
+
+      group('with --dry-run', () {
+        setUp(() {
+          when(() => argResults['dry-run']).thenReturn(true);
+        });
+
+        test('emits what would have been released', () async {
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runJson(() => runWithOverrides(command.run)),
+              captured: captured,
+            ),
+            exitsWithCode(ExitCode.success),
+          );
+
+          expect(captured, hasLength(1));
+          final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+          expect(envelope['status'], equals('success'));
+          expect(
+            envelope['data'],
+            equals({
+              'dry_run': true,
+              'app_id': appId,
+              'platform': 'android',
+              'release_version': release.version,
+              'flutter_revision': flutterRevision,
+            }),
+          );
+          verifyNever(() => logger.info('No issues detected.'));
         });
       });
     });
