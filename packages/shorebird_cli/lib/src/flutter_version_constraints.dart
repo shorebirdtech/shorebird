@@ -86,24 +86,27 @@ final arm64PatchSupportConstraint = FlutterSupportConstraint(
 /// Flutter support for `flutter build --shorebird-trace=<path>` for emitting
 /// Chrome Trace Event Format build traces.
 ///
-/// Added in shorebirdtech/flutter#116. `minVersion` is set to the next
-/// minor past the latest Shorebird Flutter release (currently 3.41.6), so
-/// whenever that PR gets cut as 3.41.7 the floor covers it cleanly. Until
-/// then, the allowlist covers the current pin hash so users on it get
-/// tracing today.
+/// Added in shorebirdtech/flutter#116 and first shipped on the
+/// `flutter_release/3.41.7` branch, so every release-branch pin from there
+/// on satisfies the floor through its resolved version. The flag must be
+/// accepted by *every* `flutter build` subcommand the CLI invokes
+/// (shorebirdtech/flutter#136 extended it to aar, ios-framework and
+/// desktop), because the CLI passes it unconditionally once this
+/// constraint is satisfied.
+///
+/// A revision that isn't on any `flutter_release/*` branch resolves to no
+/// version and is gated *off* unless allowlisted — passing the flag to a
+/// Flutter that doesn't register it is a hard argparse failure, so
+/// "unknown" must not mean "new enough". Add the hash to
+/// [FlutterSupportConstraint.allowedRevisions] whenever
+/// `bin/internal/flutter.version` is bumped to a dev revision (one not yet
+/// cut into a release branch) that carries the tracing PRs.
 final buildTraceSupportConstraint = FlutterSupportConstraint(
   minVersion: Version(3, 41, 7),
   allowedRevisions: {
-    // Shorebird-fork Flutter pins that ship the tracing feature but
-    // still report upstream version 3.41.6, so `resolveFlutterVersion`
-    // can't satisfy the floor via the version path.
-    //
-    // Add a new entry here every time `bin/internal/flutter.version`
-    // is bumped to a revision that carries the tracing PRs; entries
-    // stop mattering once a `flutter_release/3.41.7` branch ships
-    // them and the floor can be satisfied directly.
+    // Dev pin from before flutter_release/3.41.7 was cut; kept so users
+    // who pinned it explicitly with --flutter-version still get tracing.
     '3b10eecea184bb381f1045a878eeff36548ed11e',
-    'c2c56ab2d5483bdf86152725342f55ca6faed946',
   },
 );
 
