@@ -1,6 +1,7 @@
 import 'dart:io' hide Platform;
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -19,6 +20,7 @@ import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
+import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
@@ -155,7 +157,9 @@ environment:
         () => apple.flavors(platform: any(named: 'platform')),
       ).thenReturn(null);
 
-      command = runWithOverrides(InitCommand.new)..testArgResults = argResults;
+      command = runWithOverrides(InitCommand.new)
+        ..testArgResults = argResults
+        ..testRunner = usageRunner();
     });
 
     test('exits when validation fails', () async {
@@ -321,7 +325,14 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
       verifyNever(() => gradlew.startDaemon(any()));
-      verify(() => logger.err('Unable to initialize gradlew.')).called(1);
+      verify(
+        () => logger.err('Unable to initialize gradlew: Exception: oops'),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''Fix the Gradle error above (run ${lightCyan.wrap('./gradlew --status')} in the android directory to reproduce it), then re-run "shorebird init".''',
+        ),
+      ).called(1);
     });
 
     test('starts gradle daemon if needed and throws on error', () async {
@@ -332,7 +343,14 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.software.code);
       verify(() => gradlew.startDaemon(projectRoot.path)).called(1);
-      verify(() => logger.err('Unable to start gradle daemon.')).called(1);
+      verify(
+        () => logger.err('Unable to start the gradle daemon: Exception: oops'),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''Fix the Gradle error above (run ${lightCyan.wrap('./gradlew --daemon')} in the android directory to reproduce it), then re-run "shorebird init".''',
+        ),
+      ).called(1);
     });
 
     test('starts gradle daemon if needed and streams logs', () async {
@@ -352,8 +370,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final exitCode = await runWithOverrides(command.run);
       verify(() => logger.progress('Detecting product flavors')).called(1);
       verify(
-        () => logger.err(
-          any(that: contains('Unable to extract product flavors.')),
+        () => logger.err('Unable to detect product flavors.\n$exception'),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''Fix the build error above (run ${lightCyan.wrap('./gradlew app:tasks --all')} in the android directory to reproduce it), then re-run "shorebird init".''',
         ),
       ).called(1);
       verify(() => progress.fail()).called(1);
@@ -376,7 +397,14 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           hint: any(named: 'hint'),
         ),
       ).called(1);
-      verify(() => logger.err('$error')).called(1);
+      verify(
+        () => logger.err('Failed to create the app: $error'),
+      ).called(1);
+      verify(
+        () => logger.info(
+          '''Re-run "shorebird init" once the error above is resolved. If it persists, contact us on Discord or at contact@shorebird.dev.''',
+        ),
+      ).called(1);
       expect(exitCode, ExitCode.software.code);
     });
 
@@ -404,12 +432,20 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           when(() => argResults['organization-id']).thenReturn('not-an-int');
         });
 
-        test('exits with usage error code', () async {
-          final exitCode = await runWithOverrides(command.run);
-          expect(exitCode, equals(ExitCode.usage.code));
-          verify(
-            () => logger.err('Invalid organization ID: "not-an-int"'),
-          ).called(1);
+        test('throws a usage exception listing organizations', () async {
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(
+              isA<UsageException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Invalid --organization-id "not-an-int": expected a number.
+Available organizations:
+  Test Organization (id: $organizationId)''',
+              ),
+            ),
+          );
         });
 
         group('when no organization with matching id exists', () {
@@ -417,15 +453,20 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             when(() => argResults['organization-id']).thenReturn('999999');
           });
 
-          test('exits with usage error code and lists orgs', () async {
-            final exitCode = await runWithOverrides(command.run);
-            expect(exitCode, equals(ExitCode.usage.code));
-            verify(
-              () => logger.err('Organization with ID "999999" not found.'),
-            ).called(1);
-            verify(
-              () => logger.info('Available organizations:'),
-            ).called(1);
+          test('throws a usage exception listing organizations', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  '''
+You are not a member of an organization with id 999999.
+Available organizations:
+  Test Organization (id: $organizationId)''',
+                ),
+              ),
+            );
           });
         });
 
@@ -551,25 +592,22 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         });
 
         test(
-          'lists organizations and exits with usage code',
+          'throws a usage exception listing organizations',
           () async {
-            final exitCode = await runWithOverrides(command.run);
-            expect(exitCode, equals(ExitCode.usage.code));
-            verify(
-              () => logger.err(
-                'Multiple organizations found. '
-                'Use --organization-id to specify one:',
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  '''
+You belong to multiple organizations. Pass --organization-id=<id> to choose one.
+Available organizations:
+  ${org1.name} (id: ${org1.id})
+  ${org2.name} (id: ${org2.id})''',
+                ),
               ),
-            ).called(1);
-            verify(
-              () => logger.info('Available organizations:'),
-            ).called(1);
-            verify(
-              () => logger.info('  ${org1.name} (id: ${org1.id})'),
-            ).called(1);
-            verify(
-              () => logger.info('  ${org2.name} (id: ${org2.id})'),
-            ).called(1);
+            );
             verifyNever(
               () => logger.chooseOne<Organization>(
                 any(),
@@ -662,14 +700,18 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             when(() => argResults['display-name']).thenReturn('');
           });
 
-          test('exits with usage error', () async {
-            final exitCode = await runWithOverrides(command.run);
-            expect(exitCode, equals(ExitCode.usage.code));
-            verify(
-              () => logger.err(
-                'App display name must be between 1 and 128 characters.',
+          test('throws a usage exception naming --display-name', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  '--display-name must be between 1 and 128 characters '
+                      '(got 0).',
+                ),
               ),
-            ).called(1);
+            );
           });
         });
 
@@ -678,14 +720,18 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             when(() => argResults['display-name']).thenReturn('a' * 129);
           });
 
-          test('exits with usage error', () async {
-            final exitCode = await runWithOverrides(command.run);
-            expect(exitCode, equals(ExitCode.usage.code));
-            verify(
-              () => logger.err(
-                'App display name must be between 1 and 128 characters.',
+          test('throws a usage exception naming --display-name', () async {
+            await expectLater(
+              runWithOverrides(command.run),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  '--display-name must be between 1 and 128 characters '
+                      '(got 129).',
+                ),
               ),
-            ).called(1);
+            );
           });
         });
 
@@ -1286,7 +1332,7 @@ flavors:
           var index = 0;
 
           when(
-            () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+            () => codePushClientWrapper.maybeGetApp(appId: any(named: 'appId')),
           ).thenAnswer(
             (_) async => AppMetadata(
               appId: appId,
@@ -1352,16 +1398,41 @@ flavors:
           when(() => shorebirdYaml.flavors).thenReturn(existingFlavors);
         });
 
-        test(
-          'exits with software error if retrieving existing app fails',
-          () async {
-            when(
-              () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
-            ).thenThrow(Exception('oh no'));
-            final result = await runWithOverrides(command.run);
-            expect(result, ExitCode.software.code);
-          },
-        );
+        test('names the fix when the existing app is gone', () async {
+          when(
+            () => codePushClientWrapper.maybeGetApp(
+              appId: any(named: 'appId'),
+            ),
+          ).thenAnswer((_) async => null);
+
+          await expectLater(
+            runWithOverrides(command.run),
+            completion(equals(ExitCode.software.code)),
+          );
+          verify(
+            () => logger.info(
+              '''Fix the app_id in shorebird.yaml, or run ${lightCyan.wrap('shorebird init --force')} to create a new app.''',
+            ),
+          ).called(1);
+        });
+
+        test('does not blame app_id when the lookup itself fails', () async {
+          when(
+            () => codePushClientWrapper.maybeGetApp(
+              appId: any(named: 'appId'),
+            ),
+          ).thenThrow(ProcessExit(ExitCode.software.code));
+
+          await expectLater(
+            runWithOverrides(command.run),
+            throwsA(isA<ProcessExit>()),
+          );
+          verifyNever(
+            () => logger.info(
+              '''Fix the app_id in shorebird.yaml, or run ${lightCyan.wrap('shorebird init --force')} to create a new app.''',
+            ),
+          );
+        });
 
         test('creates new flavor entries in shorebird.yaml', () async {
           const newAppIds = ['test-appId-3', 'test-appId-4'];
@@ -1369,7 +1440,7 @@ flavors:
           var index = 0;
 
           when(
-            () => codePushClientWrapper.getApp(appId: any(named: 'appId')),
+            () => codePushClientWrapper.maybeGetApp(appId: any(named: 'appId')),
           ).thenAnswer(
             (_) async => AppMetadata(
               appId: appId,
