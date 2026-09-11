@@ -1,5 +1,10 @@
 <!-- cspell:words toplevel -->
 
+# 0.2.5
+
+- Generated workflows now trigger on `merge_group`, in both `--style static` and `--style dynamic`. Without it, a repo that turns on GitHub's merge queue produces no check runs on the queue's temp branch, the `required` context never reports, and the queue ejects every PR at the timeout.
+- Static action pin bumped to `dorny/paths-filter@v4`. v3 has no `merge_group` case and falls back to diffing the default branch by merge-base rather than the queue's base commit; merge-queue support landed in v4.0.1. Only reachable via `--no-update-actions`, since `generate` resolves pins at write time by default.
+
 # 0.2.4
 
 - `verify` now enforces the `--required` aggregator's `needs:` list. Name-based detection: if a workflow has a top-level job named `required`, every other top-level job must appear in its `needs:`, and every entry in `needs:` must match a real top-level job in the same file. A `required:` key w/ no map body is also reported as malformed. Closes three silent-failure modes: a hand-edited workflow could leave a job out of `required.needs` and have its status silently ignored by the merge gate, a typo'd `needs:` entry could go unnoticed until GHA rejected it at runtime, or a bodiless `required:` could pass verify while doing nothing at runtime.
