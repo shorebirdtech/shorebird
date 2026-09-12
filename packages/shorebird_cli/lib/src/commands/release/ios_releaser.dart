@@ -129,6 +129,16 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
       throw ProcessExit(ExitCode.software.code);
     }
 
+    // Surface mismatched app extension versions here rather than letting the
+    // user discover them via an App Store Connect rejection days later.
+    // See https://github.com/shorebirdtech/shorebird/issues/1956.
+    final versionMismatches = findAppExtensionVersionMismatches(
+      appDirectory: appDirectory,
+    );
+    if (versionMismatches.isNotEmpty) {
+      logger.warn(appExtensionVersionMismatchWarning(versionMismatches));
+    }
+
     // When code signing is requested (the default), `flutter build ipa` is
     // expected to export a signed .ipa. Flutter treats the export step as
     // optional and exits 0 even when it fails (e.g. no signing certificate),

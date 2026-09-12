@@ -15,6 +15,7 @@ words:
   - apigee
   - Apks
   - appbundle
+  - appex # Apple app extension bundle
   - archs
   - armeabi
   - Azul
@@ -59,6 +60,7 @@ words:
   - iokit
   - iphoneos
   - isatty
+  - ITMS # App Store Connect error code prefix, e.g. ITMS-90473
   - keyalg # From .github/workflows/e2e.yaml
   - keypass # From .github/workflows/e2e.yaml
   - keysize # From .github/workflows/e2e.yaml
