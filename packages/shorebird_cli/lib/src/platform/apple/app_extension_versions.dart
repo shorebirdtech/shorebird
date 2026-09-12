@@ -34,18 +34,16 @@ class AppExtensionVersionMismatch {
 /// the app extensions it embeds.
 ///
 /// Apple rejects uploads whose extensions disagree with their containing app
-/// about `CFBundleShortVersionString` or `CFBundleVersion` (ITMS-90473). Xcode
-/// normally papers over this by rewriting every embedded bundle's version at
-/// export time, but that behavior is driven by
-/// `manageAppVersionAndBuildNumber`, which Shorebird requires to be off so that
-/// the version it records for a release is the version that actually ships.
-/// The consequence is that extension versions are left as their targets built
-/// them, and a mismatch surfaces as an App Store Connect rejection rather than
-/// as a build failure.
+/// about `CFBundleShortVersionString` or `CFBundleVersion` (ITMS-90473).
+///
+/// Xcode rewrites embedded bundle versions at export time when
+/// `manageAppVersionAndBuildNumber` is set. Shorebird requires it off so the
+/// version it records for a release is the version that ships, so extension
+/// versions stay as their targets built them and a mismatch surfaces as an App
+/// Store Connect rejection.
 ///
 /// An extension is skipped if its Info.plist is missing, cannot be parsed, or
-/// does not declare the version keys. This is a diagnostic aid, and a
-/// malformed extension plist is not something to fail or warn a release over.
+/// does not declare the version keys.
 List<AppExtensionVersionMismatch> findAppExtensionVersionMismatches({
   required Directory appDirectory,
 }) {
@@ -113,22 +111,20 @@ String appExtensionVersionMismatchWarning(
       .map(
         (m) =>
             '  ${m.extensionName}: ${m.key} is "${m.extensionValue}", '
-            'but the app is "${m.appValue}"',
+            'the app is "${m.appValue}"',
       )
       .join('\n');
 
   return '''
-Your app embeds app extensions whose versions do not match the app:
+These app extensions have versions that do not match the app:
 
 $details
 
 App Store Connect rejects uploads with mismatched extension versions
-(ITMS-90473), so this will likely fail at upload time rather than now.
+(ITMS-90473).
 
-Shorebird builds with Xcode's "Manage Version and Build Number" disabled so
-that the version recorded for this release is the version that ships, which
-means Xcode will not update your extension versions for you. Set each
-extension target's MARKETING_VERSION and CURRENT_PROJECT_VERSION to match the
-app, or set them to \$(MARKETING_VERSION) and \$(CURRENT_PROJECT_VERSION) so
-they follow it automatically.''';
+Shorebird builds with Xcode's "Manage Version and Build Number" disabled, so
+Xcode does not update extension versions for you. Set each extension target's
+MARKETING_VERSION and CURRENT_PROJECT_VERSION to match the app, or to
+\$(MARKETING_VERSION) and \$(CURRENT_PROJECT_VERSION).''';
 }
