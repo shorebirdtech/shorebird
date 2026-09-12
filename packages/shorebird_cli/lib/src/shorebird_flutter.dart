@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
@@ -103,17 +104,28 @@ class ShorebirdFlutter {
     // the name and no directory has to be cleared before the clone.
     final stagingDirectory = Directory(_reclaimablePath(targetDirectory.path));
     try {
-      // Clone the Shorebird Flutter repo into the staging directory.
-      await git.clone(
-        url: flutterGitUrl,
-        outputDirectory: stagingDirectory.path,
-        args: ['--filter=tree:0', '--no-checkout'],
+      // Traced: the clone is a multi-hundred-megabyte transfer and is
+      // one of the two dominant costs of a cold start. It happens in a
+      // git subprocess, so nothing else in the trace can see it.
+      await shorebirdTracer.setupSpan(
+        phase: SetupPhase.flutterInstall,
+        body: () async {
+          // Clone the Shorebird Flutter repo into the staging directory.
+          await git.clone(
+            url: flutterGitUrl,
+            outputDirectory: stagingDirectory.path,
+            args: ['--filter=tree:0', '--no-checkout'],
+          );
+
+          // Checkout the correct revision.
+          await git.checkout(
+            directory: stagingDirectory.path,
+            revision: revision,
+          );
+
+          stagingDirectory.renameSync(targetDirectory.path);
+        },
       );
-
-      // Checkout the correct revision.
-      await git.checkout(directory: stagingDirectory.path, revision: revision);
-
-      stagingDirectory.renameSync(targetDirectory.path);
       installProgress.complete();
     } catch (error) {
       // Another process publishing the same revision first is not a failure.
@@ -293,13 +305,22 @@ class ShorebirdFlutter {
 
     final ShorebirdProcessResult result;
     try {
-      result = await runScoped(
-        () => process.run(
-          executable,
-          precacheArguments,
-          workingDirectory: targetDirectory.path,
+      // Traced: precache downloads the engine artifacts for every target
+      // platform (hundreds of MB) from FLUTTER_STORAGE_BASE_URL. It runs
+      // in the flutter subprocess, and its downloads happen before
+      // flutter_tools installs its own BuildTracer, so this span is the
+      // only record of that time anywhere in the trace.
+      result = await shorebirdTracer.setupSpan(
+        phase: SetupPhase.flutterPrecache,
+        args: {'argv': precacheArguments.join(' ')},
+        body: () => runScoped(
+          () => process.run(
+            executable,
+            precacheArguments,
+            workingDirectory: targetDirectory.path,
+          ),
+          values: {shorebirdEnvRef.overrideWith(() => targetShorebirdEnv)},
         ),
-        values: {shorebirdEnvRef.overrideWith(() => targetShorebirdEnv)},
       );
     } on Exception catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');

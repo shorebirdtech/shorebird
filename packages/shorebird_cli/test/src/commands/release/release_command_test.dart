@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -220,7 +221,8 @@ void main() {
       ).thenAnswer((_) async => {});
 
       command = ReleaseCommand(resolveReleaser: (_) => releaser)
-        ..testArgResults = argResults;
+        ..testArgResults = argResults
+        ..testRunner = usageRunner();
     });
 
     test('has non-empty description', () {
@@ -255,10 +257,16 @@ void main() {
         ).thenReturn('/path/to/nonexistent/file');
       });
 
-      test('exits with usage code', () async {
+      test('throws a usage exception naming the flag', () async {
         await expectLater(
           runWithOverrides(command.run),
-          exitsWithCode(ExitCode.usage),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '--public-key-path: no file found at /path/to/nonexistent/file.',
+            ),
+          ),
         );
 
         verifyNever(

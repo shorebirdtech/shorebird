@@ -145,6 +145,47 @@ void main() {
         );
       });
 
+      test('hashes equivalently across an Xcode toolchain bump', () {
+        // The header block assetutil emits for the same unchanged catalog,
+        // built before and after the Xcode 26.3 upgrade that took CoreUI
+        // from 972 to 973.
+        const buildA = '''
+[{"AssetStorageVersion" : "Xcode 26.2 (17B123) via AssetCatalogSimulatorAgent", "Authoring Tool" : "@(#)PROGRAM:CoreThemeDefinition  PROJECT:CoreThemeDefinition-653.3  [IIO-2784.2.5.1.3]", "CoreUIVersion" : 972, "DumpToolVersion" : 918.8, "MainVersion" : "@(#)PROGRAM:CoreUI  PROJECT:CoreUI-972.1", "Platform" : "ios", "PlatformVersion" : "17.0", "SchemaVersion" : 2}]''';
+        const buildB = '''
+[{"AssetStorageVersion" : "Xcode 26.3 (17C529) via AssetCatalogSimulatorAgent", "Authoring Tool" : "@(#)PROGRAM:CoreThemeDefinition  PROJECT:CoreThemeDefinition-653.3  [IIO-2784.3.4]", "CoreUIVersion" : 973, "DumpToolVersion" : 918.8, "MainVersion" : "@(#)PROGRAM:CoreUI  PROJECT:CoreUI-973.1", "Platform" : "ios", "PlatformVersion" : "17.0", "SchemaVersion" : 2}]''';
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(buildA),
+          AppleArchiveDiffer.sanitizeCarJson(buildB),
+        );
+      });
+
+      test('still detects a rendition edit made under a new toolchain', () {
+        const buildA = '''
+[{"CoreUIVersion" : 972, "RenditionName" : "logo.png", "SizeOnDisk" : 4096}]''';
+        const edited = '''
+[{"CoreUIVersion" : 973, "RenditionName" : "logo.png", "SizeOnDisk" : 8192}]''';
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(buildA),
+          isNot(AppleArchiveDiffer.sanitizeCarJson(edited)),
+        );
+      });
+
+      test('still detects PlatformVersion and SchemaVersion changes', () {
+        const before = '[{"PlatformVersion" : "17.0", "SchemaVersion" : 2}]';
+        const afterPlatform =
+            '[{"PlatformVersion" : "18.0", "SchemaVersion" : 2}]';
+        const afterSchema =
+            '[{"PlatformVersion" : "17.0", "SchemaVersion" : 3}]';
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(before),
+          isNot(AppleArchiveDiffer.sanitizeCarJson(afterPlatform)),
+        );
+        expect(
+          AppleArchiveDiffer.sanitizeCarJson(before),
+          isNot(AppleArchiveDiffer.sanitizeCarJson(afterSchema)),
+        );
+      });
+
       test('is insensitive to the order assetutil emits fields in', () {
         const orderA = '[{"Name" : "AppIcon", "Scale" : 1}]';
         const orderB = '[{"Scale" : 1, "Name" : "AppIcon"}]';
