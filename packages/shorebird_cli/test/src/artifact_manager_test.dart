@@ -326,64 +326,77 @@ void main() {
         });
       });
 
-      group(
-        'when download succeeds',
-        () {
-          late StreamController<List<int>> responseStreamController;
+      group('when download succeeds', () {
+        late StreamController<double> progressController;
+        late Completer<File> fileCompleter;
+        late List<String> updates;
 
-          setUp(() {
-            responseStreamController = StreamController<List<int>>();
-            when(() => httpClient.send(any())).thenAnswer(
-              (_) async => http.StreamedResponse(
-                responseStreamController.stream,
-                HttpStatus.ok,
-                contentLength: 5,
+        setUp(() {
+          progressController = StreamController<double>();
+          fileCompleter = Completer<File>();
+          artifactManager = _TestArtifactManager(
+            FileDownload(
+              file: fileCompleter.future,
+              progress: progressController.stream,
+            ),
+          );
+          updates = [];
+          when(() => progress.update(any())).thenAnswer((invocation) {
+            updates.add(invocation.positionalArguments.first as String);
+          });
+        });
+
+        // Polling beats sleeping for a fixed span: a loaded machine only makes
+        // the test wait longer, where a fixed sleep lets two events collapse
+        // into one throttle window and drops an expected update.
+        Future<void> waitForUpdates(int count) async {
+          final deadline = DateTime.now().add(const Duration(seconds: 10));
+          while (updates.length < count) {
+            if (DateTime.now().isAfter(deadline)) {
+              fail('timed out waiting for $count updates, saw $updates');
+            }
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+          }
+        }
+
+        test(
+          'emits the leading progress update and throttles the rest',
+          () async {
+            final downloadedFile = File(p.join(projectRoot.path, 'artifact'));
+            final download = runWithOverrides(
+              () => artifactManager.downloadWithProgressUpdates(
+                Uri.parse('https://example.com'),
+                message: 'hello',
+                throttleDuration: const Duration(milliseconds: 50),
               ),
             );
-          });
 
-          test('progress updates with a throttled ', () async {
-            // Awaiting this will cause the test to hang
-            unawaited(
-              runWithOverrides(
-                () => artifactManager.downloadWithProgressUpdates(
-                  Uri.parse('https://example.com'),
-                  message: 'hello',
-                  throttleDuration: const Duration(milliseconds: 50),
-                ),
-              ),
-            );
-            // Download the first 3/5. The first addition will trigger the
-            // first progress update, the second addition will be throttled,
-            // and the third addition will trigger the second progress update
-            // after the delay.
-            responseStreamController
-              ..add([1])
-              ..add([1])
-              ..add([1]);
-            await Future<void>.delayed(const Duration(milliseconds: 70));
-            // Download the last 2/5, bringing the total to 5/5
-            responseStreamController.add([1, 1]);
-            await Future<void>.delayed(const Duration(milliseconds: 70));
-            // The first update (20%) always fires immediately. The
-            // trailing throttled update may be 40% or 60% depending on
-            // timing. The final 100% always fires.
-            verifyInOrder([
-              () => progress.update('hello (20%)'),
-              () => progress.update(
-                any(that: anyOf('hello (40%)', 'hello (60%)')),
-              ),
-              () => progress.update('hello (100%)'),
-            ]);
-            verifyNever(() => progress.update('hello (0%)'));
-            verifyNever(() => progress.update('hello (20%)'));
-            verifyNever(() => progress.update('hello (80%)'));
-            verifyNoMoreInteractions(progress);
-            await responseStreamController.close();
-          });
-        },
-        onPlatform: {'windows': const Skip('Flaky on Windows')},
-      );
+            // Opens the throttle window, so it goes straight through.
+            progressController.add(0.2);
+            await waitForUpdates(1);
+
+            // Both land inside that window and only the last survives it.
+            // Stream events arrive as microtasks, which the throttle's timer
+            // can never preempt, so 0.4 is dropped however loaded the machine
+            // is.
+            progressController
+              ..add(0.4)
+              ..add(0.6);
+            await waitForUpdates(2);
+
+            progressController.add(1);
+            await waitForUpdates(3);
+
+            expect(updates, ['hello (20%)', 'hello (60%)', 'hello (100%)']);
+
+            fileCompleter.complete(downloadedFile);
+            expect(await download, downloadedFile);
+            verify(() => progress.complete('hello (100%)')).called(1);
+
+            await progressController.close();
+          },
+        );
+      });
 
       test('uses outputPath when specified', () async {
         when(() => httpClient.send(any())).thenAnswer(
@@ -1305,4 +1318,19 @@ String _toTouchTimestamp(DateTime dt) {
   final h = dt.hour.toString().padLeft(2, '0');
   final min = dt.minute.toString().padLeft(2, '0');
   return '$y$m$d$h$min';
+}
+
+/// An [ArtifactManager] whose download is driven by the test instead of by the
+/// network and the file system. The real [ArtifactManager.startFileDownload]
+/// attaches its progress subscription a microtask after it starts draining the
+/// response, so early chunks are raced against that attachment and silently
+/// dropped.
+class _TestArtifactManager extends ArtifactManager {
+  _TestArtifactManager(this.download);
+
+  final FileDownload download;
+
+  @override
+  Future<FileDownload> startFileDownload(Uri uri, {String? outputPath}) async =>
+      download;
 }
