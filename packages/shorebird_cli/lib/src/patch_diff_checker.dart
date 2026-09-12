@@ -124,6 +124,9 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
 
       if (!allowNativeChanges) {
         if (!shorebirdEnv.canAcceptUserInput) {
+          // Non-interactive runs never see the confirm prompt's hint, so name
+          // the override here.
+          logger.err(allowNativeDiffsHint);
           throw UnpatchableChangeException();
         }
 
@@ -166,6 +169,7 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
 
       if (!allowAssetChanges) {
         if (!shorebirdEnv.canAcceptUserInput) {
+          logger.err(allowAssetDiffsHint);
           throw UnpatchableChangeException();
         }
 
