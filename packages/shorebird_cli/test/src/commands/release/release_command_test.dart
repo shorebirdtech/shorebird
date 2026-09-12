@@ -733,6 +733,106 @@ $exception'''),
       });
     });
 
+    /// Shared expectations for the `--flutter-version` values that ask an
+    /// already-installed Flutter which version it is.
+    void testFlutterVersionAlias({
+      required String arg,
+      required String versionCommand,
+      required Future<String?> Function() Function() getVersion,
+    }) {
+      group('when flutter-version is "$arg"', () {
+        const reportedVersion = '3.32.4';
+        const revision = '771d07b2cf';
+
+        setUp(() {
+          when(() => argResults['flutter-version']).thenReturn(arg);
+          when(
+            () => shorebirdFlutter.resolveFlutterRevision(any()),
+          ).thenAnswer((_) async => revision);
+        });
+
+        test('builds with the Shorebird revision for the reported '
+            'version', () async {
+          when(getVersion()).thenAnswer((_) async => reportedVersion);
+
+          await runWithOverrides(command.run);
+
+          // The reported version is looked up like any other version, so we
+          // still build with Shorebird's Flutter fork rather than the user's.
+          verify(
+            () => shorebirdFlutter.resolveFlutterRevision(reportedVersion),
+          ).called(1);
+          verify(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          ).called(1);
+          verify(
+            () => logger.info(
+              'Using Flutter $reportedVersion, as reported by '
+              '`$versionCommand`.',
+            ),
+          ).called(1);
+        });
+
+        test('only asks for the version once', () async {
+          when(getVersion()).thenAnswer((_) async => reportedVersion);
+
+          await runWithOverrides(command.run);
+
+          verify(getVersion()).called(1);
+        });
+
+        group('when the version lookup fails', () {
+          final exception = Exception('oops');
+          setUp(() {
+            when(getVersion()).thenThrow(exception);
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err('''
+Unable to determine the Flutter version from `$versionCommand`.
+$exception'''),
+            ).called(1);
+          });
+        });
+
+        group('when the version cannot be parsed', () {
+          setUp(() {
+            when(getVersion()).thenAnswer((_) async => null);
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err(
+                'Unable to parse a Flutter version from the output of '
+                '`$versionCommand`.',
+              ),
+            ).called(1);
+          });
+        });
+      });
+    }
+
+    testFlutterVersionAlias(
+      arg: 'system',
+      versionCommand: 'flutter --version',
+      getVersion: () => shorebirdFlutter.getSystemVersion,
+    );
+
+    testFlutterVersionAlias(
+      arg: 'fvm',
+      versionCommand: 'fvm flutter --version',
+      getVersion: () => shorebirdFlutter.getFvmVersion,
+    );
+
     group('when a patch signing public key is provided', () {
       const keyName = 'test-key-path.pem';
       group('when the key exists', () {

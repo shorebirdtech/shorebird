@@ -287,6 +287,70 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
       });
     });
 
+    group('getFvmVersion', () {
+      late Directory projectRoot;
+
+      setUp(() {
+        projectRoot = Directory.systemTemp.createTempSync();
+        when(
+          shorebirdEnv.getShorebirdProjectRoot,
+        ).thenReturn(projectRoot);
+        when(
+          () => process.run(
+            'fvm',
+            ['flutter', '--version'],
+            useVendedFlutter: false,
+            workingDirectory: projectRoot.path,
+          ),
+        ).thenAnswer((_) async => versionProcessResult);
+      });
+
+      test(
+        'throws ProcessException when process exits with non-zero code',
+        () async {
+          const error = 'oops';
+          when(
+            () => versionProcessResult.exitCode,
+          ).thenReturn(ExitCode.software.code);
+          when(() => versionProcessResult.stderr).thenReturn(error);
+          await expectLater(
+            runWithOverrides(shorebirdFlutter.getFvmVersion),
+            throwsA(isA<ProcessException>()),
+          );
+        },
+      );
+
+      test('returns null when cannot parse version', () async {
+        when(() => versionProcessResult.stdout).thenReturn('');
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getFvmVersion),
+          completion(isNull),
+        );
+      });
+
+      test('runs in the project root so that fvm reads .fvmrc', () async {
+        when(() => versionProcessResult.stdout).thenReturn('''
+Flutter 3.10.6 • channel stable • git@github.com:flutter/flutter.git
+Framework • revision f468f3366c (4 weeks ago) • 2023-07-12 15:19:05 -0700
+Engine • revision cdbeda788a
+Tools • Dart 3.0.6 • DevTools 2.23.1''');
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getFvmVersion),
+          completion(equals('3.10.6')),
+        );
+        verify(
+          () => process.run(
+            'fvm',
+            ['flutter', '--version'],
+            // fvm manages its own Flutter installs, so vending Shorebird's
+            // Flutter here would report Shorebird's version instead.
+            useVendedFlutter: false,
+            workingDirectory: projectRoot.path,
+          ),
+        ).called(1);
+      });
+    });
+
     group('getVersionAndRevision', () {
       group('when unable to determine version', () {
         const error = 'oops';

@@ -33,6 +33,10 @@ class ShorebirdFlutter {
   /// The executable name.
   static const executable = 'flutter';
 
+  /// The fvm executable name, used to ask fvm which Flutter version a project
+  /// is pinned to.
+  static const fvmExecutable = 'fvm';
+
   /// The Shorebird Flutter fork git URL.
   static const String flutterGitUrl =
       'https://github.com/shorebirdtech/flutter.git';
@@ -383,11 +387,55 @@ class ShorebirdFlutter {
       );
     }
 
-    final output = result.stdout.toString();
-    final flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
-    final match = flutterVersionRegex.firstMatch(output);
+    return _parseVersion(result.stdout.toString());
+  }
 
-    return match?.group(1);
+  /// Returns the Flutter version that fvm resolves for the current project.
+  ///
+  /// Runs `fvm flutter --version` from the project root so that fvm reads the
+  /// project's `.fvmrc`, which means we don't have to parse fvm's config
+  /// ourselves.
+  ///
+  /// Throws a [ProcessException] if the version check fails.
+  /// Returns `null` if the version check succeeds but the version cannot be
+  /// parsed.
+  Future<String?> getFvmVersion() async {
+    const args = [executable, '--version'];
+    final result = await process.run(
+      fvmExecutable,
+      args,
+      // fvm manages its own Flutter installs, so vending Shorebird's Flutter
+      // here would report Shorebird's version rather than the project's.
+      useVendedFlutter: false,
+      workingDirectory: shorebirdEnv.getShorebirdProjectRoot()?.path,
+    );
+
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        fvmExecutable,
+        args,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+
+    return _parseVersion(result.stdout.toString());
+  }
+
+  /// Parses the version number out of `flutter --version` output, which looks
+  /// like:
+  ///
+  /// ```text
+  /// Flutter 3.32.4 • channel stable • https://github.com/flutter/flutter.git
+  /// Framework • revision 6fba2447e9 • 2025-06-12 19:03:56 -0700
+  /// Engine • revision 8cd19e509d • 2025-06-12 16:30:12 -0700
+  /// Tools • Dart 3.8.1 • DevTools 2.45.1
+  /// ```
+  ///
+  /// Returns `null` if no version is found.
+  static String? _parseVersion(String output) {
+    final flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
+    return flutterVersionRegex.firstMatch(output)?.group(1);
   }
 
   /// Executes `flutter config --list` and returns the output as a map.
