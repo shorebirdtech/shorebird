@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:xml/xml.dart';
 
+export 'app_extension_versions.dart';
 export 'apple_platform.dart';
 export 'export_method.dart';
 export 'invalid_export_options_plist_exception.dart';
