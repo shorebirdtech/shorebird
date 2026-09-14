@@ -217,12 +217,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
 
   @override
   Future<int> run() async {
-    if (results.releaseTypes.isEmpty) {
-      logger.err(
-        '''No platforms were provided. Use the --platforms argument to provide one or more platforms''',
-      );
-      return ExitCode.usage.code;
-    }
+    final releaseTypes = releaseTypesOrUsageError(siblingCommand: 'patches');
 
     if (results.wasParsed('staging')) {
       logger.err(
@@ -231,9 +226,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
       return ExitCode.usage.code;
     }
 
-    final patcherFutures = results.releaseTypes
-        .map(_resolvePatcher)
-        .map(createPatch);
+    final patcherFutures = releaseTypes.map(_resolvePatcher).map(createPatch);
 
     for (final patcherFuture in patcherFutures) {
       await patcherFuture;

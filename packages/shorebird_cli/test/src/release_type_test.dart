@@ -59,28 +59,112 @@ void main() {
         });
       });
 
-      group('when the platforms is provided as a raw arg', () {
-        test('throws an ArgumentError if the platform is invalid', () {
+      group('when the platform is provided as a raw arg', () {
+        test('throws if the platform is invalid, listing valid platforms', () {
           expect(
-            () => parser.parse(['foo']).releaseTypes.toList(),
-            throwsArgumentError,
+            () => parser.parse(['rollback']).releaseTypes.toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Invalid platform: "rollback".
+Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
+              ),
+            ),
           );
         });
 
         test('parses the release types', () {
-          expect(parser.parse(['android', 'foo']).releaseTypes.toList(), [
+          expect(parser.parse(['android']).releaseTypes.toList(), [
             ReleaseType.android,
           ]);
-          expect(parser.parse(['ios', 'foo']).releaseTypes.toList(), [
+          expect(parser.parse(['ios']).releaseTypes.toList(), [
             ReleaseType.ios,
           ]);
-          expect(parser.parse(['ios-framework', 'foo']).releaseTypes.toList(), [
+          expect(parser.parse(['ios-framework']).releaseTypes.toList(), [
             ReleaseType.iosFramework,
           ]);
-          expect(parser.parse(['aar', 'foo']).releaseTypes.toList(), [
+          expect(parser.parse(['aar']).releaseTypes.toList(), [
             ReleaseType.aar,
           ]);
         });
+
+        test('accepts options before the platform', () {
+          parser.addOption('release-version');
+          expect(
+            parser
+                .parse(['--release-version=1.0.0+1', 'android'])
+                .releaseTypes
+                .toList(),
+            [ReleaseType.android],
+          );
+        });
+
+        test('ignores arguments after --', () {
+          expect(
+            parser
+                .parse(['android', '--', '--no-pub', 'lib/main.dart'])
+                .releaseTypes
+                .toList(),
+            [ReleaseType.android],
+          );
+        });
+
+        test('throws on a second positional that looks like a version', () {
+          expect(
+            () => parser.parse(['android', '1.0.0+1']).releaseTypes.toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Unexpected argument: "1.0.0+1".
+Did you mean --release-version=1.0.0+1?''',
+              ),
+            ),
+          );
+        });
+
+        test('throws on a second platform, suggesting --platforms', () {
+          expect(
+            () => parser.parse(['android', 'ios']).releaseTypes.toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Unexpected argument: "ios".
+Did you mean --platforms=android,ios?''',
+              ),
+            ),
+          );
+        });
+
+        test('throws on any other second positional', () {
+          expect(
+            () => parser
+                .parse(['android', 'lib/main.dart'])
+                .releaseTypes
+                .toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Unexpected argument: "lib/main.dart".
+Arguments for Flutter go after --.''',
+              ),
+            ),
+          );
+        });
+      });
+
+      test('PlatformArgumentException.toString is the message', () {
+        expect(
+          const PlatformArgumentException('nope').toString(),
+          equals('nope'),
+        );
       });
     });
   });
