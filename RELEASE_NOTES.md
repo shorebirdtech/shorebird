@@ -4,6 +4,27 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc
  -->
 
+## 1.6.121 (September 14, 2026)
+
+- 🐦 Flutter 3.47.3 / Dart 3.13.3 support
+  - Android: fix license detection for cmdline-tools 23.0 and newer.
+  - iOS/macOS: handle a missing Xcode gracefully in `getInfo` and
+    `buildMacOS` instead of failing hard.
+  - Fix `Actions.handler` not forwarding the intent type to `maybeFind`.
+  - Denylist B-series PowerVR GPUs from Vulkan.
+  - Windows: fix Dart cross-compilation.
+- ✨ New `shorebird apps` commands: list, rename, delete and transfer.
+- ✨ New `shorebird channels` commands: create, list and delete.
+- ✨ `shorebird account whoami` now shows your plan level.
+- 🔧 `--shorebird-trace` now covers aar, ios-framework and desktop builds.
+- 🐛 Report when a patch is missing `libapp.so` instead of failing opaquely.
+- 🐛 iOS patcher errors now name the next step to take.
+- 🐛 Signing-flag mistakes are reported as usage errors that name the flag.
+- 🐛 Ignore asset catalog toolchain versions when diffing assets.
+- 🐛 Point users at plugins that reference the legacy `flutter.jar`.
+- 🐛 Keep a pubspec comment with its key during `shorebird init`.
+- 🐛 Build traces now measure download time.
+
 ## 1.6.120 (August 28, 2026)
 
 - 🐦 Flutter 3.47.2 / Dart 3.13.2 support
