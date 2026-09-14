@@ -1153,20 +1153,55 @@ $body
           when(() => argResults['codesign']).thenReturn(true);
         });
 
-        test('prints ipa upload steps', () {
-          expect(
-            runWithOverrides(() => iosReleaser.postReleaseInstructions),
-            equals('''
+        group('when the exported ipa cannot be identified', () {
+          setUp(() {
+            when(() => artifactManager.getIpa()).thenReturn(null);
+          });
+
+          test('prints ipa upload steps with a glob', () {
+            expect(
+              runWithOverrides(() => iosReleaser.postReleaseInstructions),
+              equals('''
 
 Your next step is to upload your app to App Store Connect.
 
 To upload to the App Store, do one of the following:
     1. Open ${lightCyan.wrap(p.relative(xcarchiveDirectory.path))} in Xcode and use the "Distribute App" flow.
     2. Drag and drop the ${lightCyan.wrap('build/ios/ipa/*.ipa')} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
-    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f ${p.relative('build/ios/ipa/*.ipa')} --apiKey your_api_key --apiIssuer your_issuer_id')}.
+    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f build/ios/ipa/*.ipa --apiKey your_api_key --apiIssuer your_issuer_id')}.
        See "man altool" for details about how to authenticate with the App Store Connect API key.
 '''),
-          );
+            );
+          });
+        });
+
+        group('when the exported ipa is known', () {
+          late File ipaFile;
+
+          setUp(() {
+            ipaFile = File(
+              p.join(Directory.systemTemp.createTempSync().path, 'My App.ipa'),
+            );
+            when(() => artifactManager.getIpa()).thenReturn(ipaFile);
+          });
+
+          test('prints ipa upload steps with the ipa path', () {
+            final relativeIpaPath = p.relative(ipaFile.path);
+
+            expect(
+              runWithOverrides(() => iosReleaser.postReleaseInstructions),
+              equals('''
+
+Your next step is to upload your app to App Store Connect.
+
+To upload to the App Store, do one of the following:
+    1. Open ${lightCyan.wrap(p.relative(xcarchiveDirectory.path))} in Xcode and use the "Distribute App" flow.
+    2. Drag and drop the ${lightCyan.wrap(relativeIpaPath)} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
+    3. Run ${lightCyan.wrap("xcrun altool --upload-app --type ios -f '$relativeIpaPath' --apiKey your_api_key --apiIssuer your_issuer_id")}.
+       See "man altool" for details about how to authenticate with the App Store Connect API key.
+'''),
+            );
+          });
         });
       });
 
