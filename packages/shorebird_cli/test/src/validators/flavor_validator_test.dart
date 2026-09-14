@@ -57,7 +57,7 @@ void main() {
             expect(
               issues.first.message,
               equals(
-                '''The project does not have any flavors defined, but the --flavor argument was provided''',
+                '''The project does not have any flavors defined (no "flavors" in shorebird.yaml), but --flavor was provided. Re-run without --flavor, or run "shorebird init" to detect flavors.''',
               ),
             );
           });
@@ -106,7 +106,7 @@ void main() {
                 equals([
                   ValidationIssue.error(
                     message:
-                        '''This project does not have a flavor named "flavorC". Available flavors: (flavorA, flavorB)''',
+                        '''This project does not have a flavor named "flavorC". Pass one of: flavorA, flavorB (from "flavors" in shorebird.yaml).''',
                   ),
                 ]),
               );
@@ -126,8 +126,8 @@ void main() {
               equals([
                 ValidationIssue.warning(
                   message: '''
-The project has flavors (flavorA, flavorB), but no --flavor argument was provided.
-The default app id $appId will be used.''',
+The project has flavors flavorA, flavorB, but no --flavor argument was provided.
+The default app id $appId will be used. Pass --flavor=<name> to target a flavor.''',
                 ),
               ]),
             );
