@@ -8,8 +8,22 @@ import 'package:shorebird_cli/src/version.dart';
 /// A reference to whether JSON output mode is active.
 final isJsonModeRef = create(() => false);
 
+/// Where a [JsonResult] is written: the process's stdout.
+///
+/// In `--json` mode the runner sends everything else bound for stdout (human
+/// log lines, progress, subprocess output) to stderr, so that stdout carries
+/// the envelope and nothing else. That redirect is an `IOOverrides` zone
+/// inside which `io.stdout` *is* stderr, so the runner binds this ref to the
+/// real stdout from outside the zone. Where nothing has bound it, the
+/// envelope goes to whatever `io.stdout` means in the current zone, which is
+/// what tests capture.
+final jsonSinkRef = create<io.IOSink>(() => io.stdout);
+
 /// Whether JSON output mode is active in the current zone.
-bool get isJsonMode => read(isJsonModeRef);
+///
+/// Off wherever nothing has said otherwise, so code that consults it can
+/// run under a scope that never mentions it.
+bool get isJsonMode => read(isJsonModeRef, orElse: () => false);
 
 /// Builds the subcommand name from [ArgResults] by walking the command chain
 /// (e.g. "doctor" for `shorebird doctor`, "patch ios" for `shorebird patch ios`).
@@ -166,6 +180,6 @@ class JsonResult {
 
   /// Writes this result to stdout as a single JSON line.
   void write() {
-    io.stdout.writeln(jsonEncode(toJson()));
+    read(jsonSinkRef, orElse: () => io.stdout).writeln(jsonEncode(toJson()));
   }
 }
