@@ -203,6 +203,71 @@ ${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}'''),
       verify(() => logger.info('exception usage')).called(1);
     });
 
+    group('unknown option on patch', () {
+      const overrideHint = '''
+shorebird patch has no --force flag. The patch safety checks are bypassed per check:
+  --allow-native-diffs  publish even though native code changed
+  --allow-asset-diffs   publish even though assets changed
+The warning that fails the patch names the one that applies.''';
+
+      test('names --allow-native-diffs / --allow-asset-diffs', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['patch', 'android', '--force']),
+        );
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err('Could not find an option named "--force".'),
+        ).called(1);
+        verify(() => logger.err(overrideHint)).called(1);
+        verifyNever(
+          () => logger.err(any(that: contains('To proxy an option'))),
+        );
+      });
+
+      test('matches other override-shaped options', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['patch', '--skip-checks']),
+        );
+        verify(
+          () => logger.err(
+            any(that: startsWith('shorebird patch has no --skip-checks flag')),
+          ),
+        ).called(1);
+      });
+
+      test('falls back to the proxy hint for other options', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['patch', 'android', '--no-pub']),
+        );
+        verify(
+          () => logger.err(any(that: contains('To proxy an option'))),
+        ).called(1);
+      });
+
+      test('does not apply to other commands', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['release', 'android', '--force']),
+        );
+        verify(
+          () => logger.err(any(that: contains('To proxy an option'))),
+        ).called(1);
+      });
+
+      test('carries the hint in the --json envelope', () async {
+        final stdoutOutput = <String>[];
+        await helpers.captureStdout<int>(
+          () => runWithOverrides(
+            () => commandRunner.run(['--json', 'patch', 'android', '--force']),
+          ),
+          captured: stdoutOutput,
+        );
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], equals('usage_error'));
+        expect(error['hint'], equals(overrideHint));
+      });
+    });
+
     group('--version', () {
       test('outputs current version info', () async {
         final result = await runWithOverrides(
