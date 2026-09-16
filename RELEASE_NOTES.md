@@ -4,6 +4,25 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline
  -->
 
+## 1.6.122 (September 16, 2026)
+
+- 🐦 Flutter 3.47.4 / Dart 3.13.3 support
+  - iOS: warn when Device Support Symbols are missing instead of failing
+    partway through a build.
+  - iOS: native assets now require iOS 15, raised from iOS 13.
+  - Windows: handle Application Control and security policy execution
+    blocks instead of failing.
+  - Fix a crash on non-JSON messages in the test stream parsers.
+  - Drop a redundant `--enable-experiment=record-use` flag.
+- 🐛 A device whose patch fails to load now checks for a replacement patch on
+  that same launch. Previously the failure report suppressed the check, so the
+  device ran base code and stayed on the bad patch until the next launch.
+- 🐛 Patch checks now report the patch the device is running, so Mission
+  Control attributes each device to the right patch. Update delivery is
+  unchanged, since the server does not read that field when serving a patch.
+- 🐛 An install can no longer retire a patch while that patch is still
+  booting for the first time.
+
 ## 1.6.121 (September 14, 2026)
 
 - 🐦 Flutter 3.47.3 / Dart 3.13.3 support
