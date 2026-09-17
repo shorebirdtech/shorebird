@@ -733,8 +733,8 @@ $exception'''),
       });
     });
 
-    /// Shared expectations for the `--flutter-version` values that ask an
-    /// already-installed Flutter which version it is.
+    /// Shared expectations for the `--flutter-version` values that ask the
+    /// user's toolchain which Flutter version to build with.
     void testFlutterVersionAlias({
       required String arg,
       required String versionCommand,
@@ -829,7 +829,7 @@ $exception'''),
 
     testFlutterVersionAlias(
       arg: 'fvm',
-      versionCommand: 'fvm flutter --version',
+      versionCommand: 'fvm',
       getVersion: () => shorebirdFlutter.getFvmVersion,
     );
 

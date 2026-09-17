@@ -284,7 +284,9 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         command = 'flutter --version';
         getVersion = shorebirdFlutter.getSystemVersion;
       case 'fvm':
-        command = 'fvm flutter --version';
+        // `getFvmVersion` may ask fvm more than one thing, so name the tool
+        // rather than a single command line.
+        command = 'fvm';
         getVersion = shorebirdFlutter.getFvmVersion;
       default:
         return _resolvedFlutterVersionArg = flutterVersionArg;
