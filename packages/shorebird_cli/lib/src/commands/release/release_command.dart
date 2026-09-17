@@ -98,8 +98,10 @@ The Flutter version to use when building the app (e.g: 3.16.3).
 This option also accepts Flutter commit hashes (e.g. 611a4066f1).
 Also accepts the following special values:
   * "latest" builds using the latest stable Flutter version.
-  * "system" uses the version reported by the `flutter` on your PATH.
-  * "fvm" uses the version fvm resolves for this project.''',
+  * "system" uses the version of the `flutter` on your PATH.
+  * "fvm" uses the version this project's fvm configuration pins.
+"system" and "fvm" must resolve to a stable release; beta and master builds
+are not supported.''',
       )
       ..addOption(
         'artifact',
@@ -266,12 +268,16 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   String? _resolvedFlutterVersionArg;
 
   /// [flutterVersionArg] with the "system" and "fvm" aliases resolved to a
-  /// concrete Flutter version (e.g. `3.32.4`) by asking that Flutter which
-  /// version it is. Any other value is returned unchanged.
+  /// concrete Flutter version (e.g. `3.32.4`) by asking the user's toolchain.
+  /// Any other value is returned unchanged.
   ///
   /// The resolved version is then looked up like any other, so we build with
-  /// Shorebird's fork at the matching version, and a version Shorebird doesn't
-  /// support fails the same way an explicitly requested one does.
+  /// Shorebird's fork at the matching version, and a stable release Shorebird
+  /// doesn't carry fails the same way an explicitly requested one does.
+  ///
+  /// A toolchain that isn't on a stable release fails here instead, with an
+  /// [UnsupportedFlutterVersionException] naming what it found: unlike a
+  /// missing stable release, that can't be fixed by adding a version.
   ///
   /// The lookup is only performed once per command.
   Future<String> resolveFlutterVersionArg() async {
@@ -284,9 +290,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
         command = 'flutter --version';
         getVersion = shorebirdFlutter.getSystemVersion;
       case 'fvm':
-        // `getFvmVersion` may ask fvm more than one thing, so name the tool
-        // rather than a single command line.
-        command = 'fvm';
+        command = 'fvm api project';
         getVersion = shorebirdFlutter.getFvmVersion;
       default:
         return _resolvedFlutterVersionArg = flutterVersionArg;
@@ -295,6 +299,12 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
     final String? version;
     try {
       version = await getVersion();
+    } on UnsupportedFlutterVersionException catch (error) {
+      // These already explain the problem and the way out; wrapping them in
+      // "unable to determine" would be wrong, since we determined the version
+      // fine and it simply isn't one we can build.
+      logger.err('$error');
+      throw ProcessExit(ExitCode.software.code);
     } on Exception catch (error) {
       logger.err('''
 Unable to determine the Flutter version from `$command`.

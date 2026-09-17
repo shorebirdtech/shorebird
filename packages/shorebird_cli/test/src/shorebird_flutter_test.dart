@@ -285,31 +285,46 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
           () => process.run('flutter', ['--version'], useVendedFlutter: false),
         ).called(1);
       });
+
+      test('throws on a beta or master SDK', () async {
+        // The version must survive parsing intact for this to be detectable:
+        // truncated to 3.35.0 it would quietly build against the *stable*
+        // 3.35.0 in our fork.
+        when(() => versionProcessResult.stdout).thenReturn('''
+Flutter 3.35.0-0.1.pre • channel beta • https://github.com/flutter/flutter.git
+Framework • revision f468f3366c (4 weeks ago) • 2023-07-12 15:19:05 -0700
+Engine • revision cdbeda788a
+Tools • Dart 3.0.6 • DevTools 2.23.1''');
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getSystemVersion),
+          throwsA(
+            isA<PreReleaseFlutterVersionException>()
+                .having((e) => e.version, 'version', '3.35.0-0.1.pre')
+                .having(
+                  (e) => e.toString(),
+                  'toString',
+                  allOf(
+                    contains('Flutter 3.35.0-0.1.pre is a pre-release'),
+                    contains('--flutter-version=<version>'),
+                  ),
+                ),
+          ),
+        );
+      });
     });
 
     group('getFvmVersion', () {
       late Directory projectRoot;
-      late ShorebirdProcessResult apiProcessResult;
 
-      const flutterVersionOutput = '''
-Flutter 3.10.6 • channel stable • git@github.com:flutter/flutter.git
-Framework • revision f468f3366c (4 weeks ago) • 2023-07-12 15:19:05 -0700
-Engine • revision cdbeda788a
-Tools • Dart 3.0.6 • DevTools 2.23.1''';
+      String apiProjectOutput(String pin) =>
+          '{"project": {"config": {"flutter": "$pin", "flavors": {}}}}';
 
-      String apiProjectOutput(String pinnedVersion) =>
-          '''
-{
-  "project": {
-    "name": "my_app",
-    "config": {"flutter": "$pinnedVersion", "flavors": {}},
-    "pinnedVersion": {"name": "$pinnedVersion", "type": "release"}
-  }
-}''';
+      void stubApiProject(String stdout) {
+        when(() => versionProcessResult.stdout).thenReturn(stdout);
+      }
 
       setUp(() {
         projectRoot = Directory.systemTemp.createTempSync();
-        apiProcessResult = MockShorebirdProcessResult();
         when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(projectRoot);
         when(
           () => process.run(
@@ -318,22 +333,15 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
             useVendedFlutter: false,
             workingDirectory: projectRoot.path,
           ),
-        ).thenAnswer((_) async => apiProcessResult);
-        when(
-          () => process.run(
-            'fvm',
-            ['flutter', '--version'],
-            useVendedFlutter: false,
-            workingDirectory: projectRoot.path,
-          ),
         ).thenAnswer((_) async => versionProcessResult);
-        when(() => apiProcessResult.exitCode).thenReturn(ExitCode.success.code);
         when(
-          () => apiProcessResult.stdout,
-        ).thenReturn(apiProjectOutput('3.10.6'));
+          () => versionProcessResult.exitCode,
+        ).thenReturn(ExitCode.success.code);
       });
 
-      test('returns the pinned version without running Flutter', () async {
+      test('returns the pinned release version', () async {
+        stubApiProject(apiProjectOutput('3.10.6'));
+
         await expectLater(
           runWithOverrides(shorebirdFlutter.getFvmVersion),
           completion(equals('3.10.6')),
@@ -348,8 +356,7 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
             workingDirectory: projectRoot.path,
           ),
         ).called(1);
-        // `fvm api project` only reads .fvmrc, so we never reach the call that
-        // can make fvm download a Flutter SDK.
+        // `fvm api project` only reads .fvmrc, so fvm never downloads an SDK.
         verifyNever(
           () => process.run(
             'fvm',
@@ -358,7 +365,6 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
             workingDirectory: any(named: 'workingDirectory'),
           ),
         );
-        verifyNever(() => logger.progress(any()));
       });
 
       test('omits --path when the project root is unknown', () async {
@@ -370,7 +376,8 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
             useVendedFlutter: false,
             workingDirectory: any(named: 'workingDirectory'),
           ),
-        ).thenAnswer((_) async => apiProcessResult);
+        ).thenAnswer((_) async => versionProcessResult);
+        stubApiProject(apiProjectOutput('3.10.6'));
 
         await expectLater(
           runWithOverrides(shorebirdFlutter.getFvmVersion),
@@ -378,10 +385,8 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
         );
       });
 
-      test('falls back to config.flutter when pinnedVersion is '
-          'missing', () async {
-        when(() => apiProcessResult.stdout).thenReturn('''
-{"project": {"config": {"flutter": "3.10.6"}}}''');
+      test('drops the leading v fvm preserves', () async {
+        stubApiProject(apiProjectOutput('v3.10.6'));
 
         await expectLater(
           runWithOverrides(shorebirdFlutter.getFvmVersion),
@@ -389,124 +394,118 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''';
         );
       });
 
-      group('when the project pins a channel rather than a version', () {
-        setUp(() {
-          when(
-            () => apiProcessResult.stdout,
-          ).thenReturn(apiProjectOutput('stable'));
-          when(() => versionProcessResult.stdout).thenReturn(
-            flutterVersionOutput,
-          );
-        });
+      test('throws on a pre-release pin', () async {
+        stubApiProject(apiProjectOutput('3.35.0-0.1.pre'));
 
-        test('asks fvm which version the channel resolves to', () async {
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getFvmVersion),
+          throwsA(isA<PreReleaseFlutterVersionException>()),
+        );
+      });
+
+      test('throws ProcessException when fvm exits non-zero', () async {
+        when(
+          () => versionProcessResult.exitCode,
+        ).thenReturn(ExitCode.software.code);
+        when(() => versionProcessResult.stderr).thenReturn('oops');
+
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getFvmVersion),
+          throwsA(isA<ProcessException>()),
+        );
+      });
+
+      group('when the pin does not name a Flutter release', () {
+        // Shorebird builds with its own fork, so none of these identify a
+        // revision we could build: a channel is not a version, and an upstream
+        // commit can correspond to several of our commits.
+        for (final pin in [
+          'stable',
+          'beta',
+          'master',
+          '3.10.6@beta',
+          'my-fork/3.10.6',
+          'custom_local',
+          'f468f3366c',
+        ]) {
+          test('throws UnsupportedFvmPinException for "$pin"', () async {
+            stubApiProject(apiProjectOutput(pin));
+
+            await expectLater(
+              runWithOverrides(shorebirdFlutter.getFvmVersion),
+              throwsA(
+                isA<UnsupportedFvmPinException>().having(
+                  (e) => e.pin,
+                  'pin',
+                  pin,
+                ),
+              ),
+            );
+          });
+        }
+
+        test('repeats the pin back with a remedy', () async {
+          stubApiProject(apiProjectOutput('stable'));
+
           await expectLater(
             runWithOverrides(shorebirdFlutter.getFvmVersion),
-            completion(equals('3.10.6')),
+            throwsA(
+              isA<UnsupportedFvmPinException>().having(
+                (e) => e.toString(),
+                'toString',
+                allOf(
+                  contains('pins Flutter to "stable"'),
+                  contains('e.g. 3.32.4'),
+                  contains('--flutter-version=<version>'),
+                ),
+              ),
+            ),
           );
-          verify(
-            () => process.run(
-              'fvm',
-              ['flutter', '--version'],
-              useVendedFlutter: false,
-              workingDirectory: projectRoot.path,
-            ),
-          ).called(1);
-        });
-
-        test('warns that fvm may install Flutter first', () async {
-          await runWithOverrides(shorebirdFlutter.getFvmVersion);
-
-          // `fvm flutter --version` prints nothing while it downloads a
-          // Flutter SDK, so say what we're waiting on.
-          verify(
-            () => logger.progress(
-              'Asking fvm which Flutter version "stable" resolves to '
-              '(fvm may need to install it first)',
-            ),
-          ).called(1);
-          verify(progress.complete).called(1);
         });
       });
 
-      group('when fvm cannot answer `api project`', () {
-        setUp(() {
-          when(
-            () => apiProcessResult.exitCode,
-          ).thenReturn(ExitCode.usage.code);
-          when(() => versionProcessResult.stdout).thenReturn(
-            flutterVersionOutput,
-          );
-        });
-
-        test('falls back to `fvm flutter --version`', () async {
-          await expectLater(
-            runWithOverrides(shorebirdFlutter.getFvmVersion),
-            completion(equals('3.10.6')),
-          );
-          verify(
-            () => logger.progress(
-              'Asking fvm which Flutter version this project uses',
-            ),
-          ).called(1);
-        });
-      });
-
-      group('when `api project` output is not usable JSON', () {
-        setUp(() {
-          when(() => versionProcessResult.stdout).thenReturn(
-            flutterVersionOutput,
-          );
-        });
-
+      group('when fvm reports no pinned version', () {
         for (final output in [
           'not json',
           '[]',
           '{}',
           '{"project": "nope"}',
-          '{"project": {"pinnedVersion": 3, "config": {"flutter": 3}}}',
+          '{"project": {"config": "nope"}}',
+          '{"project": {"config": {"flutter": 3}}}',
         ]) {
-          test('falls back to `fvm flutter --version` for $output', () async {
-            when(() => apiProcessResult.stdout).thenReturn(output);
+          test('throws UnsupportedFvmPinException for $output', () async {
+            stubApiProject(output);
 
             await expectLater(
               runWithOverrides(shorebirdFlutter.getFvmVersion),
-              completion(equals('3.10.6')),
+              throwsA(
+                isA<UnsupportedFvmPinException>().having(
+                  (e) => e.pin,
+                  'pin',
+                  isNull,
+                ),
+              ),
             );
           });
         }
-      });
 
-      group('when `fvm flutter --version` fails', () {
-        setUp(() {
-          when(
-            () => apiProcessResult.stdout,
-          ).thenReturn(apiProjectOutput('stable'));
-          when(
-            () => versionProcessResult.exitCode,
-          ).thenReturn(ExitCode.software.code);
-          when(() => versionProcessResult.stderr).thenReturn('oops');
-        });
+        test('says so, with a remedy', () async {
+          stubApiProject('{}');
 
-        test('throws ProcessException and fails the progress', () async {
           await expectLater(
             runWithOverrides(shorebirdFlutter.getFvmVersion),
-            throwsA(isA<ProcessException>()),
+            throwsA(
+              isA<UnsupportedFvmPinException>().having(
+                (e) => e.toString(),
+                'toString',
+                allOf(
+                  contains('no pinned Flutter version'),
+                  contains('--flutter-version=<version>'),
+                ),
+              ),
+            ),
           );
-          verify(progress.fail).called(1);
         });
-      });
-
-      test('returns null when the version cannot be parsed', () async {
-        when(
-          () => apiProcessResult.stdout,
-        ).thenReturn(apiProjectOutput('stable'));
-        when(() => versionProcessResult.stdout).thenReturn('');
-
-        await expectLater(
-          runWithOverrides(shorebirdFlutter.getFvmVersion),
-          completion(isNull),
-        );
       });
     });
 

@@ -739,6 +739,9 @@ $exception'''),
       required String arg,
       required String versionCommand,
       required Future<String?> Function() Function() getVersion,
+      // `getFvmVersion` fails loudly rather than returning a version it could
+      // not parse, so only `system` has a null case to cover.
+      bool canReturnNull = true,
     }) {
       group('when flutter-version is "$arg"', () {
         const reportedVersion = '3.32.4';
@@ -800,24 +803,48 @@ $exception'''),
           });
         });
 
-        group('when the version cannot be parsed', () {
+        group('when the toolchain is not on a stable release', () {
+          const exception = PreReleaseFlutterVersionException('3.35.0-0.1.pre');
           setUp(() {
-            when(getVersion()).thenAnswer((_) async => null);
+            when(getVersion()).thenThrow(exception);
           });
 
-          test('exits with code 70', () async {
+          test('reports the exception without wrapping it', () async {
             await expectLater(
               () => runWithOverrides(command.run),
               exitsWithCode(ExitCode.software),
             );
-            verify(
+            // We determined the version fine; it just isn't one we can build,
+            // so "unable to determine" would be wrong.
+            verify(() => logger.err('$exception')).called(1);
+            verifyNever(
               () => logger.err(
-                'Unable to parse a Flutter version from the output of '
-                '`$versionCommand`.',
+                any(that: contains('Unable to determine the Flutter version')),
               ),
-            ).called(1);
+            );
           });
         });
+
+        if (canReturnNull) {
+          group('when the version cannot be parsed', () {
+            setUp(() {
+              when(getVersion()).thenAnswer((_) async => null);
+            });
+
+            test('exits with code 70', () async {
+              await expectLater(
+                () => runWithOverrides(command.run),
+                exitsWithCode(ExitCode.software),
+              );
+              verify(
+                () => logger.err(
+                  'Unable to parse a Flutter version from the output of '
+                  '`$versionCommand`.',
+                ),
+              ).called(1);
+            });
+          });
+        }
       });
     }
 
@@ -829,8 +856,9 @@ $exception'''),
 
     testFlutterVersionAlias(
       arg: 'fvm',
-      versionCommand: 'fvm',
+      versionCommand: 'fvm api project',
       getVersion: () => shorebirdFlutter.getFvmVersion,
+      canReturnNull: false,
     );
 
     group('when a patch signing public key is provided', () {

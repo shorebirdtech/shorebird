@@ -23,6 +23,58 @@ final shorebirdFlutterRef = create(ShorebirdFlutter.new);
 /// The [ShorebirdFlutter] instance available in the current zone.
 ShorebirdFlutter get shorebirdFlutter => read(shorebirdFlutterRef);
 
+/// {@template unsupported_flutter_version_exception}
+/// Thrown when the Flutter a user pointed Shorebird at can never be built
+/// with, as opposed to a stable release Shorebird simply doesn't carry yet —
+/// which the usual version lookup reports, with a link to request it.
+/// {@endtemplate}
+abstract interface class UnsupportedFlutterVersionException
+    implements Exception {}
+
+/// {@template unsupported_fvm_pin_exception}
+/// Thrown when a project's fvm configuration pins a Flutter version that
+/// Shorebird cannot map to a revision of its Flutter fork.
+/// {@endtemplate}
+class UnsupportedFvmPinException implements UnsupportedFlutterVersionException {
+  /// {@macro unsupported_fvm_pin_exception}
+  const UnsupportedFvmPinException(this.pin);
+
+  /// The pin fvm reported, exactly as written in the project's `.fvmrc`, or
+  /// `null` if fvm reports no pinned version at all.
+  final String? pin;
+
+  @override
+  String toString() {
+    final problem = pin == null
+        ? 'fvm reports no pinned Flutter version for this project.'
+        : '''This project's fvm configuration pins Flutter to "$pin", which does not name a Flutter release.''';
+    return '''
+$problem
+Shorebird builds with its own fork of Flutter, so --flutter-version=fvm only supports pins that name a stable release (e.g. 3.32.4). Channels, forks and commits cannot be mapped to a Shorebird Flutter revision.
+Pass --flutter-version=<version> to choose the version to build with.''';
+  }
+}
+
+/// {@template pre_release_flutter_version_exception}
+/// Thrown when the Flutter version to build with is a pre-release, i.e. a
+/// `beta` or `master` build.
+/// {@endtemplate}
+class PreReleaseFlutterVersionException
+    implements UnsupportedFlutterVersionException {
+  /// {@macro pre_release_flutter_version_exception}
+  const PreReleaseFlutterVersionException(this.version);
+
+  /// The pre-release version, e.g. `3.35.0-0.1.pre`.
+  final String version;
+
+  @override
+  String toString() =>
+      '''
+Flutter $version is a pre-release (beta or master) build.
+Shorebird forks Flutter's stable releases, so a pre-release can never be built with — unlike a stable release Shorebird doesn't carry yet, which you can ask us to add.
+Switch to a stable release, or pass --flutter-version=<version> to choose the version to build with.''';
+}
+
 /// {@template shorebird_flutter}
 /// Helps manage the Flutter installation used by Shorebird.
 /// {@endtemplate}
@@ -387,92 +439,106 @@ class ShorebirdFlutter {
       );
     }
 
-    return _parseVersion(result.stdout.toString());
+    final version = _parseVersion(result.stdout.toString());
+    return version == null ? null : _assertStableRelease(version);
   }
 
-  /// Returns the Flutter version that fvm resolves for the current project.
+  /// Returns the Flutter version the current project's fvm configuration pins.
   ///
-  /// Asks fvm's JSON API (`fvm api project`) for the project's pinned version
-  /// first: that reads the project's `.fvmrc` without touching the Flutter
-  /// install, so it answers immediately and can't trigger a download.
+  /// Asks fvm's JSON API (`fvm api project`), which reads the project's
+  /// `.fvmrc` without touching the Flutter install: it answers immediately and
+  /// never triggers a download.
   ///
-  /// A project can pin a channel (e.g. `stable`) or a fork ref instead of a
-  /// version number, and only the Flutter that resolves to knows which version
-  /// it is, so in that case we fall back to `fvm flutter --version`. That can
-  /// install Flutter first, which is slow and prints nothing while it runs, so
-  /// we say what we're waiting on.
+  /// This is a convenience for projects that already pin a plain version
+  /// number, so only a pin naming a stable release (e.g. `3.32.4`, or
+  /// `v3.32.4`) is supported. fvm also accepts channels (`stable`),
+  /// release-from-channel pins (`3.32.4@beta`), custom SDKs (`custom_local`),
+  /// forks (`my-fork/3.32.4`) and git refs, none of which identify a revision
+  /// of Shorebird's Flutter fork: a channel isn't a version at all, and an
+  /// upstream commit can correspond to several of our commits, so there is no
+  /// single right answer. Rather than guess, we throw
+  /// [UnsupportedFvmPinException], which repeats the pin back so the user can
+  /// pass an explicit `--flutter-version`.
   ///
-  /// Throws a [ProcessException] if the version check fails.
-  /// Returns `null` if the version check succeeds but the version cannot be
-  /// parsed.
-  Future<String?> getFvmVersion() async {
+  /// Throws a [ProcessException] if fvm cannot be asked.
+  Future<String> getFvmVersion() async {
     final projectRoot = shorebirdEnv.getShorebirdProjectRoot()?.path;
-
-    final pinnedVersion = await _getFvmPinnedVersion(projectRoot);
-    if (pinnedVersion != null && _releaseVersionRegex.hasMatch(pinnedVersion)) {
-      return pinnedVersion;
-    }
-
-    final progress = logger.progress(
-      pinnedVersion == null
-          ? 'Asking fvm which Flutter version this project uses'
-          : '''Asking fvm which Flutter version "$pinnedVersion" resolves to (fvm may need to install it first)''',
-    );
-
-    const args = [executable, '--version'];
-    try {
-      final result = await process.run(
-        fvmExecutable,
-        args,
-        // fvm manages its own Flutter installs, so vending Shorebird's Flutter
-        // here would report Shorebird's version rather than the project's.
-        useVendedFlutter: false,
-        workingDirectory: projectRoot,
-      );
-
-      if (result.exitCode != 0) {
-        throw ProcessException(
-          fvmExecutable,
-          args,
-          '${result.stderr}',
-          result.exitCode,
-        );
-      }
-
-      final version = _parseVersion(result.stdout.toString());
-      progress.complete();
-      return version;
-    } on Exception {
-      progress.fail();
-      rethrow;
-    }
-  }
-
-  /// Returns the raw Flutter version the project's `.fvmrc` pins, as reported
-  /// by `fvm api project`.
-  ///
-  /// This is whatever the user wrote, so it may be a version number
-  /// (`3.32.4`), a channel (`stable`), or a fork ref (`my-fork/3.32.4`).
-  ///
-  /// Returns `null` if fvm can't answer — older fvm versions have no `api`
-  /// command, and the project may not be set up for fvm at all — so that
-  /// callers can fall back to asking Flutter itself.
-  Future<String?> _getFvmPinnedVersion(String? projectRoot) async {
+    final args = [
+      'api',
+      'project',
+      if (projectRoot != null) ...['--path', projectRoot],
+    ];
     final result = await process.run(
       fvmExecutable,
-      [
-        'api',
-        'project',
-        if (projectRoot != null) ...['--path', projectRoot],
-      ],
+      args,
+      // fvm manages its own Flutter installs, so vending Shorebird's Flutter
+      // here would report Shorebird's version rather than the project's.
       useVendedFlutter: false,
       workingDirectory: projectRoot,
     );
-    if (result.exitCode != 0) return null;
 
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        fvmExecutable,
+        args,
+        '${result.stderr}',
+        result.exitCode,
+      );
+    }
+
+    final pin = _parseFvmPin(result.stdout.toString());
+    if (pin == null) throw const UnsupportedFvmPinException(null);
+
+    // fvm keeps the leading `v` a user wrote, but `v3.32.4` and `3.32.4` name
+    // the same release.
+    final version = pin.startsWith('v') ? pin.substring(1) : pin;
+
+    // A stable version we don't carry is the version lookup's call, not ours:
+    // it reports that better than we could, and invites the user to request
+    // it. So everything that parses as a version goes through.
+    if (tryParseVersion(version) == null) throw UnsupportedFvmPinException(pin);
+
+    return _assertStableRelease(version);
+  }
+
+  /// Returns [version], or throws [PreReleaseFlutterVersionException] if it is
+  /// a pre-release.
+  ///
+  /// Shorebird forks Flutter's stable releases, so `beta` and `master` builds
+  /// can never resolve to one of our revisions. That is worth its own error:
+  /// the version lookup's "not found" invites the user to request the version,
+  /// which we would never add.
+  static String _assertStableRelease(String version) {
+    final parsed = tryParseVersion(version);
+    if (parsed != null && parsed.isPreRelease) {
+      throw PreReleaseFlutterVersionException(version);
+    }
+    return version;
+  }
+
+  /// Reads the Flutter version pinned by `.fvmrc` out of `fvm api project`
+  /// output, which looks like:
+  ///
+  /// ```json
+  /// {
+  ///   "project": {
+  ///     "config": {"flutter": "3.32.4", "flavors": {}},
+  ///     "pinnedVersion": {"name": "3.32.4", "type": "release"}
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// Reads `config.flutter` rather than `pinnedVersion`, because that is the
+  /// string the user wrote — `pinnedVersion.name` drops the fork from
+  /// `my-fork/3.32.4`, which would leave us unable to tell a fork pin from a
+  /// plain release. It is also what a flavor pin resolves to: fvm derives
+  /// `activeFlavor` from `config.flutter`, not the other way around.
+  ///
+  /// Returns `null` if fvm reports no pinned version.
+  static String? _parseFvmPin(String output) {
     final Object? decoded;
     try {
-      decoded = jsonDecode(result.stdout.toString());
+      decoded = jsonDecode(output);
     } on FormatException {
       return null;
     }
@@ -480,24 +546,11 @@ class ShorebirdFlutter {
     if (decoded is! Map<String, dynamic>) return null;
     final project = decoded['project'];
     if (project is! Map<String, dynamic>) return null;
-
-    // `pinnedVersion` is fvm's parse of `config.flutter`; fall back to the raw
-    // value in case a future fvm changes the shape of `pinnedVersion`.
-    final pinnedVersion = project['pinnedVersion'];
-    if (pinnedVersion is Map<String, dynamic> &&
-        pinnedVersion['name'] is String) {
-      return pinnedVersion['name'] as String;
-    }
     final config = project['config'];
-    if (config is Map<String, dynamic> && config['flutter'] is String) {
-      return config['flutter'] as String;
-    }
-    return null;
+    if (config is! Map<String, dynamic>) return null;
+    final flutter = config['flutter'];
+    return flutter is String ? flutter : null;
   }
-
-  /// Matches a concrete Flutter release version (e.g. `3.32.4`), as opposed to
-  /// the channels and fork refs fvm also accepts as a pin.
-  static final _releaseVersionRegex = RegExp(r'^\d+\.\d+\.\d+$');
 
   /// Parses the version number out of `flutter --version` output, which looks
   /// like:
@@ -509,9 +562,16 @@ class ShorebirdFlutter {
   /// Tools • Dart 3.8.1 • DevTools 2.45.1
   /// ```
   ///
+  /// Captures any pre-release suffix too, so a beta or master SDK reports
+  /// `3.35.0-0.1.pre` rather than `3.35.0`. Truncating it would quietly build
+  /// against the *stable* 3.35.0 in our fork; keeping it is what lets
+  /// [_assertStableRelease] reject it.
+  ///
   /// Returns `null` if no version is found.
   static String? _parseVersion(String output) {
-    final flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
+    final flutterVersionRegex = RegExp(
+      r'Flutter (\d+\.\d+\.\d+(?:[-+][0-9a-zA-Z.-]+)?)',
+    );
     return flutterVersionRegex.firstMatch(output)?.group(1);
   }
 
