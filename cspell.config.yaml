@@ -49,6 +49,8 @@ words:
   - exportoptions
   - felangel
   - FLUSHALL
+  - fvm # Flutter Version Management
+  - fvmrc # fvm's per-project config file
   - genhtml
   - genkey # From .github/workflows/e2e.yaml
   - gradlew
