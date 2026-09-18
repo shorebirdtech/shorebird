@@ -79,19 +79,10 @@ final arm64PatchSupportConstraint = FlutterSupportConstraint(
 /// Flutter support for `flutter build --shorebird-trace=<path>` for emitting
 /// Chrome Trace Event Format build traces.
 ///
-/// Added in shorebirdtech/flutter#116. `minVersion` is set to the next
-/// minor past the latest Shorebird Flutter release (currently 3.41.6), so
-/// whenever that PR gets cut as 3.41.7 the floor covers it cleanly. Until
-/// then, the allowlist covers the current pin hash so users on it get
-/// tracing today.
+/// Added in shorebirdtech/flutter#116, which shipped in
+/// `flutter_release/3.41.7` and every subsequent release branch.
 final buildTraceSupportConstraint = FlutterSupportConstraint(
   minVersion: Version(3, 41, 7),
-  allowedRevisions: {
-    // Current Shorebird Flutter pin (bin/internal/flutter.version). Can
-    // be removed once a flutter_release/3.41.7 branch ships with this
-    // (or a later tracing-enabled) commit at its tip.
-    '3b10eecea184bb381f1045a878eeff36548ed11e',
-  },
 );
 
 /// Flutter versions where the Android Gradle Plugin (AGP) is the entity
