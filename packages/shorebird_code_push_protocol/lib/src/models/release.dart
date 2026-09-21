@@ -19,6 +19,7 @@ class Release {
     required this.createdAt,
     required this.updatedAt,
     this.flutterVersion,
+    this.flutterRevisionBadReason,
     this.displayName,
     this.notes,
   });
@@ -34,6 +35,8 @@ class Release {
         version: json['version'] as String,
         flutterRevision: json['flutter_revision'] as String,
         flutterVersion: json['flutter_version'] as String?,
+        flutterRevisionBadReason:
+            json['flutter_revision_bad_reason'] as String?,
         displayName: json['display_name'] as String?,
         platformStatuses: (json['platform_statuses'] as Map<String, dynamic>)
             .map(
@@ -74,6 +77,11 @@ class Release {
   /// because it was added later; older releases do not have it.
   final String? flutterVersion;
 
+  /// Why [flutterRevision] is known to break Shorebird, when it is. Null
+  /// for a revision with no known problem. Written for the app developer:
+  /// what fails, and which Flutter build fixes it.
+  final String? flutterRevisionBadReason;
+
   /// The display name for the release.
   final String? displayName;
 
@@ -97,6 +105,7 @@ class Release {
       'version': version,
       'flutter_revision': flutterRevision,
       'flutter_version': flutterVersion,
+      'flutter_revision_bad_reason': flutterRevisionBadReason,
       'display_name': displayName,
       'platform_statuses': platformStatuses.map(
         (key, value) => MapEntry(key.toJson(), value.toJson()),
@@ -114,6 +123,7 @@ class Release {
     version,
     flutterRevision,
     flutterVersion,
+    flutterRevisionBadReason,
     displayName,
     mapHash(platformStatuses),
     createdAt,
@@ -130,6 +140,7 @@ class Release {
         version == other.version &&
         flutterRevision == other.flutterRevision &&
         flutterVersion == other.flutterVersion &&
+        flutterRevisionBadReason == other.flutterRevisionBadReason &&
         displayName == other.displayName &&
         mapsEqual(platformStatuses, other.platformStatuses) &&
         createdAt == other.createdAt &&

@@ -23,6 +23,7 @@ class LatestRelease {
     required this.status,
     required this.analysis,
     this.flutterVersion,
+    this.flutterRevisionBadReason,
     this.notes,
   });
 
@@ -36,6 +37,8 @@ class LatestRelease {
         version: json['version'] as String,
         flutterRevision: json['flutter_revision'] as String,
         flutterVersion: json['flutter_version'] as String?,
+        flutterRevisionBadReason:
+            json['flutter_revision_bad_reason'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
         status: ReleaseStatus.fromJson(json['status'] as String),
@@ -69,6 +72,11 @@ class LatestRelease {
   /// because it was added later; older releases do not have it.
   final String? flutterVersion;
 
+  /// Why [flutterRevision] is known to break Shorebird, when it is. Null
+  /// for a revision with no known problem. Written for the app developer:
+  /// what fails, and which Flutter build fixes it.
+  final String? flutterRevisionBadReason;
+
   /// The date and time the release was created.
   final DateTime createdAt;
 
@@ -92,6 +100,7 @@ class LatestRelease {
       'version': version,
       'flutter_revision': flutterRevision,
       'flutter_version': flutterVersion,
+      'flutter_revision_bad_reason': flutterRevisionBadReason,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'status': status.toJson(),
@@ -106,6 +115,7 @@ class LatestRelease {
     version,
     flutterRevision,
     flutterVersion,
+    flutterRevisionBadReason,
     createdAt,
     updatedAt,
     status,
@@ -121,6 +131,7 @@ class LatestRelease {
         version == other.version &&
         flutterRevision == other.flutterRevision &&
         flutterVersion == other.flutterVersion &&
+        flutterRevisionBadReason == other.flutterRevisionBadReason &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
         status == other.status &&

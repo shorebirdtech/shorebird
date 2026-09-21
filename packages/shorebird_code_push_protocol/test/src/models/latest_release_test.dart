@@ -9,6 +9,7 @@ void main() {
         version: '1.2.3+5',
         flutterRevision: 'abc123',
         flutterVersion: '3.27.0',
+        flutterRevisionBadReason: 'Crashes on iOS once a patch is installed.',
         createdAt: DateTime(2023, 3),
         updatedAt: DateTime(2023, 4),
         status: ReleaseStatus.active,
@@ -63,8 +64,20 @@ void main() {
         analysis: analysis,
       );
 
+      final latest1Bad = LatestRelease(
+        id: 535,
+        version: '1.2.3+5',
+        flutterRevision: 'abc123',
+        flutterRevisionBadReason: 'Crashes on iOS once a patch is installed.',
+        createdAt: DateTime(2023, 3),
+        updatedAt: DateTime(2023, 4),
+        status: ReleaseStatus.active,
+        analysis: analysis,
+      );
+
       expect(latest1, equals(latest1Copy));
       expect(latest1, isNot(equals(latest2)));
+      expect(latest1, isNot(equals(latest1Bad)));
     });
   });
 }
