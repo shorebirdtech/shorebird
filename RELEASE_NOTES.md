@@ -4,6 +4,20 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline
  -->
 
+## 1.6.123 (September 21, 2026)
+
+- 🐦 Flutter 3.47.5 / Dart 3.13.4 support
+  - iOS: fix an occasional crash when debugging on physical iOS 27 devices.
+  - Widget Previewer: fix a crash when re-expanding a preview group.
+  - Handle a Dart Development Service startup failure instead of crashing
+    with an unhandled FormatException.
+  - Roll `package:dds` to 5.4.0.
+- ✨ `--flutter-version` now accepts `fvm` and `system`.
+- 🐛 iOS `--split-debug-info` now writes a Mach-O dSYM, so symbol servers
+  ingest it and Dart frames symbolicate in production. Previously the file
+  was an ELF with no debug ID, and uploads reported finding nothing while
+  exiting cleanly.
+
 ## 1.6.122 (September 16, 2026)
 
 - 🐦 Flutter 3.47.4 / Dart 3.13.3 support
