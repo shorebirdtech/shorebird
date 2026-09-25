@@ -6,6 +6,11 @@ concurrency:
 
 on:
   pull_request:
+  # Checks run on the queue's own temp branch, not the PR. Without this
+  # trigger the required contexts never report there and the queue
+  # ejects every PR at the timeout.
+  merge_group:
+    types: [checks_requested]
   push:
     branches:
       - main
@@ -241,6 +246,7 @@ jobs:
   ci:
     needs:
       [
+        changes,
         license_check,
         semantic_pull_request,
         build_cross_platform_dart_packages,
@@ -248,11 +254,15 @@ jobs:
         build_redis,
         verify_packages,
       ]
-    if: ${{ always() }}
+    # Not always(): that keeps this job alive through a run cancellation,
+    # so a superseded push would report ci red on the stale commit. A
+    # skipped required check reports success, which is the right answer
+    # for a run nothing is waiting on.
+    if: ${{ !cancelled() }}
 
     runs-on: ubuntu-latest
 
     steps:
-      - name: ⛔️ exit(1) on failure
-        if: ${{ contains(join(needs.*.result, ','), 'failure') }}
+      - name: ⛔️ exit(1) on failure or cancellation
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
         run: exit 1

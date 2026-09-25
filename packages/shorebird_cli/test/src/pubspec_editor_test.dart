@@ -6,6 +6,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:test/test.dart';
+import 'package:yaml/yaml.dart';
 
 import 'mocks.dart';
 
@@ -158,13 +159,143 @@ flutter:
                 equals('''
 $basePubspecContents
 flutter:
+ uses-material-design: true
  assets:
   - shorebird.yaml
- uses-material-design: true
 '''),
               );
             },
           );
+          // `flutter create` emits a `flutter` section holding exactly one
+          // key with a comment block above it describing that key. Appending
+          // is what keeps the two together: inserting before the only key
+          // leaves the comment sitting on top of `assets:`, describing
+          // something it has nothing to do with.
+          test('keeps a comment attached to the key it documents', () {
+            pubspecFile
+              ..createSync()
+              ..writeAsStringSync('''
+$basePubspecContents
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+''');
+            IOOverrides.runZoned(
+              () => runWithOverrides(
+                pubspecEditor.addShorebirdYamlToPubspecAssets,
+              ),
+              getCurrentDirectory: () => tempDir,
+            );
+            expect(
+              pubspecFile.readAsStringSync(),
+              equals('''
+$basePubspecContents
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+  assets:
+    - shorebird.yaml
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+'''),
+            );
+          });
+
+          // A block collection's span runs on past itself to the end of the
+          // document, so appending at the last entry's own end put `assets:`
+          // underneath a comment belonging to nothing.
+          test('appends above a trailing comment, not below it', () {
+            pubspecFile
+              ..createSync()
+              ..writeAsStringSync('''
+$basePubspecContents
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: Foo
+
+# Some unrelated comment
+''');
+            IOOverrides.runZoned(
+              () => runWithOverrides(
+                pubspecEditor.addShorebirdYamlToPubspecAssets,
+              ),
+              getCurrentDirectory: () => tempDir,
+            );
+            expect(
+              pubspecFile.readAsStringSync(),
+              equals('''
+$basePubspecContents
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: Foo
+  assets:
+    - shorebird.yaml
+
+# Some unrelated comment
+'''),
+            );
+          });
+
+          // Neither of these can hit the misplacement the append avoids, and
+          // neither has a last entry to append after or a block layout to
+          // match, so both stay on `yaml_edit`. Appending to them by hand
+          // threw on the first, and produced YAML that no longer parses on
+          // the second.
+          test('handles an empty flutter map', () {
+            pubspecFile
+              ..createSync()
+              ..writeAsStringSync('''
+$basePubspecContents
+flutter: {}
+''');
+            IOOverrides.runZoned(
+              () => runWithOverrides(
+                pubspecEditor.addShorebirdYamlToPubspecAssets,
+              ),
+              getCurrentDirectory: () => tempDir,
+            );
+            final result = pubspecFile.readAsStringSync();
+            expect(result, contains('shorebird.yaml'));
+            final flutter = (loadYaml(result) as YamlMap)['flutter'] as YamlMap;
+            expect(flutter['assets'], equals(['shorebird.yaml']));
+          });
+
+          test('handles a flow-style flutter map', () {
+            pubspecFile
+              ..createSync()
+              ..writeAsStringSync('''
+$basePubspecContents
+flutter: {uses-material-design: true}
+''');
+            IOOverrides.runZoned(
+              () => runWithOverrides(
+                pubspecEditor.addShorebirdYamlToPubspecAssets,
+              ),
+              getCurrentDirectory: () => tempDir,
+            );
+            // Still parses, still has both entries: the point is that the
+            // result is valid YAML rather than any particular formatting.
+            final flutter =
+                (loadYaml(pubspecFile.readAsStringSync()) as YamlMap)['flutter']
+                    as YamlMap;
+            expect(flutter['assets'], equals(['shorebird.yaml']));
+            expect(flutter['uses-material-design'], isTrue);
+          });
+
           test('adds shorebird.yaml to assets (existing assets)', () {
             pubspecFile
               ..createSync()

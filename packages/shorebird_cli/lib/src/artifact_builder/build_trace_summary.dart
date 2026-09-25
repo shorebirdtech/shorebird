@@ -26,6 +26,7 @@ class BuildTraceSummary {
     required this.flutterBuild,
     required this.shorebirdOverhead,
     required this.network,
+    required this.setup,
     required this.dart,
     required this.flutterAssemble,
     required this.native,
@@ -92,6 +93,8 @@ class BuildTraceSummary {
       case TraceCategory.network:
         acc.network += dur;
         acc.networkCount++;
+      case TraceCategory.setup:
+        _processSetupEvent(acc, name: name, dur: dur);
       case TraceCategory.unknown:
         // Future producer version emitted a category we don't know.
         // Dropped on purpose — bucketing it anywhere else would lie.
@@ -131,6 +134,16 @@ class BuildTraceSummary {
     }
   }
 
+  static void _processSetupEvent(
+    _Accumulator acc, {
+    required String name,
+    required Duration dur,
+  }) {
+    const prefix = '${TraceNames.setupNamePrefix}: ';
+    if (!name.startsWith(prefix)) return;
+    acc.setupPhase.add(SetupPhase.parse(name.substring(prefix.length)), dur);
+  }
+
   static void _processGradleTaskEvent(
     _Accumulator acc, {
     required Duration dur,
@@ -168,6 +181,11 @@ class BuildTraceSummary {
       network: NetworkStats(
         duration: acc.network,
         callCount: acc.networkCount,
+      ),
+      setup: SetupStats(
+        flutterInstall: acc.setupPhase.of(SetupPhase.flutterInstall),
+        flutterPrecache: acc.setupPhase.of(SetupPhase.flutterPrecache),
+        shorebirdCache: acc.setupPhase.of(SetupPhase.shorebirdCache),
       ),
       dart: _dartStats(acc),
       flutterAssemble: _flutterAssembleStats(acc),
@@ -345,10 +363,13 @@ class BuildTraceSummary {
   /// the caller couldn't compute it.
   final Duration? shorebirdOverhead;
 
-  /// Network I/O time and request counts, summed across Shorebird-side
-  /// HTTP (auth, artifact upload) and Flutter-side HTTP (artifact
-  /// downloads when the cache is cold).
+  /// Network I/O time and request counts for HTTP shorebird_cli issues
+  /// itself. Not a whole-command network total — see [NetworkStats].
   final NetworkStats network;
+
+  /// Cold-start setup cost (Flutter install, precache, shorebird cache),
+  /// broken out of [shorebirdOverhead]. See [SetupStats].
+  final SetupStats setup;
 
   /// Dart-compilation breakdown (kernel snapshot + gen_snapshot) plus the
   /// `dart_build` user script target, which is tracked separately.
@@ -381,10 +402,16 @@ class BuildTraceSummary {
   /// hashing, archive assembly, aot_tools link/gen_snapshot bookkeeping
   /// outside their own spans). Null when [shorebirdOverhead] is null.
   ///
-  /// Clamped to zero if the network tally exceeds overhead (can happen
-  /// when flutter's own downloads are counted in network but executed
-  /// inside the flutterBuild span, which is already subtracted from
-  /// overhead).
+  /// **Not** "overhead minus all waiting on the network". [network] only
+  /// covers HTTP shorebird_cli issues itself, so on a cold machine the
+  /// bulk of [setup] — the fork clone and the precache downloads —
+  /// remains inside this value and makes network-bound time look like
+  /// local work. Subtract [setup] as well (`shorebirdLocalMs -
+  /// setup.totalMs`) to approximate genuinely local work, accepting that
+  /// the shorebird-cache downloads are counted in both and so come off
+  /// twice.
+  ///
+  /// Clamped to zero if the network tally exceeds overhead.
   Duration? get shorebirdLocal {
     final overhead = shorebirdOverhead;
     if (overhead == null) return null;
@@ -402,13 +429,14 @@ class BuildTraceSummary {
   /// subtraction (`flutterBuildMs - dart.totalMs`) — kept out of the
   /// on-wire shape so there's exactly one way to read each value.
   Map<String, Object?> toJson() => <String, Object?>{
-    'version': 8,
+    'version': 9,
     'platform': platform,
     'totalMs': total.inMilliseconds,
     'flutterBuildMs': flutterBuild.inMilliseconds,
     'shorebirdOverheadMs': shorebirdOverhead?.inMilliseconds,
     'shorebirdLocalMs': shorebirdLocal?.inMilliseconds,
     'network': network.toJson(),
+    'setup': setup.toJson(),
     'dart': dart.toJson(),
     'flutterAssemble': flutterAssemble.toJson(),
     'native': native.toJson(),
@@ -419,13 +447,22 @@ class BuildTraceSummary {
   };
 }
 
-/// Network I/O totals. Combined across Shorebird-side (auth, artifact
-/// upload, etc.) and Flutter-side (artifact downloads) HTTP.
+/// Network I/O totals for HTTP that shorebird_cli itself issues (auth,
+/// Code Push API calls, cached-artifact downloads), plus any Flutter-side
+/// requests made while flutter_tools has a `BuildTracer` installed.
+///
+/// Deliberately *not* a whole-command network total. Flutter downloads
+/// its engine artifacts before it installs a tracer, and `git clone` and
+/// `flutter precache` are subprocesses with their own sockets, so none of
+/// that traffic is visible here. Those costs are attributed by
+/// [SetupStats] instead; reading this field as "time the command spent
+/// on the network" will understate a cold start by minutes.
 class NetworkStats {
   /// Creates a [NetworkStats].
   NetworkStats({required this.duration, required this.callCount});
 
-  /// Total time across all HTTP requests.
+  /// Total time across all HTTP requests, measured from request start to
+  /// the last byte of the response body (not to first byte).
   final Duration duration;
 
   /// Number of HTTP requests.
@@ -435,6 +472,43 @@ class NetworkStats {
   Map<String, Object?> toJson() => {
     'ms': duration.inMilliseconds,
     'callCount': callCount,
+  };
+}
+
+/// Shorebird-side setup performed before `flutter build`: installing the
+/// Flutter fork, precaching engine artifacts, and refreshing shorebird's
+/// own cached artifacts.
+///
+/// Every field here is a subset of `shorebirdOverheadMs`. On a warm
+/// machine all three are ~0. On a cold CI runner they are mostly
+/// download time, and they are the only place that download time is
+/// attributed — see [SetupPhase].
+class SetupStats {
+  /// Creates a [SetupStats].
+  SetupStats({
+    required this.flutterInstall,
+    required this.flutterPrecache,
+    required this.shorebirdCache,
+  });
+
+  /// Cloning the Flutter fork and checking out the pinned revision.
+  final Duration flutterInstall;
+
+  /// The `flutter precache` subprocess (engine artifact downloads).
+  final Duration flutterPrecache;
+
+  /// Refreshing shorebird's own cached artifacts, summed across calls.
+  final Duration shorebirdCache;
+
+  /// Sum of all setup phases.
+  Duration get total => flutterInstall + flutterPrecache + shorebirdCache;
+
+  /// JSON form.
+  Map<String, Object?> toJson() => {
+    'totalMs': total.inMilliseconds,
+    'flutterInstallMs': flutterInstall.inMilliseconds,
+    'flutterPrecacheMs': flutterPrecache.inMilliseconds,
+    'shorebirdCacheMs': shorebirdCache.inMilliseconds,
   };
 }
 
@@ -751,6 +825,7 @@ class _Accumulator {
   final assembleCategory = <_AssembleCategory, Duration>{};
   final gradleKind = <GradleTaskKind, Duration>{};
   final podPhase = <PodInstallPhase, Duration>{};
+  final setupPhase = <SetupPhase, Duration>{};
 
   int gradleTaskFromCacheCount = 0;
   int gradleTaskUpToDateCount = 0;

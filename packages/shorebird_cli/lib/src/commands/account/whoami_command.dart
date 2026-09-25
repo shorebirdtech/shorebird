@@ -25,9 +25,12 @@ class WhoamiCommand extends ShorebirdCommand {
       '  ID:             42\n'
       '  Email:          user@example.com\n'
       '  Display name:   Example User\n'
-      '  Plan:           paid\n'
+      '  Plan:           enterprise\n'
+      '  Subscription:   active\n'
       '  Overage limit:  10000\n\n'
-      'Plan is "paid" (active Shorebird subscription) or "free".\n'
+      'Plan is your plan level: "free", "pro", "business" or "enterprise" '
+      '("unknown" if the server does not report one).\n'
+      'Subscription is "active" (paying Shorebird customer) or "none".\n'
       'Overage limit is the max pay-as-you-go patch installs allowed '
       'beyond your plan ("none" if unset).\n\n'
       '${ShorebirdCommand.jsonHint('shorebird account whoami --json')}';
@@ -43,8 +46,10 @@ class WhoamiCommand extends ShorebirdCommand {
     }
 
     final PrivateUser user;
+    final String? planLevel;
     try {
       user = await codePushClientWrapper.getCurrentUser();
+      planLevel = await codePushClientWrapper.getPlanLevel();
     } on ProcessExit catch (e) {
       if (isJsonMode) {
         emitJsonError(
@@ -56,7 +61,8 @@ class WhoamiCommand extends ShorebirdCommand {
       rethrow;
     }
 
-    final plan = (user.hasActiveSubscription ?? false) ? 'paid' : 'free';
+    final isPaying = user.hasActiveSubscription ?? false;
+    final subscription = isPaying ? 'active' : 'none';
 
     if (isJsonMode) {
       emitJsonSuccess({
@@ -64,7 +70,10 @@ class WhoamiCommand extends ShorebirdCommand {
           'id': user.id,
           'email': user.email,
           'display_name': user.displayName,
-          'plan': plan,
+          // `plan` predates plan levels and is kept as-is so existing
+          // scripts keep working; `plan_level` is the finer-grained value.
+          'plan': isPaying ? 'paid' : 'free',
+          'plan_level': planLevel,
           'overage_limit': user.patchOverageLimit,
         },
       });
@@ -78,7 +87,8 @@ class WhoamiCommand extends ShorebirdCommand {
       logger.info('Display name:   ${user.displayName}');
     }
     logger
-      ..info('Plan:           $plan')
+      ..info('Plan:           ${planLevel ?? 'unknown'}')
+      ..info('Subscription:   $subscription')
       ..info('Overage limit:  ${user.patchOverageLimit ?? 'none'}');
 
     return ExitCode.success.code;

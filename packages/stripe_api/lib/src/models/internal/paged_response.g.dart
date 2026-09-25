@@ -16,6 +16,3 @@ PagedResponse _$PagedResponseFromJson(Map<String, dynamic> json) =>
       );
       return val;
     }, fieldKeyMap: const {'hasMore': 'has_more'});
-
-Map<String, dynamic> _$PagedResponseToJson(PagedResponse instance) =>
-    <String, dynamic>{'data': instance.data, 'has_more': instance.hasMore};

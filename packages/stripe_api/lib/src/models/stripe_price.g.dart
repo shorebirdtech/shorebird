@@ -36,6 +36,16 @@ StripePrice _$StripePriceFromJson(Map<String, dynamic> json) => $checkedCreate(
         (v) => $enumDecodeNullable(_$UsageTypeEnumMap, v),
         readValue: StripePrice._readUsageType,
       ),
+      interval: $checkedConvert(
+        'interval',
+        (v) => $enumDecodeNullable(_$RecurringIntervalEnumMap, v),
+        readValue: StripePrice._readInterval,
+      ),
+      intervalCount: $checkedConvert(
+        'interval_count',
+        (v) => (v as num?)?.toInt(),
+        readValue: StripePrice._readIntervalCount,
+      ),
       metadata: $checkedConvert(
         'metadata',
         (v) => v as Map<String, dynamic>? ?? const {},
@@ -55,6 +65,7 @@ StripePrice _$StripePriceFromJson(Map<String, dynamic> json) => $checkedCreate(
     'unitAmount': 'unit_amount',
     'unitAmountDecimal': 'unit_amount_decimal',
     'usageType': 'usage_type',
+    'intervalCount': 'interval_count',
     'meterId': 'meter_id',
   },
 );
@@ -67,4 +78,11 @@ const _$BillingSchemeEnumMap = {
 const _$UsageTypeEnumMap = {
   UsageType.licensed: 'licensed',
   UsageType.metered: 'metered',
+};
+
+const _$RecurringIntervalEnumMap = {
+  RecurringInterval.day: 'day',
+  RecurringInterval.week: 'week',
+  RecurringInterval.month: 'month',
+  RecurringInterval.year: 'year',
 };

@@ -452,6 +452,51 @@ void main() {
           );
         });
       });
+
+      group('when --patch-number is not an integer', () {
+        setUp(() {
+          when(() => argResults['patch-number']).thenReturn('one');
+        });
+
+        test('emits usage_error envelope', () async {
+          final captured = <String>[];
+          final result = await captureStdout(
+            () => runJsonMode(command.run),
+            captured: captured,
+          );
+          expect(result, equals(ExitCode.usage.code));
+          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+          expect(decoded['status'], 'error');
+          final error = decoded['error'] as Map<String, dynamic>;
+          expect(error['code'], 'usage_error');
+          expect(error['message'], '"one" is not a valid patch number.');
+        });
+      });
+    });
+
+    group('when --patch-number is not an integer', () {
+      setUp(() {
+        when(() => argResults['patch-number']).thenReturn('one');
+      });
+
+      test('exits with usage error and does not fetch', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err('"one" is not a valid patch number'),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'Patch numbers are integers, e.g. --patch-number 1.',
+          ),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
     });
   });
 }

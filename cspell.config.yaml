@@ -19,6 +19,7 @@ words:
   - armeabi
   - Azul
   - backboardd
+  - backpressure
   - bdero
   - bintools
   - bitcode
@@ -48,6 +49,8 @@ words:
   - exportoptions
   - felangel
   - FLUSHALL
+  - fvm # Flutter Version Management
+  - fvmrc # fvm's per-project config file
   - genhtml
   - genkey # From .github/workflows/e2e.yaml
   - gradlew
@@ -103,6 +106,7 @@ words:
   - podspec
   - pointycastle
   - precache
+  - precaching
   - previewable
   - PRNG
   - proguard # Android ProGuard shrinker/obfuscator
@@ -118,7 +122,9 @@ words:
   - reimplementation
   - reinit
   - requirepass # From .github dir, doesn't show up in "**" check?
+  - resends # "server resends the same patch on rollforward"
   - reusables
+  - rollforward # POST /.../patches/<id>/rollforward — un-rolls-back a patch
   - spawnee
   - Retryable
   - RSAPKCS
@@ -142,6 +148,7 @@ words:
   - tdigest
   - temurin # From .github dir, doesn't show up in "**" check?
   - timebase # Mach timebase (mach_timebase_info)
+  - ttfb
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
   - unanalyzed

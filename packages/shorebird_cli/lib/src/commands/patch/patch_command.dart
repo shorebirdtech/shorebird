@@ -306,7 +306,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   Future<void> createPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
-    results.assertAbsentOrValidKeyPairOrCommands();
+    assertSigningArgsValid();
 
     try {
       await shorebirdValidator.validateFlavors(
@@ -663,7 +663,9 @@ Please re-run the release command for this version or create a new release.''');
     required Patcher patcher,
   }) async {
     try {
-      return patcher.assertUnpatchableDiffs(
+      // Must be awaited inside the try, otherwise the catch clauses below never
+      // see the failure and the patch exits with an unhandled exception.
+      return await patcher.assertUnpatchableDiffs(
         releaseArtifact: releaseArtifact,
         releaseArchive: releaseArchive,
         patchArchive: patchArchive,

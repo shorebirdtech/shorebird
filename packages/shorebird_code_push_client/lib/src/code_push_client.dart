@@ -142,6 +142,23 @@ class CodePushClient {
     return PrivateUser.fromJson(json);
   }
 
+  /// Fetches the plan level for the currently logged-in user, e.g. `free`,
+  /// `pro`, `business` or `enterprise`.
+  ///
+  /// The plan itself is a server-local model with billing fields that are
+  /// deliberately not part of this package, so only the level is read here.
+  /// Returns null if the server does not report one.
+  Future<String?> getPlanLevel() async {
+    final response = await _httpClient.get(Uri.parse('$_v1/plan'));
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return json['level'] as String?;
+  }
+
   /// Create a new artifact for a specific [patchId].
   Future<void> createPatchArtifact({
     required String artifactPath,
@@ -518,6 +535,53 @@ class CodePushClient {
     }
   }
 
+  /// Rename the app with the provided [appId] to [displayName].
+  Future<void> updateApp({
+    required String appId,
+    required String displayName,
+  }) async {
+    final response = await _httpClient.patch(
+      Uri.parse('$_v1/apps/$appId'),
+      body: json.encode({'name': displayName}),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Move the app with the provided [appId] into [organizationId].
+  ///
+  /// Requires permission to transfer apps in both the source and destination
+  /// organizations.
+  Future<void> transferApp({
+    required int organizationId,
+    required String appId,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse('$_v1/organizations/$organizationId/apps'),
+      body: json.encode({'app_id': appId}),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
+  /// Delete the channel with the provided [channelId] from [appId].
+  Future<void> deleteChannel({
+    required String appId,
+    required int channelId,
+  }) async {
+    final response = await _httpClient.delete(
+      Uri.parse('$_v1/apps/$appId/channels/$channelId'),
+    );
+
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+  }
+
   /// List all apps for the current account.
   Future<List<AppMetadata>> getApps() async {
     final response = await _httpClient.get(Uri.parse('$_v1/apps'));
@@ -629,6 +693,62 @@ class CodePushClient {
     if (!response.isSuccess) {
       throw _parseErrorResponse(response.statusCode, response.body);
     }
+  }
+
+  /// Rolls back the patch with [patchId] under [releaseId] for [appId].
+  ///
+  /// Devices on the affected release_version that next call the patch-check
+  /// endpoint will receive the patch number in `rolled_back_patch_numbers`,
+  /// which signals the updater to revert to the prior patch (or the base
+  /// release if none).
+  ///
+  /// Idempotent. Returns whether the server changed the patch: `false` when it
+  /// answers `304 Not Modified` because the patch was already rolled back,
+  /// `true` when it changed the patch. The server is the only authority on this,
+  /// since another actor may roll the patch back between a read and this call.
+  Future<bool> rollbackPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse(
+        '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollback',
+      ),
+    );
+
+    if (response.statusCode == HttpStatus.notModified) return false;
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+    return true;
+  }
+
+  /// Rolls forward (un-rolls-back) the patch with [patchId] under [releaseId]
+  /// for [appId]. The server flips `is_rolled_back` from `true` to `false`
+  /// on the same patch row, so the same patch artifact (same hash) becomes
+  /// active again.
+  ///
+  /// Idempotent. Returns whether the server changed the patch: `false` when it
+  /// answers `304 Not Modified` because the patch was already active, `true`
+  /// when it changed the patch. The server is the only authority on this, since
+  /// another actor may roll the patch forward between a read and this call.
+  Future<bool> rollforwardPatch({
+    required String appId,
+    required int releaseId,
+    required int patchId,
+  }) async {
+    final response = await _httpClient.post(
+      Uri.parse(
+        '$_v1/apps/$appId/releases/$releaseId/patches/$patchId/rollforward',
+      ),
+    );
+
+    if (response.statusCode == HttpStatus.notModified) return false;
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+    return true;
   }
 
   /// Gets the list of organizations the user is a member of, along with the

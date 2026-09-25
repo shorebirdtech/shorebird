@@ -272,6 +272,293 @@ void main() {
       );
     });
 
+    group('listSubscriptions', () {
+      // cspell:disable-next-line
+      const subscriptionId = 'sub_1MvjPuHSA9cXarIcaWYNaezR';
+
+      setUp(() {
+        when(
+          () => httpClient.get(
+            Uri.parse(
+              'https://api.stripe.com/v1/subscriptions?customer=cus_123&limit=100',
+            ),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'object': 'list',
+              'data': [subscriptionJson],
+              'has_more': true,
+            }),
+            HttpStatus.ok,
+          ),
+        );
+
+        when(
+          () => httpClient.get(
+            Uri.parse(
+              'https://api.stripe.com/v1/subscriptions?customer=cus_123&limit=100&starting_after=$subscriptionId',
+            ),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'object': 'list',
+              'data': [trialingSubscriptionJson],
+              'has_more': false,
+            }),
+            HttpStatus.ok,
+          ),
+        );
+      });
+
+      test('returns all pages of subscriptions', () async {
+        final subscriptions = await stripeApi.listSubscriptions(
+          customerId: 'cus_123',
+        );
+
+        expect(subscriptions, hasLength(2));
+        expect(subscriptions.first.id, subscriptionId);
+      });
+    });
+
+    group('createSubscription', () {
+      final uri = Uri.parse('https://api.stripe.com/v1/subscriptions');
+
+      setUp(() {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(subscriptionJsonString, HttpStatus.ok),
+        );
+      });
+
+      test('sends the correct request', () async {
+        await stripeApi.createSubscription(
+          customerId: 'cus_123',
+          priceId: 'price_123',
+          currency: 'usd',
+          defaultPaymentMethod: 'pm_123',
+          automaticTaxEnabled: true,
+          metadata: {'shorebird_role': 'overage'},
+          idempotencyKey: 'key_123',
+        );
+
+        verify(
+          () => httpClient.post(
+            uri,
+            headers: {
+              ...expectedAuthHeaders,
+              'Idempotency-Key': 'key_123',
+            },
+            body: {
+              'customer': 'cus_123',
+              'items[0][price]': 'price_123',
+              'currency': 'usd',
+              'default_payment_method': 'pm_123',
+              'automatic_tax[enabled]': 'true',
+              'metadata[shorebird_role]': 'overage',
+            },
+          ),
+        ).called(1);
+      });
+
+      test('sends collection method and days until due when given', () async {
+        await stripeApi.createSubscription(
+          customerId: 'cus_123',
+          priceId: 'price_123',
+          automaticTaxEnabled: true,
+          metadata: const {},
+          idempotencyKey: 'key_123',
+          collectionMethod: StripeCollectionMethod.sendInvoice,
+          daysUntilDue: 30,
+        );
+
+        verify(
+          () => httpClient.post(
+            uri,
+            headers: {
+              ...expectedAuthHeaders,
+              'Idempotency-Key': 'key_123',
+            },
+            body: {
+              'customer': 'cus_123',
+              'items[0][price]': 'price_123',
+              'collection_method': 'send_invoice',
+              'days_until_due': '30',
+              'automatic_tax[enabled]': 'true',
+            },
+          ),
+        ).called(1);
+      });
+
+      test('omits currency and payment method when null', () async {
+        await stripeApi.createSubscription(
+          customerId: 'cus_123',
+          priceId: 'price_123',
+          automaticTaxEnabled: false,
+          metadata: const {},
+          idempotencyKey: 'key_123',
+        );
+
+        verify(
+          () => httpClient.post(
+            uri,
+            headers: {
+              ...expectedAuthHeaders,
+              'Idempotency-Key': 'key_123',
+            },
+            body: {
+              'customer': 'cus_123',
+              'items[0][price]': 'price_123',
+              'automatic_tax[enabled]': 'false',
+            },
+          ),
+        ).called(1);
+      });
+
+      group('when response has non-success status code', () {
+        setUp(() {
+          when(
+            () => httpClient.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenAnswer(
+            (_) async => http.Response('Not found', HttpStatus.notFound),
+          );
+        });
+
+        test('throws exception', () async {
+          await expectLater(
+            () => stripeApi.createSubscription(
+              customerId: 'cus_123',
+              priceId: 'price_123',
+              currency: 'usd',
+              defaultPaymentMethod: 'pm_123',
+              automaticTaxEnabled: true,
+              metadata: const {},
+              idempotencyKey: 'key_123',
+            ),
+            throwsException,
+          );
+        });
+      });
+    });
+
+    group('fetchPaymentMethod', () {
+      final uri = Uri.parse('https://api.stripe.com/v1/payment_methods/pm_123');
+
+      test('throws exception if Stripe returns a non-200 response', () {
+        when(
+          () => httpClient.get(uri, headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('Not found', HttpStatus.notFound),
+        );
+
+        expect(
+          () => stripeApi.fetchPaymentMethod(paymentMethodId: 'pm_123'),
+          throwsException,
+        );
+      });
+
+      test('returns a payment method with card country', () async {
+        when(
+          () => httpClient.get(uri, headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(paymentMethodJsonString, HttpStatus.ok),
+        );
+
+        final paymentMethod = await stripeApi.fetchPaymentMethod(
+          paymentMethodId: 'pm_123',
+        );
+
+        expect(paymentMethod.id, equals('pm_123'));
+        expect(paymentMethod.card?.country, equals('IN'));
+      });
+
+      test('returns a null card for a non-card payment method', () async {
+        when(
+          () => httpClient.get(uri, headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async =>
+              http.Response(paymentMethodNoCardJsonString, HttpStatus.ok),
+        );
+
+        final paymentMethod = await stripeApi.fetchPaymentMethod(
+          paymentMethodId: 'pm_123',
+        );
+
+        expect(paymentMethod.card, isNull);
+      });
+    });
+
+    group('cancelSubscription', () {
+      final uri = Uri.parse('https://api.stripe.com/v1/subscriptions/sub_123');
+
+      setUp(() {
+        when(
+          () => httpClient.delete(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(subscriptionJsonString, HttpStatus.ok),
+        );
+      });
+
+      test('sends the correct request and returns the subscription', () async {
+        final subscription = await stripeApi.cancelSubscription(
+          subscriptionId: 'sub_123',
+          invoiceNow: true,
+          prorate: true,
+        );
+
+        // cspell:disable-next-line
+        expect(subscription.id, 'sub_1MvjPuHSA9cXarIcaWYNaezR');
+        verify(
+          () => httpClient.delete(
+            uri,
+            headers: expectedAuthHeaders,
+            body: {'invoice_now': 'true', 'prorate': 'true'},
+          ),
+        ).called(1);
+      });
+
+      group('when response has non-success status code', () {
+        setUp(() {
+          when(
+            () => httpClient.delete(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenAnswer(
+            (_) async => http.Response('Not found', HttpStatus.notFound),
+          );
+        });
+
+        test('throws exception', () async {
+          await expectLater(
+            () => stripeApi.cancelSubscription(
+              subscriptionId: 'sub_123',
+              invoiceNow: false,
+              prorate: false,
+            ),
+            throwsException,
+          );
+        });
+      });
+    });
+
     group('fetchBillingMeters', () {
       const meterId = 'mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144';
       setUp(() {

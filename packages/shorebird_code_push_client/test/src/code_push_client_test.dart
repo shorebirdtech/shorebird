@@ -1803,6 +1803,159 @@ void main() {
       });
     });
 
+    group('updateApp', () {
+      const displayName = 'New Name';
+
+      test('makes the correct request', () async {
+        codePushClient
+            .updateApp(appId: appId, displayName: displayName)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('PATCH'));
+        expect(request.url, equals(v1('apps/$appId')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(json.decode(request.body), equals({'name': displayName}));
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.updateApp(appId: appId, displayName: displayName),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        );
+
+        await expectLater(
+          codePushClient.updateApp(appId: appId, displayName: displayName),
+          completes,
+        );
+      });
+    });
+
+    group('transferApp', () {
+      const organizationId = 42;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .transferApp(organizationId: organizationId, appId: appId)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('organizations/$organizationId/apps')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        // Sent as snake_case; do not "fix" this to camelCase.
+        expect(json.decode(request.body), equals({'app_id': appId}));
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.transferApp(
+            organizationId: organizationId,
+            appId: appId,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        );
+
+        await expectLater(
+          codePushClient.transferApp(
+            organizationId: organizationId,
+            appId: appId,
+          ),
+          completes,
+        );
+      });
+    });
+
+    group('deleteChannel', () {
+      const channelId = 7;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .deleteChannel(appId: appId, channelId: channelId)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('apps/$appId/channels/$channelId')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteChannel(appId: appId, channelId: channelId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(
+          codePushClient.deleteChannel(appId: appId, channelId: channelId),
+          completes,
+        );
+      });
+    });
+
     group('getApps', () {
       test('makes the correct request', () async {
         codePushClient.getApps().ignore();
@@ -2372,6 +2525,244 @@ void main() {
       });
     });
 
+    group('rollbackPatch', () {
+      const releaseId = 7;
+      const patchId = 11;
+
+      test('makes the correct request', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await codePushClient.rollbackPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(
+          request.url,
+          equals(
+            v1('apps/$appId/releases/$releaseId/patches/$patchId/rollback'),
+          ),
+        );
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('returns false on 304 Not Modified (idempotent)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.notModified,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollbackPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completion(isFalse),
+        );
+      });
+
+      test('returns true on 204 No Content', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollbackPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completion(isTrue),
+        );
+      });
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          codePushClient.rollbackPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test(
+        'throws a parsed exception on a structured error response',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+              HttpStatus.failedDependency,
+            ),
+          );
+
+          expect(
+            codePushClient.rollbackPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+            ),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                errorResponse.message,
+              ),
+            ),
+          );
+        },
+      );
+    });
+
+    group('rollforwardPatch', () {
+      const releaseId = 7;
+      const patchId = 11;
+
+      test('makes the correct request', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await codePushClient.rollforwardPatch(
+          appId: appId,
+          releaseId: releaseId,
+          patchId: patchId,
+        );
+
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('POST'));
+        expect(
+          request.url,
+          equals(
+            v1('apps/$appId/releases/$releaseId/patches/$patchId/rollforward'),
+          ),
+        );
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('returns false on 304 Not Modified (idempotent)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.notModified,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollforwardPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completion(isFalse),
+        );
+      });
+
+      test('returns true on 204 No Content', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.noContent,
+          ),
+        );
+
+        await expectLater(
+          codePushClient.rollforwardPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          completion(isTrue),
+        );
+      });
+
+      test('throws an exception if the http request fails (unknown)', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.badRequest,
+          ),
+        );
+
+        expect(
+          codePushClient.rollforwardPatch(
+            appId: appId,
+            releaseId: releaseId,
+            patchId: patchId,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessage,
+            ),
+          ),
+        );
+      });
+
+      test(
+        'throws a parsed exception on a structured error response',
+        () async {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+              HttpStatus.failedDependency,
+            ),
+          );
+
+          expect(
+            codePushClient.rollforwardPatch(
+              appId: appId,
+              releaseId: releaseId,
+              patchId: patchId,
+            ),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                errorResponse.message,
+              ),
+            ),
+          );
+        },
+      );
+    });
+
     group('getOrganizationMemberships', () {
       group('when response is not success', () {
         setUp(() {
@@ -2418,6 +2809,62 @@ void main() {
         test('deserializes GetOrganizationMembershipsResponse', () async {
           final memberships = await codePushClient.getOrganizationMemberships();
           expect(memberships, equals([membership]));
+        });
+      });
+    });
+
+    group('getPlanLevel', () {
+      group('when request fails', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.failedDependency,
+            ),
+          );
+        });
+
+        test('throws exception', () async {
+          expect(
+            () async => codePushClient.getPlanLevel(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                CodePushClient.unknownErrorMessage,
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when request succeeds', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('{"level": "enterprise"}')),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('returns the level', () async {
+          expect(await codePushClient.getPlanLevel(), equals('enterprise'));
+        });
+      });
+
+      group('when the response has no level', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('{}')),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('returns null', () async {
+          expect(await codePushClient.getPlanLevel(), isNull);
         });
       });
     });

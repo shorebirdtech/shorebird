@@ -669,7 +669,7 @@ stderr: error'''),
         });
 
         test(
-          'throws LinkFailureException with hint on VM data mismatch',
+          'throws LinkFailureException when VM sections differ',
           () async {
             workingDirectory = Directory.systemTemp.createTempSync();
             when(
@@ -754,14 +754,10 @@ stderr: error'''),
                       'toString',
                       contains('differing VM sections'),
                     )
-                    .having(
-                      (e) => e.hint,
-                      'hint',
-                      allOf(
-                        contains('--dart-define'),
-                        contains('--obfuscate'),
-                      ),
-                    ),
+                    // The version and features checks are what carry a
+                    // remediation hint. Neither reports on this signature, so
+                    // the failure surfaces without one.
+                    .having((e) => e.hint, 'hint', isNull),
               ),
             );
           },
@@ -1418,49 +1414,48 @@ Run "aot_tools help <command>" for more information about a command.
         expect(build({'type': 'link_failure'}).hint, isNull);
       });
 
-      test('is null when hash fields are not maps', () {
-        expect(
-          build({
-            'details': {'vm_data_hash': 'oops', 'vm_instructions_hash': 0},
-          }).hint,
-          isNull,
-        );
-      });
-
-      test('is null when instructions also differ', () {
+      test('is null when no check that carries a hint reported', () {
         expect(
           build({
             'details': {
               'vm_data_hash': {'base': 1, 'patch': 2},
-              'vm_instructions_hash': {'base': 3, 'patch': 4},
+              'vm_instructions_hash': {'base': 3, 'patch': 3},
             },
           }).hint,
           isNull,
         );
       });
 
-      test('is null when data matches', () {
+      test('blames the SDK when dart_version differs', () {
         expect(
           build({
             'details': {
-              'vm_data_hash': {'base': 1, 'patch': 1},
-              'vm_instructions_hash': {'base': 2, 'patch': 2},
+              'dart_version': {'base': '3.9.0', 'patch': '3.10.0'},
             },
           }).hint,
-          isNull,
+          contains('different Dart SDKs'),
         );
       });
 
-      test('is set for the VM-data-only mismatch signature', () {
+      test('blames the SDK when snapshot_version differs', () {
+        expect(
+          build({
+            'details': {
+              'snapshot_version': {'base': 'abc', 'patch': 'def'},
+            },
+          }).hint,
+          contains('different Dart SDKs'),
+        );
+      });
+
+      test('blames build flags when features differ', () {
         final hint = build({
           'details': {
-            'vm_data_hash': {'base': 1, 'patch': 2},
-            'vm_instructions_hash': {'base': 3, 'patch': 3},
+            'features': {'base': 'a', 'patch': 'b'},
           },
         }).hint;
-        expect(hint, isNotNull);
-        expect(hint, contains('--dart-define'));
-        expect(hint, contains('--obfuscate'));
+        expect(hint, contains('different build flags'));
+        expect(hint, contains('--dwarf-stack-traces'));
       });
     });
 

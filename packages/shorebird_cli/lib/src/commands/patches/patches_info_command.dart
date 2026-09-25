@@ -2,7 +2,8 @@ import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
-import 'package:shorebird_cli/src/formatters/file_size_formatter.dart';
+import 'package:shorebird_cli/src/formatters/formatters.dart';
+import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -13,7 +14,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird patches info`
 /// Show details for a specific patch.
 /// {@endtemplate}
-class PatchesInfoCommand extends ShorebirdCommand {
+class PatchesInfoCommand extends ShorebirdCommand with PatchNumberArgument {
   /// {@macro patches_info_command}
   PatchesInfoCommand() {
     argParser
@@ -62,7 +63,8 @@ class PatchesInfoCommand extends ShorebirdCommand {
 
     final releaseVersion =
         results[CommonArguments.releaseVersionArg.name] as String;
-    final patchNumber = int.parse(results['patch-number'] as String);
+    final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber();
+    if (patchNumber == null) return patchNumberError!;
 
     final Release release;
     final List<ReleasePatch> patches;
@@ -112,23 +114,7 @@ class PatchesInfoCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
-    logger.info('ID:          ${patch.id}');
-    logger.info('Number:      ${patch.number}');
-    if (patch.channel != null) {
-      logger.info('Track:       ${patch.channel}');
-    }
-    logger.info('Rolled back: ${patch.isRolledBack ? 'yes' : 'no'}');
-    if (patch.notes != null) {
-      logger.info('Notes:       ${patch.notes}');
-    }
-    if (patch.artifacts.isNotEmpty) {
-      logger.info('Artifacts:');
-      for (final artifact in patch.artifacts) {
-        final platform = artifact.platform.value.padRight(8);
-        final arch = artifact.arch.padRight(12);
-        logger.info('  $platform $arch ${formatBytes(artifact.size)}');
-      }
-    }
+    formatPatchDetails(patch).forEach(logger.info);
 
     return ExitCode.success.code;
   }

@@ -605,6 +605,43 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 ),
               ),
             );
+
+            group('when a plugin references the legacy flutter.jar', () {
+              setUp(() {
+                final pluginRoot = Directory(
+                  p.join(projectRoot.path, 'huawei_location'),
+                );
+                Directory(
+                  p.join(pluginRoot.path, 'android'),
+                ).createSync(recursive: true);
+                File(
+                  p.join(pluginRoot.path, 'android', 'build.gradle'),
+                ).writeAsStringSync('compileOnly files("...flutter.jar")');
+                File(
+                  p.join(projectRoot.path, '.flutter-plugins-dependencies'),
+                ).writeAsStringSync(
+                  '{"plugins": {"android": [{"name": "huawei_location", '
+                  '"path": "${pluginRoot.path.replaceAll(r'\', r'\\')}", '
+                  '"native_build": true, "dependencies": []}]}}',
+                );
+              });
+
+              test('prepends a targeted hint to the recommendation', () async {
+                await expectLater(
+                  () => runWithOverrides(() => builder.buildAppBundle()),
+                  throwsA(
+                    isA<ArtifactBuildException>().having(
+                      (e) => e.fixRecommendation,
+                      'recommendation',
+                      allOf(
+                        contains('legacy `flutter.jar`'),
+                        contains('• huawei_location'),
+                      ),
+                    ),
+                  ),
+                );
+              });
+            });
           });
         });
       });
@@ -799,7 +836,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
                 jsonDecode(summaryFile.readAsStringSync())
                     as Map<String, Object?>;
             expect(summary['platform'], 'android');
-            expect(summary['version'], 8);
+            expect(summary['version'], 9);
             // 500ms kernel + 200ms aot
             expect((summary['dart'] as Map)['totalMs'], 700);
             expect(summary['flutterBuildMs'], 3000);
