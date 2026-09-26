@@ -559,6 +559,95 @@ void main() {
       });
     });
 
+    group('listInvoices', () {
+      setUp(() {
+        when(
+          () => httpClient.get(
+            Uri.parse(
+              'https://api.stripe.com/v1/invoices?subscription=sub_123&limit=100',
+            ),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'object': 'list',
+              'data': [
+                {'id': 'in_1', 'status': 'paid'},
+              ],
+              'has_more': true,
+            }),
+            HttpStatus.ok,
+          ),
+        );
+
+        when(
+          () => httpClient.get(
+            Uri.parse(
+              'https://api.stripe.com/v1/invoices?subscription=sub_123&limit=100&starting_after=in_1',
+            ),
+            headers: any(named: 'headers'),
+          ),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({
+              'object': 'list',
+              'data': [
+                {'id': 'in_2', 'status': 'open'},
+              ],
+              'has_more': false,
+            }),
+            HttpStatus.ok,
+          ),
+        );
+      });
+
+      test('returns all pages of invoices', () async {
+        final invoices = await stripeApi.listInvoices(
+          subscriptionId: 'sub_123',
+        );
+
+        expect(invoices.map((invoice) => invoice.id), ['in_1', 'in_2']);
+        expect(invoices.last.status, StripeInvoiceStatus.open);
+      });
+    });
+
+    group('voidInvoice', () {
+      final uri = Uri.parse('https://api.stripe.com/v1/invoices/in_123/void');
+
+      test('sends the correct request and returns the invoice', () async {
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response(
+            jsonEncode({'id': 'in_123', 'status': 'void'}),
+            HttpStatus.ok,
+          ),
+        );
+
+        final invoice = await stripeApi.voidInvoice(invoiceId: 'in_123');
+
+        expect(invoice.id, 'in_123');
+        expect(invoice.status, StripeInvoiceStatus.voided);
+        verify(
+          () => httpClient.post(uri, headers: expectedAuthHeaders),
+        ).called(1);
+      });
+
+      test('throws exception on a non-success status code', () async {
+        when(
+          () => httpClient.post(any(), headers: any(named: 'headers')),
+        ).thenAnswer(
+          (_) async => http.Response('Bad request', HttpStatus.badRequest),
+        );
+
+        await expectLater(
+          () => stripeApi.voidInvoice(invoiceId: 'in_123'),
+          throwsException,
+        );
+      });
+    });
+
     group('fetchBillingMeters', () {
       const meterId = 'mtr_test_61QvSUDTnLya5cdwG41HSA9cXarIc144';
       setUp(() {
