@@ -2,6 +2,7 @@ export 'stripe_billing_meter.dart';
 export 'stripe_checkout_session.dart';
 export 'stripe_customer.dart';
 export 'stripe_event.dart';
+export 'stripe_invoice.dart';
 export 'stripe_meter_event_summary.dart';
 export 'stripe_payment_method.dart';
 export 'stripe_price.dart';

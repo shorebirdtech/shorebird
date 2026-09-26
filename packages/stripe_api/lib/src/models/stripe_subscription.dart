@@ -53,6 +53,25 @@ enum StripeCollectionMethod {
   final String value;
 }
 
+/// Why a [StripeSubscription] was canceled.
+///
+/// See https://docs.stripe.com/api/subscriptions/object#subscription_object-cancellation_details-reason.
+enum StripeCancellationReason {
+  /// The customer or an operator asked for the cancellation.
+  cancellationRequested('cancellation_requested'),
+
+  /// Stripe canceled the subscription after a dispute on its payment.
+  paymentDisputed('payment_disputed'),
+
+  /// Stripe canceled the subscription after its payment retries failed.
+  paymentFailed('payment_failed');
+
+  const StripeCancellationReason(this.value);
+
+  /// The value Stripe uses for this reason on the wire.
+  final String value;
+}
+
 /// {@template stripe_subscription}
 /// A partial Dart representation of the Subscription object from Stripe's API.
 ///
@@ -80,6 +99,7 @@ class StripeSubscription {
     this.defaultPaymentMethod,
     this.automaticTaxEnabled = false,
     this.collectionMethod,
+    this.cancellationReason,
   });
 
   /// Converts a `Map<String, dynamic>` to a [StripeSubscription].
@@ -167,6 +187,11 @@ class StripeSubscription {
   /// How this subscription's invoices collect payment.
   final StripeCollectionMethod? collectionMethod;
 
+  /// Why this subscription was canceled. Null when it has not been, or when
+  /// Stripe reports a reason this client does not know.
+  @JsonKey(name: 'cancellation_details', fromJson: _cancellationReasonFromJson)
+  final StripeCancellationReason? cancellationReason;
+
   /// Whether this subscription is in an active or trialing state.
   bool get isActiveOrTrial =>
       status == StripeSubscriptionStatus.active ||
@@ -181,6 +206,15 @@ class StripeSubscription {
   /// this works for now.
   bool get hasMeteredBilling =>
       items.any((item) => item.price.usageType == UsageType.metered);
+}
+
+StripeCancellationReason? _cancellationReasonFromJson(
+  Map<String, dynamic>? json,
+) {
+  final reason = json?['reason'] as String?;
+  return StripeCancellationReason.values.firstWhereOrNull(
+    (value) => value.value == reason,
+  );
 }
 
 bool _automaticTaxEnabledFromJson(Map<String, dynamic>? json) =>
