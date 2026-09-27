@@ -674,18 +674,21 @@ void main() {
               when(() => argResults['obfuscate']).thenReturn(true);
             });
 
-            test('logs error and exits', () async {
+            test('throws a usage exception naming both ways out', () async {
               await expectLater(
                 () => runWithOverrides(() => command.createPatch(patcher)),
-                exitsWithCode(ExitCode.software),
-              );
-              verify(
-                () => logger.err(
-                  '--obfuscate was passed, but the release was not built with '
-                  'obfuscation. A patch cannot change the obfuscation mode of '
-                  'a release.',
+                throwsA(
+                  isA<UsageException>().having(
+                    (e) => e.message,
+                    'message',
+                    '--obfuscate was passed, but release $releaseVersion was '
+                        'not built with obfuscation. A patch cannot change the '
+                        'obfuscation mode of a release: re-run without '
+                        '--obfuscate to patch this release, or create a new '
+                        'release with --obfuscate.',
+                  ),
                 ),
-              ).called(1);
+              );
             });
           },
         );
@@ -926,7 +929,15 @@ void main() {
 
               verify(
                 () => logger.err(
-                  '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold (50%). Exiting.''',
+                  '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold (50%).''',
+                ),
+              ).called(1);
+              final debugInfoPath = runWithOverrides(
+                () => Patcher.debugInfoFile.path,
+              );
+              verify(
+                () => logger.info(
+                  '''Not publishing. Lower --min-link-percentage to accept this patch, or see $debugInfoPath for what could not be linked.''',
                 ),
               ).called(1);
             });
@@ -950,14 +961,15 @@ void main() {
                     patchArtifactBundles: patchArtifactBundles,
                   ),
                 ),
-                exitsWithCode(ExitCode.usage),
-              );
-              verify(
-                () => logger.err(
-                  '--min-link-percentage must be an integer between 0 and 100 '
-                  '(got $value).',
+                throwsA(
+                  isA<UsageException>().having(
+                    (e) => e.message,
+                    'message',
+                    '--min-link-percentage must be an integer between 0 and '
+                        '100 (got $value).',
+                  ),
                 ),
-              ).called(1);
+              );
             }
 
             test('above 100 prints error and exits', () async {
@@ -1260,7 +1272,7 @@ void main() {
           );
         });
 
-        test('warns and exits', () async {
+        test('names the release command and exits', () async {
           await expectLater(
             () => runWithOverrides(command.run),
             exitsWithCode(ExitCode.usage),
@@ -1270,8 +1282,13 @@ void main() {
             () => codePushClientWrapper.getReleases(appId: appId),
           ).called(1);
           verify(
-            () => logger.warn(
-              '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
+            () => logger.err(
+              '''No ${releasePlatform.displayName} releases found for app $appId.''',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(
+              '''A patch needs a release to apply to. Create one with ${lightCyan.wrap('shorebird release android')}, or pass --app-id / --flavor if this is the wrong app.''',
             ),
           ).called(1);
         });
@@ -1409,15 +1426,20 @@ void main() {
           ).thenAnswer((_) async => []);
         });
 
-        test('warns and exits', () async {
+        test('names the release command and exits', () async {
           await expectLater(
             () => runWithOverrides(command.run),
             exitsWithCode(ExitCode.usage),
           );
 
           verify(
-            () => logger.warn(
-              '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
+            () => logger.err(
+              '''No ${releasePlatform.displayName} releases found for app $appId.''',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(
+              '''A patch needs a release to apply to. Create one with ${lightCyan.wrap('shorebird release android')}, or pass --app-id / --flavor if this is the wrong app.''',
             ),
           ).called(1);
         });
@@ -1756,7 +1778,7 @@ Please re-run the release command for this version or create a new release.'''),
             exitsWithCode(ExitCode.software),
           );
 
-          verify(() => logger.info('Exiting.')).called(1);
+          verify(() => logger.info('Not publishing.')).called(1);
         });
       });
     });

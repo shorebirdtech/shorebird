@@ -333,10 +333,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         )
         ..sortByUpdatedAt();
       if (releases.isEmpty) {
-        logger.warn(
-          '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
-        );
-        throw ProcessExit(ExitCode.usage.code);
+        throw _noReleasesToPatch(patcher.releaseType);
       }
       // Use the most recently updated release for the specified platform.
       release = releases.last;
@@ -347,7 +344,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
         releaseVersion: releaseVersion,
       );
     } else if (shorebirdEnv.canAcceptUserInput) {
-      release = await promptForRelease(releasePlatform);
+      release = await promptForRelease(patcher.releaseType);
     } else {
       final flutterVersionString = await shorebirdFlutter
           .getVersionAndRevision();
@@ -434,12 +431,12 @@ Building with Flutter $flutterVersionString to determine the release version...
     // release, producing a broken patch.
     final userPassedObfuscate = results.flagPresent('obfuscate');
     if (userPassedObfuscate && obfuscationMapFile == null) {
-      logger.err(
-        '--obfuscate was passed, but the release was not built with '
-        'obfuscation. A patch cannot change the obfuscation mode of a '
-        'release.',
+      usageException(
+        '--obfuscate was passed, but release ${release.version} was not '
+        'built with obfuscation. A patch cannot change the obfuscation mode '
+        'of a release: re-run without --obfuscate to patch this release, or '
+        'create a new release with --obfuscate.',
       );
-      throw ProcessExit(ExitCode.software.code);
     }
     if (userPassedObfuscate && obfuscationMapFile != null) {
       logger.info(
@@ -604,7 +601,8 @@ Building patch with Flutter $flutterVersionString
   }
 
   /// Prompts the user for the specific release to patch.
-  Future<Release> promptForRelease(ReleasePlatform platform) async {
+  Future<Release> promptForRelease(ReleaseType releaseType) async {
+    final platform = releaseType.releasePlatform;
     final releases = await codePushClientWrapper.getReleases(appId: appId);
 
     final releasesForPlatform = releases.where(
@@ -612,16 +610,26 @@ Building patch with Flutter $flutterVersionString
     );
 
     if (releasesForPlatform.isEmpty) {
-      logger.warn(
-        '''No ${platform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
-      );
-      throw ProcessExit(ExitCode.usage.code);
+      throw _noReleasesToPatch(releaseType);
     }
 
     return chooseRelease(
       releases: releasesForPlatform,
       action: 'patch',
     );
+  }
+
+  /// Logs that there is nothing to patch for [releaseType] and returns the
+  /// [ProcessExit] to throw.
+  ProcessExit _noReleasesToPatch(ReleaseType releaseType) {
+    logger
+      ..err(
+        '''No ${releaseType.releasePlatform.displayName} releases found for app $appId.''',
+      )
+      ..info(
+        '''A patch needs a release to apply to. Create one with ${lightCyan.wrap('shorebird release ${releaseType.cliName}')}, or pass --app-id / --flavor if this is the wrong app.''',
+      );
+    return ProcessExit(ExitCode.usage.code);
   }
 
   /// Asserts that the release contains a platform for the given [patcher].
@@ -673,7 +681,9 @@ Please re-run the release command for this version or create a new release.''');
     } on UserCancelledException {
       throw ProcessExit(ExitCode.success.code);
     } on UnpatchableChangeException {
-      logger.info('Exiting.');
+      // The diff checker has already named the change and the flag that
+      // overrides it.
+      logger.info('Not publishing.');
       throw ProcessExit(ExitCode.software.code);
     }
   }
@@ -711,18 +721,21 @@ Please re-run the release command for this version or create a new release.''');
     if (minLinkPercentage == null ||
         minLinkPercentage < CommonArguments.minLinkPercentageMin ||
         minLinkPercentage > CommonArguments.minLinkPercentageMax) {
-      logger.err(
+      usageException(
         '--min-link-percentage must be an integer between '
         '${CommonArguments.minLinkPercentageMin} and '
         '${CommonArguments.minLinkPercentageMax} '
         '(got $minLinkPercentageRaw).',
       );
-      throw ProcessExit(ExitCode.usage.code);
     }
     if (linkPercentage != null && linkPercentage < minLinkPercentage) {
-      logger.err(
-        '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold ($minLinkPercentage%). Exiting.''',
-      );
+      logger
+        ..err(
+          '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold ($minLinkPercentage%).''',
+        )
+        ..info(
+          '''Not publishing. Lower --min-link-percentage to accept this patch, or see ${Patcher.debugInfoFile.path} for what could not be linked.''',
+        );
       throw ProcessExit(ExitCode.software.code);
     }
 

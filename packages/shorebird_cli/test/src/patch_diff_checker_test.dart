@@ -212,6 +212,7 @@ void main() {
             throwsA(isA<UnpatchableChangeException>()),
           );
 
+          verify(() => logger.err(allowNativeDiffsHint)).called(1);
           verifyNever(
             () => logger.confirm(any(), hint: any(named: 'hint')),
           );
@@ -328,6 +329,7 @@ void main() {
             throwsA(isA<UnpatchableChangeException>()),
           );
 
+          verify(() => logger.err(allowAssetDiffsHint)).called(1);
           verifyNever(
             () => logger.confirm(any(), hint: any(named: 'hint')),
           );
