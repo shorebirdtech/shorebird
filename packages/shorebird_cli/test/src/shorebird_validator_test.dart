@@ -71,7 +71,7 @@ void main() {
         );
         verify(
           () => logger.err(
-            '''This command is only supported on ${supportedOperatingSystems.join(' ,')}.''',
+            '''This command is only supported on macos, windows (this machine is running linux).''',
           ),
         ).called(1);
       });
@@ -296,8 +296,8 @@ To fix, update your pubspec.yaml to include the following:
               verify(
                 () => logger.warn(
                   '''
-The project has flavors (flavorA), but no --flavor argument was provided.
-The default app id test will be used.''',
+The project has flavors flavorA, but no --flavor argument was provided.
+The default app id test will be used. Pass --flavor=<name> to target a flavor.''',
                 ),
               ).called(1);
             });
