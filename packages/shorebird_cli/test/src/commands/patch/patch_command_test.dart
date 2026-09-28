@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -19,6 +20,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -250,7 +252,7 @@ void main() {
           artifacts: any(named: 'artifacts'),
           metadata: any(named: 'metadata'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => const Patch(id: 3, number: 2));
 
       when(
         () => codePushClientWrapper.getReleaseArtifacts(
@@ -1557,6 +1559,79 @@ void main() {
               ]);
             },
           );
+        });
+      });
+    });
+
+    group('--json', () {
+      Future<T> runJson<T>(Future<T> Function() body) => runScoped(
+        body,
+        values: {isJsonModeRef.overrideWith(() => true)},
+      );
+
+      setUp(() {
+        when(() => patcher.linkPercentage).thenReturn(97.5);
+      });
+
+      test('emits what was published', () async {
+        final captured = <String>[];
+        final exitCode = await captureStdout(
+          () => runJson(() => runWithOverrides(command.run)),
+          captured: captured,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(captured, hasLength(1));
+        final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+        expect(envelope['status'], equals('success'));
+        expect(
+          envelope['data'],
+          equals({
+            'app_id': appId,
+            'track': 'stable',
+            'patches': [
+              {
+                'platform': 'android',
+                'release_id': release.id,
+                'release_version': release.version,
+                'patch_id': 3,
+                'patch_number': 2,
+                'link_percentage': 97.5,
+              },
+            ],
+          }),
+        );
+      });
+
+      group('with --dry-run', () {
+        setUp(() {
+          when(() => argResults['dry-run']).thenReturn(true);
+        });
+
+        test('emits what would have been patched', () async {
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runJson(() => runWithOverrides(command.run)),
+              captured: captured,
+            ),
+            exitsWithCode(ExitCode.success),
+          );
+
+          expect(captured, hasLength(1));
+          final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+          expect(
+            envelope['data'],
+            equals({
+              'dry_run': true,
+              'app_id': appId,
+              'platform': 'android',
+              'release_id': release.id,
+              'release_version': release.version,
+              'link_percentage': 97.5,
+            }),
+          );
+          verifyNever(() => logger.info('No issues detected.'));
         });
       });
     });
