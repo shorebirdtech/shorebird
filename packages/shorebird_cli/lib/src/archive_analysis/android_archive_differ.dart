@@ -160,13 +160,16 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
   ) {
     final pathSet = paths.toSet();
     final result = <String, Uint8List>{};
-    final archive = ZipDecoder().decodeStream(
-      InputFileStream(archivePath),
-    );
-    for (final file in archive.files) {
-      if (file.isFile && pathSet.contains(file.name)) {
-        result[file.name] = Uint8List.fromList(file.content);
+    final input = InputFileStream(archivePath);
+    try {
+      final archive = ZipDecoder().decodeStream(input);
+      for (final file in archive.files) {
+        if (file.isFile && pathSet.contains(file.name)) {
+          result[file.name] = Uint8List.fromList(file.content);
+        }
       }
+    } finally {
+      input.closeSync();
     }
     return result;
   }
