@@ -5,6 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:dex/dex.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 
 /// A [FileSetDiff] that also carries semantic DEX diff results.
@@ -15,10 +16,18 @@ class AndroidFileSetDiff extends FileSetDiff {
     required super.removedPaths,
     required super.changedPaths,
     this.dexDiffResults = const {},
+    this.dependencyVersionChanges = const [],
   });
 
   /// DEX diff results for breaking changes, keyed by file path.
   final Map<String, DexDiffResult> dexDiffResults;
+
+  /// Maven libraries whose resolved versions differ between the two bundles.
+  ///
+  /// Only computed when DEX files have breaking changes, since a dependency
+  /// version change is the most common cause of DEX changes the developer
+  /// didn't make. Empty if neither bundle carries dependency metadata.
+  final List<DependencyVersionChange> dependencyVersionChanges;
 }
 
 /// {@template android_archive_differ}
@@ -38,7 +47,9 @@ class AndroidFileSetDiff extends FileSetDiff {
 ///   - Anything in META-INF
 ///   - BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.pb
 ///      - This seems to change with every build, regardless of whether any code
-///        or assets were changed.
+///        or assets were changed. When DEX files change, the Maven versions it
+///        records are compared to explain why (see
+///        [AndroidFileSetDiff.dependencyVersionChanges]).
 ///
 /// See https://developer.android.com/guide/app-bundle/app-bundle-format and
 /// /// https://developer.android.com/studio/projects/android-library.html#aar-contents
@@ -71,9 +82,15 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
       );
     }
 
-    // Extract DEX file bytes from both archives.
-    final oldDexBytes = _extractDexFiles(oldArchivePath, dexPaths);
-    final newDexBytes = _extractDexFiles(newArchivePath, dexPaths);
+    // Extract DEX file bytes (and dependency metadata) from both archives.
+    final oldFiles = _extractFiles(oldArchivePath, [
+      ...dexPaths,
+      bundleDependenciesPath,
+    ]);
+    final newFiles = _extractFiles(newArchivePath, [
+      ...dexPaths,
+      bundleDependenciesPath,
+    ]);
 
     const parser = DexParser();
     const differ = DexDiffer();
@@ -81,8 +98,8 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
     final dexDiffResults = <String, DexDiffResult>{};
 
     for (final path in dexPaths) {
-      final oldBytes = oldDexBytes[path];
-      final newBytes = newDexBytes[path];
+      final oldBytes = oldFiles[path];
+      final newBytes = newFiles[path];
       if (oldBytes == null || newBytes == null) continue;
 
       try {
@@ -103,15 +120,41 @@ class AndroidArchiveDiffer extends ArchiveDiffer {
       }
     }
 
+    final changedPaths = fileSetDiff.changedPaths.difference(safePaths);
+    final hasBreakingDexChanges = changedPaths.any((p) => p.endsWith('.dex'));
+
     return AndroidFileSetDiff(
       addedPaths: fileSetDiff.addedPaths,
       removedPaths: fileSetDiff.removedPaths,
-      changedPaths: fileSetDiff.changedPaths.difference(safePaths),
+      changedPaths: changedPaths,
       dexDiffResults: dexDiffResults,
+      dependencyVersionChanges: hasBreakingDexChanges
+          ? _dependencyVersionChanges(
+              oldFiles[bundleDependenciesPath],
+              newFiles[bundleDependenciesPath],
+            )
+          : const [],
     );
   }
 
-  Map<String, Uint8List> _extractDexFiles(
+  List<DependencyVersionChange> _dependencyVersionChanges(
+    Uint8List? oldBytes,
+    Uint8List? newBytes,
+  ) {
+    if (oldBytes == null || newBytes == null) return const [];
+    try {
+      return diffDependencyVersions(
+        parseBundleDependencies(oldBytes),
+        parseBundleDependencies(newBytes),
+      );
+    } on FormatException {
+      // The metadata is only used to explain a DEX change, so a file we can't
+      // parse just means no explanation.
+      return const [];
+    }
+  }
+
+  Map<String, Uint8List> _extractFiles(
     String archivePath,
     List<String> paths,
   ) {
