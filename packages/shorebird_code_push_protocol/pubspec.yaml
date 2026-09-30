@@ -25,4 +25,4 @@ dev_dependencies:
   # not generated. `tool/gen.dart` passes `--no-clear` to opt out; that
   # flag first exists in 1.4.0.
   space_gen: ^1.4.0
-  test: ^1.31.2
+  test: ^1.32.0
