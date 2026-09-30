@@ -151,7 +151,7 @@ Iterable<_Field> _fields(Uint8List bytes) sync* {
         yield _Field(number, Uint8List(0));
       case 2: // length-delimited
         final length = readVarint();
-        if (offset + length > bytes.length) {
+        if (length < 0 || offset + length > bytes.length) {
           throw const FormatException('Truncated length-delimited field');
         }
         yield _Field(

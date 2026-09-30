@@ -68,6 +68,17 @@ void main() {
         () => parseBundleDependencies(Uint8List.fromList([7 << 3 | 1, 0])),
         throwsFormatException,
       );
+      // A length that decodes to a negative 64-bit integer.
+      expect(
+        () => parseBundleDependencies(
+          Uint8List.fromList([
+            1 << 3 | 2,
+            ...List.filled(9, 0xff),
+            0x01,
+          ]),
+        ),
+        throwsFormatException,
+      );
     });
 
     test('throws a FormatException for unsupported wire types', () {
