@@ -1,4 +1,5 @@
-// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec xcassets actool
+// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec
+// cspell:words xcassets actool
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -81,23 +82,40 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     required String archivePath,
     required PathHashes pathHashes,
   }) async {
-    return Isolate.run(() async {
-      for (final file in _filesToUnsign(archivePath)) {
-        pathHashes[file.name] = await _unsignedFileHash(file);
-      }
+    return Isolate.run(
+      () => _withArchive(archivePath, (archive) async {
+        for (final file in _filesToUnsign(archive)) {
+          pathHashes[file.name] = await _unsignedFileHash(file);
+        }
 
-      for (final file in _carFiles(archivePath)) {
-        pathHashes[file.name] = await _sanitizedCarFileHash(file);
-      }
+        for (final file in _carFiles(archive)) {
+          pathHashes[file.name] = await _sanitizedCarFileHash(file);
+        }
 
-      return pathHashes;
-    });
+        return pathHashes;
+      }),
+    );
   }
 
-  List<ArchiveFile> _filesToUnsign(String archivePath) {
-    return ZipDecoder()
-        .decodeStream(InputFileStream(archivePath))
-        .files
+  /// Decodes the zip at [archivePath], runs [body] on it, and closes the
+  /// underlying file afterwards.
+  ///
+  /// [ArchiveFile] contents are read lazily from the open file, so all work
+  /// that reads file contents must happen inside [body].
+  static Future<T> _withArchive<T>(
+    String archivePath,
+    Future<T> Function(Archive archive) body,
+  ) async {
+    final input = InputFileStream(archivePath);
+    try {
+      return await body(ZipDecoder().decodeStream(input));
+    } finally {
+      await input.close();
+    }
+  }
+
+  List<ArchiveFile> _filesToUnsign(Archive archive) {
+    return archive.files
         .where((file) => file.isFile)
         .where(
           (file) =>
@@ -109,10 +127,8 @@ class AppleArchiveDiffer extends ArchiveDiffer {
         .toList();
   }
 
-  List<ArchiveFile> _carFiles(String archivePath) {
-    return ZipDecoder()
-        .decodeStream(InputFileStream(archivePath))
-        .files
+  List<ArchiveFile> _carFiles(Archive archive) {
+    return archive.files
         .where((file) => file.isFile && p.basename(file.name) == 'Assets.car')
         .toList();
   }
@@ -281,16 +297,18 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     final diffs = <String>[];
     for (final changedPath in fileSetDiff.changedPaths) {
       if (changedPath.endsWith('.car')) {
-        final oldCarFile = ZipDecoder()
-            .decodeStream(InputFileStream(oldArchivePath))
-            .files
-            .firstWhere((file) => file.name == changedPath);
-        final newCarFile = ZipDecoder()
-            .decodeStream(InputFileStream(newArchivePath))
-            .files
-            .firstWhere((file) => file.name == changedPath);
-        final oldCarJsonFile = await _carJsonFile(oldCarFile);
-        final newCarJsonFile = await _carJsonFile(newCarFile);
+        final oldCarJsonFile = await _withArchive(
+          oldArchivePath,
+          (archive) => _carJsonFile(
+            archive.files.firstWhere((file) => file.name == changedPath),
+          ),
+        );
+        final newCarJsonFile = await _withArchive(
+          newArchivePath,
+          (archive) => _carJsonFile(
+            archive.files.firstWhere((file) => file.name == changedPath),
+          ),
+        );
         final diffResult = await diff.run(
           oldCarJsonFile.path,
           newCarJsonFile.path,
