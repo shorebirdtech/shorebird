@@ -588,12 +588,15 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
             ..writeAsStringSync('release');
 
           // Create intermediate patch snapshots alongside out.aot.
-          File(p.join(buildDirectory.path, 'out.ct.aot'))
-            ..writeAsStringSync('ct');
-          File(p.join(buildDirectory.path, 'out.preDdOptimized.aot'))
-            ..writeAsStringSync('preDdOptimized');
-          File(p.join(buildDirectory.path, 'out.optimized.aot'))
-            ..writeAsStringSync('optimized');
+          File(
+            p.join(buildDirectory.path, 'out.ct.aot'),
+          ).writeAsStringSync('ct');
+          File(
+            p.join(buildDirectory.path, 'out.preDdOptimized.aot'),
+          ).writeAsStringSync('preDdOptimized');
+          File(
+            p.join(buildDirectory.path, 'out.optimized.aot'),
+          ).writeAsStringSync('optimized');
 
           // Capture the dumpDebugInfoPath so we can inspect it.
           String? capturedDebugInfoPath;

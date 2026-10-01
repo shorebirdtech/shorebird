@@ -19,7 +19,7 @@ void main() {
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
 
-    String kotlinGradleWithLegacyLine = '''
+    const kotlinGradleWithLegacyLine = '''
 android {
   buildTypes {
     release {
@@ -29,7 +29,7 @@ android {
 }
 ''';
 
-    String groovyGradleWithLegacyPlusEquals = '''
+    const groovyGradleWithLegacyPlusEquals = '''
 android {
   buildTypes {
     release {
@@ -39,7 +39,7 @@ android {
 }
 ''';
 
-    String cleanGradle = '''
+    const cleanGradle = '''
 android {
   buildTypes {
     release {

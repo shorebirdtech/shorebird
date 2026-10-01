@@ -105,13 +105,13 @@ void main() {
               },
             ]),
           );
-          tracer.addNetworkEvent(
-            name: 'POST api.shorebird.dev',
-            start: DateTime.fromMicrosecondsSinceEpoch(200),
-            duration: const Duration(microseconds: 50),
-          );
-
-          tracer.mergeInto(traceFile);
+          tracer
+            ..addNetworkEvent(
+              name: 'POST api.shorebird.dev',
+              start: DateTime.fromMicrosecondsSinceEpoch(200),
+              duration: const Duration(microseconds: 50),
+            )
+            ..mergeInto(traceFile);
 
           final decoded = jsonDecode(traceFile.readAsStringSync()) as List;
           // 1 pre-existing flutter span + 1 shorebird network span +
@@ -127,34 +127,37 @@ void main() {
       );
 
       test('no-op when the trace file does not exist', () {
-        tracer.addNetworkEvent(
-          name: 'x',
-          start: DateTime.fromMicrosecondsSinceEpoch(0),
-          duration: const Duration(microseconds: 1),
-        );
-        tracer.mergeInto(traceFile);
+        tracer
+          ..addNetworkEvent(
+            name: 'x',
+            start: DateTime.fromMicrosecondsSinceEpoch(0),
+            duration: const Duration(microseconds: 1),
+          )
+          ..mergeInto(traceFile);
         expect(traceFile.existsSync(), isFalse);
       });
 
       test('no-op when existing file is not a JSON array', () {
         traceFile.writeAsStringSync('{"not":"an array"}');
-        tracer.addNetworkEvent(
-          name: 'x',
-          start: DateTime.fromMicrosecondsSinceEpoch(0),
-          duration: const Duration(microseconds: 1),
-        );
-        tracer.mergeInto(traceFile);
+        tracer
+          ..addNetworkEvent(
+            name: 'x',
+            start: DateTime.fromMicrosecondsSinceEpoch(0),
+            duration: const Duration(microseconds: 1),
+          )
+          ..mergeInto(traceFile);
         expect(traceFile.readAsStringSync(), '{"not":"an array"}');
       });
 
       test('no-op when existing file is malformed JSON', () {
         traceFile.writeAsStringSync('not json');
-        tracer.addNetworkEvent(
-          name: 'x',
-          start: DateTime.fromMicrosecondsSinceEpoch(0),
-          duration: const Duration(microseconds: 1),
-        );
-        tracer.mergeInto(traceFile);
+        tracer
+          ..addNetworkEvent(
+            name: 'x',
+            start: DateTime.fromMicrosecondsSinceEpoch(0),
+            duration: const Duration(microseconds: 1),
+          )
+          ..mergeInto(traceFile);
         expect(traceFile.readAsStringSync(), 'not json');
       });
     });

@@ -218,7 +218,7 @@ class Auth {
     CodePushClientBuilder? buildCodePushClient,
   }) : _httpClient = httpClient ?? _defaultHttpClient,
        _credentialsDir =
-           credentialsDir ?? applicationConfigHome(executableName),
+           credentialsDir ?? BaseDirectories(executableName).configHome,
        _authServiceUri = authServiceUri ?? shorebirdEnv.authServiceUri,
        _obtainCredentialsViaLoopbackLogin =
            obtainCredentialsViaLoopbackLogin ??

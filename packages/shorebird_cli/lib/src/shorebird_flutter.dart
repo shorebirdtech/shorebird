@@ -542,8 +542,7 @@ class ShorebirdFlutter {
   ///
   /// e.g. 3.16.3 and b9b2390296b9b2390296 -> 3.16.3 (b9b2390296)
   String formatVersion({required String revision, required String? version}) {
-    version ??= 'unknown';
-    return '$version (${shortRevisionString(revision)})';
+    return '${version ?? 'unknown'} (${shortRevisionString(revision)})';
   }
 
   /// Returns the current Shorebird Flutter version and revision.

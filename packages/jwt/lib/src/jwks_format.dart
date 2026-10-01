@@ -1,3 +1,5 @@
+import 'package:jwt/src/models/public_key_store/public_key_store.dart';
+
 /// {@template jwks_format}
 /// The JWKS response format used by an auth provider's public key endpoint.
 ///

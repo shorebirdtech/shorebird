@@ -704,8 +704,9 @@ class CodePushClient {
   ///
   /// Idempotent. Returns whether the server changed the patch: `false` when it
   /// answers `304 Not Modified` because the patch was already rolled back,
-  /// `true` when it changed the patch. The server is the only authority on this,
-  /// since another actor may roll the patch back between a read and this call.
+  /// `true` when it changed the patch. The server is the only authority on
+  /// this, since another actor may roll the patch back between a read and this
+  /// call.
   Future<bool> rollbackPatch({
     required String appId,
     required int releaseId,

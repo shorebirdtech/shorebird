@@ -57,10 +57,43 @@ class BuildTraceSummary {
       if (e['ph'] != 'X') continue;
       _processEvent(acc, e);
     }
-    return _buildSummary(
+    return BuildTraceSummary._fromAccumulator(
       acc,
       platform: platform,
       shorebirdOverhead: shorebirdOverhead,
+      environment: environment,
+    );
+  }
+
+  /// Assembles the summary from the counters [BuildTraceSummary.fromEvents]
+  /// accumulated.
+  factory BuildTraceSummary._fromAccumulator(
+    _Accumulator acc, {
+    required String platform,
+    Duration? shorebirdOverhead,
+    BuildEnvironment? environment,
+  }) {
+    final flutterBuild = acc.flutterBuild;
+    return BuildTraceSummary(
+      platform: platform,
+      total: flutterBuild + (shorebirdOverhead ?? Duration.zero),
+      flutterBuild: flutterBuild,
+      shorebirdOverhead: shorebirdOverhead,
+      network: NetworkStats(
+        duration: acc.network,
+        callCount: acc.networkCount,
+      ),
+      setup: SetupStats(
+        flutterInstall: acc.setupPhase.of(SetupPhase.flutterInstall),
+        flutterPrecache: acc.setupPhase.of(SetupPhase.flutterPrecache),
+        shorebirdCache: acc.setupPhase.of(SetupPhase.shorebirdCache),
+      ),
+      dart: _dartStats(acc),
+      flutterAssemble: _flutterAssembleStats(acc),
+      native: _nativeStats(acc),
+      flutterTool: acc.flutterTool,
+      android: platform == 'android' ? _androidStats(acc) : null,
+      ios: platform == 'ios' ? _iosStats(acc) : null,
       environment: environment,
     );
   }
@@ -163,37 +196,6 @@ class BuildTraceSummary {
     acc.gradleKind.add(
       GradleTaskKind.parse(args['kind'] as String?),
       dur,
-    );
-  }
-
-  static BuildTraceSummary _buildSummary(
-    _Accumulator acc, {
-    required String platform,
-    Duration? shorebirdOverhead,
-    BuildEnvironment? environment,
-  }) {
-    final flutterBuild = acc.flutterBuild;
-    return BuildTraceSummary(
-      platform: platform,
-      total: flutterBuild + (shorebirdOverhead ?? Duration.zero),
-      flutterBuild: flutterBuild,
-      shorebirdOverhead: shorebirdOverhead,
-      network: NetworkStats(
-        duration: acc.network,
-        callCount: acc.networkCount,
-      ),
-      setup: SetupStats(
-        flutterInstall: acc.setupPhase.of(SetupPhase.flutterInstall),
-        flutterPrecache: acc.setupPhase.of(SetupPhase.flutterPrecache),
-        shorebirdCache: acc.setupPhase.of(SetupPhase.shorebirdCache),
-      ),
-      dart: _dartStats(acc),
-      flutterAssemble: _flutterAssembleStats(acc),
-      native: _nativeStats(acc),
-      flutterTool: acc.flutterTool,
-      android: platform == 'android' ? _androidStats(acc) : null,
-      ios: platform == 'ios' ? _iosStats(acc) : null,
-      environment: environment,
     );
   }
 
@@ -304,8 +306,8 @@ class BuildTraceSummary {
   /// malformed. Callers that need to build more than one summary from the
   /// same trace (e.g. once to measure flutter wall clock, again with
   /// Shorebird overhead computed from it) should parse once and pass the
-  /// list to [fromEvents] — parsing a multi-megabyte trace twice is wasted
-  /// work on plugin-heavy apps.
+  /// list to [BuildTraceSummary.fromEvents]. Parsing a multi-megabyte
+  /// trace twice is wasted work on plugin-heavy apps.
   static List<Map<String, Object?>>? tryReadEvents(File traceFile) {
     if (!traceFile.existsSync()) return null;
     try {
@@ -805,7 +807,8 @@ enum _AssembleCategory {
 }
 
 /// Mutable scratch struct that [BuildTraceSummary.fromEvents] fills
-/// while iterating the event list, then [_buildSummary] consumes. Its
+/// while iterating the event list, then
+/// [BuildTraceSummary._fromAccumulator] consumes. Its
 /// only job is to carry typed counters without needing ~30 positional
 /// arguments between the per-event handlers.
 class _Accumulator {
@@ -846,6 +849,6 @@ extension on Map<dynamic, Duration> {
 
   /// Reads the counter keyed by [key], returning [Duration.zero] if
   /// unset. Sugar for `map[key] ?? Duration.zero` that keeps
-  /// [_buildSummary]'s field list flat.
+  /// [BuildTraceSummary._fromAccumulator]'s field list flat.
   Duration of<K>(K key) => this[key] ?? Duration.zero;
 }
