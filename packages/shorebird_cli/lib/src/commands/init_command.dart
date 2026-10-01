@@ -155,9 +155,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       iosFlavors = apple.flavors(platform: ApplePlatform.ios);
       macosFlavors = apple.flavors(platform: ApplePlatform.macos);
       productFlavors = <String>{
-        if (androidFlavors != null) ...androidFlavors,
-        if (iosFlavors != null) ...iosFlavors,
-        if (macosFlavors != null) ...macosFlavors,
+        ...?androidFlavors,
+        ...?iosFlavors,
+        ...?macosFlavors,
       };
       if (productFlavors.isEmpty) {
         detectFlavorsProgress.complete('No product flavors detected.');

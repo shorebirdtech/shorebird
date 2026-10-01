@@ -66,7 +66,7 @@ class ShorebirdEnv {
 
   /// The application config directory for the Shorebird CLI.
   Directory get configDirectory {
-    return Directory(applicationConfigHome(executableName));
+    return Directory(BaseDirectories(executableName).configHome);
   }
 
   /// The directory where shorebird logs are stored.

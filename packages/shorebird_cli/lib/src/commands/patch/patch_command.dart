@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
-import 'package:path/path.dart' as p;
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_builder/build_trace_session.dart';
@@ -458,10 +458,10 @@ Building with Flutter $flutterVersionString to determine the release version...
     // calls made by Apple patchers outside the Flutter build.
     final extraBuildArgs = <String>[];
     if (obfuscationMapFile != null) {
+      final loadMapOption = '--load-obfuscation-map=${obfuscationMapFile.path}';
       extraBuildArgs.addAll([
         '--obfuscate',
-        '--extra-gen-snapshot-options='
-            '--load-obfuscation-map=${obfuscationMapFile.path}',
+        '--extra-gen-snapshot-options=$loadMapOption',
       ]);
 
       // Gate --strip on the release's Flutter revision (not the user's

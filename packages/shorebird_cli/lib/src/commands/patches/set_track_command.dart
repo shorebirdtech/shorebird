@@ -8,6 +8,10 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+const _jsonExample =
+    'shorebird patches set-track --release 1.0.0+1 --patch 1 '
+    '--track stable --app-id <id> --json';
+
 /// {@template set_track_command}
 /// Sets the track of a patch.
 ///
@@ -57,7 +61,7 @@ class SetTrackCommand extends ShorebirdCommand {
       'Sets the track of a patch.\n\n'
       'Example output:\n'
       '  Patch 1 on release 1.0.0+1 is now in channel stable!\n\n'
-      '${ShorebirdCommand.jsonHint('shorebird patches set-track --release 1.0.0+1 --patch 1 --track stable --app-id <id> --json')}';
+      '${ShorebirdCommand.jsonHint(_jsonExample)}';
 
   @override
   Future<int> run() async {
@@ -216,7 +220,8 @@ class SetTrackCommand extends ShorebirdCommand {
     }
 
     logger.success(
-      'Patch $patchNumber on release $releaseVersion is now in channel $targetChannel!',
+      'Patch $patchNumber on release $releaseVersion is now in channel '
+      '$targetChannel!',
     );
 
     return ExitCode.success.code;

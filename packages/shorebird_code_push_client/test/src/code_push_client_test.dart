@@ -2407,7 +2407,6 @@ void main() {
             url: 'https://example.com',
             hash: '#',
             size: 42,
-            podfileLockHash: null,
             canSideload: true,
           ),
         ];

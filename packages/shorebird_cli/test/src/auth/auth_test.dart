@@ -42,7 +42,7 @@ void main() {
       );
       expect(
         instance.credentialsFilePath,
-        p.join(applicationConfigHome(executableName), 'credentials.json'),
+        p.join(BaseDirectories(executableName).configHome, 'credentials.json'),
       );
     });
   });

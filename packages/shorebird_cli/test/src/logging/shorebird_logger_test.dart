@@ -261,7 +261,7 @@ void main() {
       });
 
       test('the exception toString surfaces both the prompt and the hint', () {
-        final exception = InteractivePromptRequiredException(
+        const exception = InteractivePromptRequiredException(
           promptText: 'Continue?',
           hint: 'Pass --force.',
         );
@@ -319,11 +319,10 @@ void main() {
         });
 
         test('emits a "Done" line on complete with no update', () {
-          final progress = runUnderScope(
+          runUnderScope(
             () => logger.progress('fetching apps'),
             hasTerminal: false,
-          );
-          progress.complete();
+          ).complete();
           expect(stdoutOutput, isEmpty);
           expect(
             stderrOutput,
@@ -332,40 +331,37 @@ void main() {
         });
 
         test('emits a "Done" line with the update text on complete', () {
-          final progress = runUnderScope(
+          runUnderScope(
             () => logger.progress('fetching apps'),
             hasTerminal: false,
-          );
-          progress.complete('found 3 apps');
+          ).complete('found 3 apps');
           expect(stderrOutput.last, equals('Done found 3 apps'));
         });
 
         test('emits a "Failed" line on fail', () {
-          final progress = runUnderScope(
+          runUnderScope(
             () => logger.progress('fetching apps'),
             hasTerminal: false,
-          );
-          progress.fail('network error');
+          ).fail('network error');
           expect(stderrOutput.last, equals('Failed network error'));
         });
 
         test('emits an update line and remembers the new message', () {
-          final progress = runUnderScope(
-            () => logger.progress('fetching apps'),
-            hasTerminal: false,
-          );
-          progress.update('still fetching');
-          progress.complete();
+          runUnderScope(
+              () => logger.progress('fetching apps'),
+              hasTerminal: false,
+            )
+            ..update('still fetching')
+            ..complete();
           expect(stderrOutput, contains('still fetching...'));
           expect(stderrOutput.last, equals('Done still fetching'));
         });
 
         test('emits no carriage returns or ANSI escapes', () {
-          final progress = runUnderScope(
+          runUnderScope(
             () => logger.progress('fetching apps'),
             hasTerminal: false,
-          );
-          progress.complete();
+          ).complete();
           for (final line in stderrOutput) {
             expect(line, isNot(contains('\r')));
             expect(line, isNot(contains('\u001b')));
@@ -375,12 +371,11 @@ void main() {
 
       group('under --json', () {
         test('routes static progress to stderr', () {
-          final progress = runUnderScope(
+          runUnderScope(
             () => logger.progress('fetching apps'),
             hasTerminal: true,
             jsonMode: true,
-          );
-          progress.complete();
+          ).complete();
           expect(stdoutOutput, isEmpty);
           expect(stderrOutput, contains('Starting fetching apps...'));
           expect(stderrOutput, contains('Done fetching apps'));
@@ -389,12 +384,11 @@ void main() {
 
       group('under --json with a TTY', () {
         test('still produces static lines on stderr (no spinner)', () {
-          final progress = runUnderScope(
+          runUnderScope(
             () => logger.progress('fetching apps'),
             hasTerminal: true,
             jsonMode: true,
-          );
-          progress.complete();
+          ).complete();
           expect(stdoutOutput, isEmpty);
           expect(stderrOutput, contains('Starting fetching apps...'));
           expect(stderrOutput, contains('Done fetching apps'));
@@ -404,11 +398,10 @@ void main() {
       group('when the log level is above info', () {
         test('suppresses output entirely', () {
           logger.level = Level.warning;
-          final progress = runUnderScope(
+          runUnderScope(
             () => logger.progress('fetching apps'),
             hasTerminal: false,
-          );
-          progress.complete();
+          ).complete();
           expect(stdoutOutput, isEmpty);
         });
       });

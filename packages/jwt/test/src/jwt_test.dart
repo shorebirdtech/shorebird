@@ -32,13 +32,13 @@ pc.SecureRandom _secureRandom() {
 }
 
 pc.AsymmetricKeyPair<pc.RSAPublicKey, pc.RSAPrivateKey> _generateRsaKeyPair() {
-  final keyGen = pc.KeyGenerator('RSA');
-  keyGen.init(
-    pc.ParametersWithRandom(
-      pc.RSAKeyGeneratorParameters(BigInt.parse('65537'), 2048, 64),
-      _secureRandom(),
-    ),
-  );
+  final keyGen = pc.KeyGenerator('RSA')
+    ..init(
+      pc.ParametersWithRandom(
+        pc.RSAKeyGeneratorParameters(BigInt.parse('65537'), 2048, 64),
+        _secureRandom(),
+      ),
+    );
   final pair = keyGen.generateKeyPair();
   return pc.AsymmetricKeyPair(
     pair.publicKey as pc.RSAPublicKey,
@@ -60,14 +60,14 @@ String _createSignedJwt({
       .replaceAll('=', '');
   final signingInput = '$encodedHeader.$encodedPayload';
 
-  final signer = pc.Signer('SHA-256/RSA');
-  signer.init(
-    true,
-    pc.ParametersWithRandom(
-      pc.PrivateKeyParameter<pc.RSAPrivateKey>(privateKey),
-      _secureRandom(),
-    ),
-  );
+  final signer = pc.Signer('SHA-256/RSA')
+    ..init(
+      true,
+      pc.ParametersWithRandom(
+        pc.PrivateKeyParameter<pc.RSAPrivateKey>(privateKey),
+        _secureRandom(),
+      ),
+    );
   final signature =
       signer.generateSignature(
             Uint8List.fromList(utf8.encode(signingInput)),
@@ -674,7 +674,7 @@ void main() {
         final nB64 = _encodeBigInt(publicKey.modulus!);
         final eB64 = _encodeBigInt(publicKey.exponent!);
 
-        final now = DateTime(2024, 6, 1);
+        final now = DateTime(2024, 6);
         final iat = now.millisecondsSinceEpoch ~/ 1000;
         final exp =
             now.add(const Duration(hours: 1)).millisecondsSinceEpoch ~/ 1000;
