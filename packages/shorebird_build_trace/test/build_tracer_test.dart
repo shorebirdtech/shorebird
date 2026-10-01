@@ -123,7 +123,7 @@ void main() {
     });
 
     test('addFlowStart / addFlowEnd emit ph:s / ph:f with bp=e', () {
-      final t = BuildTracer()
+      BuildTracer()
         ..addFlowStart(
           id: 99,
           pid: 1,
@@ -135,8 +135,8 @@ void main() {
           pid: 2,
           tid: 1,
           at: DateTime.fromMicrosecondsSinceEpoch(50),
-        );
-      t.writeToFile(traceFile);
+        )
+        ..writeToFile(traceFile);
       final events = jsonDecode(traceFile.readAsStringSync()) as List;
       expect((events[0] as Map)['ph'], 's');
       expect((events[0] as Map)['id'], 99);

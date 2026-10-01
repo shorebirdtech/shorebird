@@ -359,10 +359,11 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
           when(
             () => shorebirdFlutter.resolveFlutterVersion(any()),
           ).thenAnswer((_) async => Version(3, 41, 7));
-          // Flutter registers --shorebird-trace with `hide: !verboseHelp`, so it
-          // only appears in verbose help. Model that: plain `-h` omits the flag,
-          // `-h -v` includes it. Probing without `-v` (the original bug) would
-          // miss it and silently disable tracing on every supported build.
+          // Flutter registers --shorebird-trace with `hide: !verboseHelp`,
+          // so it only appears in verbose help. Model that: plain `-h` omits
+          // the flag, `-h -v` includes it. Probing without `-v` (the
+          // original bug) would miss it and silently disable tracing on
+          // every supported build.
           when(
             () => shorebirdProcess.run(
               'flutter',
@@ -838,7 +839,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
             expect(summary['platform'], 'android');
             expect(summary['version'], 9);
             // 500ms kernel + 200ms aot
-            expect((summary['dart'] as Map)['totalMs'], 700);
+            expect((summary['dart']! as Map)['totalMs'], 700);
             expect(summary['flutterBuildMs'], 3000);
             expect(summary['shorebirdOverheadMs'], isNonNegative);
             final dart = summary['dart']! as Map<String, Object?>;
@@ -1028,7 +1029,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               runInShell: false,
             ),
           ).thenAnswer(
-            (_) async => ShorebirdProcessResult(
+            (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: 'no trace flag here',
               stderr: '',
@@ -1230,7 +1231,7 @@ Either run `flutter pub get` manually, or follow the steps in ${cannotRunInVSCod
               runInShell: false,
             ),
           ).thenAnswer(
-            (_) async => ShorebirdProcessResult(
+            (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: 'no trace flag here',
               stderr: '',
@@ -1407,7 +1408,7 @@ Reason: Exited with code 70.'''),
               runInShell: false,
             ),
           ).thenAnswer(
-            (_) async => ShorebirdProcessResult(
+            (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: 'no trace flag here',
               stderr: '',
@@ -1896,7 +1897,7 @@ Reason: Exited with code 70.'''),
               runInShell: false,
             ),
           ).thenAnswer(
-            (_) async => ShorebirdProcessResult(
+            (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: 'no trace flag here',
               stderr: '',
@@ -2188,7 +2189,7 @@ Reason: Exited with code 70.'''),
               runInShell: false,
             ),
           ).thenAnswer(
-            (_) async => ShorebirdProcessResult(
+            (_) async => const ShorebirdProcessResult(
               exitCode: 0,
               stdout: 'no trace flag here',
               stderr: '',

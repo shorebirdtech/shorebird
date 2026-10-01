@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:jwt/src/models/public_key_store/jwk_key_store.dart';
 import 'package:jwt/src/models/public_key_store/public_key_store.dart';
 import 'package:jwt/src/models/rsa_jwk.dart';
 import 'package:pointycastle/pointycastle.dart' as pointycastle;

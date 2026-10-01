@@ -12,13 +12,25 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 
 /// Hint shown when a user can bypass a native-diff warning interactively.
 const String allowNativeDiffsHint =
-    'Warning: Native changes in a patch are likely to crash your app. '
-    'Pass --allow-native-diffs to force this patch.';
+    'Warning: Patches do not include native code, and a mismatch between '
+    "your Dart code and the release's native code can crash your app. "
+    "If you don't understand these native changes, don't ship this patch. "
+    'Pass --allow-native-diffs to override this warning for this patch.';
+
+/// Advice shown after listing dependencies whose versions changed.
+const String _pinDependenciesHint =
+    'A changed dependency version is a common cause of DEX changes. '
+    'Pin dependency versions (or use Gradle dependency locking) so patch '
+    'builds resolve the same versions as the release.\n'
+    "Patches only contain Dart code, so devices keep running the release's "
+    'versions of these libraries. If these version changes explain all of '
+    "the differences above and your Dart code doesn't rely on them, it is "
+    'safe to pass --allow-native-diffs for this patch.';
 
 /// Hint shown when a user can bypass an asset-diff warning interactively.
 const String allowAssetDiffsHint =
     'Warning: Asset changes will not be included in this patch. '
-    'Pass --allow-asset-diffs to force this patch.';
+    'Pass --allow-asset-diffs to override this warning for this patch.';
 
 /// File names of icon fonts that Flutter tree-shakes by default in release
 /// builds. Their contents depend on which icons the Dart code uses, so they
@@ -133,6 +145,22 @@ class PatchDiffChecker {
         );
       }
 
+      // Name the dependencies whose versions moved, which usually explains a
+      // DEX change the developer didn't make.
+      if (contentDiffs is AndroidFileSetDiff &&
+          contentDiffs.dependencyVersionChanges.isNotEmpty) {
+        logger.info(
+          yellow.wrap(
+            [
+              '\nDependency versions differ from the release:',
+              for (final change in contentDiffs.dependencyVersionChanges)
+                '  ${change.describe()}',
+              _pinDependenciesHint,
+            ].join('\n'),
+          ),
+        );
+      }
+
       logger.info(
         yellow.wrap(
           '''
@@ -143,6 +171,7 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
 
       if (!allowNativeChanges) {
         if (!shorebirdEnv.canAcceptUserInput) {
+          logger.info(yellow.wrap(allowNativeDiffsHint));
           throw UnpatchableChangeException();
         }
 
@@ -195,6 +224,7 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
 
       if (!allowAssetChanges) {
         if (!shorebirdEnv.canAcceptUserInput) {
+          logger.info(yellow.wrap(allowAssetDiffsHint));
           throw UnpatchableChangeException();
         }
 

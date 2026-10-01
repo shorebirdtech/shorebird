@@ -68,7 +68,8 @@ More info: ${troubleshootingUrl.toLink()}.
   List<String> extraBuildArgs = const [];
 
   /// Additional gen_snapshot arguments needed to match the release's
-  /// obfuscation flags. Used by Apple patchers for [buildElfAotSnapshot]
+  /// obfuscation flags. Used by Apple patchers for
+  /// `ArtifactBuilder.buildElfAotSnapshot`
   /// and linker calls.
   List<String> get obfuscationGenSnapshotArgs => [
     if (obfuscationMapPath != null) ...[

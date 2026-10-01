@@ -139,6 +139,51 @@ void main() {
               ),
             ),
           ).called(1);
+          verifyNever(
+            () => logger.info(
+              any(that: contains('Dependency versions differ')),
+            ),
+          );
+        });
+
+        test('names dependencies whose versions changed', () async {
+          when(() => archiveDiffer.changedFiles(any(), any())).thenAnswer(
+            (_) async => const AndroidFileSetDiff(
+              addedPaths: {},
+              removedPaths: {},
+              changedPaths: {'base/dex/classes3.dex'},
+              dependencyVersionChanges: [
+                DependencyVersionChange(
+                  name: 'io.branch.sdk.android:library',
+                  oldVersion: '5.21.2',
+                  newVersion: '5.21.3',
+                ),
+              ],
+            ),
+          );
+
+          await runWithOverrides(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
+              archiveDiffer: archiveDiffer,
+              allowAssetChanges: false,
+              allowNativeChanges: true,
+            ),
+          );
+
+          verify(
+            () => logger.info(
+              any(
+                that: allOf(
+                  contains('Dependency versions differ from the release:'),
+                  contains('  io.branch.sdk.android:library 5.21.2 -> 5.21.3'),
+                  contains('Gradle dependency locking'),
+                  contains('safe to pass --allow-native-diffs for this patch.'),
+                ),
+              ),
+            ),
+          ).called(1);
         });
 
         test('prompts user if allowNativeChanges is false', () async {
@@ -219,6 +264,9 @@ void main() {
           verifyNever(
             () => logger.confirm(any(), hint: any(named: 'hint')),
           );
+          verify(
+            () => logger.info(yellow.wrap(allowNativeDiffsHint)),
+          ).called(1);
         });
       });
 
@@ -384,6 +432,7 @@ void main() {
           verifyNever(
             () => logger.confirm(any(), hint: any(named: 'hint')),
           );
+          verify(() => logger.info(yellow.wrap(allowAssetDiffsHint))).called(1);
         });
       });
 

@@ -1705,7 +1705,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             setUpProjectRoot();
             // Simulate AGP filtering: remove armeabi-v7a libapp.so to mirror
             // a project with ndk.abiFilters that excludes arm32.
-            final missingArch = Arch.arm32;
+            const missingArch = Arch.arm32;
             File(
               p.join(
                 projectRoot.path,

@@ -607,7 +607,7 @@ void main() {
     });
 
     group('gradle task kinds', () {
-      Map<String, Object?> _gradle(String kind, int durMs) => _event(
+      Map<String, Object?> gradle(String kind, int durMs) => _event(
         name: kind,
         cat: 'gradle_task',
         ts: 0,
@@ -618,19 +618,19 @@ void main() {
 
       test('all kinds populate their respective buckets', () {
         final s = BuildTraceSummary.fromEvents([
-          _gradle('kotlin_compile', 10),
-          _gradle('java_compile', 20),
-          _gradle('dex', 30),
-          _gradle('resources', 40),
-          _gradle('transform', 50),
-          _gradle('r8_minify', 60),
-          _gradle('lint', 70),
-          _gradle('flutter_gradle_plugin', 80),
-          _gradle('bundle', 90),
-          _gradle('packaging', 100),
-          _gradle('aidl', 110),
-          _gradle('native_link', 120),
-          _gradle('gradle_scaffold', 130),
+          gradle('kotlin_compile', 10),
+          gradle('java_compile', 20),
+          gradle('dex', 30),
+          gradle('resources', 40),
+          gradle('transform', 50),
+          gradle('r8_minify', 60),
+          gradle('lint', 70),
+          gradle('flutter_gradle_plugin', 80),
+          gradle('bundle', 90),
+          gradle('packaging', 100),
+          gradle('aidl', 110),
+          gradle('native_link', 120),
+          gradle('gradle_scaffold', 130),
         ], platform: 'android');
 
         final g = s.android!.gradle;
