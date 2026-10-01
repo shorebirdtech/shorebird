@@ -135,9 +135,7 @@ void main() {
         );
         final response = await client.send(req);
         final received = <int>[];
-        final subscription = response.stream.listen(received.addAll);
-
-        subscription.pause();
+        final subscription = response.stream.listen(received.addAll)..pause();
         controller.add(utf8.encode('ab'));
         await Future<void>.delayed(Duration.zero);
         expect(received, isEmpty, reason: 'paused: nothing delivered');
@@ -148,6 +146,7 @@ void main() {
 
         await controller.close();
         await subscription.asFuture<void>();
+        await subscription.cancel();
       });
 
       expect((tracer.events.single['args']! as Map)['responseBytes'], 2);
