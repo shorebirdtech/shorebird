@@ -12,9 +12,11 @@ final isJsonModeRef = create(() => false);
 bool get isJsonMode => read(isJsonModeRef);
 
 /// Builds the subcommand name from [ArgResults] by walking the command chain
-/// (e.g. "doctor" for `shorebird doctor`, "patch ios" for `shorebird patch ios`).
+/// (e.g. "doctor" for `shorebird doctor`, "patch ios" for
+/// `shorebird patch ios`).
 ///
-/// Returns `null` when no subcommand was recognized (bare `shorebird` invocation).
+/// Returns `null` when no subcommand was recognized (bare `shorebird`
+/// invocation).
 String? commandNameFromResults(ArgResults topLevelResults) {
   final parts = <String>[];
   var command = topLevelResults.command;

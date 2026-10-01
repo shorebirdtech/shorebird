@@ -7,6 +7,8 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+const _jsonExample = 'shorebird releases list --app-id <id> --json';
+
 /// {@template releases_list_command}
 /// `shorebird releases list`
 /// List releases for an app.
@@ -38,7 +40,7 @@ class ReleasesListCommand extends ShorebirdCommand {
       'List releases for an app.\n\n'
       'Example output (one line per release):\n'
       '  42  1.0.0+1  android: active, ios: draft  3.27.0\n\n'
-      '${ShorebirdCommand.jsonHint('shorebird releases list --app-id <id> --json')}';
+      '${ShorebirdCommand.jsonHint(_jsonExample)}';
 
   @override
   Future<int> run() async {

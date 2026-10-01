@@ -7,6 +7,10 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+const _jsonExample =
+    'shorebird patches list --release-version 1.0.0+1 --app-id '
+    '<id> --json';
+
 /// {@template patches_list_command}
 /// `shorebird patches list`
 /// List patches for a release.
@@ -40,7 +44,7 @@ class PatchesListCommand extends ShorebirdCommand {
       '  42  #1  track: stable\n'
       '  43  #2  [no track]\n'
       '  44  #3  track: beta  [rolled back]\n\n'
-      '${ShorebirdCommand.jsonHint('shorebird patches list --release-version 1.0.0+1 --app-id <id> --json')}';
+      '${ShorebirdCommand.jsonHint(_jsonExample)}';
 
   @override
   Future<int> run() async {

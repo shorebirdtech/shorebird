@@ -228,7 +228,7 @@ Android Toolchain
         'gradle_version': gradleVersion,
       },
       'network': networkResults,
-      if (speedTest != null) 'speed_test': speedTest,
+      'speed_test': ?speedTest,
       'validators': validatorResults,
     });
     return ExitCode.success.code;

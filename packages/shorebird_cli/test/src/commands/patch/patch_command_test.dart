@@ -35,7 +35,7 @@ import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
-class _FakeRelease extends Fake with EquatableMixin implements Release {
+class _FakeRelease extends Fake with Equatable implements Release {
   _FakeRelease({required this.updatedAt});
 
   @override
@@ -94,7 +94,6 @@ void main() {
       hash: '#',
       size: 42,
       url: 'https://example.com',
-      podfileLockHash: null,
       canSideload: true,
     );
     const aabArtifact = ReleaseArtifact(
@@ -105,7 +104,6 @@ void main() {
       hash: '#',
       size: 42,
       url: 'https://example.com/release.aab',
-      podfileLockHash: null,
       canSideload: true,
     );
     const supplementArtifact = ReleaseArtifact(
@@ -116,7 +114,6 @@ void main() {
       hash: '#',
       size: 422,
       url: 'https://example.com/supplement.zip',
-      podfileLockHash: null,
       canSideload: false,
     );
 

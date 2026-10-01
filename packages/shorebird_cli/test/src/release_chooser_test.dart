@@ -13,8 +13,6 @@ Release _release(String version, DateTime createdAt) {
     appId: 'app',
     version: version,
     flutterRevision: 'rev',
-    flutterVersion: null,
-    displayName: null,
     platformStatuses: const {},
     createdAt: createdAt,
     updatedAt: createdAt,
