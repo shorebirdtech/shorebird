@@ -4,6 +4,14 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate
  -->
 
+## 1.6.124 (October 2, 2026)
+
+- 🐦 Flutter 3.47.6 / Dart 3.13.5 support
+  - Windows: fix a hang in production apps.
+- ✨ A patch with DEX diffs now names the dependency version changes behind
+  them.
+- 🐛 The Apple differ now closes its archive streams.
+
 ## 1.6.123 (September 21, 2026)
 
 - 🐦 Flutter 3.47.5 / Dart 3.13.4 support
