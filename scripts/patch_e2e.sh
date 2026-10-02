@@ -12,9 +12,16 @@
 # - Android emulator must be running.
 # - Shorebird must be installed.
 #
-# Usage: ./patch_e2e.sh <flutter-version>
+# Usage: ./patch_e2e.sh <flutter-version|default>
+#
+# "default" releases with the Flutter version the CLI pins.
 
 FLUTTER_VERSION=$1
+if [[ "$FLUTTER_VERSION" == "default" ]]; then
+    FLUTTER_VERSION_ARGS=()
+else
+    FLUTTER_VERSION_ARGS=(--flutter-version="$FLUTTER_VERSION")
+fi
 
 # How long to wait for an expected log line before failing.
 WAIT_SECONDS=300
@@ -88,7 +95,7 @@ keytool -genkey -v -keystore ~/.android/debug.keystore -keyalg RSA \
     -dname "CN=Android Debug,O=Android,C=US"
 
 # Create a new release on Android
-shorebird release android --flutter-version=$FLUTTER_VERSION --split-debug-info=./build/symbols -v
+shorebird release android "${FLUTTER_VERSION_ARGS[@]}" --split-debug-info=./build/symbols -v
 
 # Run the app on Android and ensure that the print statement is printed.
 wait_for_line "I flutter : hello world" \
