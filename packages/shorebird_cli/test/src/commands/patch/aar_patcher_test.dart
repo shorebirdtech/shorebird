@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -147,6 +148,12 @@ void main() {
     group('releaseType', () {
       test('is aar', () {
         expect(patcher.releaseType, ReleaseType.aar);
+      });
+    });
+
+    group('minimumFlutterVersion', () {
+      test('is 3.24.0', () {
+        expect(patcher.minimumFlutterVersion, Version(3, 24, 0));
       });
     });
 

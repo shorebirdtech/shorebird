@@ -1,24 +1,24 @@
 import 'package:pub_semver/pub_semver.dart';
 
-/// The minimum allowed Flutter version for creating iOS releases.
-///
-/// This constraint exists because iOS code push support requires specific
-/// Flutter engine changes that were first available in this version.
-final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
+/// The minimum allowed Flutter version for Android releases and patches.
+final minimumSupportedAndroidFlutterVersion = Version(3, 24, 0);
 
-/// The minimum allowed Flutter version for creating macOS releases.
+/// The minimum allowed Flutter version for iOS releases and patches.
+final minimumSupportedIosFlutterVersion = Version(3, 24, 0);
+
+/// The minimum allowed Flutter version for macOS releases and patches.
 ///
 /// macOS code push support was introduced later than iOS and requires
 /// Flutter engine changes that were first available in this version.
 final minimumSupportedMacosFlutterVersion = Version(3, 27, 4);
 
-/// The minimum allowed Flutter version for creating Linux releases.
+/// The minimum allowed Flutter version for Linux releases and patches.
 ///
 /// Linux code push support requires Flutter engine changes that were first
 /// available in this version.
 final minimumSupportedLinuxFlutterVersion = Version(3, 27, 4);
 
-/// The minimum allowed Flutter version for creating Windows releases.
+/// The minimum allowed Flutter version for Windows releases and patches.
 ///
 /// Windows code push support requires Flutter engine changes that were first
 /// available in this version.

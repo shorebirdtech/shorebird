@@ -128,4 +128,7 @@ class LinuxPatcher extends Patcher {
 
   @override
   ReleaseType get releaseType => ReleaseType.linux;
+
+  @override
+  Version? get minimumFlutterVersion => minimumSupportedLinuxFlutterVersion;
 }

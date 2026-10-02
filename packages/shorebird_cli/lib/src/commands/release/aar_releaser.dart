@@ -45,6 +45,9 @@ class AarReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.aar;
 
   @override
+  Version? get minimumFlutterVersion => minimumSupportedAndroidFlutterVersion;
+
+  @override
   String get supplementPlatformSubdir => 'android';
 
   @override

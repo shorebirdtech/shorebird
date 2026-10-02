@@ -57,6 +57,9 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
   ReleaseType get releaseType => ReleaseType.android;
 
   @override
+  Version? get minimumFlutterVersion => minimumSupportedAndroidFlutterVersion;
+
+  @override
   String get primaryReleaseArtifactArch => 'aab';
 
   @override
