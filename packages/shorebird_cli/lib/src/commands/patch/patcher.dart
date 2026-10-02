@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
@@ -88,6 +89,10 @@ More info: ${troubleshootingUrl.toLink()}.
 
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;
+
+  /// The minimum Flutter version a release must have been built with to be
+  /// patched.
+  Version? get minimumFlutterVersion => null;
 
   /// The identifier used for the "primary" release artifact, usually a bundle.
   /// For example, 'aab' for Android, 'xcarchive' for iOS.

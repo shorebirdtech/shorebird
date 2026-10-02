@@ -32,6 +32,9 @@ class AndroidReleaser extends Releaser {
   ReleaseType get releaseType => ReleaseType.android;
 
   @override
+  Version? get minimumFlutterVersion => minimumSupportedAndroidFlutterVersion;
+
+  @override
   String get supplementPlatformSubdir => 'android';
 
   @override

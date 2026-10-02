@@ -5,6 +5,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -168,6 +169,12 @@ void main() {
     group('releaseType', () {
       test('is ReleaseType.iosFramework', () {
         expect(patcher.releaseType, ReleaseType.iosFramework);
+      });
+    });
+
+    group('minimumFlutterVersion', () {
+      test('is 3.22.2', () {
+        expect(patcher.minimumFlutterVersion, Version(3, 22, 2));
       });
     });
 

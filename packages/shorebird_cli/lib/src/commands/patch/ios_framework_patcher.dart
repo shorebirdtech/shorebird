@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive/directory_archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -54,6 +55,9 @@ class IosFrameworkPatcher extends Patcher with ApplePatcherMixin {
 
   @override
   ReleaseType get releaseType => ReleaseType.iosFramework;
+
+  @override
+  Version? get minimumFlutterVersion => minimumPatchableIosFlutterVersion;
 
   @override
   List<Validator> get applePlatformValidators => doctor.iosCommandValidators;

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -15,9 +16,7 @@ import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 
@@ -48,6 +47,9 @@ class MacosPatcher extends Patcher
   @override
   ReleaseType get releaseType => ReleaseType.macos;
 
+  @override
+  Version? get minimumFlutterVersion => minimumSupportedMacosFlutterVersion;
+
   /// Whether to codesign the release.
   bool get codesign => argResults['codesign'] == true;
 
@@ -68,19 +70,6 @@ class MacosPatcher extends Patcher
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final (flutterVersionAndRevision, flutterVersion) = await (
-      shorebirdFlutter.getVersionAndRevision(),
-      shorebirdFlutter.getVersion(),
-    ).wait;
-
-    if ((flutterVersion ?? minimumSupportedMacosFlutterVersion) <
-        minimumSupportedMacosFlutterVersion) {
-      logger.err('''
-macOS patches are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
     final buildArgs = [
       ...argResults.forwardedArgs,
       ...extraBuildArgs,
