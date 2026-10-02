@@ -35,6 +35,13 @@ String _buildTestJwt({String issuer = 'https://auth.shorebird.dev'}) {
   return '$header.$payload.dGVzdA';
 }
 
+/// The auth service's redirect back to [continueUrl]: [params] appended to the
+/// callback URL, keeping the `state` the CLI put on it.
+Uri _redirectTo(String continueUrl, Map<String, String> params) {
+  final uri = Uri.parse(continueUrl);
+  return uri.replace(queryParameters: {...uri.queryParameters, ...params});
+}
+
 void main() {
   late ShorebirdEnv shorebirdEnv;
 
@@ -84,16 +91,17 @@ void main() {
         ),
       );
 
+      late Uri loginUri;
       final credentials = await runWithOverrides(
         () => obtainCredentialsViaLoopbackLogin(
           httpClient: httpClient,
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
-            final loginUri = Uri.parse(url);
+            loginUri = Uri.parse(url);
             final continueUrl = loginUri.queryParameters['continue']!;
             // Simulate the browser redirect with an auth code.
             unawaited(
-              http.get(Uri.parse('$continueUrl?code=test_code')),
+              http.get(_redirectTo(continueUrl, {'code': 'test_code'})),
             );
           },
         ),
@@ -102,7 +110,7 @@ void main() {
       expect(credentials.accessToken.type, equals('Bearer'));
       expect(credentials.accessToken.data, equals(testJwt));
       expect(credentials.refreshToken, equals('sb_rt_test'));
-      expect(credentials.idToken, equals(testJwt));
+      expect(credentials.idToken, isNull);
       expect(credentials.scopes, isEmpty);
 
       final captured = verify(
@@ -117,6 +125,18 @@ void main() {
       final body = captured[1] as Map<String, String>;
       expect(body['grant_type'], equals('authorization_code'));
       expect(body['code'], equals('test_code'));
+      // The verifier sent to /token is the one the login URL's challenge
+      // was derived from.
+      final codeVerifier = body['code_verifier']!;
+      expect(codeVerifier, hasLength(43));
+      expect(
+        loginUri.queryParameters['code_challenge'],
+        equals(codeChallengeFor(codeVerifier)),
+      );
+      expect(
+        loginUri.queryParameters['code_challenge_method'],
+        equals('S256'),
+      );
     });
 
     test('constructs correct login URL with continue parameter', () async {
@@ -149,7 +169,7 @@ void main() {
             final loginUri = Uri.parse(url);
             final continueUrl = loginUri.queryParameters['continue']!;
             unawaited(
-              http.get(Uri.parse('$continueUrl?code=test_code')),
+              http.get(_redirectTo(continueUrl, {'code': 'test_code'})),
             );
           },
         ),
@@ -165,6 +185,8 @@ void main() {
           contains('/callback'),
         ),
       );
+      final continueUri = Uri.parse(loginUri.queryParameters['continue']!);
+      expect(continueUri.queryParameters['state'], hasLength(43));
     });
 
     test('handles authBaseUrl with trailing slash', () async {
@@ -202,7 +224,7 @@ void main() {
             final loginUri = Uri.parse(url);
             final continueUrl = loginUri.queryParameters['continue']!;
             unawaited(
-              http.get(Uri.parse('$continueUrl?code=test_code')),
+              http.get(_redirectTo(continueUrl, {'code': 'test_code'})),
             );
           },
         ),
@@ -256,7 +278,7 @@ void main() {
             http.get(Uri.parse('$baseUrl/favicon.ico')).ignore();
             // Then send the actual callback with auth code.
             unawaited(
-              http.get(Uri.parse('$continueUrl?code=test_code')),
+              http.get(_redirectTo(continueUrl, {'code': 'test_code'})),
             );
           },
         ),
@@ -276,7 +298,7 @@ void main() {
             final continueUrl = loginUri.queryParameters['continue']!;
             unawaited(
               http.get(
-                Uri.parse('$continueUrl?error=invalid_redirect'),
+                _redirectTo(continueUrl, {'error': 'invalid_redirect'}),
               ),
             );
           },
@@ -288,6 +310,81 @@ void main() {
             contains('invalid_redirect'),
           ),
         ),
+      );
+    });
+
+    for (final (description, state) in [
+      ('does not match', 'not-the-state'),
+      ('is missing', null),
+    ]) {
+      test('throws when the callback state $description', () async {
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              final loginUri = Uri.parse(url);
+              final callbackUri = Uri.parse(
+                loginUri.queryParameters['continue']!,
+              );
+              unawaited(
+                http.get(
+                  callbackUri.replace(
+                    queryParameters: {
+                      'code': 'test_code',
+                      'state': ?state,
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+          throwsA(
+            isA<ShorebirdAuthException>().having(
+              (e) => e.message,
+              'message',
+              contains('did not match this login request'),
+            ),
+          ),
+        );
+        verifyNever(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        );
+      });
+    }
+
+    test('two logins use different state and verifiers', () async {
+      final loginUris = <Uri>[];
+      for (var i = 0; i < 2; i++) {
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              loginUris.add(Uri.parse(url));
+              unawaited(
+                http.get(
+                  _redirectTo(Uri.parse(url).queryParameters['continue']!, {
+                    'error': 'access_denied',
+                  }),
+                ),
+              );
+            },
+          ),
+          throwsA(isA<ShorebirdAuthException>()),
+        );
+      }
+      expect(
+        loginUris[0].queryParameters['continue'],
+        isNot(equals(loginUris[1].queryParameters['continue'])),
+      );
+      expect(
+        loginUris[0].queryParameters['code_challenge'],
+        isNot(equals(loginUris[1].queryParameters['code_challenge'])),
       );
     });
 
@@ -334,7 +431,7 @@ void main() {
             final continueUrl = loginUri.queryParameters['continue']!;
             // Use .ignore() to suppress connection errors when the server
             // closes after the token exchange failure.
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+            http.get(_redirectTo(continueUrl, {'code': 'test_code'})).ignore();
           },
         ),
         throwsA(
@@ -394,7 +491,9 @@ void main() {
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
               final continueUrl = loginUri.queryParameters['continue']!;
-              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+              http
+                  .get(_redirectTo(continueUrl, {'code': 'test_code'}))
+                  .ignore();
             },
           ),
         ),
@@ -436,7 +535,9 @@ void main() {
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
               final continueUrl = loginUri.queryParameters['continue']!;
-              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+              http
+                  .get(_redirectTo(continueUrl, {'code': 'test_code'}))
+                  .ignore();
             },
           ),
         ),
@@ -468,7 +569,7 @@ void main() {
           userPrompt: (url) {
             final loginUri = Uri.parse(url);
             final continueUrl = loginUri.queryParameters['continue']!;
-            http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+            http.get(_redirectTo(continueUrl, {'code': 'test_code'})).ignore();
           },
         ),
         throwsA(isA<SocketException>()),
@@ -497,7 +598,9 @@ void main() {
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
               final continueUrl = loginUri.queryParameters['continue']!;
-              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+              http
+                  .get(_redirectTo(continueUrl, {'code': 'test_code'}))
+                  .ignore();
             },
           ),
         ),
@@ -531,7 +634,9 @@ void main() {
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
               final continueUrl = loginUri.queryParameters['continue']!;
-              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+              http
+                  .get(_redirectTo(continueUrl, {'code': 'test_code'}))
+                  .ignore();
             },
           ),
         ),
@@ -566,7 +671,9 @@ void main() {
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
               final continueUrl = loginUri.queryParameters['continue']!;
-              http.get(Uri.parse('$continueUrl?code=test_code')).ignore();
+              http
+                  .get(_redirectTo(continueUrl, {'code': 'test_code'}))
+                  .ignore();
             },
           ),
         ),
@@ -618,7 +725,7 @@ void main() {
       expect(credentials.accessToken.type, equals('Bearer'));
       expect(credentials.accessToken.data, equals(testJwt));
       expect(credentials.refreshToken, equals('sb_rt_new'));
-      expect(credentials.idToken, equals(testJwt));
+      expect(credentials.idToken, isNull);
       expect(credentials.scopes, isEmpty);
 
       final captured = verify(
@@ -894,6 +1001,15 @@ void main() {
           ),
         ),
         throwsA(isA<TypeError>()),
+      );
+    });
+  });
+
+  group('codeChallengeFor', () {
+    test('matches the RFC 7636 appendix B example', () {
+      expect(
+        codeChallengeFor('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'),
+        equals('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM'),
       );
     });
   });
