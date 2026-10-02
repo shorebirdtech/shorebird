@@ -5,7 +5,6 @@ import 'package:crypto/crypto.dart';
 import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
-import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
@@ -46,9 +45,6 @@ class AarPatcher extends Patcher {
 
   @override
   ReleaseType get releaseType => ReleaseType.aar;
-
-  @override
-  Version? get minimumFlutterVersion => minimumSupportedAndroidFlutterVersion;
 
   @override
   Future<void> assertPreconditions() async {

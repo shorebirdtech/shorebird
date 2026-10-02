@@ -1,10 +1,20 @@
 import 'package:pub_semver/pub_semver.dart';
 
-/// The minimum allowed Flutter version for Android releases and patches.
+/// The minimum allowed Flutter version for Android releases.
+///
+/// Patches are not checked, so existing releases on older versions can still
+/// be patched.
 final minimumSupportedAndroidFlutterVersion = Version(3, 24, 0);
 
-/// The minimum allowed Flutter version for iOS releases and patches.
+/// The minimum allowed Flutter version for iOS releases.
 final minimumSupportedIosFlutterVersion = Version(3, 24, 0);
+
+/// The minimum Flutter version an iOS release must have been built with to be
+/// patched.
+///
+/// Patched iOS apps on Flutter 3.19.5 through 3.22.1 do not always run the
+/// `catch` block after an exception is thrown.
+final minimumPatchableIosFlutterVersion = Version(3, 22, 2);
 
 /// The minimum allowed Flutter version for macOS releases and patches.
 ///

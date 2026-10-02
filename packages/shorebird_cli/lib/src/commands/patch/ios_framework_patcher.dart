@@ -57,7 +57,7 @@ class IosFrameworkPatcher extends Patcher with ApplePatcherMixin {
   ReleaseType get releaseType => ReleaseType.iosFramework;
 
   @override
-  Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
+  Version? get minimumFlutterVersion => minimumPatchableIosFlutterVersion;
 
   @override
   List<Validator> get applePlatformValidators => doctor.iosCommandValidators;
