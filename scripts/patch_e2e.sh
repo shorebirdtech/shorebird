@@ -16,6 +16,46 @@
 
 FLUTTER_VERSION=$1
 
+# How long to wait for an expected log line before failing.
+WAIT_SECONDS=300
+
+# Runs a command and waits for a line of its output to contain a pattern.
+# Fails with the device log if the pattern does not appear within
+# WAIT_SECONDS or the command's output ends first. The command keeps running
+# after a match; callers stop it explicitly.
+#
+# Usage: wait_for_line <pattern> <command> [args...]
+wait_for_line() {
+    local pattern=$1
+    shift
+    # Tracing every log line comparison buries the rest of the job log.
+    set +x
+    local deadline=$((SECONDS + WAIT_SECONDS))
+    local line status
+    while ((SECONDS < deadline)); do
+        # Under -e a bare failing read would exit before status is checked.
+        IFS= read -r -t 10 line && status=0 || status=$?
+        if ((status == 0)); then
+            if [[ "$line" == *"$pattern"* ]]; then
+                set -x
+                return 0
+            fi
+        elif ((status <= 128)); then
+            echo "❌ Output ended before '$pattern' was seen."
+            dump_device_log
+            exit 1
+        fi
+    done < <("$@")
+    echo "❌ '$pattern' was not seen within ${WAIT_SECONDS}s."
+    dump_device_log
+    exit 1
+}
+
+dump_device_log() {
+    echo "Device log (all buffers):"
+    adb logcat -d -b all || true
+}
+
 # Intentionally including a space in the path.
 TEMP_DIR=$(mktemp -d -t 'shorebird workspace-XXXXX')
 cd "$TEMP_DIR"
@@ -51,13 +91,10 @@ keytool -genkey -v -keystore ~/.android/debug.keystore -keyalg RSA \
 shorebird release android --flutter-version=$FLUTTER_VERSION --split-debug-info=./build/symbols -v
 
 # Run the app on Android and ensure that the print statement is printed.
-while IFS= read line; do
-    if [[ "$line" == *"I flutter : hello world"* ]]; then
-        adb kill-server
-        echo "✅ 'hello world' was printed"
-        break
-    fi
-done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v)
+wait_for_line "I flutter : hello world" \
+    shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v
+adb kill-server
+echo "✅ 'hello world' was printed"
 
 # Replace lib/main.dart "hello world" to "hello shorebird"
 sed -i 's/hello world/hello shorebird/g' lib/main.dart
@@ -69,14 +106,11 @@ cat lib/main.dart
 shorebird patch android --release-version 0.1.0+1 --split-debug-info=./build/symbols -v
 
 # Run the app on Android and ensure that the original print statement is printed.
-while IFS= read line; do
-    if [[ "$line" == *"Patch 1 successfully"* ]]; then
-        # Kill the app so we can boot the patch
-        adb shell am force-stop com.example.e2e_test.e2e_test
-        echo "✅ Patch 1 successfully installed"
-        break
-    fi
-done < <(shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v)
+wait_for_line "Patch 1 successfully" \
+    shorebird preview --release-version 0.1.0+1 --app-id $APP_ID --platform android -v
+# Kill the app so we can boot the patch
+adb shell am force-stop com.example.e2e_test.e2e_test
+echo "✅ Patch 1 successfully installed"
 
 # Re-run the app, *not* using shorebird preview, as that installs the base release.
 adb shell monkey -p com.example.e2e_test.e2e_test -c android.intent.category.LAUNCHER 1
@@ -84,13 +118,9 @@ adb shell monkey -p com.example.e2e_test.e2e_test -c android.intent.category.LAU
 # Re-run the app on Android and ensure that the new print statement is printed,
 # tailing adb logs and printing the last 10 seconds of logs in case the
 # "hello shorebird" statement was printed before entering the loop.
-while IFS= read line; do
-    if [[ "$line" == *"I flutter : hello shorebird"* ]]; then
-        adb kill-server
-        echo "✅ 'hello shorebird' was printed"
-        break
-    fi
-done < <(adb logcat -T '10.0')
+wait_for_line "I flutter : hello shorebird" adb logcat -T '10.0'
+adb kill-server
+echo "✅ 'hello shorebird' was printed"
 
 echo "✅ All tests passed!"
 exit 0

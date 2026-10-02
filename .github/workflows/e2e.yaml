@@ -107,7 +107,10 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ matrix.flutter-version }}
-          cache: true
+          # 30 Flutter versions at 1-2 GB each overflow the repo's 10 GB
+          # Actions cache, evicting the cli job's entries. A Linux download
+          # costs about as much as a restore.
+          cache: false
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
@@ -157,7 +160,9 @@ jobs:
         branch: ${{ inputs.cli_ref && fromJSON('["main"]') || fromJSON('["stable", "main"]') }}
 
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # Windows needs ~16 minutes on a warm cache, longer when it has to save
+    # the Flutter cache afterwards.
+    timeout-minutes: 30
 
     env:
       SHOREBIRD_HOSTED_URL: ${{ matrix.branch == 'stable' && 'https://api.shorebird.dev' || 'https://api-dev.shorebird.dev' }}
