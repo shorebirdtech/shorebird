@@ -2,6 +2,7 @@
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
@@ -30,6 +31,24 @@ const String _pinDependenciesHint =
 const String allowAssetDiffsHint =
     'Warning: Asset changes will not be included in this patch. '
     'Pass --allow-asset-diffs to override this warning for this patch.';
+
+/// File names of icon fonts that Flutter tree-shakes by default in release
+/// builds. Their contents depend on which icons the Dart code uses, so they
+/// change whenever an icon is added or removed, even if no asset changed.
+const Set<String> treeShakenIconFontNames = {
+  'MaterialIcons-Regular.otf',
+  'CupertinoIcons.ttf',
+};
+
+/// Message explaining why a tree-shaken icon font shows up as an asset change.
+const String treeShakenIconFontsMessage = '''
+The changed icon fonts above are tree-shaken by Flutter: they only contain the
+icons your Dart code uses, so they change whenever an icon is added or removed.
+The patch will keep using the release's icon fonts, so icons that were not used
+in the release may not render correctly.
+
+To avoid this for future releases, disable icon tree shaking when creating the
+release, e.g. `shorebird release <platform> -- --no-tree-shake-icons`.''';
 
 /// {@template diff_status}
 /// Describes the types of changes that have been detected between a patch
@@ -166,15 +185,25 @@ If you don't know why you're seeing this error, visit our troubleshooting page a
     }
 
     if (status.hasAssetChanges) {
+      final assetsDiff = archiveDiffer.assetsFileSetDiff(contentDiffs);
       logger
         ..warn(
           '''Your app contains asset changes, which will not be included in the patch.''',
         )
         ..info(
           yellow.wrap(
-            archiveDiffer.assetsFileSetDiff(contentDiffs).prettyString,
+            assetsDiff.prettyString,
           ),
         );
+
+      final hasTreeShakenIconFontChanges = [
+        ...assetsDiff.addedPaths,
+        ...assetsDiff.removedPaths,
+        ...assetsDiff.changedPaths,
+      ].any((path) => treeShakenIconFontNames.contains(p.basename(path)));
+      if (hasTreeShakenIconFontChanges) {
+        logger.info(yellow.wrap(treeShakenIconFontsMessage));
+      }
 
       final diffs = await archiveDiffer.availableAssetDiffs(
         fileSetDiff: contentDiffs,
