@@ -44,16 +44,15 @@ void main() {
 
   group('JwtClaims', () {
     group('email', () {
-      test('returns null when idToken is not a valid jwt', () {
+      test('returns null when the access token is not a valid jwt', () {
         final credentials = oauth2.AccessCredentials(
           oauth2.AccessToken(
             'Bearer',
-            'accessToken',
+            'not a valid jwt',
             DateTime.now().add(const Duration(minutes: 10)).toUtc(),
           ),
           '',
           [],
-          idToken: 'not a valid jwt',
         );
 
         expect(credentials.email, isNull);
@@ -78,9 +77,8 @@ void main() {
     //   "exp": 6789
     // }
     // cspell:disable-next-line
-    const shorebirdIdToken =
+    const shorebirdAccessToken =
         '''eyJhbGciOiJIUzI1NiIsImtpZCI6IjEyMzQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2F1dGguc2hvcmViaXJkLmRldiIsImF1ZCI6InNob3JlYmlyZCIsInN1YiI6IjEyMzQ1IiwiZW1haWwiOiJ0ZXN0QGVtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpYXQiOjEyMzQsImV4cCI6Njc4OX0.dGVzdA''';
-    const idToken = shorebirdIdToken;
     const email = 'test@email.com';
     const user = PrivateUser(
       id: 42,
@@ -90,7 +88,7 @@ void main() {
     const scopes = <String>[];
     final accessToken = oauth2.AccessToken(
       'Bearer',
-      'accessToken',
+      shorebirdAccessToken,
       DateTime.now().add(const Duration(minutes: 10)).toUtc(),
     );
 
@@ -152,7 +150,6 @@ void main() {
         accessToken,
         refreshToken,
         scopes,
-        idToken: idToken,
       );
       credentialsDir = Directory.systemTemp.createTempSync().path;
       httpClient = MockHttpClient();
@@ -190,7 +187,11 @@ void main() {
         group('when stored credentials were issued by Google', () {
           setUp(() {
             accessCredentials = oauth2.AccessCredentials(
-              accessToken,
+              oauth2.AccessToken(
+                'Bearer',
+                'ya29.google-access-token',
+                DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+              ),
               refreshToken,
               scopes,
               idToken: googleIdToken,
@@ -215,7 +216,6 @@ void main() {
               accessToken,
               refreshToken,
               scopes,
-              idToken: idToken,
             );
             await runWithOverrides(() => auth.login(prompt: (_) {}));
             expect(auth.isAuthenticated, isTrue);
@@ -223,10 +223,34 @@ void main() {
           });
         });
 
-        group('when stored credentials have no id token', () {
+        group('when stored credentials also carry the token as idToken', () {
+          // How CLI versions before the access token was sent as itself
+          // wrote credentials.json.
           setUp(() {
             accessCredentials = oauth2.AccessCredentials(
               accessToken,
+              refreshToken,
+              scopes,
+              idToken: shorebirdAccessToken,
+            );
+            writeCredentials();
+            auth = buildAuth();
+          });
+
+          test('loads them', () {
+            expect(auth.isAuthenticated, isTrue);
+            expect(auth.email, equals(email));
+          });
+        });
+
+        group('when the stored access token is not a JWT', () {
+          setUp(() {
+            accessCredentials = oauth2.AccessCredentials(
+              oauth2.AccessToken(
+                'Bearer',
+                'opaque',
+                DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+              ),
               refreshToken,
               scopes,
             );
@@ -263,7 +287,10 @@ void main() {
           final captured = verify(() => httpClient.send(captureAny())).captured;
           expect(captured, hasLength(1));
           final request = captured.first as http.BaseRequest;
-          expect(request.headers['Authorization'], equals('Bearer $idToken'));
+          expect(
+            request.headers['Authorization'],
+            equals('Bearer $shorebirdAccessToken'),
+          );
         });
 
         group('when expired credentials have Shorebird issuer', () {
@@ -285,7 +312,7 @@ void main() {
               ).thenAnswer(
                 (_) async => http.Response(
                   jsonEncode({
-                    'access_token': shorebirdIdToken,
+                    'access_token': shorebirdAccessToken,
                     'refresh_token': 'sb_rt_rotated',
                     'token_type': 'Bearer',
                     'expires_in': 900,
@@ -303,7 +330,6 @@ void main() {
                 ),
                 'sb_rt_old',
                 [],
-                idToken: shorebirdIdToken,
               );
 
               final client = AuthenticatedClient(
@@ -331,7 +357,7 @@ void main() {
               final request = captured.first as http.BaseRequest;
               expect(
                 request.headers['Authorization'],
-                equals('Bearer $shorebirdIdToken'),
+                equals('Bearer $shorebirdAccessToken'),
               );
               verify(
                 () => httpClient.post(
@@ -363,7 +389,6 @@ void main() {
               ),
               'sb_rt_old',
               [],
-              idToken: shorebirdIdToken,
             );
 
             client = AuthenticatedClient(
@@ -421,7 +446,10 @@ void main() {
         final captured = verify(() => httpClient.send(captureAny())).captured;
         expect(captured, hasLength(1));
         final request = captured.first as http.BaseRequest;
-        expect(request.headers['Authorization'], equals('Bearer $idToken'));
+        expect(
+          request.headers['Authorization'],
+          equals('Bearer $shorebirdAccessToken'),
+        );
       });
 
       group('when SHOREBIRD_TOKEN is an API key', () {
@@ -596,10 +624,13 @@ void main() {
       group('when login credentials are corrupted', () {
         setUp(() {
           accessCredentials = oauth2.AccessCredentials(
-            accessToken,
+            oauth2.AccessToken(
+              'Bearer',
+              'not a valid jwt',
+              DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+            ),
             refreshToken,
             scopes,
-            idToken: 'not a valid jwt',
           );
           writeCredentials();
           auth = buildAuth();
@@ -754,7 +785,6 @@ void main() {
           accessToken,
           null, // no refresh token
           scopes,
-          idToken: idToken,
         );
         auth = buildAuth();
         writeCredentials();
