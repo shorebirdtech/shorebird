@@ -310,7 +310,6 @@ class Auth {
     }
   }
 
-
   void _flushCredentials(oauth2.AccessCredentials credentials) {
     File(credentialsFilePath)
       ..createSync(recursive: true)
