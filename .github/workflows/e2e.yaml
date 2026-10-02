@@ -37,10 +37,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The newest patch of each minor line from the documented Android floor
-        # (3.24) up. Older patch releases of a line ship frozen engines, so
-        # they repeat the newest one's coverage. "default" omits
-        # --flutter-version, testing the Flutter this CLI revision pins.
+        # The newest patch of each minor line within the documented support
+        # window (Flutter releases from the last two years). Older patch
+        # releases of a line ship frozen engines, so they repeat the newest
+        # one's coverage. "default" omits --flutter-version, testing the
+        # Flutter this CLI revision pins.
         flutter-version:
           [
             default,
@@ -52,7 +53,6 @@ jobs:
             3.32.8,
             3.29.3,
             3.27.4,
-            3.24.5,
           ]
 
     runs-on: ubuntu-latest
