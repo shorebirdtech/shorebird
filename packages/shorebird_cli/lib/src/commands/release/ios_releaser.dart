@@ -194,15 +194,25 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
       artifactManager.getXcarchiveDirectory()!.path,
     );
     if (codesign) {
-      const ipaSearchString = 'build/ios/ipa/*.ipa';
+      // Point at the .ipa we just built when we can identify it. Older builds
+      // for other flavors may still be sitting in build/ios/ipa, in which case
+      // a glob would match the wrong bundle.
+      final ipaFile = artifactManager.getIpa();
+      final ipaPath = ipaFile != null
+          ? p.relative(ipaFile.path)
+          : 'build/ios/ipa/*.ipa';
+      // .ipa names are derived from the app's display name and often contain
+      // spaces. The glob fallback never does, so quoting only kicks in for
+      // real paths.
+      final quotedIpaPath = ipaPath.contains(' ') ? "'$ipaPath'" : ipaPath;
       return '''
 
 Your next step is to upload your app to App Store Connect.
 
 To upload to the App Store, do one of the following:
     1. Open ${lightCyan.wrap(relativeArchivePath)} in Xcode and use the "Distribute App" flow.
-    2. Drag and drop the ${lightCyan.wrap(ipaSearchString)} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
-    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $ipaSearchString --apiKey your_api_key --apiIssuer your_issuer_id')}.
+    2. Drag and drop the ${lightCyan.wrap(ipaPath)} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
+    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $quotedIpaPath --apiKey your_api_key --apiIssuer your_issuer_id')}.
        See "man altool" for details about how to authenticate with the App Store Connect API key.
 ''';
     } else {
