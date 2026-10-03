@@ -509,23 +509,6 @@ class CodePushClient {
     }
   }
 
-  /// Create a new Shorebird user with the provided [name].
-  ///
-  /// The email associated with the user's JWT will be used as the user's email.
-  Future<PrivateUser> createUser({required String name}) async {
-    final response = await _httpClient.post(
-      Uri.parse('$_v1/users'),
-      body: jsonEncode(CreateUserRequest(name: name).toJson()),
-    );
-
-    if (!response.isSuccess) {
-      throw _parseErrorResponse(response.statusCode, response.body);
-    }
-
-    final body = json.decode(response.body) as Json;
-    return PrivateUser.fromJson(body);
-  }
-
   /// Delete the app with the provided [appId].
   Future<void> deleteApp({required String appId}) async {
     final response = await _httpClient.delete(Uri.parse('$_v1/apps/$appId'));

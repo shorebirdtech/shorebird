@@ -95,7 +95,7 @@ class JsonError {
   final String message;
 
   /// An optional actionable recovery step
-  /// (e.g. "Run: shorebird login:ci").
+  /// (e.g. "Run: shorebird login").
   final String? hint;
 
   /// Serializes this error to a JSON-compatible map.

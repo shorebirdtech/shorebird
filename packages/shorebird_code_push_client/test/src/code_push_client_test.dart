@@ -1679,60 +1679,6 @@ void main() {
       });
     });
 
-    group('createUser', () {
-      const userName = 'Jane Doe';
-      const user = PrivateUser(
-        id: 1,
-        email: 'tester@shorebird.dev',
-        displayName: userName,
-        jwtIssuer:
-            'https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0',
-      );
-
-      test('makes the correct request', () async {
-        codePushClient.createUser(name: userName).ignore();
-        final request =
-            verify(() => httpClient.send(captureAny())).captured.single
-                as http.BaseRequest;
-        expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('users')));
-        expect(request.hasHeaders(expectedHeaders), isTrue);
-      });
-
-      test('throws an exception if the http request fails', () {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.failedDependency,
-          ),
-        );
-
-        expect(
-          codePushClient.createUser(name: userName),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessage,
-            ),
-          ),
-        );
-      });
-
-      test('returns a User when the http request succeeds', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(user.toJson()))),
-            HttpStatus.created,
-          ),
-        );
-
-        final result = await codePushClient.createUser(name: userName);
-
-        expect(result.toJson(), user.toJson());
-      });
-    });
-
     group('deleteApp', () {
       test('makes the correct request', () async {
         codePushClient.deleteApp(appId: appId).ignore();
