@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:shorebird_cli/src/platform/apple/app_extension_versions.dart';
 import 'package:shorebird_cli/src/platform/apple/plist.dart';
 import 'package:test/test.dart';
@@ -173,6 +174,44 @@ $entries
       expect(mismatches.single.appValue, '1.15.67');
       expect(mismatches.single.extensionValue, '1.15.32');
     });
+
+    test(
+      'reads binary Info.plist files, as Xcode writes them in built bundles',
+      () {
+        void writeBinaryPlist(String path, Map<String, Object> properties) {
+          final data = PropertyListSerialization.dataWithPropertyList(
+            properties,
+          );
+          File(path).writeAsBytesSync(
+            data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+          );
+        }
+
+        writeBinaryPlist(p.join(appDirectory.path, 'Info.plist'), {
+          Plist.releaseVersionKey: '1.15.67',
+          Plist.buildNumberKey: '250',
+        });
+        writeExtension('NotificationService.appex', writePlist: false);
+        writeBinaryPlist(
+          p.join(
+            appDirectory.path,
+            'PlugIns',
+            'NotificationService.appex',
+            'Info.plist',
+          ),
+          {Plist.releaseVersionKey: '1.15.32', Plist.buildNumberKey: '250'},
+        );
+
+        final mismatches = findAppExtensionVersionMismatches(
+          appDirectory: appDirectory,
+        );
+
+        expect(mismatches, hasLength(1));
+        expect(mismatches.single.key, Plist.releaseVersionKey);
+        expect(mismatches.single.appValue, '1.15.67');
+        expect(mismatches.single.extensionValue, '1.15.32');
+      },
+    );
 
     test('reports a CFBundleVersion mismatch', () {
       writeAppPlist(shortVersion: '1.15.67', version: '250');
