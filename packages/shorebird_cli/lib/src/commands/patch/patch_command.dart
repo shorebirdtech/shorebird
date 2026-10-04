@@ -614,9 +614,14 @@ Building patch with Flutter $flutterVersionString
     if (minimumFlutterVersion == null) return;
 
     final flutterVersion = await shorebirdFlutter.getVersion();
-    if (flutterVersion == null || flutterVersion >= minimumFlutterVersion) {
+    if (flutterVersion == null) {
+      logger.detail(
+        'Could not determine the release Flutter version; skipping the '
+        'minimum Flutter version ($minimumFlutterVersion) check.',
+      );
       return;
     }
+    if (flutterVersion >= minimumFlutterVersion) return;
 
     final flutterVersionAndRevision = await shorebirdFlutter
         .getVersionAndRevision();

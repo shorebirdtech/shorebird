@@ -1186,9 +1186,15 @@ void main() {
           ).thenAnswer((_) async => null);
         });
 
-        test('builds the patch', () async {
+        test('logs the skipped check and builds the patch', () async {
           await runWithOverrides(command.run);
 
+          verify(
+            () => logger.detail(
+              'Could not determine the release Flutter version; skipping the '
+              'minimum Flutter version (3.24.0) check.',
+            ),
+          ).called(1);
           verify(
             () => patcher.buildPatchArtifact(
               releaseVersion: any(named: 'releaseVersion'),
