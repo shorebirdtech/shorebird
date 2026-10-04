@@ -53,9 +53,6 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
   }
 
   @override
-  Version? get minimumFlutterVersion => minimumSupportedMacosFlutterVersion;
-
-  @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {
     if (!codesign) {
       logger

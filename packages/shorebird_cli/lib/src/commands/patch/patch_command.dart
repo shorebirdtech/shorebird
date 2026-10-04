@@ -623,7 +623,7 @@ Building patch with Flutter $flutterVersionString
     final releaseType = patcher.releaseType;
     logger.err('''
 This release was built with Flutter $flutterVersionAndRevision, but ${releaseType.releasePlatform.displayName} patches need Flutter $minimumFlutterVersion or newer.
-A release cannot change Flutter versions, so create a new release with ${lightCyan.wrap('shorebird release ${releaseType.cliName} --flutter-version=<version>')} and patch that one.
+A release cannot change Flutter versions, so create a new release with Flutter ${minimumReleaseFlutterVersion(releaseType)} or newer (${lightCyan.wrap('shorebird release ${releaseType.cliName} --flutter-version=<version>')}) and patch that one.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     throw ProcessExit(ExitCode.software.code);
   }

@@ -42,7 +42,8 @@ abstract class Releaser {
   final String? target;
 
   /// The minimum Flutter version required to create a release of this type.
-  Version? get minimumFlutterVersion => null;
+  Version? get minimumFlutterVersion =>
+      minimumReleaseFlutterVersion(releaseType);
 
   /// The type of artifact we are creating a release for.
   ReleaseType get releaseType;

@@ -1,4 +1,5 @@
 import 'package:pub_semver/pub_semver.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 
 /// The minimum allowed Flutter version for Android releases.
 ///
@@ -33,6 +34,18 @@ final minimumSupportedLinuxFlutterVersion = Version(3, 27, 4);
 /// Windows code push support requires Flutter engine changes that were first
 /// available in this version.
 final minimumSupportedWindowsFlutterVersion = Version(3, 32, 6);
+
+/// The minimum allowed Flutter version for a new release of [releaseType].
+Version minimumReleaseFlutterVersion(ReleaseType releaseType) =>
+    switch (releaseType) {
+      ReleaseType.android ||
+      ReleaseType.aar => minimumSupportedAndroidFlutterVersion,
+      ReleaseType.ios ||
+      ReleaseType.iosFramework => minimumSupportedIosFlutterVersion,
+      ReleaseType.linux => minimumSupportedLinuxFlutterVersion,
+      ReleaseType.macos => minimumSupportedMacosFlutterVersion,
+      ReleaseType.windows => minimumSupportedWindowsFlutterVersion,
+    };
 
 /// Minimum Flutter version for obfuscation support across all platforms.
 ///

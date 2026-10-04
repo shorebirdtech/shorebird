@@ -1147,6 +1147,7 @@ void main() {
               any(
                 that: stringContainsInOrder([
                   'Android patches need Flutter 3.24.0 or newer.',
+                  'create a new release with Flutter 3.24.0 or newer',
                   'shorebird release android --flutter-version=<version>',
                 ]),
               ),
