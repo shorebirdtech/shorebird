@@ -451,6 +451,43 @@ Engine • revision $shorebirdEngineRevision'''),
         return helpers.captureStdout(body, captured: stdoutOutput);
       }
 
+      test('routes everything but the envelope to stderr', () async {
+        // A command that writes a human line straight to stdout and then
+        // emits an envelope. With --json, stdout must carry the envelope
+        // alone; the human line lands on stderr.
+        commandRunner.addCommand(_ChattyCommand());
+        final stderrOutput = <String>[];
+        final realStderr = stderr;
+        final result = await captureStdout(
+          () => IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'chatty']),
+            ),
+            stderr: () => helpers.CapturingStdout(
+              baseStdOut: realStderr,
+              captured: stderrOutput,
+            ),
+          ),
+        );
+
+        expect(result, equals(ExitCode.success.code));
+        expect(stdoutOutput, hasLength(1));
+        final json = jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+        expect(json['status'], equals('success'));
+        expect((json['data'] as Map)['said'], equals('hello'));
+        expect(stderrOutput, contains('hello, human'));
+      });
+
+      test('leaves stdout alone without --json', () async {
+        commandRunner.addCommand(_ChattyCommand());
+        final result = await captureStdout(
+          () => runWithOverrides(() => commandRunner.run(['chatty'])),
+        );
+
+        expect(result, equals(ExitCode.success.code));
+        expect(stdoutOutput, equals(['hello, human']));
+      });
+
       group('on ProcessExit with non-zero exit code', () {
         test('emits JSON error envelope', () async {
           commandRunner.addCommand(_TestCommand(ExitCode.unavailable));
@@ -788,6 +825,22 @@ class _TestCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     throw ProcessExit(exitCode.code);
+  }
+}
+
+/// Writes a human line to stdout, then an envelope when in JSON mode.
+class _ChattyCommand extends ShorebirdCommand {
+  @override
+  String get name => 'chatty';
+
+  @override
+  String get description => 'Chatty command';
+
+  @override
+  Future<int> run() async {
+    stdout.writeln('hello, human');
+    if (isJsonMode) emitJsonSuccess({'said': 'hello'});
+    return ExitCode.success.code;
   }
 }
 
