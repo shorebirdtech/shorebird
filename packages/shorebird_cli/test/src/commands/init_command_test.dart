@@ -49,6 +49,7 @@ environment:
     late ShorebirdLogger logger;
     late Platform platform;
     late Progress progress;
+    late ShorebirdProcess process;
     late PubspecEditor pubspecEditor;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
@@ -92,6 +93,7 @@ environment:
       logger = MockShorebirdLogger();
       platform = MockPlatform();
       progress = MockProgress();
+      process = MockShorebirdProcess();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
 
@@ -116,6 +118,8 @@ environment:
       when(
         () => gradlew.isDaemonAvailable(any()),
       ).thenAnswer((_) async => true);
+      when(() => gradlew.exists(any())).thenReturn(true);
+      when(() => gradlew.executable).thenReturn('gradlew');
       when(
         () => shorebirdEnv.getShorebirdYamlFile(cwd: any(named: 'cwd')),
       ).thenReturn(shorebirdYamlFile);
@@ -314,6 +318,193 @@ Please make sure you are running "shorebird init" from within your Flutter proje
       final exitCode = await runWithOverrides(command.run);
       expect(exitCode, ExitCode.success.code);
       verifyNever(() => gradlew.startDaemon(any()));
+    });
+
+    group('when the Gradle wrapper is missing', () {
+      setUp(() {
+        Directory(
+          p.join(projectRoot.path, 'android'),
+        ).createSync(recursive: true);
+        when(() => gradlew.exists(projectRoot.path)).thenReturn(false);
+      });
+
+      test('offers to generate the wrapper and detects flavors', () async {
+        when(
+          () => logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+        ).thenReturn(true);
+        when(
+          () => process.stream(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async {
+          when(() => gradlew.exists(projectRoot.path)).thenReturn(true);
+          return ExitCode.success.code;
+        });
+        when(
+          () => gradlew.productFlavors(projectRoot.path),
+        ).thenAnswer((_) async => {'staging', 'production'});
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, ExitCode.success.code);
+        verify(
+          () => logger.confirm(
+            'Gradle wrapper not found. Would you like to run '
+            '"flutter build apk --config-only" now?',
+            defaultValue: true,
+          ),
+        ).called(1);
+        verify(
+          () => process.stream('flutter', [
+            'build',
+            'apk',
+            '--config-only',
+          ], workingDirectory: projectRoot.path),
+        ).called(1);
+        verify(() => gradlew.exists(projectRoot.path)).called(2);
+        verify(() => gradlew.productFlavors(projectRoot.path)).called(1);
+        for (final flavor in ['staging', 'production']) {
+          verify(
+            () => codePushClientWrapper.createApp(
+              appName: '$appName ($flavor)',
+              organizationId: organizationId,
+            ),
+          ).called(1);
+        }
+      });
+
+      test(
+        'exits when generation succeeds but the wrapper is missing',
+        () async {
+          when(
+            () =>
+                logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+          ).thenReturn(true);
+          when(
+            () => process.stream(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((_) async => ExitCode.success.code);
+
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, ExitCode.software.code);
+          final executablePath = p.relative(
+            p.join(projectRoot.path, 'android', 'gradlew'),
+          );
+          verify(
+            () => logger.err(
+              'Gradle wrapper is still missing after running '
+              '"flutter build apk --config-only".\n'
+              '${MissingGradleWrapperException(executablePath)}',
+            ),
+          ).called(1);
+          verifyNever(() => gradlew.isDaemonAvailable(any()));
+          verifyNever(() => gradlew.productFlavors(any()));
+          verifyNever(
+            () => codePushClientWrapper.createApp(
+              appName: any(named: 'appName'),
+              organizationId: any(named: 'organizationId'),
+            ),
+          );
+        },
+      );
+
+      test('shows the existing guidance when declined', () async {
+        when(
+          () => logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+        ).thenReturn(false);
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, ExitCode.software.code);
+        verify(
+          () => logger.err(any(that: contains('flutter build apk'))),
+        ).called(1);
+        verifyNever(
+          () => process.stream(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
+      });
+
+      test('does not prompt when unable to accept user input', () async {
+        when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, ExitCode.software.code);
+        verifyNever(
+          () => logger.confirm(
+            any(),
+            defaultValue: any(named: 'defaultValue'),
+          ),
+        );
+        verifyNever(
+          () => process.stream(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
+      });
+
+      test(
+        'exits with the exit code when generating the wrapper fails',
+        () async {
+          when(
+            () =>
+                logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+          ).thenReturn(true);
+          when(
+            () => process.stream(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((_) async => ExitCode.software.code);
+
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, ExitCode.software.code);
+          verify(
+            () => logger.err(
+              'Unable to generate the Gradle wrapper '
+              '(exit code ${ExitCode.software.code}).',
+            ),
+          ).called(1);
+          verifyNever(() => gradlew.isDaemonAvailable(any()));
+        },
+      );
+
+      test('exits with the exception when starting generation fails', () async {
+        when(
+          () => logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+        ).thenReturn(true);
+        when(
+          () => process.stream(
+            any(),
+            any(),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenThrow(Exception('oops'));
+
+        final exitCode = await runWithOverrides(command.run);
+
+        expect(exitCode, ExitCode.software.code);
+        verify(
+          () => logger.err(
+            'Unable to generate the Gradle wrapper.\nException: oops',
+          ),
+        ).called(1);
+        verifyNever(() => gradlew.isDaemonAvailable(any()));
+      });
     });
 
     test('throws when unable to initialize gradle wrapper', () async {

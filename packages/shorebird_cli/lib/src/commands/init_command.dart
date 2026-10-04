@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
+import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -13,6 +14,7 @@ import 'package:shorebird_cli/src/pubspec_editor.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
+import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:yaml_edit/yaml_edit.dart';
@@ -127,6 +129,9 @@ Please make sure you are running "shorebird init" from within your Flutter proje
     Set<String>? macosFlavors;
     var productFlavors = <String>{};
     final projectRoot = shorebirdEnv.getFlutterProjectRoot()!;
+    if (!await _ensureGradleWrapper(projectRoot)) {
+      return ExitCode.software.code;
+    }
     final initializeGradleProgress = logger.progress('Initializing gradlew');
     final bool shouldStartGradleDaemon;
     try {
@@ -345,6 +350,57 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     );
 
     return ExitCode.success.code;
+  }
+
+  Future<bool> _ensureGradleWrapper(Directory projectRoot) async {
+    final androidDirectory = Directory(p.join(projectRoot.path, 'android'));
+    if (!androidDirectory.existsSync() || gradlew.exists(projectRoot.path)) {
+      return true;
+    }
+
+    final executablePath = p.relative(
+      p.join(androidDirectory.path, gradlew.executable),
+    );
+    final missingWrapperException = MissingGradleWrapperException(
+      executablePath,
+    );
+    final canBuild =
+        shorebirdEnv.canAcceptUserInput &&
+        logger.confirm(
+          'Gradle wrapper not found. Would you like to run '
+          '"flutter build apk --config-only" now?',
+          defaultValue: true,
+        );
+    if (!canBuild) {
+      logger.err('$missingWrapperException');
+      return false;
+    }
+
+    final int exitCode;
+    try {
+      exitCode = await process.stream(
+        'flutter',
+        ['build', 'apk', '--config-only'],
+        workingDirectory: projectRoot.path,
+      );
+    } on Exception catch (error) {
+      logger.err('Unable to generate the Gradle wrapper.\n$error');
+      return false;
+    }
+    if (exitCode != ExitCode.success.code) {
+      logger.err(
+        'Unable to generate the Gradle wrapper (exit code $exitCode).',
+      );
+      return false;
+    }
+    if (!gradlew.exists(projectRoot.path)) {
+      logger.err(
+        'Gradle wrapper is still missing after running '
+        '"flutter build apk --config-only".\n$missingWrapperException',
+      );
+      return false;
+    }
+    return true;
   }
 
   Future<bool> _shouldStartGradleDaemon(String projectPath) async {
