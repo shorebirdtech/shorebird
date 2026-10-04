@@ -368,7 +368,7 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
         shorebirdEnv.canAcceptUserInput &&
         logger.confirm(
           'Gradle wrapper not found. Would you like to run '
-          '"flutter build apk" now?',
+          '"flutter build apk --config-only" now?',
           defaultValue: true,
         );
     if (!canBuild) {
@@ -380,15 +380,24 @@ For more information about Shorebird, visit ${link(uri: Uri.parse('https://shore
     try {
       exitCode = await process.stream(
         'flutter',
-        ['build', 'apk'],
+        ['build', 'apk', '--config-only'],
         workingDirectory: projectRoot.path,
       );
-    } on Exception {
-      logger.err('Unable to generate the Gradle wrapper.');
+    } on Exception catch (error) {
+      logger.err('Unable to generate the Gradle wrapper.\n$error');
       return false;
     }
     if (exitCode != ExitCode.success.code) {
-      logger.err('Unable to generate the Gradle wrapper.');
+      logger.err(
+        'Unable to generate the Gradle wrapper (exit code $exitCode).',
+      );
+      return false;
+    }
+    if (!gradlew.exists(projectRoot.path)) {
+      logger.err(
+        'Gradle wrapper is still missing after running '
+        '"flutter build apk --config-only".\n$missingWrapperException',
+      );
       return false;
     }
     return true;

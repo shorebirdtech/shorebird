@@ -328,7 +328,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         when(() => gradlew.exists(projectRoot.path)).thenReturn(false);
       });
 
-      test('offers to build an APK and continues when accepted', () async {
+      test('offers to generate the wrapper and detects flavors', () async {
         when(
           () => logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
         ).thenReturn(true);
@@ -338,7 +338,13 @@ Please make sure you are running "shorebird init" from within your Flutter proje
             any(),
             workingDirectory: any(named: 'workingDirectory'),
           ),
-        ).thenAnswer((_) async => ExitCode.success.code);
+        ).thenAnswer((_) async {
+          when(() => gradlew.exists(projectRoot.path)).thenReturn(true);
+          return ExitCode.success.code;
+        });
+        when(
+          () => gradlew.productFlavors(projectRoot.path),
+        ).thenAnswer((_) async => {'staging', 'production'});
 
         final exitCode = await runWithOverrides(command.run);
 
@@ -346,7 +352,7 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         verify(
           () => logger.confirm(
             'Gradle wrapper not found. Would you like to run '
-            '"flutter build apk" now?',
+            '"flutter build apk --config-only" now?',
             defaultValue: true,
           ),
         ).called(1);
@@ -354,9 +360,59 @@ Please make sure you are running "shorebird init" from within your Flutter proje
           () => process.stream('flutter', [
             'build',
             'apk',
+            '--config-only',
           ], workingDirectory: projectRoot.path),
         ).called(1);
+        verify(() => gradlew.exists(projectRoot.path)).called(2);
+        verify(() => gradlew.productFlavors(projectRoot.path)).called(1);
+        for (final flavor in ['staging', 'production']) {
+          verify(
+            () => codePushClientWrapper.createApp(
+              appName: '$appName ($flavor)',
+              organizationId: organizationId,
+            ),
+          ).called(1);
+        }
       });
+
+      test(
+        'exits when generation succeeds but the wrapper is missing',
+        () async {
+          when(
+            () =>
+                logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+          ).thenReturn(true);
+          when(
+            () => process.stream(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((_) async => ExitCode.success.code);
+
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, ExitCode.software.code);
+          final executablePath = p.relative(
+            p.join(projectRoot.path, 'android', 'gradlew'),
+          );
+          verify(
+            () => logger.err(
+              'Gradle wrapper is still missing after running '
+              '"flutter build apk --config-only".\n'
+              '${MissingGradleWrapperException(executablePath)}',
+            ),
+          ).called(1);
+          verifyNever(() => gradlew.isDaemonAvailable(any()));
+          verifyNever(() => gradlew.productFlavors(any()));
+          verifyNever(
+            () => codePushClientWrapper.createApp(
+              appName: any(named: 'appName'),
+              organizationId: any(named: 'organizationId'),
+            ),
+          );
+        },
+      );
 
       test('shows the existing guidance when declined', () async {
         when(
@@ -399,27 +455,35 @@ Please make sure you are running "shorebird init" from within your Flutter proje
         );
       });
 
-      test('exits when building the APK fails', () async {
-        when(
-          () => logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
-        ).thenReturn(true);
-        when(
-          () => process.stream(
-            any(),
-            any(),
-            workingDirectory: any(named: 'workingDirectory'),
-          ),
-        ).thenAnswer((_) async => ExitCode.software.code);
+      test(
+        'exits with the exit code when generating the wrapper fails',
+        () async {
+          when(
+            () =>
+                logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
+          ).thenReturn(true);
+          when(
+            () => process.stream(
+              any(),
+              any(),
+              workingDirectory: any(named: 'workingDirectory'),
+            ),
+          ).thenAnswer((_) async => ExitCode.software.code);
 
-        final exitCode = await runWithOverrides(command.run);
+          final exitCode = await runWithOverrides(command.run);
 
-        expect(exitCode, ExitCode.software.code);
-        verify(
-          () => logger.err('Unable to generate the Gradle wrapper.'),
-        ).called(1);
-      });
+          expect(exitCode, ExitCode.software.code);
+          verify(
+            () => logger.err(
+              'Unable to generate the Gradle wrapper '
+              '(exit code ${ExitCode.software.code}).',
+            ),
+          ).called(1);
+          verifyNever(() => gradlew.isDaemonAvailable(any()));
+        },
+      );
 
-      test('exits when starting the APK build fails', () async {
+      test('exits with the exception when starting generation fails', () async {
         when(
           () => logger.confirm(any(), defaultValue: any(named: 'defaultValue')),
         ).thenReturn(true);
@@ -435,8 +499,11 @@ Please make sure you are running "shorebird init" from within your Flutter proje
 
         expect(exitCode, ExitCode.software.code);
         verify(
-          () => logger.err('Unable to generate the Gradle wrapper.'),
+          () => logger.err(
+            'Unable to generate the Gradle wrapper.\nException: oops',
+          ),
         ).called(1);
+        verifyNever(() => gradlew.isDaemonAvailable(any()));
       });
     });
 
