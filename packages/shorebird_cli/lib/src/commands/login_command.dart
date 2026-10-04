@@ -17,17 +17,48 @@ class LoginCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     if (auth.isAuthenticated) {
-      final emailDisplay = auth.email;
-      logger
-        ..info(
-          emailDisplay != null
-              ? 'You are already logged in as <$emailDisplay>.'
-              : 'You are already authenticated via API key.',
-        )
-        ..info(
-          'Run ${lightCyan.wrap('shorebird logout')} to log out and try again.',
-        );
-      return ExitCode.success.code;
+      final progress = logger.progress('Checking existing credentials');
+      final bool hasValidCredentials;
+      try {
+        hasValidCredentials = await auth.hasValidCredentials();
+      } on Exception catch (error) {
+        // The auth service could not answer, which says nothing about the
+        // stored credentials. Discarding them here would log a user out for
+        // running this off wifi.
+        progress.fail('Could not reach the Shorebird auth service.');
+        logger
+          ..err('$error')
+          ..info('Check your network connection and try again.');
+        return ExitCode.tempFail.code;
+      }
+      if (hasValidCredentials) {
+        progress.complete();
+        final emailDisplay = auth.email;
+        if (emailDisplay != null) {
+          logger
+            ..info('You are already logged in as <$emailDisplay>.')
+            ..info(
+              '''Run ${lightCyan.wrap('shorebird logout')} to log in as a different user.''',
+            );
+        } else {
+          // Env-var auth wins over stored credentials, so `shorebird logout`
+          // would not change who this machine is authenticated as.
+          logger
+            ..info(
+              '''You are already authenticated via the $shorebirdTokenEnvVar environment variable.''',
+            )
+            ..info(
+              '''Unset $shorebirdTokenEnvVar to log in as a different user.''',
+            );
+        }
+        return ExitCode.success.code;
+      }
+
+      // The stored credentials have expired or been revoked, so discard them
+      // and log in again.
+      progress.fail('Your credentials have expired.');
+      logger.info('Logging you in again...');
+      auth.clearCredentials();
     }
 
     try {

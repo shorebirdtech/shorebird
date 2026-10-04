@@ -120,6 +120,23 @@ void main() {
         (m) => ShorebirdYaml.fromJson(m!),
       );
 
+      // Delete the app however this test ends. Registering the cleanup here,
+      // rather than only running it on the happy path at the bottom, is what
+      // keeps a failing run from leaking an app: `getApps` returns the whole
+      // account, so leaked test apps make that response slower for every
+      // subsequent run until someone prunes them by hand.
+      addTearDown(() async {
+        try {
+          await runWithOverrides(
+            () => client.deleteApp(appId: shorebirdYaml.appId),
+          );
+        } on CodePushNotFoundException {
+          // The happy path already deleted it.
+        } on Exception catch (error) {
+          logger.err('failed to delete ${shorebirdYaml.appId}: $error');
+        }
+      });
+
       // Verify that we have no releases for this app
       await expectLater(
         runWithOverrides(client.getApps),
@@ -214,7 +231,9 @@ void main() {
         ),
       );
 
-      // Delete the app to clean up after ourselves.
+      // Delete the app to clean up after ourselves. The tearDown registered
+      // above is the safety net for a failing run; deleting here keeps the
+      // assertion that the delete works.
       await expectLater(
         runWithOverrides(() => client.deleteApp(appId: shorebirdYaml.appId)),
         completes,
