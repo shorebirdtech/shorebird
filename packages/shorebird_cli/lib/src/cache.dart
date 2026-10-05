@@ -154,7 +154,7 @@ abstract class CachedArtifact {
   final Cache cache;
 
   /// The platform to use.
-  final Platform platform;
+  final NativePlatform platform;
 
   /// The on-disk name of the artifact.
   String get fileName;

@@ -24,7 +24,7 @@ mixin AppleReleaserMixin on Releaser {
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
         validators: applePlatformValidators,
-        supportedOperatingSystems: {Platform.macOS},
+        supportedOperatingSystems: {NativePlatform.macOS},
       );
     } on PreconditionFailedException catch (e) {
       throw ProcessExit(e.exitCode.code);

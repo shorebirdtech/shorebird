@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
@@ -15,7 +15,7 @@ void main() {
   group(AndroidSdk, () {
     late Directory homeDirectory;
     late OperatingSystemInterface osInterface;
-    late Platform platform;
+    late TestNativePlatform platform;
     late AndroidSdk androidSdk;
 
     R runWithOverrides<R>(R Function() body) {
@@ -68,22 +68,21 @@ void main() {
     setUp(() {
       homeDirectory = Directory.systemTemp.createTempSync();
       osInterface = MockOperatingSystemInterface();
-      platform = MockPlatform();
+      platform = TestNativePlatform(
+        environment: {},
+        operatingSystem: NativePlatform.fuchsia,
+      );
       androidSdk = AndroidSdk();
 
       when(() => osInterface.which(any())).thenReturn(null);
-      when(() => platform.isLinux).thenReturn(false);
-      when(() => platform.isMacOS).thenReturn(false);
-      when(() => platform.isWindows).thenReturn(false);
-      when(() => platform.environment).thenReturn({});
     });
 
     group('path', () {
       group('when ANDROID_HOME is set', () {
         setUp(() {
-          when(
-            () => platform.environment,
-          ).thenReturn({kAndroidHome: homeDirectory.path});
+          platform = platform.copyWith(
+            environment: {kAndroidHome: homeDirectory.path},
+          );
           populateAndroidSdk(androidHomePath: homeDirectory.path);
         });
 
@@ -94,9 +93,9 @@ void main() {
 
       group('when ANDROID_SDK_ROOT is set', () {
         setUp(() {
-          when(
-            () => platform.environment,
-          ).thenReturn({kAndroidSdkRoot: homeDirectory.path});
+          platform = platform.copyWith(
+            environment: {kAndroidSdkRoot: homeDirectory.path},
+          );
           populateAndroidSdk(androidHomePath: homeDirectory.path);
         });
 
@@ -108,15 +107,19 @@ void main() {
       group("when checking the user's home directory", () {
         group('when the home directory exists', () {
           setUp(() {
-            when(() => platform.environment).thenReturn({
-              'HOME': homeDirectory.path,
-              'USERPROFILE': homeDirectory.path,
-            });
+            platform = platform.copyWith(
+              environment: {
+                'HOME': homeDirectory.path,
+                'USERPROFILE': homeDirectory.path,
+              },
+            );
           });
 
           group('on Linux', () {
             setUp(() {
-              when(() => platform.isLinux).thenReturn(true);
+              platform = platform.copyWith(
+                operatingSystem: NativePlatform.linux,
+              );
               populateAndroidSdk(androidHomePath: linuxAndroidHome());
             });
 
@@ -130,7 +133,9 @@ void main() {
 
           group('on macOS', () {
             setUp(() {
-              when(() => platform.isMacOS).thenReturn(true);
+              platform = platform.copyWith(
+                operatingSystem: NativePlatform.macOS,
+              );
               populateAndroidSdk(androidHomePath: macAndroidHome());
             });
 
@@ -144,7 +149,9 @@ void main() {
 
           group('on Windows', () {
             setUp(() {
-              when(() => platform.isWindows).thenReturn(true);
+              platform = platform.copyWith(
+                operatingSystem: NativePlatform.windows,
+              );
               populateAndroidSdk(androidHomePath: windowsAndroidHome());
             });
 
@@ -226,17 +233,17 @@ void main() {
 
       group('when multiple Android SDK candidates are found', () {
         setUp(() {
-          when(() => platform.isMacOS).thenReturn(true);
+          platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
 
           // Add ANDROID_SDK_ROOT to path, but do not populate it.
-          when(
-            () => platform.environment,
-          ).thenReturn({kAndroidSdkRoot: homeDirectory.path});
+          platform = platform.copyWith(
+            environment: {kAndroidSdkRoot: homeDirectory.path},
+          );
 
           // Create a valid Android SDK in the user's home directory.
-          when(
-            () => platform.environment,
-          ).thenReturn({'HOME': homeDirectory.path});
+          platform = platform.copyWith(
+            environment: {'HOME': homeDirectory.path},
+          );
           populateAndroidSdk(androidHomePath: macAndroidHome());
 
           // Add adb to the path. This should not be returned, as the sdk in the
@@ -269,10 +276,10 @@ void main() {
       });
 
       test('returns correct value on Linux', () async {
-        when(
-          () => platform.environment,
-        ).thenReturn({kAndroidHome: homeDirectory.path});
-        when(() => platform.isLinux).thenReturn(true);
+        platform = platform.copyWith(
+          environment: {kAndroidHome: homeDirectory.path},
+        );
+        platform = platform.copyWith(operatingSystem: NativePlatform.linux);
         populateAndroidSdk(androidHomePath: homeDirectory.path);
         final adb = createAdb(
           androidHomePath: homeDirectory.path,
@@ -282,20 +289,20 @@ void main() {
       });
 
       test('returns correct value on MacOS', () async {
-        when(
-          () => platform.environment,
-        ).thenReturn({kAndroidHome: homeDirectory.path});
-        when(() => platform.isMacOS).thenReturn(true);
+        platform = platform.copyWith(
+          environment: {kAndroidHome: homeDirectory.path},
+        );
+        platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
         final adb = File(p.join(homeDirectory.path, 'platform-tools', 'adb'))
           ..createSync(recursive: true);
         expect(runWithOverrides(() => androidSdk.adbPath), adb.path);
       });
 
       test('returns correct value on Windows', () async {
-        when(
-          () => platform.environment,
-        ).thenReturn({kAndroidHome: homeDirectory.path});
-        when(() => platform.isWindows).thenReturn(true);
+        platform = platform.copyWith(
+          environment: {kAndroidHome: homeDirectory.path},
+        );
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         final adb = File(
           p.join(homeDirectory.path, 'platform-tools', 'adb.exe'),
         )..createSync(recursive: true);

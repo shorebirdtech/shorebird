@@ -275,7 +275,7 @@ To change the version of this release, change your app's version in your pubspec
               checkUserIsAuthenticated: true,
               checkShorebirdInitialized: true,
               validators: [flavorValidator],
-              supportedOperatingSystems: {Platform.windows},
+              supportedOperatingSystems: {NativePlatform.windows},
             ),
           ).called(1);
         });

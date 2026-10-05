@@ -1,18 +1,15 @@
 import 'dart:io' hide Platform;
 
-import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:test/test.dart';
 
-import 'mocks.dart';
-
 void main() {
   group(AndroidStudio, () {
-    late Platform platform;
+    late TestNativePlatform platform;
     late AndroidStudio androidStudio;
 
     R runWithOverrides<R>(R Function() body) {
@@ -29,16 +26,14 @@ void main() {
     }
 
     setUp(() {
-      platform = MockPlatform();
+      platform = TestNativePlatform();
       androidStudio = AndroidStudio();
     });
 
     group('path', () {
       group('on Windows', () {
         setUp(() {
-          when(() => platform.isWindows).thenReturn(true);
-          when(() => platform.isMacOS).thenReturn(false);
-          when(() => platform.isLinux).thenReturn(false);
+          platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         });
 
         group('when LocalAppData has a value', () {
@@ -83,9 +78,9 @@ void main() {
 
           test('returns correct path', () async {
             final appDataDir = setUpLocalAppData();
-            when(
-              () => platform.environment,
-            ).thenReturn({'LOCALAPPDATA': appDataDir.path});
+            platform = platform.copyWith(
+              environment: {'LOCALAPPDATA': appDataDir.path},
+            );
 
             await expectLater(
               runWithOverrides(() => androidStudio.path),
@@ -100,10 +95,12 @@ void main() {
             final androidStudioDir = Directory(
               p.join(tempDir.path, 'Android', 'Android Studio'),
             )..createSync(recursive: true);
-            when(() => platform.environment).thenReturn({
-              'PROGRAMFILES': tempDir.path,
-              'PROGRAMFILES(X86)': tempDir.path,
-            });
+            platform = platform.copyWith(
+              environment: {
+                'PROGRAMFILES': tempDir.path,
+                'PROGRAMFILES(X86)': tempDir.path,
+              },
+            );
             await expectLater(
               runWithOverrides(() => androidStudio.path),
               equals(androidStudioDir.path),
@@ -114,9 +111,7 @@ void main() {
 
       group('on MacOS', () {
         setUp(() {
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.isMacOS).thenReturn(true);
-          when(() => platform.isLinux).thenReturn(false);
+          platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
         });
 
         test('returns correct path', () async {
@@ -129,7 +124,7 @@ void main() {
               'Contents',
             ),
           )..createSync(recursive: true);
-          when(() => platform.environment).thenReturn({'HOME': tempDir.path});
+          platform = platform.copyWith(environment: {'HOME': tempDir.path});
           await expectLater(
             runWithOverrides(() => androidStudio.path),
             equals(androidStudioDir.path),
@@ -141,14 +136,10 @@ void main() {
         late Directory userHomeDir;
 
         setUp(() {
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.isMacOS).thenReturn(false);
-          when(() => platform.isLinux).thenReturn(true);
+          platform = platform.copyWith(operatingSystem: NativePlatform.linux);
 
           userHomeDir = Directory.systemTemp.createTempSync();
-          when(
-            () => platform.environment,
-          ).thenReturn({'HOME': userHomeDir.path});
+          platform = platform.copyWith(environment: {'HOME': userHomeDir.path});
         });
 
         group('when installed at ~', () {

@@ -52,7 +52,7 @@ mixin ApplePatcherMixin on Patcher {
         checkShorebirdInitialized: true,
         checkUserIsAuthenticated: true,
         validators: applePlatformValidators,
-        supportedOperatingSystems: {Platform.macOS},
+        supportedOperatingSystems: {NativePlatform.macOS},
       );
     } on PreconditionFailedException catch (error) {
       throw ProcessExit(error.exitCode.code);

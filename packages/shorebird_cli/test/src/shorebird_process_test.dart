@@ -5,7 +5,7 @@ import 'dart:io' hide Platform;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -25,7 +25,7 @@ void main() {
 
     late EngineConfig engineConfig;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late ProcessWrapper processWrapper;
     late Process startProcess;
     late ShorebirdProcessResult runProcessResult;
@@ -47,7 +47,7 @@ void main() {
     setUp(() {
       engineConfig = const EngineConfig.empty();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
       processWrapper = MockProcessWrapper();
       runProcessResult = MockProcessResult();
       startProcess = MockProcess();
@@ -65,8 +65,6 @@ void main() {
       when(() => runProcessResult.exitCode).thenReturn(ExitCode.success.code);
 
       when(() => logger.level).thenReturn(Level.info);
-
-      when(() => platform.isWindows).thenReturn(false);
     });
 
     test('ShorebirdProcessResult can be instantiated as a const', () {
@@ -121,7 +119,7 @@ void main() {
       });
 
       test('sanitizes executable on windows', () async {
-        when(() => platform.isWindows).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         const executable =
             r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
         await runWithOverrides(
@@ -286,7 +284,7 @@ void main() {
       });
 
       test('sanitizes executable on windows', () {
-        when(() => platform.isWindows).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         const executable =
             r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
         runWithOverrides(
@@ -579,7 +577,7 @@ void main() {
       });
 
       test('sanitizes executable on windows', () async {
-        when(() => platform.isWindows).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         const executable =
             r'C:\Program Files\Android\Android Studio\jbr\bin\java.exe';
         await runWithOverrides(
