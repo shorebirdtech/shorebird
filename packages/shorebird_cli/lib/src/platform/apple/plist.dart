@@ -1,6 +1,8 @@
-// cspell:words propertylistserialization xcarchives plutil
+// cspell:words propertylistserialization xcarchives plutil bplist
 
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:shorebird_cli/src/platform/apple/invalid_export_options_plist_exception.dart';
@@ -25,17 +27,38 @@ class PlistParseException implements Exception {
 
 /// A representation of an Info.plist file.
 class Plist {
-  /// Creates a new [Plist] from the contents of the provided [file].
+  /// Creates a new [Plist] from the contents of the provided [file], which may
+  /// be in either XML or binary format.
+  ///
+  /// Xcode writes the Info.plist of a built app or app extension in binary
+  /// format; source and ExportOptions plist files are usually XML.
   Plist({required File file}) {
+    final bytes = file.readAsBytesSync();
     try {
       properties =
-          PropertyListSerialization.propertyListWithString(
-                file.readAsStringSync(),
-              )
+          (_isBinary(bytes)
+                  ? PropertyListSerialization.propertyListWithData(
+                      ByteData.sublistView(bytes),
+                    )
+                  : PropertyListSerialization.propertyListWithString(
+                      utf8.decode(bytes),
+                    ))
               as Map<String, Object>;
     } on PropertyListReadStreamException catch (e) {
       throw PlistParseException(filePath: file.path, cause: e);
+    } on FormatException catch (e) {
+      throw PlistParseException(filePath: file.path, cause: e);
     }
+  }
+
+  /// Binary plist files begin with the magic bytes `bplist`.
+  static bool _isBinary(Uint8List bytes) {
+    const magic = 'bplist';
+    if (bytes.length < magic.length) return false;
+    for (var i = 0; i < magic.length; i++) {
+      if (bytes[i] != magic.codeUnitAt(i)) return false;
+    }
+    return true;
   }
 
   /// This key is a user-visible string for the version of the bundle. The

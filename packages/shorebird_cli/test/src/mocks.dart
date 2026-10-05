@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
@@ -67,6 +68,19 @@ class MockArchiveDiffer extends Mock implements ArchiveDiffer {}
 class MockArgParser extends Mock implements ArgParser {}
 
 class MockArgResults extends Mock implements ArgResults {}
+
+class MockCommand extends Mock implements Command<int> {}
+
+/// A runner mock stubbed just enough for [Command.usageException] to build
+/// its usage text.
+MockShorebirdCliCommandRunner usageRunner({
+  Map<String, Command<int>> commands = const {},
+}) {
+  final runner = MockShorebirdCliCommandRunner();
+  when(() => runner.executableName).thenReturn('shorebird');
+  when(() => runner.commands).thenReturn(commands);
+  return runner;
+}
 
 class MockArtifactBuildException extends Mock
     implements ArtifactBuildException {}

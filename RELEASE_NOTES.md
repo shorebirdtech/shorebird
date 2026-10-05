@@ -1,8 +1,70 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate
  -->
+
+## 1.6.124 (October 2, 2026)
+
+- 🐦 Flutter 3.47.6 / Dart 3.13.5 support
+  - Windows: fix a hang in production apps.
+- ✨ A patch with DEX diffs now names the dependency version changes behind
+  them.
+- 🐛 The Apple differ now closes its archive streams.
+
+## 1.6.123 (September 21, 2026)
+
+- 🐦 Flutter 3.47.5 / Dart 3.13.4 support
+  - iOS: fix an occasional crash when debugging on physical iOS 27 devices.
+  - Widget Previewer: fix a crash when re-expanding a preview group.
+  - Handle a Dart Development Service startup failure instead of crashing
+    with an unhandled FormatException.
+  - Roll `package:dds` to 5.4.0.
+- ✨ `--flutter-version` now accepts `fvm` and `system`.
+- 🐛 iOS `--split-debug-info` now writes a Mach-O dSYM, so symbol servers
+  ingest it and Dart frames symbolicate in production. Previously the file
+  was an ELF with no debug ID, and uploads reported finding nothing while
+  exiting cleanly.
+
+## 1.6.122 (September 16, 2026)
+
+- 🐦 Flutter 3.47.4 / Dart 3.13.3 support
+  - iOS: warn when Device Support Symbols are missing instead of failing
+    partway through a build.
+  - iOS: native assets now require iOS 15, raised from iOS 13.
+  - Windows: handle Application Control and security policy execution
+    blocks instead of failing.
+  - Fix a crash on non-JSON messages in the test stream parsers.
+  - Drop a redundant `--enable-experiment=record-use` flag.
+- 🐛 A device whose patch fails to load now checks for a replacement patch on
+  that same launch. Previously the failure report suppressed the check, so the
+  device ran base code and stayed on the bad patch until the next launch.
+- 🐛 Patch checks now report the patch the device is running, so Mission
+  Control attributes each device to the right patch. Update delivery is
+  unchanged, since the server does not read that field when serving a patch.
+- 🐛 An install can no longer retire a patch while that patch is still
+  booting for the first time.
+
+## 1.6.121 (September 14, 2026)
+
+- 🐦 Flutter 3.47.3 / Dart 3.13.3 support
+  - Android: fix license detection for cmdline-tools 23.0 and newer.
+  - iOS/macOS: handle a missing Xcode gracefully in `getInfo` and
+    `buildMacOS` instead of failing hard.
+  - Fix `Actions.handler` not forwarding the intent type to `maybeFind`.
+  - Denylist B-series PowerVR GPUs from Vulkan.
+  - Windows: fix Dart cross-compilation.
+- ✨ New `shorebird apps` commands: list, rename, delete and transfer.
+- ✨ New `shorebird channels` commands: create, list and delete.
+- ✨ `shorebird account whoami` now shows your plan level.
+- 🔧 `--shorebird-trace` now covers aar, ios-framework and desktop builds.
+- 🐛 Report when a patch is missing `libapp.so` instead of failing opaquely.
+- 🐛 iOS patcher errors now name the next step to take.
+- 🐛 Signing-flag mistakes are reported as usage errors that name the flag.
+- 🐛 Ignore asset catalog toolchain versions when diffing assets.
+- 🐛 Point users at plugins that reference the legacy `flutter.jar`.
+- 🐛 Keep a pubspec comment with its key during `shorebird init`.
+- 🐛 Build traces now measure download time.
 
 ## 1.6.120 (August 28, 2026)
 

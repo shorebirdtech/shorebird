@@ -15,6 +15,15 @@
 // The generator does not touch `lib/extensions/` or
 // `lib/shorebird_code_push_protocol.dart`; those are hand-written and
 // re-export the generated types.
+//
+// That safety comes from `--no-clear`, injected below. From space_gen
+// 1.4.0 the generator otherwise empties the `-o` directory before each
+// run — which here, where generated and hand-written code share the
+// package, would delete `lib/extensions/`, the barrel, `test/src/`,
+// this pubspec and the README. `--no-clear` disables that; removing
+// stale generated output (a renamed schema's old file) is then this
+// package's own responsibility.
+// See https://github.com/eseidel/space_gen/pull/310.
 
 import 'package:space_gen/space_gen.dart';
 
@@ -111,4 +120,11 @@ class ShorebirdFileRenderer extends FileRenderer {
 }
 
 Future<int> main(List<String> arguments) =>
-    runCli(arguments, fileRendererBuilder: ShorebirdFileRenderer.new);
+    // `--no-clear` is appended, not left to the caller: this package must
+    // never have its output directory emptied (see the file header), and
+    // a forgotten flag would delete the hand-written half of it. Appended
+    // last so it wins over anything passed on the command line.
+    runCli([
+      ...arguments,
+      '--no-clear',
+    ], fileRendererBuilder: ShorebirdFileRenderer.new);

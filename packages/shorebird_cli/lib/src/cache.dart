@@ -7,6 +7,7 @@ import 'package:platform/platform.dart';
 import 'package:retry/retry.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/abi.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
@@ -66,22 +67,32 @@ class Cache {
   Future<void> updateAll([
     Duration retryDelayFactor = const Duration(milliseconds: 200),
   ]) async {
-    for (final artifact in _artifacts) {
-      if (await artifact.isValid()) {
-        continue;
-      }
+    // Traced as a whole rather than per-artifact: the individual
+    // downloads already show up as `network` spans, and what the summary
+    // needs here is the total cold-cache cost including validation,
+    // extraction and retries. Callers invoke this more than once per
+    // command; the later calls no-op and contribute ~0ms.
+    await shorebirdTracer.setupSpan(
+      phase: SetupPhase.shorebirdCache,
+      body: () async {
+        for (final artifact in _artifacts) {
+          if (await artifact.isValid()) {
+            continue;
+          }
 
-      await retry(
-        artifact.update,
-        maxAttempts: 3,
-        delayFactor: retryDelayFactor,
-        onRetry: (e) {
-          logger
-            ..detail('Failed to update ${artifact.fileName}, retrying...')
-            ..detail(e.toString());
-        },
-      );
-    }
+          await retry(
+            artifact.update,
+            maxAttempts: 3,
+            delayFactor: retryDelayFactor,
+            onRetry: (e) {
+              logger
+                ..detail('Failed to update ${artifact.fileName}, retrying...')
+                ..detail(e.toString());
+            },
+          );
+        }
+      },
+    );
   }
 
   /// Get a named directory from with the cache's artifact directory;

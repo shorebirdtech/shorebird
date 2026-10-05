@@ -680,7 +680,7 @@ Reason: Exited with code $exitCode.''',
 
   /// Returns the user's home directory as understood by the OS, or
   /// null if neither `HOME` nor `USERPROFILE` is set. Reads from the
-  /// scoped [platform] (same pattern as e.g. `android_studio.dart`)
+  /// scoped `platform` (same pattern as e.g. `android_studio.dart`)
   /// rather than static `Platform.environment` so tests can inject a
   /// fake environment.
   Directory? _homeDirectory() {

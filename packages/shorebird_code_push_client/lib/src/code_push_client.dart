@@ -109,6 +109,19 @@ class CodePushClient {
   @visibleForTesting
   static const unknownErrorMessage = 'An unknown error occurred.';
 
+  /// The message used when the server returns a non-2xx response whose body is
+  /// not a JSON [ErrorResponse] -- typically an HTML or plain-text error page
+  /// served by Cloud Run or the load balancer rather than by our API. The
+  /// status code is the only thing that distinguishes these failures from one
+  /// another, so it belongs in the message.
+  @visibleForTesting
+  static String unknownErrorMessageFor(int statusCode) =>
+      '$unknownErrorMessage (HTTP $statusCode)';
+
+  /// The maximum number of characters of an unparseable error body to surface
+  /// as exception details.
+  static const _maxUnknownErrorBodyLength = 200;
+
   /// The status GCS returns ("Resume Incomplete") between resumable chunks.
   static const _resumeIncompleteStatus = 308;
 
@@ -582,6 +595,24 @@ class CodePushClient {
     }
   }
 
+  /// Fetches the app with the provided [appId], or `null` if no such app is
+  /// visible to the current account.
+  ///
+  /// Prefer this over filtering [getApps] when the app id is already known:
+  /// [getApps] returns every app on the account, which is unbounded.
+  Future<AppMetadata?> getApp({required String appId}) async {
+    final response = await _httpClient.get(Uri.parse('$_v1/apps/$appId'));
+
+    if (response.statusCode == HttpStatus.notFound) return null;
+    if (!response.isSuccess) {
+      throw _parseErrorResponse(response.statusCode, response.body);
+    }
+
+    return AppMetadata.fromJson(
+      json.decode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   /// List all apps for the current account.
   Future<List<AppMetadata>> getApps() async {
     final response = await _httpClient.get(Uri.parse('$_v1/apps'));
@@ -704,8 +735,9 @@ class CodePushClient {
   ///
   /// Idempotent. Returns whether the server changed the patch: `false` when it
   /// answers `304 Not Modified` because the patch was already rolled back,
-  /// `true` when it changed the patch. The server is the only authority on this,
-  /// since another actor may roll the patch back between a read and this call.
+  /// `true` when it changed the patch. The server is the only authority on
+  /// this, since another actor may roll the patch back between a read and this
+  /// call.
   Future<bool> rollbackPatch({
     required String appId,
     required int releaseId,
@@ -813,9 +845,21 @@ class CodePushClient {
       final body = json.decode(response) as Map<String, dynamic>;
       error = ErrorResponse.fromJson(body);
     } on Exception {
-      throw exceptionBuilder(message: unknownErrorMessage);
+      throw exceptionBuilder(
+        message: unknownErrorMessageFor(statusCode),
+        details: _truncateBody(response),
+      );
     }
     return exceptionBuilder(message: error.message, details: error.details);
+  }
+
+  /// Returns a single-line, length-capped form of [body], or `null` if there is
+  /// nothing useful to show.
+  static String? _truncateBody(String body) {
+    final collapsed = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (collapsed.isEmpty) return null;
+    if (collapsed.length <= _maxUnknownErrorBodyLength) return collapsed;
+    return '${collapsed.substring(0, _maxUnknownErrorBodyLength)}...';
   }
 }
 

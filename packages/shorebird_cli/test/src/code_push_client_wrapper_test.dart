@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -443,7 +444,9 @@ void main() {
       group('getApp', () {
         test('exits with code 70 when getting app fails', () async {
           const error = 'something went wrong';
-          when(() => codePushClient.getApps()).thenThrow(error);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
 
           await expectLater(
             () async => runWithOverrides(
@@ -455,7 +458,9 @@ void main() {
         });
 
         test('exits with code 70 when app does not exist', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => null);
 
           await expectLater(
             () async => runWithOverrides(
@@ -473,7 +478,9 @@ void main() {
         });
 
         test('returns app when app exists', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => app);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.getApp(appId: appId),
@@ -485,9 +492,24 @@ void main() {
       });
 
       group('maybeGetApp', () {
-        test('exits with code 70 when fetching apps fails', () async {
+        test('requests the single app rather than the whole account', () async {
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => app);
+
+          await runWithOverrides(
+            () => codePushClientWrapper.maybeGetApp(appId: appId),
+          );
+
+          verify(() => codePushClient.getApp(appId: appId)).called(1);
+          verifyNever(() => codePushClient.getApps());
+        });
+
+        test('exits with code 70 when fetching the app fails', () async {
           const error = 'something went wrong';
-          when(() => codePushClient.getApps()).thenThrow(error);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
 
           await expectLater(
             () async => runWithOverrides(
@@ -499,7 +521,23 @@ void main() {
         });
 
         test('succeeds if app does not exist', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => null);
+
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetApp(appId: appId),
+          );
+
+          expect(result, isNull);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => logger.err(any()));
+        });
+
+        test('returns null if the app belongs to someone else', () async {
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenThrow(CodePushForbiddenException(message: 'nope'));
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetApp(appId: appId),
@@ -511,7 +549,9 @@ void main() {
         });
 
         test('returns app when app exists', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => app);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetApp(appId: appId),
@@ -1704,7 +1744,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             setUpProjectRoot();
             // Simulate AGP filtering: remove armeabi-v7a libapp.so to mirror
             // a project with ndk.abiFilters that excludes arm32.
-            final missingArch = Arch.arm32;
+            const missingArch = Arch.arm32;
             File(
               p.join(
                 projectRoot.path,
@@ -1878,6 +1918,46 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ).called(3);
             verify(() => progress.complete()).called(1);
             verifyNever(() => progress.fail(any()));
+          },
+        );
+
+        test(
+          'fails with an accurate message when the aab has no libapp.so',
+          () async {
+            // A real aab that packages a native lib but no libapp.so, as
+            // happens when a custom Gradle build drops the Dart library before
+            // bundling (https://github.com/shorebirdtech/shorebird/issues/3813).
+            final archive = Archive()
+              ..addFile(
+                ArchiveFile.string('base/lib/arm64-v8a/libflutter.so', 'so'),
+              );
+            final aab = File(p.join(projectRoot.path, 'no_libapp.aab'))
+              ..createSync(recursive: true)
+              ..writeAsBytesSync(ZipEncoder().encode(archive));
+
+            await expectLater(
+              () async => runWithOverrides(
+                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: aab.path,
+                  architectures: Arch.values,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => progress.fail(
+                any(
+                  that: contains(
+                    'does not contain libapp.so for any architecture',
+                  ),
+                ),
+              ),
+            ).called(1);
           },
         );
       });

@@ -68,7 +68,8 @@ More info: ${troubleshootingUrl.toLink()}.
   List<String> extraBuildArgs = const [];
 
   /// Additional gen_snapshot arguments needed to match the release's
-  /// obfuscation flags. Used by Apple patchers for [buildElfAotSnapshot]
+  /// obfuscation flags. Used by Apple patchers for
+  /// `ArtifactBuilder.buildElfAotSnapshot`
   /// and linker calls.
   List<String> get obfuscationGenSnapshotArgs => [
     if (obfuscationMapPath != null) ...[
@@ -135,14 +136,14 @@ More info: ${troubleshootingUrl.toLink()}.
   }
 
   /// Uploads the patch artifacts to the CodePush server.
-  Future<void> uploadPatchArtifacts({
+  Future<Patch> uploadPatchArtifacts({
     required String appId,
     required int releaseId,
     required Map<String, dynamic> metadata,
     required Map<Arch, PatchArtifactBundle> artifacts,
     required DeploymentTrack track,
-  }) async {
-    await codePushClientWrapper.publishPatch(
+  }) {
+    return codePushClientWrapper.publishPatch(
       appId: appId,
       releaseId: releaseId,
       metadata: metadata,

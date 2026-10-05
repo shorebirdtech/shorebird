@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -12,6 +14,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -25,6 +28,7 @@ import 'package:test/test.dart';
 
 import '../../matchers.dart';
 import '../../mocks.dart';
+import '../../helpers.dart';
 
 void main() {
   group(ReleaseCommand, () {
@@ -220,7 +224,8 @@ void main() {
       ).thenAnswer((_) async => {});
 
       command = ReleaseCommand(resolveReleaser: (_) => releaser)
-        ..testArgResults = argResults;
+        ..testArgResults = argResults
+        ..testRunner = usageRunner();
     });
 
     test('has non-empty description', () {
@@ -255,10 +260,16 @@ void main() {
         ).thenReturn('/path/to/nonexistent/file');
       });
 
-      test('exits with usage code', () async {
+      test('throws a usage exception naming the flag', () async {
         await expectLater(
           runWithOverrides(command.run),
-          exitsWithCode(ExitCode.usage),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              '--public-key-path: no file found at /path/to/nonexistent/file.',
+            ),
+          ),
         );
 
         verifyNever(
@@ -389,6 +400,145 @@ void main() {
             );
             verify(() => logger.info('fix it')).called(1);
           });
+        });
+      });
+    });
+
+    group('--json', () {
+      Future<T> runJson<T>(Future<T> Function() body) => runScoped(
+        body,
+        values: {isJsonModeRef.overrideWith(() => true)},
+      );
+
+      setUp(() {
+        when(
+          () => codePushClientWrapper.maybeGetRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => release);
+      });
+
+      // The release is already published by the time the refresh runs, so a
+      // failure there must not turn a successful run into a failed one --
+      // and getRelease, which this used to call, exits the process with a
+      // message about publishing patches.
+      test(
+        'falls back to the release in hand when the refetch fails',
+        () async {
+          var calls = 0;
+          when(
+            () => codePushClientWrapper.maybeGetRelease(
+              appId: any(named: 'appId'),
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).thenAnswer((_) async {
+            // ensureVersionIsReleasable and getOrCreateRelease each look the
+            // version up before the build; the refresh is the one after it.
+            if (++calls <= 2) return release;
+            throw ProcessExit(ExitCode.software.code);
+          });
+
+          final captured = <String>[];
+          final exitCode = await captureStdout(
+            () => runJson(() => runWithOverrides(command.run)),
+            captured: captured,
+          );
+
+          expect(exitCode, equals(ExitCode.success.code));
+          expect(captured, hasLength(1));
+          final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+          expect(envelope['status'], equals('success'));
+          expect(
+            (envelope['data'] as Map<String, dynamic>)['releases'],
+            equals([release.toJson()]),
+          );
+        },
+      );
+
+      test('emits the published release, re-fetched after finalize', () async {
+        final finalized = Release(
+          id: release.id,
+          appId: release.appId,
+          version: release.version,
+          flutterRevision: release.flutterRevision,
+          displayName: release.displayName,
+          platformStatuses: const {
+            ReleasePlatform.android: ReleaseStatus.active,
+          },
+          createdAt: release.createdAt,
+          updatedAt: release.updatedAt,
+        );
+        when(
+          () => codePushClientWrapper.maybeGetRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        ).thenAnswer((_) async => finalized);
+
+        final captured = <String>[];
+        final exitCode = await captureStdout(
+          () => runJson(() => runWithOverrides(command.run)),
+          captured: captured,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(captured, hasLength(1));
+        final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+        expect(envelope['status'], equals('success'));
+        expect(
+          envelope['data'],
+          equals({
+            'app_id': appId,
+            'platforms': ['android'],
+            'releases': [finalized.toJson()],
+          }),
+        );
+      });
+
+      test('emits nothing but the envelope on stdout', () async {
+        // Human progress lines are still logged; the runner routes them to
+        // stderr in JSON mode. Here the logger is a mock, so the check is
+        // that the command itself writes only the envelope.
+        final captured = <String>[];
+        await captureStdout(
+          () => runJson(() => runWithOverrides(command.run)),
+          captured: captured,
+        );
+
+        expect(captured, hasLength(1));
+        expect(() => jsonDecode(captured.single), returnsNormally);
+      });
+
+      group('with --dry-run', () {
+        setUp(() {
+          when(() => argResults['dry-run']).thenReturn(true);
+        });
+
+        test('emits what would have been released', () async {
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runJson(() => runWithOverrides(command.run)),
+              captured: captured,
+            ),
+            exitsWithCode(ExitCode.success),
+          );
+
+          expect(captured, hasLength(1));
+          final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+          expect(envelope['status'], equals('success'));
+          expect(
+            envelope['data'],
+            equals({
+              'dry_run': true,
+              'app_id': appId,
+              'platform': 'android',
+              'release_version': release.version,
+              'flutter_revision': flutterRevision,
+            }),
+          );
+          verifyNever(() => logger.info('No issues detected.'));
         });
       });
     });
@@ -724,6 +874,106 @@ $exception'''),
         });
       });
     });
+
+    /// Shared expectations for the `--flutter-version` values that ask the
+    /// user's toolchain which Flutter version to build with.
+    void testFlutterVersionAlias({
+      required String arg,
+      required String versionCommand,
+      required Future<String?> Function() Function() getVersion,
+    }) {
+      group('when flutter-version is "$arg"', () {
+        const reportedVersion = '3.32.4';
+        const revision = '771d07b2cf';
+
+        setUp(() {
+          when(() => argResults['flutter-version']).thenReturn(arg);
+          when(
+            () => shorebirdFlutter.resolveFlutterRevision(any()),
+          ).thenAnswer((_) async => revision);
+        });
+
+        test('builds with the Shorebird revision for the reported '
+            'version', () async {
+          when(getVersion()).thenAnswer((_) async => reportedVersion);
+
+          await runWithOverrides(command.run);
+
+          // The reported version is looked up like any other version, so we
+          // still build with Shorebird's Flutter fork rather than the user's.
+          verify(
+            () => shorebirdFlutter.resolveFlutterRevision(reportedVersion),
+          ).called(1);
+          verify(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          ).called(1);
+          verify(
+            () => logger.info(
+              'Using Flutter $reportedVersion, as reported by '
+              '`$versionCommand`.',
+            ),
+          ).called(1);
+        });
+
+        test('only asks for the version once', () async {
+          when(getVersion()).thenAnswer((_) async => reportedVersion);
+
+          await runWithOverrides(command.run);
+
+          verify(getVersion()).called(1);
+        });
+
+        group('when the version lookup fails', () {
+          final exception = Exception('oops');
+          setUp(() {
+            when(getVersion()).thenThrow(exception);
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err('''
+Unable to determine the Flutter version from `$versionCommand`.
+$exception'''),
+            ).called(1);
+          });
+        });
+
+        group('when the version cannot be parsed', () {
+          setUp(() {
+            when(getVersion()).thenAnswer((_) async => null);
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(command.run),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(
+              () => logger.err(
+                'Unable to parse a Flutter version from the output of '
+                '`$versionCommand`.',
+              ),
+            ).called(1);
+          });
+        });
+      });
+    }
+
+    testFlutterVersionAlias(
+      arg: 'system',
+      versionCommand: 'flutter --version',
+      getVersion: () => shorebirdFlutter.getSystemVersion,
+    );
+
+    testFlutterVersionAlias(
+      arg: 'fvm',
+      versionCommand: 'fvm',
+      getVersion: () => shorebirdFlutter.getFvmVersion,
+    );
 
     group('when a patch signing public key is provided', () {
       const keyName = 'test-key-path.pem';

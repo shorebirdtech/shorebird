@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:jwt/src/models/jwk.dart';
 
 part 'rsa_jwk.g.dart';
 

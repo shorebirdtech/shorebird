@@ -110,6 +110,17 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
       base64PublicKey: argResults.encodedPublicKey,
     );
 
+    // When the built .aab never packaged libapp.so, fail fast with an accurate
+    // explanation rather than the generic "cannot find artifacts" message or
+    // silently diffing against a stale strip output
+    // (https://github.com/shorebirdtech/shorebird/issues/3813).
+    final missingLibappMessage =
+        await ArtifactManager.describeMissingLibappInAab(aabFile);
+    if (missingLibappMessage != null) {
+      logger.err(missingLibappMessage);
+      throw ProcessExit(ExitCode.software.code);
+    }
+
     final patchArchsBuildDir = _patchArchsBuildDir =
         await ArtifactManager.androidArchsDirectoryFromAab(
           projectRoot: projectRoot,
@@ -130,6 +141,7 @@ Looked in:
   - build/app/intermediates/stripped_native_libs/{variant}/out/lib''');
       throw ProcessExit(ExitCode.software.code);
     }
+
     return aabFile;
   }
 
@@ -196,6 +208,7 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
     }
 
     final patchArtifactBundles = <Arch, PatchArtifactBundle>{};
+    final skippedArchs = <Arch>[];
     final createDiffProgress = logger.progress('Creating patch artifacts');
     for (final releaseArtifactPath in releaseArtifactPaths.entries) {
       final arch = releaseArtifactPath.key;
@@ -213,9 +226,9 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
       if (!patchArtifact.existsSync()) {
         logger.detail(
           'Skipping ${arch.arch}: no libapp.so at $patchArtifactPath. '
-          'This is expected if the project filters this ABI via '
-          'ndk.abiFilters, splits.abi, or jniLibs.excludes.',
+          'This is expected if the project excludes this ABI from packaging.',
         );
+        skippedArchs.add(arch);
         continue;
       }
       final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
@@ -246,6 +259,36 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
       throw ProcessExit(ExitCode.software.code);
     }
     createDiffProgress.complete();
+
+    // A partial patch still succeeds, so name the architectures it leaves
+    // behind. Without this the omission is only visible at --verbose, and a
+    // patch that reaches a fraction of the install base looks identical to one
+    // that is merely slow to roll out.
+    if (skippedArchs.isNotEmpty) {
+      // androidBuildPath, not arch: the message points at Gradle packaging
+      // config, and only the ABI names appear there.
+      final skipped = skippedArchs
+          .map((arch) => arch.androidBuildPath)
+          .join(', ');
+      final patched = patchArtifactBundles.keys
+          .map((arch) => arch.androidBuildPath)
+          .join(', ');
+      logger.warn('''
+This patch does not cover every architecture in the release.
+
+  Patched: $patched
+  Skipped: $skipped
+
+Devices on the skipped architectures stay on the release and will not receive
+this patch.
+
+The patch build produced no libapp.so for them, so it and the release build
+disagree on which architectures to compile. If that is deliberate, such as an
+excludes rule under packaging.jniLibs, no device runs the skipped
+architectures and there is nothing to do. Otherwise rebuild the patch using
+the same Android configuration and Flutter version as the release.''');
+    }
+
     return patchArtifactBundles;
   }
 

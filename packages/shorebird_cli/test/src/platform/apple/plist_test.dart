@@ -1,7 +1,8 @@
-// cspell:words plutil
+// cspell:words plutil bplist
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:propertylistserialization/propertylistserialization.dart';
 import 'package:shorebird_cli/src/platform/apple/invalid_export_options_plist_exception.dart';
 import 'package:shorebird_cli/src/platform/apple/plist.dart';
 import 'package:test/test.dart';
@@ -19,6 +20,39 @@ void main() {
     });
 
     group('constructor', () {
+      test('parses a binary plist', () {
+        final data = PropertyListSerialization.dataWithPropertyList({
+          'CFBundleShortVersionString': '1.2.3',
+          'CFBundleVersion': '4',
+        });
+        final file = File(p.join(tempDir.path, 'Info.plist'))
+          ..writeAsBytesSync(
+            data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+          );
+
+        expect(Plist(file: file).versionNumber, equals('1.2.3+4'));
+      });
+
+      test('throws PlistParseException when a binary plist is corrupt', () {
+        final file = File(p.join(tempDir.path, 'Info.plist'))
+          ..writeAsBytesSync([...'bplist00'.codeUnits, 0xff, 0xfe]);
+
+        expect(
+          () => Plist(file: file),
+          throwsA(isA<PlistParseException>()),
+        );
+      });
+
+      test('throws PlistParseException when the file is not UTF-8', () {
+        final file = File(p.join(tempDir.path, 'Info.plist'))
+          ..writeAsBytesSync([0xff, 0xfe, 0xfd]);
+
+        expect(
+          () => Plist(file: file),
+          throwsA(isA<PlistParseException>()),
+        );
+      });
+
       test('throws PlistParseException when plist is malformed', () {
         final file = File(p.join(tempDir.path, 'Info.plist'))
           ..writeAsStringSync('not valid plist xml');

@@ -26,6 +26,7 @@ class BuildTraceSummary {
     required this.flutterBuild,
     required this.shorebirdOverhead,
     required this.network,
+    required this.setup,
     required this.dart,
     required this.flutterAssemble,
     required this.native,
@@ -38,8 +39,10 @@ class BuildTraceSummary {
   /// Build a summary from the raw list of trace events written by Flutter
   /// (and merged with Shorebird-side events).
   ///
-  /// [platform] is `android` or `ios`. Platform-specific stats ([android] /
-  /// [ios]) are only populated for the matching platform.
+  /// [platform] is the release platform name (`android`, `ios`, `macos`,
+  /// `linux`, `windows`). Platform-specific stats are only populated
+  /// where the build system produces them: [android] for `android`,
+  /// [ios] for every xcodebuild-driven platform (`ios`, `macos`).
   /// [shorebirdOverhead] captures Shorebird's own wall-clock time around
   /// `flutter build` — null when the caller can't compute it.
   factory BuildTraceSummary.fromEvents(
@@ -56,10 +59,43 @@ class BuildTraceSummary {
       if (e['ph'] != 'X') continue;
       _processEvent(acc, e);
     }
-    return _buildSummary(
+    return BuildTraceSummary._fromAccumulator(
       acc,
       platform: platform,
       shorebirdOverhead: shorebirdOverhead,
+      environment: environment,
+    );
+  }
+
+  /// Assembles the summary from the counters [BuildTraceSummary.fromEvents]
+  /// accumulated.
+  factory BuildTraceSummary._fromAccumulator(
+    _Accumulator acc, {
+    required String platform,
+    Duration? shorebirdOverhead,
+    BuildEnvironment? environment,
+  }) {
+    final flutterBuild = acc.flutterBuild;
+    return BuildTraceSummary(
+      platform: platform,
+      total: flutterBuild + (shorebirdOverhead ?? Duration.zero),
+      flutterBuild: flutterBuild,
+      shorebirdOverhead: shorebirdOverhead,
+      network: NetworkStats(
+        duration: acc.network,
+        callCount: acc.networkCount,
+      ),
+      setup: SetupStats(
+        flutterInstall: acc.setupPhase.of(SetupPhase.flutterInstall),
+        flutterPrecache: acc.setupPhase.of(SetupPhase.flutterPrecache),
+        shorebirdCache: acc.setupPhase.of(SetupPhase.shorebirdCache),
+      ),
+      dart: _dartStats(acc),
+      flutterAssemble: _flutterAssembleStats(acc),
+      native: _nativeStats(acc),
+      flutterTool: acc.flutterTool,
+      android: platform == 'android' ? _androidStats(acc) : null,
+      ios: xcodePlatforms.contains(platform) ? _iosStats(acc) : null,
       environment: environment,
     );
   }
@@ -73,6 +109,7 @@ class BuildTraceSummary {
     final name = (e['name'] as String?) ?? '';
     final args =
         (e['args'] as Map<Object?, Object?>?) ?? const <Object?, Object?>{};
+    final ts = (e['ts'] as num?)?.toInt();
     switch (TraceCategory.parse(e['cat'] as String?)) {
       case TraceCategory.flutter:
         _processFlutterEvent(acc, name: name, dur: dur);
@@ -81,10 +118,12 @@ class BuildTraceSummary {
       case TraceCategory.gradle:
       case TraceCategory.xcode:
         acc.nativeBuild += dur;
+        if (ts != null) acc.nativeSpans.add(_Interval(ts, dur));
       case TraceCategory.assemble:
         acc.assembleCount++;
         if (args['skipped'] == true) acc.skippedAssembleCount++;
         acc.assembleCategory.add(_categorize(name), dur);
+        acc.assembleSpans.add(_Interval(ts, dur));
       case TraceCategory.gradleTask:
         _processGradleTaskEvent(acc, dur: dur, args: args);
       case TraceCategory.xcodeSubsection:
@@ -92,6 +131,8 @@ class BuildTraceSummary {
       case TraceCategory.network:
         acc.network += dur;
         acc.networkCount++;
+      case TraceCategory.setup:
+        _processSetupEvent(acc, name: name, dur: dur);
       case TraceCategory.unknown:
         // Future producer version emitted a category we don't know.
         // Dropped on purpose — bucketing it anywhere else would lie.
@@ -131,6 +172,16 @@ class BuildTraceSummary {
     }
   }
 
+  static void _processSetupEvent(
+    _Accumulator acc, {
+    required String name,
+    required Duration dur,
+  }) {
+    const prefix = '${TraceNames.setupNamePrefix}: ';
+    if (!name.startsWith(prefix)) return;
+    acc.setupPhase.add(SetupPhase.parse(name.substring(prefix.length)), dur);
+  }
+
   static void _processGradleTaskEvent(
     _Accumulator acc, {
     required Duration dur,
@@ -150,32 +201,6 @@ class BuildTraceSummary {
     acc.gradleKind.add(
       GradleTaskKind.parse(args['kind'] as String?),
       dur,
-    );
-  }
-
-  static BuildTraceSummary _buildSummary(
-    _Accumulator acc, {
-    required String platform,
-    Duration? shorebirdOverhead,
-    BuildEnvironment? environment,
-  }) {
-    final flutterBuild = acc.flutterBuild;
-    return BuildTraceSummary(
-      platform: platform,
-      total: flutterBuild + (shorebirdOverhead ?? Duration.zero),
-      flutterBuild: flutterBuild,
-      shorebirdOverhead: shorebirdOverhead,
-      network: NetworkStats(
-        duration: acc.network,
-        callCount: acc.networkCount,
-      ),
-      dart: _dartStats(acc),
-      flutterAssemble: _flutterAssembleStats(acc),
-      native: _nativeStats(acc),
-      flutterTool: acc.flutterTool,
-      android: platform == 'android' ? _androidStats(acc) : null,
-      ios: platform == 'ios' ? _iosStats(acc) : null,
-      environment: environment,
     );
   }
 
@@ -201,14 +226,19 @@ class BuildTraceSummary {
   }
 
   static NativeBuildStats _nativeStats(_Accumulator acc) {
-    // "Native compile only" = native outer minus everything flutter
-    // assemble reported running inside it. Clamped at 0 because the
-    // sum can exceed nativeBuild in edge cases.
-    final assembleTotal = acc.assembleCategory.values.fold(
+    // "Native compile only" = native outer minus the flutter assemble
+    // time that actually ran inside it. On apk/appbundle/ios/macos,
+    // assemble is a child of gradle/xcodebuild so that's all of it; on
+    // ios-framework the App.framework targets are built in-process
+    // beside the plugin xcodebuild runs, so only their overlap (typically
+    // none) is subtracted. Overlap is measured from timestamps; an
+    // assemble event with no `ts` is assumed nested, matching the
+    // pre-timestamp behavior. Clamped at 0 for edge cases.
+    final nestedAssemble = acc.assembleSpans.fold(
       Duration.zero,
-      (a, b) => a + b,
+      (sum, span) => sum + span.overlapWith(acc.nativeSpans),
     );
-    final rawNativeCompile = acc.nativeBuild - assembleTotal;
+    final rawNativeCompile = acc.nativeBuild - nestedAssemble;
     final nativeCompile = rawNativeCompile < Duration.zero
         ? Duration.zero
         : rawNativeCompile;
@@ -286,8 +316,8 @@ class BuildTraceSummary {
   /// malformed. Callers that need to build more than one summary from the
   /// same trace (e.g. once to measure flutter wall clock, again with
   /// Shorebird overhead computed from it) should parse once and pass the
-  /// list to [fromEvents] — parsing a multi-megabyte trace twice is wasted
-  /// work on plugin-heavy apps.
+  /// list to [BuildTraceSummary.fromEvents]. Parsing a multi-megabyte
+  /// trace twice is wasted work on plugin-heavy apps.
   static List<Map<String, Object?>>? tryReadEvents(File traceFile) {
     if (!traceFile.existsSync()) return null;
     try {
@@ -331,7 +361,8 @@ class BuildTraceSummary {
     return _AssembleCategory.other;
   }
 
-  /// `android` or `ios`.
+  /// The release platform name this trace came from (`android`, `ios`,
+  /// `macos`, `linux`, `windows`).
   final String platform;
 
   /// Total command wall-clock (Flutter build + Shorebird overhead).
@@ -345,10 +376,13 @@ class BuildTraceSummary {
   /// the caller couldn't compute it.
   final Duration? shorebirdOverhead;
 
-  /// Network I/O time and request counts, summed across Shorebird-side
-  /// HTTP (auth, artifact upload) and Flutter-side HTTP (artifact
-  /// downloads when the cache is cold).
+  /// Network I/O time and request counts for HTTP shorebird_cli issues
+  /// itself. Not a whole-command network total — see [NetworkStats].
   final NetworkStats network;
+
+  /// Cold-start setup cost (Flutter install, precache, shorebird cache),
+  /// broken out of [shorebirdOverhead]. See [SetupStats].
+  final SetupStats setup;
 
   /// Dart-compilation breakdown (kernel snapshot + gen_snapshot) plus the
   /// `dart_build` user script target, which is tracked separately.
@@ -368,8 +402,16 @@ class BuildTraceSummary {
   /// Android-specific stats. Only non-null when `platform == 'android'`.
   final AndroidStats? android;
 
-  /// iOS-specific stats. Only non-null when `platform == 'ios'`.
+  /// Xcode-driven build stats (pod install phases, xcodebuild target
+  /// timings). Only non-null for a platform in [xcodePlatforms]; the JSON
+  /// key stays `ios` for compatibility with existing consumers.
   final IosStats? ios;
+
+  /// Platforms whose native build runs through xcodebuild and CocoaPods,
+  /// so their traces carry the events [IosStats] is built from. Note
+  /// `ios` covers `ios-framework` releases too — the CLI reports
+  /// `ReleasePlatform.name`, which maps both to `ios`.
+  static const xcodePlatforms = {'ios', 'macos'};
 
   /// Build-environment snapshot — caching configuration, CI provider,
   /// etc. Lets us tell apart "slow because nothing's configured" from
@@ -381,10 +423,16 @@ class BuildTraceSummary {
   /// hashing, archive assembly, aot_tools link/gen_snapshot bookkeeping
   /// outside their own spans). Null when [shorebirdOverhead] is null.
   ///
-  /// Clamped to zero if the network tally exceeds overhead (can happen
-  /// when flutter's own downloads are counted in network but executed
-  /// inside the flutterBuild span, which is already subtracted from
-  /// overhead).
+  /// **Not** "overhead minus all waiting on the network". [network] only
+  /// covers HTTP shorebird_cli issues itself, so on a cold machine the
+  /// bulk of [setup] — the fork clone and the precache downloads —
+  /// remains inside this value and makes network-bound time look like
+  /// local work. Subtract [setup] as well (`shorebirdLocalMs -
+  /// setup.totalMs`) to approximate genuinely local work, accepting that
+  /// the shorebird-cache downloads are counted in both and so come off
+  /// twice.
+  ///
+  /// Clamped to zero if the network tally exceeds overhead.
   Duration? get shorebirdLocal {
     final overhead = shorebirdOverhead;
     if (overhead == null) return null;
@@ -402,13 +450,14 @@ class BuildTraceSummary {
   /// subtraction (`flutterBuildMs - dart.totalMs`) — kept out of the
   /// on-wire shape so there's exactly one way to read each value.
   Map<String, Object?> toJson() => <String, Object?>{
-    'version': 8,
+    'version': 9,
     'platform': platform,
     'totalMs': total.inMilliseconds,
     'flutterBuildMs': flutterBuild.inMilliseconds,
     'shorebirdOverheadMs': shorebirdOverhead?.inMilliseconds,
     'shorebirdLocalMs': shorebirdLocal?.inMilliseconds,
     'network': network.toJson(),
+    'setup': setup.toJson(),
     'dart': dart.toJson(),
     'flutterAssemble': flutterAssemble.toJson(),
     'native': native.toJson(),
@@ -419,13 +468,22 @@ class BuildTraceSummary {
   };
 }
 
-/// Network I/O totals. Combined across Shorebird-side (auth, artifact
-/// upload, etc.) and Flutter-side (artifact downloads) HTTP.
+/// Network I/O totals for HTTP that shorebird_cli itself issues (auth,
+/// Code Push API calls, cached-artifact downloads), plus any Flutter-side
+/// requests made while flutter_tools has a `BuildTracer` installed.
+///
+/// Deliberately *not* a whole-command network total. Flutter downloads
+/// its engine artifacts before it installs a tracer, and `git clone` and
+/// `flutter precache` are subprocesses with their own sockets, so none of
+/// that traffic is visible here. Those costs are attributed by
+/// [SetupStats] instead; reading this field as "time the command spent
+/// on the network" will understate a cold start by minutes.
 class NetworkStats {
   /// Creates a [NetworkStats].
   NetworkStats({required this.duration, required this.callCount});
 
-  /// Total time across all HTTP requests.
+  /// Total time across all HTTP requests, measured from request start to
+  /// the last byte of the response body (not to first byte).
   final Duration duration;
 
   /// Number of HTTP requests.
@@ -435,6 +493,43 @@ class NetworkStats {
   Map<String, Object?> toJson() => {
     'ms': duration.inMilliseconds,
     'callCount': callCount,
+  };
+}
+
+/// Shorebird-side setup performed before `flutter build`: installing the
+/// Flutter fork, precaching engine artifacts, and refreshing shorebird's
+/// own cached artifacts.
+///
+/// Every field here is a subset of `shorebirdOverheadMs`. On a warm
+/// machine all three are ~0. On a cold CI runner they are mostly
+/// download time, and they are the only place that download time is
+/// attributed — see [SetupPhase].
+class SetupStats {
+  /// Creates a [SetupStats].
+  SetupStats({
+    required this.flutterInstall,
+    required this.flutterPrecache,
+    required this.shorebirdCache,
+  });
+
+  /// Cloning the Flutter fork and checking out the pinned revision.
+  final Duration flutterInstall;
+
+  /// The `flutter precache` subprocess (engine artifact downloads).
+  final Duration flutterPrecache;
+
+  /// Refreshing shorebird's own cached artifacts, summed across calls.
+  final Duration shorebirdCache;
+
+  /// Sum of all setup phases.
+  Duration get total => flutterInstall + flutterPrecache + shorebirdCache;
+
+  /// JSON form.
+  Map<String, Object?> toJson() => {
+    'totalMs': total.inMilliseconds,
+    'flutterInstallMs': flutterInstall.inMilliseconds,
+    'flutterPrecacheMs': flutterPrecache.inMilliseconds,
+    'shorebirdCacheMs': shorebirdCache.inMilliseconds,
   };
 }
 
@@ -644,7 +739,7 @@ class GradleStats {
   };
 }
 
-/// Platform-specific iOS stats.
+/// Stats specific to xcodebuild-driven platforms (iOS and macOS).
 class IosStats {
   /// Creates an [IosStats].
   IosStats({required this.podInstall, required this.xcode});
@@ -731,7 +826,8 @@ enum _AssembleCategory {
 }
 
 /// Mutable scratch struct that [BuildTraceSummary.fromEvents] fills
-/// while iterating the event list, then [_buildSummary] consumes. Its
+/// while iterating the event list, then
+/// [BuildTraceSummary._fromAccumulator] consumes. Its
 /// only job is to carry typed counters without needing ~30 positional
 /// arguments between the per-event handlers.
 class _Accumulator {
@@ -751,6 +847,7 @@ class _Accumulator {
   final assembleCategory = <_AssembleCategory, Duration>{};
   final gradleKind = <GradleTaskKind, Duration>{};
   final podPhase = <PodInstallPhase, Duration>{};
+  final setupPhase = <SetupPhase, Duration>{};
 
   int gradleTaskFromCacheCount = 0;
   int gradleTaskUpToDateCount = 0;
@@ -760,6 +857,47 @@ class _Accumulator {
   // "Archive target <name>", etc.) so the summary keeps aggregates and
   // a histogram rather than name-keyed totals.
   final xcodeSubsectionDurations = <Duration>[];
+
+  /// Outer native-build spans (gradle / xcodebuild) and assemble spans,
+  /// kept with timestamps so [BuildTraceSummary._nativeStats] can tell
+  /// which assemble work ran inside the native build.
+  final nativeSpans = <_Interval>[];
+  final assembleSpans = <_Interval>[];
+}
+
+/// A `[start, start + dur)` window in trace microseconds. [start] is
+/// null when the event carried no `ts`.
+class _Interval {
+  const _Interval(this.start, this.dur);
+
+  final int? start;
+  final Duration dur;
+
+  int? get end {
+    final s = start;
+    return s == null ? null : s + dur.inMicroseconds;
+  }
+
+  /// How much of this window falls inside any of [others]. A window with
+  /// no timestamp is treated as fully inside — the producer predates
+  /// timestamps, and every producer that old nested assemble in the
+  /// native build. [others] are assumed non-overlapping (sequential
+  /// gradle / xcodebuild invocations), so their overlaps simply sum.
+  Duration overlapWith(List<_Interval> others) {
+    final s = start;
+    final e = end;
+    if (s == null || e == null) return dur;
+    var total = 0;
+    for (final o in others) {
+      final os = o.start;
+      final oe = o.end;
+      if (os == null || oe == null) continue;
+      final lo = s > os ? s : os;
+      final hi = e < oe ? e : oe;
+      if (hi > lo) total += hi - lo;
+    }
+    return Duration(microseconds: total);
+  }
 }
 
 extension on Map<dynamic, Duration> {
@@ -771,6 +909,6 @@ extension on Map<dynamic, Duration> {
 
   /// Reads the counter keyed by [key], returning [Duration.zero] if
   /// unset. Sugar for `map[key] ?? Duration.zero` that keeps
-  /// [_buildSummary]'s field list flat.
+  /// [BuildTraceSummary._fromAccumulator]'s field list flat.
   Duration of<K>(K key) => this[key] ?? Duration.zero;
 }
