@@ -499,45 +499,37 @@ void main() {
       expect(args.containsKey('contentLength'), isFalse);
     });
 
-    test(
-      'startAndTraceSubprocess spawns a real child and records a span on '
-      'its OS pid',
-      () async {
-        final t = BuildTracer();
-        final result = await t.startAndTraceSubprocess(
-          executable: Platform.resolvedExecutable,
-          arguments: const ['--version'],
-        );
-        expect(result.exitCode, 0);
-        expect(result.pid, greaterThan(0));
+    test('startAndTraceSubprocess spawns a real child and records a span on '
+        'its OS pid', () async {
+      final t = BuildTracer();
+      final result = await t.startAndTraceSubprocess(
+        executable: Platform.resolvedExecutable,
+        arguments: const ['--version'],
+      );
+      expect(result.exitCode, 0);
+      expect(result.pid, greaterThan(0));
 
-        // Expect three events for the child: process_name + thread_name
-        // metadata, plus the subprocess span itself. All on the child's
-        // real OS pid (which matches result.pid).
-        final byPh = <String, List<Map<String, Object?>>>{};
-        for (final e in t.events) {
-          (byPh[e['ph']! as String] ??= []).add(e);
-        }
-        expect(byPh['M'], hasLength(2));
-        expect(byPh['X'], hasLength(1));
-        for (final e in t.events) {
-          expect(e['pid'], result.pid);
-        }
-        expect(byPh['X']!.single['cat'], 'subprocess');
-      },
-    );
+      // Expect three events for the child: process_name + thread_name
+      // metadata, plus the subprocess span itself. All on the child's
+      // real OS pid (which matches result.pid).
+      final byPh = <String, List<Map<String, Object?>>>{};
+      for (final e in t.events) {
+        (byPh[e['ph']! as String] ??= []).add(e);
+      }
+      expect(byPh['M'], hasLength(2));
+      expect(byPh['X'], hasLength(1));
+      for (final e in t.events) {
+        expect(e['pid'], result.pid);
+      }
+      expect(byPh['X']!.single['cat'], 'subprocess');
+    });
   });
 
   group(PhaseTracker, () {
     test('transitionTo records span for previous phase', () {
       final t = BuildTracer();
       final phases =
-          PhaseTracker(
-              tracer: t,
-              pid: 1,
-              tid: 1,
-              namePrefix: 'pod install',
-            )
+          PhaseTracker(tracer: t, pid: 1, tid: 1, namePrefix: 'pod install')
             ..transitionTo('analyzing')
             ..transitionTo('downloading')
             ..end();
@@ -547,12 +539,7 @@ void main() {
 
     test('end closes without starting a new phase', () {
       final t = BuildTracer();
-      PhaseTracker(
-          tracer: t,
-          pid: 1,
-          tid: 1,
-          namePrefix: 'x',
-        )
+      PhaseTracker(tracer: t, pid: 1, tid: 1, namePrefix: 'x')
         ..transitionTo('a')
         ..end();
       expect(t.eventCount, 1);
