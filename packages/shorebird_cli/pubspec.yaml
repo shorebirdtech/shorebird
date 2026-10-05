@@ -48,7 +48,7 @@ dependencies:
     path: ../shorebird_code_push_protocol
   stream_transform: ^2.1.2
   uuid: ^4.6.0
-  xml: ^7.0.1
+  xml: ^7.1.0
   yaml: ^3.1.4
   yaml_edit: ^2.2.4
 
