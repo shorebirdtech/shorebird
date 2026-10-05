@@ -193,7 +193,9 @@ extension ForwardedArgs on ArgResults {
   List<String> get forwardedArgs {
     final List<String> forwarded;
     if (rest.isNotEmpty && _isPositionalArgPlatform(rest.first)) {
-      forwarded = rest.skip(1).toList();
+      // A `.dart` positional after the platform is passed as `--target` by
+      // the command, so it must not also be forwarded.
+      forwarded = rest.skip(positionalTarget == null ? 1 : 2).toList();
     } else {
       forwarded = rest.toList();
     }

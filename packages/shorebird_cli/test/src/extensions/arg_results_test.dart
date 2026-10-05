@@ -243,6 +243,18 @@ void main() {
       expect(result.forwardedArgs, ['--verbose']);
     });
 
+    test('does not forward a .dart positional target', () {
+      final args = ['android', 'lib/main_prod.dart', '--', '--verbose'];
+      final result = parser.parse(args);
+      expect(result.forwardedArgs, ['--verbose']);
+    });
+
+    test('forwards a .dart path that comes after --', () {
+      final args = ['android', '--', 'lib/main_prod.dart'];
+      final result = parser.parse(args);
+      expect(result.forwardedArgs, ['lib/main_prod.dart']);
+    });
+
     test('forwards args when no platforms are specified', () {
       final args = ['--', '--verbose'];
       final result = parser.parse(args);
