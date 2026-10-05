@@ -419,10 +419,7 @@ class BuildTracer {
   /// [file]. Callers that have already parsed [file] (e.g. to decide
   /// whether to merge at all) can pass the parsed events here to avoid
   /// a redundant read-and-parse.
-  void writeToFile(
-    File file, {
-    List<Map<String, Object?>>? existingEvents,
-  }) {
+  void writeToFile(File file, {List<Map<String, Object?>>? existingEvents}) {
     final merged = <Map<String, Object?>>[];
     if (existingEvents != null) {
       merged.addAll(existingEvents);
