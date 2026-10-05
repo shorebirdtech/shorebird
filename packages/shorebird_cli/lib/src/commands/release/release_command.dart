@@ -265,7 +265,7 @@ of the iOS app that is using this module. (aar and ios-framework only)''',
   String? get flavor => results.findOption('flavor', argParser: argParser);
 
   /// The target script, if provided.
-  String? get target => results.findOption('target', argParser: argParser);
+  late final String? target = resolveTarget();
 
   /// The flutter version specified.
   String get flutterVersionArg => results['flutter-version'] as String;

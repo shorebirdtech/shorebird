@@ -195,7 +195,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   late String? flavor = results.findOption('flavor', argParser: argParser);
 
   /// The target script, if provided.
-  late String? target = results.findOption('target', argParser: argParser);
+  late final String? target = resolveTarget();
 
   /// Whether to prompt for confirmation before creating the patch.
   bool get confirm => results['confirm'] == true;

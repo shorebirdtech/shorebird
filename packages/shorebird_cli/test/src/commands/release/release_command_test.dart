@@ -1040,6 +1040,49 @@ Valid platforms: aar, android, ios, ios-framework, linux, macos, windows''',
       });
     });
 
+    group('when a .dart target is given as a positional', () {
+      setUp(() {
+        when(() => argResults.wasParsed('platforms')).thenReturn(false);
+        when(() => argResults.wasParsed('target')).thenReturn(false);
+        when(
+          () => argResults.arguments,
+        ).thenReturn(['android', 'lib/main_prod.dart']);
+        when(
+          () => argResults.rest,
+        ).thenReturn(['android', 'lib/main_prod.dart']);
+        command.testRunner = usageRunner();
+      });
+
+      test('uses it as the target and says so', () {
+        expect(
+          runWithOverrides(() => command.target),
+          equals('lib/main_prod.dart'),
+        );
+        verify(
+          () => logger.info(
+            'Using lib/main_prod.dart as the target '
+            '(--target lib/main_prod.dart).',
+          ),
+        ).called(1);
+      });
+
+      test('throws a usage exception when --target is also given', () {
+        when(() => argResults.wasParsed('target')).thenReturn(true);
+        when(() => argResults['target']).thenReturn('lib/main.dart');
+        expect(
+          () => runWithOverrides(() => command.target),
+          throwsA(
+            isA<UsageException>().having(
+              (e) => e.message,
+              'message',
+              'Both --target lib/main.dart and the positional '
+                  'lib/main_prod.dart name a target. Pass only one.',
+            ),
+          ),
+        );
+      });
+    });
+
     group('assertArgsAreValid', () {
       test('calls releaser.assertArgsAreValid', () async {
         final releaser = MockReleaser();

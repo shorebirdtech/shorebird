@@ -143,8 +143,33 @@ Did you mean --platforms=android,ios?''',
 
         test('throws on any other second positional', () {
           expect(
+            () => parser.parse(['android', 'staging']).releaseTypes.toList(),
+            throwsA(
+              isA<PlatformArgumentException>().having(
+                (e) => e.message,
+                'message',
+                '''
+Unexpected argument: "staging".
+Arguments for Flutter go after --.''',
+              ),
+            ),
+          );
+        });
+
+        test('accepts a .dart second positional as the target', () {
+          expect(
+            parser
+                .parse(['android', 'lib/main_prod.dart'])
+                .releaseTypes
+                .toList(),
+            [ReleaseType.android],
+          );
+        });
+
+        test('throws on a third positional after a .dart target', () {
+          expect(
             () => parser
-                .parse(['android', 'lib/main.dart'])
+                .parse(['android', 'lib/main_prod.dart', '1.0.0+1'])
                 .releaseTypes
                 .toList(),
             throwsA(
@@ -152,10 +177,52 @@ Did you mean --platforms=android,ios?''',
                 (e) => e.message,
                 'message',
                 '''
-Unexpected argument: "lib/main.dart".
-Arguments for Flutter go after --.''',
+Unexpected argument: "1.0.0+1".
+Did you mean --release-version=1.0.0+1?''',
               ),
             ),
+          );
+        });
+      });
+
+      group('positionalTarget', () {
+        test('is the .dart second positional after a platform', () {
+          expect(
+            parser.parse(['android', 'lib/main_prod.dart']).positionalTarget,
+            equals('lib/main_prod.dart'),
+          );
+        });
+
+        test('is null without a second positional', () {
+          expect(parser.parse(['android']).positionalTarget, isNull);
+        });
+
+        test('is null when the second positional is not .dart', () {
+          expect(parser.parse(['android', 'staging']).positionalTarget, isNull);
+        });
+
+        test('is null when the .dart path comes after --', () {
+          expect(
+            parser.parse(['android', '--', 'lib/main.dart']).positionalTarget,
+            isNull,
+          );
+        });
+
+        test('is null when --platforms is given', () {
+          expect(
+            parser.parse([
+              '--platforms',
+              'android',
+              'lib/main_prod.dart',
+            ]).positionalTarget,
+            isNull,
+          );
+        });
+
+        test('is null when the first positional is not a platform', () {
+          expect(
+            parser.parse(['web', 'lib/main_prod.dart']).positionalTarget,
+            isNull,
           );
         });
       });

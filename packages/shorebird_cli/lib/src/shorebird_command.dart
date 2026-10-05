@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -109,6 +110,24 @@ Valid platforms: $validPlatformNames''',
       );
     }
     return types;
+  }
+
+  /// The Flutter target: `--target`/`-t`, or a `.dart` positional after the
+  /// platform (`shorebird release android lib/main_prod.dart`).
+  ///
+  /// Throws a [UsageException] when both are given.
+  String? resolveTarget() {
+    final explicit = results.findOption('target', argParser: argParser);
+    final positional = results.positionalTarget;
+    if (positional == null) return explicit;
+    if (explicit != null) {
+      usageException(
+        'Both --target $explicit and the positional $positional name a '
+        'target. Pass only one.',
+      );
+    }
+    logger.info('Using $positional as the target (--target $positional).');
+    return positional;
   }
 
   /// The full command name including parent commands (e.g. "releases list").
