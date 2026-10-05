@@ -29,7 +29,7 @@ class FlavorValidator extends Validator {
       return [
         ValidationIssue.error(
           message:
-              '''The project does not have any flavors defined, but the --flavor argument was provided''',
+              '''The project does not have any flavors defined (no "flavors" in shorebird.yaml), but --flavor was provided. Re-run without --flavor, or run "shorebird init" to detect flavors.''',
         ),
       ];
     }
@@ -39,8 +39,8 @@ class FlavorValidator extends Validator {
         ValidationIssue.warning(
           message:
               '''
-The project has flavors ${projectFlavors.keys}, but no --flavor argument was provided.
-The default app id ${shorebirdYaml.appId} will be used.''',
+The project has flavors ${projectFlavors.keys.join(', ')}, but no --flavor argument was provided.
+The default app id ${shorebirdYaml.appId} will be used. Pass --flavor=<name> to target a flavor.''',
         ),
       ];
     }
@@ -51,7 +51,7 @@ The default app id ${shorebirdYaml.appId} will be used.''',
       return [
         ValidationIssue.error(
           message:
-              '''This project does not have a flavor named "$flavorArg". Available flavors: ${projectFlavors.keys}''',
+              '''This project does not have a flavor named "$flavorArg". Pass one of: ${projectFlavors.keys.join(', ')} (from "flavors" in shorebird.yaml).''',
         ),
       ];
     }
