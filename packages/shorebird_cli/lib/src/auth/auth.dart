@@ -187,7 +187,7 @@ class Auth {
     if (_apiKey != null) return true;
 
     final credentials = _credentials;
-    if (credentials == null || credentials.idToken == null) return false;
+    if (credentials == null) return false;
 
     try {
       final refreshed = await shorebird_oauth.refreshShorebirdCredentials(

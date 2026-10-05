@@ -607,10 +607,13 @@ void main() {
       group('when stored credentials are malformed', () {
         setUp(() {
           accessCredentials = oauth2.AccessCredentials(
-            accessToken,
+            oauth2.AccessToken(
+              'Bearer',
+              'not a valid jwt',
+              DateTime.now().add(const Duration(minutes: 10)).toUtc(),
+            ),
             refreshToken,
             scopes,
-            idToken: 'not a valid jwt',
           );
           writeCredentials();
           auth = buildAuth();
@@ -627,7 +630,7 @@ void main() {
           answerRefreshWith(
             http.Response(
               jsonEncode({
-                'access_token': shorebirdIdToken,
+                'access_token': shorebirdAccessToken,
                 'refresh_token': 'sb_rt_rotated',
                 'token_type': 'Bearer',
                 'expires_in': 900,
