@@ -7,6 +7,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
@@ -27,7 +28,9 @@ void main() {
     }
 
     setUp(() {
-      platform = TestNativePlatform(operatingSystem: NativePlatform.fuchsia);
+      platform = TestNativePlatform(
+        operatingSystem: unsupportedOperatingSystem,
+      );
       process = MockShorebirdProcess();
       processResult = MockProcessResult();
 

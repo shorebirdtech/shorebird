@@ -31,6 +31,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
@@ -227,7 +228,9 @@ void main() {
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
-      platform = TestNativePlatform(operatingSystem: NativePlatform.fuchsia);
+      platform = TestNativePlatform(
+        operatingSystem: unsupportedOperatingSystem,
+      );
       previewDirectory = Directory.systemTemp.createTempSync();
       progress = MockProgress();
       release = MockRelease();
