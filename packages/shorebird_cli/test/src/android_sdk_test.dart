@@ -9,6 +9,7 @@ import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 void main() {
@@ -70,7 +71,7 @@ void main() {
       osInterface = MockOperatingSystemInterface();
       platform = TestNativePlatform(
         environment: {},
-        operatingSystem: NativePlatform.fuchsia,
+        operatingSystem: unsupportedOperatingSystem,
       );
       androidSdk = AndroidSdk();
 

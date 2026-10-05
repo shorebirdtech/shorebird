@@ -12,6 +12,7 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
@@ -47,7 +48,7 @@ void main() {
       osInterface = MockOperatingSystemInterface();
       platform = TestNativePlatform(
         environment: {},
-        operatingSystem: NativePlatform.fuchsia,
+        operatingSystem: unsupportedOperatingSystem,
       );
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdProcess = MockShorebirdProcess();
@@ -191,14 +192,12 @@ void main() {
             );
           });
 
-          test('does not check JAVA_HOME or PATH', () {
-            // A TestNativePlatform without an environment throws if the
-            // environment is read.
-            platform = TestNativePlatform(
-              operatingSystem: platform.operatingSystem,
+          test('prefers the Android Studio JDK over JAVA_HOME and PATH', () {
+            platform = platform.copyWith(
+              environment: {...platform.environment, 'JAVA_HOME': '/java'},
             );
-            runWithOverrides(() => java.home);
 
+            expect(runWithOverrides(() => java.home), equals(jbrDir.path));
             verifyNever(() => osInterface.which(any()));
           });
         });
@@ -236,14 +235,12 @@ void main() {
             );
           });
 
-          test('does not check JAVA_HOME or PATH', () {
-            // A TestNativePlatform without an environment throws if the
-            // environment is read.
-            platform = TestNativePlatform(
-              operatingSystem: platform.operatingSystem,
+          test('prefers the Android Studio JDK over JAVA_HOME and PATH', () {
+            platform = platform.copyWith(
+              environment: {...platform.environment, 'JAVA_HOME': '/java'},
             );
-            runWithOverrides(() => java.home);
 
+            expect(runWithOverrides(() => java.home), equals(jbrDir.path));
             verifyNever(() => osInterface.which(any()));
           });
         });

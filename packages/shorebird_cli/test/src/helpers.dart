@@ -2,6 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
+
+/// An operating system shorebird_cli has no platform-specific handling for.
+///
+/// Use as a [NativePlatform.operatingSystem] so `isLinux`, `isMacOS` and
+/// `isWindows` are all false until a test picks one.
+const unsupportedOperatingSystem = NativePlatform.fuchsia;
 
 File createTempFile(String name) {
   return File(p.join(Directory.systemTemp.createTempSync().path, name))
