@@ -216,7 +216,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   late String? flavor = results.findOption('flavor', argParser: argParser);
 
   /// The target script, if provided.
-  late String? target = results.findOption('target', argParser: argParser);
+  late final String? target = resolveTarget();
 
   /// Whether to allow changes in assets (--allow-asset-diffs).
   bool get allowAssetDiffs => results['allow-asset-diffs'] == true;

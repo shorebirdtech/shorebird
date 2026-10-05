@@ -95,11 +95,30 @@ extension ReleaseTypeArgs on ArgResults {
     return rest.sublist(0, rest.length - forwardedCount);
   }
 
+  /// A `.dart` path given as the second positional, after the platform
+  /// (`shorebird release android lib/main_prod.dart`), or null.
+  ///
+  /// Flutter's build commands read their first positional as the target
+  /// file, so this form has always selected the entry point. Commands honor
+  /// it as `--target`, and `forwardedArgs` leaves it out.
+  String? get positionalTarget {
+    // Positionals are ignored when --platforms is given (see [releaseTypes]).
+    if (wasParsed('platforms')) return null;
+    if (rest.length < 2 || !rest[1].endsWith('.dart')) return null;
+    final positionalArgs = _ownPositionalArgs;
+    if (positionalArgs.length < 2) return null;
+    if (ReleaseType.values.none((t) => t.cliName == positionalArgs.first)) {
+      return null;
+    }
+    return positionalArgs[1].endsWith('.dart') ? positionalArgs[1] : null;
+  }
+
   /// The release types specified in the CLI arguments.
   ///
   /// Throws a [PlatformArgumentException] when the positional platform is
-  /// not a valid platform, or when more than one positional argument is
-  /// given.
+  /// not a valid platform, or when an unexpected extra positional argument
+  /// is given. A `.dart` second positional is allowed (see
+  /// [positionalTarget]).
   Iterable<ReleaseType> get releaseTypes {
     List<String>? releaseTypeCliNames;
     if (wasParsed('platforms')) {
@@ -117,8 +136,11 @@ Invalid platform: "$platformCliName".
 Valid platforms: $validPlatformNames''',
           );
         }
-        if (positionalArgs.length > 1) {
-          final unexpected = positionalArgs[1];
+        // A `.dart` second positional is the Flutter target; see
+        // [positionalTarget].
+        final extraIndex = positionalTarget == null ? 1 : 2;
+        if (positionalArgs.length > extraIndex) {
+          final unexpected = positionalArgs[extraIndex];
           final String hint;
           if (RegExp(r'^\d+\.\d+').hasMatch(unexpected)) {
             hint = 'Did you mean --release-version=$unexpected?';

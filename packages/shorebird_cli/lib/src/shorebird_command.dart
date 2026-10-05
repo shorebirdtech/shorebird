@@ -121,6 +121,24 @@ Valid platforms: $validPlatformNames''',
     return types;
   }
 
+  /// The Flutter target: `--target`/`-t`, or a `.dart` positional after the
+  /// platform (`shorebird release android lib/main_prod.dart`).
+  ///
+  /// Throws a [UsageException] when both are given.
+  String? resolveTarget() {
+    final explicit = results.findOption('target', argParser: argParser);
+    final positional = results.positionalTarget;
+    if (positional == null) return explicit;
+    if (explicit != null) {
+      usageException(
+        'Both --target $explicit and the positional $positional name a '
+        'target. Pass only one.',
+      );
+    }
+    logger.info('Using $positional as the target (--target $positional).');
+    return positional;
+  }
+
   /// The full command name including parent commands (e.g. "releases list").
   String get fullCommandName {
     final parts = <String>[];
