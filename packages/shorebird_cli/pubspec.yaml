@@ -33,7 +33,7 @@ dependencies:
   meta: ^1.19.0
   path: ^1.9.1
   pem: ^2.0.5
-  platform: ^3.1.6
+  platform: ^3.2.0
   pointycastle: ^4.0.0
   propertylistserialization: ^1.5.0
   pub_semver: ^2.2.1
@@ -48,7 +48,7 @@ dependencies:
     path: ../shorebird_code_push_protocol
   stream_transform: ^2.1.2
   uuid: ^4.6.0
-  xml: ^7.0.1
+  xml: ^7.1.0
   yaml: ^3.1.4
   yaml_edit: ^2.2.4
 
