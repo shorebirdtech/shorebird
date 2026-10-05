@@ -70,7 +70,8 @@ class AuthenticatedClient extends http.BaseClient {
       _onRefreshCredentials?.call(_credentials);
     }
 
-    request.headers['Authorization'] = 'Bearer ${_credentials.idToken}';
+    request.headers['Authorization'] =
+        'Bearer ${_credentials.accessToken.data}';
     return _baseClient.send(request);
   }
 
@@ -186,7 +187,7 @@ class Auth {
     if (_apiKey != null) return true;
 
     final credentials = _credentials;
-    if (credentials == null || credentials.idToken == null) return false;
+    if (credentials == null) return false;
 
     try {
       final refreshed = await shorebird_oauth.refreshShorebirdCredentials(
@@ -336,10 +337,9 @@ class Auth {
   }
 
   bool _isShorebirdIssued(oauth2.AccessCredentials credentials) {
-    final idToken = credentials.idToken;
-    if (idToken == null) return false;
     try {
-      return Jwt.parse(idToken).payload.iss == shorebirdEnv.jwtIssuer;
+      return Jwt.parse(credentials.accessToken.data).payload.iss ==
+          shorebirdEnv.jwtIssuer;
     } on Exception {
       return false;
     }
@@ -371,15 +371,12 @@ class Auth {
 
 /// Extensions on [oauth2.AccessCredentials] for working with JWT claims.
 extension JwtClaims on oauth2.AccessCredentials {
-  /// Get the email from the JWT claims.
+  /// Get the email from the claims of the access token, which the Shorebird
+  /// auth service issues as a JWT.
   String? get email {
-    final token = idToken;
-
-    if (token == null) return null;
-
     final Jwt jwt;
     try {
-      jwt = Jwt.parse(token);
+      jwt = Jwt.parse(accessToken.data);
     } on Exception {
       return null;
     }

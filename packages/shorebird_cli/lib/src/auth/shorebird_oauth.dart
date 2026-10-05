@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:clock/clock.dart';
+import 'package:crypto/crypto.dart';
 import 'package:googleapis_auth/auth_io.dart' as oauth2;
 import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:http/http.dart' as http;
@@ -40,14 +42,41 @@ class ShorebirdAuthException implements Exception {
   String toString() => 'ShorebirdAuthException: $message';
 }
 
-/// Implements the full loopback login flow for Shorebird auth.
+/// The OAuth client id the CLI is registered under with the auth service.
+///
+/// A public client (RFC 6749 section 2.1): it has no secret, and PKCE is what
+/// binds a code to the login that asked for it.
+const _clientId = 'shorebird-cli';
+
+/// The scope the CLI requests: a full session acting as the user.
+///
+/// Released CLIs keep sending this until the next minimum-version bump, so it
+/// must stay a scope the auth service accepts for `shorebird-cli`.
+const _scope = 'api';
+
+/// The path of the loopback redirect URI registered for [_clientId].
+///
+/// The auth service matches a loopback redirect on any port (RFC 8252 section
+/// 7.3) but compares the path and query exactly, so the redirect URI carries
+/// no query of its own.
+const _callbackPath = '/callback';
+
+/// Implements the full loopback login flow for Shorebird auth: an OAuth 2.0
+/// authorization code request (RFC 6749 section 4.1) from a native app
+/// (RFC 8252), with PKCE (RFC 7636).
 ///
 /// 1. Binds a local HTTP server on localhost with a random port.
-/// 2. Constructs the login URL pointing to the auth service.
-/// 3. Calls [userPrompt] with the login URL.
-/// 4. Waits for the auth service to redirect back with an auth code.
-/// 5. Exchanges the auth code for tokens via the auth service's /token endpoint.
-/// 6. Returns the tokens as [oauth2.AccessCredentials].
+/// 2. Generates a PKCE code verifier and a `state` value.
+/// 3. Constructs the authorization URL for the `shorebird-cli` client, with
+///    the loopback redirect URI, the `api` scope, `state` and the S256 code
+///    challenge.
+/// 4. Calls [userPrompt] with the login URL.
+/// 5. Waits for the auth service to redirect back with an auth code, and
+///    rejects a callback whose `state` does not match or that carries an
+///    `error`.
+/// 6. Exchanges the auth code and code verifier for tokens via the auth
+///    service's /token endpoint.
+/// 7. Returns the tokens as [oauth2.AccessCredentials].
 Future<oauth2.AccessCredentials> obtainCredentialsViaLoopbackLogin({
   required http.Client httpClient,
   required Uri authBaseUrl,
@@ -61,30 +90,62 @@ Future<oauth2.AccessCredentials> obtainCredentialsViaLoopbackLogin({
     server = await HttpServer.bind(InternetAddress.loopbackIPv6, 0);
   }
   try {
-    final port = server.port;
-    const callbackPath = '/callback';
+    final state = _randomUrlSafeString();
+    final codeVerifier = _randomUrlSafeString();
+    final redirectUri = Uri(
+      scheme: 'http',
+      host: 'localhost',
+      port: server.port,
+      path: _callbackPath,
+    );
     final loginUrl = authBaseUrl.replace(
       path: p.url.join(authBaseUrl.path, 'login'),
-      queryParameters: {'continue': 'http://localhost:$port$callbackPath'},
+      queryParameters: {
+        'response_type': 'code',
+        'client_id': _clientId,
+        'redirect_uri': '$redirectUri',
+        'scope': _scope,
+        'state': state,
+        'code_challenge': codeChallengeFor(codeVerifier),
+        'code_challenge_method': 'S256',
+      },
     );
 
     userPrompt(loginUrl.toString());
 
     final request = await _waitForCallback(
       server,
-      callbackPath: callbackPath,
+      callbackPath: _callbackPath,
       timeout: timeout,
     );
-    final code = await _extractAuthCode(request);
+    final code = await _extractAuthCode(request, expectedState: state);
 
     return await _exchangeAuthCode(
       httpClient: httpClient,
       authBaseUrl: authBaseUrl,
       code: code,
+      codeVerifier: codeVerifier,
+      redirectUri: redirectUri,
     );
   } finally {
     await server.close();
   }
+}
+
+/// 32 random bytes, base64url-encoded without padding: 43 characters, which
+/// is within the 43–128 RFC 7636 allows for a code verifier and has the same
+/// entropy it requires of one.
+String _randomUrlSafeString() {
+  final random = Random.secure();
+  final bytes = List<int>.generate(32, (_) => random.nextInt(256));
+  return base64Url.encode(bytes).replaceAll('=', '');
+}
+
+/// The S256 PKCE code challenge for [codeVerifier] (RFC 7636 section 4.2):
+/// the base64url-encoded SHA-256 of the verifier, without padding.
+String codeChallengeFor(String codeVerifier) {
+  final digest = sha256.convert(ascii.encode(codeVerifier));
+  return base64Url.encode(digest.bytes).replaceAll('=', '');
 }
 
 /// Listens on [server] for a request to [callbackPath] and returns it.
@@ -118,37 +179,58 @@ Future<HttpRequest> _waitForCallback(
   }
 }
 
-/// Sends a success page to the browser and extracts the auth code from the
-/// callback [request].
+/// Extracts the auth code from the callback [request] and tells the browser
+/// how the login went.
 ///
-/// Throws [ShorebirdAuthException] if the callback contains an error or is
-/// missing the auth code.
-Future<String> _extractAuthCode(HttpRequest request) async {
-  final code = request.uri.queryParameters['code'];
-  final error = request.uri.queryParameters['error'];
+/// Throws [ShorebirdAuthException] if the callback does not carry
+/// [expectedState], carries an `error` (RFC 6749 section 4.1.2.1), or is
+/// missing the auth code. The `state` check is what stops a code from a login
+/// this CLI did not start (for example, a page that sends the browser to this
+/// port) from being accepted. An error response is checked against `state`
+/// too where it carries one, so a forged error is reported as a mismatch
+/// rather than as the auth service's answer.
+Future<String> _extractAuthCode(
+  HttpRequest request, {
+  required String expectedState,
+}) async {
+  final params = request.uri.queryParameters;
+  final code = params['code'];
+  final error = params['error'];
+  final state = params['state'];
+
+  final ShorebirdAuthException? failure;
+  if (state != expectedState && (error == null || state != null)) {
+    failure = const ShorebirdAuthException(
+      'Authentication failed: the response did not match this login request.',
+    );
+  } else if (error != null) {
+    final description = params['error_description'];
+    failure = ShorebirdAuthException(
+      'Authentication failed: $error'
+      '${description == null ? '' : ' ($description)'}',
+    );
+  } else if (code == null) {
+    failure = const ShorebirdAuthException(
+      'Authentication failed: no auth code received.',
+    );
+  } else {
+    failure = null;
+  }
 
   request.response
     ..statusCode = HttpStatus.ok
     ..headers.contentType = ContentType.html
     ..write(
-      '<html><body><h1>Authentication complete.</h1> '
-      '<p>You can close this window.</p></body></html>',
+      failure == null
+          ? '<html><body><h1>Authentication complete.</h1> '
+                '<p>You can close this window.</p></body></html>'
+          : '<html><body><h1>Authentication failed.</h1> '
+                '<p>Return to the terminal for details.</p></body></html>',
     );
   await request.response.close();
 
-  if (error != null) {
-    throw ShorebirdAuthException(
-      'Authentication failed: $error',
-    );
-  }
-
-  if (code == null) {
-    throw const ShorebirdAuthException(
-      'Authentication failed: no auth code received.',
-    );
-  }
-
-  return code;
+  if (failure != null) throw failure;
+  return code!;
 }
 
 /// Refreshes Shorebird tokens using the refresh token.
@@ -156,6 +238,11 @@ Future<String> _extractAuthCode(HttpRequest request) async {
 /// POSTs to the auth service's /token endpoint with
 /// `grant_type=refresh_token` and returns new [oauth2.AccessCredentials]
 /// including a rotated refresh token.
+///
+/// Always names the `shorebird-cli` client: a session issued to a client must
+/// name it at refresh, and the auth service ignores `client_id` for sessions
+/// issued without one, which is every login made before the CLI registered as
+/// a client.
 Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
   oauth2.AccessCredentials credentials,
   http.Client httpClient, {
@@ -175,6 +262,7 @@ Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
     body: {
       'grant_type': 'refresh_token',
       'refresh_token': refreshToken,
+      'client_id': _clientId,
     },
   );
 
@@ -188,12 +276,17 @@ Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
   return _parseTokenResponse(response.body);
 }
 
-/// Exchanges an auth code for tokens by POSTing to the auth service's
-/// /token endpoint.
+/// Exchanges an auth code for tokens by POSTing it, with the PKCE
+/// [codeVerifier], to the auth service's /token endpoint.
+///
+/// [redirectUri] must be the one the authorization request sent; the auth
+/// service refuses the exchange otherwise (RFC 6749 section 4.1.3).
 Future<oauth2.AccessCredentials> _exchangeAuthCode({
   required http.Client httpClient,
   required Uri authBaseUrl,
   required String code,
+  required String codeVerifier,
+  required Uri redirectUri,
 }) async {
   final tokenUrl = authBaseUrl.replace(
     path: p.url.join(authBaseUrl.path, 'token'),
@@ -204,6 +297,9 @@ Future<oauth2.AccessCredentials> _exchangeAuthCode({
     body: {
       'grant_type': 'authorization_code',
       'code': code,
+      'code_verifier': codeVerifier,
+      'client_id': _clientId,
+      'redirect_uri': '$redirectUri',
     },
   );
 
@@ -260,10 +356,8 @@ oauth2.AccessCredentials _parseTokenResponse(String responseBody) {
   return oauth2.AccessCredentials(
     AccessToken(tokenType, accessTokenValue, expiry),
     refreshToken,
-    // Shorebird auth doesn't use scopes.
+    // The granted `scope` in the response is not used: the CLI only ever
+    // asks for one, and the server decides what the token may do.
     [],
-    // The access token IS the JWT — setting idToken ensures
-    // AuthenticatedClient.send() picks it up as the Bearer token.
-    idToken: accessTokenValue,
   );
 }
