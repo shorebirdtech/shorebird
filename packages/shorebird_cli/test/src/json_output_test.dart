@@ -56,12 +56,12 @@ void main() {
         final result = JsonResult.error(
           code: JsonErrorCode.usageError,
           message: 'Not authenticated.',
-          hint: 'Run: shorebird login:ci',
+          hint: 'Run: shorebird login',
           command: 'doctor',
         );
         final json = result.toJson();
         final error = json['error'] as Map<String, dynamic>;
-        expect(error['hint'], equals('Run: shorebird login:ci'));
+        expect(error['hint'], equals('Run: shorebird login'));
       });
     });
   });
