@@ -35,12 +35,17 @@ String _buildTestJwt({String issuer = 'https://auth.shorebird.dev'}) {
   return '$header.$payload.dGVzdA';
 }
 
-/// The auth service's redirect back to [continueUrl]: [params] appended to the
-/// callback URL, keeping the `state` the CLI put on it.
-Uri _redirectTo(String continueUrl, Map<String, String> params) {
-  final uri = Uri.parse(continueUrl);
-  return uri.replace(queryParameters: {...uri.queryParameters, ...params});
+/// The auth service's redirect back to the `redirect_uri` of [loginUri],
+/// carrying [params] and the `state` the login sent.
+Uri _redirectTo(Uri loginUri, Map<String, String> params) {
+  return _redirectUri(loginUri).replace(
+    queryParameters: {'state': loginUri.queryParameters['state'], ...params},
+  );
 }
+
+/// The `redirect_uri` the authorization request at [loginUri] names.
+Uri _redirectUri(Uri loginUri) =>
+    Uri.parse(loginUri.queryParameters['redirect_uri']!);
 
 void main() {
   late ShorebirdEnv shorebirdEnv;
@@ -98,10 +103,9 @@ void main() {
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
             loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
             // Simulate the browser redirect with an auth code.
             unawaited(
-              http.get(_redirectTo(continueUrl, {'code': 'test_code'})),
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})),
             );
           },
         ),
@@ -125,6 +129,13 @@ void main() {
       final body = captured[1] as Map<String, String>;
       expect(body['grant_type'], equals('authorization_code'));
       expect(body['code'], equals('test_code'));
+      expect(body['client_id'], equals('shorebird-cli'));
+      // The exchange names the exact redirect URI the authorization request
+      // sent (RFC 6749 section 4.1.3).
+      expect(
+        body['redirect_uri'],
+        equals(loginUri.queryParameters['redirect_uri']),
+      );
       // The verifier sent to /token is the one the login URL's challenge
       // was derived from.
       final codeVerifier = body['code_verifier']!;
@@ -139,7 +150,7 @@ void main() {
       );
     });
 
-    test('constructs correct login URL with continue parameter', () async {
+    test('sends a standard authorization request for shorebird-cli', () async {
       final testJwt = _buildTestJwt();
       when(
         () => httpClient.post(
@@ -167,9 +178,8 @@ void main() {
           userPrompt: (url) {
             capturedUrl = url;
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
             unawaited(
-              http.get(_redirectTo(continueUrl, {'code': 'test_code'})),
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})),
             );
           },
         ),
@@ -179,14 +189,33 @@ void main() {
       expect(loginUri.host, equals('auth.shorebird.dev'));
       expect(loginUri.path, contains('/login'));
       expect(
-        loginUri.queryParameters['continue'],
-        allOf(
-          startsWith('http://localhost:'),
-          contains('/callback'),
-        ),
+        loginUri.queryParameters.keys,
+        unorderedEquals([
+          'response_type',
+          'client_id',
+          'redirect_uri',
+          'scope',
+          'state',
+          'code_challenge',
+          'code_challenge_method',
+        ]),
       );
-      final continueUri = Uri.parse(loginUri.queryParameters['continue']!);
-      expect(continueUri.queryParameters['state'], hasLength(43));
+      expect(loginUri.queryParameters['response_type'], equals('code'));
+      expect(loginUri.queryParameters['client_id'], equals('shorebird-cli'));
+      expect(loginUri.queryParameters['scope'], equals('api'));
+      expect(loginUri.queryParameters['state'], hasLength(43));
+      // The registered loopback redirect, on whatever port the CLI bound, with
+      // no query: the auth service compares path and query exactly.
+      final redirectUri = _redirectUri(loginUri);
+      expect(redirectUri.scheme, equals('http'));
+      expect(redirectUri.host, equals('localhost'));
+      expect(redirectUri.port, isNonZero);
+      expect(redirectUri.path, equals('/callback'));
+      expect(redirectUri.hasQuery, isFalse);
+      expect(
+        loginUri.queryParameters['redirect_uri'],
+        equals('http://localhost:${redirectUri.port}/callback'),
+      );
     });
 
     test('handles authBaseUrl with trailing slash', () async {
@@ -222,9 +251,8 @@ void main() {
           userPrompt: (url) {
             capturedUrl = url;
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
             unawaited(
-              http.get(_redirectTo(continueUrl, {'code': 'test_code'})),
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})),
             );
           },
         ),
@@ -270,15 +298,14 @@ void main() {
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            final callbackUri = Uri.parse(continueUrl);
+            final callbackUri = _redirectUri(loginUri);
             final baseUrl = 'http://localhost:${callbackUri.port}';
             // Send a favicon request first — should be ignored.
             // Use .ignore() because the server may close before responding.
             http.get(Uri.parse('$baseUrl/favicon.ico')).ignore();
             // Then send the actual callback with auth code.
             unawaited(
-              http.get(_redirectTo(continueUrl, {'code': 'test_code'})),
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})),
             );
           },
         ),
@@ -288,29 +315,97 @@ void main() {
       expect(credentials.refreshToken, equals('sb_rt_test'));
     });
 
-    test('throws when redirect contains error parameter', () async {
-      await expectLater(
-        obtainCredentialsViaLoopbackLogin(
-          httpClient: httpClient,
-          authBaseUrl: authBaseUrl,
-          userPrompt: (url) {
-            final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            unawaited(
-              http.get(
-                _redirectTo(continueUrl, {'error': 'invalid_redirect'}),
-              ),
-            );
-          },
-        ),
-        throwsA(
-          isA<ShorebirdAuthException>().having(
-            (e) => e.message,
-            'message',
-            contains('invalid_redirect'),
-          ),
+    group('when the callback carries an error', () {
+      void verifyNoTokenRequest() => verifyNever(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
         ),
       );
+
+      test('throws with the error and its description', () async {
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              unawaited(
+                http.get(
+                  _redirectTo(Uri.parse(url), {
+                    'error': 'access_denied',
+                    'error_description': 'The user denied the request.',
+                  }),
+                ),
+              );
+            },
+          ),
+          throwsA(
+            isA<ShorebirdAuthException>().having(
+              (e) => e.message,
+              'message',
+              equals(
+                'Authentication failed: access_denied '
+                '(The user denied the request.)',
+              ),
+            ),
+          ),
+        );
+        verifyNoTokenRequest();
+      });
+
+      test('throws with the error when it has no state', () async {
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              unawaited(
+                http.get(
+                  _redirectUri(Uri.parse(url)).replace(
+                    queryParameters: {'error': 'invalid_request'},
+                  ),
+                ),
+              );
+            },
+          ),
+          throwsA(
+            isA<ShorebirdAuthException>().having(
+              (e) => e.message,
+              'message',
+              equals('Authentication failed: invalid_request'),
+            ),
+          ),
+        );
+        verifyNoTokenRequest();
+      });
+
+      test('reports a mismatch when its state is wrong', () async {
+        await expectLater(
+          obtainCredentialsViaLoopbackLogin(
+            httpClient: httpClient,
+            authBaseUrl: authBaseUrl,
+            userPrompt: (url) {
+              unawaited(
+                http.get(
+                  _redirectTo(Uri.parse(url), {
+                    'error': 'access_denied',
+                    'state': 'not-the-state',
+                  }),
+                ),
+              );
+            },
+          ),
+          throwsA(
+            isA<ShorebirdAuthException>().having(
+              (e) => e.message,
+              'message',
+              contains('did not match this login request'),
+            ),
+          ),
+        );
+        verifyNoTokenRequest();
+      });
     });
 
     for (final (description, state) in [
@@ -324,9 +419,7 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final callbackUri = Uri.parse(
-                loginUri.queryParameters['continue']!,
-              );
+              final callbackUri = _redirectUri(loginUri);
               unawaited(
                 http.get(
                   callbackUri.replace(
@@ -368,7 +461,7 @@ void main() {
               loginUris.add(Uri.parse(url));
               unawaited(
                 http.get(
-                  _redirectTo(Uri.parse(url).queryParameters['continue']!, {
+                  _redirectTo(Uri.parse(url), {
                     'error': 'access_denied',
                   }),
                 ),
@@ -379,8 +472,8 @@ void main() {
         );
       }
       expect(
-        loginUris[0].queryParameters['continue'],
-        isNot(equals(loginUris[1].queryParameters['continue'])),
+        loginUris[0].queryParameters['state'],
+        isNot(equals(loginUris[1].queryParameters['state'])),
       );
       expect(
         loginUris[0].queryParameters['code_challenge'],
@@ -395,9 +488,8 @@ void main() {
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
             unawaited(
-              http.get(Uri.parse(continueUrl)),
+              http.get(_redirectTo(loginUri, {})),
             );
           },
         ),
@@ -428,10 +520,9 @@ void main() {
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
             // Use .ignore() to suppress connection errors when the server
             // closes after the token exchange failure.
-            http.get(_redirectTo(continueUrl, {'code': 'test_code'})).ignore();
+            http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
           },
         ),
         throwsA(
@@ -490,10 +581,7 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final continueUrl = loginUri.queryParameters['continue']!;
-              http
-                  .get(_redirectTo(continueUrl, {'code': 'test_code'}))
-                  .ignore();
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
             },
           ),
         ),
@@ -534,10 +622,7 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final continueUrl = loginUri.queryParameters['continue']!;
-              http
-                  .get(_redirectTo(continueUrl, {'code': 'test_code'}))
-                  .ignore();
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
             },
           ),
         ),
@@ -568,8 +653,7 @@ void main() {
           authBaseUrl: authBaseUrl,
           userPrompt: (url) {
             final loginUri = Uri.parse(url);
-            final continueUrl = loginUri.queryParameters['continue']!;
-            http.get(_redirectTo(continueUrl, {'code': 'test_code'})).ignore();
+            http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
           },
         ),
         throwsA(isA<SocketException>()),
@@ -597,10 +681,7 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final continueUrl = loginUri.queryParameters['continue']!;
-              http
-                  .get(_redirectTo(continueUrl, {'code': 'test_code'}))
-                  .ignore();
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
             },
           ),
         ),
@@ -633,10 +714,7 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final continueUrl = loginUri.queryParameters['continue']!;
-              http
-                  .get(_redirectTo(continueUrl, {'code': 'test_code'}))
-                  .ignore();
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
             },
           ),
         ),
@@ -670,10 +748,7 @@ void main() {
             authBaseUrl: authBaseUrl,
             userPrompt: (url) {
               final loginUri = Uri.parse(url);
-              final continueUrl = loginUri.queryParameters['continue']!;
-              http
-                  .get(_redirectTo(continueUrl, {'code': 'test_code'}))
-                  .ignore();
+              http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
             },
           ),
         ),
@@ -740,6 +815,7 @@ void main() {
       final body = captured[1] as Map<String, String>;
       expect(body['grant_type'], equals('refresh_token'));
       expect(body['refresh_token'], equals('sb_rt_old'));
+      expect(body['client_id'], equals('shorebird-cli'));
     });
 
     test('throws when no refresh token is available', () async {
