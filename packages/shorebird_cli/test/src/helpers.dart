@@ -13,14 +13,19 @@ File createTempFile(String name) {
 /// If [hasTerminal] is provided, the captured stdout reports that value for
 /// `Stdout.hasTerminal` (otherwise it delegates to the real stdout).
 ///
+/// Pass [stderrCaptured] to capture stderr as well — needed to assert that a
+/// command keeps content on stdout and diagnostics on stderr.
+///
 /// Used to verify JSON output from commands that write to stdout, and to
 /// drive non-interactive code paths in tests.
 Future<T> captureStdout<T>(
   Future<T> Function() body, {
   required List<String> captured,
   bool? hasTerminal,
+  List<String>? stderrCaptured,
 }) async {
   final realStdout = stdout;
+  final realStderr = stderr;
   return IOOverrides.runZoned(
     body,
     stdout: () => CapturingStdout(
@@ -28,6 +33,12 @@ Future<T> captureStdout<T>(
       captured: captured,
       hasTerminalOverride: hasTerminal,
     ),
+    stderr: stderrCaptured == null
+        ? null
+        : () => CapturingStdout(
+            baseStdOut: realStderr,
+            captured: stderrCaptured,
+          ),
   );
 }
 

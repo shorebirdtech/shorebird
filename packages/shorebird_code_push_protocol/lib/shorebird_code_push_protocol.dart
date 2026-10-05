@@ -7,6 +7,7 @@
 /// re-exported from here.
 library;
 
+export 'package:shorebird_code_push_protocol/extensions/api_key_scope.dart';
 export 'package:shorebird_code_push_protocol/extensions/auth_provider.dart';
 export 'package:shorebird_code_push_protocol/extensions/release_platform_extensions.dart';
 export 'package:shorebird_code_push_protocol/extensions/test_helpers.dart';
