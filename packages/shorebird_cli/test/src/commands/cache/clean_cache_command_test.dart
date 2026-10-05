@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -17,7 +17,7 @@ void main() {
   group('cache clean', () {
     late Cache cache;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late CleanCacheCommand command;
@@ -37,7 +37,7 @@ void main() {
     setUp(() {
       cache = MockCache();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       command = runWithOverrides(CleanCacheCommand.new);
@@ -63,7 +63,7 @@ void main() {
     group('on failure', () {
       group('on Windows', () {
         setUp(() {
-          when(() => platform.isWindows).thenReturn(true);
+          platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         });
 
         test(
@@ -93,7 +93,7 @@ void main() {
 
       group('on a non-Windows OS', () {
         setUp(() {
-          when(() => platform.isWindows).thenReturn(false);
+          platform = platform.copyWith(operatingSystem: NativePlatform.linux);
         });
 
         test('prints error message and exits with code 70', () async {

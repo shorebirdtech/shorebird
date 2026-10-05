@@ -5,7 +5,7 @@ import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
@@ -27,7 +27,7 @@ void main() {
     late Directory flutterDirectory;
     late Git git;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdEnv targetShorebirdEnv;
@@ -58,7 +58,7 @@ void main() {
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       targetShorebirdEnv = MockShorebirdEnv();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
       process = MockShorebirdProcess();
       versionProcessResult = MockShorebirdProcessResult();
       precacheProcessResult = MockShorebirdProcessResult();
@@ -107,8 +107,6 @@ void main() {
         ),
       ).thenAnswer((_) async => 'origin/flutter_release/3.10.6');
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => platform.isMacOS).thenReturn(false);
-      when(() => platform.isWindows).thenReturn(false);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
@@ -141,7 +139,7 @@ void main() {
     group('precacheArgs', () {
       group('when running on macOS', () {
         setUp(() {
-          when(() => platform.isMacOS).thenReturn(true);
+          platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
         });
 
         test('includes ios in platform list', () async {
@@ -154,7 +152,7 @@ void main() {
 
       group('when not running on macOS', () {
         setUp(() {
-          when(() => platform.isMacOS).thenReturn(false);
+          platform = platform.copyWith(operatingSystem: NativePlatform.linux);
         });
 
         test('does not include ios in platform list', () {
@@ -1434,7 +1432,9 @@ origin/flutter_release/3.10.6''';
         test(
           'keeps a Windows install whose launcher is flutter.bat',
           () async {
-            when(() => platform.isWindows).thenReturn(true);
+            platform = platform.copyWith(
+              operatingSystem: NativePlatform.windows,
+            );
             File(
               p.join(targetDirectory.path, 'bin', 'flutter.bat'),
             ).createSync(recursive: true);

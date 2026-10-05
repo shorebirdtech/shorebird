@@ -3,7 +3,7 @@ import 'dart:io' hide Platform;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -17,7 +17,7 @@ void main() {
   group('PatchExecutable', () {
     late Cache cache;
     late Directory cacheArtifactDirectory;
-    late Platform platform;
+    late TestNativePlatform platform;
     late ShorebirdProcess shorebirdProcess;
     late ShorebirdProcessResult patchProcessResult;
     late PatchExecutable patchExecutable;
@@ -37,7 +37,7 @@ void main() {
     setUp(() {
       patchExecutable = PatchExecutable();
       shorebirdProcess = MockShorebirdProcess();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
 
       when(
         () => shorebirdProcess.run(
@@ -148,7 +148,7 @@ void main() {
 
       group('when on windows', () {
         setUp(() {
-          when(() => platform.isWindows).thenReturn(true);
+          platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         });
 
         test('throws a missing C++ runtime exception', () async {
@@ -175,7 +175,7 @@ void main() {
 
       group('when not on windows', () {
         setUp(() {
-          when(() => platform.isWindows).thenReturn(false);
+          platform = platform.copyWith(operatingSystem: NativePlatform.linux);
         });
 
         test('does not add the Windows specific message', () async {

@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/abi.dart';
@@ -38,7 +38,7 @@ void main() {
     late Directory shorebirdRoot;
     late http.Client httpClient;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Process chmodProcess;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
@@ -64,17 +64,11 @@ void main() {
       );
     }
 
-    void setMockPlatform(String name) {
-      assert(
-        Platform.operatingSystemValues.contains(name),
-        'Unrecognized platform name',
-      );
-      when(() => platform.isMacOS).thenReturn(name == 'macos');
-      when(() => platform.isWindows).thenReturn(name == 'windows');
-      when(() => platform.isLinux).thenReturn(name == 'linux');
-      when(() => platform.isAndroid).thenReturn(name == 'android');
-      when(() => platform.isFuchsia).thenReturn(name == 'fuchsia');
-      when(() => platform.isIOS).thenReturn(name == 'ios');
+    /// Switches the platform to [operatingSystem] and rebuilds [cache], which
+    /// captures the platform when its artifacts are registered.
+    void setOperatingSystem(String operatingSystem) {
+      platform = platform.copyWith(operatingSystem: operatingSystem);
+      cache = runWithOverrides(Cache.new);
     }
 
     setUpAll(() {
@@ -90,7 +84,10 @@ void main() {
       checksumChecker = MockChecksumChecker();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(
+        environment: {},
+        operatingSystem: NativePlatform.macOS,
+      );
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
@@ -121,8 +118,6 @@ void main() {
       ).thenReturn('test-flutter-revision');
       when(() => shorebirdEnv.shorebirdRoot).thenReturn(shorebirdRoot);
 
-      when(() => platform.environment).thenReturn({});
-      setMockPlatform(Platform.macOS);
       when(
         () => shorebirdProcess.start(any(), any()),
       ).thenAnswer((_) async => chmodProcess);
@@ -200,7 +195,7 @@ void main() {
         group('fileName', () {
           group('when on Windows', () {
             setUp(() {
-              setMockPlatform(Platform.windows);
+              setOperatingSystem(NativePlatform.windows);
             });
 
             test('has exe extension', () {
@@ -213,7 +208,7 @@ void main() {
 
           group('when not on Windows', () {
             setUp(() {
-              setMockPlatform(Platform.linux);
+              setOperatingSystem(NativePlatform.linux);
             });
 
             test('does not have exe extension', () {
@@ -228,7 +223,7 @@ void main() {
         group('storageUrl', () {
           group('when on macOS', () {
             setUp(() {
-              setMockPlatform(Platform.macOS);
+              setOperatingSystem(NativePlatform.macOS);
             });
 
             test(
@@ -281,7 +276,7 @@ void main() {
 
           group('when on Linux', () {
             setUp(() {
-              setMockPlatform(Platform.linux);
+              setOperatingSystem(NativePlatform.linux);
             });
 
             test('uses linux-x64', () async {
@@ -295,7 +290,7 @@ void main() {
 
           group('when on Windows', () {
             setUp(() {
-              setMockPlatform(Platform.windows);
+              setOperatingSystem(NativePlatform.windows);
             });
 
             test('uses windows-x64', () async {
@@ -444,7 +439,7 @@ void main() {
         });
 
         test('pulls correct artifact for MacOS', () async {
-          setMockPlatform(Platform.macOS);
+          setOperatingSystem(NativePlatform.macOS);
 
           await expectLater(
             runWithOverrides(() => cache.updateAll(Duration.zero)),
@@ -468,7 +463,7 @@ void main() {
         });
 
         test('pulls correct artifact for Windows', () async {
-          setMockPlatform(Platform.windows);
+          setOperatingSystem(NativePlatform.windows);
 
           await expectLater(
             runWithOverrides(() => cache.updateAll(Duration.zero)),
@@ -492,7 +487,7 @@ void main() {
         });
 
         test('pulls correct artifact for Linux', () async {
-          setMockPlatform(Platform.linux);
+          setOperatingSystem(NativePlatform.linux);
 
           await expectLater(
             runWithOverrides(() => cache.updateAll(Duration.zero)),
@@ -523,7 +518,7 @@ void main() {
     late ChecksumChecker checksumChecker;
     late http.Client httpClient;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late _TestCachedArtifact cachedArtifact;
 
@@ -548,7 +543,7 @@ void main() {
       checksumChecker = MockChecksumChecker();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform();
       progress = MockProgress();
 
       when(() => httpClient.send(any())).thenAnswer(

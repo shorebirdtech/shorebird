@@ -5,7 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -49,7 +49,7 @@ environment:
     late Directory projectRoot;
     late File pubspecYamlFile;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late PubspecEditor pubspecEditor;
     late ShorebirdEnv shorebirdEnv;
@@ -92,7 +92,7 @@ environment:
       projectRoot = Directory.systemTemp.createTempSync();
       pubspecEditor = MockPubspecEditor();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.macOS);
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdValidator = MockShorebirdValidator();
@@ -140,7 +140,6 @@ environment:
       ).thenReturn(appName);
       when(() => logger.progress(any())).thenReturn(progress);
       when(() => gradlew.productFlavors(any())).thenAnswer((_) async => {});
-      when(() => platform.isMacOS).thenReturn(true);
       when(() => shorebirdEnv.hasPubspecYaml).thenReturn(true);
       when(
         () => shorebirdEnv.getPubspecYaml(),
@@ -623,7 +622,7 @@ Available organizations:
 
     group('on non MacOS', () {
       setUp(() {
-        when(() => platform.isMacOS).thenReturn(false);
+        platform = platform.copyWith(operatingSystem: NativePlatform.linux);
       });
 
       group('when ios directory is empty', () {

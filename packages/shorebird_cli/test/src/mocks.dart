@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:platform/platform.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
@@ -153,8 +152,6 @@ class MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
 class MockPatchExecutable extends Mock implements PatchExecutable {}
 
 class MockPatcher extends Mock implements Patcher {}
-
-class MockPlatform extends Mock implements Platform {}
 
 class MockPowershell extends Mock implements Powershell {}
 

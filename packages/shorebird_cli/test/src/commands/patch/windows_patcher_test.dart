@@ -216,7 +216,7 @@ void main() {
               checkUserIsAuthenticated: true,
               checkShorebirdInitialized: true,
               validators: [flavorValidator],
-              supportedOperatingSystems: {Platform.windows},
+              supportedOperatingSystems: {NativePlatform.windows},
             ),
           ).called(1);
         });

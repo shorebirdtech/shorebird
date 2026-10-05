@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -29,7 +29,7 @@ void main() {
     const flutterVersion = '1.2.3';
 
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdVersion shorebirdVersion;
@@ -50,7 +50,7 @@ void main() {
 
     setUp(() {
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdVersion = MockShorebirdVersion();
@@ -64,7 +64,6 @@ void main() {
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
-      when(() => platform.isWindows).thenReturn(false);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdFlutter.getVersionString(),
@@ -175,7 +174,7 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}'''),
     });
 
     test('handles missing option error on Windows', () async {
-      when(() => platform.isWindows).thenReturn(true);
+      platform = TestNativePlatform(operatingSystem: NativePlatform.windows);
       final exception = UsageException(
         'Could not find an option named "foo".',
         'exception usage',

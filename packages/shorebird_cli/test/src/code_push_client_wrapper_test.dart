@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -31,7 +31,7 @@ void main() {
     late Auth auth;
     late http.Client httpClient;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
@@ -44,7 +44,7 @@ void main() {
       auth = MockAuth();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
@@ -159,7 +159,7 @@ void main() {
     late ShorebirdFlutter shorebirdFlutter;
     late Progress progress;
     late CodePushClientWrapper codePushClientWrapper;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Directory projectRoot;
 
     R runWithOverrides<R>(R Function() body) {
@@ -184,7 +184,16 @@ void main() {
       codePushClient = MockCodePushClient();
       ditto = MockDitto();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(
+        script: Uri.file(
+          p.join(
+            Directory.systemTemp.createTempSync().path,
+            'bin',
+            'cache',
+            'shorebird.snapshot',
+          ),
+        ),
+      );
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
 
@@ -202,16 +211,6 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => platform.script).thenReturn(
-        Uri.file(
-          p.join(
-            Directory.systemTemp.createTempSync().path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
-      );
 
       when(
         () => shorebirdFlutter.getVersionForRevision(

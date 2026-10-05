@@ -9,7 +9,7 @@ import 'package:jwt/jwt.dart' show Jwt, JwtPayload;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -194,7 +194,7 @@ void main() {
     late CodePushClient codePushClient;
     late ShorebirdLogger logger;
     late Auth auth;
-    late Platform platform;
+    late TestNativePlatform platform;
     late ShorebirdEnv shorebirdEnv;
     late RefreshCredentials refreshCredentials;
 
@@ -254,7 +254,7 @@ void main() {
       httpClient = MockHttpClient();
       codePushClient = MockCodePushClient();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(environment: {});
       shorebirdEnv = MockShorebirdEnv();
       refreshCredentials =
           (
@@ -265,7 +265,6 @@ void main() {
           }) async => accessCredentials;
 
       when(() => codePushClient.getCurrentUser()).thenAnswer((_) async => user);
-      when(() => platform.environment).thenReturn(<String, String>{});
       when(() => shorebirdEnv.jwtIssuer).thenReturn(shorebirdJwtIssuer);
       when(
         () => shorebirdEnv.authServiceUri,
@@ -850,9 +849,11 @@ void main() {
 
       group('when SHOREBIRD_TOKEN is an API key', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: 'sb_api_abc123',
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: 'sb_api_abc123',
+            },
+          );
         });
 
         test('parses as API key and sets isAuthenticated', () {
@@ -870,9 +871,11 @@ void main() {
         });
 
         test('trims whitespace from API key', () {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: '  sb_api_abc123  \n',
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: '  sb_api_abc123  \n',
+            },
+          );
           auth = buildAuth();
           expect(auth.isAuthenticated, isTrue);
         });
@@ -915,9 +918,11 @@ void main() {
 
       group('when token is invalid', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: 'not a base64 string',
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: 'not a base64 string',
+            },
+          );
         });
 
         test(
@@ -944,13 +949,15 @@ void main() {
 
       group('when token has leading or trailing spaces and newlines', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar:
-                '''
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar:
+                  '''
     ${ciToken.toBase64()}  
               
 ''',
-          });
+            },
+          );
         });
 
         test('trims string', () {
@@ -967,9 +974,11 @@ void main() {
           (_) async =>
               http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
         );
-        when(() => platform.environment).thenReturn(<String, String>{
-          shorebirdTokenEnvVar: ciToken.toBase64(),
-        });
+        platform = platform.copyWith(
+          environment: {
+            shorebirdTokenEnvVar: ciToken.toBase64(),
+          },
+        );
         auth = buildAuth();
         final client = auth.client;
         expect(client, isA<http.Client>());
@@ -1012,9 +1021,11 @@ void main() {
 
       group('when authenticated via API key', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: 'sb_api_abc123',
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: 'sb_api_abc123',
+            },
+          );
           auth = buildAuth();
         });
 
@@ -1025,9 +1036,11 @@ void main() {
 
       group('when authenticated via a legacy CI token', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: ciToken.toBase64(),
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: ciToken.toBase64(),
+            },
+          );
           auth = buildAuth();
         });
 
@@ -1171,9 +1184,11 @@ void main() {
       test(
         'throws UserAlreadyLoggedInException when authenticated via API key',
         () async {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: 'sb_api_abc123',
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: 'sb_api_abc123',
+            },
+          );
           auth = buildAuth();
 
           await expectLater(
@@ -1269,9 +1284,11 @@ void main() {
 
       group('when authenticated via API key', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: 'sb_api_abc123',
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: 'sb_api_abc123',
+            },
+          );
           auth = buildAuth();
         });
 
@@ -1286,9 +1303,11 @@ void main() {
 
       group('when authenticated via CI token', () {
         setUp(() {
-          when(() => platform.environment).thenReturn(<String, String>{
-            shorebirdTokenEnvVar: ciToken.toBase64(),
-          });
+          platform = platform.copyWith(
+            environment: {
+              shorebirdTokenEnvVar: ciToken.toBase64(),
+            },
+          );
           auth = buildAuth();
         });
 

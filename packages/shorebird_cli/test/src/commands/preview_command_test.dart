@@ -9,7 +9,7 @@ import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
@@ -53,7 +53,7 @@ void main() {
     late CodePushClientWrapper codePushClientWrapper;
     late ShorebirdLogger logger;
     late Directory previewDirectory;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late Release release;
     late ReleaseArtifact releaseArtifact;
@@ -227,7 +227,7 @@ void main() {
       cache = MockCache();
       codePushClientWrapper = MockCodePushClientWrapper();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.fuchsia);
       previewDirectory = Directory.systemTemp.createTempSync();
       progress = MockProgress();
       release = MockRelease();
@@ -286,10 +286,6 @@ void main() {
           checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
         ),
       ).thenAnswer((_) async {});
-
-      when(() => platform.isLinux).thenReturn(false);
-      when(() => platform.isMacOS).thenReturn(false);
-      when(() => platform.isWindows).thenReturn(false);
     });
 
     group('when --staging is passed', () {
@@ -411,10 +407,7 @@ void main() {
 
     group('when release is not supported on the current OS', () {
       setUp(() {
-        when(() => platform.isLinux).thenReturn(false);
-        when(() => platform.isMacOS).thenReturn(false);
-        when(() => platform.isWindows).thenReturn(true);
-        when(() => platform.operatingSystem).thenReturn('windows');
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
 
         when(
           () => release.platformStatuses,
@@ -563,9 +556,9 @@ void main() {
         'when release has a mix of supported and unsupported platforms',
         () {
           setUp(() {
-            when(() => platform.isLinux).thenReturn(false);
-            when(() => platform.isMacOS).thenReturn(false);
-            when(() => platform.isWindows).thenReturn(true);
+            platform = platform.copyWith(
+              operatingSystem: NativePlatform.windows,
+            );
 
             when(
               () => artifactManager.extractZip(
@@ -1302,7 +1295,7 @@ channel: ${track.channel}
             ),
           ).thenAnswer(setupAndroidShorebirdYaml);
           // We only prompt when there are multiple platforms to choose from
-          when(() => platform.isMacOS).thenReturn(true);
+          platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
 
           when(() => argResults['platform']).thenReturn(null);
           when(
@@ -1587,7 +1580,7 @@ channel: ${track.channel}
         });
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
         when(() => releaseArtifact.arch).thenReturn('app');
-        when(() => platform.isMacOS).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
       });
 
       test('ensures ios-deploy is installed', () async {
@@ -2169,7 +2162,7 @@ channel: ${DeploymentTrack.staging.channel}
         process = MockProcess();
         linuxReleaseArtifact = MockReleaseArtifact();
 
-        when(() => platform.isLinux).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.linux);
 
         final tempDir = Directory.systemTemp.createTempSync();
         releaseArtifactFile = File(p.join(tempDir.path, 'Release.zip'));
@@ -2484,7 +2477,7 @@ channel: ${DeploymentTrack.staging.channel}
         ).thenReturn({ReleasePlatform.macos: ReleaseStatus.active});
         when(() => releaseArtifact.url).thenReturn(releaseArtifactUrl);
         when(() => releaseArtifact.arch).thenReturn('app');
-        when(() => platform.isMacOS).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
         when(
           () => open.newApplication(path: any(named: 'path')),
         ).thenAnswer((_) async => Stream.value(utf8.encode('hello world')));
@@ -2728,7 +2721,7 @@ channel: ${DeploymentTrack.staging.channel}
         process = MockProcess();
         windowsMock = MockWindows();
 
-        when(() => platform.isWindows).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         when(
           () => windowsMock.findExecutable(
             releaseDirectory: any(named: 'releaseDirectory'),
@@ -3076,7 +3069,7 @@ channel: ${DeploymentTrack.staging.channel}
           ),
         ).thenAnswer((_) async => androidReleaseArtifact);
 
-        when(() => platform.isMacOS).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
       });
 
       group('when the user chooses ios at the prompt', () {

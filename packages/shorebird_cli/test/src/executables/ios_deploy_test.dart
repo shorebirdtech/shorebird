@@ -5,7 +5,7 @@ import 'dart:io' hide Platform;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -19,7 +19,7 @@ import '../mocks.dart';
 void main() {
   group(IOSDeploy, () {
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late ShorebirdProcess shorebirdProcess;
     late Process process;
@@ -41,7 +41,7 @@ void main() {
 
     setUp(() {
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform();
       shorebirdProcess = MockShorebirdProcess();
       process = MockProcess();
       progress = MockProgress();

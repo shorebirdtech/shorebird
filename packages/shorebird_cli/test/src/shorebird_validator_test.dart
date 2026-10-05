@@ -1,6 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -18,7 +18,7 @@ void main() {
   group(ShorebirdValidator, () {
     late Auth auth;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Validator validator;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdValidator shorebirdValidator;
@@ -38,7 +38,7 @@ void main() {
     setUp(() {
       auth = MockAuth();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.macOS);
       shorebirdEnv = MockShorebirdEnv();
       validator = MockValidator();
       shorebirdValidator = runWithOverrides(ShorebirdValidator.new);
@@ -59,8 +59,11 @@ void main() {
     group('validatePreconditions', () {
       test('throws UnsupportedOperatingSystemException '
           'when the operating system is not supported', () async {
-        when(() => platform.operatingSystem).thenReturn(Platform.linux);
-        const supportedOperatingSystems = {Platform.macOS, Platform.windows};
+        platform = platform.copyWith(operatingSystem: NativePlatform.linux);
+        const supportedOperatingSystems = {
+          NativePlatform.macOS,
+          NativePlatform.windows,
+        };
         await expectLater(
           runWithOverrides(
             () => shorebirdValidator.validatePreconditions(
@@ -225,9 +228,6 @@ To fix, update your pubspec.yaml to include the following:
         when(
           () => shorebirdEnv.getShorebirdYaml(),
         ).thenAnswer((_) => shorebirdYaml);
-
-        when(() => platform.isWindows).thenReturn(false);
-        when(() => platform.isLinux).thenReturn(false);
       });
 
       group('when shorebird.yaml has flavors', () {

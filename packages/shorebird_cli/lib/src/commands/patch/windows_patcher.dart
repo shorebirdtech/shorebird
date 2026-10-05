@@ -50,7 +50,7 @@ class WindowsPatcher extends Patcher {
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
         validators: doctor.windowsCommandValidators,
-        supportedOperatingSystems: {Platform.windows},
+        supportedOperatingSystems: {NativePlatform.windows},
       );
     } on PreconditionFailedException catch (e) {
       throw ProcessExit(e.exitCode.code);
