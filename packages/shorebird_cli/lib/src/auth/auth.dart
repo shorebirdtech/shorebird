@@ -239,38 +239,34 @@ class Auth {
 
   /// Logs out the user.
   ///
-  /// If a Shorebird refresh token is available, revokes the server-side
-  /// session before clearing local credentials. Local credentials are always
-  /// cleared even if the server call fails.
-  Future<void> logout() async {
-    await _revokeSession();
+  /// Revokes the stored refresh token with the auth service, which ends the
+  /// server-side session, then clears local credentials. Local credentials
+  /// are cleared even if revocation fails. Returns whether the auth service
+  /// confirmed the revocation (true when there was nothing to revoke).
+  Future<bool> logout() async {
+    final revoked = await _revokeSession();
     clearCredentials();
+    return revoked;
   }
 
-  /// Sends the current refresh token to the auth service's logout endpoint
-  /// to revoke the server-side session. Failures are logged but swallowed
-  /// so that local logout always succeeds.
-  Future<void> _revokeSession() async {
+  /// Revokes the current refresh token through the auth service's RFC 7009
+  /// revocation endpoint. Returns whether the server confirmed it, or true
+  /// when there is no refresh token to revoke. A failure is logged at detail
+  /// level and otherwise swallowed, so that local logout always succeeds.
+  Future<bool> _revokeSession() async {
     final refreshToken = _credentials?.refreshToken;
-    if (refreshToken == null) return;
+    if (refreshToken == null) return true;
 
     try {
-      final logoutUrl = _authServiceUri.replace(
-        path: p.url.join(_authServiceUri.path, 'api/logout'),
+      await shorebird_oauth.revokeShorebirdRefreshToken(
+        refreshToken,
+        _httpClient,
+        authBaseUrl: _authServiceUri,
       );
-      final response = await _httpClient.post(
-        logoutUrl,
-        headers: {'Authorization': 'Bearer $refreshToken'},
-      );
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        logger.detail(
-          'Session revocation returned ${response.statusCode}: '
-          '${response.body}',
-        );
-      }
+      return true;
     } on Exception catch (e) {
-      // Best-effort — don't block logout if the server is unreachable.
       logger.detail('Failed to revoke session: $e');
+      return false;
     }
   }
 

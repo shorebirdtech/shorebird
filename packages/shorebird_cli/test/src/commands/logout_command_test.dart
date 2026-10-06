@@ -47,7 +47,7 @@ void main() {
 
     test('exits with code 0 when logged out successfully', () async {
       when(() => auth.isAuthenticated).thenReturn(true);
-      when(() => auth.logout()).thenAnswer((_) async {});
+      when(() => auth.logout()).thenAnswer((_) async => true);
 
       final progress = MockProgress();
       when(() => progress.complete(any())).thenAnswer((invocation) {});
@@ -58,6 +58,30 @@ void main() {
 
       verify(() => logger.progress('Logging out of shorebird.dev')).called(1);
       verify(() => auth.logout()).called(1);
+      verifyNever(() => logger.warn(any()));
     });
+
+    test(
+      'tells the user where to sign the session out when the server did not '
+      'confirm it',
+      () async {
+        when(() => auth.isAuthenticated).thenReturn(true);
+        when(() => auth.logout()).thenAnswer((_) async => false);
+
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.success.code));
+
+        verify(
+          () => logger.warn(
+            any(
+              that: allOf(
+                contains('Unable to confirm with the auth server'),
+                contains('https://console.shorebird.dev/account'),
+              ),
+            ),
+          ),
+        ).called(1);
+      },
+    );
   });
 }

@@ -276,6 +276,43 @@ Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
   return _parseTokenResponse(response.body);
 }
 
+/// Revokes [refreshToken] at the auth service's /revoke endpoint (RFC 7009),
+/// ending the session it belongs to.
+///
+/// Names the `shorebird-cli` client for the same reason
+/// [refreshShorebirdCredentials] does: a session issued to the client must be
+/// revoked by it, and the auth service lets whoever holds the refresh token of
+/// a session issued without a client revoke it, whatever client they name.
+///
+/// The auth service answers 200 whether or not the token was live (RFC 7009
+/// section 2.2), so a 200 says only that nothing is left to revoke. Throws
+/// [ShorebirdAuthException] for any other answer.
+Future<void> revokeShorebirdRefreshToken(
+  String refreshToken,
+  http.Client httpClient, {
+  required Uri authBaseUrl,
+}) async {
+  final revokeUrl = authBaseUrl.replace(
+    path: p.url.join(authBaseUrl.path, 'revoke'),
+  );
+
+  final response = await httpClient.post(
+    revokeUrl,
+    body: {
+      'token': refreshToken,
+      'token_type_hint': 'refresh_token',
+      'client_id': _clientId,
+    },
+  );
+
+  if (response.statusCode != HttpStatus.ok) {
+    throw ShorebirdAuthException(
+      'Token revocation failed (${response.statusCode}): ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+}
+
 /// Exchanges an auth code for tokens by POSTing it, with the PKCE
 /// [codeVerifier], to the auth service's /token endpoint.
 ///

@@ -2,6 +2,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_web_console.dart';
 
 /// {@template logout_command}
 ///
@@ -23,10 +24,15 @@ class LogoutCommand extends ShorebirdCommand {
     }
 
     final logoutProgress = logger.progress('Logging out of shorebird.dev');
-    await auth.logout();
+    final revoked = await auth.logout();
     logoutProgress.complete();
 
     logger.info('${lightGreen.wrap('You are now logged out.')}');
+    if (!revoked) {
+      logger.warn(
+        '''Unable to confirm with the auth server that the session was terminated. Credentials were deleted locally. If you would like to confirm, you can see and manage your sessions at ${link(uri: ShorebirdWebConsole.uri('account'))}.''',
+      );
+    }
 
     return ExitCode.success.code;
   }
