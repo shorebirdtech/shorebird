@@ -757,6 +757,86 @@ void main() {
     });
   });
 
+  group('revokeShorebirdRefreshToken', () {
+    late MockHttpClient httpClient;
+
+    setUp(() {
+      httpClient = MockHttpClient();
+    });
+
+    test('posts the refresh token to the revocation endpoint', () async {
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer((_) async => http.Response('', HttpStatus.ok));
+
+      await revokeShorebirdRefreshToken(
+        'sb_rt_test',
+        httpClient,
+        authBaseUrl: Uri.parse('https://auth.shorebird.dev/base'),
+      );
+
+      final captured = verify(
+        () => httpClient.post(
+          captureAny(),
+          headers: any(named: 'headers'),
+          body: captureAny(named: 'body'),
+        ),
+      ).captured;
+      expect(
+        captured[0],
+        equals(Uri.parse('https://auth.shorebird.dev/base/revoke')),
+      );
+      expect(
+        captured[1],
+        equals({
+          'token': 'sb_rt_test',
+          'token_type_hint': 'refresh_token',
+          'client_id': 'shorebird-cli',
+        }),
+      );
+    });
+
+    test('throws when the auth service does not answer 200', () async {
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          '{"error":"invalid_client"}',
+          HttpStatus.unauthorized,
+        ),
+      );
+
+      await expectLater(
+        revokeShorebirdRefreshToken(
+          'sb_rt_test',
+          httpClient,
+          authBaseUrl: Uri.parse('https://auth.shorebird.dev'),
+        ),
+        throwsA(
+          isA<ShorebirdAuthException>()
+              .having(
+                (e) => e.message,
+                'message',
+                contains('Token revocation failed (401)'),
+              )
+              .having(
+                (e) => e.statusCode,
+                'statusCode',
+                HttpStatus.unauthorized,
+              ),
+        ),
+      );
+    });
+  });
+
   group('refreshShorebirdCredentials', () {
     late MockHttpClient httpClient;
     final authBaseUrl = Uri.parse('https://auth.shorebird.dev');

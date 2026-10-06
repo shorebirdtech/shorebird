@@ -798,18 +798,26 @@ void main() {
     });
 
     group('logout', () {
+      void stubRevocation(Future<http.Response> Function() answer) {
+        when(
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer((_) => answer());
+      }
+
+      setUp(() {
+        stubRevocation(() async => http.Response('', HttpStatus.ok));
+      });
+
       test('clears session and wipes state', () async {
         await runWithOverrides(
           () => auth.login(prompt: (_) {}),
         );
         expect(auth.email, email);
         expect(auth.isAuthenticated, isTrue);
-
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('{"ok":true}', 200),
-        );
 
         await runWithOverrides(() => auth.logout());
         expect(auth.email, isNull);
@@ -823,12 +831,6 @@ void main() {
           () => auth.login(prompt: (_) {}),
         );
         expect(File(auth.credentialsFilePath).existsSync(), isTrue);
-
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('{"ok":true}', 200),
-        );
 
         await runWithOverrides(() => auth.logout());
         expect(File(auth.credentialsFilePath).existsSync(), isFalse);
@@ -850,18 +852,19 @@ void main() {
           // _apiKey is not cleared by _clearCredentials, so the instance
           // still considers itself authenticated.
           expect(auth.isAuthenticated, isTrue);
+          verifyNever(
+            () => httpClient.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          );
         });
       });
 
-      test('revokes server session with refresh token', () async {
+      test('revokes the refresh token at the revocation endpoint', () async {
         await runWithOverrides(
           () => auth.login(prompt: (_) {}),
-        );
-
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('{"ok":true}', 200),
         );
 
         await runWithOverrides(() => auth.logout());
@@ -869,52 +872,79 @@ void main() {
         final captured = verify(
           () => httpClient.post(
             captureAny(),
-            headers: captureAny(named: 'headers'),
+            headers: any(named: 'headers'),
+            body: captureAny(named: 'body'),
           ),
         ).captured;
 
-        final uri = captured[0] as Uri;
-        expect(uri.path, contains('api/logout'));
-
-        final headers = captured[1] as Map<String, String>;
-        expect(headers['Authorization'], equals('Bearer $refreshToken'));
+        expect(
+          captured[0],
+          equals(Uri.parse('https://auth.shorebird.dev/revoke')),
+        );
+        expect(
+          captured[1],
+          equals({
+            'token': refreshToken,
+            'token_type_hint': 'refresh_token',
+            'client_id': 'shorebird-cli',
+          }),
+        );
+        verifyNever(() => logger.warn(any()));
       });
 
-      test('logs detail when server returns non-2xx', () async {
+      test('warns and clears credentials when the server refuses', () async {
         await runWithOverrides(
           () => auth.login(prompt: (_) {}),
         );
-
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('{"error":"gone"}', 500),
+        stubRevocation(
+          () async => http.Response(
+            '{"error":"internal_error"}',
+            HttpStatus.internalServerError,
+          ),
         );
 
         await runWithOverrides(() => auth.logout());
         expect(auth.isAuthenticated, isFalse);
+        expect(File(auth.credentialsFilePath).existsSync(), isFalse);
 
         verify(
+          () => logger.warn(
+            any(that: contains('Could not confirm that your session')),
+          ),
+        ).called(1);
+        verify(
           () => logger.detail(
-            any(that: contains('Session revocation returned 500')),
+            any(that: contains('Token revocation failed (500)')),
           ),
         ).called(1);
       });
 
-      test('clears credentials even if server revocation fails', () async {
-        await runWithOverrides(
-          () => auth.login(prompt: (_) {}),
-        );
-        expect(auth.isAuthenticated, isTrue);
+      test(
+        'warns and clears credentials when the server is unreachable',
+        () async {
+          await runWithOverrides(
+            () => auth.login(prompt: (_) {}),
+          );
+          expect(auth.isAuthenticated, isTrue);
+          stubRevocation(
+            () async => throw const SocketException('no internet'),
+          );
 
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenThrow(const SocketException('no internet'));
+          await runWithOverrides(() => auth.logout());
+          expect(auth.email, isNull);
+          expect(auth.isAuthenticated, isFalse);
+          expect(File(auth.credentialsFilePath).existsSync(), isFalse);
 
-        await runWithOverrides(() => auth.logout());
-        expect(auth.email, isNull);
-        expect(auth.isAuthenticated, isFalse);
-      });
+          verify(
+            () => logger.warn(
+              any(that: contains('Could not confirm that your session')),
+            ),
+          ).called(1);
+          verify(
+            () => logger.detail(any(that: contains('no internet'))),
+          ).called(1);
+        },
+      );
 
       test('skips revocation when no refresh token', () async {
         accessCredentials = oauth2.AccessCredentials(
@@ -926,17 +956,16 @@ void main() {
         writeCredentials();
         auth = buildAuth();
 
-        when(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
-        ).thenAnswer(
-          (_) async => http.Response('{"ok":true}', 200),
-        );
-
         await runWithOverrides(() => auth.logout());
 
         verifyNever(
-          () => httpClient.post(any(), headers: any(named: 'headers')),
+          () => httpClient.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
         );
+        expect(File(auth.credentialsFilePath).existsSync(), isFalse);
       });
     });
 

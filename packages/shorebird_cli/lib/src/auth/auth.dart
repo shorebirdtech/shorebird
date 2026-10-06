@@ -239,38 +239,34 @@ class Auth {
 
   /// Logs out the user.
   ///
-  /// If a Shorebird refresh token is available, revokes the server-side
-  /// session before clearing local credentials. Local credentials are always
-  /// cleared even if the server call fails.
+  /// Revokes the stored refresh token with the auth service, which ends the
+  /// server-side session, then clears local credentials. Local credentials
+  /// are cleared even if revocation fails.
   Future<void> logout() async {
     await _revokeSession();
     clearCredentials();
   }
 
-  /// Sends the current refresh token to the auth service's logout endpoint
-  /// to revoke the server-side session. Failures are logged but swallowed
-  /// so that local logout always succeeds.
+  /// Revokes the current refresh token through the auth service's RFC 7009
+  /// revocation endpoint. A failure is reported as a warning and otherwise
+  /// swallowed, so that local logout always succeeds.
   Future<void> _revokeSession() async {
     final refreshToken = _credentials?.refreshToken;
     if (refreshToken == null) return;
 
     try {
-      final logoutUrl = _authServiceUri.replace(
-        path: p.url.join(_authServiceUri.path, 'api/logout'),
+      await shorebird_oauth.revokeShorebirdRefreshToken(
+        refreshToken,
+        _httpClient,
+        authBaseUrl: _authServiceUri,
       );
-      final response = await _httpClient.post(
-        logoutUrl,
-        headers: {'Authorization': 'Bearer $refreshToken'},
-      );
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        logger.detail(
-          'Session revocation returned ${response.statusCode}: '
-          '${response.body}',
-        );
-      }
     } on Exception catch (e) {
-      // Best-effort — don't block logout if the server is unreachable.
-      logger.detail('Failed to revoke session: $e');
+      logger
+        ..warn(
+          'Could not confirm that your session was revoked on the server. '
+          'Your local credentials have been removed.',
+        )
+        ..detail('Failed to revoke session: $e');
     }
   }
 
