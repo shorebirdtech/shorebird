@@ -867,7 +867,7 @@ void main() {
           () => auth.login(prompt: (_) {}),
         );
 
-        await runWithOverrides(() => auth.logout());
+        expect(await runWithOverrides(() => auth.logout()), isTrue);
 
         final captured = verify(
           () => httpClient.post(
@@ -889,38 +889,34 @@ void main() {
             'client_id': 'shorebird-cli',
           }),
         );
-        verifyNever(() => logger.warn(any()));
-      });
-
-      test('warns and clears credentials when the server refuses', () async {
-        await runWithOverrides(
-          () => auth.login(prompt: (_) {}),
-        );
-        stubRevocation(
-          () async => http.Response(
-            '{"error":"internal_error"}',
-            HttpStatus.internalServerError,
-          ),
-        );
-
-        await runWithOverrides(() => auth.logout());
-        expect(auth.isAuthenticated, isFalse);
-        expect(File(auth.credentialsFilePath).existsSync(), isFalse);
-
-        verify(
-          () => logger.warn(
-            any(that: contains('Could not confirm that your session')),
-          ),
-        ).called(1);
-        verify(
-          () => logger.detail(
-            any(that: contains('Token revocation failed (500)')),
-          ),
-        ).called(1);
       });
 
       test(
-        'warns and clears credentials when the server is unreachable',
+        'reports failure and clears credentials when the server refuses',
+        () async {
+          await runWithOverrides(
+            () => auth.login(prompt: (_) {}),
+          );
+          stubRevocation(
+            () async => http.Response(
+              '{"error":"internal_error"}',
+              HttpStatus.internalServerError,
+            ),
+          );
+
+          expect(await runWithOverrides(() => auth.logout()), isFalse);
+          expect(auth.isAuthenticated, isFalse);
+          expect(File(auth.credentialsFilePath).existsSync(), isFalse);
+          verify(
+            () => logger.detail(
+              any(that: contains('Token revocation failed (500)')),
+            ),
+          ).called(1);
+        },
+      );
+
+      test(
+        'reports failure and clears credentials when the server is unreachable',
         () async {
           await runWithOverrides(
             () => auth.login(prompt: (_) {}),
@@ -930,16 +926,10 @@ void main() {
             () async => throw const SocketException('no internet'),
           );
 
-          await runWithOverrides(() => auth.logout());
+          expect(await runWithOverrides(() => auth.logout()), isFalse);
           expect(auth.email, isNull);
           expect(auth.isAuthenticated, isFalse);
           expect(File(auth.credentialsFilePath).existsSync(), isFalse);
-
-          verify(
-            () => logger.warn(
-              any(that: contains('Could not confirm that your session')),
-            ),
-          ).called(1);
           verify(
             () => logger.detail(any(that: contains('no internet'))),
           ).called(1);
@@ -956,7 +946,7 @@ void main() {
         writeCredentials();
         auth = buildAuth();
 
-        await runWithOverrides(() => auth.logout());
+        expect(await runWithOverrides(() => auth.logout()), isTrue);
 
         verifyNever(
           () => httpClient.post(

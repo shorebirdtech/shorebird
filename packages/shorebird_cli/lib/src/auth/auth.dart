@@ -241,18 +241,21 @@ class Auth {
   ///
   /// Revokes the stored refresh token with the auth service, which ends the
   /// server-side session, then clears local credentials. Local credentials
-  /// are cleared even if revocation fails.
-  Future<void> logout() async {
-    await _revokeSession();
+  /// are cleared even if revocation fails. Returns whether the auth service
+  /// confirmed the revocation (true when there was nothing to revoke).
+  Future<bool> logout() async {
+    final revoked = await _revokeSession();
     clearCredentials();
+    return revoked;
   }
 
   /// Revokes the current refresh token through the auth service's RFC 7009
-  /// revocation endpoint. A failure is reported as a warning and otherwise
-  /// swallowed, so that local logout always succeeds.
-  Future<void> _revokeSession() async {
+  /// revocation endpoint. Returns whether the server confirmed it, or true
+  /// when there is no refresh token to revoke. A failure is logged at detail
+  /// level and otherwise swallowed, so that local logout always succeeds.
+  Future<bool> _revokeSession() async {
     final refreshToken = _credentials?.refreshToken;
-    if (refreshToken == null) return;
+    if (refreshToken == null) return true;
 
     try {
       await shorebird_oauth.revokeShorebirdRefreshToken(
@@ -260,13 +263,10 @@ class Auth {
         _httpClient,
         authBaseUrl: _authServiceUri,
       );
+      return true;
     } on Exception catch (e) {
-      logger
-        ..warn(
-          'Could not confirm that your session was revoked on the server. '
-          'Your local credentials have been removed.',
-        )
-        ..detail('Failed to revoke session: $e');
+      logger.detail('Failed to revoke session: $e');
+      return false;
     }
   }
 
