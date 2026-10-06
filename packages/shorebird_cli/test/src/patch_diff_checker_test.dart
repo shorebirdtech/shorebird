@@ -352,6 +352,52 @@ void main() {
               ).called(1);
             });
           }
+
+          test(
+            'explains icon tree shaking when an icon font is added',
+            () async {
+              when(() => assetsFileSetDiff.addedPaths).thenReturn({
+                'assets/flutter_assets/fonts/MaterialIcons-Regular.otf',
+              });
+
+              await runWithOverrides(
+                () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                  localArchive: localArtifact,
+                  releaseArchive: releaseArtifact,
+                  archiveDiffer: archiveDiffer,
+                  allowAssetChanges: true,
+                  allowNativeChanges: false,
+                ),
+              );
+
+              verify(
+                () => logger.info(yellow.wrap(treeShakenIconFontsMessage)),
+              ).called(1);
+            },
+          );
+
+          test(
+            'explains icon tree shaking when an icon font is removed',
+            () async {
+              when(() => assetsFileSetDiff.removedPaths).thenReturn({
+                'assets/flutter_assets/fonts/MaterialIcons-Regular.otf',
+              });
+
+              await runWithOverrides(
+                () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                  localArchive: localArtifact,
+                  releaseArchive: releaseArtifact,
+                  archiveDiffer: archiveDiffer,
+                  allowAssetChanges: true,
+                  allowNativeChanges: false,
+                ),
+              );
+
+              verify(
+                () => logger.info(yellow.wrap(treeShakenIconFontsMessage)),
+              ).called(1);
+            },
+          );
         });
 
         test('prompts user if allowAssetChanges is false', () async {
