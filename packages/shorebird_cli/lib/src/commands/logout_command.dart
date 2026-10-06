@@ -30,7 +30,7 @@ class LogoutCommand extends ShorebirdCommand {
     logger.info('${lightGreen.wrap('You are now logged out.')}');
     if (!revoked) {
       logger.warn(
-        '''Shorebird could not confirm that this session was signed out on the server. To make sure it is, sign it out under Sessions at ${link(uri: ShorebirdWebConsole.uri('account'))}.''',
+        '''Unable to confirm with the auth server that the session was terminated. Credentials were deleted locally. To confirm, you can see and manage your sessions at ${link(uri: ShorebirdWebConsole.uri('account'))}.''',
       );
     }
 

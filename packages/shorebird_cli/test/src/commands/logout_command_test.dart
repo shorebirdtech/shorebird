@@ -75,7 +75,7 @@ void main() {
           () => logger.warn(
             any(
               that: allOf(
-                contains('could not confirm'),
+                contains('Unable to confirm with the auth server'),
                 contains('https://console.shorebird.dev/account'),
               ),
             ),
