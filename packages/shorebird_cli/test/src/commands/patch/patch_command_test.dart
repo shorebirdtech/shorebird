@@ -8,6 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -1134,6 +1135,86 @@ void main() {
           () => runWithOverrides(command.run),
           exitsWithCode(ExitCode.software),
         );
+      });
+    });
+
+    group('when the patcher has a minimum Flutter version', () {
+      setUp(() {
+        when(() => patcher.minimumFlutterVersion).thenReturn(Version(3, 24, 0));
+      });
+
+      group('when the release Flutter version is older', () {
+        setUp(() {
+          when(
+            () => shorebirdFlutter.getVersion(),
+          ).thenAnswer((_) async => Version(3, 22, 2));
+        });
+
+        test('logs an error and exits with code 70 before building', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => logger.err(
+              any(
+                that: stringContainsInOrder([
+                  'Android patches need Flutter 3.24.0 or newer.',
+                  'create a new release with Flutter 3.24.0 or newer',
+                  'shorebird release android --flutter-version=<version>',
+                ]),
+              ),
+            ),
+          ).called(1);
+          verifyNever(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          );
+        });
+      });
+
+      group('when the release Flutter version is the minimum', () {
+        setUp(() {
+          when(
+            () => shorebirdFlutter.getVersion(),
+          ).thenAnswer((_) async => Version(3, 24, 0));
+        });
+
+        test('builds the patch', () async {
+          await runWithOverrides(command.run);
+
+          verify(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when the release Flutter version cannot be determined', () {
+        setUp(() {
+          when(
+            () => shorebirdFlutter.getVersion(),
+          ).thenAnswer((_) async => null);
+        });
+
+        test('logs the skipped check and builds the patch', () async {
+          await runWithOverrides(command.run);
+
+          verify(
+            () => logger.detail(
+              'Could not determine the release Flutter version; skipping the '
+              'minimum Flutter version (3.24.0) check.',
+            ),
+          ).called(1);
+          verify(
+            () => patcher.buildPatchArtifact(
+              releaseVersion: any(named: 'releaseVersion'),
+            ),
+          ).called(1);
+        });
       });
     });
 

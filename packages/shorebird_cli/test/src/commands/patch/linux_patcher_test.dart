@@ -130,6 +130,12 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('is 3.27.4', () {
+        expect(patcher.minimumFlutterVersion, Version(3, 27, 4));
+      });
+    });
+
     group('primaryReleaseArtifactArch', () {
       test('is bundle', () {
         expect(

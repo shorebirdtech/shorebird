@@ -10,7 +10,6 @@ import 'package:shorebird_cli/src/commands/release/apple_releaser_mixin.dart';
 import 'package:shorebird_cli/src/commands/release/releaser.dart';
 import 'package:shorebird_cli/src/doctor.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
@@ -58,9 +57,6 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
 
     await assertObfuscationIsSupported();
   }
-
-  @override
-  Version? get minimumFlutterVersion => minimumSupportedIosFlutterVersion;
 
   @override
   Future<FileSystemEntity> buildReleaseArtifacts() async {

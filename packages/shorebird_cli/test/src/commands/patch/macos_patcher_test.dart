@@ -25,7 +25,6 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
@@ -195,6 +194,12 @@ void main() {
     group('releaseType', () {
       test('is ReleaseType.macos', () {
         expect(patcher.releaseType, ReleaseType.macos);
+      });
+    });
+
+    group('minimumFlutterVersion', () {
+      test('is 3.27.4', () {
+        expect(patcher.minimumFlutterVersion, Version(3, 27, 4));
       });
     });
 
@@ -502,39 +507,6 @@ This may indicate that the patch contains native changes, which cannot be applie
         when(
           () => shorebirdFlutter.getVersion(),
         ).thenAnswer((_) async => Version(3, 27, 4));
-      });
-
-      group('when specified flutter version is less than minimum', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-          when(
-            () => shorebirdFlutter.getVersion(),
-          ).thenAnswer((_) async => Version(3, 0, 0));
-        });
-
-        test('logs error and exits with code 70', () async {
-          await expectLater(
-            () => runWithOverrides(patcher.buildPatchArtifact),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(
-            () => logger.err('''
-macOS patches are not supported with Flutter versions older than $minimumSupportedMacosFlutterVersion.
-For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
-          ).called(1);
-        });
       });
 
       group('when build fails with exception', () {

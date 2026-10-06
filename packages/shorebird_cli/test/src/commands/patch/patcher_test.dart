@@ -57,6 +57,20 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('defaults to null', () {
+        expect(
+          _TestPatcher(
+            argParser: MockArgParser(),
+            argResults: MockArgResults(),
+            flavor: null,
+            target: null,
+          ).minimumFlutterVersion,
+          isNull,
+        );
+      });
+    });
+
     group('assertArgsAreValid', () {
       test('has no validations by default', () {
         expect(

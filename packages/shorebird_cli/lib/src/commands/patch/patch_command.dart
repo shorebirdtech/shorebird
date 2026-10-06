@@ -25,6 +25,7 @@ import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_chooser.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_documentation.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -510,6 +511,8 @@ Building with Flutter $flutterVersionString to determine the release version...
 
     return await runScoped(
       () async {
+        await _assertReleaseFlutterVersionIsSupported(patcher);
+
         await cache.updateAll();
 
         // Set up build tracing before any flutter build / aot_tools /
@@ -625,6 +628,33 @@ Building patch with Flutter $flutterVersionString
       },
       values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
     );
+  }
+
+  /// Exits if the release's Flutter version is older than
+  /// [Patcher.minimumFlutterVersion]. Must run with the release's Flutter
+  /// revision in scope.
+  Future<void> _assertReleaseFlutterVersionIsSupported(Patcher patcher) async {
+    final minimumFlutterVersion = patcher.minimumFlutterVersion;
+    if (minimumFlutterVersion == null) return;
+
+    final flutterVersion = await shorebirdFlutter.getVersion();
+    if (flutterVersion == null) {
+      logger.detail(
+        'Could not determine the release Flutter version; skipping the '
+        'minimum Flutter version ($minimumFlutterVersion) check.',
+      );
+      return;
+    }
+    if (flutterVersion >= minimumFlutterVersion) return;
+
+    final flutterVersionAndRevision = await shorebirdFlutter
+        .getVersionAndRevision();
+    final releaseType = patcher.releaseType;
+    logger.err('''
+This release was built with Flutter $flutterVersionAndRevision, but ${releaseType.releasePlatform.displayName} patches need Flutter $minimumFlutterVersion or newer.
+A release cannot change Flutter versions, so create a new release with Flutter ${minimumReleaseFlutterVersion(releaseType)} or newer (${lightCyan.wrap('shorebird release ${releaseType.cliName} --flutter-version=<version>')}) and patch that one.
+For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
+    throw ProcessExit(ExitCode.software.code);
   }
 
   /// Prompts the user for the specific release to patch.

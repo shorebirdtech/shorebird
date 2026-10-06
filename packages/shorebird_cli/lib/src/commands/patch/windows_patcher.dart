@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/windows_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -42,6 +43,9 @@ class WindowsPatcher extends Patcher {
 
   @override
   ReleaseType get releaseType => ReleaseType.windows;
+
+  @override
+  Version? get minimumFlutterVersion => minimumSupportedWindowsFlutterVersion;
 
   @override
   Future<void> assertPreconditions() async {

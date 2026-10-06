@@ -159,6 +159,12 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('is null', () {
+        expect(patcher.minimumFlutterVersion, isNull);
+      });
+    });
+
     group('assertPreconditions', () {
       setUp(() {
         when(

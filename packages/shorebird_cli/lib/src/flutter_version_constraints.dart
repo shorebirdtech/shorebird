@@ -1,28 +1,51 @@
 import 'package:pub_semver/pub_semver.dart';
+import 'package:shorebird_cli/src/release_type.dart';
 
-/// The minimum allowed Flutter version for creating iOS releases.
+/// The minimum allowed Flutter version for Android releases.
 ///
-/// This constraint exists because iOS code push support requires specific
-/// Flutter engine changes that were first available in this version.
-final minimumSupportedIosFlutterVersion = Version(3, 22, 2);
+/// Patches are not checked, so existing releases on older versions can still
+/// be patched.
+final minimumSupportedAndroidFlutterVersion = Version(3, 24, 0);
 
-/// The minimum allowed Flutter version for creating macOS releases.
+/// The minimum allowed Flutter version for iOS releases.
+final minimumSupportedIosFlutterVersion = Version(3, 24, 0);
+
+/// The minimum Flutter version an iOS release must have been built with to be
+/// patched.
+///
+/// Patched iOS apps on Flutter 3.19.5 through 3.22.1 do not always run the
+/// `catch` block after an exception is thrown.
+final minimumPatchableIosFlutterVersion = Version(3, 22, 2);
+
+/// The minimum allowed Flutter version for macOS releases and patches.
 ///
 /// macOS code push support was introduced later than iOS and requires
 /// Flutter engine changes that were first available in this version.
 final minimumSupportedMacosFlutterVersion = Version(3, 27, 4);
 
-/// The minimum allowed Flutter version for creating Linux releases.
+/// The minimum allowed Flutter version for Linux releases and patches.
 ///
 /// Linux code push support requires Flutter engine changes that were first
 /// available in this version.
 final minimumSupportedLinuxFlutterVersion = Version(3, 27, 4);
 
-/// The minimum allowed Flutter version for creating Windows releases.
+/// The minimum allowed Flutter version for Windows releases and patches.
 ///
 /// Windows code push support requires Flutter engine changes that were first
 /// available in this version.
 final minimumSupportedWindowsFlutterVersion = Version(3, 32, 6);
+
+/// The minimum allowed Flutter version for a new release of [releaseType].
+Version minimumReleaseFlutterVersion(ReleaseType releaseType) =>
+    switch (releaseType) {
+      ReleaseType.android ||
+      ReleaseType.aar => minimumSupportedAndroidFlutterVersion,
+      ReleaseType.ios ||
+      ReleaseType.iosFramework => minimumSupportedIosFlutterVersion,
+      ReleaseType.linux => minimumSupportedLinuxFlutterVersion,
+      ReleaseType.macos => minimumSupportedMacosFlutterVersion,
+      ReleaseType.windows => minimumSupportedWindowsFlutterVersion,
+    };
 
 /// Minimum Flutter version for obfuscation support across all platforms.
 ///

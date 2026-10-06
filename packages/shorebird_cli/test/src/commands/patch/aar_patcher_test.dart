@@ -150,6 +150,12 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('is null', () {
+        expect(patcher.minimumFlutterVersion, isNull);
+      });
+    });
+
     group('primaryReleaseArtifactArch', () {
       test('is aar', () {
         expect(patcher.primaryReleaseArtifactArch, equals('aar'));

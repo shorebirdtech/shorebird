@@ -54,9 +54,6 @@ To change the version of this release, change your app's version in your pubspec
   }
 
   @override
-  Version? get minimumFlutterVersion => minimumSupportedLinuxFlutterVersion;
-
-  @override
   Future<void> assertPreconditions() async {
     try {
       await shorebirdValidator.validatePreconditions(

@@ -139,6 +139,12 @@ void main() {
       });
     });
 
+    group('minimumFlutterVersion', () {
+      test('is 3.32.6', () {
+        expect(patcher.minimumFlutterVersion, Version(3, 32, 6));
+      });
+    });
+
     group('primaryReleaseArtifactArch', () {
       test('is win_archive', () {
         expect(
