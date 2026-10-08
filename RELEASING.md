@@ -1,3 +1,5 @@
+<!-- cspell:words oneline -->
+
 # Releasing the Shorebird CLI
 
 Users get a new CLI version through `shorebird upgrade`, which resets their
