@@ -35,11 +35,11 @@ final minimumSupportedWindowsFlutterVersion = Version(3, 32, 6);
 /// independently on any Flutter version.
 final minimumObfuscationFlutterVersion = Version(3, 41, 2);
 
-/// Whether patches for [platform] are linked against the release snapshot,
-/// so an obfuscated release on [platform] requires
-/// [minimumObfuscationFlutterVersion].
+/// Whether patches for [platform] are linked against the release snapshot
+/// (iOS, including iOS frameworks), so an obfuscated release on [platform]
+/// requires [minimumObfuscationFlutterVersion].
 bool patchesLinkAgainstRelease(ReleasePlatform platform) =>
-    platform == ReleasePlatform.ios || platform == ReleasePlatform.macos;
+    platform == ReleasePlatform.ios;
 
 /// A Flutter support rule that combines a minimum version floor with an
 /// allowlist of specific Shorebird-fork engine revisions below the floor
