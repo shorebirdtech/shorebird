@@ -7,7 +7,6 @@ import 'package:pub_semver/pub_semver.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/release_type.dart';
@@ -255,24 +254,6 @@ abstract class Releaser {
         supplementDirectoryPath: supplementDir.path,
         arch: supplementArtifactArch,
       );
-    }
-  }
-
-  /// Asserts that the current Flutter version supports obfuscation, if
-  /// obfuscation is enabled.
-  Future<void> assertObfuscationIsSupported() async {
-    if (!useObfuscation) return;
-    final flutterVersion = await shorebirdFlutter.resolveFlutterVersion(
-      shorebirdEnv.flutterRevision,
-    );
-    if (flutterVersion != null &&
-        flutterVersion < minimumObfuscationFlutterVersion) {
-      logger.err(
-        'Obfuscation on ${releaseType.releasePlatform.displayName} '
-        'requires Flutter $minimumObfuscationFlutterVersion or later '
-        '(current: $flutterVersion).',
-      );
-      throw ProcessExit(ExitCode.unavailable.code);
     }
   }
 

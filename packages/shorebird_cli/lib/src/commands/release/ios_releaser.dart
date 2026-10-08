@@ -52,8 +52,6 @@ class IosReleaser extends Releaser with AppleReleaserMixin {
   Future<void> assertArgsAreValid() async {
     assertReleaseVersionFlagNotProvided();
 
-    await assertObfuscationIsSupported();
-
     final exportOptionsPlistFile = argResults.file(
       CommonArguments.exportOptionsPlistArg.name,
     );

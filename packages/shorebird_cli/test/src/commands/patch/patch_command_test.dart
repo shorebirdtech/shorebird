@@ -167,6 +167,32 @@ void main() {
       registerFallbackValue(Uri.parse('https://example.com'));
     });
 
+    void stubReleaseFlutterVersion(String version) {
+      final versionedRelease = Release(
+        id: release.id,
+        appId: appId,
+        version: releaseVersion,
+        flutterRevision: flutterRevision,
+        flutterVersion: version,
+        displayName: release.displayName,
+        platformStatuses: const {
+          ReleasePlatform.android: ReleaseStatus.active,
+          ReleasePlatform.ios: ReleaseStatus.active,
+        },
+        createdAt: release.createdAt,
+        updatedAt: release.updatedAt,
+      );
+      when(
+        () => codePushClientWrapper.getRelease(
+          appId: any(named: 'appId'),
+          releaseVersion: any(named: 'releaseVersion'),
+        ),
+      ).thenAnswer((_) async => versionedRelease);
+      when(
+        () => codePushClientWrapper.getReleases(appId: any(named: 'appId')),
+      ).thenAnswer((_) async => [versionedRelease]);
+    }
+
     setUp(() {
       aotTools = MockAotTools();
       argResults = MockArgResults();
@@ -662,6 +688,110 @@ void main() {
                 );
               },
             );
+
+            group('when the release Flutter can load obfuscation maps', () {
+              setUp(() {
+                when(
+                  () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                    platform: any(named: 'platform'),
+                    flutterRevision: any(named: 'flutterRevision'),
+                  ),
+                ).thenAnswer((_) async => false);
+                stubReleaseFlutterVersion('3.41.2');
+              });
+
+              test('loads the release obfuscation map', () async {
+                await runWithOverrides(() => command.createPatch(patcher));
+
+                final captured =
+                    verify(
+                          () => patcher.extraBuildArgs = captureAny(),
+                        ).captured.last
+                        as List<String>;
+                expect(captured, contains('--obfuscate'));
+                expect(
+                  captured,
+                  contains(
+                    startsWith(
+                      '--extra-gen-snapshot-options=--load-obfuscation-map=',
+                    ),
+                  ),
+                );
+                verify(
+                  () => patcher.obfuscationMapPath = any(that: isNotNull),
+                ).called(1);
+              });
+            });
+
+            group('when the release Flutter cannot load obfuscation maps', () {
+              setUp(() {
+                when(
+                  () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+                    platform: any(named: 'platform'),
+                    flutterRevision: any(named: 'flutterRevision'),
+                  ),
+                ).thenAnswer((_) async => true);
+                stubReleaseFlutterVersion('3.38.9');
+              });
+
+              test('obfuscates an Android patch without the map', () async {
+                await runWithOverrides(() => command.createPatch(patcher));
+
+                final captured =
+                    verify(
+                          () => patcher.extraBuildArgs = captureAny(),
+                        ).captured.last
+                        as List<String>;
+                expect(captured, contains('--obfuscate'));
+                expect(
+                  captured,
+                  isNot(
+                    contains(
+                      startsWith(
+                        '--extra-gen-snapshot-options=--load-obfuscation-map',
+                      ),
+                    ),
+                  ),
+                );
+                verify(() => patcher.obfuscationMapPath = null).called(1);
+              });
+
+              test(
+                'exits for iOS, whose patches link against the release',
+                () async {
+                  when(() => patcher.releaseType).thenReturn(ReleaseType.ios);
+                  when(
+                    () => codePushClientWrapper.getReleaseArtifact(
+                      appId: any(named: 'appId'),
+                      releaseId: any(named: 'releaseId'),
+                      arch: any(named: 'arch'),
+                      platform: ReleasePlatform.ios,
+                    ),
+                  ).thenAnswer((_) async => aabArtifact);
+                  when(
+                    () => codePushClientWrapper.maybeGetReleaseArtifact(
+                      appId: any(named: 'appId'),
+                      releaseId: any(named: 'releaseId'),
+                      arch: 'supplement',
+                      platform: ReleasePlatform.ios,
+                    ),
+                  ).thenAnswer((_) async => supplementArtifact);
+
+                  await expectLater(
+                    () => runWithOverrides(() => command.createPatch(patcher)),
+                    exitsWithCode(ExitCode.unavailable),
+                  );
+                  verify(
+                    () => logger.err(
+                      'Release $releaseVersion was built with obfuscation on '
+                      'Flutter 3.38.9, but patching an obfuscated iOS release '
+                      'requires Flutter $minimumObfuscationFlutterVersion or '
+                      'later.',
+                    ),
+                  ).called(1);
+                },
+              );
+            });
           });
         });
 

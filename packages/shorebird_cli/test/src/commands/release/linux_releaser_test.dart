@@ -176,21 +176,6 @@ To change the version of this release, change your app's version in your pubspec
             );
           });
         });
-
-        group('when Flutter version does not support obfuscation', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 27, 4));
-          });
-
-          test('logs error and exits', () async {
-            await expectLater(
-              () => runWithOverrides(releaser.assertArgsAreValid),
-              exitsWithCode(ExitCode.unavailable),
-            );
-          });
-        });
       });
 
       group('when --obfuscate is not passed', () {

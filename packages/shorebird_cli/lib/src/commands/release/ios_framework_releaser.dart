@@ -55,8 +55,6 @@ class IosFrameworkReleaser extends Releaser with AppleReleaserMixin {
       logger.err('Missing required argument: --release-version');
       throw ProcessExit(ExitCode.usage.code);
     }
-
-    await assertObfuscationIsSupported();
   }
 
   @override

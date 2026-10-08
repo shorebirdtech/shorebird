@@ -1,4 +1,5 @@
 import 'package:pub_semver/pub_semver.dart';
+import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// The minimum allowed Flutter version for creating iOS releases.
 ///
@@ -24,11 +25,21 @@ final minimumSupportedLinuxFlutterVersion = Version(3, 27, 4);
 /// available in this version.
 final minimumSupportedWindowsFlutterVersion = Version(3, 32, 6);
 
-/// Minimum Flutter version for obfuscation support across all platforms.
+/// Minimum Flutter version whose gen_snapshot supports
+/// `--load-obfuscation-map`, which builds an obfuscated patch with the same
+/// renamed identifiers as its release.
 ///
-/// Obfuscation requires gen_snapshot changes (--save-obfuscation-map and
-/// --strip flags) that were first available in this Flutter version.
+/// Only platforms where [patchesLinkAgainstRelease] need this: their patches
+/// are linked against the release snapshot, so the names must match. Other
+/// platforms' patches are complete snapshots and can be obfuscated
+/// independently on any Flutter version.
 final minimumObfuscationFlutterVersion = Version(3, 41, 2);
+
+/// Whether patches for [platform] are linked against the release snapshot,
+/// so an obfuscated release on [platform] requires
+/// [minimumObfuscationFlutterVersion].
+bool patchesLinkAgainstRelease(ReleasePlatform platform) =>
+    platform == ReleasePlatform.ios || platform == ReleasePlatform.macos;
 
 /// A Flutter support rule that combines a minimum version floor with an
 /// allowlist of specific Shorebird-fork engine revisions below the floor
