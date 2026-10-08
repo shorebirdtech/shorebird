@@ -57,6 +57,53 @@ void main() {
       });
     });
 
+    group('obfuscationGenSnapshotArgs', () {
+      late ArgResults argResults;
+      late _TestPatcher patcher;
+
+      setUp(() {
+        argResults = MockArgResults();
+        when(
+          () => argResults.wasParsed(CommonArguments.splitDebugInfoArg.name),
+        ).thenReturn(true);
+        when(
+          () => argResults[CommonArguments.splitDebugInfoArg.name],
+        ).thenReturn('symbols');
+        patcher = _TestPatcher(
+          argParser: MockArgParser(),
+          argResults: argResults,
+          flavor: null,
+          target: null,
+        );
+      });
+
+      test('is empty when not obfuscating', () {
+        expect(patcher.obfuscationGenSnapshotArgs, isEmpty);
+      });
+
+      test('loads the obfuscation map when one is set', () {
+        patcher
+          ..obfuscate = true
+          ..obfuscationMapPath = 'map.json';
+        expect(
+          patcher.obfuscationGenSnapshotArgs,
+          equals([
+            '--obfuscate',
+            '--load-obfuscation-map=map.json',
+            '--strip',
+          ]),
+        );
+      });
+
+      test('obfuscates without a map when none is set', () {
+        patcher.obfuscate = true;
+        expect(
+          patcher.obfuscationGenSnapshotArgs,
+          equals(['--obfuscate', '--strip']),
+        );
+      });
+    });
+
     group('assertArgsAreValid', () {
       test('has no validations by default', () {
         expect(

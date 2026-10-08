@@ -49,7 +49,6 @@ class MacosReleaser extends Releaser with AppleReleaserMixin {
   @override
   Future<void> assertArgsAreValid() async {
     assertReleaseVersionFlagNotProvided();
-    await assertObfuscationIsSupported();
   }
 
   @override

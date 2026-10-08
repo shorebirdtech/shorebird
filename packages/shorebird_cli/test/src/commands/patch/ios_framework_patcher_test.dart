@@ -467,7 +467,9 @@ void main() {
           test(
             'passes obfuscationGenSnapshotArgs to buildElfAotSnapshot',
             () async {
-              patcher.obfuscationMapPath = obfuscationMapFile.path;
+              patcher
+                ..obfuscate = true
+                ..obfuscationMapPath = obfuscationMapFile.path;
               await runWithOverrides(patcher.buildPatchArtifact);
 
               final captured = verify(
@@ -839,7 +841,9 @@ void main() {
               test(
                 'passes obfuscationGenSnapshotArgs to runLinker',
                 () async {
-                  patcher.obfuscationMapPath = obfuscationMapFile.path;
+                  patcher
+                    ..obfuscate = true
+                    ..obfuscationMapPath = obfuscationMapFile.path;
                   await runWithOverrides(
                     () => patcher.createPatchArtifacts(
                       appId: appId,

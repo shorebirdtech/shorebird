@@ -52,8 +52,6 @@ To change the version of this release, change your app's version in your pubspec
       );
       throw ProcessExit(ExitCode.usage.code);
     }
-
-    await assertObfuscationIsSupported();
   }
 
   @override

@@ -900,6 +900,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             final loadMapOption =
                 '--load-obfuscation-map=${obfuscationMapFile.path}';
             patcher
+              ..obfuscate = true
               ..obfuscationMapPath = obfuscationMapFile.path
               ..extraBuildArgs = [
                 '--obfuscate',

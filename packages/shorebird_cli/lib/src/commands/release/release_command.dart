@@ -519,8 +519,12 @@ $error''');
       );
     }
 
+    // The Flutter version this release will be built with: the CLI's pinned
+    // revision unless --flutter-version says otherwise.
     final version = await shorebirdFlutter.resolveFlutterVersion(
-      await resolveFlutterVersionArg(),
+      flutterVersionArg == 'latest'
+          ? shorebirdEnv.flutterRevision
+          : await resolveFlutterVersionArg(),
     );
     final minimumFlutterVersion = releaser.minimumFlutterVersion;
     if (minimumFlutterVersion != null &&
@@ -530,6 +534,19 @@ $error''');
 At least Flutter $minimumFlutterVersion is required to release with `${releaser.releaseType.name}`.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       throw ProcessExit(ExitCode.usage.code);
+    }
+
+    if (releaser.useObfuscation &&
+        patchesLinkAgainstRelease(releaser.releaseType.releasePlatform) &&
+        version != null &&
+        version < minimumObfuscationFlutterVersion) {
+      logger.err(
+        'Obfuscation on '
+        '${releaser.releaseType.releasePlatform.displayName} '
+        'requires Flutter $minimumObfuscationFlutterVersion or later '
+        '(current: $version).',
+      );
+      throw ProcessExit(ExitCode.unavailable.code);
     }
 
     // Ask the releaser to assert its own args are valid.

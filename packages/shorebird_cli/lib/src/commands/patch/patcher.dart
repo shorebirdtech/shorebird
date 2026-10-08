@@ -57,9 +57,13 @@ More info: ${troubleshootingUrl.toLink()}.
   /// The target script to run, if any.
   final String? target;
 
-  /// The path to the obfuscation map downloaded from the release, if any.
-  /// Set by the patch command after downloading the map. Used by Apple
-  /// patchers to pass obfuscation flags to gen_snapshot and the linker.
+  /// Whether the release was built with obfuscation, so the patch must be
+  /// too. Set by the patch command.
+  bool obfuscate = false;
+
+  /// The path to the release's obfuscation map, if the patch should reuse
+  /// the release's obfuscated names. Set by the patch command. Only set when
+  /// [obfuscate] is true and the release's Flutter supports loading the map.
   String? obfuscationMapPath;
 
   /// Extra build arguments injected by the patch command. These are included
@@ -72,9 +76,10 @@ More info: ${troubleshootingUrl.toLink()}.
   /// `ArtifactBuilder.buildElfAotSnapshot`
   /// and linker calls.
   List<String> get obfuscationGenSnapshotArgs => [
-    if (obfuscationMapPath != null) ...[
+    if (obfuscate) ...[
       '--obfuscate',
-      '--load-obfuscation-map=$obfuscationMapPath',
+      if (obfuscationMapPath != null)
+        '--load-obfuscation-map=$obfuscationMapPath',
       // --dwarf-stack-traces must match the release build so the patch
       // produces the same stack trace format for correct symbolication.
       // --split-debug-info already implies --dwarf-stack-traces, so we only

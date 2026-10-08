@@ -15,6 +15,7 @@ import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/extensions/string.dart';
+import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -454,7 +455,32 @@ Building with Flutter $flutterVersionString to determine the release version...
       );
     }
 
-    patcher.obfuscationMapPath = obfuscationMapFile?.path;
+    // Building a patch with the release's obfuscated names needs
+    // gen_snapshot's --load-obfuscation-map, which older Flutter versions
+    // lack. Only patches that are linked against the release need matching
+    // names; elsewhere the patch is obfuscated independently instead.
+    var loadObfuscationMap = obfuscationMapFile != null;
+    final releaseFlutterVersion = tryParseVersion(release.flutterVersion ?? '');
+    if (loadObfuscationMap &&
+        releaseFlutterVersion != null &&
+        releaseFlutterVersion < minimumObfuscationFlutterVersion) {
+      if (patchesLinkAgainstRelease(releasePlatform)) {
+        logger.err(
+          'Release ${release.version} was built with obfuscation on Flutter '
+          '$releaseFlutterVersion, but patching an obfuscated '
+          '${releasePlatform.displayName} release requires Flutter '
+          '$minimumObfuscationFlutterVersion or later.',
+        );
+        throw ProcessExit(ExitCode.unavailable.code);
+      }
+      loadObfuscationMap = false;
+    }
+
+    patcher
+      ..obfuscate = obfuscationMapFile != null
+      ..obfuscationMapPath = loadObfuscationMap
+          ? obfuscationMapFile!.path
+          : null;
 
     // Build extra args to inject into the Flutter build command. These use
     // --extra-gen-snapshot-options= because they're passed through Flutter's
@@ -464,11 +490,12 @@ Building with Flutter $flutterVersionString to determine the release version...
     // calls made by Apple patchers outside the Flutter build.
     final extraBuildArgs = <String>[];
     if (obfuscationMapFile != null) {
-      final loadMapOption = '--load-obfuscation-map=${obfuscationMapFile.path}';
-      extraBuildArgs.addAll([
-        '--obfuscate',
-        '--extra-gen-snapshot-options=$loadMapOption',
-      ]);
+      extraBuildArgs.add('--obfuscate');
+      if (loadObfuscationMap) {
+        final loadMapOption =
+            '--load-obfuscation-map=${obfuscationMapFile.path}';
+        extraBuildArgs.add('--extra-gen-snapshot-options=$loadMapOption');
+      }
 
       // Gate --strip on the release's Flutter revision (not the user's
       // currently-installed pin) so the patch's gen_snapshot behavior
