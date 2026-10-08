@@ -216,7 +216,7 @@ void main() {
             track: any(named: 'track'),
             patchArtifactBundles: any(named: 'patchArtifactBundles'),
           ),
-        ).thenAnswer((_) async {});
+        ).thenAnswer((_) async => const Patch(id: 1, number: 1));
         await runScoped(
           () async {
             await patcher.uploadPatchArtifacts(

@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -18,6 +20,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
+import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
@@ -34,7 +37,7 @@ import '../../helpers.dart';
 import '../../matchers.dart';
 import '../../mocks.dart';
 
-class _FakeRelease extends Fake with EquatableMixin implements Release {
+class _FakeRelease extends Fake with Equatable implements Release {
   _FakeRelease({required this.updatedAt});
 
   @override
@@ -93,7 +96,6 @@ void main() {
       hash: '#',
       size: 42,
       url: 'https://example.com',
-      podfileLockHash: null,
       canSideload: true,
     );
     const aabArtifact = ReleaseArtifact(
@@ -104,7 +106,6 @@ void main() {
       hash: '#',
       size: 42,
       url: 'https://example.com/release.aab',
-      podfileLockHash: null,
       canSideload: true,
     );
     const supplementArtifact = ReleaseArtifact(
@@ -115,7 +116,6 @@ void main() {
       hash: '#',
       size: 422,
       url: 'https://example.com/supplement.zip',
-      podfileLockHash: null,
       canSideload: false,
     );
 
@@ -249,7 +249,7 @@ void main() {
           artifacts: any(named: 'artifacts'),
           metadata: any(named: 'metadata'),
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => const Patch(id: 3, number: 2));
 
       when(
         () => codePushClientWrapper.getReleaseArtifacts(
@@ -354,7 +354,8 @@ void main() {
       ).thenAnswer((_) async => {});
 
       command = PatchCommand(resolvePatcher: (_) => patcher)
-        ..testArgResults = argResults;
+        ..testArgResults = argResults
+        ..testRunner = usageRunner();
     });
 
     test('has non-empty description', () {
@@ -485,7 +486,7 @@ void main() {
         group(
           'when given an existing private key and nonexistent public key',
           () {
-            test('logs error and exits with usage code', () async {
+            test('throws a usage exception naming the missing key', () async {
               when(
                 () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
               ).thenReturn(true);
@@ -498,13 +499,15 @@ void main() {
 
               await expectLater(
                 runWithOverrides(() => command.createPatch(patcher)),
-                exitsWithCode(ExitCode.usage),
-              );
-              verify(
-                () => logger.err(
-                  'Both public and private keys must be provided.',
+                throwsA(
+                  isA<UsageException>().having(
+                    (e) => e.message,
+                    'message',
+                    '--public-key-path and --private-key-path must be passed '
+                        'together (missing --public-key-path).',
+                  ),
                 ),
-              ).called(1);
+              );
             });
           },
         );
@@ -512,7 +515,7 @@ void main() {
         group(
           'when given an existing public key and nonexistent private key',
           () {
-            test('fails and logs the err', () async {
+            test('throws a usage exception naming the missing key', () async {
               when(
                 () => argResults.wasParsed(CommonArguments.privateKeyArg.name),
               ).thenReturn(false);
@@ -525,13 +528,15 @@ void main() {
 
               await expectLater(
                 runWithOverrides(() => command.createPatch(patcher)),
-                exitsWithCode(ExitCode.usage),
-              );
-              verify(
-                () => logger.err(
-                  'Both public and private keys must be provided.',
+                throwsA(
+                  isA<UsageException>().having(
+                    (e) => e.message,
+                    'message',
+                    '--public-key-path and --private-key-path must be passed '
+                        'together (missing --private-key-path).',
+                  ),
                 ),
-              ).called(1);
+              );
             });
           },
         );
@@ -668,18 +673,21 @@ void main() {
               when(() => argResults['obfuscate']).thenReturn(true);
             });
 
-            test('logs error and exits', () async {
+            test('throws a usage exception naming both ways out', () async {
               await expectLater(
                 () => runWithOverrides(() => command.createPatch(patcher)),
-                exitsWithCode(ExitCode.software),
-              );
-              verify(
-                () => logger.err(
-                  '--obfuscate was passed, but the release was not built with '
-                  'obfuscation. A patch cannot change the obfuscation mode of '
-                  'a release.',
+                throwsA(
+                  isA<UsageException>().having(
+                    (e) => e.message,
+                    'message',
+                    '--obfuscate was passed, but release $releaseVersion was '
+                        'not built with obfuscation. A patch cannot change the '
+                        'obfuscation mode of a release: re-run without '
+                        '--obfuscate to patch this release, or create a new '
+                        'release with --obfuscate.',
+                  ),
                 ),
-              ).called(1);
+              );
             });
           },
         );
@@ -920,7 +928,15 @@ void main() {
 
               verify(
                 () => logger.err(
-                  '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold (50%). Exiting.''',
+                  '''The link percentage of this patch ($linkPercentage%) is below the minimum threshold (50%).''',
+                ),
+              ).called(1);
+              final debugInfoPath = runWithOverrides(
+                () => Patcher.debugInfoFile.path,
+              );
+              verify(
+                () => logger.info(
+                  '''Not publishing. Lower --min-link-percentage to accept this patch, or see $debugInfoPath for what could not be linked.''',
                 ),
               ).called(1);
             });
@@ -944,14 +960,15 @@ void main() {
                     patchArtifactBundles: patchArtifactBundles,
                   ),
                 ),
-                exitsWithCode(ExitCode.usage),
-              );
-              verify(
-                () => logger.err(
-                  '--min-link-percentage must be an integer between 0 and 100 '
-                  '(got $value).',
+                throwsA(
+                  isA<UsageException>().having(
+                    (e) => e.message,
+                    'message',
+                    '--min-link-percentage must be an integer between 0 and '
+                        '100 (got $value).',
+                  ),
                 ),
-              ).called(1);
+              );
             }
 
             test('above 100 prints error and exits', () async {
@@ -1254,7 +1271,7 @@ void main() {
           );
         });
 
-        test('warns and exits', () async {
+        test('names the release command and exits', () async {
           await expectLater(
             () => runWithOverrides(command.run),
             exitsWithCode(ExitCode.usage),
@@ -1264,8 +1281,13 @@ void main() {
             () => codePushClientWrapper.getReleases(appId: appId),
           ).called(1);
           verify(
-            () => logger.warn(
-              '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
+            () => logger.err(
+              '''No ${releasePlatform.displayName} releases found for app $appId.''',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(
+              '''A patch needs a release to apply to. Create one with ${lightCyan.wrap('shorebird release android')}, or pass --app-id / --flavor if this is the wrong app.''',
             ),
           ).called(1);
         });
@@ -1403,15 +1425,20 @@ void main() {
           ).thenAnswer((_) async => []);
         });
 
-        test('warns and exits', () async {
+        test('names the release command and exits', () async {
           await expectLater(
             () => runWithOverrides(command.run),
             exitsWithCode(ExitCode.usage),
           );
 
           verify(
-            () => logger.warn(
-              '''No ${releasePlatform.displayName} releases found for app $appId. You must first create a release before you can create a patch.''',
+            () => logger.err(
+              '''No ${releasePlatform.displayName} releases found for app $appId.''',
+            ),
+          ).called(1);
+          verify(
+            () => logger.info(
+              '''A patch needs a release to apply to. Create one with ${lightCyan.wrap('shorebird release android')}, or pass --app-id / --flavor if this is the wrong app.''',
             ),
           ).called(1);
         });
@@ -1551,6 +1578,79 @@ void main() {
               ]);
             },
           );
+        });
+      });
+    });
+
+    group('--json', () {
+      Future<T> runJson<T>(Future<T> Function() body) => runScoped(
+        body,
+        values: {isJsonModeRef.overrideWith(() => true)},
+      );
+
+      setUp(() {
+        when(() => patcher.linkPercentage).thenReturn(97.5);
+      });
+
+      test('emits what was published', () async {
+        final captured = <String>[];
+        final exitCode = await captureStdout(
+          () => runJson(() => runWithOverrides(command.run)),
+          captured: captured,
+        );
+
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(captured, hasLength(1));
+        final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+        expect(envelope['status'], equals('success'));
+        expect(
+          envelope['data'],
+          equals({
+            'app_id': appId,
+            'track': 'stable',
+            'patches': [
+              {
+                'platform': 'android',
+                'release_id': release.id,
+                'release_version': release.version,
+                'patch_id': 3,
+                'patch_number': 2,
+                'link_percentage': 97.5,
+              },
+            ],
+          }),
+        );
+      });
+
+      group('with --dry-run', () {
+        setUp(() {
+          when(() => argResults['dry-run']).thenReturn(true);
+        });
+
+        test('emits what would have been patched', () async {
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runJson(() => runWithOverrides(command.run)),
+              captured: captured,
+            ),
+            exitsWithCode(ExitCode.success),
+          );
+
+          expect(captured, hasLength(1));
+          final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
+          expect(
+            envelope['data'],
+            equals({
+              'dry_run': true,
+              'app_id': appId,
+              'platform': 'android',
+              'release_id': release.id,
+              'release_version': release.version,
+              'link_percentage': 97.5,
+            }),
+          );
+          verifyNever(() => logger.info('No issues detected.'));
         });
       });
     });
@@ -1750,7 +1850,7 @@ Please re-run the release command for this version or create a new release.'''),
             exitsWithCode(ExitCode.software),
           );
 
-          verify(() => logger.info('Exiting.')).called(1);
+          verify(() => logger.info('Not publishing.')).called(1);
         });
       });
     });

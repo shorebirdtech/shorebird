@@ -21,7 +21,7 @@ import 'package:shorebird_build_trace/src/build_trace_event.dart';
 /// * [recordNetworkSpan] → HTTP-request span with the standard args
 ///   shape (method/host/status/error).
 ///
-/// See also [PhaseTracker] for the `transitionTo(nextPhase)` pattern
+/// See also `PhaseTracker` for the `transitionTo(nextPhase)` pattern
 /// used when parsing a subprocess's verbose output.
 class BuildTracer {
   /// Private backing field for [current]. Producers never touch this
@@ -361,7 +361,7 @@ class BuildTracer {
   }
 
   /// Records an HTTP request span. Name is "METHOD host" so requests to
-  /// the same host collapse visually in Perfetto. [args] augments the
+  /// the same host collapse visually in Perfetto. The span's args augment the
   /// standard `{method, host}` with optional `status`, `contentLength`,
   /// `error`.
   void recordNetworkSpan({
@@ -385,9 +385,9 @@ class BuildTracer {
       args: <String, Object?>{
         'method': method,
         'host': host,
-        if (status != null) 'status': status,
-        if (contentLength != null) 'contentLength': contentLength,
-        if (error != null) 'error': error,
+        'status': ?status,
+        'contentLength': ?contentLength,
+        'error': ?error,
       },
     );
   }
@@ -419,10 +419,7 @@ class BuildTracer {
   /// [file]. Callers that have already parsed [file] (e.g. to decide
   /// whether to merge at all) can pass the parsed events here to avoid
   /// a redundant read-and-parse.
-  void writeToFile(
-    File file, {
-    List<Map<String, Object?>>? existingEvents,
-  }) {
+  void writeToFile(File file, {List<Map<String, Object?>>? existingEvents}) {
     final merged = <Map<String, Object?>>[];
     if (existingEvents != null) {
       merged.addAll(existingEvents);

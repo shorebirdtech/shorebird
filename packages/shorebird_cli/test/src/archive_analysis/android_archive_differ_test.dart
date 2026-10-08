@@ -1,7 +1,14 @@
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive_analysis/android_archive_differ.dart';
+import 'package:shorebird_cli/src/archive_analysis/bundle_dependencies.dart';
 import 'package:shorebird_cli/src/archive_analysis/file_set_diff.dart';
 import 'package:test/test.dart';
+
+import 'bundle_dependencies_helpers.dart';
 
 void main() {
   group(AndroidArchiveDiffer, () {
@@ -137,6 +144,126 @@ void main() {
           expect(differ.assetsFileSetDiff(fileSetDiff), isEmpty);
           expect(differ.dartFileSetDiff(fileSetDiff), isEmpty);
           expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
+          expect(
+            fileSetDiff.dependencyVersionChanges,
+            isEmpty,
+          );
+        });
+
+        group('dependency versions', () {
+          late Directory tempDir;
+
+          setUp(() {
+            tempDir = Directory.systemTemp.createTempSync();
+          });
+
+          tearDown(() {
+            tempDir.deleteSync(recursive: true);
+          });
+
+          /// Copies the AAB at [path], replacing its dependency metadata with
+          /// [dependencies] (or removing it, if null).
+          String withDependencies(String path, Uint8List? dependencies) {
+            final source = ZipDecoder().decodeBytes(
+              File(path).readAsBytesSync(),
+            );
+            final copy = Archive();
+            for (final file in source.files) {
+              if (file.name == bundleDependenciesPath) continue;
+              copy.addFile(ArchiveFile(file.name, file.size, file.content));
+            }
+            if (dependencies != null) {
+              copy.addFile(
+                ArchiveFile(
+                  bundleDependenciesPath,
+                  dependencies.length,
+                  dependencies,
+                ),
+              );
+            }
+            final outPath = p.join(
+              tempDir.path,
+              '${copy.hashCode}_${p.basename(path)}',
+            );
+            File(outPath).writeAsBytesSync(ZipEncoder().encode(copy));
+            return outPath;
+          }
+
+          test('reports version changes when DEX files changed', () async {
+            final fileSetDiff = await differ.changedFiles(
+              withDependencies(
+                baseAabPath,
+                appDependencies([
+                  mavenLibrary('io.branch.sdk.android', 'library', '5.21.2'),
+                  mavenLibrary('com.example', 'same', '1.0.0'),
+                ]),
+              ),
+              withDependencies(
+                changedKotlinAabPath,
+                appDependencies([
+                  mavenLibrary('io.branch.sdk.android', 'library', '5.21.3'),
+                  mavenLibrary('com.example', 'same', '1.0.0'),
+                ]),
+              ),
+            );
+            expect(
+              fileSetDiff.dependencyVersionChanges,
+              const [
+                DependencyVersionChange(
+                  name: 'io.branch.sdk.android:library',
+                  oldVersion: '5.21.2',
+                  newVersion: '5.21.3',
+                ),
+              ],
+            );
+          });
+
+          test('does not compare versions when DEX files match', () async {
+            final fileSetDiff = await differ.changedFiles(
+              withDependencies(
+                baseAabPath,
+                appDependencies([mavenLibrary('a', 'b', '1.0.0')]),
+              ),
+              withDependencies(
+                changedDartAabPath,
+                appDependencies([mavenLibrary('a', 'b', '2.0.0')]),
+              ),
+            );
+            expect(
+              fileSetDiff.dependencyVersionChanges,
+              isEmpty,
+            );
+          });
+
+          test('reports nothing when metadata is missing', () async {
+            final fileSetDiff = await differ.changedFiles(
+              withDependencies(baseAabPath, null),
+              withDependencies(
+                changedKotlinAabPath,
+                appDependencies([mavenLibrary('a', 'b', '1.0.0')]),
+              ),
+            );
+            expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
+            expect(
+              fileSetDiff.dependencyVersionChanges,
+              isEmpty,
+            );
+          });
+
+          test('reports nothing when metadata is malformed', () async {
+            final fileSetDiff = await differ.changedFiles(
+              withDependencies(baseAabPath, Uint8List.fromList([0x80])),
+              withDependencies(
+                changedKotlinAabPath,
+                appDependencies([mavenLibrary('a', 'b', '1.0.0')]),
+              ),
+            );
+            expect(differ.nativeFileSetDiff(fileSetDiff), isNotEmpty);
+            expect(
+              fileSetDiff.dependencyVersionChanges,
+              isEmpty,
+            );
+          });
         });
 
         test('detects dart changes', () async {

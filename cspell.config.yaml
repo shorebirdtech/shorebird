@@ -15,10 +15,12 @@ words:
   - apigee
   - Apks
   - appbundle
+  - appex # Apple app extension bundle
   - archs
   - armeabi
   - Azul
   - backboardd
+  - backpressure
   - bdero
   - bintools
   - bitcode
@@ -48,6 +50,8 @@ words:
   - exportoptions
   - felangel
   - FLUSHALL
+  - fvm # Flutter Version Management
+  - fvmrc # fvm's per-project config file
   - genhtml
   - genkey # From .github/workflows/e2e.yaml
   - gradlew
@@ -58,6 +62,7 @@ words:
   - iokit
   - iphoneos
   - isatty
+  - ITMS # App Store Connect error code prefix, e.g. ITMS-90473
   - keyalg # From .github/workflows/e2e.yaml
   - keypass # From .github/workflows/e2e.yaml
   - keysize # From .github/workflows/e2e.yaml
@@ -98,11 +103,13 @@ words:
   - pbxproj
   - pinact # Third-party action-pinning tool referenced in shorebird_ci
   - Perfetto # Chrome trace viewer at ui.perfetto.dev
+  - PKCE # OAuth Proof Key for Code Exchange (RFC 7636)
   - pkcs
   - podfile
   - podspec
   - pointycastle
   - precache
+  - precaching
   - previewable
   - PRNG
   - proguard # Android ProGuard shrinker/obfuscator
@@ -144,6 +151,7 @@ words:
   - tdigest
   - temurin # From .github dir, doesn't show up in "**" check?
   - timebase # Mach timebase (mach_timebase_info)
+  - ttfb
   - udevadm # From .github/workflows/e2e.yaml
   - udid # Unique Device Identifier
   - unanalyzed
@@ -151,6 +159,7 @@ words:
   - unmockable
   - unobfuscated
   - unpadded
+  - unparseable
   - Unpatchable
   - unsets
   - unskipped

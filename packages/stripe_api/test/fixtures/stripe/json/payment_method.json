@@ -1,0 +1,14 @@
+{
+  "id": "pm_123",
+  "object": "payment_method",
+  "type": "card",
+  "card": {
+    "brand": "visa",
+    "country": "IN",
+    "exp_month": 8,
+    "exp_year": 2030,
+    "last4": "4242"
+  },
+  "customer": "cus_123",
+  "livemode": false
+}

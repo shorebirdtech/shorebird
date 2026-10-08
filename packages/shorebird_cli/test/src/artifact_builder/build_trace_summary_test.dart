@@ -291,6 +291,164 @@ void main() {
       );
     });
 
+    test('macos trace → xcode stats populated under the ios key', () {
+      final events = [
+        _event(
+          name: 'pod install',
+          cat: 'subprocess',
+          ts: 0,
+          dur: 4_000_000,
+          tid: 1,
+        ),
+        _event(
+          name: 'Build target Runner',
+          cat: 'xcode_subsection',
+          ts: 5_000_000,
+          dur: 20_000_000,
+          tid: 1,
+        ),
+        _event(
+          name: 'xcode build',
+          cat: 'xcode',
+          ts: 4_000_000,
+          dur: 30_000_000,
+          tid: 2,
+        ),
+        _event(
+          name: 'flutter build macos',
+          cat: 'flutter',
+          ts: 0,
+          dur: 40_000_000,
+          tid: 1,
+        ),
+      ];
+      final s = BuildTraceSummary.fromEvents(events, platform: 'macos');
+
+      expect(s.platform, 'macos');
+      expect(s.android, isNull);
+      expect(s.ios, isNotNull);
+      expect(s.ios!.podInstall.duration, const Duration(seconds: 4));
+      expect(s.ios!.xcode.subsectionDistribution.count, 1);
+      expect(s.native.build, const Duration(seconds: 30));
+      expect(s.toJson()['ios'], isNotNull);
+    });
+
+    test('linux trace → no platform-specific stats', () {
+      final s = BuildTraceSummary.fromEvents([], platform: 'linux');
+      expect(s.android, isNull);
+      expect(s.ios, isNull);
+    });
+
+    group('native.compile', () {
+      // gen_snapshot inside gradle: [10s, 13s) within [5s, 35s).
+      final nested = _event(
+        name: 'aot_android_asset_bundle',
+        cat: 'assemble',
+        ts: 10_000_000,
+        dur: 3_000_000,
+        tid: 1,
+      );
+      final gradle = _event(
+        name: 'gradle bundleRelease',
+        cat: 'gradle',
+        ts: 5_000_000,
+        dur: 30_000_000,
+        tid: 2,
+      );
+
+      test('subtracts assemble time that ran inside the native build', () {
+        final s = BuildTraceSummary.fromEvents([
+          nested,
+          gradle,
+        ], platform: 'android');
+        expect(s.native.build, const Duration(seconds: 30));
+        expect(s.native.compile, const Duration(seconds: 27));
+      });
+
+      test('does not subtract assemble time that ran beside it', () {
+        // ios-framework builds App.framework in-process ([0s, 8s)), then
+        // runs xcodebuild for plugins ([10s, 20s)). None of the assemble
+        // work is inside xcodebuild, so native compile is the full span.
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 0,
+            dur: 8_000_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'xcode build plugins (iphoneos)',
+            cat: 'xcode',
+            ts: 10_000_000,
+            dur: 10_000_000,
+            tid: 2,
+          ),
+        ], platform: 'ios');
+        expect(s.native.build, const Duration(seconds: 10));
+        expect(s.native.compile, const Duration(seconds: 10));
+      });
+
+      test('subtracts only the overlapping portion', () {
+        // assemble [0s, 8s) straddles the start of xcode [6s, 16s).
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 0,
+            dur: 8_000_000,
+            tid: 3,
+          ),
+          _event(
+            name: 'xcode build',
+            cat: 'xcode',
+            ts: 6_000_000,
+            dur: 10_000_000,
+            tid: 2,
+          ),
+        ], platform: 'ios');
+        expect(s.native.compile, const Duration(seconds: 8));
+      });
+
+      test('treats an assemble event without ts as nested', () {
+        // Older producers emitted no timestamps; they all nested
+        // assemble inside the native build, so keep subtracting.
+        final s = BuildTraceSummary.fromEvents([
+          {
+            'ph': 'X',
+            'name': 'kernel_snapshot',
+            'cat': 'assemble',
+            'dur': 3_000_000,
+            'pid': 1,
+            'tid': 1,
+          },
+          gradle,
+        ], platform: 'android');
+        expect(s.native.compile, const Duration(seconds: 27));
+      });
+
+      test('clamps at zero', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 5_000_000,
+            dur: 30_000_000,
+            tid: 1,
+          ),
+          _event(
+            name: 'kernel_snapshot',
+            cat: 'assemble',
+            ts: 5_000_000,
+            dur: 30_000_000,
+            tid: 1,
+          ),
+          gradle,
+        ], platform: 'android');
+        expect(s.native.compile, Duration.zero);
+      });
+    });
+
     test('toJson shape is nested and omits the other platform', () {
       final events = [
         _event(
@@ -303,7 +461,7 @@ void main() {
       ];
       final s = BuildTraceSummary.fromEvents(events, platform: 'android');
       final j = s.toJson();
-      expect(j['version'], 8);
+      expect(j['version'], 9);
       expect(j['platform'], 'android');
       expect(j['android'], isA<Map<String, Object?>>());
       expect(j.containsKey('ios'), isFalse);
@@ -314,6 +472,100 @@ void main() {
       expect(flat.contains('"path"'), isFalse);
       expect(flat.contains('"file"'), isFalse);
       expect(flat.contains('"user"'), isFalse);
+    });
+
+    group('setup phases', () {
+      List<Map<String, Object?>> setupEvents() => [
+        _event(
+          name: 'setup: flutter_install',
+          cat: 'setup',
+          ts: 0,
+          dur: 90_000_000,
+          tid: 2,
+        ),
+        _event(
+          name: 'setup: flutter_precache',
+          cat: 'setup',
+          ts: 90_000_000,
+          dur: 240_000_000,
+          tid: 2,
+        ),
+        // Emitted once per `updateAll` call; the later ones no-op.
+        _event(
+          name: 'setup: shorebird_cache',
+          cat: 'setup',
+          ts: 330_000_000,
+          dur: 30_000_000,
+          tid: 2,
+        ),
+        _event(
+          name: 'setup: shorebird_cache',
+          cat: 'setup',
+          ts: 360_000_000,
+          dur: 1_000_000,
+          tid: 2,
+        ),
+      ];
+
+      test('bucket by phase and sum repeated phases', () {
+        final s = BuildTraceSummary.fromEvents(
+          setupEvents(),
+          platform: 'android',
+        );
+        expect(s.setup.flutterInstall, const Duration(seconds: 90));
+        expect(s.setup.flutterPrecache, const Duration(seconds: 240));
+        expect(s.setup.shorebirdCache, const Duration(seconds: 31));
+        expect(s.setup.total, const Duration(seconds: 361));
+      });
+
+      test('are a subset of overhead, not of flutterBuild', () {
+        // The case this exists for: a cold CI runner where setup
+        // dominates and Flutter's own build is comparatively quick.
+        final s = BuildTraceSummary.fromEvents(
+          [
+            ...setupEvents(),
+            _event(
+              name: 'flutter build appbundle',
+              cat: 'flutter',
+              ts: 361_000_000,
+              dur: 60_000_000,
+              tid: 1,
+            ),
+          ],
+          platform: 'android',
+          shorebirdOverhead: const Duration(seconds: 380),
+        );
+        expect(s.flutterBuild, const Duration(seconds: 60));
+        expect(s.setup.total, lessThan(s.shorebirdOverhead!));
+        // Without the setup breakdown this whole 361s reads as local work.
+        expect(s.shorebirdLocal, const Duration(seconds: 380));
+      });
+
+      test('unknown phase does not land in a named bucket', () {
+        final s = BuildTraceSummary.fromEvents([
+          _event(
+            name: 'setup: from_the_future',
+            cat: 'setup',
+            ts: 0,
+            dur: 5_000_000,
+            tid: 2,
+          ),
+        ], platform: 'android');
+        expect(s.setup.total, Duration.zero);
+      });
+
+      test('toJson serializes all fields', () {
+        final s = BuildTraceSummary.fromEvents(
+          setupEvents(),
+          platform: 'android',
+        );
+        expect(s.toJson()['setup'], {
+          'totalMs': 361_000,
+          'flutterInstallMs': 90_000,
+          'flutterPrecacheMs': 240_000,
+          'shorebirdCacheMs': 31_000,
+        });
+      });
     });
 
     group('tryFromFile', () {
@@ -513,7 +765,7 @@ void main() {
     });
 
     group('gradle task kinds', () {
-      Map<String, Object?> _gradle(String kind, int durMs) => _event(
+      Map<String, Object?> gradle(String kind, int durMs) => _event(
         name: kind,
         cat: 'gradle_task',
         ts: 0,
@@ -524,19 +776,19 @@ void main() {
 
       test('all kinds populate their respective buckets', () {
         final s = BuildTraceSummary.fromEvents([
-          _gradle('kotlin_compile', 10),
-          _gradle('java_compile', 20),
-          _gradle('dex', 30),
-          _gradle('resources', 40),
-          _gradle('transform', 50),
-          _gradle('r8_minify', 60),
-          _gradle('lint', 70),
-          _gradle('flutter_gradle_plugin', 80),
-          _gradle('bundle', 90),
-          _gradle('packaging', 100),
-          _gradle('aidl', 110),
-          _gradle('native_link', 120),
-          _gradle('gradle_scaffold', 130),
+          gradle('kotlin_compile', 10),
+          gradle('java_compile', 20),
+          gradle('dex', 30),
+          gradle('resources', 40),
+          gradle('transform', 50),
+          gradle('r8_minify', 60),
+          gradle('lint', 70),
+          gradle('flutter_gradle_plugin', 80),
+          gradle('bundle', 90),
+          gradle('packaging', 100),
+          gradle('aidl', 110),
+          gradle('native_link', 120),
+          gradle('gradle_scaffold', 130),
         ], platform: 'android');
 
         final g = s.android!.gradle;

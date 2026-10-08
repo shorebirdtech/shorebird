@@ -137,10 +137,82 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
+      });
+
+      group('when the error body is not JSON', () {
+        test('surfaces the status code and the body as details', () {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(
+                utf8.encode('<html><body>\n  502 Bad Gateway\n</body></html>'),
+              ),
+              HttpStatus.badGateway,
+            ),
+          );
+
+          expect(
+            codePushClient.getCurrentUser(),
+            throwsA(
+              isA<CodePushException>()
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    CodePushClient.unknownErrorMessageFor(
+                      HttpStatus.badGateway,
+                    ),
+                  )
+                  .having(
+                    (e) => e.details,
+                    'details',
+                    '<html><body> 502 Bad Gateway </body></html>',
+                  ),
+            ),
+          );
+        });
+
+        test('truncates a long body', () {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('x' * 500)),
+              HttpStatus.badGateway,
+            ),
+          );
+
+          expect(
+            codePushClient.getCurrentUser(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.details,
+                'details',
+                '${'x' * 200}...',
+              ),
+            ),
+          );
+        });
+
+        test('omits details when the body is empty', () {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('   \n  ')),
+              HttpStatus.badGateway,
+            ),
+          );
+
+          expect(
+            codePushClient.getCurrentUser(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.details,
+                'details',
+                isNull,
+              ),
+            ),
+          );
+        });
       });
 
       test('returns a deserialize user if the request succeeds', () async {
@@ -307,7 +379,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -644,7 +718,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -1201,7 +1277,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -1294,7 +1370,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -1397,7 +1473,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -1508,7 +1584,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -1655,7 +1731,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -1676,60 +1752,6 @@ void main() {
           ),
           completes,
         );
-      });
-    });
-
-    group('createUser', () {
-      const userName = 'Jane Doe';
-      const user = PrivateUser(
-        id: 1,
-        email: 'tester@shorebird.dev',
-        displayName: userName,
-        jwtIssuer:
-            'https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0',
-      );
-
-      test('makes the correct request', () async {
-        codePushClient.createUser(name: userName).ignore();
-        final request =
-            verify(() => httpClient.send(captureAny())).captured.single
-                as http.BaseRequest;
-        expect(request.method, equals('POST'));
-        expect(request.url, equals(v1('users')));
-        expect(request.hasHeaders(expectedHeaders), isTrue);
-      });
-
-      test('throws an exception if the http request fails', () {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            const Stream.empty(),
-            HttpStatus.failedDependency,
-          ),
-        );
-
-        expect(
-          codePushClient.createUser(name: userName),
-          throwsA(
-            isA<CodePushException>().having(
-              (e) => e.message,
-              'message',
-              CodePushClient.unknownErrorMessage,
-            ),
-          ),
-        );
-      });
-
-      test('returns a User when the http request succeeds', () async {
-        when(() => httpClient.send(any())).thenAnswer(
-          (_) async => http.StreamedResponse(
-            Stream.value(utf8.encode(json.encode(user.toJson()))),
-            HttpStatus.created,
-          ),
-        );
-
-        final result = await codePushClient.createUser(name: userName);
-
-        expect(result.toJson(), user.toJson());
       });
     });
 
@@ -1758,7 +1780,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -1803,6 +1827,220 @@ void main() {
       });
     });
 
+    group('updateApp', () {
+      const displayName = 'New Name';
+
+      test('makes the correct request', () async {
+        codePushClient
+            .updateApp(appId: appId, displayName: displayName)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('PATCH'));
+        expect(request.url, equals(v1('apps/$appId')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        expect(json.decode(request.body), equals({'name': displayName}));
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.updateApp(appId: appId, displayName: displayName),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        );
+
+        await expectLater(
+          codePushClient.updateApp(appId: appId, displayName: displayName),
+          completes,
+        );
+      });
+    });
+
+    group('transferApp', () {
+      const organizationId = 42;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .transferApp(organizationId: organizationId, appId: appId)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.Request;
+        expect(request.method, equals('POST'));
+        expect(request.url, equals(v1('organizations/$organizationId/apps')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+        // Sent as snake_case; do not "fix" this to camelCase.
+        expect(json.decode(request.body), equals({'app_id': appId}));
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.transferApp(
+            organizationId: organizationId,
+            appId: appId,
+          ),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.ok),
+        );
+
+        await expectLater(
+          codePushClient.transferApp(
+            organizationId: organizationId,
+            appId: appId,
+          ),
+          completes,
+        );
+      });
+    });
+
+    group('deleteChannel', () {
+      const channelId = 7;
+
+      test('makes the correct request', () async {
+        codePushClient
+            .deleteChannel(appId: appId, channelId: channelId)
+            .ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('DELETE'));
+        expect(request.url, equals(v1('apps/$appId/channels/$channelId')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('throws an exception if the http request fails', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(errorResponse.toJson()))),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.deleteChannel(appId: appId, channelId: channelId),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              errorResponse.message,
+            ),
+          ),
+        );
+      });
+
+      test('completes when request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.noContent),
+        );
+
+        await expectLater(
+          codePushClient.deleteChannel(appId: appId, channelId: channelId),
+          completes,
+        );
+      });
+    });
+
+    group('getApp', () {
+      final app = AppMetadata(
+        appId: 'app-id',
+        displayName: 'Shorebird Example',
+        createdAt: DateTime(2022),
+        updatedAt: DateTime(2023),
+      );
+
+      test('makes the correct request', () async {
+        codePushClient.getApp(appId: 'app-id').ignore();
+        final request =
+            verify(() => httpClient.send(captureAny())).captured.single
+                as http.BaseRequest;
+        expect(request.method, equals('GET'));
+        expect(request.url, equals(v1('apps/app-id')));
+        expect(request.hasHeaders(expectedHeaders), isTrue);
+      });
+
+      test('returns null if the response is a 404', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async =>
+              http.StreamedResponse(const Stream.empty(), HttpStatus.notFound),
+        );
+
+        expect(await codePushClient.getApp(appId: 'app-id'), isNull);
+      });
+
+      test('throws an exception if the http request fails', () {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            const Stream.empty(),
+            HttpStatus.failedDependency,
+          ),
+        );
+
+        expect(
+          codePushClient.getApp(appId: 'app-id'),
+          throwsA(
+            isA<CodePushException>().having(
+              (e) => e.message,
+              'message',
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('returns the app when the request succeeds', () async {
+        when(() => httpClient.send(any())).thenAnswer(
+          (_) async => http.StreamedResponse(
+            Stream.value(utf8.encode(json.encode(app))),
+            HttpStatus.ok,
+          ),
+        );
+
+        expect(await codePushClient.getApp(appId: 'app-id'), equals(app));
+      });
+    });
+
     group('getApps', () {
       test('makes the correct request', () async {
         codePushClient.getApps().ignore();
@@ -1828,7 +2066,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -1926,7 +2166,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -2026,7 +2268,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -2126,7 +2370,9 @@ void main() {
               isA<CodePushException>().having(
                 (e) => e.message,
                 'message',
-                CodePushClient.unknownErrorMessage,
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
               ),
             ),
           );
@@ -2213,7 +2459,9 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(
+                HttpStatus.failedDependency,
+              ),
             ),
           ),
         );
@@ -2254,7 +2502,6 @@ void main() {
             url: 'https://example.com',
             hash: '#',
             size: 42,
-            podfileLockHash: null,
             canSideload: true,
           ),
         ];
@@ -2314,7 +2561,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -2457,7 +2704,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -2576,7 +2823,7 @@ void main() {
             isA<CodePushException>().having(
               (e) => e.message,
               'message',
-              CodePushClient.unknownErrorMessage,
+              CodePushClient.unknownErrorMessageFor(HttpStatus.badRequest),
             ),
           ),
         );
@@ -2628,7 +2875,9 @@ void main() {
               isA<CodePushException>().having(
                 (e) => e.message,
                 'message',
-                CodePushClient.unknownErrorMessage,
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
               ),
             ),
           );
@@ -2660,6 +2909,64 @@ void main() {
       });
     });
 
+    group('getPlanLevel', () {
+      group('when request fails', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              const Stream.empty(),
+              HttpStatus.failedDependency,
+            ),
+          );
+        });
+
+        test('throws exception', () async {
+          expect(
+            () async => codePushClient.getPlanLevel(),
+            throwsA(
+              isA<CodePushException>().having(
+                (e) => e.message,
+                'message',
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
+              ),
+            ),
+          );
+        });
+      });
+
+      group('when request succeeds', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('{"level": "enterprise"}')),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('returns the level', () async {
+          expect(await codePushClient.getPlanLevel(), equals('enterprise'));
+        });
+      });
+
+      group('when the response has no level', () {
+        setUp(() {
+          when(() => httpClient.send(any())).thenAnswer(
+            (_) async => http.StreamedResponse(
+              Stream.value(utf8.encode('{}')),
+              HttpStatus.ok,
+            ),
+          );
+        });
+
+        test('returns null', () async {
+          expect(await codePushClient.getPlanLevel(), isNull);
+        });
+      });
+    });
+
     group('getGCPUploadSpeedTestUrl', () {
       group('when request fails', () {
         setUp(() {
@@ -2678,7 +2985,9 @@ void main() {
               isA<CodePushException>().having(
                 (e) => e.message,
                 'message',
-                CodePushClient.unknownErrorMessage,
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
               ),
             ),
           );
@@ -2722,7 +3031,9 @@ void main() {
               isA<CodePushException>().having(
                 (e) => e.message,
                 'message',
-                CodePushClient.unknownErrorMessage,
+                CodePushClient.unknownErrorMessageFor(
+                  HttpStatus.failedDependency,
+                ),
               ),
             ),
           );

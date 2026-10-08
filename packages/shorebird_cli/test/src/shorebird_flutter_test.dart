@@ -1,13 +1,14 @@
-// cspell:words revis precaches
+// cspell:words revis precaches ENOTEMPTY
 import 'dart:io';
 
 import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -26,7 +27,7 @@ void main() {
     late Directory flutterDirectory;
     late Git git;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdEnv targetShorebirdEnv;
@@ -44,6 +45,7 @@ void main() {
           platformRef.overrideWith(() => platform),
           processRef.overrideWith(() => process),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
+          shorebirdTracerRef.overrideWith(ShorebirdTracer.new),
         },
       );
     }
@@ -56,7 +58,7 @@ void main() {
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       targetShorebirdEnv = MockShorebirdEnv();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
       process = MockShorebirdProcess();
       versionProcessResult = MockShorebirdProcessResult();
       precacheProcessResult = MockShorebirdProcessResult();
@@ -105,8 +107,6 @@ void main() {
         ),
       ).thenAnswer((_) async => 'origin/flutter_release/3.10.6');
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => platform.isMacOS).thenReturn(false);
-      when(() => platform.isWindows).thenReturn(false);
       when(() => shorebirdEnv.flutterDirectory).thenReturn(flutterDirectory);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
@@ -139,7 +139,7 @@ void main() {
     group('precacheArgs', () {
       group('when running on macOS', () {
         setUp(() {
-          when(() => platform.isMacOS).thenReturn(true);
+          platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
         });
 
         test('includes ios in platform list', () async {
@@ -152,7 +152,7 @@ void main() {
 
       group('when not running on macOS', () {
         setUp(() {
-          when(() => platform.isMacOS).thenReturn(false);
+          platform = platform.copyWith(operatingSystem: NativePlatform.linux);
         });
 
         test('does not include ios in platform list', () {
@@ -282,6 +282,229 @@ Tools • Dart 3.0.6 • DevTools 2.23.1''');
         verify(
           () => process.run('flutter', ['--version'], useVendedFlutter: false),
         ).called(1);
+      });
+    });
+
+    group('getFvmVersion', () {
+      late Directory projectRoot;
+      late ShorebirdProcessResult apiProcessResult;
+
+      const flutterVersionOutput = '''
+Flutter 3.10.6 • channel stable • git@github.com:flutter/flutter.git
+Framework • revision f468f3366c (4 weeks ago) • 2023-07-12 15:19:05 -0700
+Engine • revision cdbeda788a
+Tools • Dart 3.0.6 • DevTools 2.23.1''';
+
+      String apiProjectOutput(String pinnedVersion) =>
+          '''
+{
+  "project": {
+    "name": "my_app",
+    "config": {"flutter": "$pinnedVersion", "flavors": {}},
+    "pinnedVersion": {"name": "$pinnedVersion", "type": "release"}
+  }
+}''';
+
+      setUp(() {
+        projectRoot = Directory.systemTemp.createTempSync();
+        apiProcessResult = MockShorebirdProcessResult();
+        when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(projectRoot);
+        when(
+          () => process.run(
+            'fvm',
+            ['api', 'project', '--path', projectRoot.path],
+            useVendedFlutter: false,
+            workingDirectory: projectRoot.path,
+          ),
+        ).thenAnswer((_) async => apiProcessResult);
+        when(
+          () => process.run(
+            'fvm',
+            ['flutter', '--version'],
+            useVendedFlutter: false,
+            workingDirectory: projectRoot.path,
+          ),
+        ).thenAnswer((_) async => versionProcessResult);
+        when(() => apiProcessResult.exitCode).thenReturn(ExitCode.success.code);
+        when(
+          () => apiProcessResult.stdout,
+        ).thenReturn(apiProjectOutput('3.10.6'));
+      });
+
+      test('returns the pinned version without running Flutter', () async {
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getFvmVersion),
+          completion(equals('3.10.6')),
+        );
+        verify(
+          () => process.run(
+            'fvm',
+            ['api', 'project', '--path', projectRoot.path],
+            // fvm manages its own Flutter installs, so vending Shorebird's
+            // Flutter here would report Shorebird's version instead.
+            useVendedFlutter: false,
+            workingDirectory: projectRoot.path,
+          ),
+        ).called(1);
+        // `fvm api project` only reads .fvmrc, so we never reach the call that
+        // can make fvm download a Flutter SDK.
+        verifyNever(
+          () => process.run(
+            'fvm',
+            ['flutter', '--version'],
+            useVendedFlutter: any(named: 'useVendedFlutter'),
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
+        verifyNever(() => logger.progress(any()));
+      });
+
+      test('omits --path when the project root is unknown', () async {
+        when(shorebirdEnv.getShorebirdProjectRoot).thenReturn(null);
+        when(
+          () => process.run(
+            'fvm',
+            ['api', 'project'],
+            useVendedFlutter: false,
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async => apiProcessResult);
+
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getFvmVersion),
+          completion(equals('3.10.6')),
+        );
+      });
+
+      test('falls back to config.flutter when pinnedVersion is '
+          'missing', () async {
+        when(() => apiProcessResult.stdout).thenReturn('''
+{"project": {"config": {"flutter": "3.10.6"}}}''');
+
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getFvmVersion),
+          completion(equals('3.10.6')),
+        );
+      });
+
+      group('when the project pins a channel rather than a version', () {
+        setUp(() {
+          when(
+            () => apiProcessResult.stdout,
+          ).thenReturn(apiProjectOutput('stable'));
+          when(() => versionProcessResult.stdout).thenReturn(
+            flutterVersionOutput,
+          );
+        });
+
+        test('asks fvm which version the channel resolves to', () async {
+          await expectLater(
+            runWithOverrides(shorebirdFlutter.getFvmVersion),
+            completion(equals('3.10.6')),
+          );
+          verify(
+            () => process.run(
+              'fvm',
+              ['flutter', '--version'],
+              useVendedFlutter: false,
+              workingDirectory: projectRoot.path,
+            ),
+          ).called(1);
+        });
+
+        test('warns that fvm may install Flutter first', () async {
+          await runWithOverrides(shorebirdFlutter.getFvmVersion);
+
+          // `fvm flutter --version` prints nothing while it downloads a
+          // Flutter SDK, so say what we're waiting on.
+          verify(
+            () => logger.progress(
+              'Asking fvm which Flutter version "stable" resolves to '
+              '(fvm may need to install it first)',
+            ),
+          ).called(1);
+          verify(progress.complete).called(1);
+        });
+      });
+
+      group('when fvm cannot answer `api project`', () {
+        setUp(() {
+          when(
+            () => apiProcessResult.exitCode,
+          ).thenReturn(ExitCode.usage.code);
+          when(() => versionProcessResult.stdout).thenReturn(
+            flutterVersionOutput,
+          );
+        });
+
+        test('falls back to `fvm flutter --version`', () async {
+          await expectLater(
+            runWithOverrides(shorebirdFlutter.getFvmVersion),
+            completion(equals('3.10.6')),
+          );
+          verify(
+            () => logger.progress(
+              'Asking fvm which Flutter version this project uses',
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when `api project` output is not usable JSON', () {
+        setUp(() {
+          when(() => versionProcessResult.stdout).thenReturn(
+            flutterVersionOutput,
+          );
+        });
+
+        for (final output in [
+          'not json',
+          '[]',
+          '{}',
+          '{"project": "nope"}',
+          '{"project": {"pinnedVersion": 3, "config": {"flutter": 3}}}',
+        ]) {
+          test('falls back to `fvm flutter --version` for $output', () async {
+            when(() => apiProcessResult.stdout).thenReturn(output);
+
+            await expectLater(
+              runWithOverrides(shorebirdFlutter.getFvmVersion),
+              completion(equals('3.10.6')),
+            );
+          });
+        }
+      });
+
+      group('when `fvm flutter --version` fails', () {
+        setUp(() {
+          when(
+            () => apiProcessResult.stdout,
+          ).thenReturn(apiProjectOutput('stable'));
+          when(
+            () => versionProcessResult.exitCode,
+          ).thenReturn(ExitCode.software.code);
+          when(() => versionProcessResult.stderr).thenReturn('oops');
+        });
+
+        test('throws ProcessException and fails the progress', () async {
+          await expectLater(
+            runWithOverrides(shorebirdFlutter.getFvmVersion),
+            throwsA(isA<ProcessException>()),
+          );
+          verify(progress.fail).called(1);
+        });
+      });
+
+      test('returns null when the version cannot be parsed', () async {
+        when(
+          () => apiProcessResult.stdout,
+        ).thenReturn(apiProjectOutput('stable'));
+        when(() => versionProcessResult.stdout).thenReturn('');
+
+        await expectLater(
+          runWithOverrides(shorebirdFlutter.getFvmVersion),
+          completion(isNull),
+        );
       });
     });
 
@@ -1072,15 +1295,30 @@ origin/flutter_release/3.10.6''';
         test(
           'reports when the incomplete install cannot be moved aside',
           () async {
-            // Making the parent read-only is the portable way to block a
-            // rename of a child that is otherwise perfectly movable.
-            final parent = targetDirectory.parent;
-            Process.runSync('chmod', ['a-w', parent.path]);
-            addTearDown(() => Process.runSync('chmod', ['u+w', parent.path]));
+            // The rename is blocked by occupying the name it moves to, not by
+            // locking the parent's mode bits. `chmod a-w` only stops a process
+            // without CAP_DAC_OVERRIDE, so a mode-based version of this test
+            // passes as an unprivileged CI user and fails as root -- in a
+            // container, a devcontainer, or a root self-hosted runner.
+            // Renaming onto a non-empty directory is ENOTEMPTY for every uid,
+            // and reaches the same FileSystemException on the same line.
+            //
+            // The destination is _reclaimablePath(dir, tag: 'old'), which is
+            // this pid and this instant, so a fixed clock is what makes it
+            // nameable from out here.
+            final now = DateTime.now();
+            final asideDirectory = Directory(
+              '${targetDirectory.path}.$pid.old'
+              '.${now.millisecondsSinceEpoch}.tmp',
+            )..createSync(recursive: true);
+            File(p.join(asideDirectory.path, 'occupied')).createSync();
 
             await expectLater(
-              runWithOverrides(
-                () => shorebirdFlutter.installRevision(revision: revision),
+              withClock(
+                Clock.fixed(now),
+                () => runWithOverrides(
+                  () => shorebirdFlutter.installRevision(revision: revision),
+                ),
               ),
               throwsA(isA<CacheCorruptedException>()),
             );
@@ -1194,7 +1432,9 @@ origin/flutter_release/3.10.6''';
         test(
           'keeps a Windows install whose launcher is flutter.bat',
           () async {
-            when(() => platform.isWindows).thenReturn(true);
+            platform = platform.copyWith(
+              operatingSystem: NativePlatform.windows,
+            );
             File(
               p.join(targetDirectory.path, 'bin', 'flutter.bat'),
             ).createSync(recursive: true);

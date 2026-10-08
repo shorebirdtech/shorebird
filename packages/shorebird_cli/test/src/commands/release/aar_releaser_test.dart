@@ -4,8 +4,8 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:scoped_deps/scoped_deps.dart';
 import 'package:pub_semver/pub_semver.dart';
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -608,15 +608,16 @@ void main() {
           when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
 
           // Create the obfuscation map at the expected build output location.
-          final mapFile = File(
-            p.join(
-              projectRoot.path,
-              'build',
-              'shorebird',
-              'obfuscation_map.json',
-            ),
-          )..createSync(recursive: true);
-          mapFile.writeAsStringSync('{"key": "value"}');
+          File(
+              p.join(
+                projectRoot.path,
+                'build',
+                'shorebird',
+                'obfuscation_map.json',
+              ),
+            )
+            ..createSync(recursive: true)
+            ..writeAsStringSync('{"key": "value"}');
         });
 
         test('copies map into supplement directory and returns it', () {

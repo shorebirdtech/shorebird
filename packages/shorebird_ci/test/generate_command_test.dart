@@ -279,6 +279,18 @@ void main() {
       );
     });
 
+    test('static workflow triggers on merge_group', () async {
+      // Branch protection's required contexts only gate a merge if they
+      // report on the queue's temp branch too.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+
+      await runGenerate(tempDir, extra: ['--style', 'static']);
+
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains('  merge_group:\n    types: [checks_requested]'));
+    });
+
     test('emits main + both reusables for mixed repo', () async {
       createPackage(tempDir, 'packages/dart_pkg', 'dart_pkg');
       createPackage(
@@ -731,6 +743,16 @@ void main() {
   });
 
   group('setup-job runner ergonomics', () {
+    test('dynamic workflow triggers on merge_group', () async {
+      // Branch protection's required contexts only gate a merge if they
+      // report on the queue's temp branch too.
+      createPackage(tempDir, 'packages/foo', 'foo');
+      initGitRepo(tempDir);
+      await runGenerate(tempDir);
+      final yaml = _readMain(tempDir);
+      expect(yaml, contains('  merge_group:\n    types: [checks_requested]'));
+    });
+
     test('dynamic workflow has workflow_dispatch trigger', () async {
       createPackage(tempDir, 'packages/foo', 'foo');
       initGitRepo(tempDir);

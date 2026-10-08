@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:jwt/jwt.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:platform/platform.dart';
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/android_sdk.dart';
@@ -67,6 +67,19 @@ class MockArchiveDiffer extends Mock implements ArchiveDiffer {}
 class MockArgParser extends Mock implements ArgParser {}
 
 class MockArgResults extends Mock implements ArgResults {}
+
+class MockCommand extends Mock implements Command<int> {}
+
+/// A runner mock stubbed just enough for [Command.usageException] to build
+/// its usage text.
+MockShorebirdCliCommandRunner usageRunner({
+  Map<String, Command<int>> commands = const {},
+}) {
+  final runner = MockShorebirdCliCommandRunner();
+  when(() => runner.executableName).thenReturn('shorebird');
+  when(() => runner.commands).thenReturn(commands);
+  return runner;
+}
 
 class MockArtifactBuildException extends Mock
     implements ArtifactBuildException {}
@@ -139,8 +152,6 @@ class MockPatchDiffChecker extends Mock implements PatchDiffChecker {}
 class MockPatchExecutable extends Mock implements PatchExecutable {}
 
 class MockPatcher extends Mock implements Patcher {}
-
-class MockPlatform extends Mock implements Platform {}
 
 class MockPowershell extends Mock implements Powershell {}
 

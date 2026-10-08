@@ -48,10 +48,7 @@ void main() {
     });
 
     test('returns other for an unrecognized wire value', () {
-      expect(
-        GradleTaskKind.parse('brand-new-kind'),
-        GradleTaskKind.other,
-      );
+      expect(GradleTaskKind.parse('brand-new-kind'), GradleTaskKind.other);
     });
   });
 
@@ -72,10 +69,7 @@ void main() {
     });
 
     test('returns other for an unrecognized wire value', () {
-      expect(
-        PodInstallPhase.parse('brand-new-phase'),
-        PodInstallPhase.other,
-      );
+      expect(PodInstallPhase.parse('brand-new-phase'), PodInstallPhase.other);
     });
 
     test('returns other for empty string (not the other wireName)', () {

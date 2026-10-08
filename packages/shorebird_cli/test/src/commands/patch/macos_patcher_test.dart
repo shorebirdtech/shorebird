@@ -264,7 +264,7 @@ void main() {
               checkUserIsAuthenticated: true,
               checkShorebirdInitialized: true,
               validators: [flavorValidator],
-              supportedOperatingSystems: {Platform.macOS},
+              supportedOperatingSystems: {NativePlatform.macOS},
             ),
           ).called(1);
         });
@@ -897,13 +897,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           });
 
           test('includes obfuscation flags in build args', () async {
-            patcher.obfuscationMapPath = obfuscationMapFile.path;
-            patcher.extraBuildArgs = [
-              '--obfuscate',
-              '--extra-gen-snapshot-options='
-                  '--load-obfuscation-map=${obfuscationMapFile.path}',
-              '--split-debug-info=build/shorebird/symbols',
-            ];
+            final loadMapOption =
+                '--load-obfuscation-map=${obfuscationMapFile.path}';
+            patcher
+              ..obfuscationMapPath = obfuscationMapFile.path
+              ..extraBuildArgs = [
+                '--obfuscate',
+                '--extra-gen-snapshot-options=$loadMapOption',
+                '--split-debug-info=build/shorebird/symbols',
+              ];
             await runWithOverrides(patcher.buildPatchArtifact);
 
             final captured = verify(

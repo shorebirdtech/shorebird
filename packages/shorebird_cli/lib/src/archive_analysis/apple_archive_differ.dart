@@ -1,4 +1,5 @@
-// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec xcassets actool
+// cspell:words xcframeworks xcasset unsign codesign assetutil pubspec
+// cspell:words xcassets actool
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -81,23 +82,40 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     required String archivePath,
     required PathHashes pathHashes,
   }) async {
-    return Isolate.run(() async {
-      for (final file in _filesToUnsign(archivePath)) {
-        pathHashes[file.name] = await _unsignedFileHash(file);
-      }
+    return Isolate.run(
+      () => _withArchive(archivePath, (archive) async {
+        for (final file in _filesToUnsign(archive)) {
+          pathHashes[file.name] = await _unsignedFileHash(file);
+        }
 
-      for (final file in _carFiles(archivePath)) {
-        pathHashes[file.name] = await _sanitizedCarFileHash(file);
-      }
+        for (final file in _carFiles(archive)) {
+          pathHashes[file.name] = await _sanitizedCarFileHash(file);
+        }
 
-      return pathHashes;
-    });
+        return pathHashes;
+      }),
+    );
   }
 
-  List<ArchiveFile> _filesToUnsign(String archivePath) {
-    return ZipDecoder()
-        .decodeStream(InputFileStream(archivePath))
-        .files
+  /// Decodes the zip at [archivePath], runs [body] on it, and closes the
+  /// underlying file afterwards.
+  ///
+  /// [ArchiveFile] contents are read lazily from the open file, so all work
+  /// that reads file contents must happen inside [body].
+  static Future<T> _withArchive<T>(
+    String archivePath,
+    Future<T> Function(Archive archive) body,
+  ) async {
+    final input = InputFileStream(archivePath);
+    try {
+      return await body(ZipDecoder().decodeStream(input));
+    } finally {
+      await input.close();
+    }
+  }
+
+  List<ArchiveFile> _filesToUnsign(Archive archive) {
+    return archive.files
         .where((file) => file.isFile)
         .where(
           (file) =>
@@ -109,10 +127,8 @@ class AppleArchiveDiffer extends ArchiveDiffer {
         .toList();
   }
 
-  List<ArchiveFile> _carFiles(String archivePath) {
-    return ZipDecoder()
-        .decodeStream(InputFileStream(archivePath))
-        .files
+  List<ArchiveFile> _carFiles(Archive archive) {
+    return archive.files
         .where((file) => file.isFile && p.basename(file.name) == 'Assets.car')
         .toList();
   }
@@ -169,6 +185,22 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     return _hash(sanitizeCarJson(jsonFile.readAsStringSync()).codeUnits);
   }
 
+  /// Keys in the `assetutil --info` header block that describe the toolchain
+  /// that compiled the asset catalog rather than its contents. Xcode 26.3
+  /// bumped `CoreUIVersion` from 972 to 973, for example, which changes every
+  /// one of these strings without changing a single asset.
+  ///
+  /// `PlatformVersion` and `SchemaVersion` are deliberately not here. They
+  /// describe the catalog a developer asked for, not the tool that built it,
+  /// so a change in either is worth reporting.
+  static const _toolchainVersionKeys = {
+    'AssetStorageVersion',
+    'Authoring Tool',
+    'CoreUIVersion',
+    'DumpToolVersion',
+    'MainVersion',
+  };
+
   static final _uuidRegex = RegExp(
     '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-'
     '[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}',
@@ -187,6 +219,14 @@ class AppleArchiveDiffer extends ArchiveDiffer {
   /// two builds of the same assets hash the same. Currently removes:
   ///
   ///   * `Timestamp`, which records when the .car file was built.
+  ///   * The toolchain version keys in the header block, which record the
+  ///     versions of Xcode and CoreUI that compiled the catalog rather than
+  ///     anything about the assets themselves. They move on every Xcode
+  ///     upgrade, so leaving them in makes an unchanged catalog look changed
+  ///     to any developer who upgrades between a release and its patch. A
+  ///     re-encode that actually alters a rendition still shows up, because
+  ///     `SizeOnDisk`, `Encoding`, `Compression`, both dimensions and
+  ///     `SHA1Digest` are all still compared.
   ///   * The generated suffix in the rendition file names of iOS 18 layered
   ///     icon (.icon) bundles, which `actool` regenerates every build.
   ///   * `SHA1Digest` on those renditions only. Two builds of one unchanged
@@ -226,6 +266,7 @@ class AppleArchiveDiffer extends ArchiveDiffer {
         final keys =
             map.keys
                 .where((key) => key != 'Timestamp')
+                .where((key) => !_toolchainVersionKeys.contains(key))
                 .where((key) => !(isGenerated && key == 'SHA1Digest'))
                 .toList()
               ..sort();
@@ -256,16 +297,18 @@ class AppleArchiveDiffer extends ArchiveDiffer {
     final diffs = <String>[];
     for (final changedPath in fileSetDiff.changedPaths) {
       if (changedPath.endsWith('.car')) {
-        final oldCarFile = ZipDecoder()
-            .decodeStream(InputFileStream(oldArchivePath))
-            .files
-            .firstWhere((file) => file.name == changedPath);
-        final newCarFile = ZipDecoder()
-            .decodeStream(InputFileStream(newArchivePath))
-            .files
-            .firstWhere((file) => file.name == changedPath);
-        final oldCarJsonFile = await _carJsonFile(oldCarFile);
-        final newCarJsonFile = await _carJsonFile(newCarFile);
+        final oldCarJsonFile = await _withArchive(
+          oldArchivePath,
+          (archive) => _carJsonFile(
+            archive.files.firstWhere((file) => file.name == changedPath),
+          ),
+        );
+        final newCarJsonFile = await _withArchive(
+          newArchivePath,
+          (archive) => _carJsonFile(
+            archive.files.firstWhere((file) => file.name == changedPath),
+          ),
+        );
         final diffResult = await diff.run(
           oldCarJsonFile.path,
           newCarJsonFile.path,

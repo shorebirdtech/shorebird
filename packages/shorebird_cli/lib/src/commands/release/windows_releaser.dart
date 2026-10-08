@@ -66,7 +66,7 @@ To change the version of this release, change your app's version in your pubspec
         checkUserIsAuthenticated: true,
         checkShorebirdInitialized: true,
         validators: doctor.windowsCommandValidators,
-        supportedOperatingSystems: {Platform.windows},
+        supportedOperatingSystems: {NativePlatform.windows},
       );
     } on PreconditionFailedException catch (e) {
       throw ProcessExit(e.exitCode.code);

@@ -133,6 +133,20 @@ class CodePushClientWrapper {
     return user;
   }
 
+  /// Fetches the plan level for the current user, e.g. `free`, `pro`,
+  /// `business` or `enterprise`. Null when the server does not report one.
+  Future<String?> getPlanLevel() async {
+    final progress = logger.progress('Fetching plan');
+    final String? level;
+    try {
+      level = await codePushClient.getPlanLevel();
+      progress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
+    return level;
+  }
+
   /// Fetches the organization memberships for the current user.
   Future<List<OrganizationMembership>> getOrganizationMemberships() async {
     final progress = logger.progress('Fetching organizations');
@@ -175,9 +189,27 @@ This app may not exist or you may not have permission to view it.''');
 
   /// Returns [AppMetadata] for the provided [appId] or null if the app does not
   /// exist.
+  ///
+  /// This asks the server for the one app rather than downloading the whole
+  /// account and filtering locally. `getApps` is unpaginated, so the old
+  /// approach cost O(apps on the account) on every `release`, `patch` and
+  /// `init` -- on a large account that is megabytes and seconds to resolve an
+  /// id the caller already had.
   Future<AppMetadata?> maybeGetApp({required String appId}) async {
-    final apps = await getApps();
-    return apps.firstWhereOrNull((a) => a.appId == appId);
+    final fetchAppProgress = logger.progress('Fetching app');
+    try {
+      final app = await codePushClient.getApp(appId: appId);
+      fetchAppProgress.complete();
+      return app;
+    } on CodePushForbiddenException {
+      // The app exists but belongs to someone else. Callers surface this the
+      // same way as "no such app", which is what the list-and-filter approach
+      // did: an app you cannot see simply was not in the list.
+      fetchAppProgress.complete();
+      return null;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: fetchAppProgress);
+    }
   }
 
   /// Fetches the channels for the given [appId] and channel [name].
@@ -199,6 +231,18 @@ This app may not exist or you may not have permission to view it.''');
     }
   }
 
+  /// Fetches all channels for the provided [appId].
+  Future<List<Channel>> getChannels({required String appId}) async {
+    final fetchChannelsProgress = logger.progress('Fetching channels');
+    try {
+      final channels = await codePushClient.getChannels(appId: appId);
+      fetchChannelsProgress.complete();
+      return channels;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: fetchChannelsProgress);
+    }
+  }
+
   /// Creates a channel for the provided [appId] with the given [name].
   Future<Channel> createChannel({
     required String appId,
@@ -214,6 +258,63 @@ This app may not exist or you may not have permission to view it.''');
       return channel;
     } catch (error) {
       _handleErrorAndExit(error, progress: createChannelProgress);
+    }
+  }
+
+  /// Deletes the channel with the provided [channelId] from [appId].
+  Future<void> deleteChannel({
+    required String appId,
+    required int channelId,
+  }) async {
+    final deleteChannelProgress = logger.progress('Deleting channel');
+    try {
+      await codePushClient.deleteChannel(appId: appId, channelId: channelId);
+      deleteChannelProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: deleteChannelProgress);
+    }
+  }
+
+  /// Renames the app with the provided [appId] to [displayName].
+  Future<void> updateApp({
+    required String appId,
+    required String displayName,
+  }) async {
+    final updateAppProgress = logger.progress('Renaming app');
+    try {
+      await codePushClient.updateApp(appId: appId, displayName: displayName);
+      updateAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: updateAppProgress);
+    }
+  }
+
+  /// Deletes the app with the provided [appId], along with every release and
+  /// patch belonging to it.
+  Future<void> deleteApp({required String appId}) async {
+    final deleteAppProgress = logger.progress('Deleting app');
+    try {
+      await codePushClient.deleteApp(appId: appId);
+      deleteAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: deleteAppProgress);
+    }
+  }
+
+  /// Moves the app with the provided [appId] into [organizationId].
+  Future<void> transferApp({
+    required int organizationId,
+    required String appId,
+  }) async {
+    final transferAppProgress = logger.progress('Transferring app');
+    try {
+      await codePushClient.transferApp(
+        organizationId: organizationId,
+        appId: appId,
+      );
+      transferAppProgress.complete();
+    } catch (error) {
+      _handleErrorAndExit(error, progress: transferAppProgress);
     }
   }
 
@@ -474,6 +575,21 @@ Please create a release using "shorebird release" and try again.
     String? flavor,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
+
+    // When the built .aab never packaged libapp.so, surface that directly
+    // instead of the generic "cannot find artifacts" or abiFilters messages,
+    // which send users down the wrong trail
+    // (https://github.com/shorebirdtech/shorebird/issues/3813).
+    final missingLibappMessage =
+        await ArtifactManager.describeMissingLibappInAab(File(aabPath));
+    if (missingLibappMessage != null) {
+      _handleErrorAndExit(
+        Exception('No architecture artifacts found to upload.'),
+        progress: createArtifactProgress,
+        message: missingLibappMessage,
+      );
+    }
+
     final archsDir = await ArtifactManager.androidArchsDirectoryFromAab(
       projectRoot: Directory(projectRoot),
       flavor: flavor,
@@ -1063,7 +1179,7 @@ aar artifact already exists, continuing...''');
   /// Publishes a patch to the Shorebird server. This consists of creating a
   /// patch, uploading patch artifacts, and promoting the patch to a specific
   /// channel based on the provided [track].
-  Future<void> publishPatch({
+  Future<Patch> publishPatch({
     required String appId,
     required int releaseId,
     required Json metadata,
@@ -1091,6 +1207,7 @@ aar artifact already exists, continuing...''');
     await promotePatch(appId: appId, patchId: patch.id, channel: channel);
 
     logger.success('\n✅ Published Patch ${patch.number}!');
+    return patch;
   }
 
   /// Returns a GCP download link for measuring download speed.

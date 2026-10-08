@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -29,7 +29,7 @@ void main() {
     const flutterVersion = '1.2.3';
 
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdVersion shorebirdVersion;
@@ -50,7 +50,7 @@ void main() {
 
     setUp(() {
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdVersion = MockShorebirdVersion();
@@ -64,7 +64,6 @@ void main() {
       when(
         () => shorebirdEnv.shorebirdEngineRevision,
       ).thenReturn(shorebirdEngineRevision);
-      when(() => platform.isWindows).thenReturn(false);
       when(() => shorebirdEnv.flutterRevision).thenReturn(flutterRevision);
       when(
         () => shorebirdFlutter.getVersionString(),
@@ -175,7 +174,7 @@ ${lightCyan.wrap('shorebird release android -- --no-pub lib/main.dart')}'''),
     });
 
     test('handles missing option error on Windows', () async {
-      when(() => platform.isWindows).thenReturn(true);
+      platform = TestNativePlatform(operatingSystem: NativePlatform.windows);
       final exception = UsageException(
         'Could not find an option named "foo".',
         'exception usage',
@@ -201,6 +200,71 @@ Example:
 ${lightCyan.wrap("shorebird release android '--' --no-pub lib/main.dart")}'''),
       ).called(1);
       verify(() => logger.info('exception usage')).called(1);
+    });
+
+    group('unknown option on patch', () {
+      const overrideHint = '''
+shorebird patch has no --force flag. The patch safety checks are bypassed per check:
+  --allow-native-diffs  publish even though native code changed
+  --allow-asset-diffs   publish even though assets changed
+The warning that fails the patch names the one that applies.''';
+
+      test('names --allow-native-diffs / --allow-asset-diffs', () async {
+        final result = await runWithOverrides(
+          () => commandRunner.run(['patch', 'android', '--force']),
+        );
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err('Could not find an option named "--force".'),
+        ).called(1);
+        verify(() => logger.err(overrideHint)).called(1);
+        verifyNever(
+          () => logger.err(any(that: contains('To proxy an option'))),
+        );
+      });
+
+      test('matches other override-shaped options', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['patch', '--skip-checks']),
+        );
+        verify(
+          () => logger.err(
+            any(that: startsWith('shorebird patch has no --skip-checks flag')),
+          ),
+        ).called(1);
+      });
+
+      test('falls back to the proxy hint for other options', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['patch', 'android', '--no-pub']),
+        );
+        verify(
+          () => logger.err(any(that: contains('To proxy an option'))),
+        ).called(1);
+      });
+
+      test('does not apply to other commands', () async {
+        await runWithOverrides(
+          () => commandRunner.run(['release', 'android', '--force']),
+        );
+        verify(
+          () => logger.err(any(that: contains('To proxy an option'))),
+        ).called(1);
+      });
+
+      test('carries the hint in the --json envelope', () async {
+        final stdoutOutput = <String>[];
+        await helpers.captureStdout<int>(
+          () => runWithOverrides(
+            () => commandRunner.run(['--json', 'patch', 'android', '--force']),
+          ),
+          captured: stdoutOutput,
+        );
+        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], equals('usage_error'));
+        expect(error['hint'], equals(overrideHint));
+      });
     });
 
     group('--version', () {
@@ -450,6 +514,43 @@ Engine • revision $shorebirdEngineRevision'''),
       Future<T> captureStdout<T>(Future<T> Function() body) async {
         return helpers.captureStdout(body, captured: stdoutOutput);
       }
+
+      test('routes everything but the envelope to stderr', () async {
+        // A command that writes a human line straight to stdout and then
+        // emits an envelope. With --json, stdout must carry the envelope
+        // alone; the human line lands on stderr.
+        commandRunner.addCommand(_ChattyCommand());
+        final stderrOutput = <String>[];
+        final realStderr = stderr;
+        final result = await captureStdout(
+          () => IOOverrides.runZoned(
+            () => runWithOverrides(
+              () => commandRunner.run(['--json', 'chatty']),
+            ),
+            stderr: () => helpers.CapturingStdout(
+              baseStdOut: realStderr,
+              captured: stderrOutput,
+            ),
+          ),
+        );
+
+        expect(result, equals(ExitCode.success.code));
+        expect(stdoutOutput, hasLength(1));
+        final json = jsonDecode(stdoutOutput.single) as Map<String, dynamic>;
+        expect(json['status'], equals('success'));
+        expect((json['data'] as Map)['said'], equals('hello'));
+        expect(stderrOutput, contains('hello, human'));
+      });
+
+      test('leaves stdout alone without --json', () async {
+        commandRunner.addCommand(_ChattyCommand());
+        final result = await captureStdout(
+          () => runWithOverrides(() => commandRunner.run(['chatty'])),
+        );
+
+        expect(result, equals(ExitCode.success.code));
+        expect(stdoutOutput, equals(['hello, human']));
+      });
 
       group('on ProcessExit with non-zero exit code', () {
         test('emits JSON error envelope', () async {
@@ -788,6 +889,22 @@ class _TestCommand extends ShorebirdCommand {
   @override
   Future<int> run() async {
     throw ProcessExit(exitCode.code);
+  }
+}
+
+/// Writes a human line to stdout, then an envelope when in JSON mode.
+class _ChattyCommand extends ShorebirdCommand {
+  @override
+  String get name => 'chatty';
+
+  @override
+  String get description => 'Chatty command';
+
+  @override
+  Future<int> run() async {
+    stdout.writeln('hello, human');
+    if (isJsonMode) emitJsonSuccess({'said': 'hello'});
+    return ExitCode.success.code;
   }
 }
 

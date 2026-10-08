@@ -1,4 +1,4 @@
-// cspell:words precaching unparseable
+// cspell:words precaching
 import 'dart:convert';
 import 'dart:io';
 
@@ -7,6 +7,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
@@ -31,6 +32,10 @@ class ShorebirdFlutter {
 
   /// The executable name.
   static const executable = 'flutter';
+
+  /// The fvm executable name, used to ask fvm which Flutter version a project
+  /// is pinned to.
+  static const fvmExecutable = 'fvm';
 
   /// The Shorebird Flutter fork git URL.
   static const String flutterGitUrl =
@@ -103,17 +108,28 @@ class ShorebirdFlutter {
     // the name and no directory has to be cleared before the clone.
     final stagingDirectory = Directory(_reclaimablePath(targetDirectory.path));
     try {
-      // Clone the Shorebird Flutter repo into the staging directory.
-      await git.clone(
-        url: flutterGitUrl,
-        outputDirectory: stagingDirectory.path,
-        args: ['--filter=tree:0', '--no-checkout'],
+      // Traced: the clone is a multi-hundred-megabyte transfer and is
+      // one of the two dominant costs of a cold start. It happens in a
+      // git subprocess, so nothing else in the trace can see it.
+      await shorebirdTracer.setupSpan(
+        phase: SetupPhase.flutterInstall,
+        body: () async {
+          // Clone the Shorebird Flutter repo into the staging directory.
+          await git.clone(
+            url: flutterGitUrl,
+            outputDirectory: stagingDirectory.path,
+            args: ['--filter=tree:0', '--no-checkout'],
+          );
+
+          // Checkout the correct revision.
+          await git.checkout(
+            directory: stagingDirectory.path,
+            revision: revision,
+          );
+
+          stagingDirectory.renameSync(targetDirectory.path);
+        },
       );
-
-      // Checkout the correct revision.
-      await git.checkout(directory: stagingDirectory.path, revision: revision);
-
-      stagingDirectory.renameSync(targetDirectory.path);
       installProgress.complete();
     } catch (error) {
       // Another process publishing the same revision first is not a failure.
@@ -293,13 +309,22 @@ class ShorebirdFlutter {
 
     final ShorebirdProcessResult result;
     try {
-      result = await runScoped(
-        () => process.run(
-          executable,
-          precacheArguments,
-          workingDirectory: targetDirectory.path,
+      // Traced: precache downloads the engine artifacts for every target
+      // platform (hundreds of MB) from FLUTTER_STORAGE_BASE_URL. It runs
+      // in the flutter subprocess, and its downloads happen before
+      // flutter_tools installs its own BuildTracer, so this span is the
+      // only record of that time anywhere in the trace.
+      result = await shorebirdTracer.setupSpan(
+        phase: SetupPhase.flutterPrecache,
+        args: {'argv': precacheArguments.join(' ')},
+        body: () => runScoped(
+          () => process.run(
+            executable,
+            precacheArguments,
+            workingDirectory: targetDirectory.path,
+          ),
+          values: {shorebirdEnvRef.overrideWith(() => targetShorebirdEnv)},
         ),
-        values: {shorebirdEnvRef.overrideWith(() => targetShorebirdEnv)},
       );
     } on Exception catch (error) {
       precacheProgress.fail('Failed to precache Flutter $version');
@@ -362,11 +387,132 @@ class ShorebirdFlutter {
       );
     }
 
-    final output = result.stdout.toString();
-    final flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
-    final match = flutterVersionRegex.firstMatch(output);
+    return _parseVersion(result.stdout.toString());
+  }
 
-    return match?.group(1);
+  /// Returns the Flutter version that fvm resolves for the current project.
+  ///
+  /// Asks fvm's JSON API (`fvm api project`) for the project's pinned version
+  /// first: that reads the project's `.fvmrc` without touching the Flutter
+  /// install, so it answers immediately and can't trigger a download.
+  ///
+  /// A project can pin a channel (e.g. `stable`) or a fork ref instead of a
+  /// version number, and only the Flutter that resolves to knows which version
+  /// it is, so in that case we fall back to `fvm flutter --version`. That can
+  /// install Flutter first, which is slow and prints nothing while it runs, so
+  /// we say what we're waiting on.
+  ///
+  /// Throws a [ProcessException] if the version check fails.
+  /// Returns `null` if the version check succeeds but the version cannot be
+  /// parsed.
+  Future<String?> getFvmVersion() async {
+    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()?.path;
+
+    final pinnedVersion = await _getFvmPinnedVersion(projectRoot);
+    if (pinnedVersion != null && _releaseVersionRegex.hasMatch(pinnedVersion)) {
+      return pinnedVersion;
+    }
+
+    final progress = logger.progress(
+      pinnedVersion == null
+          ? 'Asking fvm which Flutter version this project uses'
+          : '''Asking fvm which Flutter version "$pinnedVersion" resolves to (fvm may need to install it first)''',
+    );
+
+    const args = [executable, '--version'];
+    try {
+      final result = await process.run(
+        fvmExecutable,
+        args,
+        // fvm manages its own Flutter installs, so vending Shorebird's Flutter
+        // here would report Shorebird's version rather than the project's.
+        useVendedFlutter: false,
+        workingDirectory: projectRoot,
+      );
+
+      if (result.exitCode != 0) {
+        throw ProcessException(
+          fvmExecutable,
+          args,
+          '${result.stderr}',
+          result.exitCode,
+        );
+      }
+
+      final version = _parseVersion(result.stdout.toString());
+      progress.complete();
+      return version;
+    } on Exception {
+      progress.fail();
+      rethrow;
+    }
+  }
+
+  /// Returns the raw Flutter version the project's `.fvmrc` pins, as reported
+  /// by `fvm api project`.
+  ///
+  /// This is whatever the user wrote, so it may be a version number
+  /// (`3.32.4`), a channel (`stable`), or a fork ref (`my-fork/3.32.4`).
+  ///
+  /// Returns `null` if fvm can't answer — older fvm versions have no `api`
+  /// command, and the project may not be set up for fvm at all — so that
+  /// callers can fall back to asking Flutter itself.
+  Future<String?> _getFvmPinnedVersion(String? projectRoot) async {
+    final result = await process.run(
+      fvmExecutable,
+      [
+        'api',
+        'project',
+        if (projectRoot != null) ...['--path', projectRoot],
+      ],
+      useVendedFlutter: false,
+      workingDirectory: projectRoot,
+    );
+    if (result.exitCode != 0) return null;
+
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(result.stdout.toString());
+    } on FormatException {
+      return null;
+    }
+
+    if (decoded is! Map<String, dynamic>) return null;
+    final project = decoded['project'];
+    if (project is! Map<String, dynamic>) return null;
+
+    // `pinnedVersion` is fvm's parse of `config.flutter`; fall back to the raw
+    // value in case a future fvm changes the shape of `pinnedVersion`.
+    final pinnedVersion = project['pinnedVersion'];
+    if (pinnedVersion is Map<String, dynamic> &&
+        pinnedVersion['name'] is String) {
+      return pinnedVersion['name'] as String;
+    }
+    final config = project['config'];
+    if (config is Map<String, dynamic> && config['flutter'] is String) {
+      return config['flutter'] as String;
+    }
+    return null;
+  }
+
+  /// Matches a concrete Flutter release version (e.g. `3.32.4`), as opposed to
+  /// the channels and fork refs fvm also accepts as a pin.
+  static final _releaseVersionRegex = RegExp(r'^\d+\.\d+\.\d+$');
+
+  /// Parses the version number out of `flutter --version` output, which looks
+  /// like:
+  ///
+  /// ```text
+  /// Flutter 3.32.4 • channel stable • https://github.com/flutter/flutter.git
+  /// Framework • revision 6fba2447e9 • 2025-06-12 19:03:56 -0700
+  /// Engine • revision 8cd19e509d • 2025-06-12 16:30:12 -0700
+  /// Tools • Dart 3.8.1 • DevTools 2.45.1
+  /// ```
+  ///
+  /// Returns `null` if no version is found.
+  static String? _parseVersion(String output) {
+    final flutterVersionRegex = RegExp(r'Flutter (\d+.\d+.\d+)');
+    return flutterVersionRegex.firstMatch(output)?.group(1);
   }
 
   /// Executes `flutter config --list` and returns the output as a map.
@@ -396,8 +542,7 @@ class ShorebirdFlutter {
   ///
   /// e.g. 3.16.3 and b9b2390296b9b2390296 -> 3.16.3 (b9b2390296)
   String formatVersion({required String revision, required String? version}) {
-    version ??= 'unknown';
-    return '$version (${shortRevisionString(revision)})';
+    return '${version ?? 'unknown'} (${shortRevisionString(revision)})';
   }
 
   /// Returns the current Shorebird Flutter version and revision.

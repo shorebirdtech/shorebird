@@ -1,17 +1,18 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/os/os.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
   group(OperatingSystemInterface, () {
-    late Platform platform;
+    late TestNativePlatform platform;
     late ShorebirdProcess process;
     late ShorebirdProcessResult processResult;
     late OperatingSystemInterface osInterface;
@@ -27,13 +28,11 @@ void main() {
     }
 
     setUp(() {
-      platform = MockPlatform();
+      platform = TestNativePlatform(
+        operatingSystem: unsupportedOperatingSystem,
+      );
       process = MockShorebirdProcess();
       processResult = MockProcessResult();
-
-      when(() => platform.isLinux).thenReturn(false);
-      when(() => platform.isMacOS).thenReturn(false);
-      when(() => platform.isWindows).thenReturn(false);
 
       when(() => process.runSync(any(), any())).thenReturn(processResult);
       when(() => processResult.exitCode).thenReturn(ExitCode.success.code);
@@ -53,7 +52,7 @@ void main() {
 
     group('on macOS/Linux', () {
       setUp(() {
-        when(() => platform.isMacOS).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
 
         osInterface = runWithOverrides(OperatingSystemInterface.new);
       });
@@ -109,7 +108,7 @@ void main() {
 
     group('on Windows', () {
       setUp(() {
-        when(() => platform.isWindows).thenReturn(true);
+        platform = platform.copyWith(operatingSystem: NativePlatform.windows);
         osInterface = runWithOverrides(OperatingSystemInterface.new);
       });
 

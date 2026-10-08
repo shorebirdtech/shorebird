@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -30,7 +31,7 @@ void main() {
     late Auth auth;
     late http.Client httpClient;
     late ShorebirdLogger logger;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Progress progress;
     late ShorebirdEnv shorebirdEnv;
     late ShorebirdFlutter shorebirdFlutter;
@@ -43,7 +44,7 @@ void main() {
       auth = MockAuth();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform();
       progress = MockProgress();
       shorebirdEnv = MockShorebirdEnv();
       shorebirdFlutter = MockShorebirdFlutter();
@@ -158,7 +159,7 @@ void main() {
     late ShorebirdFlutter shorebirdFlutter;
     late Progress progress;
     late CodePushClientWrapper codePushClientWrapper;
-    late Platform platform;
+    late TestNativePlatform platform;
     late Directory projectRoot;
 
     R runWithOverrides<R>(R Function() body) {
@@ -183,7 +184,16 @@ void main() {
       codePushClient = MockCodePushClient();
       ditto = MockDitto();
       logger = MockShorebirdLogger();
-      platform = MockPlatform();
+      platform = TestNativePlatform(
+        script: Uri.file(
+          p.join(
+            Directory.systemTemp.createTempSync().path,
+            'bin',
+            'cache',
+            'shorebird.snapshot',
+          ),
+        ),
+      );
       progress = MockProgress();
       projectRoot = Directory.systemTemp.createTempSync();
 
@@ -201,16 +211,6 @@ void main() {
         ),
       ).thenAnswer((_) async {});
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => platform.script).thenReturn(
-        Uri.file(
-          p.join(
-            Directory.systemTemp.createTempSync().path,
-            'bin',
-            'cache',
-            'shorebird.snapshot',
-          ),
-        ),
-      );
 
       when(
         () => shorebirdFlutter.getVersionForRevision(
@@ -322,6 +322,32 @@ void main() {
         });
       });
 
+      group('getPlanLevel', () {
+        test('exits with code 70 when getting the plan fails', () async {
+          const error = 'something went wrong';
+          when(() => codePushClient.getPlanLevel()).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(codePushClientWrapper.getPlanLevel),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns the plan level on success', () async {
+          when(
+            () => codePushClient.getPlanLevel(),
+          ).thenAnswer((_) async => 'enterprise');
+
+          final level = await runWithOverrides(
+            codePushClientWrapper.getPlanLevel,
+          );
+
+          expect(level, equals('enterprise'));
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
       group('getOrganizationMemberships', () {
         test(
           'exits with code 70 when getting organization memberships fails',
@@ -417,7 +443,9 @@ void main() {
       group('getApp', () {
         test('exits with code 70 when getting app fails', () async {
           const error = 'something went wrong';
-          when(() => codePushClient.getApps()).thenThrow(error);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
 
           await expectLater(
             () async => runWithOverrides(
@@ -429,7 +457,9 @@ void main() {
         });
 
         test('exits with code 70 when app does not exist', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => null);
 
           await expectLater(
             () async => runWithOverrides(
@@ -447,7 +477,9 @@ void main() {
         });
 
         test('returns app when app exists', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => app);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.getApp(appId: appId),
@@ -459,9 +491,24 @@ void main() {
       });
 
       group('maybeGetApp', () {
-        test('exits with code 70 when fetching apps fails', () async {
+        test('requests the single app rather than the whole account', () async {
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => app);
+
+          await runWithOverrides(
+            () => codePushClientWrapper.maybeGetApp(appId: appId),
+          );
+
+          verify(() => codePushClient.getApp(appId: appId)).called(1);
+          verifyNever(() => codePushClient.getApps());
+        });
+
+        test('exits with code 70 when fetching the app fails', () async {
           const error = 'something went wrong';
-          when(() => codePushClient.getApps()).thenThrow(error);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
 
           await expectLater(
             () async => runWithOverrides(
@@ -473,7 +520,23 @@ void main() {
         });
 
         test('succeeds if app does not exist', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => []);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => null);
+
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.maybeGetApp(appId: appId),
+          );
+
+          expect(result, isNull);
+          verify(() => progress.complete()).called(1);
+          verifyNever(() => logger.err(any()));
+        });
+
+        test('returns null if the app belongs to someone else', () async {
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenThrow(CodePushForbiddenException(message: 'nope'));
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetApp(appId: appId),
@@ -485,13 +548,126 @@ void main() {
         });
 
         test('returns app when app exists', () async {
-          when(() => codePushClient.getApps()).thenAnswer((_) async => [app]);
+          when(
+            () => codePushClient.getApp(appId: any(named: 'appId')),
+          ).thenAnswer((_) async => app);
 
           final result = await runWithOverrides(
             () => codePushClientWrapper.maybeGetApp(appId: appId),
           );
 
           expect(result, app);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('updateApp', () {
+        test('exits with code 70 when renaming app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.updateApp(
+              appId: any(named: 'appId'),
+              displayName: any(named: 'displayName'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.updateApp(
+                appId: appId,
+                displayName: displayName,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when app is successfully renamed', () async {
+          when(
+            () => codePushClient.updateApp(
+              appId: appId,
+              displayName: displayName,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.updateApp(
+              appId: appId,
+              displayName: displayName,
+            ),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('deleteApp', () {
+        test('exits with code 70 when deleting app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.deleteApp(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteApp(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when app is successfully deleted', () async {
+          when(
+            () => codePushClient.deleteApp(appId: appId),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteApp(appId: appId),
+          );
+
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('transferApp', () {
+        test('exits with code 70 when transferring app fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.transferApp(
+              organizationId: any(named: 'organizationId'),
+              appId: any(named: 'appId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.transferApp(
+                organizationId: organizationId,
+                appId: appId,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when app is successfully transferred', () async {
+          when(
+            () => codePushClient.transferApp(
+              organizationId: organizationId,
+              appId: appId,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.transferApp(
+              organizationId: organizationId,
+              appId: appId,
+            ),
+          );
+
           verify(() => progress.complete()).called(1);
         });
       });
@@ -588,6 +764,77 @@ void main() {
           );
 
           expect(result, channel);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('getChannels', () {
+        test('exits with code 70 when fetching channels fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.getChannels(appId: any(named: 'appId')),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.getChannels(appId: appId),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('returns channels when channels are fetched', () async {
+          when(
+            () => codePushClient.getChannels(appId: appId),
+          ).thenAnswer((_) async => [channel]);
+
+          final result = await runWithOverrides(
+            () => codePushClientWrapper.getChannels(appId: appId),
+          );
+
+          expect(result, [channel]);
+          verify(() => progress.complete()).called(1);
+        });
+      });
+
+      group('deleteChannel', () {
+        test('exits with code 70 when deleting channel fails', () async {
+          const error = 'something went wrong';
+          when(
+            () => codePushClient.deleteChannel(
+              appId: any(named: 'appId'),
+              channelId: any(named: 'channelId'),
+            ),
+          ).thenThrow(error);
+
+          await expectLater(
+            () async => runWithOverrides(
+              () => codePushClientWrapper.deleteChannel(
+                appId: appId,
+                channelId: channel.id,
+              ),
+            ),
+            exitsWithCode(ExitCode.software),
+          );
+          verify(() => progress.fail(error)).called(1);
+        });
+
+        test('completes when channel is successfully deleted', () async {
+          when(
+            () => codePushClient.deleteChannel(
+              appId: appId,
+              channelId: channel.id,
+            ),
+          ).thenAnswer((_) async {});
+
+          await runWithOverrides(
+            () => codePushClientWrapper.deleteChannel(
+              appId: appId,
+              channelId: channel.id,
+            ),
+          );
+
           verify(() => progress.complete()).called(1);
         });
       });
@@ -1496,7 +1743,7 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             setUpProjectRoot();
             // Simulate AGP filtering: remove armeabi-v7a libapp.so to mirror
             // a project with ndk.abiFilters that excludes arm32.
-            final missingArch = Arch.arm32;
+            const missingArch = Arch.arm32;
             File(
               p.join(
                 projectRoot.path,
@@ -1670,6 +1917,46 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             ).called(3);
             verify(() => progress.complete()).called(1);
             verifyNever(() => progress.fail(any()));
+          },
+        );
+
+        test(
+          'fails with an accurate message when the aab has no libapp.so',
+          () async {
+            // A real aab that packages a native lib but no libapp.so, as
+            // happens when a custom Gradle build drops the Dart library before
+            // bundling (https://github.com/shorebirdtech/shorebird/issues/3813).
+            final archive = Archive()
+              ..addFile(
+                ArchiveFile.string('base/lib/arm64-v8a/libflutter.so', 'so'),
+              );
+            final aab = File(p.join(projectRoot.path, 'no_libapp.aab'))
+              ..createSync(recursive: true)
+              ..writeAsBytesSync(ZipEncoder().encode(archive));
+
+            await expectLater(
+              () async => runWithOverrides(
+                () async => codePushClientWrapper.createAndroidReleaseArtifacts(
+                  appId: app.appId,
+                  releaseId: releaseId,
+                  platform: releasePlatform,
+                  projectRoot: projectRoot.path,
+                  aabPath: aab.path,
+                  architectures: Arch.values,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            verify(
+              () => progress.fail(
+                any(
+                  that: contains(
+                    'does not contain libapp.so for any architecture',
+                  ),
+                ),
+              ),
+            ).called(1);
           },
         );
       });

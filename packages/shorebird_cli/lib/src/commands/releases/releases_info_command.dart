@@ -7,6 +7,10 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
+const _jsonExample =
+    'shorebird releases info --release-version 1.0.0+1 --app-id '
+    '<id> --json';
+
 /// {@template releases_info_command}
 /// `shorebird releases info`
 /// Show details for a specific release.
@@ -49,7 +53,7 @@ class ReleasesInfoCommand extends ShorebirdCommand {
       '    ios:      draft\n'
       '    macos:    active\n'
       '    windows:  active\n\n'
-      '${ShorebirdCommand.jsonHint('shorebird releases info --release-version 1.0.0+1 --app-id <id> --json')}';
+      '${ShorebirdCommand.jsonHint(_jsonExample)}';
 
   @override
   Future<int> run() async {
@@ -81,13 +85,14 @@ class ReleasesInfoCommand extends ShorebirdCommand {
       return ExitCode.success.code;
     }
 
-    logger.info('ID:         ${release.id}');
-    logger.info('Version:    ${release.version}');
+    logger
+      ..info('ID:         ${release.id}')
+      ..info('Version:    ${release.version}');
     if (release.flutterVersion != null) {
       logger.info('Flutter:    ${release.flutterVersion}');
     }
-    logger.info('Revision:   ${release.flutterRevision}');
     logger
+      ..info('Revision:   ${release.flutterRevision}')
       ..info(
         'Created:    '
         '${release.createdAt.toIso8601String().split('T').first}',

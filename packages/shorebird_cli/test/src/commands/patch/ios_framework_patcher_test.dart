@@ -257,7 +257,7 @@ void main() {
               checkUserIsAuthenticated: true,
               checkShorebirdInitialized: true,
               validators: [flavorValidator],
-              supportedOperatingSystems: {Platform.macOS},
+              supportedOperatingSystems: {NativePlatform.macOS},
             ),
           ).called(1);
         });
@@ -578,7 +578,6 @@ void main() {
         hash: '#',
         size: 42,
         url: 'https://example.com',
-        podfileLockHash: null,
         canSideload: true,
       );
       late File releaseArtifactFile;

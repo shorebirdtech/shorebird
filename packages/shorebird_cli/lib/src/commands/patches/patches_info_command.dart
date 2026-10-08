@@ -1,14 +1,18 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
-import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
+
+const _jsonExample =
+    'shorebird patches info --release-version 1.0.0+1 '
+    '--patch-number 1 --app-id <id> --json';
 
 /// {@template patches_info_command}
 /// `shorebird patches info`
@@ -54,7 +58,7 @@ class PatchesInfoCommand extends ShorebirdCommand with PatchNumberArgument {
       '    android  arm64-v8a    1.20 MB\n'
       '    android  armeabi-v7a  1.10 MB\n'
       '    ios      arm64        896 KB\n\n'
-      '${ShorebirdCommand.jsonHint('shorebird patches info --release-version 1.0.0+1 --patch-number 1 --app-id <id> --json')}';
+      '${ShorebirdCommand.jsonHint(_jsonExample)}';
 
   @override
   Future<int> run() async {

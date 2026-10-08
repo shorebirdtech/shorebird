@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/android_studio.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
@@ -12,13 +12,14 @@ import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
+import '../helpers.dart';
 import '../mocks.dart';
 
 void main() {
   group(Java, () {
     late AndroidStudio androidStudio;
     late OperatingSystemInterface osInterface;
-    late Platform platform;
+    late TestNativePlatform platform;
     late ShorebirdFlutter shorebirdFlutter;
     late ShorebirdProcess shorebirdProcess;
     late Java java;
@@ -45,15 +46,13 @@ void main() {
     setUp(() {
       androidStudio = MockAndroidStudio();
       osInterface = MockOperatingSystemInterface();
-      platform = MockPlatform();
+      platform = TestNativePlatform(
+        environment: {},
+        operatingSystem: unsupportedOperatingSystem,
+      );
       shorebirdFlutter = MockShorebirdFlutter();
       shorebirdProcess = MockShorebirdProcess();
       java = Java();
-
-      when(() => platform.environment).thenReturn({});
-      when(() => platform.isWindows).thenReturn(false);
-      when(() => platform.isMacOS).thenReturn(false);
-      when(() => platform.isLinux).thenReturn(false);
 
       when(() => osInterface.which(any())).thenReturn(null);
 
@@ -63,8 +62,7 @@ void main() {
     group('version', () {
       setUp(() {
         const javaHome = '/path/to/jdk';
-        when(() => platform.isWindows).thenReturn(false);
-        when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+        platform = platform.copyWith(environment: {'JAVA_HOME': javaHome});
 
         final processResult = MockShorebirdProcessResult();
         when(
@@ -97,7 +95,7 @@ void main() {
 
       group('when no jdk is found', () {
         setUp(() {
-          when(() => platform.environment).thenReturn({});
+          platform = platform.copyWith(environment: {});
         });
 
         test('returns null', () {
@@ -110,8 +108,8 @@ void main() {
       group('when on Windows', () {
         const javaHome = r'C:\Program Files\Java\jdk-11.0.1';
         setUp(() {
-          when(() => platform.isWindows).thenReturn(true);
-          when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+          platform = platform.copyWith(operatingSystem: NativePlatform.windows);
+          platform = platform.copyWith(environment: {'JAVA_HOME': javaHome});
         });
 
         test('returns correct executable on windows', () async {
@@ -125,8 +123,7 @@ void main() {
       group('when on a non-Windows OS', () {
         setUp(() {
           const javaHome = '/path/to/jdk';
-          when(() => platform.isWindows).thenReturn(false);
-          when(() => platform.environment).thenReturn({'JAVA_HOME': javaHome});
+          platform = platform.copyWith(environment: {'JAVA_HOME': javaHome});
         });
 
         test('returns correct executable on non-windows', () async {
@@ -154,7 +151,7 @@ void main() {
 
         group('on macOS', () {
           setUp(() {
-            when(() => platform.isMacOS).thenReturn(true);
+            platform = platform.copyWith(operatingSystem: NativePlatform.macOS);
 
             final tempDir = setUpAppTempDir();
             final androidStudioDir = Directory(
@@ -172,7 +169,7 @@ void main() {
             File(
               p.join(tempDir.path, 'android', 'gradlew'),
             ).createSync(recursive: true);
-            when(() => platform.environment).thenReturn({'HOME': tempDir.path});
+            platform = platform.copyWith(environment: {'HOME': tempDir.path});
           });
 
           group('when flutter config contains jdk override', () {
@@ -195,11 +192,13 @@ void main() {
             );
           });
 
-          test('does not check JAVA_HOME or PATH', () {
-            runWithOverrides(() => java.home);
+          test('prefers the Android Studio JDK over JAVA_HOME and PATH', () {
+            platform = platform.copyWith(
+              environment: {...platform.environment, 'JAVA_HOME': '/java'},
+            );
 
+            expect(runWithOverrides(() => java.home), equals(jbrDir.path));
             verifyNever(() => osInterface.which(any()));
-            verifyNever(() => platform.environment);
           });
         });
 
@@ -207,7 +206,9 @@ void main() {
           late Directory jbrDir;
 
           setUp(() {
-            when(() => platform.isWindows).thenReturn(true);
+            platform = platform.copyWith(
+              operatingSystem: NativePlatform.windows,
+            );
 
             final tempDir = setUpAppTempDir();
             final androidStudioDir = Directory(
@@ -219,10 +220,12 @@ void main() {
             File(
               p.join(tempDir.path, 'android', 'gradlew.bat'),
             ).createSync(recursive: true);
-            when(() => platform.environment).thenReturn({
-              'PROGRAMFILES': tempDir.path,
-              'PROGRAMFILES(X86)': tempDir.path,
-            });
+            platform = platform.copyWith(
+              environment: {
+                'PROGRAMFILES': tempDir.path,
+                'PROGRAMFILES(X86)': tempDir.path,
+              },
+            );
           });
 
           test('returns correct path', () async {
@@ -232,17 +235,19 @@ void main() {
             );
           });
 
-          test('does not check JAVA_HOME or PATH', () {
-            runWithOverrides(() => java.home);
+          test('prefers the Android Studio JDK over JAVA_HOME and PATH', () {
+            platform = platform.copyWith(
+              environment: {...platform.environment, 'JAVA_HOME': '/java'},
+            );
 
+            expect(runWithOverrides(() => java.home), equals(jbrDir.path));
             verifyNever(() => osInterface.which(any()));
-            verifyNever(() => platform.environment);
           });
         });
 
         group('on Linux', () {
           setUp(() {
-            when(() => platform.isLinux).thenReturn(true);
+            platform = platform.copyWith(operatingSystem: NativePlatform.linux);
 
             final tempDir = setUpAppTempDir();
             final androidStudioDir = Directory(
@@ -255,7 +260,7 @@ void main() {
               p.join(tempDir.path, 'android', 'gradlew'),
             ).createSync(recursive: true);
 
-            when(() => platform.environment).thenReturn({'HOME': tempDir.path});
+            platform = platform.copyWith(environment: {'HOME': tempDir.path});
           });
 
           test('returns correct path', () async {
@@ -271,9 +276,7 @@ void main() {
         group('when JAVA_HOME is set', () {
           const javaHome = r'C:\Program Files\Java\jdk-11.0.1';
           setUp(() {
-            when(
-              () => platform.environment,
-            ).thenReturn({'JAVA_HOME': javaHome});
+            platform = platform.copyWith(environment: {'JAVA_HOME': javaHome});
           });
 
           group('when flutter config contains jdk override', () {

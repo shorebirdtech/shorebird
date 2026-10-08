@@ -1,0 +1,10 @@
+{
+  "id": "pm_456",
+  "object": "payment_method",
+  "type": "link",
+  "link": {
+    "email": "test@example.com"
+  },
+  "customer": "cus_123",
+  "livemode": false
+}

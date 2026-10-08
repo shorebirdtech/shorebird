@@ -3,7 +3,7 @@ import 'dart:io' hide Platform;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -20,7 +20,7 @@ void main() {
     late AotTools aotTools;
     late Apple apple;
     late Progress progress;
-    late Platform platform;
+    late TestNativePlatform platform;
     late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdLogger logger;
     late ShorebirdEnv shorebirdEnv;
@@ -41,14 +41,13 @@ void main() {
     setUp(() {
       aotTools = MockAotTools();
       apple = Apple();
-      platform = MockPlatform();
+      platform = TestNativePlatform(environment: {});
       progress = MockProgress();
       logger = MockShorebirdLogger();
       shorebirdArtifacts = MockShorebirdArtifacts();
       shorebirdEnv = MockShorebirdEnv();
 
       when(() => logger.progress(any())).thenReturn(progress);
-      when(() => platform.environment).thenReturn({});
 
       when(
         () => aotTools.getLinkMetadata(
@@ -588,12 +587,15 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
             ..writeAsStringSync('release');
 
           // Create intermediate patch snapshots alongside out.aot.
-          File(p.join(buildDirectory.path, 'out.ct.aot'))
-            ..writeAsStringSync('ct');
-          File(p.join(buildDirectory.path, 'out.preDdOptimized.aot'))
-            ..writeAsStringSync('preDdOptimized');
-          File(p.join(buildDirectory.path, 'out.optimized.aot'))
-            ..writeAsStringSync('optimized');
+          File(
+            p.join(buildDirectory.path, 'out.ct.aot'),
+          ).writeAsStringSync('ct');
+          File(
+            p.join(buildDirectory.path, 'out.preDdOptimized.aot'),
+          ).writeAsStringSync('preDdOptimized');
+          File(
+            p.join(buildDirectory.path, 'out.optimized.aot'),
+          ).writeAsStringSync('optimized');
 
           // Capture the dumpDebugInfoPath so we can inspect it.
           String? capturedDebugInfoPath;
@@ -700,9 +702,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
 
           setUp(() {
             codemagicExportDir = Directory.systemTemp.createTempSync();
-            when(
-              () => platform.environment,
-            ).thenReturn({'CM_EXPORT_DIR': codemagicExportDir.path});
+            platform = platform.copyWith(
+              environment: {'CM_EXPORT_DIR': codemagicExportDir.path},
+            );
           });
 
           test('copies debug info to codemagic exports', () async {
@@ -728,9 +730,9 @@ Otherwise, to repair macos, run "flutter create . --platforms macos"''',
           });
 
           test('gracefully handles errors', () async {
-            when(
-              () => platform.environment,
-            ).thenReturn({'CM_EXPORT_DIR': 'invalid path'});
+            platform = platform.copyWith(
+              environment: {'CM_EXPORT_DIR': 'invalid path'},
+            );
             await runWithOverrides(
               () => apple.runLinker(
                 aotOutputFile: aotOutputFile,

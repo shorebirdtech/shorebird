@@ -196,7 +196,7 @@ void main() {
               checkUserIsAuthenticated: true,
               checkShorebirdInitialized: true,
               validators: [flavorValidator],
-              supportedOperatingSystems: {Platform.macOS},
+              supportedOperatingSystems: {NativePlatform.macOS},
             ),
           ).called(1);
         });
@@ -660,6 +660,56 @@ $body
           );
 
           verify(() => logger.err('Unable to find .app directory')).called(1);
+        });
+      });
+
+      group('when an app extension version does not match the app', () {
+        setUp(() {
+          String plist(String shortVersion, String version) =>
+              '''
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleShortVersionString</key>
+	<string>$shortVersion</string>
+	<key>CFBundleVersion</key>
+	<string>$version</string>
+</dict>
+</plist>
+''';
+
+          File(
+            p.join(iosAppDirectory.path, 'Info.plist'),
+          ).writeAsStringSync(plist('1.15.67', '250'));
+          final extensionDirectory = Directory(
+            p.join(
+              iosAppDirectory.path,
+              'PlugIns',
+              'NotificationService.appex',
+            ),
+          )..createSync(recursive: true);
+          File(
+            p.join(extensionDirectory.path, 'Info.plist'),
+          ).writeAsStringSync(plist('1.15.32', '250'));
+        });
+
+        test('warns but does not fail the release', () async {
+          expect(
+            await runWithOverrides(iosReleaser.buildReleaseArtifacts),
+            equals(xcarchiveDirectory),
+          );
+
+          verify(
+            () => logger.warn(
+              any(
+                that: allOf(
+                  contains('NotificationService.appex'),
+                  contains('ITMS-90473'),
+                ),
+              ),
+            ),
+          ).called(1);
         });
       });
 
