@@ -61,3 +61,29 @@ git push origin "$SHA:stable"
 
 - `shorebird upgrade` on a machine with an older CLI moves it to the new
   version, and `shorebird --version` reports it.
+
+## 6. Announce
+
+Post a summary on the Shorebird Discord, built from the `RELEASE_NOTES.md`
+section:
+
+```md
+@here - <greeting>. Shorebird <version> is out. Run `shorebird upgrade` to pick it up.
+
+## Shorebird <version>
+
+🐦 Flutter <flutter version> / Dart <dart version> support. 🐦
+
+### New
+- <one line per feature>
+
+### Fixes
+- <one line per fix>
+
+### From Flutter <flutter version>
+- <notable Flutter fixes>
+
+Full notes: <https://github.com/shorebirdtech/shorebird/releases/tag/v<version>>
+```
+
+Leave out sections with nothing in them.
