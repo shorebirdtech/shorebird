@@ -195,20 +195,60 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       ),
     );
 
+    final arm64DiffBase = await _diffBase(
+      releaseArtifact: releaseArtifactFile,
+      analyzeSnapshot: ShorebirdArtifact.analyzeSnapshotMacosArm64,
+    );
+    final x64DiffBase = await _diffBase(
+      releaseArtifact: releaseArtifactFile,
+      analyzeSnapshot: ShorebirdArtifact.analyzeSnapshotMacosX64,
+    );
+
     final createDiffProgress = logger.progress('Creating patch artifacts');
     final arm64Bundle = await _createPatchArtifactBundle(
-      releaseArtifact: releaseArtifactFile,
+      releaseArtifact: arm64DiffBase,
       patchArtifact: File(_arm64AotOutputPath),
       arch: Arch.arm64,
     );
     final x64Bundle = await _createPatchArtifactBundle(
-      releaseArtifact: releaseArtifactFile,
+      releaseArtifact: x64DiffBase,
       patchArtifact: File(_x64AotOutputPath),
       arch: Arch.x86_64,
     );
     createDiffProgress.complete();
 
     return {Arch.x86_64: x64Bundle, Arch.arm64: arm64Bundle};
+  }
+
+  /// The file a patch is diffed against for one architecture of
+  /// [releaseArtifact] (the release's universal App.framework/App).
+  ///
+  /// Engines that publish the macOS analyze_snapshot executables apply
+  /// patches to just the Dart snapshot regions of the installed binary, so
+  /// the base is those regions of the matching architecture's slice. Unlike
+  /// the whole binary, they don't change when the app is re-signed after
+  /// release. Older engines apply patches to the whole binary.
+  Future<File> _diffBase({
+    required File releaseArtifact,
+    required ShorebirdArtifact analyzeSnapshot,
+  }) async {
+    final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
+      artifact: analyzeSnapshot,
+    );
+    if (!File(analyzeSnapshotPath).existsSync()) return releaseArtifact;
+
+    final progress = logger.progress('Generating patch diff base');
+    try {
+      final diffBase = await aotTools.generatePatchDiffBase(
+        analyzeSnapshotPath: analyzeSnapshotPath,
+        releaseSnapshot: releaseArtifact,
+      );
+      progress.complete();
+      return diffBase;
+    } on Exception catch (error) {
+      progress.fail('$error');
+      throw ProcessExit(ExitCode.software.code);
+    }
   }
 
   @override

@@ -189,22 +189,32 @@ void main() {
         );
       });
 
-      test('returns correct path for analyze_snapshot on macOS', () {
+      test('returns correct paths for analyze_snapshot on macOS', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.analyzeSnapshotMacOS,
+              artifact: ShorebirdArtifact.analyzeSnapshotMacosArm64,
             ),
           ),
           equals(
             p.join(
-              flutterDirectory.path,
-              'bin',
-              'cache',
-              'artifacts',
-              'engine',
-              'darwin-x64-release',
-              'analyze_snapshot',
+              artifactDirectory.path,
+              engineRevision,
+              'analyze-snapshot-macos-arm64',
+            ),
+          ),
+        );
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshotMacosX64,
+            ),
+          ),
+          equals(
+            p.join(
+              artifactDirectory.path,
+              engineRevision,
+              'analyze-snapshot-macos-x64',
             ),
           ),
         );
@@ -335,11 +345,11 @@ void main() {
         );
       });
 
-      test('returns correct path for analyze_snapshot on macOS', () {
+      test('returns correct paths for analyze_snapshot on macOS', () {
         expect(
           runWithOverrides(
             () => artifacts.getArtifactPath(
-              artifact: ShorebirdArtifact.analyzeSnapshotMacOS,
+              artifact: ShorebirdArtifact.analyzeSnapshotMacosArm64,
             ),
           ),
           equals(
@@ -347,8 +357,22 @@ void main() {
               localEngineSrcPath,
               'out',
               localEngine,
-              'clang_x64',
-              'analyze_snapshot',
+              'analyze_snapshot_arm64',
+            ),
+          ),
+        );
+        expect(
+          runWithOverrides(
+            () => artifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshotMacosX64,
+            ),
+          ),
+          equals(
+            p.join(
+              localEngineSrcPath,
+              'out',
+              localEngine,
+              'analyze_snapshot_x64',
             ),
           ),
         );
