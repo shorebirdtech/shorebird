@@ -25,7 +25,9 @@ that `stable` is moved to.
 - Every leg must pass. If the most recent nightly failed, find out why before
   releasing.
 - Manually check each change from step 1 that e2e does not cover, using a
-  local checkout of the commit being released.
+  local checkout of the commit being released. On a Mac, Shorebird staff can
+  run the `release-smoke-test` agent skill in `shorebirdtech/_shorebird`,
+  which covers macOS, iOS, add-to-app, obfuscation, `--json` and login.
 
 ## 3. Prepare the release commit
 
