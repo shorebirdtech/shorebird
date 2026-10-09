@@ -14,6 +14,10 @@ cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkisha
     `ReorderableListView`.
 - ✨ `shorebird login` opens your browser, and falls back to a device code
   when no browser can be opened.
+- ✨ Unused Flutter installs, engine artifacts and previews are now pruned
+  automatically, so they stop piling up across upgrades and
+  `--flutter-version` builds. `shorebird cache clean --unused` prunes without
+  clearing the rest of the cache.
 - 🐛 macOS patches are now diffed against the Dart snapshot regions.
 - 🐛 `shorebird preview` streams iOS app logs with `devicectl --console`.
 
