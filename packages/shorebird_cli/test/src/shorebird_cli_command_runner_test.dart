@@ -6,6 +6,7 @@ import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart' hide logger;
@@ -28,6 +29,7 @@ void main() {
     const flutterRevision = 'test-flutter-revision';
     const flutterVersion = '1.2.3';
 
+    late Cache cache;
     late ShorebirdLogger logger;
     late TestNativePlatform platform;
     late ShorebirdEnv shorebirdEnv;
@@ -39,6 +41,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          cacheRef.overrideWith(() => cache),
           loggerRef.overrideWith(() => logger),
           platformRef.overrideWith(() => platform),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -49,6 +52,7 @@ void main() {
     }
 
     setUp(() {
+      cache = MockCache();
       logger = MockShorebirdLogger();
       platform = TestNativePlatform(operatingSystem: NativePlatform.linux);
       shorebirdEnv = MockShorebirdEnv();
@@ -68,9 +72,68 @@ void main() {
       when(
         () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => flutterVersion);
+      when(() => shorebirdFlutter.pruneUnusedRevisions()).thenReturn([]);
+      when(() => cache.pruneUnusedArtifacts()).thenReturn([]);
+      when(() => cache.pruneUnusedPreviews()).thenReturn([]);
       when(shorebirdVersion.isLatest).thenAnswer((_) async => true);
       when(shorebirdVersion.isTrackingStable).thenAnswer((_) async => true);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
+    });
+
+    group('pruning unused caches', () {
+      test('prunes after the command runs', () async {
+        commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+        await runWithOverrides(() => commandRunner.run(['test']));
+
+        verify(() => shorebirdFlutter.pruneUnusedRevisions()).called(1);
+        verify(() => cache.pruneUnusedArtifacts()).called(1);
+        verify(() => cache.pruneUnusedPreviews()).called(1);
+      });
+
+      test('prunes after a command that fails', () async {
+        commandRunner.addCommand(_TestCommand(ExitCode.software));
+
+        await runWithOverrides(() => commandRunner.run(['test']));
+
+        verify(() => shorebirdFlutter.pruneUnusedRevisions()).called(1);
+        verify(() => cache.pruneUnusedArtifacts()).called(1);
+        verify(() => cache.pruneUnusedPreviews()).called(1);
+      });
+
+      test('does not fail the command when pruning throws', () async {
+        when(
+          () => shorebirdFlutter.pruneUnusedRevisions(),
+        ).thenThrow(const FileSystemException('denied'));
+        when(
+          () => cache.pruneUnusedArtifacts(),
+        ).thenThrow(const FileSystemException('denied'));
+        when(
+          () => cache.pruneUnusedPreviews(),
+        ).thenThrow(const FileSystemException('denied'));
+        commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+        final result = await runWithOverrides(
+          () => commandRunner.run(['test']),
+        );
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.detail(
+            any(that: contains('Unable to prune unused Flutter installs')),
+          ),
+        ).called(1);
+        verify(
+          () => logger.detail(
+            any(that: contains('Unable to prune unused artifacts')),
+          ),
+        ).called(1);
+        verify(
+          () => logger.detail(
+            any(that: contains('Unable to prune unused previews')),
+          ),
+        ).called(1);
+      });
     });
 
     group('handles ProcessExit', () {

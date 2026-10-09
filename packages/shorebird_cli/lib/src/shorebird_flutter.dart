@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
@@ -141,23 +142,15 @@ class ShorebirdFlutter {
           targetDirectory.existsSync() && !_isUnusableInstall(targetDirectory);
       if (published) {
         installProgress.complete();
-        _deleteIgnoringErrors(stagingDirectory);
+        deleteIgnoringErrors(stagingDirectory);
         return;
       }
 
       final short = shortRevisionString(revision);
       installProgress.fail('Failed to install Flutter $version ($short)');
       logger.err('$error');
-      _deleteIgnoringErrors(stagingDirectory);
+      deleteIgnoringErrors(stagingDirectory);
       rethrow;
-    }
-  }
-
-  void _deleteIgnoringErrors(Directory directory) {
-    try {
-      directory.deleteSync(recursive: true);
-    } on FileSystemException catch (error) {
-      logger.detail('Failed to remove ${directory.path}: $error');
     }
   }
 
@@ -173,12 +166,23 @@ class ShorebirdFlutter {
   /// A name this code did not write is left alone, so an unparseable or
   /// unrecognized sibling is never a candidate.
   void _reclaimStrandedStagingDirectories(Directory targetDirectory) {
-    final prefix = '${p.basename(targetDirectory.path)}.';
+    _reclaimStaleDirectories(
+      parent: targetDirectory.parent,
+      prefix: '${p.basename(targetDirectory.path)}.',
+    );
+  }
+
+  /// Removes every directory in [parent] that [_reclaimablePath] named, under
+  /// [prefix], more than [_stagingMaxAge] ago.
+  void _reclaimStaleDirectories({
+    required Directory parent,
+    required String prefix,
+  }) {
     final cutoff = clock.now().subtract(_stagingMaxAge);
 
     final List<FileSystemEntity> siblings;
     try {
-      siblings = targetDirectory.parent.listSync();
+      siblings = parent.listSync();
     } on FileSystemException {
       return;
     }
@@ -189,7 +193,7 @@ class ShorebirdFlutter {
         prefix: prefix,
       );
       if (since == null || since.isAfter(cutoff)) continue;
-      _deleteIgnoringErrors(sibling);
+      deleteIgnoringErrors(sibling);
     }
   }
 
@@ -267,6 +271,7 @@ class ShorebirdFlutter {
     if (!isUnusable &&
         targetDirectory.existsSync() &&
         precacheStamp.existsSync()) {
+      markUsed(targetDirectory);
       return;
     }
 
@@ -359,6 +364,85 @@ class ShorebirdFlutter {
       throw exception;
     }
     precacheProgress.complete();
+    markUsed(targetDirectory);
+  }
+
+  /// The installed revision whose Dart SDK is running this process, or null
+  /// if the process is not running from the Flutter cache.
+  ///
+  /// The launcher runs the CLI on the pinned revision's Dart SDK. During
+  /// `shorebird upgrade` that is the revision being upgraded away from, which
+  /// is no longer the one `flutter.version` names.
+  String? _runningRevision(Directory flutterCache) {
+    final executable = platform.resolvedExecutable;
+    // The executable's path has its symlinks resolved, and the cache's may
+    // not (a symlinked Shorebird root), so compare against both spellings.
+    final cachePaths = {
+      flutterCache.path,
+      if (flutterCache.existsSync()) flutterCache.resolveSymbolicLinksSync(),
+    };
+    for (final cachePath in cachePaths) {
+      if (p.isWithin(cachePath, executable)) {
+        return p.split(p.relative(executable, from: cachePath)).first;
+      }
+    }
+    return null;
+  }
+
+  /// Removes installed Flutter revisions that have not been used within
+  /// [unusedCacheMaxAge], and returns the revisions removed.
+  ///
+  /// Never removes the pinned revision or the one running this process, and
+  /// records both as used, so a revision that stops being pinned gets the
+  /// full [unusedCacheMaxAge] from then. Reads the pinned revision from
+  /// [shorebirdEnv], so call this outside any `flutterRevisionOverride`
+  /// scope; after `shorebird upgrade` it is the new pin.
+  ///
+  /// Each candidate is moved aside before it is deleted, so a delete that
+  /// fails partway (a locked file on Windows) leaves a directory a later
+  /// sweep reclaims rather than a half-deleted install at the revision's
+  /// path. Another process that starts using a revision between the age
+  /// check and the move loses its install and reinstalls on its next run.
+  List<String> pruneUnusedRevisions() {
+    final flutterCache = shorebirdEnv.flutterDirectory.parent;
+    if (!flutterCache.existsSync()) return const [];
+
+    final protected = {
+      shorebirdEnv.flutterRevision,
+      ?_runningRevision(flutterCache),
+    };
+    for (final revision in protected) {
+      final directory = Directory(p.join(flutterCache.path, revision));
+      if (directory.existsSync()) markUsed(directory);
+    }
+
+    final removed = <String>[];
+    for (final entity in flutterCache.listSync().whereType<Directory>()) {
+      final revision = p.basename(entity.path);
+      if (protected.contains(revision)) continue;
+      if (!isUnusedRevisionDirectory(entity)) continue;
+
+      final Directory condemned;
+      try {
+        condemned = entity.renameSync(
+          _reclaimablePath(entity.path, tag: 'unused'),
+        );
+      } on FileSystemException catch (error) {
+        logger.detail('Failed to move aside ${entity.path}: $error');
+        continue;
+      }
+      logger.detail(
+        'Removing Flutter ${shortRevisionString(revision)}, unused for '
+        '${unusedCacheMaxAge.inDays} days.',
+      );
+      deleteIgnoringErrors(condemned);
+      removed.add(revision);
+    }
+
+    // Whatever a failed delete above, or an earlier run, left behind.
+    _reclaimStaleDirectories(parent: flutterCache, prefix: '');
+
+    return removed;
   }
 
   /// Whether the current revision is unmodified.
