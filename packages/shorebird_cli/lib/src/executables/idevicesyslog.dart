@@ -37,9 +37,15 @@ class IDeviceSysLog {
 
   /// The libraries that idevicesyslog depends on.
   @visibleForTesting
+  ///
+  /// These match the artifact directories Flutter's cache creates under
+  /// `bin/cache/artifacts`. idevicesyslog loads its dylibs from
+  /// `@loader_path/..`, where they don't exist, so each directory must be on
+  /// `DYLD_LIBRARY_PATH` or the process aborts before printing anything.
   static const deps = [
     'libimobiledevice',
-    'usbmuxd',
+    'libusbmuxd',
+    'libimobiledeviceglue',
     'libplist',
     'openssl',
     'ios-deploy',
