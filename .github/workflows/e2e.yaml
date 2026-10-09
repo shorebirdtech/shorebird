@@ -1,3 +1,5 @@
+# cspell:words cmdline sdkmanager
+
 name: e2e
 
 concurrency:
@@ -42,18 +44,32 @@ jobs:
         # releases of a line ship frozen engines, so they repeat the newest
         # one's coverage. "default" omits --flutter-version, testing the
         # Flutter this CLI revision pins.
-        flutter-version:
-          [
-            default,
-            3.47.5,
-            3.44.9,
-            3.41.9,
-            3.38.10,
-            3.35.7,
-            3.32.8,
-            3.29.3,
-            3.27.4,
-          ]
+        #
+        # android-packages are the SDK packages the leg's build would
+        # otherwise download mid-build (the runner image lacks them). They
+        # are installed up front, and the e2e step fails if the build still
+        # downloads anything, naming the package to add here.
+        include:
+          - flutter-version: default
+            android-packages: ndk;28.2.13676358
+          - flutter-version: 3.47.5
+            android-packages: ndk;28.2.13676358
+          # 3.29 through 3.44 point AGP at an empty CMakeLists.txt to make it
+          # fetch the NDK, so AGP also wants its default CMake.
+          - flutter-version: 3.44.9
+            android-packages: ndk;28.2.13676358 cmake;3.22.1
+          - flutter-version: 3.41.9
+            android-packages: ndk;28.2.13676358 cmake;3.22.1
+          - flutter-version: 3.38.10
+            android-packages: ndk;28.2.13676358 cmake;3.22.1
+          - flutter-version: 3.35.7
+            android-packages: ndk;27.0.12077973 cmake;3.22.1
+          - flutter-version: 3.32.8
+            android-packages: ndk;26.3.11579264 cmake;3.22.1
+          - flutter-version: 3.29.3
+            android-packages: ndk;26.3.11579264 cmake;3.22.1
+          - flutter-version: 3.27.4
+            android-packages: build-tools;33.0.1
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -96,14 +112,13 @@ jobs:
           # costs about as much as a restore.
           cache: false
 
-      # Flutter 3.29 through 3.44 point AGP at an empty CMakeLists.txt to make
-      # it fetch the NDK, and AGP then needs its default CMake, 3.22.1, which
-      # the runner image does not ship. Installing it here means a bad download
-      # fails this step instead of `shorebird release` mid-build. Legs that
-      # don't use CMake (3.27, 3.47) only pay the download.
-      - name: 🤖 Install CMake for AGP
-        timeout-minutes: 5
-        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
+      # A bad download fails this step instead of `shorebird release`
+      # mid-build. Unquoted so the list splits into one argument per package.
+      - name: 🤖 Install Android SDK Packages
+        timeout-minutes: 10
+        env:
+          ANDROID_PACKAGES: ${{ matrix.android-packages }}
+        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install $ANDROID_PACKAGES
 
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
@@ -141,7 +156,7 @@ jobs:
           api-level: 29
           arch: x86_64
           target: default
-          script: ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
+          script: ./scripts/no_android_sdk_downloads.sh ./scripts/patch_e2e.sh ${{ matrix.flutter-version }}
 
   cli:
     strategy:
