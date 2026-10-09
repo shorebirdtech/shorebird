@@ -558,6 +558,9 @@ void main() {
           installJsonOutput = File(
             '$fixturesPath/install_success.json',
           ).readAsStringSync();
+          launchJsonOutput = File(
+            '$fixturesPath/launch_success.json',
+          ).readAsStringSync();
 
           when(
             () => process.start('script', any()),
@@ -604,15 +607,16 @@ void main() {
           verify(() => progress.complete()).called(2);
         });
 
-        group('when the app never launches', () {
+        group('when devicectl never prints its attach line', () {
           setUp(() {
-            launchExitCode = 1;
+            const prefix = '2026-10-08 20:06:42.768621-0700 Runner[1234:5678]';
             launchOutputLines = [
-              'ERROR: The application failed to launch.',
+              'Launched application with dev.shorebird.ios-test bundle id.',
+              '$prefix flutter: smoke: base',
             ];
           });
 
-          test('fails with the devicectl output', () async {
+          test('treats app output as attached and logs it', () async {
             expect(
               await runWithOverrides(
                 () => devicectl.installAndLaunchApp(
@@ -620,7 +624,34 @@ void main() {
                   device: device,
                 ),
               ),
-              equals(ExitCode.software.code),
+              equals(ExitCode.success.code),
+            );
+
+            verify(() => logger.info('flutter: smoke: base')).called(1);
+            verifyNever(
+              () => process.run(any(), any(that: contains('launch'))),
+            );
+            verifyNever(() => logger.warn(any()));
+          });
+        });
+
+        group('when the console never attaches', () {
+          setUp(() {
+            launchExitCode = 1;
+            launchOutputLines = [
+              'ERROR: The application failed to launch.',
+            ];
+          });
+
+          test('falls back to launching without logs', () async {
+            expect(
+              await runWithOverrides(
+                () => devicectl.installAndLaunchApp(
+                  runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                  device: device,
+                ),
+              ),
+              equals(ExitCode.success.code),
             );
 
             verify(
@@ -633,6 +664,43 @@ void main() {
                 ),
               ),
             ).called(1);
+            verify(
+              () => logger.warn(
+                any(that: contains('Launching the app without them')),
+              ),
+            ).called(1);
+            verify(
+              () => process.run(any(), any(that: contains('launch'))),
+            ).called(1);
+            verifyNever(
+              () => idevicesyslog.startLogger(device: any(named: 'device')),
+            );
+          });
+
+          group('and the fallback launch fails too', () {
+            setUp(() {
+              launchJsonOutput = File(
+                '$fixturesPath/launch_failure.json',
+              ).readAsStringSync();
+            });
+
+            test("reports devicectl's launch error", () async {
+              expect(
+                await runWithOverrides(
+                  () => devicectl.installAndLaunchApp(
+                    runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                    device: device,
+                  ),
+                ),
+                equals(ExitCode.software.code),
+              );
+
+              verify(
+                () => progress.fail(
+                  any(that: contains('could not be, unlocked')),
+                ),
+              ).called(1);
+            });
           });
         });
 
@@ -643,7 +711,7 @@ void main() {
             ).thenThrow(const ProcessException('script', []));
           });
 
-          test('returns exit code 70', () async {
+          test('falls back to launching without logs', () async {
             expect(
               await runWithOverrides(
                 () => devicectl.installAndLaunchApp(
@@ -651,11 +719,16 @@ void main() {
                   device: device,
                 ),
               ),
-              equals(ExitCode.software.code),
+              equals(ExitCode.success.code),
             );
 
             verify(
-              () => progress.fail(any(that: contains('Failed to launch app'))),
+              () => progress.fail(
+                any(that: contains('Unable to start devicectl')),
+              ),
+            ).called(1);
+            verify(
+              () => process.run(any(), any(that: contains('launch'))),
             ).called(1);
           });
         });

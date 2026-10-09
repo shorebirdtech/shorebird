@@ -36,14 +36,18 @@ class IDeviceSysLog {
       File(p.join(libimobiledeviceDirectory.path, 'idevicesyslog'));
 
   /// The libraries that idevicesyslog depends on.
-  @visibleForTesting
   ///
   /// These match the artifact directories Flutter's cache creates under
   /// `bin/cache/artifacts`. idevicesyslog loads its dylibs from
   /// `@loader_path/..`, where they don't exist, so each directory must be on
   /// `DYLD_LIBRARY_PATH` or the process aborts before printing anything.
+  /// `usbmuxd`, the name this list used before, is kept alongside
+  /// `libusbmuxd` (the current cache's name), since a directory that doesn't
+  /// exist is ignored by the loader.
+  @visibleForTesting
   static const deps = [
     'libimobiledevice',
+    'usbmuxd',
     'libusbmuxd',
     'libimobiledeviceglue',
     'libplist',

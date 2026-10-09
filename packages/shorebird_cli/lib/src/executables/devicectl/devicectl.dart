@@ -228,9 +228,18 @@ class Devicectl {
     installProgress.complete();
 
     if (useConsoleLogging) {
-      return launchAppAndStreamConsole(
+      final attached = await launchAppAndStreamConsole(
         deviceId: device.udid,
         bundleId: bundleId,
+      );
+      if (attached) return ExitCode.success.code;
+      // Fall back to launching the app the way we did before reading logs
+      // from the console, so a problem with log streaming never stops the
+      // app from launching. If the launch itself is the problem, this
+      // reports devicectl's error.
+      logger.warn(
+        "Unable to attach to the app's console, so its logs will not be "
+        'shown. Launching the app without them.',
       );
     }
 
@@ -243,8 +252,10 @@ class Devicectl {
     }
     launchProgress.complete();
 
-    final loggerExitCode = await loggerExitCodeFuture;
-    logger.detail('idevicesyslog exited with code $loggerExitCode');
+    if (loggerExitCodeFuture != null) {
+      final loggerExitCode = await loggerExitCodeFuture;
+      logger.detail('idevicesyslog exited with code $loggerExitCode');
+    }
 
     return ExitCode.success.code;
   }
@@ -252,6 +263,12 @@ class Devicectl {
   /// Launches the app with the given [bundleId] on the device with the given
   /// [deviceId], stays attached to its console, and logs the app's output
   /// until the app exits.
+  ///
+  /// Returns whether devicectl attached to the app's console. Attachment is
+  /// recognized by devicectl's [consoleAttachedMarker] line or by the first
+  /// line of app output, so a change to devicectl's wording doesn't hide the
+  /// app's logs. When this returns false, the app may not have launched and
+  /// the caller should launch it another way.
   ///
   /// This mirrors how flutter_tools launches release builds on CoreDevices
   /// with Xcode 26+:
@@ -262,7 +279,7 @@ class Devicectl {
   ///   * devicectl runs under `script` so that it has a terminal attached
   ///     and forwards the app's output. `-q` keeps `script`'s own banner
   ///     lines out of the output.
-  Future<int> launchAppAndStreamConsole({
+  Future<bool> launchAppAndStreamConsole({
     required String deviceId,
     required String bundleId,
   }) async {
@@ -288,8 +305,8 @@ class Devicectl {
         bundleId,
       ]);
     } on Exception catch (error) {
-      launchProgress.fail('Failed to launch app: $error');
-      return ExitCode.software.code;
+      launchProgress.fail('Unable to start devicectl: $error');
+      return false;
     }
 
     var attached = false;
@@ -297,13 +314,21 @@ class Devicectl {
     void onLine(String line) {
       if (line.trim().isEmpty) return;
       if (!attached) {
-        logger.detail(line);
-        launchOutput.add(line);
         if (line.contains(consoleAttachedMarker)) {
+          logger.detail(line);
           attached = true;
           launchProgress.complete();
+          return;
         }
-        return;
+        if (!_consolePrefixRegex.hasMatch(line)) {
+          logger.detail(line);
+          launchOutput.add(line);
+          return;
+        }
+        // App output means the console is attached, even if devicectl's
+        // marker line never appeared.
+        attached = true;
+        launchProgress.complete();
       }
 
       final appLogLine = parseConsoleLine(line);
@@ -336,14 +361,14 @@ class Devicectl {
     if (!attached) {
       launchProgress.fail(
         [
-          'Failed to launch app (devicectl exited with code $exitCode)',
+          'Unable to attach to the app (devicectl exited with code $exitCode)',
           ...launchOutput,
         ].join('\n'),
       );
-      return ExitCode.software.code;
+      return false;
     }
 
-    return ExitCode.success.code;
+    return true;
   }
 
   /// Matches the metadata prefix on os_log and syslog messages that
