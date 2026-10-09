@@ -132,6 +132,234 @@ Future<oauth2.AccessCredentials> obtainCredentialsViaLoopbackLogin({
   }
 }
 
+/// The `grant_type` that polls `/token` for a device authorization
+/// (RFC 8628 section 3.4).
+const deviceCodeGrantType = 'urn:ietf:params:oauth:grant-type:device_code';
+
+/// How much to lengthen the polling interval each time the auth service
+/// answers `slow_down` (RFC 8628 section 3.5).
+const deviceSlowDownIncrement = Duration(seconds: 5);
+
+/// Waits for [duration]. Injected so tests need not wait for real.
+typedef Sleep = Future<void> Function(Duration duration);
+
+/// A device authorization the auth service has started (RFC 8628 section
+/// 3.2): the code a person enters, and where they enter it.
+class DeviceAuthorization {
+  /// Creates a [DeviceAuthorization].
+  const DeviceAuthorization({
+    required this.deviceCode,
+    required this.userCode,
+    required this.verificationUri,
+    required this.expiresIn,
+    required this.interval,
+    this.verificationUriComplete,
+  });
+
+  /// Parses the auth service's JSON answer to `POST /device_authorization`.
+  ///
+  /// Throws [ShorebirdAuthException] when a required field is missing or has
+  /// the wrong type.
+  factory DeviceAuthorization.fromJson(Map<String, dynamic> json) {
+    if (json case {
+      'device_code': final String deviceCode,
+      'user_code': final String userCode,
+      'verification_uri': final String verificationUri,
+      'expires_in': final int expiresIn,
+    }) {
+      final complete = json['verification_uri_complete'];
+      final interval = json['interval'];
+      return DeviceAuthorization(
+        deviceCode: deviceCode,
+        userCode: userCode,
+        verificationUri: Uri.parse(verificationUri),
+        verificationUriComplete: complete is String
+            ? Uri.parse(complete)
+            : null,
+        expiresIn: Duration(seconds: expiresIn),
+        // RFC 8628 section 3.2: five seconds when the server names none.
+        interval: Duration(seconds: interval is int ? interval : 5),
+      );
+    }
+    throw _unexpectedDeviceAuthorizationResponse;
+  }
+
+  /// The secret the CLI polls `/token` with. Never shown to the user.
+  final String deviceCode;
+
+  /// The code the user enters at [verificationUri].
+  final String userCode;
+
+  /// The page where the user enters [userCode].
+  final Uri verificationUri;
+
+  /// [verificationUri] with [userCode] already filled in, if the auth service
+  /// provided one.
+  final Uri? verificationUriComplete;
+
+  /// How long [userCode] can be approved for.
+  final Duration expiresIn;
+
+  /// How long to wait between polls, until told to slow down.
+  final Duration interval;
+}
+
+/// Implements the device authorization grant (RFC 8628) for the
+/// `shorebird-cli` client, for machines that cannot open a local browser.
+///
+/// 1. POSTs `client_id` and `scope` to the auth service's
+///    `/device_authorization` endpoint.
+/// 2. Calls [userPrompt] with the codes, so the user can approve the request
+///    in a browser on any device.
+/// 3. Polls `/token` with the device code every `interval`, lengthening the
+///    interval by [deviceSlowDownIncrement] on each `slow_down`.
+/// 4. Returns the tokens as [oauth2.AccessCredentials] once the user
+///    approves.
+///
+/// Throws [ShorebirdAuthException] if the user denies the request, the code
+/// expires, or the auth service cannot be reached or refuses the request.
+Future<oauth2.AccessCredentials> obtainCredentialsViaDeviceLogin({
+  required http.Client httpClient,
+  required Uri authBaseUrl,
+  required void Function(DeviceAuthorization) userPrompt,
+  Sleep sleep = _sleep,
+}) async {
+  final authorization = await _startDeviceAuthorization(
+    httpClient: httpClient,
+    authBaseUrl: authBaseUrl,
+  );
+  userPrompt(authorization);
+
+  final tokenUrl = authBaseUrl.replace(
+    path: p.url.join(authBaseUrl.path, 'token'),
+  );
+  final expiresAt = clock.now().add(authorization.expiresIn);
+  var interval = authorization.interval;
+
+  while (true) {
+    await sleep(interval);
+    if (!clock.now().isBefore(expiresAt)) throw _deviceCodeExpired;
+
+    final http.Response response;
+    try {
+      response = await httpClient.post(
+        tokenUrl,
+        body: {
+          'grant_type': deviceCodeGrantType,
+          'device_code': authorization.deviceCode,
+          'client_id': _clientId,
+        },
+      );
+    } on Exception catch (e) {
+      throw ShorebirdAuthException(
+        'Could not reach the Shorebird auth service while waiting for '
+        'approval ($e). Check your network connection and run '
+        '`shorebird login` again.',
+      );
+    }
+
+    if (response.statusCode == HttpStatus.ok) {
+      return _parseTokenResponse(response.body);
+    }
+
+    final error = _oauthError(response.body);
+    switch (error) {
+      case 'authorization_pending':
+        continue;
+      case 'slow_down':
+        interval += deviceSlowDownIncrement;
+        continue;
+      case 'access_denied':
+        throw ShorebirdAuthException(
+          'The login request was denied. Run `shorebird login` again to start '
+          'a new one.',
+          statusCode: response.statusCode,
+        );
+      case 'expired_token':
+        throw _deviceCodeExpired;
+      case 'invalid_grant':
+        throw ShorebirdAuthException(
+          'The auth service no longer accepts this login request. Run '
+          '`shorebird login` again to start a new one.',
+          statusCode: response.statusCode,
+        );
+      default:
+        throw ShorebirdAuthException(
+          'Login failed (${response.statusCode}): ${response.body}',
+          statusCode: response.statusCode,
+        );
+    }
+  }
+}
+
+const _unexpectedDeviceAuthorizationResponse = ShorebirdAuthException(
+  'The auth service sent an unexpected device authorization response.',
+);
+
+const _deviceCodeExpired = ShorebirdAuthException(
+  'The login code expired before it was approved. Run `shorebird login` '
+  'again to get a new code.',
+);
+
+Future<void> _sleep(Duration duration) => Future<void>.delayed(duration);
+
+/// POSTs to the auth service's `/device_authorization` endpoint (RFC 8628
+/// section 3.1) and returns what it answered.
+Future<DeviceAuthorization> _startDeviceAuthorization({
+  required http.Client httpClient,
+  required Uri authBaseUrl,
+}) async {
+  final url = authBaseUrl.replace(
+    path: p.url.join(authBaseUrl.path, 'device_authorization'),
+  );
+
+  final http.Response response;
+  try {
+    response = await httpClient.post(
+      url,
+      body: {'client_id': _clientId, 'scope': _scope},
+    );
+  } on Exception catch (e) {
+    throw ShorebirdAuthException(
+      'Could not reach the Shorebird auth service ($e). Check your network '
+      'connection and try again.',
+    );
+  }
+
+  if (response.statusCode != HttpStatus.ok) {
+    throw ShorebirdAuthException(
+      'Could not start a login (${response.statusCode}): ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
+
+  final Object? json;
+  try {
+    json = jsonDecode(response.body);
+  } on FormatException {
+    throw _unexpectedDeviceAuthorizationResponse;
+  }
+  if (json is! Map<String, dynamic>) {
+    throw _unexpectedDeviceAuthorizationResponse;
+  }
+  return DeviceAuthorization.fromJson(json);
+}
+
+/// The `error` of an RFC 6749 section 5.2 error response, or null when
+/// [body] is not one.
+String? _oauthError(String body) {
+  try {
+    final json = jsonDecode(body);
+    if (json is Map<String, dynamic>) {
+      final error = json['error'];
+      if (error is String) return error;
+    }
+  } on FormatException {
+    // Not JSON; the caller reports the body as is.
+  }
+  return null;
+}
+
 /// 32 random bytes, base64url-encoded without padding: 43 characters, which
 /// is within the 43–128 RFC 7636 allows for a code verifier and has the same
 /// entropy it requires of one.

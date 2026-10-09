@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
 import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -11,6 +12,21 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 /// Login as a new Shorebird user.
 /// {@endtemplate}
 class LoginCommand extends ShorebirdCommand {
+  /// {@macro login_command}
+  LoginCommand() {
+    argParser.addFlag(
+      deviceFlag,
+      negatable: false,
+      help:
+          'Log in by entering a code in a browser on any device, instead of '
+          'opening a browser on this machine. Used automatically over SSH, '
+          'on CI, and on Linux without a display.',
+    );
+  }
+
+  /// The flag that forces the device code login.
+  static const deviceFlag = 'device';
+
   @override
   String get description => 'Login as a new Shorebird user.';
 
@@ -64,8 +80,13 @@ class LoginCommand extends ShorebirdCommand {
       auth.clearCredentials();
     }
 
+    final useDeviceCode = results[deviceFlag] == true || !browser.canOpen;
     try {
-      await auth.login(prompt: prompt);
+      if (useDeviceCode) {
+        await auth.loginWithDeviceCode(prompt: devicePrompt);
+      } else {
+        await auth.login(prompt: prompt);
+      }
     } on UserNotFoundException catch (error) {
       final consoleUri = Uri.https('console.shorebird.dev');
       logger
@@ -106,5 +127,48 @@ ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
 
 Waiting for your authorization...''');
     if (openBrowser) unawaited(browser.open(Uri.parse(url)));
+  }
+
+  /// Prompt the user to approve [authorization] in a browser on any device.
+  ///
+  /// Shows the link with the code already filled in, when the auth service
+  /// sent one, and the plain verification URL and code for typing in by hand.
+  void devicePrompt(DeviceAuthorization authorization) {
+    String emphasize(String text) =>
+        styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(text)))!;
+    final complete = authorization.verificationUriComplete;
+    final minutes = authorization.expiresIn.inMinutes;
+    final buffer = StringBuffer()
+      ..writeln(
+        'The Shorebird CLI needs your authorization to manage apps, releases, '
+        'and patches on your behalf.',
+      )
+      ..writeln();
+    if (complete != null) {
+      buffer
+        ..writeln('In a browser on any device, open:')
+        ..writeln()
+        ..writeln('  ${emphasize('$complete')}')
+        ..writeln()
+        ..writeln(
+          'Or visit ${emphasize('${authorization.verificationUri}')} '
+          'and enter this code:',
+        );
+    } else {
+      buffer.writeln(
+        'In a browser on any device, visit '
+        '${emphasize('${authorization.verificationUri}')} '
+        'and enter this code:',
+      );
+    }
+    buffer
+      ..writeln()
+      ..writeln('  ${styleBold.wrap(authorization.userCode)}')
+      ..writeln()
+      ..write(
+        'Waiting for your authorization (the code expires in '
+        '$minutes ${minutes == 1 ? 'minute' : 'minutes'})...',
+      );
+    logger.info(buffer.toString());
   }
 }
