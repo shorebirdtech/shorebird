@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_analysis.dart';
 import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
@@ -94,6 +95,9 @@ void main() {
       when(
         () => assetsFileSetDiff.prettyString,
       ).thenReturn(assetsDiffPrettyString);
+      when(() => assetsFileSetDiff.addedPaths).thenReturn({});
+      when(() => assetsFileSetDiff.removedPaths).thenReturn({});
+      when(() => assetsFileSetDiff.changedPaths).thenReturn({});
       when(
         () => nativeFileSetDiff.prettyString,
       ).thenReturn(nativeDiffPrettyString);
@@ -299,6 +303,101 @@ void main() {
           verify(
             () => logger.info(yellow.wrap(assetsDiffPrettyString)),
           ).called(1);
+        });
+
+        test('does not explain icon tree shaking when no icon font '
+            'changed', () async {
+          when(() => assetsFileSetDiff.changedPaths).thenReturn({
+            'assets/flutter_assets/assets/image.png',
+          });
+
+          await runWithOverrides(
+            () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+              localArchive: localArtifact,
+              releaseArchive: releaseArtifact,
+              archiveDiffer: archiveDiffer,
+              allowAssetChanges: true,
+              allowNativeChanges: false,
+            ),
+          );
+
+          verifyNever(
+            () => logger.info(yellow.wrap(treeShakenIconFontsMessage)),
+          );
+        });
+
+        group('when a tree-shaken icon font changed', () {
+          for (final path in [
+            'assets/flutter_assets/fonts/MaterialIcons-Regular.otf',
+            p.join(
+              'Payload/Runner.app/Frameworks/App.framework/flutter_assets',
+              'packages/cupertino_icons/assets/CupertinoIcons.ttf',
+            ),
+          ]) {
+            test('explains icon tree shaking for $path', () async {
+              when(() => assetsFileSetDiff.changedPaths).thenReturn({path});
+
+              await runWithOverrides(
+                () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                  localArchive: localArtifact,
+                  releaseArchive: releaseArtifact,
+                  archiveDiffer: archiveDiffer,
+                  allowAssetChanges: true,
+                  allowNativeChanges: false,
+                ),
+              );
+
+              verify(
+                () => logger.info(yellow.wrap(treeShakenIconFontsMessage)),
+              ).called(1);
+            });
+          }
+
+          test(
+            'explains icon tree shaking when an icon font is added',
+            () async {
+              when(() => assetsFileSetDiff.addedPaths).thenReturn({
+                'assets/flutter_assets/fonts/MaterialIcons-Regular.otf',
+              });
+
+              await runWithOverrides(
+                () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                  localArchive: localArtifact,
+                  releaseArchive: releaseArtifact,
+                  archiveDiffer: archiveDiffer,
+                  allowAssetChanges: true,
+                  allowNativeChanges: false,
+                ),
+              );
+
+              verify(
+                () => logger.info(yellow.wrap(treeShakenIconFontsMessage)),
+              ).called(1);
+            },
+          );
+
+          test(
+            'explains icon tree shaking when an icon font is removed',
+            () async {
+              when(() => assetsFileSetDiff.removedPaths).thenReturn({
+                'assets/flutter_assets/fonts/MaterialIcons-Regular.otf',
+              });
+
+              await runWithOverrides(
+                () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                  localArchive: localArtifact,
+                  releaseArchive: releaseArtifact,
+                  archiveDiffer: archiveDiffer,
+                  allowAssetChanges: true,
+                  allowNativeChanges: false,
+                ),
+              );
+
+              verify(
+                () => logger.info(yellow.wrap(treeShakenIconFontsMessage)),
+              ).called(1);
+            },
+          );
         });
 
         test('prompts user if allowAssetChanges is false', () async {
