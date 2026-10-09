@@ -9,6 +9,7 @@ import 'package:platform/testing.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
@@ -1194,7 +1195,7 @@ origin/flutter_release/3.10.6''';
         );
 
         final lastUsed = File(
-          p.join(targetDirectory.path, ShorebirdFlutter.lastUsedStampName),
+          p.join(targetDirectory.path, lastUsedStampName),
         );
         expect(lastUsed.lastModifiedSync(), equals(now));
       });
@@ -1210,7 +1211,7 @@ origin/flutter_release/3.10.6''';
         );
 
         final lastUsed = File(
-          p.join(targetDirectory.path, ShorebirdFlutter.lastUsedStampName),
+          p.join(targetDirectory.path, lastUsedStampName),
         );
         expect(lastUsed.lastModifiedSync(), equals(now));
       });
@@ -2029,7 +2030,7 @@ origin/flutter_release/3.10.6''';
         final directory = Directory(p.join(flutterCache.path, revision))
           ..createSync(recursive: true);
         if (lastUsed != null) {
-          File(p.join(directory.path, ShorebirdFlutter.lastUsedStampName))
+          File(p.join(directory.path, lastUsedStampName))
             ..createSync()
             ..setLastModifiedSync(lastUsed);
         }
@@ -2037,7 +2038,7 @@ origin/flutter_release/3.10.6''';
       }
 
       DateTime lastUsedOf(String revision) => File(
-        p.join(flutterCache.path, revision, ShorebirdFlutter.lastUsedStampName),
+        p.join(flutterCache.path, revision, lastUsedStampName),
       ).lastModifiedSync();
 
       List<String> prune({DateTime? at}) => withClock(
@@ -2155,7 +2156,7 @@ origin/flutter_release/3.10.6''';
       test('keeps going when a use cannot be recorded', () {
         // A directory where the marker file belongs makes recording fail.
         Directory(
-          p.join(flutterCache.path, pinned, ShorebirdFlutter.lastUsedStampName),
+          p.join(flutterCache.path, pinned, lastUsedStampName),
         ).createSync(recursive: true);
         install(stale, lastUsed: now.subtract(const Duration(days: 31)));
 

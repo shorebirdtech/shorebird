@@ -9,6 +9,7 @@ import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -87,23 +88,74 @@ class Cache {
       phase: SetupPhase.shorebirdCache,
       body: () async {
         for (final artifact in _artifacts) {
-          if (await artifact.isValid()) {
-            continue;
+          if (!await artifact.isValid()) {
+            await retry(
+              artifact.update,
+              maxAttempts: 3,
+              delayFactor: retryDelayFactor,
+              onRetry: (e) {
+                logger
+                  ..detail('Failed to update ${artifact.fileName}, retrying...')
+                  ..detail(e.toString());
+              },
+            );
           }
-
-          await retry(
-            artifact.update,
-            maxAttempts: 3,
-            delayFactor: retryDelayFactor,
-            onRetry: (e) {
-              logger
-                ..detail('Failed to update ${artifact.fileName}, retrying...')
-                ..detail(e.toString());
-            },
-          );
+          _markRevisionUsed(artifact);
         }
       },
     );
+  }
+
+  /// Records the use of [artifact]'s per-engine-revision directory, if it
+  /// has one, so [pruneUnusedArtifacts] keeps it.
+  void _markRevisionUsed(CachedArtifact artifact) {
+    final directory = artifact.file.parent;
+    if (!revisionDirectoryPattern.hasMatch(p.basename(directory.path))) return;
+    if (directory.existsSync()) markUsed(directory);
+  }
+
+  /// Removes per-engine-revision artifact directories (for example
+  /// `bin/cache/artifacts/aot-tools/<engine revision>`) that have not been
+  /// used within [unusedCacheMaxAge], and returns the paths removed.
+  ///
+  /// Never removes the pinned Flutter's engine revision, and records it as
+  /// used, so it gets the full [unusedCacheMaxAge] once it stops being
+  /// pinned. Reads the pin from [shorebirdEnv], so call this outside any
+  /// `flutterRevisionOverride` scope. Does nothing when the pinned engine
+  /// revision cannot be read, since it cannot then be protected.
+  ///
+  /// Artifacts that live directly in their artifact directory (`patch`,
+  /// `bundletool`) are replaced in place on update and are never pruned. A
+  /// partially deleted revision directory fails [CachedArtifact.isValid] and
+  /// is downloaded again on its next use.
+  List<String> pruneUnusedArtifacts() {
+    final artifactsDirectory = shorebirdArtifactsDirectory;
+    if (!artifactsDirectory.existsSync()) return const [];
+
+    final String pinned;
+    try {
+      pinned = shorebirdEnv.shorebirdEngineRevision;
+    } on CacheCorruptedException catch (error) {
+      logger.detail('Not pruning artifacts: $error');
+      return const [];
+    }
+
+    final removed = <String>[];
+    for (final artifactDirectory
+        in artifactsDirectory.listSync().whereType<Directory>()) {
+      for (final revisionDirectory
+          in artifactDirectory.listSync().whereType<Directory>()) {
+        if (p.basename(revisionDirectory.path) == pinned) {
+          markUsed(revisionDirectory);
+          continue;
+        }
+        if (!isUnusedRevisionDirectory(revisionDirectory)) continue;
+        if (deleteIgnoringErrors(revisionDirectory)) {
+          removed.add(revisionDirectory.path);
+        }
+      }
+    }
+    return removed;
   }
 
   /// Get a named directory from with the cache's artifact directory;

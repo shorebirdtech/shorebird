@@ -3,6 +3,7 @@ import 'dart:ffi' show Abi;
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -14,6 +15,7 @@ import 'package:shorebird_cli/src/abi.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/http_client/http_client.dart';
@@ -187,6 +189,125 @@ void main() {
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
         unawaited(runWithOverrides(cache.clear));
         expect(shorebirdCacheDirectory.existsSync(), isFalse);
+      });
+    });
+
+    group('pruneUnusedArtifacts', () {
+      const pinned = '1111111111111111111111111111111111111111';
+      const stale = '3333333333333333333333333333333333333333';
+      const recent = '4444444444444444444444444444444444444444';
+      final now = DateTime(2026, 10, 9);
+
+      Directory revisionDirectory(
+        String artifact,
+        String revision, {
+        DateTime? lastUsed,
+      }) {
+        final directory = Directory(
+          p.join(Cache.shorebirdArtifactsDirectory.path, artifact, revision),
+        )..createSync(recursive: true);
+        if (lastUsed != null) {
+          File(p.join(directory.path, lastUsedStampName))
+            ..createSync()
+            ..setLastModifiedSync(lastUsed);
+        }
+        return directory;
+      }
+
+      List<String> prune() => withClock(
+        Clock.fixed(now),
+        () => runWithOverrides(() => cache.pruneUnusedArtifacts()),
+      );
+
+      setUp(() {
+        when(() => shorebirdEnv.shorebirdEngineRevision).thenReturn(pinned);
+      });
+
+      test('removes engine revisions unused for longer than the max age', () {
+        final old = now.subtract(const Duration(days: 31));
+        final staleAotTools = runWithOverrides(
+          () => revisionDirectory('aot-tools', stale, lastUsed: old),
+        );
+        final staleAnalyzeSnapshot = runWithOverrides(
+          () => revisionDirectory(
+            'analyze-snapshot-macos-arm64',
+            stale,
+            lastUsed: old,
+          ),
+        );
+        final recentAotTools = runWithOverrides(
+          () => revisionDirectory(
+            'aot-tools',
+            recent,
+            lastUsed: now.subtract(const Duration(days: 29)),
+          ),
+        );
+
+        expect(
+          prune(),
+          unorderedEquals([staleAotTools.path, staleAnalyzeSnapshot.path]),
+        );
+        expect(staleAotTools.existsSync(), isFalse);
+        expect(staleAnalyzeSnapshot.existsSync(), isFalse);
+        expect(recentAotTools.existsSync(), isTrue);
+      });
+
+      test('keeps the pinned engine revision and records its use', () {
+        final directory = runWithOverrides(
+          () => revisionDirectory(
+            'aot-tools',
+            pinned,
+            lastUsed: now.subtract(const Duration(days: 365)),
+          ),
+        );
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+        expect(
+          File(
+            p.join(directory.path, lastUsedStampName),
+          ).lastModifiedSync(),
+          equals(now),
+        );
+      });
+
+      test('never removes artifacts stored without a revision', () {
+        final patch = runWithOverrides(
+          () => File(
+            p.join(Cache.shorebirdArtifactsDirectory.path, 'patch', 'patch'),
+          ),
+        )..createSync(recursive: true);
+
+        expect(
+          withClock(
+            Clock.fixed(now.add(const Duration(days: 365))),
+            () => runWithOverrides(() => cache.pruneUnusedArtifacts()),
+          ),
+          isEmpty,
+        );
+        expect(patch.existsSync(), isTrue);
+      });
+
+      test('does nothing when the pinned engine revision is unreadable', () {
+        final directory = runWithOverrides(
+          () => revisionDirectory(
+            'aot-tools',
+            stale,
+            lastUsed: now.subtract(const Duration(days: 31)),
+          ),
+        );
+        when(
+          () => shorebirdEnv.shorebirdEngineRevision,
+        ).thenThrow(
+          const CacheCorruptedException('Could not read engine.version.'),
+        );
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+      });
+
+      test('does nothing when no artifacts have been downloaded', () {
+        expect(prune(), isEmpty);
       });
     });
 
@@ -436,6 +557,45 @@ void main() {
 
             verify(() => progress.fail()).called(3);
           });
+        });
+
+        test('records the use of per-engine-revision artifacts', () async {
+          const engineRevision = '5555555555555555555555555555555555555555';
+          final now = DateTime(2026, 10, 9);
+          when(
+            () => shorebirdEnv.shorebirdEngineRevision,
+          ).thenReturn(engineRevision);
+          setOperatingSystem(NativePlatform.macOS);
+
+          await withClock(
+            Clock.fixed(now),
+            () => runWithOverrides(() => cache.updateAll(Duration.zero)),
+          );
+
+          File stamp(String artifact) => File(
+            p.join(
+              runWithOverrides(() => cache.getArtifactDirectory(artifact)).path,
+              engineRevision,
+              lastUsedStampName,
+            ),
+          );
+          expect(stamp('aot-tools').lastModifiedSync(), equals(now));
+          expect(
+            stamp('analyze-snapshot-macos-arm64').lastModifiedSync(),
+            equals(now),
+          );
+          // Not stored per revision, so there is nothing to record.
+          expect(
+            File(
+              p.join(
+                runWithOverrides(
+                  () => cache.getArtifactDirectory('patch'),
+                ).path,
+                lastUsedStampName,
+              ),
+            ).existsSync(),
+            isFalse,
+          );
         });
 
         test('pulls correct artifact for MacOS', () async {

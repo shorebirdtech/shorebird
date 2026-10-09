@@ -7,6 +7,7 @@ import 'package:cli_completion/cli_completion.dart';
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
 import 'package:shorebird_cli/src/engine_config.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart';
@@ -360,7 +361,7 @@ ${currentRunLogFile.absolute.path}
 ''');
     }
 
-    _pruneUnusedFlutterRevisions();
+    _pruneUnusedCaches();
 
     if (!isJsonMode &&
         topLevelResults.command?.name != UpgradeCommand.commandName) {
@@ -370,20 +371,27 @@ ${currentRunLogFile.absolute.path}
     return exitCode;
   }
 
-  /// Removes Flutter installs that have gone unused, so they do not pile up
-  /// across upgrades and `--flutter-version` builds (shorebirdtech/shorebird#3976).
+  /// Removes Flutter installs and engine artifacts that have gone unused, so
+  /// they do not pile up across upgrades and `--flutter-version` builds
+  /// (shorebirdtech/shorebird#3976).
   ///
-  /// Runs after the command so that the revision it used is already recorded
-  /// as used, and so that after `shorebird upgrade` the new pin is the one
-  /// protected. Never fails the command.
-  void _pruneUnusedFlutterRevisions() {
-    try {
-      shorebirdFlutter.pruneUnusedRevisions();
-      // Pruning is housekeeping; nothing it hits should change the outcome of
-      // the command the user ran.
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      logger.detail('Unable to prune unused Flutter installs.\n$error');
+  /// Runs after the command so that what it used is already recorded as used,
+  /// and so that after `shorebird upgrade` the new pin is the one protected.
+  /// Never fails the command.
+  void _pruneUnusedCaches() {
+    final pruners = {
+      'Flutter installs': shorebirdFlutter.pruneUnusedRevisions,
+      'artifacts': cache.pruneUnusedArtifacts,
+    };
+    for (final MapEntry(key: name, value: prune) in pruners.entries) {
+      try {
+        prune();
+        // Pruning is housekeeping; nothing it hits should change the outcome
+        // of the command the user ran.
+        // ignore: avoid_catches_without_on_clauses
+      } catch (error) {
+        logger.detail('Unable to prune unused $name.\n$error');
+      }
     }
   }
 

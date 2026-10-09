@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/cache.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -19,9 +20,9 @@ class CleanCacheCommand extends ShorebirdCommand {
       unusedFlag,
       negatable: false,
       help:
-          'Only remove Flutter versions not used in the last '
-          '${ShorebirdFlutter.unusedRevisionMaxAge.inDays} days. Shorebird '
-          'also does this automatically on every run.',
+          'Only remove Flutter versions and engine artifacts not used in the '
+          'last ${unusedCacheMaxAge.inDays} days. Shorebird also does this '
+          'automatically on every run.',
     );
   }
 
@@ -71,13 +72,17 @@ This could be because a program is using a file in the cache directory. To find 
 
   int _removeUnused() {
     final progress = logger.progress('Removing unused Flutter versions');
-    final removed = shorebirdFlutter.pruneUnusedRevisions();
-    progress.complete(
-      removed.isEmpty
-          ? 'No unused Flutter versions to remove'
-          : 'Removed ${removed.length} unused Flutter '
-                '${removed.length == 1 ? 'version' : 'versions'}',
-    );
+    final flutterVersions = shorebirdFlutter.pruneUnusedRevisions().length;
+    final artifacts = cache.pruneUnusedArtifacts().length;
+    if (flutterVersions == 0 && artifacts == 0) {
+      progress.complete('No unused Flutter versions or artifacts to remove');
+    } else {
+      String count(int n, String noun) => '$n unused $noun${n == 1 ? '' : 's'}';
+      progress.complete(
+        'Removed ${count(flutterVersions, 'Flutter version')} and '
+        '${count(artifacts, 'engine artifact')}',
+      );
+    }
     return ExitCode.success.code;
   }
 }

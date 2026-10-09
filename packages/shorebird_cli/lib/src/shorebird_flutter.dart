@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
+import 'package:shorebird_cli/src/cache_pruning.dart';
 import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/version.dart';
 import 'package:shorebird_cli/src/flutter_version_constraints.dart';
@@ -62,21 +63,6 @@ class ShorebirdFlutter {
   /// How long a staging directory must have existed before another install
   /// treats it as abandoned rather than as a peer's work in progress.
   static const _stagingMaxAge = Duration(days: 1);
-
-  /// Marker whose modification time records when an installed revision was
-  /// last used.
-  ///
-  /// Untracked, like [precacheStampName], so it does not make the checkout
-  /// look dirty.
-  static const lastUsedStampName = '.shorebird_last_used';
-
-  /// How long an installed revision can go unused before
-  /// [pruneUnusedRevisions] removes it.
-  static const unusedRevisionMaxAge = Duration(days: 30);
-
-  /// Names the installs this code owns: a directory per full git revision.
-  /// Anything else under the Flutter cache is never a pruning candidate.
-  static final _revisionPattern = RegExp(r'^[0-9a-f]{40}$');
 
   /// Names a directory the sweep can reclaim once it is old enough.
   ///
@@ -156,23 +142,15 @@ class ShorebirdFlutter {
           targetDirectory.existsSync() && !_isUnusableInstall(targetDirectory);
       if (published) {
         installProgress.complete();
-        _deleteIgnoringErrors(stagingDirectory);
+        deleteIgnoringErrors(stagingDirectory);
         return;
       }
 
       final short = shortRevisionString(revision);
       installProgress.fail('Failed to install Flutter $version ($short)');
       logger.err('$error');
-      _deleteIgnoringErrors(stagingDirectory);
+      deleteIgnoringErrors(stagingDirectory);
       rethrow;
-    }
-  }
-
-  void _deleteIgnoringErrors(Directory directory) {
-    try {
-      directory.deleteSync(recursive: true);
-    } on FileSystemException catch (error) {
-      logger.detail('Failed to remove ${directory.path}: $error');
     }
   }
 
@@ -215,7 +193,7 @@ class ShorebirdFlutter {
         prefix: prefix,
       );
       if (since == null || since.isAfter(cutoff)) continue;
-      _deleteIgnoringErrors(sibling);
+      deleteIgnoringErrors(sibling);
     }
   }
 
@@ -293,7 +271,7 @@ class ShorebirdFlutter {
     if (!isUnusable &&
         targetDirectory.existsSync() &&
         precacheStamp.existsSync()) {
-      _markUsed(targetDirectory);
+      markUsed(targetDirectory);
       return;
     }
 
@@ -386,31 +364,7 @@ class ShorebirdFlutter {
       throw exception;
     }
     precacheProgress.complete();
-    _markUsed(targetDirectory);
-  }
-
-  /// Records that [directory]'s revision was used just now.
-  ///
-  /// Best effort: a revision whose use goes unrecorded is at worst pruned and
-  /// reinstalled on its next use.
-  void _markUsed(Directory directory) {
-    try {
-      File(p.join(directory.path, lastUsedStampName))
-        ..createSync()
-        ..setLastModifiedSync(clock.now());
-    } on FileSystemException catch (error) {
-      logger.detail('Failed to record use of ${directory.path}: $error');
-    }
-  }
-
-  /// When [directory]'s revision was last used.
-  ///
-  /// Installs from versions that predate [lastUsedStampName] fall back to the
-  /// directory's own mtime, which approximates when it was installed.
-  DateTime _lastUsed(Directory directory) {
-    final stamp = File(p.join(directory.path, lastUsedStampName)).statSync();
-    if (stamp.type != FileSystemEntityType.notFound) return stamp.modified;
-    return directory.statSync().modified;
+    markUsed(targetDirectory);
   }
 
   /// The installed revision whose Dart SDK is running this process, or null
@@ -436,11 +390,11 @@ class ShorebirdFlutter {
   }
 
   /// Removes installed Flutter revisions that have not been used within
-  /// [unusedRevisionMaxAge], and returns the revisions removed.
+  /// [unusedCacheMaxAge], and returns the revisions removed.
   ///
   /// Never removes the pinned revision or the one running this process, and
   /// records both as used, so a revision that stops being pinned gets the
-  /// full [unusedRevisionMaxAge] from then. Reads the pinned revision from
+  /// full [unusedCacheMaxAge] from then. Reads the pinned revision from
   /// [shorebirdEnv], so call this outside any `flutterRevisionOverride`
   /// scope; after `shorebird upgrade` it is the new pin.
   ///
@@ -459,16 +413,14 @@ class ShorebirdFlutter {
     };
     for (final revision in protected) {
       final directory = Directory(p.join(flutterCache.path, revision));
-      if (directory.existsSync()) _markUsed(directory);
+      if (directory.existsSync()) markUsed(directory);
     }
 
-    final cutoff = clock.now().subtract(unusedRevisionMaxAge);
     final removed = <String>[];
     for (final entity in flutterCache.listSync().whereType<Directory>()) {
       final revision = p.basename(entity.path);
-      if (!_revisionPattern.hasMatch(revision)) continue;
       if (protected.contains(revision)) continue;
-      if (_lastUsed(entity).isAfter(cutoff)) continue;
+      if (!isUnusedRevisionDirectory(entity)) continue;
 
       final Directory condemned;
       try {
@@ -481,9 +433,9 @@ class ShorebirdFlutter {
       }
       logger.detail(
         'Removing Flutter ${shortRevisionString(revision)}, unused for '
-        '${unusedRevisionMaxAge.inDays} days.',
+        '${unusedCacheMaxAge.inDays} days.',
       );
-      _deleteIgnoringErrors(condemned);
+      deleteIgnoringErrors(condemned);
       removed.add(revision);
     }
 
