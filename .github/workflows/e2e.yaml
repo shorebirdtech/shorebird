@@ -96,6 +96,15 @@ jobs:
           # costs about as much as a restore.
           cache: false
 
+      # Flutter 3.29 through 3.44 point AGP at an empty CMakeLists.txt to make
+      # it fetch the NDK, and AGP then needs its default CMake, 3.22.1, which
+      # the runner image does not ship. Installing it here means a bad download
+      # fails this step instead of `shorebird release` mid-build. Legs that
+      # don't use CMake (3.27, 3.47) only pay the download.
+      - name: 🤖 Install CMake for AGP
+        timeout-minutes: 5
+        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
+
       - name: 🚀 Enable KVM for Linux Runners
         if: runner.os == 'Linux'
         run: |
