@@ -457,6 +457,8 @@ void main() {
             perEngine('patch-darwin-x64.zip'),
             'https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar',
             perEngine('aot-tools.dill'),
+            perEngine('analyze-snapshot-macos-arm64'),
+            perEngine('analyze-snapshot-macos-x64'),
           ].map(Uri.parse).toList();
 
           expect(requests, equals(expected));

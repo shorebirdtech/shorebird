@@ -18,10 +18,14 @@ set -euo pipefail
 #                 Application") identity, sandboxed, as for the Mac App Store.
 #                 Stands in for Apple re-signing the app after submission.
 #
-# Each variant is launched twice. The first launch downloads the patch; the
-# second must print the patched marker. A variant fails if the updater
-# reports a failure, the patch never installs, or the marker is unpatched.
-# The script exits non-zero if any variant fails.
+# Each variant runs on every architecture this Mac can run: arm64 and, under
+# Rosetta, x86_64 on Apple Silicon; x86_64 on Intel. Each architecture gets
+# its own patch, so each is a separate run with its own copy of the app.
+#
+# Each run launches the app twice. The first launch downloads the patch; the
+# second must print the patched marker. A run fails if the updater reports a
+# failure, the patch never installs, or the marker is unpatched. The script
+# exits non-zero if any run fails.
 #
 # This is a local harness, not run in CI. It launches real (headful) app
 # windows.
@@ -77,6 +81,31 @@ fi
 
 VARIANTS=(control developer-id app-store)
 
+if [[ "$(uname -m)" == "arm64" ]]; then
+    ARCHS=(arm64)
+    if arch -x86_64 /usr/bin/true 2>/dev/null; then
+        ARCHS+=(x86_64)
+    else
+        echo "⚠️  Rosetta is not installed; skipping x86_64 runs."
+    fi
+else
+    ARCHS=(x86_64)
+fi
+
+# One run per variant and architecture, named "<variant>-<arch>".
+RUNS=()
+for variant in "${VARIANTS[@]}"; do
+    for run_arch in "${ARCHS[@]}"; do
+        RUNS+=("$variant-$run_arch")
+    done
+done
+
+run_variant() { echo "${1%-*}"; }
+run_arch() { echo "${1##*-}"; }
+
+# Bundle ids allow only letters, digits, hyphens and periods.
+run_bundle_id() { echo "$BUNDLE_ID_BASE.$(echo "$1" | tr '_' '-')"; }
+
 # Unique per run, so every variant gets a fresh sandbox container (which holds
 # the updater's state) and runs never see each other's patches.
 RUN_ID=$(date +%s)
@@ -97,8 +126,8 @@ cleanup() {
     fi
     # macOS does not let us delete a sandbox container itself, only its
     # contents, so each run leaves a small empty container per variant.
-    for variant in "${VARIANTS[@]}"; do
-        rm -rf "$HOME/Library/Containers/$BUNDLE_ID_BASE.$variant/Data/Library" \
+    for run in "${RUNS[@]}"; do
+        rm -rf "$HOME/Library/Containers/$(run_bundle_id "$run")/Data/Library" \
             2>/dev/null || true
     done
     if [[ "${KEEP_WORKSPACE:-}" == "1" ]]; then
@@ -137,14 +166,16 @@ app_binary_hash() {
 }
 RELEASED_HASH=$(app_binary_hash "$BUILT_APP")
 
-# Copy the released app once per variant, give each its own bundle id (so its
-# own container), and re-sign it. Info.plist is outside App.framework, so
-# changing it does not touch the binary the patch is diffed against.
-make_variant() {
-    local variant=$1
-    local app="$WORKSPACE/$variant.app"
+# Copy the released app once per run, give each its own bundle id (so its own
+# container), and re-sign it. Info.plist is outside App.framework, so changing
+# it does not touch the binary the patch is diffed against.
+make_run() {
+    local run=$1
+    local variant
+    variant=$(run_variant "$run")
+    local app="$WORKSPACE/$run.app"
     ditto "$BUILT_APP" "$app"
-    /usr/libexec/PlistBuddy -c "Set CFBundleIdentifier $BUNDLE_ID_BASE.$variant" \
+    /usr/libexec/PlistBuddy -c "Set CFBundleIdentifier $(run_bundle_id "$run")" \
         "$app/Contents/Info.plist"
     local sign_args=(--force --deep --preserve-metadata=entitlements --timestamp=none)
     case $variant in
@@ -166,8 +197,8 @@ make_variant() {
         exit 1
     fi
 }
-for variant in "${VARIANTS[@]}"; do
-    make_variant "$variant"
+for run in "${RUNS[@]}"; do
+    make_run "$run"
 done
 
 sed -i '' 's/MARKER=base/MARKER=patched/' lib/main.dart
@@ -175,8 +206,10 @@ CI=1 "$SHOREBIRD" ${SHOREBIRD_FLAGS_ARRAY[@]+"${SHOREBIRD_FLAGS_ARRAY[@]}"} patc
     --release-version "$RELEASE_VERSION"
 
 APP_PID=""
+# Usage: launch <app> <arch> <log>
 launch() {
-    "$1/Contents/MacOS/$BINARY_NAME" >"$2" 2>&1 &
+    # `arch` execs the binary in place, so APP_PID is the app itself.
+    arch "-$2" "$1/Contents/MacOS/$BINARY_NAME" >"$3" 2>&1 &
     APP_PID=$!
 }
 stop_app() {
@@ -226,29 +259,30 @@ wait_for_marker() {
 
 FAILED=0
 RESULTS=()
-for variant in "${VARIANTS[@]}"; do
-    echo "▶️  $variant"
-    app="$WORKSPACE/$variant.app"
-    state_dir="$HOME/Library/Containers/$BUNDLE_ID_BASE.$variant/Data/Library/Application Support/shorebird/shorebird_updater/$APP_ID"
+for run in "${RUNS[@]}"; do
+    echo "▶️  $run"
+    app="$WORKSPACE/$run.app"
+    arch=$(run_arch "$run")
+    state_dir="$HOME/Library/Containers/$(run_bundle_id "$run")/Data/Library/Application Support/shorebird/shorebird_updater/$APP_ID"
 
-    launch "$app" "$WORKSPACE/$variant-1.log"
+    launch "$app" "$arch" "$WORKSPACE/$run-1.log"
     install=$(wait_for_install "$state_dir")
     stop_app
 
     marker="-"
     if [[ "$install" == installed ]]; then
-        launch "$app" "$WORKSPACE/$variant-2.log"
-        marker=$(wait_for_marker "$WORKSPACE/$variant-2.log")
+        launch "$app" "$arch" "$WORKSPACE/$run-2.log"
+        marker=$(wait_for_marker "$WORKSPACE/$run-2.log")
         stop_app
     fi
 
     if [[ "$install" == installed && "$marker" == patched ]]; then
-        RESULTS+=("✅ $variant: patch installed and booted")
+        RESULTS+=("✅ $run: patch installed and booted")
     else
         FAILED=1
-        RESULTS+=("❌ $variant: install=$install, second launch marker=$marker")
-        echo "First launch log ($variant):"
-        cat "$WORKSPACE/$variant-1.log"
+        RESULTS+=("❌ $run: install=$install, second launch marker=$marker")
+        echo "First launch log ($run):"
+        cat "$WORKSPACE/$run-1.log"
     fi
 done
 

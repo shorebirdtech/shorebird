@@ -54,6 +54,17 @@ class Cache {
     registerArtifact(PatchArtifact(cache: this, platform: platform));
     registerArtifact(BundleToolArtifact(cache: this, platform: platform));
     registerArtifact(AotToolsArtifact(cache: this, platform: platform));
+    if (platform.isMacOS) {
+      for (final targetArch in AnalyzeSnapshotMacosArtifact.targetArchs) {
+        registerArtifact(
+          AnalyzeSnapshotMacosArtifact(
+            cache: this,
+            platform: platform,
+            targetArch: targetArch,
+          ),
+        );
+      }
+    }
   }
 
   /// Register a new [CachedArtifact] with the cache.
@@ -309,6 +320,57 @@ class AotToolsArtifact extends CachedArtifact {
   bool get isExecutable => false;
 
   /// The aot-tools are only available for revisions that support mixed-mode.
+  @override
+  bool get required => false;
+
+  @override
+  File get file => File(
+    p.join(
+      cache.getArtifactDirectory(fileName).path,
+      shorebirdEnv.shorebirdEngineRevision,
+      fileName,
+    ),
+  );
+
+  @override
+  Future<String> get storageUrl async =>
+      '${cache.storageBaseUrl}/${cache.storageBucket}/shorebird/${shorebirdEnv.shorebirdEngineRevision}/$fileName';
+
+  @override
+  String? get checksum => null;
+}
+
+/// {@template analyze_snapshot_macos_artifact}
+/// The macOS analyze_snapshot executable for one target architecture.
+/// Used to extract the Dart snapshot regions of a macOS release, which macOS
+/// patches are diffed against.
+/// {@endtemplate}
+class AnalyzeSnapshotMacosArtifact extends CachedArtifact {
+  /// {@macro analyze_snapshot_macos_artifact}
+  AnalyzeSnapshotMacosArtifact({
+    required super.cache,
+    required super.platform,
+    required this.targetArch,
+  });
+
+  /// The target architectures with a published analyze_snapshot.
+  static const targetArchs = ['arm64', 'x64'];
+
+  /// The architecture of the snapshots this executable reads.
+  final String targetArch;
+
+  /// The artifact name for the given [targetArch].
+  static String fileNameFor(String targetArch) =>
+      'analyze-snapshot-macos-$targetArch';
+
+  @override
+  String get fileName => fileNameFor(targetArch);
+
+  @override
+  bool get isExecutable => true;
+
+  /// Only published for engines whose updater patches macOS against the Dart
+  /// snapshot regions rather than the whole App binary.
   @override
   bool get required => false;
 

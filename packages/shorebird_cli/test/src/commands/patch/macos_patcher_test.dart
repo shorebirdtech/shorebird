@@ -42,6 +42,7 @@ import '../../mocks.dart';
 
 void main() {
   group(MacosPatcher, () {
+    late AotTools aotTools;
     late ArgParser argParser;
     late ArgResults argResults;
     late ArtifactBuilder artifactBuilder;
@@ -70,6 +71,7 @@ void main() {
       return runScoped(
         body,
         values: {
+          aotToolsRef.overrideWith(() => aotTools),
           artifactBuilderRef.overrideWith(() => artifactBuilder),
           artifactManagerRef.overrideWith(() => artifactManager),
           codePushClientWrapperRef.overrideWith(() => codePushClientWrapper),
@@ -91,6 +93,7 @@ void main() {
     }
 
     setUpAll(() {
+      registerFallbackValue(ShorebirdArtifact.analyzeSnapshotMacosArm64);
       registerFallbackValue(const AppleArchiveDiffer());
       registerFallbackValue(Directory(''));
       registerFallbackValue(File(''));
@@ -100,6 +103,7 @@ void main() {
     });
 
     setUp(() {
+      aotTools = MockAotTools();
       argParser = MockArgParser();
       argResults = MockArgResults();
       artifactBuilder = MockArtifactBuilder();
@@ -1021,6 +1025,13 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         });
 
         when(() => engineConfig.localEngine).thenReturn(null);
+
+        // Engines without the macOS analyze_snapshot executables.
+        when(
+          () => shorebirdArtifacts.getArtifactPath(
+            artifact: any(named: 'artifact'),
+          ),
+        ).thenReturn(p.join(projectRoot.path, 'missing_analyze_snapshot'));
       });
 
       test('returns artifact bundles for x86_64 and aarch64 archs', () async {
@@ -1042,6 +1053,140 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             privateKeyPemFile: any(named: 'privateKeyPemFile'),
           ),
         );
+      });
+
+      test('diffs against the whole release binary', () async {
+        await runWithOverrides(
+          () => patcher.createPatchArtifacts(
+            appId: appId,
+            releaseId: releaseId,
+            releaseArtifact: releaseArtifactFile,
+          ),
+        );
+
+        final releaseArtifactPaths = verify(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: captureAny(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        ).captured;
+        expect(
+          releaseArtifactPaths,
+          everyElement(endsWith(p.join('App.framework', 'App'))),
+        );
+        verifyNever(
+          () => aotTools.generatePatchDiffBase(
+            releaseSnapshot: any(named: 'releaseSnapshot'),
+            analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+          ),
+        );
+      });
+
+      group('when the engine publishes macOS analyze_snapshot', () {
+        late File arm64AnalyzeSnapshot;
+        late File x64AnalyzeSnapshot;
+        late File arm64DiffBase;
+        late File x64DiffBase;
+
+        setUp(() {
+          arm64AnalyzeSnapshot = File(
+            p.join(projectRoot.path, 'analyze-snapshot-macos-arm64'),
+          )..createSync();
+          x64AnalyzeSnapshot = File(
+            p.join(projectRoot.path, 'analyze-snapshot-macos-x64'),
+          )..createSync();
+          arm64DiffBase = File(p.join(projectRoot.path, 'arm64_diff_base'))
+            ..createSync();
+          x64DiffBase = File(p.join(projectRoot.path, 'x64_diff_base'))
+            ..createSync();
+
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshotMacosArm64,
+            ),
+          ).thenReturn(arm64AnalyzeSnapshot.path);
+          when(
+            () => shorebirdArtifacts.getArtifactPath(
+              artifact: ShorebirdArtifact.analyzeSnapshotMacosX64,
+            ),
+          ).thenReturn(x64AnalyzeSnapshot.path);
+          when(
+            () => aotTools.generatePatchDiffBase(
+              releaseSnapshot: any(named: 'releaseSnapshot'),
+              analyzeSnapshotPath: arm64AnalyzeSnapshot.path,
+            ),
+          ).thenAnswer((_) async => arm64DiffBase);
+          when(
+            () => aotTools.generatePatchDiffBase(
+              releaseSnapshot: any(named: 'releaseSnapshot'),
+              analyzeSnapshotPath: x64AnalyzeSnapshot.path,
+            ),
+          ).thenAnswer((_) async => x64DiffBase);
+        });
+
+        test('diffs each arch against its Dart snapshot regions', () async {
+          await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          verify(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: arm64DiffBase.path,
+              patchArtifactPath: any(
+                named: 'patchArtifactPath',
+                that: endsWith(arm64ElfAotSnapshotFileName),
+              ),
+            ),
+          ).called(1);
+          verify(
+            () => artifactManager.createDiff(
+              releaseArtifactPath: x64DiffBase.path,
+              patchArtifactPath: any(
+                named: 'patchArtifactPath',
+                that: endsWith(x64ElfAotSnapshotFileName),
+              ),
+            ),
+          ).called(1);
+          final releaseSnapshots = verify(
+            () => aotTools.generatePatchDiffBase(
+              releaseSnapshot: captureAny(named: 'releaseSnapshot'),
+              analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+            ),
+          ).captured;
+          expect(
+            releaseSnapshots.map((file) => (file as File).path),
+            everyElement(endsWith(p.join('App.framework', 'App'))),
+          );
+        });
+
+        group('when generating the diff base fails', () {
+          setUp(() {
+            when(
+              () => aotTools.generatePatchDiffBase(
+                releaseSnapshot: any(named: 'releaseSnapshot'),
+                analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+              ),
+            ).thenThrow(Exception('oops'));
+          });
+
+          test('exits with code 70', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+            verify(() => progress.fail('Exception: oops')).called(1);
+          });
+        });
       });
 
       group('when generating a signed patch', () {
