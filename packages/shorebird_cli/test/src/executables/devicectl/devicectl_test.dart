@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -330,6 +331,7 @@ void main() {
       late IDeviceSysLog idevicesyslog;
       late ShorebirdLogger logger;
       late Progress progress;
+      late XcodeBuild xcodeBuild;
 
       late String deviceListJsonOutput;
       late String installJsonOutput;
@@ -342,6 +344,7 @@ void main() {
             idevicesyslogRef.overrideWith(() => idevicesyslog),
             loggerRef.overrideWith(() => logger),
             processRef.overrideWith(() => process),
+            xcodeBuildRef.overrideWith(() => xcodeBuild),
           },
         );
       }
@@ -350,6 +353,12 @@ void main() {
         idevicesyslog = MockIDeviceSysLog();
         logger = MockShorebirdLogger();
         progress = MockProgress();
+        xcodeBuild = MockXcodeBuild();
+
+        // Xcode versions before 26 read logs from idevicesyslog.
+        when(
+          () => xcodeBuild.version(),
+        ).thenAnswer((_) async => 'Xcode 25.0 Build version 25A123');
 
         when(
           () => idevicesyslog.startLogger(device: any(named: 'device')),
@@ -503,6 +512,389 @@ void main() {
             equals(ExitCode.success.code),
           );
         });
+      });
+      group('when the Xcode version is 26 or later', () {
+        late Process launchProcess;
+        late List<String> launchOutputLines;
+        late int launchExitCode;
+
+        const expectedScriptArgs = [
+          '-q',
+          '-t',
+          '0',
+          '/dev/null',
+          'xcrun',
+          'devicectl',
+          'device',
+          'process',
+          'launch',
+          '--device',
+          deviceId,
+          '--console',
+          '--environment-variables',
+          '{"OS_ACTIVITY_DT_MODE":"enable"}',
+          'dev.shorebird.ios-test',
+        ];
+
+        setUp(() {
+          launchProcess = MockProcess();
+          launchExitCode = 0;
+          const prefix = '2026-10-08 20:06:42.768621-0700 Runner[1234:5678]';
+          launchOutputLines = [
+            'Launched application with dev.shorebird.ios-test bundle id.',
+            'Waiting for the application to terminate…',
+            '',
+            '$prefix flutter: smoke: base',
+            '$prefix [updater] [shorebird] Patch 1 is ready',
+            '$prefix [UIKit App Config] some system noise',
+          ];
+
+          when(
+            () => xcodeBuild.version(),
+          ).thenAnswer((_) async => 'Xcode 27.0 Build version 27A266a');
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
+          installJsonOutput = File(
+            '$fixturesPath/install_success.json',
+          ).readAsStringSync();
+          launchJsonOutput = File(
+            '$fixturesPath/launch_success.json',
+          ).readAsStringSync();
+
+          when(
+            () => process.start('script', any()),
+          ).thenAnswer((_) async => launchProcess);
+          when(() => launchProcess.stdout).thenAnswer(
+            (_) => Stream.value(
+              utf8.encode(launchOutputLines.map((l) => '$l\r\n').join()),
+            ),
+          );
+          when(
+            () => launchProcess.stderr,
+          ).thenAnswer((_) => const Stream.empty());
+          when(
+            () => launchProcess.exitCode,
+          ).thenAnswer((_) async => launchExitCode);
+        });
+
+        test('launches with devicectl --console and logs app output', () async {
+          expect(
+            await runWithOverrides(
+              () => devicectl.installAndLaunchApp(
+                runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                device: device,
+              ),
+            ),
+            equals(ExitCode.success.code),
+          );
+
+          verify(() => process.start('script', expectedScriptArgs)).called(1);
+          verifyNever(
+            () => idevicesyslog.startLogger(device: any(named: 'device')),
+          );
+          verifyNever(
+            () => process.run(any(), any(that: contains('launch'))),
+          );
+          verify(() => logger.info('flutter: smoke: base')).called(1);
+          verify(
+            () => logger.info('[updater] [shorebird] Patch 1 is ready'),
+          ).called(1);
+          verifyNever(
+            () => logger.info(any(that: contains('UIKit App Config'))),
+          );
+          verifyNever(() => logger.info(any(that: contains('Launched'))));
+          verify(() => progress.complete()).called(2);
+        });
+
+        group('when devicectl never prints its attach line', () {
+          setUp(() {
+            const prefix = '2026-10-08 20:06:42.768621-0700 Runner[1234:5678]';
+            launchOutputLines = [
+              'Launched application with dev.shorebird.ios-test bundle id.',
+              '$prefix flutter: smoke: base',
+            ];
+          });
+
+          test('treats app output as attached and logs it', () async {
+            expect(
+              await runWithOverrides(
+                () => devicectl.installAndLaunchApp(
+                  runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                  device: device,
+                ),
+              ),
+              equals(ExitCode.success.code),
+            );
+
+            verify(() => logger.info('flutter: smoke: base')).called(1);
+            verifyNever(
+              () => process.run(any(), any(that: contains('launch'))),
+            );
+            verifyNever(() => logger.warn(any()));
+          });
+        });
+
+        group('when the console never attaches', () {
+          setUp(() {
+            launchExitCode = 1;
+            launchOutputLines = [
+              'ERROR: The application failed to launch.',
+            ];
+          });
+
+          test('falls back to launching without logs', () async {
+            expect(
+              await runWithOverrides(
+                () => devicectl.installAndLaunchApp(
+                  runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                  device: device,
+                ),
+              ),
+              equals(ExitCode.success.code),
+            );
+
+            verify(
+              () => progress.fail(
+                any(
+                  that: allOf(
+                    contains('devicectl exited with code 1'),
+                    contains('The application failed to launch.'),
+                  ),
+                ),
+              ),
+            ).called(1);
+            verify(
+              () => logger.warn(
+                any(that: contains('Launching the app without them')),
+              ),
+            ).called(1);
+            verify(
+              () => process.run(any(), any(that: contains('launch'))),
+            ).called(1);
+            verifyNever(
+              () => idevicesyslog.startLogger(device: any(named: 'device')),
+            );
+          });
+
+          group('and the fallback launch fails too', () {
+            setUp(() {
+              launchJsonOutput = File(
+                '$fixturesPath/launch_failure.json',
+              ).readAsStringSync();
+            });
+
+            test("reports devicectl's launch error", () async {
+              expect(
+                await runWithOverrides(
+                  () => devicectl.installAndLaunchApp(
+                    runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                    device: device,
+                  ),
+                ),
+                equals(ExitCode.software.code),
+              );
+
+              verify(
+                () => progress.fail(
+                  any(that: contains('could not be, unlocked')),
+                ),
+              ).called(1);
+            });
+          });
+        });
+
+        group('when the launch process cannot be started', () {
+          setUp(() {
+            when(
+              () => process.start('script', any()),
+            ).thenThrow(const ProcessException('script', []));
+          });
+
+          test('falls back to launching without logs', () async {
+            expect(
+              await runWithOverrides(
+                () => devicectl.installAndLaunchApp(
+                  runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                  device: device,
+                ),
+              ),
+              equals(ExitCode.success.code),
+            );
+
+            verify(
+              () => progress.fail(
+                any(that: contains('Unable to start devicectl')),
+              ),
+            ).called(1);
+            verify(
+              () => process.run(any(), any(that: contains('launch'))),
+            ).called(1);
+          });
+        });
+      });
+
+      group('when the Xcode version cannot be determined', () {
+        late Process launchProcess;
+
+        setUp(() {
+          launchProcess = MockProcess();
+          when(
+            () => xcodeBuild.version(),
+          ).thenThrow(const ProcessException('xcodebuild', ['-version']));
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
+          installJsonOutput = File(
+            '$fixturesPath/install_success.json',
+          ).readAsStringSync();
+          when(
+            () => process.start('script', any()),
+          ).thenAnswer((_) async => launchProcess);
+          when(() => launchProcess.stdout).thenAnswer(
+            (_) => Stream.value(
+              utf8.encode('Waiting for the application to terminate…\n'),
+            ),
+          );
+          when(
+            () => launchProcess.stderr,
+          ).thenAnswer((_) => const Stream.empty());
+          when(() => launchProcess.exitCode).thenAnswer((_) async => 0);
+        });
+
+        test('uses devicectl --console', () async {
+          expect(
+            await runWithOverrides(
+              () => devicectl.installAndLaunchApp(
+                runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                device: device,
+              ),
+            ),
+            equals(ExitCode.success.code),
+          );
+
+          verify(() => process.start('script', any())).called(1);
+          verifyNever(
+            () => idevicesyslog.startLogger(device: any(named: 'device')),
+          );
+        });
+
+        test(
+          'uses devicectl --console when the version is unrecognized',
+          () async {
+            when(
+              () => xcodeBuild.version(),
+            ).thenAnswer((_) async => 'unrecognized');
+            expect(
+              await runWithOverrides(
+                () => devicectl.installAndLaunchApp(
+                  runnerAppDirectory: Directory.systemTemp.createTempSync(),
+                  device: device,
+                ),
+              ),
+              equals(ExitCode.success.code),
+            );
+
+            verify(() => process.start('script', any())).called(1);
+            verifyNever(
+              () => idevicesyslog.startLogger(device: any(named: 'device')),
+            );
+          },
+        );
+      });
+
+      group('when the Xcode version is before 26', () {
+        setUp(() {
+          deviceListJsonOutput = File(
+            '$fixturesPath/device_list_success.json',
+          ).readAsStringSync();
+          installJsonOutput = File(
+            '$fixturesPath/install_success.json',
+          ).readAsStringSync();
+          launchJsonOutput = File(
+            '$fixturesPath/launch_success.json',
+          ).readAsStringSync();
+        });
+
+        test('uses idevicesyslog', () async {
+          await runWithOverrides(
+            () => devicectl.installAndLaunchApp(
+              runnerAppDirectory: Directory.systemTemp.createTempSync(),
+              device: device,
+            ),
+          );
+
+          verify(
+            () => idevicesyslog.startLogger(device: device),
+          ).called(1);
+          verifyNever(() => process.start('script', any()));
+        });
+      });
+    });
+
+    group('parseConsoleLine', () {
+      test('returns lines without os_log metadata unchanged', () {
+        expect(
+          Devicectl.parseConsoleLine('hello from stdout'),
+          equals('hello from stdout'),
+        );
+      });
+
+      test('strips metadata from Dart print output', () {
+        expect(
+          Devicectl.parseConsoleLine(
+            '2026-10-08 20:06:42.768621-0700 Runner[1234:5678] flutter: hi',
+          ),
+          equals('flutter: hi'),
+        );
+      });
+
+      test('strips metadata from Shorebird logs', () {
+        expect(
+          Devicectl.parseConsoleLine(
+            '2026-10-08 20:06:42.768621-0700 Runner[1234:5678] '
+            '[updater::cache] [shorebird] No patch available',
+          ),
+          equals('[updater::cache] [shorebird] No patch available'),
+        );
+      });
+
+      test('strips metadata from Flutter engine logs', () {
+        expect(
+          Devicectl.parseConsoleLine(
+            '2026-10-08 20:06:42.768621-0700 Runner[1234:5678] '
+            '[ERROR:flutter/shell/common/shell.cc(1)] oops',
+          ),
+          equals('[ERROR:flutter/shell/common/shell.cc(1)] oops'),
+        );
+      });
+
+      test('handles app names with spaces', () {
+        expect(
+          Devicectl.parseConsoleLine(
+            '2026-10-08 20:06:42.768621-0700 My App[1234:5678] flutter: hi',
+          ),
+          equals('flutter: hi'),
+        );
+      });
+
+      test('handles leading terminal control characters', () {
+        expect(
+          Devicectl.parseConsoleLine(
+            '\x04\b\b2026-10-08 20:06:42.768621-0700 Runner[1:2] flutter: hi',
+          ),
+          equals('flutter: hi'),
+        );
+      });
+
+      test('returns null for other os_log messages', () {
+        expect(
+          Devicectl.parseConsoleLine(
+            '2026-10-08 20:06:42.768621-0700 Runner[1234:5678] '
+            'CoreText note: something',
+          ),
+          isNull,
+        );
       });
     });
 
