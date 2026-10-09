@@ -16,6 +16,7 @@ import 'package:shorebird_cli/src/archive_analysis/archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/cache.dart' show Cache;
 import 'package:shorebird_cli/src/checksum_checker.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
@@ -141,6 +142,8 @@ class MockJwtPayload extends Mock implements JwtPayload {}
 class MockLinux extends Mock implements Linux {}
 
 class MockNetworkChecker extends Mock implements NetworkChecker {}
+
+class MockBrowser extends Mock implements Browser {}
 
 class MockOpen extends Mock implements Open {}
 

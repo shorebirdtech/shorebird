@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/commands/login_command.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:test/test.dart';
@@ -13,10 +14,15 @@ import 'package:test/test.dart';
 import '../mocks.dart';
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(Uri());
+  });
+
   group(LoginCommand, () {
     const email = 'test@email.com';
 
     late Auth auth;
+    late Browser browser;
     late http.Client httpClient;
     late Directory applicationConfigHome;
     late ShorebirdLogger logger;
@@ -28,6 +34,7 @@ void main() {
         body,
         values: {
           authRef.overrideWith(() => auth),
+          browserRef.overrideWith(() => browser),
           loggerRef.overrideWith(() => logger),
         },
       );
@@ -36,11 +43,14 @@ void main() {
     setUp(() {
       applicationConfigHome = Directory.systemTemp.createTempSync();
       auth = MockAuth();
+      browser = MockBrowser();
       httpClient = MockHttpClient();
       logger = MockShorebirdLogger();
       progress = MockProgress();
 
       when(() => auth.isAuthenticated).thenReturn(false);
+      when(() => browser.canOpen).thenReturn(false);
+      when(() => browser.open(any())).thenAnswer((_) async => true);
       when(() => auth.hasValidCredentials()).thenAnswer((_) async => true);
       when(() => auth.clearCredentials()).thenReturn(null);
       when(() => auth.client).thenReturn(httpClient);
@@ -206,20 +216,42 @@ void main() {
       ).called(1);
     });
 
-    test('prompt is correct', () {
+    group('prompt', () {
       const url = 'http://example.com';
-      runWithOverrides(() => command.prompt(url));
 
-      verify(
-        () => logger.info('''
+      String message(String instruction) =>
+          '''
 The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
 
-In a browser, visit this URL to log in:
+$instruction
 
 ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
 
-Waiting for your authorization...'''),
-      ).called(1);
+Waiting for your authorization...''';
+
+      test('prints the URL when no browser can be opened', () {
+        runWithOverrides(() => command.prompt(url));
+
+        verify(
+          () => logger.info(message('In a browser, visit this URL to log in:')),
+        ).called(1);
+        verifyNever(() => browser.open(any()));
+      });
+
+      test('opens the browser and still prints the URL', () {
+        when(() => browser.canOpen).thenReturn(true);
+        runWithOverrides(() => command.prompt(url));
+
+        verify(
+          () => logger.info(
+            message(
+              'Opening your browser to log in. If it does not open, visit '
+              'this URL:',
+            ),
+          ),
+        ).called(1);
+        verify(() => browser.open(Uri.parse(url))).called(1);
+      });
     });
   });
 }

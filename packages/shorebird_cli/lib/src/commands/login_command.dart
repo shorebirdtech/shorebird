@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
@@ -86,15 +89,22 @@ We could not find a Shorebird account for ${error.email}.''')
     return ExitCode.success.code;
   }
 
-  /// Prompt the user to log in.
+  /// Prompt the user to log in, opening [url] in their browser when this
+  /// machine has one. The URL is printed either way, so a user whose browser
+  /// did not open (or an agent relaying the URL) can still follow it.
   void prompt(String url) {
+    final openBrowser = browser.canOpen;
+    final instruction = openBrowser
+        ? 'Opening your browser to log in. If it does not open, visit this URL:'
+        : 'In a browser, visit this URL to log in:';
     logger.info('''
 The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
 
-In a browser, visit this URL to log in:
+$instruction
 
 ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
 
 Waiting for your authorization...''');
+    if (openBrowser) unawaited(browser.open(Uri.parse(url)));
   }
 }
