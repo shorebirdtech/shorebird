@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/auth/auth.dart';
+import 'package:shorebird_cli/src/auth/shorebird_oauth.dart';
 import 'package:shorebird_cli/src/browser.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -11,6 +12,21 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 /// Login as a new Shorebird user.
 /// {@endtemplate}
 class LoginCommand extends ShorebirdCommand {
+  /// {@macro login_command}
+  LoginCommand() {
+    argParser.addFlag(
+      deviceFlag,
+      negatable: false,
+      help:
+          'Log in by entering a code in a browser on any device, instead of '
+          'opening a browser on this machine. Used automatically over SSH, '
+          'on CI, and on Linux without a display.',
+    );
+  }
+
+  /// The flag that forces the device code login.
+  static const deviceFlag = 'device';
+
   @override
   String get description => 'Login as a new Shorebird user.';
 
@@ -64,8 +80,13 @@ class LoginCommand extends ShorebirdCommand {
       auth.clearCredentials();
     }
 
+    final useDeviceCode = results[deviceFlag] == true || !browser.canOpen;
     try {
-      await auth.login(prompt: prompt);
+      if (useDeviceCode) {
+        await auth.loginWithDeviceCode(prompt: devicePrompt);
+      } else {
+        await auth.login(prompt: prompt);
+      }
     } on UserNotFoundException catch (error) {
       final consoleUri = Uri.https('console.shorebird.dev');
       logger
@@ -106,5 +127,30 @@ ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
 
 Waiting for your authorization...''');
     if (openBrowser) unawaited(browser.open(Uri.parse(url)));
+  }
+
+  /// Prompt the user to approve [authorization] in a browser on any device.
+  ///
+  /// Shows the verification URL and the code to type there, never a link
+  /// with the code filled in: the auth service wants the code typed for a
+  /// session that acts as the user, so a person approves only a code they
+  /// read off this terminal.
+  void devicePrompt(DeviceAuthorization authorization) {
+    final minutes = authorization.expiresIn.inMinutes;
+    final url = '${authorization.verificationUri}';
+    logger.info(
+      '''
+The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
+
+In a browser on any device, visit:
+
+  ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
+
+and enter this code:
+
+  ${styleBold.wrap(authorization.userCode)}
+
+Waiting for your authorization (the code expires in $minutes ${minutes == 1 ? 'minute' : 'minutes'})...''',
+    );
   }
 }

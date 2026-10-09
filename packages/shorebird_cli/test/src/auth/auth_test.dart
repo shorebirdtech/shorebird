@@ -94,6 +94,13 @@ void main() {
     );
 
     late oauth2.AccessCredentials accessCredentials;
+    final deviceAuthorization = DeviceAuthorization(
+      deviceCode: 'device-code',
+      userCode: 'BEST-CAKE',
+      verificationUri: Uri.parse('https://auth.shorebird.dev/device'),
+      expiresIn: const Duration(minutes: 15),
+      interval: const Duration(seconds: 5),
+    );
     late String credentialsDir;
     late http.Client httpClient;
     late CodePushClient codePushClient;
@@ -134,6 +141,15 @@ void main() {
                 required void Function(String) userPrompt,
                 Duration timeout = const Duration(minutes: 5),
               }) async {
+                return accessCredentials;
+              },
+          obtainCredentialsViaDeviceLogin:
+              ({
+                required http.Client httpClient,
+                required Uri authBaseUrl,
+                required void Function(DeviceAuthorization) userPrompt,
+              }) async {
+                userPrompt(deviceAuthorization);
                 return accessCredentials;
               },
         ),
@@ -793,6 +809,50 @@ void main() {
         );
 
         expect(auth.email, isNull);
+        expect(auth.isAuthenticated, isFalse);
+      });
+    });
+
+    group('loginWithDeviceCode', () {
+      test('prompts with the device code and stores credentials', () async {
+        final prompts = <DeviceAuthorization>[];
+        await runWithOverrides(
+          () => auth.loginWithDeviceCode(prompt: prompts.add),
+        );
+
+        expect(prompts, equals([deviceAuthorization]));
+        expect(auth.email, email);
+        expect(auth.isAuthenticated, isTrue);
+        // Stored where the loopback login stores them, so a fresh Auth
+        // loads, refreshes and revokes them the same way.
+        final reloaded = buildAuth();
+        expect(reloaded.email, email);
+        expect(reloaded.isAuthenticated, isTrue);
+        expect(
+          jsonDecode(File(auth.credentialsFilePath).readAsStringSync()),
+          equals(jsonDecode(jsonEncode(accessCredentials.toJson()))),
+        );
+      });
+
+      test('throws UserAlreadyLoggedInException if user is authenticated', () {
+        writeCredentials();
+        auth = buildAuth();
+
+        expect(
+          runWithOverrides(() => auth.loginWithDeviceCode(prompt: (_) {})),
+          throwsA(isA<UserAlreadyLoggedInException>()),
+        );
+      });
+
+      test('throws UserNotFoundException when user does not exist', () async {
+        when(
+          () => codePushClient.getCurrentUser(),
+        ).thenAnswer((_) async => null);
+
+        await expectLater(
+          runWithOverrides(() => auth.loginWithDeviceCode(prompt: (_) {})),
+          throwsA(isA<UserNotFoundException>()),
+        );
         expect(auth.isAuthenticated, isFalse);
       });
     });

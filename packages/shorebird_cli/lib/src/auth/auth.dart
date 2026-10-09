@@ -39,6 +39,15 @@ typedef ObtainCredentialsViaLoopbackLogin =
       Duration timeout,
     });
 
+/// Callback for obtaining Shorebird access credentials via the device
+/// authorization grant.
+typedef ObtainCredentialsViaDeviceLogin =
+    Future<oauth2.AccessCredentials> Function({
+      required http.Client httpClient,
+      required Uri authBaseUrl,
+      required void Function(shorebird_oauth.DeviceAuthorization) userPrompt,
+    });
+
 /// Callback when credentials are refreshed.
 typedef OnRefreshCredentials =
     void Function(oauth2.AccessCredentials credentials);
@@ -127,6 +136,7 @@ class Auth {
     String? credentialsDir,
     Uri? authServiceUri,
     ObtainCredentialsViaLoopbackLogin? obtainCredentialsViaLoopbackLogin,
+    ObtainCredentialsViaDeviceLogin? obtainCredentialsViaDeviceLogin,
     CodePushClientBuilder? buildCodePushClient,
   }) : _httpClient = httpClient ?? _defaultHttpClient,
        _credentialsDir =
@@ -135,6 +145,9 @@ class Auth {
        _obtainCredentialsViaLoopbackLogin =
            obtainCredentialsViaLoopbackLogin ??
            shorebird_oauth.obtainCredentialsViaLoopbackLogin,
+       _obtainCredentialsViaDeviceLogin =
+           obtainCredentialsViaDeviceLogin ??
+           shorebird_oauth.obtainCredentialsViaDeviceLogin,
        _buildCodePushClient = buildCodePushClient ?? CodePushClient.new {
     _loadCredentials();
   }
@@ -145,6 +158,7 @@ class Auth {
   final String _credentialsDir;
   final Uri _authServiceUri;
   final ObtainCredentialsViaLoopbackLogin _obtainCredentialsViaLoopbackLogin;
+  final ObtainCredentialsViaDeviceLogin _obtainCredentialsViaDeviceLogin;
   final CodePushClientBuilder _buildCodePushClient;
   String? _apiKey;
 
@@ -207,18 +221,45 @@ class Auth {
   }
 
   /// Logs in the user via the Shorebird loopback OAuth flow.
-  Future<void> login({required void Function(String) prompt}) async {
+  Future<void> login({required void Function(String) prompt}) {
+    return _login(
+      (client) => _obtainCredentialsViaLoopbackLogin(
+        httpClient: client,
+        authBaseUrl: _authServiceUri,
+        userPrompt: prompt,
+      ),
+    );
+  }
+
+  /// Logs in the user via the device authorization grant (RFC 8628), which
+  /// needs no browser on this machine: [prompt] is shown a code to approve
+  /// in a browser on any device.
+  ///
+  /// Stores credentials exactly as [login] does, so refresh and [logout]
+  /// work the same either way.
+  Future<void> loginWithDeviceCode({
+    required void Function(shorebird_oauth.DeviceAuthorization) prompt,
+  }) {
+    return _login(
+      (client) => _obtainCredentialsViaDeviceLogin(
+        httpClient: client,
+        authBaseUrl: _authServiceUri,
+        userPrompt: prompt,
+      ),
+    );
+  }
+
+  Future<void> _login(
+    Future<oauth2.AccessCredentials> Function(http.Client client)
+    obtainCredentials,
+  ) async {
     if (isAuthenticated) {
       throw UserAlreadyLoggedInException(email: _email);
     }
 
     final client = http.Client();
     try {
-      _credentials = await _obtainCredentialsViaLoopbackLogin(
-        httpClient: client,
-        authBaseUrl: _authServiceUri,
-        userPrompt: prompt,
-      );
+      _credentials = await obtainCredentials(client);
 
       final codePushClient = _buildCodePushClient(
         httpClient: this.client,
