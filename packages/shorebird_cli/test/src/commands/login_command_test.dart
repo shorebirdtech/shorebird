@@ -139,64 +139,50 @@ void main() {
     });
 
     group('devicePrompt', () {
-      String emphasize(String text) =>
-          styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(text)))!;
-
-      test('shows the complete link, the plain URL, and the code', () {
-        runWithOverrides(
-          () => command.devicePrompt(
-            DeviceAuthorization(
-              deviceCode: 'device-code',
-              userCode: 'BEST-CAKE',
-              verificationUri: Uri.parse('https://auth.shorebird.dev/device'),
-              verificationUriComplete: Uri.parse(
-                'https://auth.shorebird.dev/device?user_code=BEST-CAKE',
-              ),
-              expiresIn: const Duration(minutes: 15),
-              interval: const Duration(seconds: 5),
-            ),
-          ),
-        );
-
-        verify(
-          () => logger.info('''
+      String message({required String expiry}) =>
+          '''
 The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
 
-In a browser on any device, open:
+In a browser on any device, visit:
 
-  ${emphasize('https://auth.shorebird.dev/device?user_code=BEST-CAKE')}
+  ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap('https://auth.shorebird.dev/device')))}
 
-Or visit ${emphasize('https://auth.shorebird.dev/device')} and enter this code:
+and enter this code:
 
   ${styleBold.wrap('BEST-CAKE')}
 
-Waiting for your authorization (the code expires in 15 minutes)...'''),
+Waiting for your authorization (the code expires in $expiry)...''';
+
+      DeviceAuthorization authorization({
+        Duration expiresIn = const Duration(minutes: 15),
+      }) => DeviceAuthorization(
+        deviceCode: 'device-code',
+        userCode: 'BEST-CAKE',
+        verificationUri: Uri.parse('https://auth.shorebird.dev/device'),
+        verificationUriComplete: Uri.parse(
+          'https://auth.shorebird.dev/device?user_code=BEST-CAKE',
+        ),
+        expiresIn: expiresIn,
+        interval: const Duration(seconds: 5),
+      );
+
+      test('shows the URL and the code, not the prefilled link', () {
+        runWithOverrides(() => command.devicePrompt(authorization()));
+
+        verify(
+          () => logger.info(message(expiry: '15 minutes')),
         ).called(1);
+        verifyNever(() => logger.info(any(that: contains('user_code='))));
       });
 
-      test('shows the URL and code without a complete link', () {
+      test('says minute for a one-minute code', () {
         runWithOverrides(
           () => command.devicePrompt(
-            DeviceAuthorization(
-              deviceCode: 'device-code',
-              userCode: 'BEST-CAKE',
-              verificationUri: Uri.parse('https://auth.shorebird.dev/device'),
-              expiresIn: const Duration(minutes: 1),
-              interval: const Duration(seconds: 5),
-            ),
+            authorization(expiresIn: const Duration(minutes: 1)),
           ),
         );
 
-        verify(
-          () => logger.info('''
-The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
-
-In a browser on any device, visit ${emphasize('https://auth.shorebird.dev/device')} and enter this code:
-
-  ${styleBold.wrap('BEST-CAKE')}
-
-Waiting for your authorization (the code expires in 1 minute)...'''),
-        ).called(1);
+        verify(() => logger.info(message(expiry: '1 minute'))).called(1);
       });
     });
 

@@ -194,7 +194,8 @@ class DeviceAuthorization {
   final Uri verificationUri;
 
   /// [verificationUri] with [userCode] already filled in, if the auth service
-  /// provided one.
+  /// provided one. The CLI does not show it: the auth service omits it, and
+  /// does not accept it, for a session that acts as the user.
   final Uri? verificationUriComplete;
 
   /// How long [userCode] can be approved for.

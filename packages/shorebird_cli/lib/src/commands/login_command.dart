@@ -131,44 +131,26 @@ Waiting for your authorization...''');
 
   /// Prompt the user to approve [authorization] in a browser on any device.
   ///
-  /// Shows the link with the code already filled in, when the auth service
-  /// sent one, and the plain verification URL and code for typing in by hand.
+  /// Shows the verification URL and the code to type there, never a link
+  /// with the code filled in: the auth service wants the code typed for a
+  /// session that acts as the user, so a person approves only a code they
+  /// read off this terminal.
   void devicePrompt(DeviceAuthorization authorization) {
-    String emphasize(String text) =>
-        styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(text)))!;
-    final complete = authorization.verificationUriComplete;
     final minutes = authorization.expiresIn.inMinutes;
-    final buffer = StringBuffer()
-      ..writeln(
-        'The Shorebird CLI needs your authorization to manage apps, releases, '
-        'and patches on your behalf.',
-      )
-      ..writeln();
-    if (complete != null) {
-      buffer
-        ..writeln('In a browser on any device, open:')
-        ..writeln()
-        ..writeln('  ${emphasize('$complete')}')
-        ..writeln()
-        ..writeln(
-          'Or visit ${emphasize('${authorization.verificationUri}')} '
-          'and enter this code:',
-        );
-    } else {
-      buffer.writeln(
-        'In a browser on any device, visit '
-        '${emphasize('${authorization.verificationUri}')} '
-        'and enter this code:',
-      );
-    }
-    buffer
-      ..writeln()
-      ..writeln('  ${styleBold.wrap(authorization.userCode)}')
-      ..writeln()
-      ..write(
-        'Waiting for your authorization (the code expires in '
-        '$minutes ${minutes == 1 ? 'minute' : 'minutes'})...',
-      );
-    logger.info(buffer.toString());
+    final url = '${authorization.verificationUri}';
+    logger.info(
+      '''
+The Shorebird CLI needs your authorization to manage apps, releases, and patches on your behalf.
+
+In a browser on any device, visit:
+
+  ${styleBold.wrap(styleUnderlined.wrap(lightCyan.wrap(url)))}
+
+and enter this code:
+
+  ${styleBold.wrap(authorization.userCode)}
+
+Waiting for your authorization (the code expires in $minutes ${minutes == 1 ? 'minute' : 'minutes'})...''',
+    );
   }
 }
