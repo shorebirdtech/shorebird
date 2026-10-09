@@ -1181,6 +1181,40 @@ origin/flutter_release/3.10.6''';
         );
       });
 
+      test('records the use of an already installed revision', () async {
+        createCheckout();
+        precacheStamp.createSync();
+        final now = DateTime(2026, 10, 9);
+
+        await withClock(
+          Clock.fixed(now),
+          () => runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          ),
+        );
+
+        final lastUsed = File(
+          p.join(targetDirectory.path, ShorebirdFlutter.lastUsedStampName),
+        );
+        expect(lastUsed.lastModifiedSync(), equals(now));
+      });
+
+      test('records the use of a newly installed revision', () async {
+        final now = DateTime(2026, 10, 9);
+
+        await withClock(
+          Clock.fixed(now),
+          () => runWithOverrides(
+            () => shorebirdFlutter.installRevision(revision: revision),
+          ),
+        );
+
+        final lastUsed = File(
+          p.join(targetDirectory.path, ShorebirdFlutter.lastUsedStampName),
+        );
+        expect(lastUsed.lastModifiedSync(), equals(now));
+      });
+
       group('when the checkout completed but precache did not', () {
         setUp(createCheckout);
 
@@ -1980,6 +2014,214 @@ origin/flutter_release/3.10.6''';
             equals('unknown (771d07b2cf)'),
           );
         });
+      });
+    });
+
+    group('pruneUnusedRevisions', () {
+      const pinned = '1111111111111111111111111111111111111111';
+      const running = '2222222222222222222222222222222222222222';
+      const stale = '3333333333333333333333333333333333333333';
+      const recent = '4444444444444444444444444444444444444444';
+      final now = DateTime(2026, 10, 9);
+      late Directory flutterCache;
+
+      Directory install(String revision, {DateTime? lastUsed}) {
+        final directory = Directory(p.join(flutterCache.path, revision))
+          ..createSync(recursive: true);
+        if (lastUsed != null) {
+          File(p.join(directory.path, ShorebirdFlutter.lastUsedStampName))
+            ..createSync()
+            ..setLastModifiedSync(lastUsed);
+        }
+        return directory;
+      }
+
+      DateTime lastUsedOf(String revision) => File(
+        p.join(flutterCache.path, revision, ShorebirdFlutter.lastUsedStampName),
+      ).lastModifiedSync();
+
+      List<String> prune({DateTime? at}) => withClock(
+        Clock.fixed(at ?? now),
+        () => runWithOverrides(shorebirdFlutter.pruneUnusedRevisions),
+      );
+
+      setUp(() {
+        flutterCache = flutterDirectory.parent;
+        when(() => shorebirdEnv.flutterRevision).thenReturn(pinned);
+        platform = platform.copyWith(
+          resolvedExecutable: p.join(
+            flutterCache.path,
+            running,
+            'bin',
+            'cache',
+            'dart-sdk',
+            'bin',
+            'dart',
+          ),
+        );
+      });
+
+      test('removes revisions unused for longer than the max age', () {
+        final staleDirectory = install(
+          stale,
+          lastUsed: now.subtract(const Duration(days: 31)),
+        );
+        final recentDirectory = install(
+          recent,
+          lastUsed: now.subtract(const Duration(days: 29)),
+        );
+
+        expect(prune(), equals([stale]));
+        expect(staleDirectory.existsSync(), isFalse);
+        expect(recentDirectory.existsSync(), isTrue);
+        expect(
+          flutterCache.listSync().map((e) => p.basename(e.path)),
+          isNot(contains(endsWith('.tmp'))),
+        );
+      });
+
+      test("falls back to the directory's mtime without a marker", () {
+        final directory = install(stale);
+        final installed = directory.statSync().modified;
+
+        expect(prune(at: installed.add(const Duration(days: 29))), isEmpty);
+        expect(directory.existsSync(), isTrue);
+
+        expect(
+          prune(at: installed.add(const Duration(days: 31))),
+          equals([stale]),
+        );
+        expect(directory.existsSync(), isFalse);
+      });
+
+      test('keeps the pinned revision and records its use', () {
+        final directory = install(
+          pinned,
+          lastUsed: now.subtract(const Duration(days: 365)),
+        );
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+        expect(lastUsedOf(pinned), equals(now));
+      });
+
+      test('keeps the revision running this process and records its use', () {
+        final directory = install(
+          running,
+          lastUsed: now.subtract(const Duration(days: 365)),
+        );
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+        expect(lastUsedOf(running), equals(now));
+      });
+
+      test('recognizes the running revision through a symlinked root', () {
+        final realCache = Directory.systemTemp.createTempSync();
+        final linkedCache = Link(
+          p.join(Directory.systemTemp.createTempSync().path, 'linked'),
+        )..createSync(realCache.path);
+        flutterCache = Directory(linkedCache.path);
+        when(
+          () => shorebirdEnv.flutterDirectory,
+        ).thenReturn(Directory(p.join(linkedCache.path, 'flutter')));
+        platform = platform.copyWith(
+          resolvedExecutable: p.join(
+            realCache.resolveSymbolicLinksSync(),
+            running,
+            'bin',
+            'cache',
+            'dart-sdk',
+            'bin',
+            'dart',
+          ),
+        );
+        final directory = install(
+          running,
+          lastUsed: now.subtract(const Duration(days: 365)),
+        );
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+      });
+
+      test('protects only the pin when running from outside the cache', () {
+        platform = platform.copyWith(resolvedExecutable: '/usr/bin/dart');
+        install(running, lastUsed: now.subtract(const Duration(days: 31)));
+
+        expect(prune(), equals([running]));
+      });
+
+      test('keeps going when a use cannot be recorded', () {
+        // A directory where the marker file belongs makes recording fail.
+        Directory(
+          p.join(flutterCache.path, pinned, ShorebirdFlutter.lastUsedStampName),
+        ).createSync(recursive: true);
+        install(stale, lastUsed: now.subtract(const Duration(days: 31)));
+
+        expect(prune(), equals([stale]));
+        verify(
+          () => logger.detail(any(that: contains('Failed to record use'))),
+        ).called(1);
+      });
+
+      test('skips a revision it cannot move aside', () {
+        final directory = install(
+          stale,
+          lastUsed: now.subtract(const Duration(days: 31)),
+        );
+        // The clock is fixed, so the move's destination is predictable.
+        // Occupying it makes the rename fail.
+        File(
+          p.join(
+            '${directory.path}.$pid.unused.${now.millisecondsSinceEpoch}.tmp',
+            'occupied',
+          ),
+        ).createSync(recursive: true);
+
+        expect(prune(), isEmpty);
+        expect(directory.existsSync(), isTrue);
+        verify(
+          () => logger.detail(any(that: contains('Failed to move aside'))),
+        ).called(1);
+      });
+
+      test('leaves directories that are not revisions alone', () {
+        final other = Directory(p.join(flutterCache.path, 'not-a-revision'))
+          ..createSync(recursive: true);
+
+        expect(prune(at: now.add(const Duration(days: 365))), isEmpty);
+        expect(other.existsSync(), isTrue);
+      });
+
+      test('reclaims directories a failed removal left behind', () {
+        final leftover = Directory(
+          p.join(
+            flutterCache.path,
+            '$stale.9999.unused.'
+            '${now.subtract(const Duration(days: 2)).millisecondsSinceEpoch}'
+            '.tmp',
+          ),
+        )..createSync(recursive: true);
+        final inProgress = Directory(
+          p.join(
+            flutterCache.path,
+            '$recent.9999.${now.millisecondsSinceEpoch}.tmp',
+          ),
+        )..createSync(recursive: true);
+
+        prune();
+
+        expect(leftover.existsSync(), isFalse);
+        expect(inProgress.existsSync(), isTrue);
+      });
+
+      test('does nothing when no Flutter has been installed', () {
+        when(() => shorebirdEnv.flutterDirectory).thenReturn(
+          Directory(p.join(shorebirdRoot.path, 'missing', 'flutter')),
+        );
+
+        expect(prune(), isEmpty);
       });
     });
   });

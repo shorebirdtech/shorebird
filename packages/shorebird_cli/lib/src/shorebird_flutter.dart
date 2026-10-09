@@ -63,6 +63,21 @@ class ShorebirdFlutter {
   /// treats it as abandoned rather than as a peer's work in progress.
   static const _stagingMaxAge = Duration(days: 1);
 
+  /// Marker whose modification time records when an installed revision was
+  /// last used.
+  ///
+  /// Untracked, like [precacheStampName], so it does not make the checkout
+  /// look dirty.
+  static const lastUsedStampName = '.shorebird_last_used';
+
+  /// How long an installed revision can go unused before
+  /// [pruneUnusedRevisions] removes it.
+  static const unusedRevisionMaxAge = Duration(days: 30);
+
+  /// Names the installs this code owns: a directory per full git revision.
+  /// Anything else under the Flutter cache is never a pruning candidate.
+  static final _revisionPattern = RegExp(r'^[0-9a-f]{40}$');
+
   /// Names a directory the sweep can reclaim once it is old enough.
   ///
   /// The creation time is carried in the name rather than read back from the
@@ -173,12 +188,23 @@ class ShorebirdFlutter {
   /// A name this code did not write is left alone, so an unparseable or
   /// unrecognized sibling is never a candidate.
   void _reclaimStrandedStagingDirectories(Directory targetDirectory) {
-    final prefix = '${p.basename(targetDirectory.path)}.';
+    _reclaimStaleDirectories(
+      parent: targetDirectory.parent,
+      prefix: '${p.basename(targetDirectory.path)}.',
+    );
+  }
+
+  /// Removes every directory in [parent] that [_reclaimablePath] named, under
+  /// [prefix], more than [_stagingMaxAge] ago.
+  void _reclaimStaleDirectories({
+    required Directory parent,
+    required String prefix,
+  }) {
     final cutoff = clock.now().subtract(_stagingMaxAge);
 
     final List<FileSystemEntity> siblings;
     try {
-      siblings = targetDirectory.parent.listSync();
+      siblings = parent.listSync();
     } on FileSystemException {
       return;
     }
@@ -267,6 +293,7 @@ class ShorebirdFlutter {
     if (!isUnusable &&
         targetDirectory.existsSync() &&
         precacheStamp.existsSync()) {
+      _markUsed(targetDirectory);
       return;
     }
 
@@ -359,6 +386,111 @@ class ShorebirdFlutter {
       throw exception;
     }
     precacheProgress.complete();
+    _markUsed(targetDirectory);
+  }
+
+  /// Records that [directory]'s revision was used just now.
+  ///
+  /// Best effort: a revision whose use goes unrecorded is at worst pruned and
+  /// reinstalled on its next use.
+  void _markUsed(Directory directory) {
+    try {
+      File(p.join(directory.path, lastUsedStampName))
+        ..createSync()
+        ..setLastModifiedSync(clock.now());
+    } on FileSystemException catch (error) {
+      logger.detail('Failed to record use of ${directory.path}: $error');
+    }
+  }
+
+  /// When [directory]'s revision was last used.
+  ///
+  /// Installs from versions that predate [lastUsedStampName] fall back to the
+  /// directory's own mtime, which approximates when it was installed.
+  DateTime _lastUsed(Directory directory) {
+    final stamp = File(p.join(directory.path, lastUsedStampName)).statSync();
+    if (stamp.type != FileSystemEntityType.notFound) return stamp.modified;
+    return directory.statSync().modified;
+  }
+
+  /// The installed revision whose Dart SDK is running this process, or null
+  /// if the process is not running from the Flutter cache.
+  ///
+  /// The launcher runs the CLI on the pinned revision's Dart SDK. During
+  /// `shorebird upgrade` that is the revision being upgraded away from, which
+  /// is no longer the one `flutter.version` names.
+  String? _runningRevision(Directory flutterCache) {
+    final executable = platform.resolvedExecutable;
+    // The executable's path has its symlinks resolved, and the cache's may
+    // not (a symlinked Shorebird root), so compare against both spellings.
+    final cachePaths = {
+      flutterCache.path,
+      if (flutterCache.existsSync()) flutterCache.resolveSymbolicLinksSync(),
+    };
+    for (final cachePath in cachePaths) {
+      if (p.isWithin(cachePath, executable)) {
+        return p.split(p.relative(executable, from: cachePath)).first;
+      }
+    }
+    return null;
+  }
+
+  /// Removes installed Flutter revisions that have not been used within
+  /// [unusedRevisionMaxAge], and returns the revisions removed.
+  ///
+  /// Never removes the pinned revision or the one running this process, and
+  /// records both as used, so a revision that stops being pinned gets the
+  /// full [unusedRevisionMaxAge] from then. Reads the pinned revision from
+  /// [shorebirdEnv], so call this outside any `flutterRevisionOverride`
+  /// scope; after `shorebird upgrade` it is the new pin.
+  ///
+  /// Each candidate is moved aside before it is deleted, so a delete that
+  /// fails partway (a locked file on Windows) leaves a directory a later
+  /// sweep reclaims rather than a half-deleted install at the revision's
+  /// path. Another process that starts using a revision between the age
+  /// check and the move loses its install and reinstalls on its next run.
+  List<String> pruneUnusedRevisions() {
+    final flutterCache = shorebirdEnv.flutterDirectory.parent;
+    if (!flutterCache.existsSync()) return const [];
+
+    final protected = {
+      shorebirdEnv.flutterRevision,
+      ?_runningRevision(flutterCache),
+    };
+    for (final revision in protected) {
+      final directory = Directory(p.join(flutterCache.path, revision));
+      if (directory.existsSync()) _markUsed(directory);
+    }
+
+    final cutoff = clock.now().subtract(unusedRevisionMaxAge);
+    final removed = <String>[];
+    for (final entity in flutterCache.listSync().whereType<Directory>()) {
+      final revision = p.basename(entity.path);
+      if (!_revisionPattern.hasMatch(revision)) continue;
+      if (protected.contains(revision)) continue;
+      if (_lastUsed(entity).isAfter(cutoff)) continue;
+
+      final Directory condemned;
+      try {
+        condemned = entity.renameSync(
+          _reclaimablePath(entity.path, tag: 'unused'),
+        );
+      } on FileSystemException catch (error) {
+        logger.detail('Failed to move aside ${entity.path}: $error');
+        continue;
+      }
+      logger.detail(
+        'Removing Flutter ${shortRevisionString(revision)}, unused for '
+        '${unusedRevisionMaxAge.inDays} days.',
+      );
+      _deleteIgnoringErrors(condemned);
+      removed.add(revision);
+    }
+
+    // Whatever a failed delete above, or an earlier run, left behind.
+    _reclaimStaleDirectories(parent: flutterCache, prefix: '');
+
+    return removed;
   }
 
   /// Whether the current revision is unmodified.

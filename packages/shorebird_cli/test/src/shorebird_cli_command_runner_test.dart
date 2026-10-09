@@ -68,9 +68,46 @@ void main() {
       when(
         () => shorebirdFlutter.getVersionString(),
       ).thenAnswer((_) async => flutterVersion);
+      when(() => shorebirdFlutter.pruneUnusedRevisions()).thenReturn([]);
       when(shorebirdVersion.isLatest).thenAnswer((_) async => true);
       when(shorebirdVersion.isTrackingStable).thenAnswer((_) async => true);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
+    });
+
+    group('pruning unused Flutter installs', () {
+      test('prunes after the command runs', () async {
+        commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+        await runWithOverrides(() => commandRunner.run(['test']));
+
+        verify(() => shorebirdFlutter.pruneUnusedRevisions()).called(1);
+      });
+
+      test('prunes after a command that fails', () async {
+        commandRunner.addCommand(_TestCommand(ExitCode.software));
+
+        await runWithOverrides(() => commandRunner.run(['test']));
+
+        verify(() => shorebirdFlutter.pruneUnusedRevisions()).called(1);
+      });
+
+      test('does not fail the command when pruning throws', () async {
+        when(
+          () => shorebirdFlutter.pruneUnusedRevisions(),
+        ).thenThrow(const FileSystemException('denied'));
+        commandRunner.addCommand(_TestCommand(ExitCode.success));
+
+        final result = await runWithOverrides(
+          () => commandRunner.run(['test']),
+        );
+
+        expect(result, equals(ExitCode.success.code));
+        verify(
+          () => logger.detail(
+            any(that: contains('Unable to prune unused Flutter installs')),
+          ),
+        ).called(1);
+      });
     });
 
     group('handles ProcessExit', () {

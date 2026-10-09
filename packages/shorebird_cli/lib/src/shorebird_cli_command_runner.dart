@@ -360,12 +360,31 @@ ${currentRunLogFile.absolute.path}
 ''');
     }
 
+    _pruneUnusedFlutterRevisions();
+
     if (!isJsonMode &&
         topLevelResults.command?.name != UpgradeCommand.commandName) {
       await _checkForUpdates();
     }
 
     return exitCode;
+  }
+
+  /// Removes Flutter installs that have gone unused, so they do not pile up
+  /// across upgrades and `--flutter-version` builds (shorebirdtech/shorebird#3976).
+  ///
+  /// Runs after the command so that the revision it used is already recorded
+  /// as used, and so that after `shorebird upgrade` the new pin is the one
+  /// protected. Never fails the command.
+  void _pruneUnusedFlutterRevisions() {
+    try {
+      shorebirdFlutter.pruneUnusedRevisions();
+      // Pruning is housekeeping; nothing it hits should change the outcome of
+      // the command the user ran.
+      // ignore: avoid_catches_without_on_clauses
+    } catch (error) {
+      logger.detail('Unable to prune unused Flutter installs.\n$error');
+    }
   }
 
   /// The option name (without leading dashes) from an args-package

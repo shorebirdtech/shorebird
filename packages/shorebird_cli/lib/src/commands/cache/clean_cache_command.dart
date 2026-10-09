@@ -6,6 +6,7 @@ import 'package:shorebird_cli/src/cache.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_flutter.dart';
 
 /// {@template clean_cache_command}
 /// `shorebird cache clean`
@@ -13,7 +14,19 @@ import 'package:shorebird_cli/src/shorebird_command.dart';
 /// {@endtemplate}
 class CleanCacheCommand extends ShorebirdCommand {
   /// {@macro clean_cache_command}
-  CleanCacheCommand();
+  CleanCacheCommand() {
+    argParser.addFlag(
+      unusedFlag,
+      negatable: false,
+      help:
+          'Only remove Flutter versions not used in the last '
+          '${ShorebirdFlutter.unusedRevisionMaxAge.inDays} days. Shorebird '
+          'also does this automatically on every run.',
+    );
+  }
+
+  /// Name of the flag that limits cleaning to unused Flutter versions.
+  static const unusedFlag = 'unused';
 
   @override
   String get description => 'Clears the Shorebird cache directory.';
@@ -26,6 +39,8 @@ class CleanCacheCommand extends ShorebirdCommand {
 
   @override
   Future<int> run() async {
+    if (results[unusedFlag] == true) return _removeUnused();
+
     final progress = logger.progress('Clearing cache');
     try {
       await cache.clear();
@@ -51,6 +66,18 @@ This could be because a program is using a file in the cache directory. To find 
     }
 
     progress.complete('Cleared cache');
+    return ExitCode.success.code;
+  }
+
+  int _removeUnused() {
+    final progress = logger.progress('Removing unused Flutter versions');
+    final removed = shorebirdFlutter.pruneUnusedRevisions();
+    progress.complete(
+      removed.isEmpty
+          ? 'No unused Flutter versions to remove'
+          : 'Removed ${removed.length} unused Flutter '
+                '${removed.length == 1 ? 'version' : 'versions'}',
+    );
     return ExitCode.success.code;
   }
 }
