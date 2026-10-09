@@ -74,6 +74,7 @@ void main() {
       ).thenAnswer((_) async => flutterVersion);
       when(() => shorebirdFlutter.pruneUnusedRevisions()).thenReturn([]);
       when(() => cache.pruneUnusedArtifacts()).thenReturn([]);
+      when(() => cache.pruneUnusedPreviews()).thenReturn([]);
       when(shorebirdVersion.isLatest).thenAnswer((_) async => true);
       when(shorebirdVersion.isTrackingStable).thenAnswer((_) async => true);
       commandRunner = runWithOverrides(ShorebirdCliCommandRunner.new);
@@ -87,6 +88,7 @@ void main() {
 
         verify(() => shorebirdFlutter.pruneUnusedRevisions()).called(1);
         verify(() => cache.pruneUnusedArtifacts()).called(1);
+        verify(() => cache.pruneUnusedPreviews()).called(1);
       });
 
       test('prunes after a command that fails', () async {
@@ -96,6 +98,7 @@ void main() {
 
         verify(() => shorebirdFlutter.pruneUnusedRevisions()).called(1);
         verify(() => cache.pruneUnusedArtifacts()).called(1);
+        verify(() => cache.pruneUnusedPreviews()).called(1);
       });
 
       test('does not fail the command when pruning throws', () async {
@@ -104,6 +107,9 @@ void main() {
         ).thenThrow(const FileSystemException('denied'));
         when(
           () => cache.pruneUnusedArtifacts(),
+        ).thenThrow(const FileSystemException('denied'));
+        when(
+          () => cache.pruneUnusedPreviews(),
         ).thenThrow(const FileSystemException('denied'));
         commandRunner.addCommand(_TestCommand(ExitCode.success));
 
@@ -120,6 +126,11 @@ void main() {
         verify(
           () => logger.detail(
             any(that: contains('Unable to prune unused artifacts')),
+          ),
+        ).called(1);
+        verify(
+          () => logger.detail(
+            any(that: contains('Unable to prune unused previews')),
           ),
         ).called(1);
       });

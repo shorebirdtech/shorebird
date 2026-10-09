@@ -17,8 +17,8 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 /// dirty.
 const lastUsedStampName = '.shorebird_last_used';
 
-/// How long a per-revision cache directory can go unused before Shorebird
-/// removes it.
+/// How long a cached Flutter install, engine artifact or preview can go
+/// unused before Shorebird removes it.
 const unusedCacheMaxAge = Duration(days: 30);
 
 /// Names the per-revision cache directories Shorebird owns: one per full git
@@ -26,28 +26,46 @@ const unusedCacheMaxAge = Duration(days: 30);
 final revisionDirectoryPattern = RegExp(r'^[0-9a-f]{40}$');
 
 /// Records that [directory] was used just now.
+void markUsed(Directory directory) =>
+    touchStamp(File(p.join(directory.path, lastUsedStampName)));
+
+/// Sets [stamp]'s mtime to now, creating it if needed.
 ///
-/// Best effort: a directory whose use goes unrecorded is at worst pruned and
-/// downloaded again on its next use.
-void markUsed(Directory directory) {
+/// Best effort: a use that goes unrecorded is at worst pruned and downloaded
+/// again on its next use.
+void touchStamp(File stamp) {
   try {
-    File(p.join(directory.path, lastUsedStampName))
+    stamp
       ..createSync()
       ..setLastModifiedSync(clock.now());
   } on FileSystemException catch (error) {
-    logger.detail('Failed to record use of ${directory.path}: $error');
+    logger.detail('Failed to record use in ${stamp.path}: $error');
   }
 }
 
 /// When [directory] was last used.
+DateTime lastUsed(Directory directory) => stampedTime(
+  stamp: File(p.join(directory.path, lastUsedStampName)),
+  fallback: directory,
+);
+
+/// The time [stamp] records, or [fallback]'s mtime if there is no stamp.
 ///
-/// Directories written by versions that predate [lastUsedStampName] fall back
-/// to their own mtime, which approximates when they were created.
-DateTime lastUsed(Directory directory) {
-  final stamp = File(p.join(directory.path, lastUsedStampName)).statSync();
-  if (stamp.type != FileSystemEntityType.notFound) return stamp.modified;
-  return directory.statSync().modified;
+/// Entries written by versions that predate these stamps have none, and their
+/// own mtime approximates when they were created.
+DateTime stampedTime({
+  required File stamp,
+  required FileSystemEntity fallback,
+}) {
+  final stat = stamp.statSync();
+  if (stat.type != FileSystemEntityType.notFound) return stat.modified;
+  return fallback.statSync().modified;
 }
+
+/// Whether something last used at [time] has gone unused for longer than
+/// [unusedCacheMaxAge].
+bool isUnusedSince(DateTime time) =>
+    !time.isAfter(clock.now().subtract(unusedCacheMaxAge));
 
 /// Whether [directory] is a per-revision cache directory that has gone unused
 /// for longer than [unusedCacheMaxAge].
@@ -55,20 +73,19 @@ bool isUnusedRevisionDirectory(Directory directory) {
   if (!revisionDirectoryPattern.hasMatch(p.basename(directory.path))) {
     return false;
   }
-  final cutoff = clock.now().subtract(unusedCacheMaxAge);
-  return !lastUsed(directory).isAfter(cutoff);
+  return isUnusedSince(lastUsed(directory));
 }
 
-/// Deletes [directory], returning whether it is gone.
+/// Deletes [entity], returning whether it is gone.
 ///
 /// A failure is logged rather than thrown: every caller is cleaning up, and
 /// what it leaves behind is retried by a later sweep.
-bool deleteIgnoringErrors(Directory directory) {
+bool deleteIgnoringErrors(FileSystemEntity entity) {
   try {
-    directory.deleteSync(recursive: true);
+    entity.deleteSync(recursive: true);
     return true;
   } on FileSystemException catch (error) {
-    logger.detail('Failed to remove ${directory.path}: $error');
+    logger.detail('Failed to remove ${entity.path}: $error');
     return false;
   }
 }

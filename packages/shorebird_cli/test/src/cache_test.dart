@@ -192,6 +192,160 @@ void main() {
       });
     });
 
+    group('pruneUnusedPreviews', () {
+      final now = DateTime(2026, 10, 9);
+
+      /// Creates a cached preview artifact last used [age] ago.
+      FileSystemEntity preview(
+        String app,
+        String name, {
+        required Duration age,
+        bool isDirectory = false,
+      }) {
+        final path = runWithOverrides(
+          () => p.join(Cache.shorebirdPreviewsDirectory.path, app, name),
+        );
+        final artifact = isDirectory
+            ? (Directory(path)..createSync(recursive: true))
+            : (File(path)..createSync(recursive: true));
+        File('$path${Cache.previewLastUsedSuffix}')
+          ..createSync()
+          ..setLastModifiedSync(now.subtract(age));
+        return artifact;
+      }
+
+      List<String> prune() => withClock(
+        Clock.fixed(now),
+        () => runWithOverrides(() => cache.pruneUnusedPreviews()),
+      );
+
+      test('removes previews unused for longer than the max age', () {
+        final stale = preview(
+          'app',
+          'ios_1.0.0_1.app',
+          age: const Duration(days: 31),
+          isDirectory: true,
+        );
+        final recent = preview(
+          'app',
+          'ios_1.0.1_2.app',
+          age: const Duration(days: 29),
+          isDirectory: true,
+        );
+
+        expect(prune(), equals([stale.path]));
+        expect(stale.existsSync(), isFalse);
+        expect(
+          File('${stale.path}${Cache.previewLastUsedSuffix}').existsSync(),
+          isFalse,
+        );
+        expect(recent.existsSync(), isTrue);
+      });
+
+      test('keeps only the most recently used previews across apps', () {
+        final previews = [
+          for (var i = 0; i <= Cache.maxCachedPreviews; i++)
+            preview(
+              'app-${i % 2}',
+              'android_1.0.${i}_$i.aab',
+              age: Duration(days: i),
+            ),
+        ];
+
+        expect(prune(), equals([previews.last.path]));
+        expect(
+          previews.take(Cache.maxCachedPreviews).every((p) => p.existsSync()),
+          isTrue,
+        );
+      });
+
+      test('counts artifacts that share a name as one preview', () {
+        final aab = preview(
+          'app',
+          'android_1.0.0_1.aab',
+          age: const Duration(days: 40),
+        );
+        // The .apks is rebuilt from the .aab on every run, so its use counts
+        // for both.
+        final apks = preview(
+          'app',
+          'android_1.0.0_1.apks',
+          age: const Duration(days: 1),
+        );
+
+        expect(prune(), isEmpty);
+        expect(aab.existsSync(), isTrue);
+        expect(apks.existsSync(), isTrue);
+      });
+
+      test('ages a preview without a marker by its mtime', () {
+        final artifact = runWithOverrides(
+          () => File(
+            p.join(
+              Cache.shorebirdPreviewsDirectory.path,
+              'app',
+              'android_1.0.0_1.aab',
+            ),
+          ),
+        )..createSync(recursive: true);
+        final created = artifact.statSync().modified;
+
+        expect(
+          withClock(
+            Clock.fixed(created.add(const Duration(days: 31))),
+            () => runWithOverrides(() => cache.pruneUnusedPreviews()),
+          ),
+          equals([artifact.path]),
+        );
+      });
+
+      test('removes orphaned markers and empty app directories', () {
+        final kept = preview(
+          'kept-app',
+          'ios_1.0.0_1.app',
+          age: Duration.zero,
+          isDirectory: true,
+        );
+        final orphan = File(
+          '${kept.parent.path}/ios_0.9.0_0.app${Cache.previewLastUsedSuffix}',
+        )..createSync();
+        final emptied = preview(
+          'emptied-app',
+          'ios_1.0.0_2.app',
+          age: const Duration(days: 31),
+          isDirectory: true,
+        );
+
+        prune();
+
+        expect(orphan.existsSync(), isFalse);
+        expect(kept.existsSync(), isTrue);
+        expect(emptied.parent.existsSync(), isFalse);
+      });
+
+      test('does nothing when no previews have been downloaded', () {
+        expect(prune(), isEmpty);
+      });
+    });
+
+    group('markPreviewUsed', () {
+      test('records the use beside the artifact', () {
+        final now = DateTime(2026, 10, 9);
+        final directory = Directory.systemTemp.createTempSync();
+        final path = p.join(directory.path, 'ios_1.0.0_1.app');
+
+        withClock(
+          Clock.fixed(now),
+          () => runWithOverrides(() => cache.markPreviewUsed(path)),
+        );
+
+        expect(
+          File('$path${Cache.previewLastUsedSuffix}').lastModifiedSync(),
+          equals(now),
+        );
+      });
+    });
+
     group('pruneUnusedArtifacts', () {
       const pinned = '1111111111111111111111111111111111111111';
       const stale = '3333333333333333333333333333333333333333';

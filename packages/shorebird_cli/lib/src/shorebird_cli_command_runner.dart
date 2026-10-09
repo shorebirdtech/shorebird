@@ -371,9 +371,9 @@ ${currentRunLogFile.absolute.path}
     return exitCode;
   }
 
-  /// Removes Flutter installs and engine artifacts that have gone unused, so
-  /// they do not pile up across upgrades and `--flutter-version` builds
-  /// (shorebirdtech/shorebird#3976).
+  /// Removes Flutter installs, engine artifacts and previews that have gone
+  /// unused, so they do not pile up across upgrades, `--flutter-version`
+  /// builds and previewed releases (shorebirdtech/shorebird#3976).
   ///
   /// Runs after the command so that what it used is already recorded as used,
   /// and so that after `shorebird upgrade` the new pin is the one protected.
@@ -382,6 +382,7 @@ ${currentRunLogFile.absolute.path}
     final pruners = {
       'Flutter installs': shorebirdFlutter.pruneUnusedRevisions,
       'artifacts': cache.pruneUnusedArtifacts,
+      'previews': cache.pruneUnusedPreviews,
     };
     for (final MapEntry(key: name, value: prune) in pruners.entries) {
       try {

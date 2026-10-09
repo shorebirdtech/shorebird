@@ -2337,6 +2337,15 @@ channel: ${DeploymentTrack.staging.channel}
           ).called(1);
           verify(() => logger.info('hello world')).called(1);
           verify(() => logger.err('hello error')).called(1);
+          // Recorded so that pruning keeps the preview just launched.
+          verify(
+            () => cache.markPreviewUsed(
+              p.join(
+                previewDirectory.path,
+                'linux_${releaseVersion}_$releaseArtifactId',
+              ),
+            ),
+          ).called(1);
         });
       });
 

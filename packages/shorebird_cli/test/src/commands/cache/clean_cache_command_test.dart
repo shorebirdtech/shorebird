@@ -75,32 +75,43 @@ void main() {
         when(() => argResults[CleanCacheCommand.unusedFlag]).thenReturn(true);
         when(() => shorebirdFlutter.pruneUnusedRevisions()).thenReturn([]);
         when(() => cache.pruneUnusedArtifacts()).thenReturn([]);
+        when(() => cache.pruneUnusedPreviews()).thenReturn([]);
       });
 
-      test('removes only unused Flutter versions and artifacts', () async {
+      test('removes only unused cached files', () async {
         when(
           () => shorebirdFlutter.pruneUnusedRevisions(),
         ).thenReturn(['a', 'b']);
         when(() => cache.pruneUnusedArtifacts()).thenReturn(['c']);
+        when(() => cache.pruneUnusedPreviews()).thenReturn(['d', 'e', 'f']);
 
         final result = await runWithOverrides(command.run);
 
         expect(result, equals(ExitCode.success.code));
         verify(
           () => progress.complete(
-            'Removed 2 unused Flutter versions and 1 unused engine artifact',
+            'Removed 2 unused Flutter versions, 1 unused engine artifact, '
+            '3 unused previews',
           ),
         ).called(1);
         verifyNever(cache.clear);
+      });
+
+      test('lists only what it removed', () async {
+        when(() => cache.pruneUnusedPreviews()).thenReturn(['a']);
+
+        await runWithOverrides(command.run);
+
+        verify(
+          () => progress.complete('Removed 1 unused preview'),
+        ).called(1);
       });
 
       test('says when there was nothing to remove', () async {
         await runWithOverrides(command.run);
 
         verify(
-          () => progress.complete(
-            'No unused Flutter versions or artifacts to remove',
-          ),
+          () => progress.complete('Nothing unused to remove'),
         ).called(1);
       });
     });

@@ -20,9 +20,10 @@ class CleanCacheCommand extends ShorebirdCommand {
       unusedFlag,
       negatable: false,
       help:
-          'Only remove Flutter versions and engine artifacts not used in the '
-          'last ${unusedCacheMaxAge.inDays} days. Shorebird also does this '
-          'automatically on every run.',
+          'Only remove Flutter versions, engine artifacts and previews not '
+          'used in the last ${unusedCacheMaxAge.inDays} days, and previews '
+          'beyond the ${Cache.maxCachedPreviews} most recent. Shorebird also '
+          'does this automatically on every run.',
     );
   }
 
@@ -71,18 +72,21 @@ This could be because a program is using a file in the cache directory. To find 
   }
 
   int _removeUnused() {
-    final progress = logger.progress('Removing unused Flutter versions');
-    final flutterVersions = shorebirdFlutter.pruneUnusedRevisions().length;
-    final artifacts = cache.pruneUnusedArtifacts().length;
-    if (flutterVersions == 0 && artifacts == 0) {
-      progress.complete('No unused Flutter versions or artifacts to remove');
-    } else {
-      String count(int n, String noun) => '$n unused $noun${n == 1 ? '' : 's'}';
-      progress.complete(
-        'Removed ${count(flutterVersions, 'Flutter version')} and '
-        '${count(artifacts, 'engine artifact')}',
-      );
-    }
+    final progress = logger.progress('Removing unused cached files');
+    final counts = {
+      'Flutter version': shorebirdFlutter.pruneUnusedRevisions().length,
+      'engine artifact': cache.pruneUnusedArtifacts().length,
+      'preview': cache.pruneUnusedPreviews().length,
+    };
+    final removed = [
+      for (final MapEntry(key: noun, value: n) in counts.entries)
+        if (n > 0) '$n unused $noun${n == 1 ? '' : 's'}',
+    ];
+    progress.complete(
+      removed.isEmpty
+          ? 'Nothing unused to remove'
+          : 'Removed ${removed.join(', ')}',
+    );
     return ExitCode.success.code;
   }
 }

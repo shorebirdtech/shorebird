@@ -862,7 +862,9 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
     return unreachableModern.firstOrNull;
   }
 
-  /// Resolves the artifact path for the given parameters.
+  /// Resolves the artifact path for the given parameters, and records the
+  /// artifact as used so [Cache.pruneUnusedPreviews] keeps it. Every preview
+  /// reaches its cached artifact through this path.
   String getArtifactPath({
     required String appId,
     required Release release,
@@ -872,10 +874,12 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
   }) {
     final previewDirectory = cache.getPreviewDirectory(appId);
     final ext = fileExtension != null ? '.$fileExtension' : '';
-    return p.join(
+    final path = p.join(
       previewDirectory.path,
       '${platform.name}_${release.version}_${artifact.id}$ext',
     );
+    cache.markPreviewUsed(path);
+    return path;
   }
 
   /// Sets the channel property in the shorebird.yaml file inside the Windows

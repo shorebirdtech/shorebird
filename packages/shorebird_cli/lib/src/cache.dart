@@ -174,6 +174,87 @@ class Cache {
     );
   }
 
+  /// Suffix of the marker recording when a cached preview artifact was last
+  /// used.
+  ///
+  /// The marker sits beside the artifact rather than inside it: an extra file
+  /// in an `.app` bundle's root would break its code signature.
+  static const previewLastUsedSuffix = '.shorebird_last_used';
+
+  /// Records that the preview artifact at [artifactPath] was used just now.
+  void markPreviewUsed(String artifactPath) =>
+      touchStamp(File('$artifactPath$previewLastUsedSuffix'));
+
+  /// The most previews [pruneUnusedPreviews] keeps, however recently used.
+  static const maxCachedPreviews = 10;
+
+  /// Removes cached previews (`bin/cache/previews/<app>/<artifact>`) beyond
+  /// the [maxCachedPreviews] most recently used, and any not used within
+  /// [unusedCacheMaxAge], and returns the paths removed.
+  ///
+  /// A preview is every artifact sharing a name up to its extension, so an
+  /// Android release's `.aab` and the `.apks` built from it count once. Also
+  /// removes markers whose artifact is gone and app directories left empty.
+  /// A pruned preview is downloaded again on its next run.
+  List<String> pruneUnusedPreviews() {
+    final previewsDirectory = shorebirdPreviewsDirectory;
+    if (!previewsDirectory.existsSync()) return const [];
+    final appDirectories = previewsDirectory
+        .listSync()
+        .whereType<Directory>()
+        .toList();
+
+    final previews = <String, List<FileSystemEntity>>{};
+    for (final appDirectory in appDirectories) {
+      for (final artifact in appDirectory.listSync()) {
+        if (artifact.path.endsWith(previewLastUsedSuffix)) continue;
+        previews
+            .putIfAbsent(p.withoutExtension(artifact.path), () => [])
+            .add(artifact);
+      }
+    }
+
+    DateTime lastUsedOf(List<FileSystemEntity> artifacts) => artifacts
+        .map(
+          (artifact) => stampedTime(
+            stamp: File('${artifact.path}$previewLastUsedSuffix'),
+            fallback: artifact,
+          ),
+        )
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+
+    final byRecency = [
+      for (final artifacts in previews.values)
+        (artifacts: artifacts, lastUsed: lastUsedOf(artifacts)),
+    ]..sort((a, b) => b.lastUsed.compareTo(a.lastUsed));
+
+    final removed = <String>[];
+    for (final (index, preview) in byRecency.indexed) {
+      if (index < maxCachedPreviews && !isUnusedSince(preview.lastUsed)) {
+        continue;
+      }
+      for (final artifact in preview.artifacts) {
+        if (deleteIgnoringErrors(artifact)) removed.add(artifact.path);
+      }
+    }
+
+    for (final appDirectory in appDirectories) {
+      for (final stamp in appDirectory.listSync().whereType<File>()) {
+        if (!stamp.path.endsWith(previewLastUsedSuffix)) continue;
+        final artifactPath = stamp.path.substring(
+          0,
+          stamp.path.length - previewLastUsedSuffix.length,
+        );
+        if (FileSystemEntity.typeSync(artifactPath) ==
+            FileSystemEntityType.notFound) {
+          deleteIgnoringErrors(stamp);
+        }
+      }
+      if (appDirectory.listSync().isEmpty) deleteIgnoringErrors(appDirectory);
+    }
+    return removed;
+  }
+
   /// The Shorebird cache directory.
   static Directory get shorebirdCacheDirectory {
     return Directory(p.join(shorebirdEnv.shorebirdRoot.path, 'bin', 'cache'));
