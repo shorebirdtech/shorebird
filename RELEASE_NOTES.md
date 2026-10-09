@@ -1,8 +1,25 @@
 # Release Notes
 
 <!--
-cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate
+cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
  -->
+
+## 1.6.126 (October 9, 2026)
+
+- 🐦 Flutter 3.47.7 / Dart 3.13.5 support
+  - iOS: fix accessibility frames for `OverlayPortal`, which were shrunk by
+    the device pixel ratio and anchored top-left, so VoiceOver focus and
+    XCUITest taps missed the visible controls.
+  - iOS: fix VoiceOver focus jumping to the top left of the screen in a
+    `ReorderableListView`.
+- ✨ `shorebird login` opens your browser, and falls back to a device code
+  when no browser can be opened.
+- ✨ Unused Flutter installs, engine artifacts and previews are now pruned
+  automatically, so they stop piling up across upgrades and
+  `--flutter-version` builds. `shorebird cache clean --unused` prunes without
+  clearing the rest of the cache.
+- 🐛 macOS patches are now diffed against the Dart snapshot regions.
+- 🐛 `shorebird preview` streams iOS app logs with `devicectl --console`.
 
 ## 1.6.125 (October 8, 2026)
 
