@@ -33,6 +33,9 @@ env:
 
 jobs:
   patch:
+    # Without this the job name lists every matrix value, android-packages
+    # included.
+    name: patch (${{ matrix.flutter-version }})
     # A cli_ref dispatch is verifying the cli job; the patch matrix is dozens of
     # unrelated jobs that would only burn runner time.
     if: ${{ !inputs.cli_ref }}
