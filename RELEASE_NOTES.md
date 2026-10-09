@@ -4,6 +4,24 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate
  -->
 
+## 1.6.125 (October 8, 2026)
+
+- ⚠️ Google and Microsoft sign-in and `shorebird login:ci` tokens are no
+  longer supported (the server stopped accepting them on October 1). Run
+  `shorebird login` to sign in again, and use an API key (`sb_api_...`) in
+  `SHOREBIRD_TOKEN` for CI.
+- 🔒 `shorebird login` now uses standard OAuth with PKCE and `state`, and
+  `shorebird logout` revokes the session on the server.
+- ✨ `shorebird release` and `shorebird patch` support `--json`.
+- ✨ Warn when an iOS app extension's version does not match the app's.
+- 🐛 Android: patching an obfuscated release built with Flutter older than
+  3.41.2 no longer fails with "Unrecognized flags: load_obfuscation_map".
+- 🐛 `shorebird login` now signs you in again when your stored credentials
+  have expired, instead of reporting that you are already logged in.
+- 🐛 Errors from `init`, `patch`, `preview` and the validators now name the
+  next step to take. `shorebird patch --force` points to
+  `--allow-native-diffs` and `--allow-asset-diffs`.
+
 ## 1.6.124 (October 2, 2026)
 
 - 🐦 Flutter 3.47.6 / Dart 3.13.5 support

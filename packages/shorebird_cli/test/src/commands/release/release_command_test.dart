@@ -14,6 +14,7 @@ import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/release/release.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
+import 'package:shorebird_cli/src/flutter_version_constraints.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
@@ -180,6 +181,7 @@ void main() {
         () => releaser.postReleaseInstructions,
       ).thenReturn(postReleaseInstructions);
       when(() => releaser.releaseType).thenReturn(ReleaseType.android);
+      when(() => releaser.useObfuscation).thenReturn(false);
       when(
         () => releaser.updatedReleaseMetadata(any()),
       ).thenAnswer((_) async => UpdateReleaseMetadata.forTest());
@@ -1015,6 +1017,7 @@ $exception'''),
     group('assertArgsAreValid', () {
       test('calls releaser.assertArgsAreValid', () async {
         final releaser = MockReleaser();
+        when(() => releaser.useObfuscation).thenReturn(false);
         when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
         await runWithOverrides(() => command.assertArgsAreValid(releaser));
         verify(releaser.assertArgsAreValid).called(1);
@@ -1037,6 +1040,7 @@ $exception'''),
 
           test('logs a warning', () async {
             final releaser = MockReleaser();
+            when(() => releaser.useObfuscation).thenReturn(false);
             when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
             await runWithOverrides(() => command.assertArgsAreValid(releaser));
             verify(
@@ -1071,6 +1075,64 @@ $exception'''),
 At least Flutter $laterFlutterVersion is required to release with `${releaseType.name}`.
 For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
         ).called(1);
+      });
+
+      group('when obfuscating below the obfuscation map floor', () {
+        late MockReleaser releaser;
+        final oldFlutterVersion = Version(3, 38, 9);
+
+        setUp(() {
+          expect(oldFlutterVersion, lessThan(minimumObfuscationFlutterVersion));
+          releaser = MockReleaser();
+          when(() => releaser.useObfuscation).thenReturn(true);
+          when(() => releaser.minimumFlutterVersion).thenReturn(null);
+          when(releaser.assertArgsAreValid).thenAnswer((_) async => {});
+          when(
+            () => shorebirdFlutter.resolveFlutterVersion(any()),
+          ).thenAnswer((_) async => oldFlutterVersion);
+        });
+
+        test('exits for iOS, whose patches link against the release', () async {
+          when(() => releaser.releaseType).thenReturn(ReleaseType.ios);
+          await expectLater(
+            () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+            exitsWithCode(ExitCode.unavailable),
+          );
+          verify(
+            () => logger.err(
+              'Obfuscation on iOS requires Flutter '
+              '$minimumObfuscationFlutterVersion or later '
+              '(current: $oldFlutterVersion).',
+            ),
+          ).called(1);
+        });
+
+        test('allows Android, whose patches are complete snapshots', () async {
+          when(() => releaser.releaseType).thenReturn(ReleaseType.android);
+          await runWithOverrides(() => command.assertArgsAreValid(releaser));
+          verify(releaser.assertArgsAreValid).called(1);
+        });
+
+        test('checks the --flutter-version target, not the CLI pin', () async {
+          when(() => releaser.releaseType).thenReturn(ReleaseType.ios);
+          when(() => argResults['flutter-version']).thenReturn('3.38.9');
+          await expectLater(
+            () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+            exitsWithCode(ExitCode.unavailable),
+          );
+          verify(() => shorebirdFlutter.resolveFlutterVersion('3.38.9'));
+        });
+
+        test('checks the CLI pin when no --flutter-version is given', () async {
+          when(() => releaser.releaseType).thenReturn(ReleaseType.ios);
+          await expectLater(
+            () => runWithOverrides(() => command.assertArgsAreValid(releaser)),
+            exitsWithCode(ExitCode.unavailable),
+          );
+          verify(
+            () => shorebirdFlutter.resolveFlutterVersion(flutterRevision),
+          );
+        });
       });
     });
 
