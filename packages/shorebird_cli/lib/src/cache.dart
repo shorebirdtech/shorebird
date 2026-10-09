@@ -192,8 +192,9 @@ class Cache {
   /// the [maxCachedPreviews] most recently used, and any not used within
   /// [unusedCacheMaxAge], and returns the paths removed.
   ///
-  /// A preview is every artifact sharing a name up to its extension, so an
-  /// Android release's `.aab` and the `.apks` built from it count once. Also
+  /// A preview is every artifact sharing a name up to its extension (see
+  /// [_previewName]), so an Android release's `.aab` and the `.apks` built
+  /// from it count once. Also
   /// removes markers whose artifact is gone and app directories left empty.
   /// A pruned preview is downloaded again on its next run.
   List<String> pruneUnusedPreviews() {
@@ -209,7 +210,7 @@ class Cache {
       for (final artifact in appDirectory.listSync()) {
         if (artifact.path.endsWith(previewLastUsedSuffix)) continue;
         previews
-            .putIfAbsent(p.withoutExtension(artifact.path), () => [])
+            .putIfAbsent(_previewName(artifact.path), () => [])
             .add(artifact);
       }
     }
@@ -254,6 +255,22 @@ class Cache {
     }
     return removed;
   }
+
+  /// The preview a cached artifact at [path] belongs to: its path without the
+  /// file extension, if it has one.
+  ///
+  /// Names are `<platform>_<version>_<artifact id>[.<extension>]`, and the
+  /// version has dots of its own, so `linux_1.0.0_42` has no extension to
+  /// strip. Only a purely alphabetic suffix (`.aab`, `.apks`, `.app`, `.exe`)
+  /// is one.
+  static String _previewName(String path) {
+    final extension = p.extension(path);
+    return _previewExtension.hasMatch(extension)
+        ? path.substring(0, path.length - extension.length)
+        : path;
+  }
+
+  static final _previewExtension = RegExp(r'^\.[a-z]+$');
 
   /// The Shorebird cache directory.
   static Directory get shorebirdCacheDirectory {

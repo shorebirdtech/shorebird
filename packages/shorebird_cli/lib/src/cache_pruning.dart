@@ -1,5 +1,5 @@
-/// Shared pieces for pruning per-revision cache directories that have gone
-/// unused.
+/// Shared pieces for pruning cached Flutter installs, engine artifacts and
+/// previews that have gone unused.
 library;
 
 import 'dart:io';
@@ -36,7 +36,9 @@ void markUsed(Directory directory) =>
 void touchStamp(File stamp) {
   try {
     stamp
-      ..createSync()
+      // A preview's use is recorded before its download creates the app's
+      // directory.
+      ..createSync(recursive: true)
       ..setLastModifiedSync(clock.now());
   } on FileSystemException catch (error) {
     logger.detail('Failed to record use in ${stamp.path}: $error');

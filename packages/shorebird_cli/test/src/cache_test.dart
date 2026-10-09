@@ -278,6 +278,16 @@ void main() {
         expect(apks.existsSync(), isTrue);
       });
 
+      test('does not group previews by the dots in their version', () {
+        // Linux previews have no extension, so a naive one would be `.0_42`.
+        final previews = [
+          for (var i = 0; i <= Cache.maxCachedPreviews; i++)
+            preview('app', 'linux_1.0.${i}_$i', age: Duration(days: i)),
+        ];
+
+        expect(prune(), equals([previews.last.path]));
+      });
+
       test('ages a preview without a marker by its mtime', () {
         final artifact = runWithOverrides(
           () => File(
@@ -332,7 +342,9 @@ void main() {
       test('records the use beside the artifact', () {
         final now = DateTime(2026, 10, 9);
         final directory = Directory.systemTemp.createTempSync();
-        final path = p.join(directory.path, 'ios_1.0.0_1.app');
+        // The app's preview directory does not exist before its first
+        // download.
+        final path = p.join(directory.path, 'app-id', 'ios_1.0.0_1.app');
 
         withClock(
           Clock.fixed(now),

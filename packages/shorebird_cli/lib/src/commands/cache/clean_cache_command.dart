@@ -27,7 +27,7 @@ class CleanCacheCommand extends ShorebirdCommand {
     );
   }
 
-  /// Name of the flag that limits cleaning to unused Flutter versions.
+  /// Name of the flag that limits cleaning to what has gone unused.
   static const unusedFlag = 'unused';
 
   @override
