@@ -735,6 +735,13 @@ $name artifact already exists, continuing...''');
     return thinnedArchiveDirectory;
   }
 
+  /// Deletes [directory], a temporary directory this wrapper created to stage
+  /// an upload. Uploads read the file before returning, so it's no longer
+  /// needed whether or not the upload succeeded.
+  void _deleteTempDirectory(Directory directory) {
+    if (directory.existsSync()) directory.deleteSync(recursive: true);
+  }
+
   /// Zips and uploads a Linux release bundle.
   Future<void> createLinuxReleaseArtifacts({
     required String appId,
@@ -743,16 +750,20 @@ $name artifact already exists, continuing...''');
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final zippedBundle = await Directory(bundle.path).zipToTempFile();
-    await _uploadReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      file: zippedBundle,
-      name: 'bundle',
-      arch: primaryLinuxReleaseArtifactArch,
-      platform: ReleasePlatform.linux,
-      canSideload: true,
-      progress: createArtifactProgress,
-    );
+    try {
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        file: zippedBundle,
+        name: 'bundle',
+        arch: primaryLinuxReleaseArtifactArch,
+        platform: ReleasePlatform.linux,
+        canSideload: true,
+        progress: createArtifactProgress,
+      );
+    } finally {
+      _deleteTempDirectory(zippedBundle.parent);
+    }
 
     createArtifactProgress.complete();
   }
@@ -766,20 +777,26 @@ $name artifact already exists, continuing...''');
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final tempDir = await Directory.systemTemp.createTemp();
-    final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
-    await ditto.archive(source: appPath, destination: zippedApp.path);
+    try {
+      final zippedApp = File(
+        p.join(tempDir.path, '${p.basename(appPath)}.zip'),
+      );
+      await ditto.archive(source: appPath, destination: zippedApp.path);
 
-    await _uploadReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      file: zippedApp,
-      name: 'app',
-      arch: 'app',
-      platform: ReleasePlatform.macos,
-      canSideload: true,
-      podfileLockHash: podfileLockHash,
-      progress: createArtifactProgress,
-    );
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        file: zippedApp,
+        name: 'app',
+        arch: 'app',
+        platform: ReleasePlatform.macos,
+        canSideload: true,
+        podfileLockHash: podfileLockHash,
+        progress: createArtifactProgress,
+      );
+    } finally {
+      _deleteTempDirectory(tempDir);
+    }
 
     createArtifactProgress.complete();
   }
@@ -798,32 +815,45 @@ $name artifact already exists, continuing...''');
     final thinnedArchiveDirectory = await _thinXcarchive(
       xcarchivePath: xcarchivePath,
     );
-    final zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
-    await _uploadReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      file: zippedArchive,
-      name: 'xcarchive',
-      arch: 'xcarchive',
-      platform: ReleasePlatform.ios,
-      canSideload: false,
-      podfileLockHash: podfileLockHash,
-      progress: createArtifactProgress,
-    );
+    final File zippedArchive;
+    try {
+      zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
+    } finally {
+      _deleteTempDirectory(thinnedArchiveDirectory.parent);
+    }
+    try {
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        file: zippedArchive,
+        name: 'xcarchive',
+        arch: 'xcarchive',
+        platform: ReleasePlatform.ios,
+        canSideload: false,
+        podfileLockHash: podfileLockHash,
+        progress: createArtifactProgress,
+      );
+    } finally {
+      _deleteTempDirectory(zippedArchive.parent);
+    }
 
     final zippedRunner = await Directory(runnerPath).zipToTempFile();
     logger.detail('[archive] zipped runner.app to ${zippedRunner.path}');
-    await _uploadReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      file: zippedRunner,
-      name: 'runner.app',
-      arch: 'runner',
-      platform: ReleasePlatform.ios,
-      canSideload: isCodesigned,
-      podfileLockHash: podfileLockHash,
-      progress: createArtifactProgress,
-    );
+    try {
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        file: zippedRunner,
+        name: 'runner.app',
+        arch: 'runner',
+        platform: ReleasePlatform.ios,
+        canSideload: isCodesigned,
+        podfileLockHash: podfileLockHash,
+        progress: createArtifactProgress,
+      );
+    } finally {
+      _deleteTempDirectory(zippedRunner.parent);
+    }
 
     createArtifactProgress.complete();
   }
@@ -838,16 +868,20 @@ $name artifact already exists, continuing...''');
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final appFrameworkDirectory = Directory(appFrameworkPath);
     final zippedAppFrameworkFile = await appFrameworkDirectory.zipToTempFile();
-    await _uploadReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      file: zippedAppFrameworkFile,
-      name: 'xcframework',
-      arch: 'xcframework',
-      platform: ReleasePlatform.ios,
-      canSideload: false,
-      progress: createArtifactProgress,
-    );
+    try {
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        file: zippedAppFrameworkFile,
+        name: 'xcframework',
+        arch: 'xcframework',
+        platform: ReleasePlatform.ios,
+        canSideload: false,
+        progress: createArtifactProgress,
+      );
+    } finally {
+      _deleteTempDirectory(zippedAppFrameworkFile.parent);
+    }
 
     createArtifactProgress.complete();
   }
@@ -866,21 +900,25 @@ $name artifact already exists, continuing...''');
     final zippedSupplement = await Directory(
       supplementDirectoryPath,
     ).zipToTempFile(name: arch);
-    await _uploadReleaseArtifact(
-      appId: appId,
-      releaseId: releaseId,
-      file: zippedSupplement,
-      name: 'supplement',
-      arch: arch,
-      platform: platform,
-      // Supplements are auxiliary snapshot metadata used during patching and
-      // can't produce a working app on their own, so sideloading isn't
-      // applicable. They contain only Dart snapshot metadata (e.g. class
-      // tables, dispatch tables) and have no dependency on native pods, so no
-      // podfile lock hash is passed either.
-      canSideload: false,
-      progress: createSupplementProgress,
-    );
+    try {
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        file: zippedSupplement,
+        name: 'supplement',
+        arch: arch,
+        platform: platform,
+        // Supplements are auxiliary snapshot metadata used during patching and
+        // can't produce a working app on their own, so sideloading isn't
+        // applicable. They contain only Dart snapshot metadata (e.g. class
+        // tables, dispatch tables) and have no dependency on native pods, so
+        // no podfile lock hash is passed either.
+        canSideload: false,
+        progress: createSupplementProgress,
+      );
+    } finally {
+      _deleteTempDirectory(zippedSupplement.parent);
+    }
     createSupplementProgress.complete();
   }
 
