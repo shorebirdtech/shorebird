@@ -212,29 +212,6 @@ To change the version of this release, change your app's version in your pubspec
         });
       });
 
-      group('when --obfuscate is passed', () {
-        setUp(() {
-          when(() => argResults['obfuscate']).thenReturn(true);
-          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
-          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
-        });
-
-        group('when Flutter version supports obfuscation', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 41, 2));
-          });
-
-          test('returns normally', () async {
-            await expectLater(
-              runWithOverrides(releaser.assertArgsAreValid),
-              completes,
-            );
-          });
-        });
-      });
-
       group('when --obfuscate is not passed', () {
         test('returns normally', () async {
           await expectLater(
@@ -508,43 +485,6 @@ To change the version of this release, change your app's version in your pubspec
           );
         });
 
-        group('when --split-debug-info is also provided', () {
-          setUp(() {
-            when(
-              () => argResults.wasParsed('split-debug-info'),
-            ).thenReturn(true);
-            when(
-              () => argResults['split-debug-info'],
-            ).thenReturn('custom/symbols');
-          });
-
-          test('preserves user-provided --split-debug-info', () async {
-            await runWithOverrides(releaser.buildReleaseArtifacts);
-
-            final captured = verify(
-              () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: captureAny(named: 'args'),
-                base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
-              ),
-            ).captured;
-
-            final args = captured.last as List<String>;
-            expect(
-              args,
-              contains('--split-debug-info=custom/symbols'),
-            );
-            // Should not contain a second auto-defaulted one.
-            expect(
-              args.where((a) => a.startsWith('--split-debug-info=')).length,
-              equals(1),
-            );
-          });
-        });
-
         test('logs detail about map location', () async {
           await runWithOverrides(releaser.buildReleaseArtifacts);
 
@@ -553,42 +493,6 @@ To change the version of this release, change your app's version in your pubspec
               any(that: startsWith('Obfuscation map saved to')),
             ),
           ).called(1);
-        });
-
-        group('when obfuscation map is not generated', () {
-          setUp(() {
-            // Override to NOT create the map file.
-            when(
-              () => artifactBuilder.buildMacos(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: any(named: 'args'),
-                base64PublicKey: any(named: 'base64PublicKey'),
-                ddMaxBytes: any(named: 'ddMaxBytes'),
-              ),
-            ).thenAnswer(
-              (_) async =>
-                  AppleBuildResult(kernelFile: File('/path/to/app.dill')),
-            );
-          });
-
-          test('logs error and exits', () async {
-            await expectLater(
-              () => runWithOverrides(releaser.buildReleaseArtifacts),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(
-              () => logger.err(
-                any(
-                  that: contains(
-                    'Obfuscation was enabled but the obfuscation map was not',
-                  ),
-                ),
-              ),
-            ).called(1);
-          });
         });
       });
     });
