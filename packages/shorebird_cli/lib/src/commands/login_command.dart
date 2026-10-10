@@ -61,7 +61,10 @@ class LoginCommand extends ShorebirdCommand {
               '${lightCyan.wrap('shorebird logout')} and then '
               '${lightCyan.wrap('shorebird login')}.',
             );
-          return ExitCode.tempFail.code;
+          // The service answered and refused the request itself, so retrying
+          // unchanged won't help: not a temporary failure. Rate limiting and
+          // no answer stay tempFail.
+          return ExitCode.software.code;
         }
         // The auth service could not answer, which says nothing about the
         // stored credentials. Discarding them here would log a user out for
