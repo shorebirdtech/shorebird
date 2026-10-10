@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -13,10 +11,8 @@ import 'package:shorebird_cli/src/commands/patch/apple_patcher_mixin.dart';
 import 'package:shorebird_cli/src/commands/patch/patcher.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/executables/executables.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -25,14 +21,15 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 
 /// {@template ios_patcher}
 /// Functions to create an iOS patch.
 /// {@endtemplate}
 class IosPatcher extends Patcher
-    with ApplePatcherMixin, ApplePodfileLockPatcherMixin {
+    with
+        ApplePatcherMixin,
+        ApplePodfileLockPatcherMixin,
+        AppleLinkerPatcherMixin {
   /// {@macro ios_patcher}
   IosPatcher({
     required super.argResults,
@@ -40,29 +37,6 @@ class IosPatcher extends Patcher
     required super.flavor,
     required super.target,
   });
-
-  String get _aotOutputPath =>
-      p.join(shorebirdEnv.buildDirectory.path, 'out.aot');
-
-  String get _vmcodeOutputPath =>
-      p.join(shorebirdEnv.buildDirectory.path, 'out.vmcode');
-
-  String get _appDillCopyPath =>
-      p.join(shorebirdEnv.buildDirectory.path, 'app.dill');
-
-  /// The last build's link percentage.
-  @visibleForTesting
-  double? lastBuildLinkPercentage;
-
-  /// The last build's link metadata.
-  @visibleForTesting
-  Json? lastBuildLinkMetadata;
-
-  @override
-  double? get linkPercentage => lastBuildLinkPercentage;
-
-  @override
-  Json? get linkMetadata => lastBuildLinkMetadata;
 
   @override
   ReleaseType get releaseType => ReleaseType.ios;
@@ -130,22 +104,15 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       base64PublicKey: argResults.encodedPublicKey,
     );
 
-    if (splitDebugInfoPath != null) {
-      Directory(splitDebugInfoPath!).createSync(recursive: true);
-    }
-    await artifactBuilder.buildElfAotSnapshot(
+    await buildAppleElfAotSnapshot(
       appDillPath: ipaBuildResult.kernelFile.path,
-      outFilePath: _aotOutputPath,
+      outFilePath: aotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotIos,
-      additionalArgs: [
-        ...ApplePatcherMixin.splitDebugInfoArgs(splitDebugInfoPath),
-        ...obfuscationGenSnapshotArgs,
-      ],
     );
 
     // Copy the kernel file to the build directory so that it can be used
     // to generate a patch.
-    ipaBuildResult.kernelFile.copySync(_appDillCopyPath);
+    ipaBuildResult.kernelFile.copySync(appDillCopyPath);
 
     return artifactManager.getXcarchiveDirectory()!.zipToTempFile();
   }
@@ -198,86 +165,11 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       p.join(appDirectory.path, 'Frameworks', 'App.framework', 'App'),
     );
 
-    final useLinker = AotTools.usesLinker(shorebirdEnv.flutterRevision);
-    if (useLinker) {
-      apple.copySupplementFilesToSnapshotDirs(
-        releaseSupplementDir: releaseSupplementDir,
-        releaseSnapshotDir: releaseArtifactFile.parent,
-        patchSupplementDir: shorebirdEnv.iosSupplementDirectory,
-        patchSnapshotDir: shorebirdEnv.buildDirectory,
-      );
-
-      final result = await apple.runLinker(
-        kernelFile: File(_appDillCopyPath),
-        releaseArtifact: releaseArtifactFile,
-        splitDebugInfoArgs: [
-          ...ApplePatcherMixin.splitDebugInfoArgs(splitDebugInfoPath),
-          ...obfuscationGenSnapshotArgs,
-        ],
-        aotOutputFile: File(_aotOutputPath),
-        vmCodeFile: File(_vmcodeOutputPath),
-        ddMaxBytes: int.tryParse(
-          platform.environment['SHOREBIRD_PATCH_DD_MAX_BYTES'] ?? '',
-        ),
-      );
-      final linkPercentage = result.linkPercentage;
-      final exitCode = result.exitCode;
-      if (exitCode != ExitCode.success.code) throw ProcessExit(exitCode);
-      if (linkPercentage != null &&
-          linkPercentage < Patcher.linkPercentageWarningThreshold) {
-        logger.warn(Patcher.lowLinkPercentageWarning(linkPercentage));
-      }
-      lastBuildLinkPercentage = linkPercentage;
-      lastBuildLinkMetadata = result.linkMetadata;
-    }
-
-    final patchBuildFile = File(useLinker ? _vmcodeOutputPath : _aotOutputPath);
-
-    final File patchFile;
-    if (useLinker && await aotTools.isGeneratePatchDiffBaseSupported()) {
-      final patchBaseProgress = logger.progress('Generating patch diff base');
-      final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
-        artifact: ShorebirdArtifact.analyzeSnapshotIos,
-      );
-
-      final File patchBaseFile;
-      try {
-        // If the aot_tools executable supports the dump_blobs command, we
-        // can generate a stable diff base and use that to create a patch.
-        patchBaseFile = await aotTools.generatePatchDiffBase(
-          analyzeSnapshotPath: analyzeSnapshotPath,
-          releaseSnapshot: releaseArtifactFile,
-        );
-        patchBaseProgress.complete();
-      } on Exception catch (error) {
-        patchBaseProgress.fail('$error');
-        throw ProcessExit(ExitCode.software.code);
-      }
-
-      patchFile = File(
-        await artifactManager.createDiff(
-          releaseArtifactPath: patchBaseFile.path,
-          patchArtifactPath: patchBuildFile.path,
-        ),
-      );
-    } else {
-      patchFile = patchBuildFile;
-    }
-
-    final patchFileSize = patchFile.statSync().size;
-    final hash = sha256.convert(patchBuildFile.readAsBytesSync()).toString();
-    final hashSignature = await signHash(hash);
-
-    return {
-      Arch.arm64: PatchArtifactBundle(
-        arch: 'aarch64',
-        path: patchFile.path,
-        hash: hash,
-        size: patchFileSize,
-        hashSignature: hashSignature,
-        podfileLockHash: shorebirdEnv.iosPodfileLockHash,
-      ),
-    };
+    return linkAndBundlePatch(
+      releaseArtifactFile: releaseArtifactFile,
+      releaseSupplementDir: releaseSupplementDir,
+      podfileLockHash: shorebirdEnv.iosPodfileLockHash,
+    );
   }
 
   @override

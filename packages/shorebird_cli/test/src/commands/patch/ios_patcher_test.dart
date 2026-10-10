@@ -4,7 +4,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:pub_semver/pub_semver.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
@@ -23,6 +23,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -67,6 +68,7 @@ void main() {
     late ShorebirdValidator shorebirdValidator;
     late XcodeBuild xcodeBuild;
     late IosPatcher patcher;
+    NativePlatform? nativePlatform;
 
     R runWithOverrides<R>(R Function() body) {
       return runScoped(
@@ -83,6 +85,8 @@ void main() {
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
+          if (nativePlatform != null)
+            platformRef.overrideWith(() => nativePlatform!),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -104,6 +108,7 @@ void main() {
     });
 
     setUp(() {
+      nativePlatform = null;
       aotTools = MockAotTools();
       apple = MockApple();
       argParser = MockArgParser();
@@ -1161,6 +1166,74 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               artifact: ShorebirdArtifact.genSnapshotIos,
             ),
           ).thenReturn(genSnapshotFile.path);
+        });
+
+        group('ddMaxBytes', () {
+          setUp(setUpProjectRootArtifacts);
+
+          test('passes no ddMaxBytes to runLinker by default', () async {
+            await runWithOverrides(
+              () => patcher.createPatchArtifacts(
+                appId: appId,
+                releaseId: releaseId,
+                releaseArtifact: releaseArtifactFile,
+              ),
+            );
+
+            final captured = verify(
+              () => apple.runLinker(
+                kernelFile: any(named: 'kernelFile'),
+                aotOutputFile: any(named: 'aotOutputFile'),
+                releaseArtifact: any(named: 'releaseArtifact'),
+                splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+                vmCodeFile: any(named: 'vmCodeFile'),
+                ddMaxBytes: captureAny(named: 'ddMaxBytes'),
+              ),
+            ).captured;
+            expect(captured, equals([null]));
+          });
+
+          group('when SHOREBIRD_PATCH_DD_MAX_BYTES is set', () {
+            setUp(() {
+              nativePlatform = TestNativePlatform(
+                environment: {'SHOREBIRD_PATCH_DD_MAX_BYTES': '4096'},
+              );
+              when(
+                () => apple.runLinker(
+                  kernelFile: any(named: 'kernelFile'),
+                  aotOutputFile: any(named: 'aotOutputFile'),
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+                  vmCodeFile: any(named: 'vmCodeFile'),
+                  ddMaxBytes: any(named: 'ddMaxBytes'),
+                ),
+              ).thenAnswer(
+                (_) async =>
+                    const LinkResult.success(linkPercentage: linkPercentage),
+              );
+            });
+
+            test('passes ddMaxBytes to runLinker', () async {
+              await runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                ),
+              );
+
+              verify(
+                () => apple.runLinker(
+                  kernelFile: any(named: 'kernelFile'),
+                  aotOutputFile: any(named: 'aotOutputFile'),
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+                  vmCodeFile: any(named: 'vmCodeFile'),
+                  ddMaxBytes: 4096,
+                ),
+              ).called(1);
+            });
+          });
         });
 
         group('when linking fails', () {
