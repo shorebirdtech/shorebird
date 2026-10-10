@@ -542,7 +542,10 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => http.Response(
-          jsonEncode({'error': 'invalid_grant'}),
+          jsonEncode({
+            'error': 'invalid_grant',
+            'error_description': 'Code already used',
+          }),
           HttpStatus.badRequest,
         ),
       );
@@ -559,7 +562,12 @@ void main() {
         throwsA(
           isA<ShorebirdAuthException>()
               .having((e) => e.statusCode, 'statusCode', HttpStatus.badRequest)
-              .having((e) => e.oauthError, 'oauthError', 'invalid_grant'),
+              .having((e) => e.oauthError, 'oauthError', 'invalid_grant')
+              .having(
+                (e) => e.oauthErrorDescription,
+                'description',
+                'Code already used',
+              ),
         ),
       );
     });
@@ -1009,6 +1017,7 @@ void main() {
         throwsA(
           isA<ShorebirdAuthException>()
               .having((e) => e.oauthError, 'oauthError', 'invalid_grant')
+              .having((e) => e.oauthErrorDescription, 'description', isNull)
               .having((e) => e.isCredentialRejection, 'rejection', isTrue),
         ),
       );

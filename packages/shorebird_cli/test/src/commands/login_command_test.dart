@@ -325,6 +325,103 @@ Waiting for your authorization (the code expires in $expiry)...''';
       });
     });
 
+    // An answer that arrived is not a network problem, and one that keeps
+    // coming would leave the user stuck without a way out.
+    group('when the credential check is refused for another reason', () {
+      setUp(() {
+        when(() => auth.isAuthenticated).thenReturn(true);
+        when(() => auth.email).thenReturn(email);
+      });
+
+      Future<void> expectRefusal(
+        ShorebirdAuthException error, {
+        required String answered,
+      }) async {
+        when(() => auth.hasValidCredentials()).thenThrow(error);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.tempFail.code));
+        verify(
+          () => progress.fail(
+            'The Shorebird auth service refused to check your credentials '
+            '($answered).',
+          ),
+        ).called(1);
+        verify(
+          () => logger.info(
+            'If this keeps happening, run '
+            '${lightCyan.wrap('shorebird logout')} and then '
+            '${lightCyan.wrap('shorebird login')}.',
+          ),
+        ).called(1);
+        verifyNever(
+          () => logger.info('Check your network connection and try again.'),
+        );
+        verifyNever(() => auth.clearCredentials());
+        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+      }
+
+      test('reports the status, error and description', () async {
+        await expectRefusal(
+          const ShorebirdAuthException(
+            'Token refresh failed (400): ...',
+            statusCode: HttpStatus.badRequest,
+            oauthError: 'invalid_request',
+            oauthErrorDescription: 'Missing refresh_token',
+          ),
+          answered: '400 invalid_request: Missing refresh_token',
+        );
+      });
+
+      test('reports the status and error without a description', () async {
+        await expectRefusal(
+          const ShorebirdAuthException(
+            'Token refresh failed (400): ...',
+            statusCode: HttpStatus.badRequest,
+            oauthError: 'unsupported_grant_type',
+          ),
+          answered: '400 unsupported_grant_type',
+        );
+      });
+
+      test('reports only the status for a non-OAuth answer', () async {
+        await expectRefusal(
+          const ShorebirdAuthException(
+            'Token refresh failed (405): <html>...</html>',
+            statusCode: HttpStatus.methodNotAllowed,
+          ),
+          answered: '405',
+        );
+      });
+    });
+
+    group('when the auth service answers with a 5xx', () {
+      setUp(() {
+        when(() => auth.isAuthenticated).thenReturn(true);
+        when(() => auth.email).thenReturn(email);
+        when(() => auth.hasValidCredentials()).thenThrow(
+          const ShorebirdAuthException(
+            'Token refresh failed (502): bad gateway',
+            statusCode: HttpStatus.badGateway,
+          ),
+        );
+      });
+
+      test('keeps the network wording', () async {
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.tempFail.code));
+        verify(
+          () => progress.fail('Could not reach the Shorebird auth service.'),
+        ).called(1);
+        verify(
+          () => logger.info('Check your network connection and try again.'),
+        ).called(1);
+        verifyNever(() => auth.clearCredentials());
+      });
+    });
+
     test('exits with code 70 if no user is found', () async {
       when(
         () => auth.login(prompt: any(named: 'prompt')),

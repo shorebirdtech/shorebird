@@ -19,6 +19,7 @@ class ShorebirdAuthException implements Exception {
     this.message, {
     this.statusCode,
     this.oauthError,
+    this.oauthErrorDescription,
   });
 
   /// The error message.
@@ -37,6 +38,10 @@ class ShorebirdAuthException implements Exception {
   /// Null when there was no answer, or the answer was not an OAuth error
   /// response.
   final String? oauthError;
+
+  /// The `error_description` accompanying [oauthError], where the auth
+  /// service sent one.
+  final String? oauthErrorDescription;
 
   /// Whether the auth service refused the credentials themselves, as opposed
   /// to failing to answer.
@@ -369,12 +374,19 @@ Future<DeviceAuthorization> _startDeviceAuthorization({
 
 /// The `error` of an RFC 6749 section 5.2 error response, or null when
 /// [body] is not one.
-String? _oauthError(String body) {
+String? _oauthError(String body) => _oauthErrorField(body, 'error');
+
+/// The `error_description` of an RFC 6749 section 5.2 error response, or null
+/// when [body] is not one or carries none.
+String? _oauthErrorDescription(String body) =>
+    _oauthErrorField(body, 'error_description');
+
+String? _oauthErrorField(String body, String field) {
   try {
     final json = jsonDecode(body);
     if (json is Map<String, dynamic>) {
-      final error = json['error'];
-      if (error is String) return error;
+      final value = json[field];
+      if (value is String) return value;
     }
   } on FormatException {
     // Not JSON; the caller reports the body as is.
@@ -644,6 +656,7 @@ void _throwUnlessOk(http.Response response, String failure) {
       '$failure (${response.statusCode}): ${response.body}',
       statusCode: response.statusCode,
       oauthError: _oauthError(response.body),
+      oauthErrorDescription: _oauthErrorDescription(response.body),
     );
   }
 }
