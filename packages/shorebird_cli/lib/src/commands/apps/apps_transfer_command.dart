@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -12,23 +12,15 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// `shorebird apps transfer`
 /// Move an app into a different organization.
 /// {@endtemplate}
-class AppsTransferCommand extends ShorebirdCommand {
+class AppsTransferCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro apps_transfer_command}
   AppsTransferCommand() {
-    argParser
-      ..addOption(
-        'org-id',
-        help: 'The id of the organization to move the app into (e.g. "42").',
-        mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      );
+    argParser.addOption(
+      'org-id',
+      help: 'The id of the organization to move the app into (e.g. "42").',
+      mandatory: true,
+    );
+    addAppScopeOptions();
   }
 
   @override

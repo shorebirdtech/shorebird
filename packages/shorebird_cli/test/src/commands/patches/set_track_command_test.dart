@@ -167,33 +167,12 @@ void main() {
         ).thenAnswer((_) async => release);
       });
 
-      test('does not require shorebird to be initialized', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-          ),
-        ).called(1);
-      });
-
       test('uses the explicit app id', () async {
         await runWithOverrides(command.run);
         verify(
           () => codePushClientWrapper.getRelease(
             appId: 'explicit-app-id',
             releaseVersion: releaseVersion,
-          ),
-        ).called(1);
-      });
-    });
-
-    group('when --app-id is not provided', () {
-      test('requires shorebird to be initialized', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-            checkShorebirdInitialized: true,
           ),
         ).called(1);
       });

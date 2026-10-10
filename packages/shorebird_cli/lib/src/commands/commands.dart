@@ -1,4 +1,5 @@
 export 'account/account.dart';
+export 'app_scoped_command.dart';
 export 'apps/apps.dart';
 export 'cache/cache.dart';
 export 'channels/channels.dart';

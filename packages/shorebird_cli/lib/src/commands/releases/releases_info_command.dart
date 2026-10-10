@@ -1,5 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -15,23 +16,15 @@ const _jsonExample =
 /// `shorebird releases info`
 /// Show details for a specific release.
 /// {@endtemplate}
-class ReleasesInfoCommand extends ShorebirdCommand {
+class ReleasesInfoCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro releases_info_command}
   ReleasesInfoCommand() {
-    argParser
-      ..addOption(
-        CommonArguments.releaseVersionArg.name,
-        help: CommonArguments.releaseVersionArg.description,
-        mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to query releases for (e.g. "prod").',
-      );
+    argParser.addOption(
+      CommonArguments.releaseVersionArg.name,
+      help: CommonArguments.releaseVersionArg.description,
+      mandatory: true,
+    );
+    addAppScopeOptions();
   }
 
   @override

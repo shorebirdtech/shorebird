@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
@@ -22,7 +23,8 @@ const _jsonExample =
 /// ```
 ///
 /// {@endtemplate}
-class SetTrackCommand extends ShorebirdCommand with PatchNumberArgument {
+class SetTrackCommand extends ShorebirdCommand
+    with AppScopedCommand, PatchNumberArgument {
   /// {@macro set_track_command}
   SetTrackCommand() {
     argParser
@@ -43,15 +45,8 @@ class SetTrackCommand extends ShorebirdCommand with PatchNumberArgument {
             '("stable", "beta", "staging", or any custom track name '
             'up to ${CommonArguments.trackNameMaxLength} characters).',
         mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use when building the app.',
       );
+    addAppScopeOptions();
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -11,25 +12,17 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// `shorebird apps rename`
 /// Change an app's display name.
 /// {@endtemplate}
-class AppsRenameCommand extends ShorebirdCommand {
+class AppsRenameCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro apps_rename_command}
   AppsRenameCommand() {
-    argParser
-      ..addOption(
-        'name',
-        help:
-            'The new display name for the app (e.g. "Acme Mobile"), up to '
-            '${CommonArguments.appDisplayNameMaxLength} characters.',
-        mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      );
+    argParser.addOption(
+      'name',
+      help:
+          'The new display name for the app (e.g. "Acme Mobile"), up to '
+          '${CommonArguments.appDisplayNameMaxLength} characters.',
+      mandatory: true,
+    );
+    addAppScopeOptions();
   }
 
   @override

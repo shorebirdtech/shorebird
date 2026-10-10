@@ -1,6 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -11,18 +11,10 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird channels list`
 /// List the channels an app can publish to.
 /// {@endtemplate}
-class ChannelsListCommand extends ShorebirdCommand {
+class ChannelsListCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro channels_list_command}
   ChannelsListCommand() {
-    argParser
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      );
+    addAppScopeOptions();
   }
 
   @override
