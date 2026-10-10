@@ -418,13 +418,13 @@ class AotTools {
 
   /// Uses the analyze_snapshot executable to write the data and isolate
   /// snapshots contained in [releaseSnapshot]. Returns the generated diff base
-  /// file.
+  /// file, written into [outputDirectory], which the caller owns and deletes.
   Future<File> generatePatchDiffBase({
     required File releaseSnapshot,
     required String analyzeSnapshotPath,
+    required Directory outputDirectory,
   }) async {
-    final tmpDir = Directory.systemTemp.createTempSync();
-    final outFile = File(p.join(tmpDir.path, 'diff_base'));
+    final outFile = File(p.join(outputDirectory.path, 'diff_base'));
     await _exec([
       'dump_blobs',
       '--analyze-snapshot=$analyzeSnapshotPath',

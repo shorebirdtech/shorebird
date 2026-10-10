@@ -1282,6 +1282,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               () => aotTools.generatePatchDiffBase(
                 analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
                 releaseSnapshot: any(named: 'releaseSnapshot'),
+                outputDirectory: any(named: 'outputDirectory'),
               ),
             ).thenAnswer((_) async => File(''));
           });
@@ -1292,6 +1293,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                 () => aotTools.generatePatchDiffBase(
                   analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
                   releaseSnapshot: any(named: 'releaseSnapshot'),
+                  outputDirectory: any(named: 'outputDirectory'),
                 ),
               ).thenThrow(Exception('oops'));
 
@@ -1311,6 +1313,32 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               );
 
               verify(() => progress.fail('Exception: oops')).called(1);
+            });
+
+            test('deletes the diff base directory', () async {
+              await expectLater(
+                () => runWithOverrides(
+                  () => patcher.createPatchArtifacts(
+                    appId: appId,
+                    releaseId: releaseId,
+                    releaseArtifact: releaseArtifactFile,
+                  ),
+                ),
+                exitsWithCode(ExitCode.software),
+              );
+
+              final outputDirectory =
+                  verify(
+                        () => aotTools.generatePatchDiffBase(
+                          analyzeSnapshotPath: any(
+                            named: 'analyzeSnapshotPath',
+                          ),
+                          releaseSnapshot: any(named: 'releaseSnapshot'),
+                          outputDirectory: captureAny(named: 'outputDirectory'),
+                        ),
+                      ).captured.single
+                      as Directory;
+              expect(outputDirectory.existsSync(), isFalse);
             });
           });
 
@@ -1345,6 +1373,29 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
                   endsWith(diffPath),
                 ),
               );
+            });
+
+            test('deletes the diff base directory after diffing', () async {
+              await runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                ),
+              );
+
+              final outputDirectory =
+                  verify(
+                        () => aotTools.generatePatchDiffBase(
+                          analyzeSnapshotPath: any(
+                            named: 'analyzeSnapshotPath',
+                          ),
+                          releaseSnapshot: any(named: 'releaseSnapshot'),
+                          outputDirectory: captureAny(named: 'outputDirectory'),
+                        ),
+                      ).captured.single
+                      as Directory;
+              expect(outputDirectory.existsSync(), isFalse);
             });
 
             group('when class table link info & debug info are present', () {

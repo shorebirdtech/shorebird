@@ -181,26 +181,32 @@ mixin AppleLinkerPatcherMixin on Patcher, ApplePatcherMixin {
         artifact: ShorebirdArtifact.analyzeSnapshotIos,
       );
 
-      final File patchBaseFile;
+      final patchBaseDirectory = Directory.systemTemp.createTempSync();
       try {
-        // If the aot_tools executable supports the dump_blobs command, we
-        // can generate a stable diff base and use that to create a patch.
-        patchBaseFile = await aotTools.generatePatchDiffBase(
-          analyzeSnapshotPath: analyzeSnapshotPath,
-          releaseSnapshot: releaseArtifactFile,
-        );
-        patchBaseProgress.complete();
-      } on Exception catch (error) {
-        patchBaseProgress.fail('$error');
-        throw ProcessExit(ExitCode.software.code);
-      }
+        final File patchBaseFile;
+        try {
+          // If the aot_tools executable supports the dump_blobs command, we
+          // can generate a stable diff base and use that to create a patch.
+          patchBaseFile = await aotTools.generatePatchDiffBase(
+            analyzeSnapshotPath: analyzeSnapshotPath,
+            releaseSnapshot: releaseArtifactFile,
+            outputDirectory: patchBaseDirectory,
+          );
+          patchBaseProgress.complete();
+        } on Exception catch (error) {
+          patchBaseProgress.fail('$error');
+          throw ProcessExit(ExitCode.software.code);
+        }
 
-      patchFile = File(
-        await artifactManager.createDiff(
-          releaseArtifactPath: patchBaseFile.path,
-          patchArtifactPath: patchBuildFile.path,
-        ),
-      );
+        patchFile = File(
+          await artifactManager.createDiff(
+            releaseArtifactPath: patchBaseFile.path,
+            patchArtifactPath: patchBuildFile.path,
+          ),
+        );
+      } finally {
+        patchBaseDirectory.deleteSync(recursive: true);
+      }
     } else {
       patchFile = patchBuildFile;
     }

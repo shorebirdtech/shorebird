@@ -735,6 +735,7 @@ void main() {
               () => aotTools.generatePatchDiffBase(
                 analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
                 releaseSnapshot: any(named: 'releaseSnapshot'),
+                outputDirectory: any(named: 'outputDirectory'),
               ),
             ).thenAnswer((_) async => File(''));
           });
@@ -745,6 +746,7 @@ void main() {
                 () => aotTools.generatePatchDiffBase(
                   analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
                   releaseSnapshot: any(named: 'releaseSnapshot'),
+                  outputDirectory: any(named: 'outputDirectory'),
                 ),
               ).thenThrow(Exception('oops'));
 

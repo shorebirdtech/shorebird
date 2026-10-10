@@ -151,50 +151,60 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     Directory? supplementDirectory,
   }) async {
     final unzipProgress = logger.progress('Extracting release artifact');
+    // The extracted release and the diff bases are only needed to create the
+    // diffs, which are written elsewhere, so both are deleted afterwards.
     final releaseAppDirectory = Directory.systemTemp.createTempSync();
-    await ditto.extract(
-      source: releaseArtifact.path,
-      destination: releaseAppDirectory.path,
-    );
-    unzipProgress.complete();
+    final diffBaseDirectory = Directory.systemTemp.createTempSync();
+    try {
+      await ditto.extract(
+        source: releaseArtifact.path,
+        destination: releaseAppDirectory.path,
+      );
+      unzipProgress.complete();
 
-    final releaseArtifactFile = File(
-      p.join(
-        releaseAppDirectory.path,
-        'Contents',
-        'Frameworks',
-        'App.framework',
-        'App',
-      ),
-    );
+      final releaseArtifactFile = File(
+        p.join(
+          releaseAppDirectory.path,
+          'Contents',
+          'Frameworks',
+          'App.framework',
+          'App',
+        ),
+      );
 
-    final arm64DiffBase = await _diffBase(
-      releaseArtifact: releaseArtifactFile,
-      analyzeSnapshot: ShorebirdArtifact.analyzeSnapshotMacosArm64,
-    );
-    final x64DiffBase = await _diffBase(
-      releaseArtifact: releaseArtifactFile,
-      analyzeSnapshot: ShorebirdArtifact.analyzeSnapshotMacosX64,
-    );
+      final arm64DiffBase = await _diffBase(
+        releaseArtifact: releaseArtifactFile,
+        analyzeSnapshot: ShorebirdArtifact.analyzeSnapshotMacosArm64,
+        outputDirectory: Directory(p.join(diffBaseDirectory.path, 'arm64')),
+      );
+      final x64DiffBase = await _diffBase(
+        releaseArtifact: releaseArtifactFile,
+        analyzeSnapshot: ShorebirdArtifact.analyzeSnapshotMacosX64,
+        outputDirectory: Directory(p.join(diffBaseDirectory.path, 'x64')),
+      );
 
-    final createDiffProgress = logger.progress('Creating patch artifacts');
-    final arm64Bundle = await createDiffBundle(
-      arch: Arch.arm64,
-      releaseArtifactPath: arm64DiffBase.path,
-      patchArtifactPath: _arm64AotOutputPath,
-      progress: createDiffProgress,
-      podfileLockHash: shorebirdEnv.macosPodfileLockHash,
-    );
-    final x64Bundle = await createDiffBundle(
-      arch: Arch.x86_64,
-      releaseArtifactPath: x64DiffBase.path,
-      patchArtifactPath: _x64AotOutputPath,
-      progress: createDiffProgress,
-      podfileLockHash: shorebirdEnv.macosPodfileLockHash,
-    );
-    createDiffProgress.complete();
+      final createDiffProgress = logger.progress('Creating patch artifacts');
+      final arm64Bundle = await createDiffBundle(
+        arch: Arch.arm64,
+        releaseArtifactPath: arm64DiffBase.path,
+        patchArtifactPath: _arm64AotOutputPath,
+        progress: createDiffProgress,
+        podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+      );
+      final x64Bundle = await createDiffBundle(
+        arch: Arch.x86_64,
+        releaseArtifactPath: x64DiffBase.path,
+        patchArtifactPath: _x64AotOutputPath,
+        progress: createDiffProgress,
+        podfileLockHash: shorebirdEnv.macosPodfileLockHash,
+      );
+      createDiffProgress.complete();
 
-    return {Arch.x86_64: x64Bundle, Arch.arm64: arm64Bundle};
+      return {Arch.x86_64: x64Bundle, Arch.arm64: arm64Bundle};
+    } finally {
+      releaseAppDirectory.deleteSync(recursive: true);
+      diffBaseDirectory.deleteSync(recursive: true);
+    }
   }
 
   /// The file a patch is diffed against for one architecture of
@@ -208,6 +218,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
   Future<File> _diffBase({
     required File releaseArtifact,
     required ShorebirdArtifact analyzeSnapshot,
+    required Directory outputDirectory,
   }) async {
     final analyzeSnapshotPath = shorebirdArtifacts.getArtifactPath(
       artifact: analyzeSnapshot,
@@ -219,6 +230,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       final diffBase = await aotTools.generatePatchDiffBase(
         analyzeSnapshotPath: analyzeSnapshotPath,
         releaseSnapshot: releaseArtifact,
+        outputDirectory: outputDirectory..createSync(),
       );
       progress.complete();
       return diffBase;

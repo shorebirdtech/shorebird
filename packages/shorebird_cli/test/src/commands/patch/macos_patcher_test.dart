@@ -1078,39 +1078,37 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           () => aotTools.generatePatchDiffBase(
             releaseSnapshot: any(named: 'releaseSnapshot'),
             analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+            outputDirectory: any(named: 'outputDirectory'),
           ),
         );
       });
 
-      group('when creating diff fails', () {
-        setUp(() {
-          when(
-            () => artifactManager.createDiff(
-              releaseArtifactPath: any(named: 'releaseArtifactPath'),
-              patchArtifactPath: any(named: 'patchArtifactPath'),
-            ),
-          ).thenThrow(Exception('Failed to create diff'));
-        });
-
-        test('fails progress and exits with software error code', () async {
-          await expectLater(
-            () => runWithOverrides(
-              () => patcher.createPatchArtifacts(
-                appId: appId,
-                releaseId: releaseId,
-                releaseArtifact: releaseArtifactFile,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-          verify(() => logger.progress('Creating patch artifacts')).called(1);
-          verify(
-            () => progress.fail('Exception: Failed to create diff'),
-          ).called(1);
-        });
-      });
-
       group('when the engine publishes macOS analyze_snapshot', () {
+        /// Checks that the directories createPatchArtifacts extracted the
+        /// release into and wrote diff bases into no longer exist.
+        void expectTemporaryDirectoriesDeleted() {
+          final releaseAppPath =
+              verify(
+                    () => ditto.extract(
+                      source: any(named: 'source'),
+                      destination: captureAny(named: 'destination'),
+                    ),
+                  ).captured.single
+                  as String;
+          expect(Directory(releaseAppPath).existsSync(), isFalse);
+          final diffBaseDirectories = verify(
+            () => aotTools.generatePatchDiffBase(
+              releaseSnapshot: any(named: 'releaseSnapshot'),
+              analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+              outputDirectory: captureAny(named: 'outputDirectory'),
+            ),
+          ).captured.cast<Directory>();
+          expect(diffBaseDirectories, isNotEmpty);
+          for (final directory in diffBaseDirectories) {
+            expect(directory.parent.existsSync(), isFalse);
+          }
+        }
+
         late File arm64AnalyzeSnapshot;
         late File x64AnalyzeSnapshot;
         late File arm64DiffBase;
@@ -1142,12 +1140,14 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             () => aotTools.generatePatchDiffBase(
               releaseSnapshot: any(named: 'releaseSnapshot'),
               analyzeSnapshotPath: arm64AnalyzeSnapshot.path,
+              outputDirectory: any(named: 'outputDirectory'),
             ),
           ).thenAnswer((_) async => arm64DiffBase);
           when(
             () => aotTools.generatePatchDiffBase(
               releaseSnapshot: any(named: 'releaseSnapshot'),
               analyzeSnapshotPath: x64AnalyzeSnapshot.path,
+              outputDirectory: any(named: 'outputDirectory'),
             ),
           ).thenAnswer((_) async => x64DiffBase);
         });
@@ -1183,6 +1183,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
             () => aotTools.generatePatchDiffBase(
               releaseSnapshot: captureAny(named: 'releaseSnapshot'),
               analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+              outputDirectory: any(named: 'outputDirectory'),
             ),
           ).captured;
           expect(
@@ -1191,12 +1192,25 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
           );
         });
 
+        test('deletes the extracted release and diff bases', () async {
+          await runWithOverrides(
+            () => patcher.createPatchArtifacts(
+              appId: appId,
+              releaseId: releaseId,
+              releaseArtifact: releaseArtifactFile,
+            ),
+          );
+
+          expectTemporaryDirectoriesDeleted();
+        });
+
         group('when generating the diff base fails', () {
           setUp(() {
             when(
               () => aotTools.generatePatchDiffBase(
                 releaseSnapshot: any(named: 'releaseSnapshot'),
                 analyzeSnapshotPath: any(named: 'analyzeSnapshotPath'),
+                outputDirectory: any(named: 'outputDirectory'),
               ),
             ).thenThrow(Exception('oops'));
           });
@@ -1213,6 +1227,21 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}'''),
               exitsWithCode(ExitCode.software),
             );
             verify(() => progress.fail('Exception: oops')).called(1);
+          });
+
+          test('deletes the extracted release and diff bases', () async {
+            await expectLater(
+              () => runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                ),
+              ),
+              exitsWithCode(ExitCode.software),
+            );
+
+            expectTemporaryDirectoriesDeleted();
           });
         });
       });
