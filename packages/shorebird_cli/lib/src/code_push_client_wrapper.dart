@@ -118,14 +118,10 @@ class CodePushClientWrapper {
 
   /// Fetches the currently authenticated user.
   Future<PrivateUser> getCurrentUser() async {
-    final progress = logger.progress('Fetching account');
-    final PrivateUser? user;
-    try {
-      user = await codePushClient.getCurrentUser();
-      progress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: progress);
-    }
+    final user = await _withProgress(
+      'Fetching account',
+      codePushClient.getCurrentUser,
+    );
     if (user == null) {
       logger.err('Could not find current user.');
       throw ProcessExit(ExitCode.software.code);
@@ -135,42 +131,21 @@ class CodePushClientWrapper {
 
   /// Fetches the plan level for the current user, e.g. `free`, `pro`,
   /// `business` or `enterprise`. Null when the server does not report one.
-  Future<String?> getPlanLevel() async {
-    final progress = logger.progress('Fetching plan');
-    final String? level;
-    try {
-      level = await codePushClient.getPlanLevel();
-      progress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: progress);
-    }
-    return level;
+  Future<String?> getPlanLevel() {
+    return _withProgress('Fetching plan', codePushClient.getPlanLevel);
   }
 
   /// Fetches the organization memberships for the current user.
-  Future<List<OrganizationMembership>> getOrganizationMemberships() async {
-    final progress = logger.progress('Fetching organizations');
-    final List<OrganizationMembership> memberships;
-    try {
-      memberships = await codePushClient.getOrganizationMemberships();
-      progress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: progress);
-    }
-
-    return memberships;
+  Future<List<OrganizationMembership>> getOrganizationMemberships() {
+    return _withProgress(
+      'Fetching organizations',
+      codePushClient.getOrganizationMemberships,
+    );
   }
 
   /// Fetches the apps for the current user.
-  Future<List<AppMetadata>> getApps() async {
-    final fetchAppsProgress = logger.progress('Fetching apps');
-    try {
-      final apps = await codePushClient.getApps();
-      fetchAppsProgress.complete();
-      return apps;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchAppsProgress);
-    }
+  Future<List<AppMetadata>> getApps() {
+    return _withProgress('Fetching apps', codePushClient.getApps);
   }
 
   /// Returns [AppMetadata] for the provided [appId].
@@ -217,105 +192,75 @@ This app may not exist or you may not have permission to view it.''');
   Future<Channel?> maybeGetChannel({
     required String appId,
     required String name,
-  }) async {
-    final fetchChannelsProgress = logger.progress('Fetching channels');
-    try {
+  }) {
+    return _withProgress('Fetching channels', () async {
       final channels = await codePushClient.getChannels(appId: appId);
-      final channel = channels.firstWhereOrNull(
-        (channel) => channel.name == name,
-      );
-      fetchChannelsProgress.complete();
-      return channel;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchChannelsProgress);
-    }
+      return channels.firstWhereOrNull((channel) => channel.name == name);
+    });
   }
 
   /// Fetches all channels for the provided [appId].
-  Future<List<Channel>> getChannels({required String appId}) async {
-    final fetchChannelsProgress = logger.progress('Fetching channels');
-    try {
-      final channels = await codePushClient.getChannels(appId: appId);
-      fetchChannelsProgress.complete();
-      return channels;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchChannelsProgress);
-    }
+  Future<List<Channel>> getChannels({required String appId}) {
+    return _withProgress(
+      'Fetching channels',
+      () => codePushClient.getChannels(appId: appId),
+    );
   }
 
   /// Creates a channel for the provided [appId] with the given [name].
   Future<Channel> createChannel({
     required String appId,
     required String name,
-  }) async {
-    final createChannelProgress = logger.progress('Creating channel');
-    try {
-      final channel = await codePushClient.createChannel(
-        appId: appId,
-        channel: name,
-      );
-      createChannelProgress.complete();
-      return channel;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: createChannelProgress);
-    }
+  }) {
+    return _withProgress(
+      'Creating channel',
+      () => codePushClient.createChannel(appId: appId, channel: name),
+    );
   }
 
   /// Deletes the channel with the provided [channelId] from [appId].
   Future<void> deleteChannel({
     required String appId,
     required int channelId,
-  }) async {
-    final deleteChannelProgress = logger.progress('Deleting channel');
-    try {
-      await codePushClient.deleteChannel(appId: appId, channelId: channelId);
-      deleteChannelProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: deleteChannelProgress);
-    }
+  }) {
+    return _withProgress(
+      'Deleting channel',
+      () => codePushClient.deleteChannel(appId: appId, channelId: channelId),
+    );
   }
 
   /// Renames the app with the provided [appId] to [displayName].
   Future<void> updateApp({
     required String appId,
     required String displayName,
-  }) async {
-    final updateAppProgress = logger.progress('Renaming app');
-    try {
-      await codePushClient.updateApp(appId: appId, displayName: displayName);
-      updateAppProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: updateAppProgress);
-    }
+  }) {
+    return _withProgress(
+      'Renaming app',
+      () => codePushClient.updateApp(appId: appId, displayName: displayName),
+    );
   }
 
   /// Deletes the app with the provided [appId], along with every release and
   /// patch belonging to it.
-  Future<void> deleteApp({required String appId}) async {
-    final deleteAppProgress = logger.progress('Deleting app');
-    try {
-      await codePushClient.deleteApp(appId: appId);
-      deleteAppProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: deleteAppProgress);
-    }
+  Future<void> deleteApp({required String appId}) {
+    return _withProgress(
+      'Deleting app',
+      () => codePushClient.deleteApp(appId: appId),
+    );
   }
 
   /// Moves the app with the provided [appId] into [organizationId].
   Future<void> transferApp({
     required int organizationId,
     required String appId,
-  }) async {
-    final transferAppProgress = logger.progress('Transferring app');
-    try {
-      await codePushClient.transferApp(
+  }) {
+    return _withProgress(
+      'Transferring app',
+      () => codePushClient.transferApp(
         organizationId: organizationId,
         appId: appId,
-      );
-      transferAppProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: transferAppProgress);
-    }
+      ),
+    );
   }
 
   /// Prints an error message and exits with code 70 if [release] is in an
@@ -364,18 +309,14 @@ Please create a release using "shorebird release" and try again.
   Future<List<Release>> getReleases({
     required String appId,
     bool sideloadableOnly = false,
-  }) async {
-    final fetchReleasesProgress = logger.progress('Fetching releases');
-    try {
-      final releases = await codePushClient.getReleases(
+  }) {
+    return _withProgress(
+      'Fetching releases',
+      () => codePushClient.getReleases(
         appId: appId,
         sideloadableOnly: sideloadableOnly,
-      );
-      fetchReleasesProgress.complete();
-      return releases;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchReleasesProgress);
-    }
+      ),
+    );
   }
 
   /// Fetches the release for the given [appId] and [releaseVersion] or null if
@@ -392,18 +333,11 @@ Please create a release using "shorebird release" and try again.
   Future<List<ReleasePatch>> getReleasePatches({
     required String appId,
     required int releaseId,
-  }) async {
-    final fetchReleasePatchesProgress = logger.progress('Fetching patches');
-    try {
-      final patches = await codePushClient.getPatches(
-        appId: appId,
-        releaseId: releaseId,
-      );
-      fetchReleasePatchesProgress.complete();
-      return patches;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchReleasePatchesProgress);
-    }
+  }) {
+    return _withProgress(
+      'Fetching patches',
+      () => codePushClient.getPatches(appId: appId, releaseId: releaseId),
+    );
   }
 
   /// Creates a release for the given [appId], [version], [flutterRevision], and
@@ -446,20 +380,17 @@ Please create a release using "shorebird release" and try again.
     required ReleasePlatform platform,
     required ReleaseStatus status,
     Json? metadata,
-  }) async {
-    final updateStatusProgress = logger.progress('Updating release status');
-    try {
-      await codePushClient.updateReleaseStatus(
+  }) {
+    return _withProgress(
+      'Updating release status',
+      () => codePushClient.updateReleaseStatus(
         appId: appId,
         releaseId: releaseId,
         platform: platform,
         status: status,
         metadata: metadata,
-      );
-      updateStatusProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: updateStatusProgress);
-    }
+      ),
+    );
   }
 
   /// Returns release artifacts for the given [appId], [releaseId],
@@ -506,11 +437,8 @@ Please create a release using "shorebird release" and try again.
     required int releaseId,
     required String arch,
     required ReleasePlatform platform,
-  }) async {
-    final fetchReleaseArtifactProgress = logger.progress(
-      'Fetching $arch artifact',
-    );
-    try {
+  }) {
+    return _withProgress('Fetching $arch artifact', () async {
       final artifacts = await codePushClient.getReleaseArtifacts(
         appId: appId,
         releaseId: releaseId,
@@ -523,11 +451,8 @@ Please create a release using "shorebird release" and try again.
               '''No artifact found for architecture $arch in release $releaseId''',
         );
       }
-      fetchReleaseArtifactProgress.complete();
       return artifacts.first;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: fetchReleaseArtifactProgress);
-    }
+    });
   }
 
   /// Fetches a release artifact for the given [appId], [releaseId], [arch], and
@@ -1055,19 +980,15 @@ $name artifact already exists, continuing...''');
     required String appId,
     required int releaseId,
     required Json metadata,
-  }) async {
-    final createPatchProgress = logger.progress('Creating patch');
-    try {
-      final patch = await codePushClient.createPatch(
+  }) {
+    return _withProgress(
+      'Creating patch',
+      () => codePushClient.createPatch(
         appId: appId,
         releaseId: releaseId,
         metadata: metadata,
-      );
-      createPatchProgress.complete();
-      return patch;
-    } catch (error) {
-      _handleErrorAndExit(error, progress: createPatchProgress);
-    }
+      ),
+    );
   }
 
   /// Uploads patch artifacts for a specific app/patch combination.
@@ -1103,20 +1024,15 @@ $name artifact already exists, continuing...''');
     required String appId,
     required int patchId,
     required Channel channel,
-  }) async {
-    final promotePatchProgress = logger.progress(
+  }) {
+    return _withProgress(
       'Promoting patch to ${channel.name}',
-    );
-    try {
-      await codePushClient.promotePatch(
+      () => codePushClient.promotePatch(
         appId: appId,
         patchId: patchId,
         channelId: channel.id,
-      );
-      promotePatchProgress.complete();
-    } catch (error) {
-      _handleErrorAndExit(error, progress: promotePatchProgress);
-    }
+      ),
+    );
   }
 
   /// Rolls back the patch identified by [patchId] under [releaseId]. Returns
@@ -1225,6 +1141,20 @@ $name artifact already exists, continuing...''');
   /// Returns a GCP upload link for measuring upload speed.
   Future<Uri> getGCPUploadSpeedTestUrl() {
     return codePushClient.getGCPUploadSpeedTestUrl();
+  }
+
+  /// Runs [body] under a progress spinner showing [message], completing the
+  /// spinner on success. Any error fails the spinner and exits with code 70
+  /// via [_handleErrorAndExit].
+  Future<T> _withProgress<T>(String message, Future<T> Function() body) async {
+    final progress = logger.progress(message);
+    try {
+      final result = await body();
+      progress.complete();
+      return result;
+    } catch (error) {
+      _handleErrorAndExit(error, progress: progress);
+    }
   }
 
   /// Prints an appropriate error message for the given error and exits with
