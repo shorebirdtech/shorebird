@@ -265,29 +265,6 @@ To change the version of this release, change your app's version in your pubspec
           ).called(1);
         });
       });
-
-      group('when flutter version is too old', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-          when(
-            () => argResults['flutter-version'] as String?,
-          ).thenReturn('3.27.1');
-          when(
-            () => shorebirdFlutter.resolveFlutterVersion('3.27.1'),
-          ).thenAnswer((_) async => Version(3, 27, 1));
-        });
-      });
     });
 
     group('buildReleaseArtifacts', () {
