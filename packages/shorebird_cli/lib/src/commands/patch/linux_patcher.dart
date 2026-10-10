@@ -63,9 +63,11 @@ class LinuxPatcher extends Patcher {
 
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
+    final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
     await artifactBuilder.buildLinuxApp(
+      target: target,
+      args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
-      args: extraBuildArgs,
     );
     return artifactManager.linuxBundleDirectory.zipToTempFile();
   }
