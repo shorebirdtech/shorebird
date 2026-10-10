@@ -327,12 +327,7 @@ Future<DeviceAuthorization> _startDeviceAuthorization({
     );
   }
 
-  if (response.statusCode != HttpStatus.ok) {
-    throw ShorebirdAuthException(
-      'Could not start a login (${response.statusCode}): ${response.body}',
-      statusCode: response.statusCode,
-    );
-  }
+  _throwUnlessOk(response, 'Could not start a login');
 
   final Object? json;
   try {
@@ -495,12 +490,7 @@ Future<oauth2.AccessCredentials> refreshShorebirdCredentials(
     },
   );
 
-  if (response.statusCode != HttpStatus.ok) {
-    throw ShorebirdAuthException(
-      'Token refresh failed (${response.statusCode}): ${response.body}',
-      statusCode: response.statusCode,
-    );
-  }
+  _throwUnlessOk(response, 'Token refresh failed');
 
   return _parseTokenResponse(response.body);
 }
@@ -534,12 +524,7 @@ Future<void> revokeShorebirdRefreshToken(
     },
   );
 
-  if (response.statusCode != HttpStatus.ok) {
-    throw ShorebirdAuthException(
-      'Token revocation failed (${response.statusCode}): ${response.body}',
-      statusCode: response.statusCode,
-    );
-  }
+  _throwUnlessOk(response, 'Token revocation failed');
 }
 
 /// Exchanges an auth code for tokens by POSTing it, with the PKCE
@@ -626,4 +611,15 @@ oauth2.AccessCredentials _parseTokenResponse(String responseBody) {
     // asks for one, and the server decides what the token may do.
     [],
   );
+}
+
+/// Throws a [ShorebirdAuthException] carrying the status and body of
+/// [response], prefixed with [failure], unless the auth service answered 200.
+void _throwUnlessOk(http.Response response, String failure) {
+  if (response.statusCode != HttpStatus.ok) {
+    throw ShorebirdAuthException(
+      '$failure (${response.statusCode}): ${response.body}',
+      statusCode: response.statusCode,
+    );
+  }
 }

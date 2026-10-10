@@ -88,56 +88,42 @@ class Bundletool {
   }
 
   /// Extract the package name from an app bundle.
-  Future<String> getPackageName(String appBundlePath) async {
-    final result = await _exec([
-      'dump',
-      'manifest',
-      '--bundle=$appBundlePath',
-      '--xpath',
-      '/manifest/@package',
-    ]);
-
-    if (result.exitCode != 0) {
-      throw Exception(
-        '''Failed to extract package name from app bundle: ${result.stderr}''',
-      );
-    }
-
-    return (result.stdout as String).trim();
-  }
+  Future<String> getPackageName(String appBundlePath) => _dumpManifestAttribute(
+    appBundlePath,
+    xpath: '/manifest/@package',
+    description: 'package name',
+  );
 
   /// Extract the version name from an app bundle.
-  Future<String> getVersionName(String appBundlePath) async {
-    final result = await _exec([
-      'dump',
-      'manifest',
-      '--bundle=$appBundlePath',
-      '--xpath',
-      '/manifest/@android:versionName',
-    ]);
-
-    if (result.exitCode != 0) {
-      throw Exception(
-        '''Failed to extract version name from app bundle: ${result.stderr}''',
-      );
-    }
-
-    return (result.stdout as String).trim();
-  }
+  Future<String> getVersionName(String appBundlePath) => _dumpManifestAttribute(
+    appBundlePath,
+    xpath: '/manifest/@android:versionName',
+    description: 'version name',
+  );
 
   /// Extract the version code from an app bundle.
-  Future<String> getVersionCode(String appBundlePath) async {
+  Future<String> getVersionCode(String appBundlePath) => _dumpManifestAttribute(
+    appBundlePath,
+    xpath: '/manifest/@android:versionCode',
+    description: 'version code',
+  );
+
+  Future<String> _dumpManifestAttribute(
+    String appBundlePath, {
+    required String xpath,
+    required String description,
+  }) async {
     final result = await _exec([
       'dump',
       'manifest',
       '--bundle=$appBundlePath',
       '--xpath',
-      '/manifest/@android:versionCode',
+      xpath,
     ]);
 
     if (result.exitCode != 0) {
       throw Exception(
-        '''Failed to extract version code from app bundle: ${result.stderr}''',
+        'Failed to extract $description from app bundle: ${result.stderr}',
       );
     }
 
