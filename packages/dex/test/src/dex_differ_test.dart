@@ -1,4 +1,4 @@
-// cspell:words Lcom Ljava LGreeter LFoo
+// cspell:words Lcom Ljava LGreeter LFoo LPayloads
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -277,7 +277,10 @@ void main() {
         );
 
         expect(instruction.hasStringLiteral, isFalse);
-        expect(instruction.redactStringLiterals(), instruction.tokens);
+        expect(
+          instruction.render(showLiterals: false),
+          '4208,M:Ljava/lang/Object;.<init>()V',
+        );
       });
     });
 
@@ -298,6 +301,68 @@ void main() {
           final last = code.tokensAt(code.instructionCount - 1);
           expect(code.canonicalInstructions, endsWith(last));
         }
+      });
+
+      test('withhold their data on the default path', () {
+        final dex = parseDexFixture('payloads.dex');
+        final code = dex.classDefs.first.classData!.virtualMethods
+            .firstWhere((m) => m.method.methodName == 'filled')
+            .code!;
+        final payload = [
+          for (var i = 0; i < code.instructionCount; i++) code.instructionAt(i),
+        ].reduce((a, b) => a.tokenCount >= b.tokenCount ? a : b);
+
+        // fill-array-data for {7, 8, 9, 10, 11, 12, 13, 14}: a 4-unit header
+        // then the data, as one instruction.
+        expect(payload.tokenCount, 20);
+        expect(payload.exceedsTokens(DexCodeDiff.defaultTokenLimit), isTrue);
+
+        final rendered = payload.render(
+          showLiterals: false,
+          limit: DexCodeDiff.defaultTokenLimit,
+        );
+        // The header says what it is. None of the eight values appear.
+        expect(rendered, '768,4,8,0,... 16 more units');
+
+        expect(
+          payload.render(showLiterals: true),
+          contains('768,4,8,0,7,0,8,0,9,0'),
+        );
+      });
+
+      test('count as hidden detail so the hint fires', () {
+        final dex = parseDexFixture('payloads.dex');
+        final code = dex.classDefs.first.classData!.virtualMethods
+            .firstWhere((m) => m.method.methodName == 'filled')
+            .code!;
+        final result = DexDiffResult(
+          differences: [
+            DexDifference(
+              kind: DexDifferenceKind.bytecodeChanged,
+              description: 'LPayloads;: bytecode changed in filled',
+              codeDiff: DexCodeDiff(
+                oldRegion: [
+                  for (var i = 0; i < code.instructionCount; i++)
+                    code.instructionAt(i),
+                ],
+              ),
+            ),
+          ],
+        );
+
+        expect(result.hasHiddenCodeDiff, isTrue);
+        final described = result.describe();
+        // The payload sits past the per-side instruction cap, so it is held
+        // back entirely. Either way none of the eight array values appear.
+        expect(described, contains('... 1 more'));
+        expect(described, isNot(contains('768,4,8,0,7')));
+
+        // A region holding only the payload reaches the token cap instead.
+        final payloadOnly = DexCodeDiff(
+          oldRegion: [code.instructionAt(code.instructionCount - 1)],
+        );
+        expect(payloadOnly.describe(limit: 4), contains('more units'));
+        expect(payloadOnly.describe(limit: 4), isNot(contains(',7,0,8,0')));
       });
 
       test('a method compares equal to itself', () {

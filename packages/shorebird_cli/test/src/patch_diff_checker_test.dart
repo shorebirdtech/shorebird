@@ -251,6 +251,33 @@ void main() {
             ).called(1);
           });
 
+          test('prints the literal when the flag is passed', () async {
+            when(() => archiveDiffer.changedFiles(any(), any())).thenAnswer(
+              (_) async => androidFileSetDiffWithLiteral,
+            );
+            when(
+              () => archiveDiffer.nativeFileSetDiff(any()),
+            ).thenReturn(androidFileSetDiffWithLiteral);
+
+            await runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+                showDexDiff: true,
+              ),
+            );
+
+            verify(
+              () => logger.info(any(that: contains('super-secret-token'))),
+            ).called(1);
+            verifyNever(
+              () => logger.info(any(that: contains('S:<18 chars>'))),
+            );
+          });
+
           test('redacts a string literal on the default path', () async {
             when(() => archiveDiffer.changedFiles(any(), any())).thenAnswer(
               (_) async => androidFileSetDiffWithLiteral,

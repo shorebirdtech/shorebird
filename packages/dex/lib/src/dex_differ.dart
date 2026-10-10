@@ -99,9 +99,24 @@ class DexCodeDiff {
   /// Whether the try/catch table changed.
   final bool tryCatchChanged;
 
-  /// Whether rendering with [limit] would hide an instruction.
+  /// Tokens shown per instruction unless the caller asks for the full diff.
+  ///
+  /// A pseudo-instruction payload is one instruction carrying a whole switch
+  /// table or array initializer, so without this it renders as one unbounded
+  /// line of the app's own constant data. Four is the width of a
+  /// `fill-array-data` header, so a payload shows what it is and none of what
+  /// it holds, and it is wide enough for every real instruction but the
+  /// five-unit `const-wide`, whose last unit is a literal anyway.
+  static const defaultTokenLimit = 4;
+
+  /// Whether rendering with [limit] would hide an instruction or any of its
+  /// tokens.
   bool exceeds(int limit) =>
-      oldRegion.length > limit || newRegion.length > limit;
+      oldRegion.length > limit ||
+      newRegion.length > limit ||
+      [...oldRegion, ...newRegion].any(
+        (i) => i.exceedsTokens(defaultTokenLimit),
+      );
 
   /// Whether either region carries a resolved string literal.
   bool get hasStringLiterals =>
@@ -127,12 +142,10 @@ class DexCodeDiff {
           : region.take(limit).toList();
       for (final instruction in shown) {
         final address = instruction.address.toRadixString(16).padLeft(4, '0');
-        final rendered = showStringLiterals
-            ? instruction.tokens
-            : instruction.redactStringLiterals();
-        final tokens = rendered.endsWith(',')
-            ? rendered.substring(0, rendered.length - 1)
-            : rendered;
+        final tokens = instruction.render(
+          showLiterals: showStringLiterals,
+          limit: showStringLiterals ? null : defaultTokenLimit,
+        );
         buffer.writeln('      $marker 0x$address  $tokens');
       }
       final hidden = region.length - shown.length;

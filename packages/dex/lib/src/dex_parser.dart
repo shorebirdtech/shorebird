@@ -824,8 +824,11 @@ class DexCanonicalInstruction {
   /// carry a pool reference appear as the resolved name, everything else as
   /// the raw unit.
   ///
-  /// A string literal's content is percent-escaped, so no token ever contains
-  /// a comma and a consumer can split on one to reach a single token.
+  /// A string literal's content is percent-escaped, so a literal never holds
+  /// the separator. A method or proto token does, because its parameter list
+  /// is comma-joined, so splitting on a comma can cut one of those in pieces.
+  /// That is safe for finding literals only because a type descriptor cannot
+  /// begin with [stringTokenPrefix], a colon being illegal in a descriptor.
   final String tokens;
 
   /// Whether [tokens] carries a resolved string literal.
@@ -833,28 +836,50 @@ class DexCanonicalInstruction {
       tokens.startsWith(stringTokenPrefix) ||
       tokens.contains(',$stringTokenPrefix');
 
+  /// How many tokens [tokens] holds.
+  ///
+  /// A pseudo-instruction payload is one instruction carrying its whole data
+  /// block, so this is unbounded for a `fill-array-data` or a switch table.
+  int get tokenCount => _tokenList().length;
+
+  /// Whether rendering this instruction with [limit] tokens would hide data.
+  bool exceedsTokens(int limit) => tokenCount > limit;
+
+  List<String> _tokenList() {
+    final raw = tokens.endsWith(',')
+        ? tokens.substring(0, tokens.length - 1)
+        : tokens;
+    return raw.isEmpty ? const [] : raw.split(',');
+  }
+
+  /// [tokens] rendered for output, holding back what was not asked for.
+  ///
+  /// With [showLiterals] unset, a string literal becomes its length and the
+  /// token list is cut to [limit], because a payload's tokens are the app's
+  /// own constant data and a large one is a single unbounded line.
+  String render({required bool showLiterals, int? limit}) {
+    var parts = _tokenList();
+    if (!showLiterals) {
+      parts = parts
+          .map(
+            (token) => token.startsWith(stringTokenPrefix)
+                ? '$stringTokenPrefix<'
+                      '${_unescapeTokenValue(
+                        token.substring(stringTokenPrefix.length),
+                      ).length} chars>'
+                : token,
+          )
+          .toList();
+    }
+    if (limit != null && parts.length > limit) {
+      final hidden = parts.length - limit;
+      parts = [...parts.take(limit), '... $hidden more units'];
+    }
+    return parts.join(',');
+  }
+
   /// Prefix marking a resolved string literal within [tokens].
   static const stringTokenPrefix = 'S:';
-
-  /// [tokens] with every string literal replaced by its length.
-  ///
-  /// The literal is an app's own constant, so it stays out of any output that
-  /// was not explicitly asked for. The length is of the literal itself, not
-  /// of its escaped form.
-  String redactStringLiterals() {
-    if (!hasStringLiteral) return tokens;
-    return tokens
-        .split(',')
-        .map(
-          (token) => token.startsWith(stringTokenPrefix)
-              ? '$stringTokenPrefix<'
-                    '${_unescapeTokenValue(
-                      token.substring(stringTokenPrefix.length),
-                    ).length} chars>'
-              : token,
-        )
-        .join(',');
-  }
 
   static String _unescapeTokenValue(String value) =>
       value.replaceAll('%2C', ',').replaceAll('%25', '%');
