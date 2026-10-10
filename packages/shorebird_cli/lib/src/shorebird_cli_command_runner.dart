@@ -15,12 +15,11 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
-import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
-import 'package:shorebird_cli/src/version.dart';
+import 'package:shorebird_cli/src/version_info.dart';
 
 /// The name of the executable.
 const executableName = 'shorebird';
@@ -249,26 +248,14 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
     // Run the command or show version
     int? exitCode;
     if (topLevelResults['version'] == true) {
-      final flutterVersion = await _tryGetFlutterVersion();
+      final flutterVersion = await tryGetFlutterVersion();
       if (isJsonMode) {
         JsonResult.success(
-          data: {
-            'shorebird_version': packageVersion,
-            'flutter_version': flutterVersion,
-            'flutter_revision': shorebirdEnv.flutterRevision,
-            'engine_revision': shorebirdEnv.shorebirdEngineRevision,
-          },
+          data: versionJson(flutterVersion: flutterVersion),
           command: 'version',
         ).write();
       } else {
-        final shorebirdFlutterPrefix = StringBuffer('Flutter');
-        if (flutterVersion != null) {
-          shorebirdFlutterPrefix.write(' $flutterVersion');
-        }
-        logger.info('''
-Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
-$shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
-Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
+        logger.info(versionBanner(flutterVersion: flutterVersion));
       }
       exitCode = ExitCode.success.code;
     } else {
@@ -432,15 +419,6 @@ To proxy an option to the flutter command, use the $separator --<option> syntax.
 Example:
 
 ${lightCyan.wrap("shorebird release android $separator --no-pub lib/main.dart")}''';
-  }
-
-  Future<String?> _tryGetFlutterVersion() async {
-    try {
-      return await shorebirdFlutter.getVersionString();
-    } on Exception catch (error) {
-      logger.detail('Unable to determine Flutter version.\n$error');
-      return null;
-    }
   }
 
   /// If this version of shorebird is on the `stable` branch, checks to see if
