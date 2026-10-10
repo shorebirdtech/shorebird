@@ -2575,6 +2575,18 @@ channel: ${DeploymentTrack.staging.channel}
         });
       });
 
+      group('when setting channel on app fails', () {
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => logger.progress('Using stable track')).called(1);
+          verify(
+            () => progress.fail('Exception: Unable to find shorebird.yaml'),
+          ).called(1);
+          verifyNever(() => open.newApplication(path: any(named: 'path')));
+        });
+      });
+
       group('staging', () {
         late File shorebirdYaml;
         setUp(() {
@@ -2605,6 +2617,7 @@ channel: ${DeploymentTrack.staging.channel}
           final result = await runWithOverrides(command.run);
           expect(result, equals(ExitCode.success.code));
           verify(() => logger.info('hello world')).called(1);
+          verify(() => logger.progress('Using stable track')).called(1);
         });
       });
 
@@ -2854,6 +2867,40 @@ channel: ${DeploymentTrack.staging.channel}
         });
       });
 
+      group('when setting channel on app fails', () {
+        setUp(() {
+          when(
+            () => artifactManager.downloadWithProgressUpdates(
+              any(),
+              message: any(named: 'message'),
+              outputPath: any(named: 'outputPath'),
+            ),
+          ).thenAnswer((_) async => releaseArtifactFile);
+          when(
+            () => artifactManager.extractZip(
+              zipFile: any(named: 'zipFile'),
+              outputDirectory: any(named: 'outputDirectory'),
+            ),
+          ).thenAnswer((invocation) async {
+            final outDirectory =
+                invocation.namedArguments[#outputDirectory] as Directory;
+            File(
+              p.join(outDirectory.path, 'runner.exe'),
+            ).createSync(recursive: true);
+          });
+        });
+
+        test('returns code 70', () async {
+          final result = await runWithOverrides(command.run);
+          expect(result, equals(ExitCode.software.code));
+          verify(() => logger.progress('Using stable track')).called(1);
+          verify(
+            () => progress.fail('Exception: Unable to find shorebird.yaml'),
+          ).called(1);
+          verifyNever(() => shorebirdProcess.start(any(), any()));
+        });
+      });
+
       group('when preview artifact is not cached', () {
         setUp(() {
           when(
@@ -2893,6 +2940,7 @@ channel: ${DeploymentTrack.staging.channel}
           ).called(1);
           verify(() => logger.info('hello world')).called(1);
           verify(() => logger.err('hello error')).called(1);
+          verify(() => logger.progress('Using stable track')).called(1);
         });
       });
 

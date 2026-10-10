@@ -382,13 +382,10 @@ This is only applicable when previewing Android releases.''',
       arch: primaryLinuxReleaseArtifactArch,
     );
 
-    if (!await _runStep(
-      'Using $track track',
-      () => setChannelOnApp(
-        platform: platform,
-        appDirectory: appDirectory,
-        channel: track.channel,
-      ),
+    if (!await _useTrackOnApp(
+      platform: platform,
+      appDirectory: appDirectory,
+      track: track,
     )) {
       return ExitCode.software.code;
     }
@@ -418,11 +415,13 @@ This is only applicable when previewing Android releases.''',
       fileExtension: 'exe',
     );
 
-    await setChannelOnApp(
+    if (!await _useTrackOnApp(
       platform: platform,
       appDirectory: appDirectory,
-      channel: track.channel,
-    );
+      track: track,
+    )) {
+      return ExitCode.software.code;
+    }
 
     final exeFile = windows.findExecutable(
       releaseDirectory: appDirectory,
@@ -453,11 +452,13 @@ This is only applicable when previewing Android releases.''',
       ),
     );
 
-    await setChannelOnApp(
+    if (!await _useTrackOnApp(
       platform: platform,
       appDirectory: appDirectory,
-      channel: track.channel,
-    );
+      track: track,
+    )) {
+      return ExitCode.software.code;
+    }
 
     final logs = await open.newApplication(path: appDirectory.path);
     final completer = Completer<void>();
@@ -586,8 +587,8 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (File(apksPath).existsSync()) File(apksPath).deleteSync();
-    if (!await _runStep(
-      'Using $track track',
+    if (!await _useTrack(
+      track,
       () => setChannelOnAab(aabFile: aabFile, channel: track.channel),
     )) {
       return ExitCode.software.code;
@@ -665,13 +666,10 @@ This is only applicable when previewing Android releases.''',
       fileExtension: 'app',
     );
 
-    if (!await _runStep(
-      'Using $track track',
-      () => setChannelOnApp(
-        platform: platform,
-        appDirectory: runnerDirectory,
-        channel: track.channel,
-      ),
+    if (!await _useTrackOnApp(
+      platform: platform,
+      appDirectory: runnerDirectory,
+      track: track,
     )) {
       return ExitCode.software.code;
     }
@@ -861,6 +859,28 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
       return false;
     }
   }
+
+  /// Points the app at [track]'s channel via [setChannel], under a
+  /// "Using <track> track" progress. Every platform goes through here so they
+  /// report the track, and fail, the same way.
+  Future<bool> _useTrack(
+    DeploymentTrack track,
+    Future<void> Function() setChannel,
+  ) => _runStep('Using $track track', setChannel);
+
+  /// [_useTrack] for an extracted [platform] app, see [setChannelOnApp].
+  Future<bool> _useTrackOnApp({
+    required ReleasePlatform platform,
+    required Directory appDirectory,
+    required DeploymentTrack track,
+  }) => _useTrack(
+    track,
+    () => setChannelOnApp(
+      platform: platform,
+      appDirectory: appDirectory,
+      channel: track.channel,
+    ),
+  );
 
   /// The path of shorebird.yaml inside an extracted app, relative to the
   /// app's root directory. Android is not listed: its shorebird.yaml lives
