@@ -283,6 +283,48 @@ Waiting for your authorization (the code expires in $expiry)...''';
       });
     });
 
+    group('when the credential check is rate limited', () {
+      setUp(() {
+        when(() => auth.isAuthenticated).thenReturn(true);
+        when(() => auth.email).thenReturn(email);
+      });
+
+      Future<void> expectRetryShortly(ShorebirdAuthException error) async {
+        when(() => auth.hasValidCredentials()).thenThrow(error);
+
+        final result = await runWithOverrides(command.run);
+
+        expect(result, equals(ExitCode.tempFail.code));
+        verify(
+          () => progress.fail('Too many requests, try again shortly.'),
+        ).called(1);
+        verifyNever(
+          () => logger.info('Check your network connection and try again.'),
+        );
+        verifyNever(() => auth.clearCredentials());
+        verifyNever(() => auth.login(prompt: any(named: 'prompt')));
+      }
+
+      test('tells the user to retry shortly on rate_limited', () async {
+        await expectRetryShortly(
+          const ShorebirdAuthException(
+            'Token refresh failed (429)',
+            statusCode: HttpStatus.tooManyRequests,
+            oauthError: 'rate_limited',
+          ),
+        );
+      });
+
+      test('tells the user to retry shortly on a bare 429', () async {
+        await expectRetryShortly(
+          const ShorebirdAuthException(
+            'Token refresh failed (429)',
+            statusCode: HttpStatus.tooManyRequests,
+          ),
+        );
+      });
+    });
+
     test('exits with code 70 if no user is found', () async {
       when(
         () => auth.login(prompt: any(named: 'prompt')),

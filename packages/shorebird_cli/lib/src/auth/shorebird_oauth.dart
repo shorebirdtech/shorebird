@@ -52,6 +52,15 @@ class ShorebirdAuthException implements Exception {
   /// or their wifi dropped.
   bool get isCredentialRejection => oauthError == 'invalid_grant';
 
+  /// Whether the auth service turned the request away for coming too often.
+  ///
+  /// Keys off the `rate_limited` error code, falling back to a bare 429 only
+  /// when the body is not an OAuth error response, as when a proxy in front
+  /// of the auth service does the limiting.
+  bool get isRateLimited =>
+      oauthError == 'rate_limited' ||
+      (oauthError == null && statusCode == HttpStatus.tooManyRequests);
+
   @override
   String toString() => 'ShorebirdAuthException: $message';
 }

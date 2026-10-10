@@ -1269,5 +1269,41 @@ void main() {
         expect(exception.isCredentialRejection, isFalse);
       });
     });
+
+    group('isRateLimited', () {
+      test('is true for rate_limited', () {
+        const exception = ShorebirdAuthException(
+          'slow down',
+          statusCode: HttpStatus.tooManyRequests,
+          oauthError: 'rate_limited',
+        );
+        expect(exception.isRateLimited, isTrue);
+      });
+
+      test('is true for a 429 that is not an OAuth error response', () {
+        const exception = ShorebirdAuthException(
+          'slow down',
+          statusCode: HttpStatus.tooManyRequests,
+        );
+        expect(exception.isRateLimited, isTrue);
+      });
+
+      test('is false for a 429 carrying another OAuth error', () {
+        const exception = ShorebirdAuthException(
+          'refused',
+          statusCode: HttpStatus.tooManyRequests,
+          oauthError: 'invalid_grant',
+        );
+        expect(exception.isRateLimited, isFalse);
+      });
+
+      test('is false for other answers', () {
+        const exception = ShorebirdAuthException(
+          'bad gateway',
+          statusCode: HttpStatus.badGateway,
+        );
+        expect(exception.isRateLimited, isFalse);
+      });
+    });
   });
 }

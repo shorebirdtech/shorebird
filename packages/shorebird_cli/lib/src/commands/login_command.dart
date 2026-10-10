@@ -41,6 +41,13 @@ class LoginCommand extends ShorebirdCommand {
       try {
         hasValidCredentials = await auth.hasValidCredentials();
       } on Exception catch (error) {
+        if (error is ShorebirdAuthException && error.isRateLimited) {
+          // Being turned away for asking too often says nothing about the
+          // stored credentials either.
+          progress.fail('Too many requests, try again shortly.');
+          logger.detail('$error');
+          return ExitCode.tempFail.code;
+        }
         // The auth service could not answer, which says nothing about the
         // stored credentials. Discarding them here would log a user out for
         // running this off wifi.
