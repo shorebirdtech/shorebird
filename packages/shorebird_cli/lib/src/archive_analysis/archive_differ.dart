@@ -59,27 +59,18 @@ abstract class ArchiveDiffer {
 
   /// The subset of [fileSetDiff] that contains only changes that result from
   /// edited assets.
-  FileSetDiff assetsFileSetDiff(FileSetDiff fileSetDiff) => FileSetDiff(
-    addedPaths: fileSetDiff.addedPaths.where(isAssetFilePath).toSet(),
-    removedPaths: fileSetDiff.removedPaths.where(isAssetFilePath).toSet(),
-    changedPaths: fileSetDiff.changedPaths.where(isAssetFilePath).toSet(),
-  );
+  FileSetDiff assetsFileSetDiff(FileSetDiff fileSetDiff) =>
+      fileSetDiff.where(isAssetFilePath);
 
   /// The subset of [fileSetDiff] that contains only changes that result from
   /// edited Dart code.
-  FileSetDiff dartFileSetDiff(FileSetDiff fileSetDiff) => FileSetDiff(
-    addedPaths: fileSetDiff.addedPaths.where(isDartFilePath).toSet(),
-    removedPaths: fileSetDiff.removedPaths.where(isDartFilePath).toSet(),
-    changedPaths: fileSetDiff.changedPaths.where(isDartFilePath).toSet(),
-  );
+  FileSetDiff dartFileSetDiff(FileSetDiff fileSetDiff) =>
+      fileSetDiff.where(isDartFilePath);
 
   /// The subset of [fileSetDiff] that contains only changes that result from
   /// edited native code.
-  FileSetDiff nativeFileSetDiff(FileSetDiff fileSetDiff) => FileSetDiff(
-    addedPaths: fileSetDiff.addedPaths.where(isNativeFilePath).toSet(),
-    removedPaths: fileSetDiff.removedPaths.where(isNativeFilePath).toSet(),
-    changedPaths: fileSetDiff.changedPaths.where(isNativeFilePath).toSet(),
-  );
+  FileSetDiff nativeFileSetDiff(FileSetDiff fileSetDiff) =>
+      fileSetDiff.where(isNativeFilePath);
 
   /// Files that have been added, removed, or that have changed between the
   /// archives at the two provided paths.
