@@ -191,7 +191,7 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Native code changes cannot b
   /// Help text for the full DEX diff flag.
   static const showDexDiffHelpText = '''
 Print every differing instruction when native changes are detected in an Android patch.
-Without this, the first few differing instructions of the first ten changed methods are shown, and string constants and payload data are replaced by their size. Output contains your app's bytecode, including class and method names, and is written to the shorebird.log file support asks you to attach.''';
+Without this, the first few differing instructions of the first ten changed methods are shown, string constants are replaced by their length, and a payload such as a switch table or an array initializer is cut after its first few units. Output contains your app's bytecode, including class and method names, and is written to the shorebird.log file support asks you to attach.''';
 
   /// Warning message for when asset diffs are detected.
   static final allowAssetDiffsHelpText = '''

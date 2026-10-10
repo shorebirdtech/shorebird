@@ -824,11 +824,10 @@ class DexCanonicalInstruction {
   /// carry a pool reference appear as the resolved name, everything else as
   /// the raw unit.
   ///
-  /// A string literal's content is percent-escaped, so a literal never holds
-  /// the separator. A method or proto token does, because its parameter list
-  /// is comma-joined, so splitting on a comma can cut one of those in pieces.
-  /// That is safe for finding literals only because a type descriptor cannot
-  /// begin with [stringTokenPrefix], a colon being illegal in a descriptor.
+  /// Every resolved value is percent-escaped, so no token holds the separator
+  /// and splitting on a comma reaches exactly one token. That covers a string
+  /// literal, which can hold any byte, and a method or proto reference, whose
+  /// parameter list is comma-joined.
   final String tokens;
 
   /// Whether [tokens] carries a resolved string literal.
@@ -856,21 +855,20 @@ class DexCanonicalInstruction {
   ///
   /// With [showLiterals] unset, a string literal becomes its length and the
   /// token list is cut to [limit], because a payload's tokens are the app's
-  /// own constant data and a large one is a single unbounded line.
+  /// own constant data and a large one is a single unbounded line. Escaping is
+  /// undone either way, so a signature reads as it was written.
   String render({required bool showLiterals, int? limit}) {
-    var parts = _tokenList();
-    if (!showLiterals) {
-      parts = parts
-          .map(
-            (token) => token.startsWith(stringTokenPrefix)
-                ? '$stringTokenPrefix<'
-                      '${_unescapeTokenValue(
-                        token.substring(stringTokenPrefix.length),
-                      ).length} chars>'
-                : token,
-          )
-          .toList();
-    }
+    var parts = _tokenList().map((token) {
+      if (!token.startsWith(stringTokenPrefix)) {
+        return _unescapeTokenValue(token);
+      }
+      final literal = _unescapeTokenValue(
+        token.substring(stringTokenPrefix.length),
+      );
+      return showLiterals
+          ? '$stringTokenPrefix$literal'
+          : '$stringTokenPrefix<${literal.length} chars>';
+    }).toList();
     if (limit != null && parts.length > limit) {
       final hidden = parts.length - limit;
       parts = [...parts.take(limit), '... $hidden more units'];
@@ -1462,7 +1460,31 @@ class DexParser {
     return buf.toString();
   }
 
+  /// Resolves a pool index to its canonical token.
+  ///
+  /// The value is escaped, so a comma-joined parameter list cannot be mistaken
+  /// for a token boundary.
   String _resolvePoolIndex(
+    int index,
+    _PoolKind pool,
+    List<String> strings,
+    List<String> typeDescriptors,
+    List<DexProtoId> protoIds,
+    List<DexFieldId> fieldIds,
+    List<DexMethodId> methodIds,
+  ) => _escapeTokenValue(
+    _resolvePoolValue(
+      index,
+      pool,
+      strings,
+      typeDescriptors,
+      protoIds,
+      fieldIds,
+      methodIds,
+    ),
+  );
+
+  String _resolvePoolValue(
     int index,
     _PoolKind pool,
     List<String> strings,
@@ -1473,8 +1495,7 @@ class DexParser {
   ) {
     switch (pool) {
       case _PoolKind.string:
-        return '${DexCanonicalInstruction.stringTokenPrefix}'
-            '${_escapeTokenValue(strings[index])}';
+        return '${DexCanonicalInstruction.stringTokenPrefix}${strings[index]}';
       case _PoolKind.type:
         return 'T:${typeDescriptors[index]}';
       case _PoolKind.field:
@@ -1498,9 +1519,11 @@ class DexParser {
 
   /// Percent-escapes a resolved value so it carries no token separator.
   ///
-  /// A string constant can hold any byte, including the comma the canonical
-  /// form separates tokens with, so without this a consumer cannot split
-  /// tokens apart and a redaction pass cannot find where a literal ends.
+  /// Two values can hold the comma the canonical form separates tokens with: a
+  /// string constant, which can hold any byte, and a method or proto
+  /// reference, whose parameter list is comma-joined. Without this a consumer
+  /// cannot split tokens apart, and a signature renders cut in half once it
+  /// has enough parameters.
   static String _escapeTokenValue(String value) =>
       value.replaceAll('%', '%25').replaceAll(',', '%2C');
 

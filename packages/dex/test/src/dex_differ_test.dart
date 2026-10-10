@@ -102,6 +102,123 @@ void main() {
       );
     }
 
+    group('multi-instruction windows', () {
+      DexFile dexWithInstructions(List<String> tokens) {
+        final starts = Uint32List(tokens.length);
+        final addresses = Uint32List(tokens.length);
+        var offset = 0;
+        for (var i = 0; i < tokens.length; i++) {
+          starts[i] = offset;
+          addresses[i] = i;
+          offset += tokens[i].length;
+        }
+        return DexFile(
+          header: const DexHeader(
+            stringIdsSize: 0,
+            stringIdsOff: 0,
+            typeIdsSize: 0,
+            typeIdsOff: 0,
+            protoIdsSize: 0,
+            protoIdsOff: 0,
+            fieldIdsSize: 0,
+            fieldIdsOff: 0,
+            methodIdsSize: 0,
+            methodIdsOff: 0,
+            classDefsSize: 0,
+            classDefsOff: 0,
+          ),
+          strings: const [],
+          typeDescriptors: const [],
+          protoIds: const [],
+          fieldIds: const [],
+          methodIds: const [],
+          classDefs: [
+            DexClassDef(
+              className: 'LFoo;',
+              accessFlags: 1,
+              superclass: null,
+              interfaces: const [],
+              sourceFile: null,
+              annotations: null,
+              staticValues: null,
+              classData: DexClassData(
+                staticFields: const [],
+                instanceFields: const [],
+                directMethods: [
+                  DexEncodedMethod(
+                    method: const DexMethodId(
+                      className: 'LFoo;',
+                      methodName: 'run',
+                      proto: DexProtoId(
+                        shorty: 'V',
+                        returnType: 'V',
+                        parameterTypes: [],
+                      ),
+                    ),
+                    accessFlags: 1,
+                    code: DexCodeItem(
+                      registersSize: 1,
+                      insSize: 1,
+                      outsSize: 0,
+                      canonicalInstructions: tokens.join(),
+                      instructionStarts: starts,
+                      instructionAddresses: addresses,
+                      canonicalTryCatch: '',
+                    ),
+                  ),
+                ],
+                virtualMethods: const [],
+              ),
+            ),
+          ],
+        );
+      }
+
+      test('two edits separated by matching code share one window', () {
+        final result = differ.diff(
+          dexWithInstructions(['a,', 'b,', 'c,', 'd,']),
+          dexWithInstructions(['X,', 'b,', 'c,', 'Y,']),
+        );
+
+        final codeDiff = result.breakingDifferences.single.codeDiff!;
+        // The shared b and c sit inside the window, not outside it.
+        expect(codeDiff.oldRegion.map((i) => i.tokens).toList(), [
+          'a,',
+          'b,',
+          'c,',
+          'd,',
+        ]);
+        expect(codeDiff.newRegion.map((i) => i.tokens).toList(), [
+          'X,',
+          'b,',
+          'c,',
+          'Y,',
+        ]);
+      });
+
+      test('a matching head and tail are trimmed off the window', () {
+        final result = differ.diff(
+          dexWithInstructions(['a,', 'b,', 'c,']),
+          dexWithInstructions(['a,', 'Z,', 'c,']),
+        );
+
+        final codeDiff = result.breakingDifferences.single.codeDiff!;
+        expect(codeDiff.oldRegion.map((i) => i.tokens).toList(), ['b,']);
+        expect(codeDiff.newRegion.map((i) => i.tokens).toList(), ['Z,']);
+      });
+
+      test('an added instruction leaves the other region empty', () {
+        final result = differ.diff(
+          dexWithInstructions(['a,', 'c,']),
+          dexWithInstructions(['a,', 'b,', 'c,']),
+        );
+
+        final codeDiff = result.breakingDifferences.single.codeDiff!;
+        expect(codeDiff.oldRegion, isEmpty);
+        expect(codeDiff.newRegion.map((i) => i.tokens).toList(), ['b,']);
+      });
+    });
+
     group('size and try/catch changes', () {
       test('reports a register count change', () {
         final result = differ.diff(
@@ -142,6 +259,56 @@ void main() {
         );
         expect(result.breakingDifferences, hasLength(1));
         expect(result.describe(), contains('try/catch table changed'));
+      });
+
+      test('reports a method body added or removed', () {
+        final withCode = dexWithCode();
+        final withoutCode = DexFile(
+          header: withCode.header,
+          strings: const [],
+          typeDescriptors: const [],
+          protoIds: const [],
+          fieldIds: const [],
+          methodIds: const [],
+          classDefs: const [
+            DexClassDef(
+              className: 'LFoo;',
+              accessFlags: 1,
+              superclass: null,
+              interfaces: [],
+              sourceFile: null,
+              annotations: null,
+              staticValues: null,
+              classData: DexClassData(
+                staticFields: [],
+                instanceFields: [],
+                directMethods: [
+                  DexEncodedMethod(
+                    method: DexMethodId(
+                      className: 'LFoo;',
+                      methodName: 'run',
+                      proto: DexProtoId(
+                        shorty: 'V',
+                        returnType: 'V',
+                        parameterTypes: [],
+                      ),
+                    ),
+                    accessFlags: 1,
+                    code: null,
+                  ),
+                ],
+                virtualMethods: [],
+              ),
+            ),
+          ],
+        );
+
+        final result = differ.diff(withCode, withoutCode);
+        expect(result.breakingDifferences, hasLength(1));
+        expect(
+          result.describe(),
+          contains('method body added or removed'),
+        );
       });
 
       test('identical code items produce no difference', () {
@@ -266,7 +433,7 @@ void main() {
           const DexCodeDiff(
             oldRegion: [instruction],
           ).describe(showStringLiterals: true),
-          contains('S:token-abc%2C123'),
+          contains('S:token-abc,123'),
         );
       });
 
@@ -280,6 +447,42 @@ void main() {
         expect(
           instruction.render(showLiterals: false),
           '4208,M:Ljava/lang/Object;.<init>()V',
+        );
+      });
+    });
+
+    group('resolved references', () {
+      test('are one token however many parameters they carry', () {
+        const instruction = DexCanonicalInstruction(
+          address: 2,
+          tokens: '8302,M:LFoo;.bar(La;%2CLb;%2CLc;%2CLd;)V,32,',
+        );
+
+        expect(instruction.tokenCount, 3);
+        expect(
+          instruction.exceedsTokens(DexCodeDiff.defaultTokenLimit),
+          isFalse,
+        );
+        expect(
+          instruction.render(
+            showLiterals: false,
+            limit: DexCodeDiff.defaultTokenLimit,
+          ),
+          '8302,M:LFoo;.bar(La;,Lb;,Lc;,Ld;)V,32',
+        );
+      });
+
+      test('a four-parameter method resolves to a single token', () {
+        final dex = parseDexFixture('pool_refs.dex');
+        final tokens = dex.classDefs.first.classData!.virtualMethods
+            .firstWhere((m) => m.method.methodName == 'matches')
+            .code!
+            .canonicalInstructions;
+
+        // One parameter, so nothing to escape, and the token reads plainly.
+        expect(
+          tokens,
+          contains('M:Ljava/lang/String;.equals(Ljava/lang/Object;)Z'),
         );
       });
     });

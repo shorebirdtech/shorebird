@@ -127,7 +127,8 @@ class PatchDiffChecker {
           logger.info(
             yellow.wrap(
               '\nPass --show-dex-diff to see every differing instruction. '
-              "That output includes your app's string constants.",
+              'That output includes every instruction in full and any '
+              'string constants or payload data they carry.',
             ),
           );
         }

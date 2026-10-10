@@ -105,12 +105,15 @@ class DexCodeDiff {
   /// table or array initializer, so without this it renders as one unbounded
   /// line of the app's own constant data. Four is the width of a
   /// `fill-array-data` header, so a payload shows what it is and none of what
-  /// it holds, and it is wide enough for every real instruction but the
-  /// five-unit `const-wide`, whose last unit is a literal anyway.
+  /// it holds. A resolved reference is a single token however many parameters
+  /// it carries, so four covers every real instruction but the five-unit
+  /// `const-wide`, whose last unit is a literal anyway.
   static const defaultTokenLimit = 4;
 
-  /// Whether rendering with [limit] would hide an instruction or any of its
-  /// tokens.
+  /// Whether rendering would hide an instruction or any of its tokens.
+  ///
+  /// [limit] bounds instructions per side. Tokens within an instruction are
+  /// always checked against [defaultTokenLimit].
   bool exceeds(int limit) =>
       oldRegion.length > limit ||
       newRegion.length > limit ||
