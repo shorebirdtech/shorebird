@@ -164,6 +164,26 @@ void main() {
       });
     });
 
+    group('when --patch-number is not an integer', () {
+      setUp(() {
+        when(() => argResults['patch-number']).thenReturn('one');
+      });
+
+      test('exits with usage error and does not fetch', () async {
+        final result = await runWithOverrides(command.run);
+        expect(result, equals(ExitCode.usage.code));
+        verify(
+          () => logger.err('"one" is not a valid patch number'),
+        ).called(1);
+        verifyNever(
+          () => codePushClientWrapper.getRelease(
+            appId: any(named: 'appId'),
+            releaseVersion: any(named: 'releaseVersion'),
+          ),
+        );
+      });
+    });
+
     group('when an invalid patch number is provided', () {
       setUp(() {
         when(() => argResults['patch-number']).thenReturn('5');

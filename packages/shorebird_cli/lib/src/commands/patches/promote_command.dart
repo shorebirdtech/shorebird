@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
@@ -14,7 +15,7 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// {@template promote_command}
 /// Promotes a patch to the production channel.
 /// {@endtemplate}
-class PromoteCommand extends ShorebirdCommand {
+class PromoteCommand extends ShorebirdCommand with PatchNumberArgument {
   /// {@macro promote_command}
   PromoteCommand() {
     argParser
@@ -69,8 +70,10 @@ class PromoteCommand extends ShorebirdCommand {
       return error.exitCode.code;
     }
 
+    final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber();
+    if (patchNumberError != null) return patchNumberError;
+
     final releaseVersion = results['release-version'] as String;
-    final patchNumber = int.parse(results['patch-number'] as String);
     final flavor = results.findOption('flavor', argParser: argParser);
     final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
 

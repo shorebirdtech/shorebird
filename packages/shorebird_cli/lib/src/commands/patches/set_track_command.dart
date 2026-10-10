@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
@@ -21,7 +22,7 @@ const _jsonExample =
 /// ```
 ///
 /// {@endtemplate}
-class SetTrackCommand extends ShorebirdCommand {
+class SetTrackCommand extends ShorebirdCommand with PatchNumberArgument {
   /// {@macro set_track_command}
   SetTrackCommand() {
     argParser
@@ -68,8 +69,12 @@ class SetTrackCommand extends ShorebirdCommand {
     final (:appId, :errorCode) = await resolveAppId();
     if (errorCode != null) return errorCode;
 
+    final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber(
+      option: 'patch',
+    );
+    if (patchNumberError != null) return patchNumberError;
+
     final releaseVersion = results['release'] as String;
-    final patchNumber = int.parse(results['patch'] as String);
     final targetChannel = results['track'] as String;
 
     if (targetChannel.isEmpty ||
