@@ -79,20 +79,11 @@ class SetTrackCommand extends ShorebirdCommand with PatchNumberArgument {
 
     if (targetChannel.isEmpty ||
         targetChannel.length > CommonArguments.trackNameMaxLength) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message:
-              'Track name must be between 1 and '
-              '${CommonArguments.trackNameMaxLength} characters.',
-        );
-        return ExitCode.usage.code;
-      }
-      logger.err(
-        'Track name must be between 1 and '
-        '${CommonArguments.trackNameMaxLength} characters.',
+      return reportError(
+        message:
+            'Track name must be between 1 and '
+            '${CommonArguments.trackNameMaxLength} characters.',
       );
-      return ExitCode.usage.code;
     }
 
     final Release release;
@@ -118,15 +109,10 @@ class SetTrackCommand extends ShorebirdCommand with PatchNumberArgument {
     }
 
     if (patches.isEmpty) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message: 'No patches found for release "$releaseVersion".',
-        );
-        return ExitCode.usage.code;
-      }
-      logger.err('No patches found for release $releaseVersion');
-      return ExitCode.usage.code;
+      return reportError(
+        message: 'No patches found for release $releaseVersion',
+        jsonMessage: 'No patches found for release "$releaseVersion".',
+      );
     }
 
     final patch = patches.firstWhereOrNull((p) => p.number == patchNumber);
@@ -149,17 +135,11 @@ class SetTrackCommand extends ShorebirdCommand with PatchNumberArgument {
     }
 
     if (patch.channel == targetChannel) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message: 'Patch $patchNumber is already in channel "$targetChannel".',
-        );
-        return ExitCode.usage.code;
-      }
-      logger.err(
-        'Patch ${patch.number} is already in channel $targetChannel',
+      return reportError(
+        message: 'Patch ${patch.number} is already in channel $targetChannel',
+        jsonMessage:
+            'Patch $patchNumber is already in channel "$targetChannel".',
       );
-      return ExitCode.usage.code;
     }
 
     var channel = await codePushClientWrapper.maybeGetChannel(

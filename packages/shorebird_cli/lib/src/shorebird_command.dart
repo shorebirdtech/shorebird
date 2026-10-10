@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:http/http.dart' as http;
+import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
@@ -10,6 +11,7 @@ import 'package:shorebird_cli/src/config/shorebird_yaml.dart';
 import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
 import 'package:shorebird_cli/src/shorebird_validator.dart';
@@ -208,6 +210,29 @@ abstract class ShorebirdCommand extends Command<int> {
       hint: hint,
       command: fullCommandName,
     ).write();
+  }
+
+  /// Reports an error in whichever output mode is active and returns
+  /// [exitCode] (a usage error by default).
+  ///
+  /// With `--json`, emits an error envelope carrying [code], [message] and
+  /// [hint]. Otherwise logs [message] as an error and [hint], if any, as
+  /// info. Pass [jsonMessage] when the JSON message should differ from the
+  /// human one.
+  int reportError({
+    required String message,
+    String? hint,
+    String? jsonMessage,
+    JsonErrorCode code = JsonErrorCode.usageError,
+    int? exitCode,
+  }) {
+    if (isJsonMode) {
+      emitJsonError(code: code, message: jsonMessage ?? message, hint: hint);
+    } else {
+      logger.err(message);
+      if (hint != null) logger.info(hint);
+    }
+    return exitCode ?? ExitCode.usage.code;
   }
 }
 

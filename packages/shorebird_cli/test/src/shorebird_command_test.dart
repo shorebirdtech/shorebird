@@ -2,11 +2,17 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:mason_logger/mason_logger.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
+import 'package:shorebird_cli/src/json_output.dart';
+import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
 import 'mocks.dart';
 
 class _TestCommand extends ShorebirdCommand {
@@ -191,6 +197,106 @@ void main() {
           ]).assertPublicKeyArgsValid,
           throwsUsage('--public-key-path: no file found at /nope/public.pem.'),
         );
+      });
+    });
+
+    group('reportError', () {
+      late ShorebirdLogger logger;
+
+      R runWithOverrides<R>(R Function() body, {required bool jsonMode}) {
+        return runScoped(
+          body,
+          values: {
+            isJsonModeRef.overrideWith(() => jsonMode),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+      }
+
+      setUp(() {
+        logger = MockShorebirdLogger();
+      });
+
+      group('when not in JSON mode', () {
+        test('logs the message and hint, returns a usage error', () {
+          final exitCode = runWithOverrides(
+            () => command.reportError(
+              message: 'Something is wrong',
+              jsonMessage: 'Something is wrong.',
+              hint: 'Try again.',
+            ),
+            jsonMode: false,
+          );
+
+          expect(exitCode, equals(ExitCode.usage.code));
+          verify(() => logger.err('Something is wrong')).called(1);
+          verify(() => logger.info('Try again.')).called(1);
+        });
+
+        test('logs no hint when none is given', () {
+          runWithOverrides(
+            () => command.reportError(message: 'Something is wrong'),
+            jsonMode: false,
+          );
+
+          verify(() => logger.err('Something is wrong')).called(1);
+          verifyNever(() => logger.info(any()));
+        });
+
+        test('returns the given exit code', () {
+          final exitCode = runWithOverrides(
+            () => command.reportError(
+              message: 'Something is wrong',
+              exitCode: ExitCode.software.code,
+            ),
+            jsonMode: false,
+          );
+
+          expect(exitCode, equals(ExitCode.software.code));
+        });
+      });
+
+      group('when in JSON mode', () {
+        test('emits an error envelope and logs nothing', () async {
+          final result = await captureJson(
+            () async => runWithOverrides(
+              () => command.reportError(
+                message: 'Something is wrong',
+                jsonMessage: 'Something is wrong.',
+                hint: 'Try again.',
+                code: JsonErrorCode.fetchFailed,
+              ),
+              jsonMode: true,
+            ),
+          );
+
+          expect(result.exitCode, equals(ExitCode.usage.code));
+          expect(result.json['status'], equals('error'));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'fetch_failed',
+              'message': 'Something is wrong.',
+              'hint': 'Try again.',
+            }),
+          );
+          verifyNever(() => logger.err(any()));
+          verifyNever(() => logger.info(any()));
+        });
+
+        test('uses the message when no JSON message is given', () async {
+          final result = await captureJson(
+            () async => runWithOverrides(
+              () => command.reportError(message: 'Something is wrong'),
+              jsonMode: true,
+            ),
+          );
+
+          expect(
+            (result.json['error'] as Map<String, dynamic>)['message'],
+            equals('Something is wrong'),
+          );
+        });
       });
     });
   });

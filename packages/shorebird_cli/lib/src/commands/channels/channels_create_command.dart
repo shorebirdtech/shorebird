@@ -56,12 +56,7 @@ class ChannelsCreateCommand extends ShorebirdCommand {
       const message =
           'Channel name must be between 1 and '
           '${CommonArguments.trackNameMaxLength} characters.';
-      if (isJsonMode) {
-        emitJsonError(code: JsonErrorCode.usageError, message: message);
-        return ExitCode.usage.code;
-      }
-      logger.err(message);
-      return ExitCode.usage.code;
+      return reportError(message: message);
     }
 
     final List<Channel> channels;
@@ -81,12 +76,7 @@ class ChannelsCreateCommand extends ShorebirdCommand {
     final existing = channels.firstWhereOrNull((c) => c.name == channelName);
     if (existing != null) {
       final message = 'Channel "$channelName" already exists.';
-      if (isJsonMode) {
-        emitJsonError(code: JsonErrorCode.usageError, message: message);
-        return ExitCode.usage.code;
-      }
-      logger.err(message);
-      return ExitCode.usage.code;
+      return reportError(message: message);
     }
 
     final Channel channel;
