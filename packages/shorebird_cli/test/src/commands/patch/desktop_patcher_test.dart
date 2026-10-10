@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:args/args.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
@@ -31,12 +32,17 @@ class _TestDesktopPatcher extends DesktopPatcher {
     required super.argParser,
     required super.argResults,
     required this.appDirectory,
+    required this.builtDirectory,
     required this.validators,
     super.target,
   }) : super(flavor: null);
 
   @override
   final Directory appDirectory;
+
+  /// What [buildApp] returns. Deliberately not [appDirectory], so tests can
+  /// tell which one the patch archive is made from.
+  final Directory builtDirectory;
 
   final List<Validator> validators;
 
@@ -65,7 +71,7 @@ class _TestDesktopPatcher extends DesktopPatcher {
     if (buildError != null) throw buildError!;
     builtWithArgs = args;
     builtWithPublicKey = base64PublicKey;
-    return appDirectory;
+    return builtDirectory;
   }
 
   @override
@@ -88,6 +94,7 @@ void main() {
     late ArtifactManager artifactManager;
     late CodeSigner codeSigner;
     late Directory appDirectory;
+    late Directory builtDirectory;
     late ShorebirdLogger logger;
     late PatchDiffChecker patchDiffChecker;
     late Progress progress;
@@ -125,6 +132,7 @@ void main() {
       shorebirdValidator = MockShorebirdValidator();
       validator = MockValidator();
       appDirectory = Directory.systemTemp.createTempSync();
+      builtDirectory = Directory.systemTemp.createTempSync();
 
       when(() => argParser.options).thenReturn({});
       when(() => argResults.options).thenReturn([]);
@@ -136,6 +144,7 @@ void main() {
         argParser: argParser,
         argResults: argResults,
         appDirectory: appDirectory,
+        builtDirectory: builtDirectory,
         validators: [validator],
       );
     });
@@ -250,13 +259,48 @@ void main() {
       });
 
       group('when the build succeeds', () {
-        test('returns the zipped app directory', () async {
-          await expectLater(
-            runWithOverrides(() => patcher.buildPatchArtifact()),
-            completion(
-              isA<File>().having((f) => f.path, 'path', endsWith('.zip')),
-            ),
+        test('returns a zip of the directory the build returned', () async {
+          File(p.join(builtDirectory.path, 'built.txt')).createSync();
+          File(p.join(appDirectory.path, 'app.txt')).createSync();
+
+          final zip = await runWithOverrides(
+            () => patcher.buildPatchArtifact(),
           );
+
+          expect(zip.path, endsWith('.zip'));
+          final names = ZipDecoder()
+              .decodeBytes(zip.readAsBytesSync())
+              .files
+              .map((f) => f.name);
+          expect(names, contains('built.txt'));
+          expect(names, isNot(contains('app.txt')));
+        });
+
+        test('passes the encoded public key to the build', () async {
+          final publicKeyFile = File(
+            p.join(Directory.systemTemp.createTempSync().path, 'key.pem'),
+          )..createSync();
+          when(
+            () => argResults[CommonArguments.publicKeyArg.name],
+          ).thenReturn(publicKeyFile.path);
+          when(
+            () => codeSigner.base64PublicKey(any()),
+          ).thenReturn('encoded-public-key');
+
+          await runWithOverrides(() => patcher.buildPatchArtifact());
+
+          expect(patcher.builtWithPublicKey, equals('encoded-public-key'));
+          verify(
+            () => codeSigner.base64PublicKey(
+              any(
+                that: isA<File>().having(
+                  (f) => f.path,
+                  'path',
+                  publicKeyFile.path,
+                ),
+              ),
+            ),
+          ).called(1);
         });
 
         test('forwards additional args', () async {
@@ -291,8 +335,10 @@ void main() {
       late File releaseArtifact;
       late File patchArtifact;
       late File diffFile;
+      Directory? extractedReleaseTo;
 
       setUp(() {
+        extractedReleaseTo = null;
         final tempDir = Directory.systemTemp.createTempSync();
         releaseArtifact = File(p.join(tempDir.path, 'release.zip'))
           ..createSync(recursive: true);
@@ -308,9 +354,9 @@ void main() {
             outputDirectory: any(named: 'outputDirectory'),
           ),
         ).thenAnswer((invocation) async {
-          (invocation.namedArguments[#outputDirectory] as Directory).createSync(
-            recursive: true,
-          );
+          extractedReleaseTo =
+              (invocation.namedArguments[#outputDirectory] as Directory)
+                ..createSync(recursive: true);
         });
       });
 
@@ -358,15 +404,25 @@ void main() {
               releaseArtifact: releaseArtifact,
             ),
           );
-          verify(
+          final captured = verify(
             () => artifactManager.createDiff(
-              releaseArtifactPath: any(
-                named: 'releaseArtifactPath',
-                that: endsWith(p.join('lib', 'app.so')),
-              ),
-              patchArtifactPath: patchArtifact.path,
+              releaseArtifactPath: captureAny(named: 'releaseArtifactPath'),
+              patchArtifactPath: captureAny(named: 'patchArtifactPath'),
             ),
-          ).called(1);
+          ).captured;
+          final releasePath = captured[0] as String;
+          final patchPath = captured[1] as String;
+
+          // The release side must come from the extracted release artifact,
+          // and the patch side from the freshly built app.
+          expect(extractedReleaseTo, isNotNull);
+          expect(
+            releasePath,
+            equals(p.join(extractedReleaseTo!.path, 'lib', 'app.so')),
+          );
+          expect(p.isWithin(appDirectory.path, releasePath), isFalse);
+          expect(patchPath, equals(patchArtifact.path));
+          expect(p.isWithin(appDirectory.path, patchPath), isTrue);
         });
 
         test('returns an x86_64 patch artifact', () async {
