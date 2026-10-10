@@ -4,6 +4,14 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
  -->
 
+## 1.6.128 (October 10, 2026)
+
+- 🐦 Flutter 3.47.7 / Dart 3.13.5, with an updated Shorebird engine
+- 🐛 macOS: patches now install on apps that were re-signed after release
+  (Developer ID or Mac App Store). Create a new release with this version to
+  pick up the fix; releases built with earlier versions keep the old
+  behavior.
+
 ## 1.6.127 (October 10, 2026)
 
 - 🐛 `shorebird login` no longer crashes with
