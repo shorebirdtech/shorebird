@@ -238,7 +238,7 @@ This is only applicable when previewing Android releases.''',
 
     final releaseVersion =
         results['release-version'] as String? ??
-        await promptForReleaseVersion(platformReleases);
+        promptForReleaseVersion(platformReleases);
 
     final release = platformReleases.firstWhereOrNull(
       (r) => r.version == releaseVersion,
@@ -284,17 +284,15 @@ This is only applicable when previewing Android releases.''',
       targetPlatform: maybePlatform,
     );
 
+    // A --platform was already checked against the release's active
+    // platforms when filtering platformReleases above.
     final ReleasePlatform releasePlatform;
     if (maybePlatform != null) {
-      final matchedPlatform = release.activePlatforms.firstWhere(
-        (p) => p == maybePlatform,
-      );
-
-      releasePlatform = matchedPlatform;
+      releasePlatform = maybePlatform;
     } else if (availablePlatforms.length == 1) {
       releasePlatform = availablePlatforms.first;
     } else {
-      releasePlatform = await promptForPlatform(availablePlatforms);
+      releasePlatform = promptForPlatform(availablePlatforms);
     }
 
     final deviceId = results['device-id'] as String?;
@@ -346,7 +344,7 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Prompts the user to choose a release version to preview.
-  Future<String> promptForReleaseVersion(List<Release> releases) async {
+  String promptForReleaseVersion(List<Release> releases) {
     final release = chooseRelease(
       releases: releases,
       action: 'preview',
@@ -355,9 +353,7 @@ This is only applicable when previewing Android releases.''',
   }
 
   /// Prompts the user to choose a platform to preview.
-  Future<ReleasePlatform> promptForPlatform(
-    List<ReleasePlatform> platforms,
-  ) async {
+  ReleasePlatform promptForPlatform(List<ReleasePlatform> platforms) {
     final platformNames = platforms.map((p) => p.displayName).toList();
     final platform = logger.chooseOne(
       'Which platform would you like to preview?',
@@ -379,37 +375,21 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.linux;
-    // getReleaseArtifact reports its own failure and throws ProcessExit.
-    final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
+    final appDirectory = await _downloadReleaseApp(
       appId: appId,
-      releaseId: release.id,
-      arch: 'bundle',
+      release: release,
       platform: platform,
+      arch: primaryLinuxReleaseArtifactArch,
     );
 
-    final appDirectory = Directory(
-      getArtifactPath(
-        appId: appId,
-        release: release,
-        artifact: releaseArtifact,
+    if (!await _runStep(
+      'Using $track track',
+      () => setChannelOnApp(
         platform: platform,
-      ),
-    );
-
-    await downloadAndExtractIfNeeded(
-      artifact: releaseArtifact,
-      outputDirectory: appDirectory,
-    );
-
-    final progress = logger.progress('Using $track track');
-    try {
-      await setChannelOnLinuxApp(
+        appDirectory: appDirectory,
         channel: track.channel,
-        bundleDirectory: appDirectory,
-      );
-      progress.complete();
-    } on Exception catch (error) {
-      progress.fail('$error');
+      ),
+    )) {
       return ExitCode.software.code;
     }
 
@@ -430,30 +410,16 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.windows;
-    // getReleaseArtifact reports its own failure and throws ProcessExit.
-    final releaseExeArtifact = await codePushClientWrapper.getReleaseArtifact(
+    final appDirectory = await _downloadReleaseApp(
       appId: appId,
-      releaseId: release.id,
-      arch: primaryWindowsReleaseArtifactArch,
+      release: release,
       platform: platform,
+      arch: primaryWindowsReleaseArtifactArch,
+      fileExtension: 'exe',
     );
 
-    final appDirectory = Directory(
-      getArtifactPath(
-        appId: appId,
-        release: release,
-        artifact: releaseExeArtifact,
-        platform: platform,
-        fileExtension: 'exe',
-      ),
-    );
-
-    await downloadAndExtractIfNeeded(
-      artifact: releaseExeArtifact,
-      outputDirectory: appDirectory,
-    );
-
-    await setChannelOnWindowsApp(
+    await setChannelOnApp(
+      platform: platform,
       appDirectory: appDirectory,
       channel: track.channel,
     );
@@ -475,35 +441,20 @@ This is only applicable when previewing Android releases.''',
     required DeploymentTrack track,
   }) async {
     const platform = ReleasePlatform.macos;
-    // getReleaseArtifact reports its own failure and throws ProcessExit.
-    final releaseRunnerArtifact = await codePushClientWrapper
-        .getReleaseArtifact(
-          appId: appId,
-          releaseId: release.id,
-          arch: 'app',
-          platform: platform,
-        );
-
-    final appDirectory = Directory(
-      getArtifactPath(
-        appId: appId,
-        release: release,
-        artifact: releaseRunnerArtifact,
-        platform: platform,
-        fileExtension: 'app',
-      ),
-    );
-
-    await downloadAndExtractIfNeeded(
-      artifact: releaseRunnerArtifact,
-      outputDirectory: appDirectory,
+    final appDirectory = await _downloadReleaseApp(
+      appId: appId,
+      release: release,
+      platform: platform,
+      arch: 'app',
+      fileExtension: 'app',
       extract: (archive, outputDirectory) => ditto.extract(
         source: archive.path,
         destination: outputDirectory.path,
       ),
     );
 
-    await setChannelOnMacosApp(
+    await setChannelOnApp(
+      platform: platform,
       appDirectory: appDirectory,
       channel: track.channel,
     );
@@ -635,61 +586,50 @@ This is only applicable when previewing Android releases.''',
     );
 
     if (File(apksPath).existsSync()) File(apksPath).deleteSync();
-    final progress = logger.progress('Using $track track');
-    try {
-      await setChannelOnAab(aabFile: aabFile, channel: track.channel);
-      progress.complete();
-    } on Exception catch (error) {
-      progress.fail('$error');
+    if (!await _runStep(
+      'Using $track track',
+      () => setChannelOnAab(aabFile: aabFile, channel: track.channel),
+    )) {
       return ExitCode.software.code;
     }
 
-    final extractMetadataProgress = logger.progress('Extracting metadata');
     late String package;
-    try {
+    if (!await _runStep('Extracting metadata', () async {
       package = await bundletool.getPackageName(aabFile.path);
-      extractMetadataProgress.complete();
-    } on Exception catch (error) {
-      extractMetadataProgress.fail('$error');
+    })) {
       return ExitCode.software.code;
     }
 
-    final buildApksProgress = logger.progress('Building apks');
-    try {
-      await bundletool.buildApks(
+    final apksLink = link(uri: Uri.parse(apksPath));
+    if (!await _runStep(
+      'Building apks',
+      () => bundletool.buildApks(
         bundle: aabFile.path,
         output: apksPath,
         keystore: keystore,
         keystorePassword: keystorePassword,
         keyPassword: keyPassword,
         keyAlias: keyAlias,
-      );
-      final apksLink = link(uri: Uri.parse(apksPath));
-      buildApksProgress.complete('Built apks: ${cyan.wrap(apksLink)}');
-    } on Exception catch (error) {
-      buildApksProgress.fail('$error');
+      ),
+      completeMessage: 'Built apks: ${cyan.wrap(apksLink)}',
+    )) {
       return ExitCode.software.code;
     }
 
     logger.info(
       'This will reinstall the app and clear its data on the device.',
     );
-    final installApksProgress = logger.progress('Installing apks');
-    try {
-      await bundletool.installApks(apks: apksPath, deviceId: deviceId);
-      installApksProgress.complete();
-    } on Exception catch (error) {
-      installApksProgress.fail('$error');
+    if (!await _runStep(
+      'Installing apks',
+      () => bundletool.installApks(apks: apksPath, deviceId: deviceId),
+    )) {
       return ExitCode.software.code;
     }
 
-    final startAppProgress = logger.progress('Starting app');
-    try {
+    if (!await _runStep('Starting app', () async {
       await adb.clearAppData(package: package, deviceId: deviceId);
       await adb.startApp(package: package, deviceId: deviceId);
-      startAppProgress.complete();
-    } on Exception catch (error) {
-      startAppProgress.fail('$error');
+    })) {
       return ExitCode.software.code;
     }
 
@@ -717,39 +657,22 @@ This is only applicable when previewing Android releases.''',
     await iosDeploy.installIfNeeded();
 
     const platform = ReleasePlatform.ios;
-    // getReleaseArtifact reports its own failure and throws ProcessExit.
-    final releaseRunnerArtifact = await codePushClientWrapper
-        .getReleaseArtifact(
-          appId: appId,
-          releaseId: release.id,
-          arch: 'runner',
-          platform: platform,
-        );
+    final runnerDirectory = await _downloadReleaseApp(
+      appId: appId,
+      release: release,
+      platform: platform,
+      arch: 'runner',
+      fileExtension: 'app',
+    );
 
-    final runnerDirectory = Directory(
-      getArtifactPath(
-        appId: appId,
-        release: release,
-        artifact: releaseRunnerArtifact,
+    if (!await _runStep(
+      'Using $track track',
+      () => setChannelOnApp(
         platform: platform,
-        fileExtension: 'app',
-      ),
-    );
-
-    await downloadAndExtractIfNeeded(
-      artifact: releaseRunnerArtifact,
-      outputDirectory: runnerDirectory,
-    );
-
-    final progress = logger.progress('Using $track track');
-    try {
-      await setChannelOnRunner(
-        runnerDirectory: runnerDirectory,
+        appDirectory: runnerDirectory,
         channel: track.channel,
-      );
-      progress.complete();
-    } on Exception catch (error) {
-      progress.fail('$error');
+      ),
+    )) {
       return ExitCode.software.code;
     }
 
@@ -882,69 +805,97 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
     return path;
   }
 
-  /// Sets the channel property in the shorebird.yaml file inside the Windows
-  /// app whose root directory is [appDirectory].
-  Future<void> setChannelOnWindowsApp({
-    required Directory appDirectory,
-    required String channel,
+  /// Downloads the app artifact [arch] of [release] for [platform] into the
+  /// preview cache, unless it is already there, and returns its directory.
+  ///
+  /// Throws [ProcessExit] if the artifact can't be fetched or downloaded.
+  Future<Directory> _downloadReleaseApp({
+    required String appId,
+    required Release release,
+    required ReleasePlatform platform,
+    required String arch,
+    String? fileExtension,
+    Future<void> Function(File archive, Directory outputDirectory)? extract,
   }) async {
-    final shorebirdYamlFile = File(
-      p.join(appDirectory.path, 'data', 'flutter_assets', 'shorebird.yaml'),
+    // getReleaseArtifact reports its own failure and throws ProcessExit.
+    final artifact = await codePushClientWrapper.getReleaseArtifact(
+      appId: appId,
+      releaseId: release.id,
+      arch: arch,
+      platform: platform,
     );
 
-    await _maybeSetChannelInShorebirdYaml(
-      channel: channel,
-      shorebirdYamlFile: shorebirdYamlFile,
-    );
-  }
-
-  /// Sets the channel property in the shorebird.yaml file inside the Runner.app
-  Future<void> setChannelOnRunner({
-    required Directory runnerDirectory,
-    required String channel,
-  }) async {
-    await Isolate.run(() async {
-      final shorebirdYaml = File(
-        p.join(
-          runnerDirectory.path,
-          'Frameworks',
-          'App.framework',
-          'flutter_assets',
-          'shorebird.yaml',
-        ),
-      );
-
-      if (!shorebirdYaml.existsSync()) {
-        throw Exception('Unable to find shorebird.yaml');
-      }
-
-      await _maybeSetChannelInShorebirdYaml(
-        channel: channel,
-        shorebirdYamlFile: shorebirdYaml,
-      );
-    });
-  }
-
-  /// Sets the channel property in the shorebird.yaml file inside a macOS app.
-  Future<void> setChannelOnMacosApp({
-    required Directory appDirectory,
-    required String channel,
-  }) async {
-    final shorebirdYamlFile = File(
-      p.join(
-        appDirectory.path,
-        'Contents',
-        'Frameworks',
-        'App.framework',
-        'Resources',
-        'flutter_assets',
-        'shorebird.yaml',
+    final appDirectory = Directory(
+      getArtifactPath(
+        appId: appId,
+        release: release,
+        artifact: artifact,
+        platform: platform,
+        fileExtension: fileExtension,
       ),
     );
 
+    await downloadAndExtractIfNeeded(
+      artifact: artifact,
+      outputDirectory: appDirectory,
+      extract: extract,
+    );
+    return appDirectory;
+  }
+
+  /// Runs [body] under a progress labeled [message], completing it with
+  /// [completeMessage] on success. On an exception, fails the progress with
+  /// the error and returns false.
+  Future<bool> _runStep(
+    String message,
+    Future<void> Function() body, {
+    String? completeMessage,
+  }) async {
+    final progress = logger.progress(message);
+    try {
+      await body();
+      progress.complete(completeMessage);
+      return true;
+    } on Exception catch (error) {
+      progress.fail('$error');
+      return false;
+    }
+  }
+
+  /// The path of shorebird.yaml inside an extracted app, relative to the
+  /// app's root directory. Android is not listed: its shorebird.yaml lives
+  /// inside the .aab, see [setChannelOnAab].
+  static const _shorebirdYamlPaths = <ReleasePlatform, List<String>>{
+    ReleasePlatform.linux: ['data', 'flutter_assets', 'shorebird.yaml'],
+    ReleasePlatform.windows: ['data', 'flutter_assets', 'shorebird.yaml'],
+    ReleasePlatform.ios: [
+      'Frameworks',
+      'App.framework',
+      'flutter_assets',
+      'shorebird.yaml',
+    ],
+    ReleasePlatform.macos: [
+      'Contents',
+      'Frameworks',
+      'App.framework',
+      'Resources',
+      'flutter_assets',
+      'shorebird.yaml',
+    ],
+  };
+
+  /// Sets the channel property in the shorebird.yaml file inside the
+  /// extracted [platform] app whose root directory is [appDirectory].
+  Future<void> setChannelOnApp({
+    required ReleasePlatform platform,
+    required Directory appDirectory,
+    required String channel,
+  }) async {
     await _maybeSetChannelInShorebirdYaml(
       channel: channel,
-      shorebirdYamlFile: shorebirdYamlFile,
+      shorebirdYamlFile: File(
+        p.joinAll([appDirectory.path, ..._shorebirdYamlPaths[platform]!]),
+      ),
     );
   }
 
@@ -1005,21 +956,6 @@ Skipping the ios-deploy fallback because it does not support iOS 17 or later.'''
       tmpAabFile.copySync(aabFile.path);
       tempDir.deleteSync(recursive: true);
     });
-  }
-
-  /// Sets the channel property in the shorebird.yaml file if none is set.
-  Future<void> setChannelOnLinuxApp({
-    required String channel,
-    required Directory bundleDirectory,
-  }) async {
-    final shorebirdYamlFile = File(
-      p.join(bundleDirectory.path, 'data', 'flutter_assets', 'shorebird.yaml'),
-    );
-
-    await _maybeSetChannelInShorebirdYaml(
-      channel: channel,
-      shorebirdYamlFile: shorebirdYamlFile,
-    );
   }
 
   /// Sets the channel property in the shorebird.yaml file if none is set or
