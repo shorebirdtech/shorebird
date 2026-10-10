@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:platform/platform.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/linux_bundle_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -28,6 +29,7 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 import 'package:test/test.dart';
 
+import '../../matchers.dart';
 import '../../mocks.dart';
 
 void main() {
@@ -140,8 +142,63 @@ void main() {
     });
 
     group('assertPreconditions', () {
-      test('does nothing', () async {
-        await patcher.assertPreconditions();
+      setUp(() {
+        when(() => doctor.linuxCommandValidators).thenReturn([]);
+      });
+
+      group('when validation succeeds', () {
+        setUp(() {
+          when(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
+              validators: any(named: 'validators'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
+            ),
+          ).thenAnswer((_) async {});
+        });
+
+        test('validates linux preconditions', () async {
+          await runWithOverrides(patcher.assertPreconditions);
+          verify(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: true,
+              checkShorebirdInitialized: true,
+              validators: [],
+              supportedOperatingSystems: {NativePlatform.linux},
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when validation fails', () {
+        final exception = ValidationFailedException();
+
+        setUp(() {
+          when(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
+              validators: any(named: 'validators'),
+              supportedOperatingSystems: any(
+                named: 'supportedOperatingSystems',
+              ),
+            ),
+          ).thenThrow(exception);
+        });
+
+        test('exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(patcher.assertPreconditions),
+            exitsWithCode(exception.exitCode),
+          );
+        });
       });
     });
 
