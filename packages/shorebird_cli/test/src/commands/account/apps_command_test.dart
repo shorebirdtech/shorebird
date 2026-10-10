@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -160,8 +158,7 @@ void main() {
       });
 
       test('in --json mode, emits JSON error envelope', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runScoped(
             command.run,
             values: {
@@ -173,12 +170,9 @@ void main() {
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'error');
+        expect(exitCode, equals(ExitCode.software.code));
+        expect(json['status'], 'error');
       });
     });
 
@@ -196,16 +190,12 @@ void main() {
       }
 
       test('emits JSON success with flat app fields', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonMode(command.run),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'success');
-        final data = decoded['data'] as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(json['status'], 'success');
+        final data = json['data'] as Map<String, dynamic>;
         final apps = data['apps'] as List<dynamic>;
         expect(apps, hasLength(2));
         final firstApp = apps.first as Map<String, dynamic>;
@@ -219,14 +209,11 @@ void main() {
       });
 
       test('does not leak timestamps or protocol-internal fields', () async {
-        final captured = <String>[];
-        await captureStdout(
+        final json = (await captureJson(
           () => runJsonMode(command.run),
-          captured: captured,
-        );
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        )).json;
         final apps =
-            ((decoded['data'] as Map<String, dynamic>)['apps'] as List<dynamic>)
+            ((json['data'] as Map<String, dynamic>)['apps'] as List<dynamic>)
                 .cast<Map<String, dynamic>>();
         for (final app in apps) {
           expect(app.containsKey('created_at'), isFalse);
@@ -236,14 +223,11 @@ void main() {
 
       test('emits empty array when there are no apps', () async {
         when(() => codePushClientWrapper.getApps()).thenAnswer((_) async => []);
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonMode(command.run),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        final data = decoded['data'] as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
         expect(data['apps'], isEmpty);
       });
     });

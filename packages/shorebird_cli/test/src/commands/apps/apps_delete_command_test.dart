@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -145,15 +143,12 @@ void main() {
 
       test('emits a usage_error envelope under --json', () async {
         when(() => argResults['confirm-name']).thenReturn(null);
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.usage.code));
+        expect(exitCode, equals(ExitCode.usage.code));
         verifyNeverDeleted();
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        final error = decoded['error'] as Map<String, dynamic>;
+        final error = json['error'] as Map<String, dynamic>;
         expect(error['code'], 'usage_error');
         expect(error['hint'], contains(displayName));
       });
@@ -174,15 +169,12 @@ void main() {
       });
 
       test('emits a JSON error envelope in --json mode', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.software.code));
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'software_error',
         );
       });
@@ -196,16 +188,13 @@ void main() {
       });
 
       test('emits a JSON error envelope in --json mode', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
+        expect(exitCode, equals(ExitCode.software.code));
         verifyNeverDeleted();
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'fetch_failed',
         );
       });
@@ -213,14 +202,11 @@ void main() {
 
     group('--json', () {
       test('reports what was destroyed', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        final data = decoded['data'] as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
+        final data = json['data'] as Map<String, dynamic>;
         expect(data['app_id'], appId);
         expect(data['display_name'], displayName);
         expect(data['release_count'], 1);
@@ -235,13 +221,10 @@ void main() {
             sideloadableOnly: any(named: 'sideloadableOnly'),
           ),
         ).thenAnswer((_) async => []);
-        final captured = <String>[];
-        await captureStdout(
+        final json = (await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
-        );
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        final data = decoded['data'] as Map<String, dynamic>;
+        )).json;
+        final data = json['data'] as Map<String, dynamic>;
         expect(data['release_count'], 0);
         expect(data['platforms'], isEmpty);
       });

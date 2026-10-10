@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
+import 'package:test/test.dart';
 
 /// An operating system shorebird_cli has no platform-specific handling for.
 ///
@@ -35,6 +36,23 @@ Future<T> captureStdout<T>(
       captured: captured,
       hasTerminalOverride: hasTerminal,
     ),
+  );
+}
+
+/// Runs [body], a command run in `--json` mode, and decodes the envelope it
+/// wrote to stdout.
+///
+/// Fails the test unless exactly one line was written, since `--json` mode
+/// emits a single envelope.
+Future<({int exitCode, Map<String, dynamic> json})> captureJson(
+  Future<int> Function() body,
+) async {
+  final captured = <String>[];
+  final exitCode = await captureStdout(body, captured: captured);
+  expect(captured, hasLength(1));
+  return (
+    exitCode: exitCode,
+    json: jsonDecode(captured.single) as Map<String, dynamic>,
   );
 }
 
