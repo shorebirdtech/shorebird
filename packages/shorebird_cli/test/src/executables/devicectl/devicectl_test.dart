@@ -898,6 +898,60 @@ void main() {
       });
     });
 
+    group('json output directory', () {
+      late String jsonOutputPath;
+
+      setUp(() {
+        exitCode = ExitCode.success;
+        when(() => process.run(any(), any())).thenAnswer((invocation) async {
+          final processRunArgs =
+              invocation.positionalArguments.last as List<String>;
+          jsonOutputPath = processRunArgs.last;
+          if (jsonOutput.isNotEmpty) {
+            File(jsonOutputPath)
+              ..createSync()
+              ..writeAsStringSync(jsonOutput);
+          }
+          return processResult;
+        });
+      });
+
+      test('is deleted after a successful command', () async {
+        jsonOutput = File(
+          '$fixturesPath/device_list_success.json',
+        ).readAsStringSync();
+
+        await runWithOverrides(devicectl.listAvailableIosDevices);
+
+        expect(Directory(p.dirname(jsonOutputPath)).existsSync(), isFalse);
+      });
+
+      test('is deleted when devicectl reports an error', () async {
+        jsonOutput = File(
+          '$fixturesPath/device_list_failure.json',
+        ).readAsStringSync();
+
+        await expectLater(
+          runWithOverrides(devicectl.listAvailableIosDevices),
+          throwsA(isA<DevicectlException>()),
+        );
+
+        expect(Directory(p.dirname(jsonOutputPath)).existsSync(), isFalse);
+      });
+
+      test('is deleted when no json output is written', () async {
+        jsonOutput = '';
+        exitCode = ExitCode.software;
+
+        await expectLater(
+          runWithOverrides(devicectl.listAvailableIosDevices),
+          throwsA(isA<DevicectlException>()),
+        );
+
+        expect(Directory(p.dirname(jsonOutputPath)).existsSync(), isFalse);
+      });
+    });
+
     group('listAvailableIosDevices', () {
       setUp(() {
         exitCode = ExitCode.success;

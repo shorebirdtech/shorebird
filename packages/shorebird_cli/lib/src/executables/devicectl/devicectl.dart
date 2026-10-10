@@ -468,41 +468,46 @@ class Devicectl {
   /// runs the command, and returns the parsed JSON output.
   Future<Json> _runJsonCommand({required List<String> args}) async {
     final tempDir = Directory.systemTemp.createTempSync();
-    final jsonOutputFile = File(p.join(tempDir.path, 'devicectl.out.json'));
+    try {
+      final jsonOutputFile = File(p.join(tempDir.path, 'devicectl.out.json'));
 
-    final result = await process.run(executableName, [
-      ...args,
-      '--json-output',
-      jsonOutputFile.path,
-    ]);
+      final result = await process.run(executableName, [
+        ...args,
+        '--json-output',
+        jsonOutputFile.path,
+      ]);
 
-    // The `devicectl` command will still write json output if it fails, so in
-    // the event of a non-zero exit code, only throw a ProcessException if we
-    // can't find the output file.
-    if (!jsonOutputFile.existsSync()) {
-      if (result.exitCode != ExitCode.success.code) {
-        throw ProcessException(executableName, args, '${result.stderr}');
-      } else {
-        throw Exception(
-          'Unable to find devicectl json output file: ${jsonOutputFile.path}',
-        );
+      // The `devicectl` command will still write json output if it fails, so
+      // in the event of a non-zero exit code, only throw a ProcessException if
+      // we can't find the output file.
+      if (!jsonOutputFile.existsSync()) {
+        if (result.exitCode != ExitCode.success.code) {
+          throw ProcessException(executableName, args, '${result.stderr}');
+        } else {
+          throw Exception(
+            'Unable to find devicectl json output file: ${jsonOutputFile.path}',
+          );
+        }
       }
+
+      final json = jsonDecode(jsonOutputFile.readAsStringSync()) as Json;
+
+      // The json output file contains two top-level objects:
+      //  - "info", which contains information about the command that was run
+      //  - "result" or "error", which contains the actual output of the
+      //    command or the error the occurred when attempting to run the
+      //    command.
+      //
+      // If the output contains an error, throw an exception with the error
+      final maybeError = _getErrorFromOutputJson(json);
+      if (maybeError != null) {
+        throw Exception(maybeError);
+      }
+
+      return json;
+    } finally {
+      tempDir.deleteSync(recursive: true);
     }
-
-    final json = jsonDecode(jsonOutputFile.readAsStringSync()) as Json;
-
-    // The json output file contains two top-level objects:
-    //  - "info", which contains information about the command that was run
-    //  - "result" or "error", which contains the actual output of the command
-    //    or the error the occurred when attempting to run the command.
-    //
-    // If the output contains an error, throw an exception with the error
-    final maybeError = _getErrorFromOutputJson(json);
-    if (maybeError != null) {
-      throw Exception(maybeError);
-    }
-
-    return json;
   }
 
   /// Parses the error message from the given [Json] output if one exists.
