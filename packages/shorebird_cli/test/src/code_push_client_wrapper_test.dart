@@ -1591,7 +1591,10 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
             verify(
               () => codePushClient.createReleaseArtifact(
                 appId: app.appId,
-                artifactPath: any(named: 'artifactPath'),
+                artifactPath: any(
+                  named: 'artifactPath',
+                  that: endsWith(p.join(arch.androidBuildPath, 'libapp.so')),
+                ),
                 releaseId: releaseId,
                 arch: arch.arch,
                 platform: releasePlatform,
@@ -2177,6 +2180,40 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ),
         ).called(1);
       });
+
+      test(
+        'marks the runner as not sideloadable when not codesigned',
+        () async {
+          setUpProjectRoot();
+
+          await runWithOverrides(
+            () async => codePushClientWrapper.createIosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
+              runnerPath: p.join(projectRoot.path, runnerPath),
+              isCodesigned: false,
+              podfileLockHash: podfileLockHash,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              appId: app.appId,
+              artifactPath: any(
+                named: 'artifactPath',
+                that: endsWith('runner.app.zip'),
+              ),
+              releaseId: releaseId,
+              arch: 'runner',
+              platform: ReleasePlatform.ios,
+              hash: any(named: 'hash'),
+              canSideload: false,
+              podfileLockHash: podfileLockHash,
+            ),
+          ).called(1);
+        },
+      );
     });
 
     group('createLinuxReleaseArtifacts', () {
