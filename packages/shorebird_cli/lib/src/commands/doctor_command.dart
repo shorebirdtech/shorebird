@@ -10,9 +10,8 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/network_checker.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
-import 'package:shorebird_cli/src/version.dart';
+import 'package:shorebird_cli/src/version_info.dart';
 
 /// {@template doctor_command}
 /// `shorebird doctor`
@@ -49,17 +48,9 @@ class DoctorCommand extends ShorebirdCommand {
 
     final verbose = results['verbose'] == true;
     final shouldFix = results['fix'] == true;
-    final flutterVersion = await _tryGetFlutterVersion();
-    final output = StringBuffer();
-    final shorebirdFlutterPrefix = StringBuffer('Flutter');
-
-    if (flutterVersion != null) {
-      shorebirdFlutterPrefix.write(' $flutterVersion');
-    }
-    output.writeln('''
-Shorebird $packageVersion • git@github.com:shorebirdtech/shorebird.git
-$shorebirdFlutterPrefix • revision ${shorebirdEnv.flutterRevision}
-Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
+    final flutterVersion = await tryGetFlutterVersion();
+    final output = StringBuffer()
+      ..writeln(versionBanner(flutterVersion: flutterVersion));
 
     if (verbose) {
       final notDetected = red.wrap('not detected');
@@ -147,7 +138,7 @@ Android Toolchain
   }
 
   Future<int> _runJson() async {
-    final flutterVersion = await _tryGetFlutterVersion();
+    final flutterVersion = await tryGetFlutterVersion();
 
     String? javaVersion;
     if (java.executable != null) {
@@ -219,10 +210,7 @@ Android Toolchain
     }
 
     emitJsonSuccess({
-      'shorebird_version': packageVersion,
-      'flutter_version': flutterVersion,
-      'flutter_revision': shorebirdEnv.flutterRevision,
-      'engine_revision': shorebirdEnv.shorebirdEngineRevision,
+      ...versionJson(flutterVersion: flutterVersion),
       'android_toolchain': {
         'android_studio': androidStudio.path,
         'android_sdk': androidSdk.path,
@@ -236,14 +224,5 @@ Android Toolchain
       'validators': validatorResults,
     });
     return ExitCode.success.code;
-  }
-
-  Future<String?> _tryGetFlutterVersion() async {
-    try {
-      return await shorebirdFlutter.getVersionString();
-    } on Exception catch (error) {
-      logger.detail('Unable to determine Flutter version.\n$error');
-      return null;
-    }
   }
 }
