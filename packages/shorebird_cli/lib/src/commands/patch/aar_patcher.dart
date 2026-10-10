@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
-import 'package:crypto/crypto.dart';
 import 'package:io/io.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
@@ -132,26 +131,12 @@ class AarPatcher extends Patcher {
         'libapp.so',
       );
       logger.detail('Creating artifact for $artifactPath');
-      final patchArtifact = File(artifactPath);
-      final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
-      final hashSignature = await signHash(hash);
-
-      try {
-        final diffPath = await artifactManager.createDiff(
-          releaseArtifactPath: releaseArtifactPath.value,
-          patchArtifactPath: artifactPath,
-        );
-        patchArtifactBundles[arch] = PatchArtifactBundle(
-          arch: arch.arch,
-          path: diffPath,
-          hash: hash,
-          size: await File(diffPath).length(),
-          hashSignature: hashSignature,
-        );
-      } on Exception catch (error) {
-        createDiffProgress.fail('$error');
-        throw ProcessExit(ExitCode.software.code);
-      }
+      patchArtifactBundles[arch] = await createDiffBundle(
+        arch: arch,
+        releaseArtifactPath: releaseArtifactPath.value,
+        patchArtifactPath: artifactPath,
+        progress: createDiffProgress,
+      );
     }
     createDiffProgress.complete();
 

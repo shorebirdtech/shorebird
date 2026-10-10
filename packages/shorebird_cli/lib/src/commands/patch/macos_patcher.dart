@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -131,31 +130,6 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     return zippedApp;
   }
 
-  Future<PatchArtifactBundle> _createPatchArtifactBundle({
-    required File releaseArtifact,
-    required File patchArtifact,
-    required Arch arch,
-  }) async {
-    final patchFilePath = await artifactManager.createDiff(
-      releaseArtifactPath: releaseArtifact.path,
-      patchArtifactPath: patchArtifact.path,
-    );
-
-    final patchFile = File(patchFilePath);
-    final patchFileSize = patchFile.statSync().size;
-    final hash = sha256.convert(patchArtifact.readAsBytesSync()).toString();
-    final hashSignature = await signHash(hash);
-
-    return PatchArtifactBundle(
-      arch: arch.arch,
-      path: patchFilePath,
-      hash: hash,
-      size: patchFileSize,
-      hashSignature: hashSignature,
-      podfileLockHash: shorebirdEnv.macosPodfileLockHash,
-    );
-  }
-
   @override
   Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
     required String appId,
@@ -191,15 +165,19 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
     );
 
     final createDiffProgress = logger.progress('Creating patch artifacts');
-    final arm64Bundle = await _createPatchArtifactBundle(
-      releaseArtifact: arm64DiffBase,
-      patchArtifact: File(_arm64AotOutputPath),
+    final arm64Bundle = await createDiffBundle(
       arch: Arch.arm64,
+      releaseArtifactPath: arm64DiffBase.path,
+      patchArtifactPath: _arm64AotOutputPath,
+      progress: createDiffProgress,
+      podfileLockHash: shorebirdEnv.macosPodfileLockHash,
     );
-    final x64Bundle = await _createPatchArtifactBundle(
-      releaseArtifact: x64DiffBase,
-      patchArtifact: File(_x64AotOutputPath),
+    final x64Bundle = await createDiffBundle(
       arch: Arch.x86_64,
+      releaseArtifactPath: x64DiffBase.path,
+      patchArtifactPath: _x64AotOutputPath,
+      progress: createDiffProgress,
+      podfileLockHash: shorebirdEnv.macosPodfileLockHash,
     );
     createDiffProgress.complete();
 

@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:scoped_deps/scoped_deps.dart';
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/commands/commands.dart';
@@ -287,6 +289,114 @@ void main() {
             patchArtifactBundles: artifacts,
           ),
         ).called(1);
+      });
+    });
+
+    group('createDiffBundle', () {
+      late ArtifactManager artifactManager;
+      late Progress progress;
+      late Directory tempDir;
+      late File patchArtifact;
+      late File diffFile;
+      late _TestPatcher patcher;
+
+      setUp(() {
+        artifactManager = MockArtifactManager();
+        progress = MockProgress();
+        tempDir = Directory.systemTemp.createTempSync();
+        patchArtifact = File(p.join(tempDir.path, 'libapp.so'))
+          ..writeAsStringSync('patch');
+        diffFile = File(p.join(tempDir.path, 'diff.patch'))
+          ..writeAsStringSync('diff!');
+        // No signing options passed, so signHash signs nothing.
+        final argParser = ArgParser()
+          ..addOption(CommonArguments.publicKeyArg.name)
+          ..addOption(CommonArguments.privateKeyArg.name)
+          ..addOption(CommonArguments.publicKeyCmd.name)
+          ..addOption(CommonArguments.signCmd.name);
+        patcher = _TestPatcher(
+          argParser: argParser,
+          argResults: argParser.parse([]),
+          flavor: null,
+          target: null,
+        );
+      });
+
+      Future<PatchArtifactBundle> runWithOverrides(
+        Future<PatchArtifactBundle> Function() body,
+      ) {
+        return runScoped(
+          body,
+          values: {artifactManagerRef.overrideWith(() => artifactManager)},
+        );
+      }
+
+      test('diffs against the release and describes the patch', () async {
+        when(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        ).thenAnswer((_) async => diffFile.path);
+
+        final bundle = await runWithOverrides(
+          () => patcher.createDiffBundle(
+            arch: Arch.arm64,
+            releaseArtifactPath: 'release.so',
+            patchArtifactPath: patchArtifact.path,
+            progress: progress,
+            podfileLockHash: 'podfile-lock-hash',
+          ),
+        );
+
+        verify(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: 'release.so',
+            patchArtifactPath: patchArtifact.path,
+          ),
+        ).called(1);
+        expect(bundle.arch, equals(Arch.arm64.arch));
+        expect(bundle.path, equals(diffFile.path));
+        // The hash is of the full patch artifact, not of the diff.
+        expect(
+          bundle.hash,
+          equals(
+            // sha256 of 'patch'
+            'a4895eb44afc336fecbba6e520cd67e178dace0276655d102fceffa8e5f70570',
+          ),
+        );
+        expect(bundle.size, equals(diffFile.lengthSync()));
+        expect(bundle.hashSignature, isNull);
+        expect(bundle.podfileLockHash, equals('podfile-lock-hash'));
+        verifyNever(() => progress.fail(any()));
+      });
+
+      test('fails progress and exits when the diff fails', () async {
+        when(
+          () => artifactManager.createDiff(
+            releaseArtifactPath: any(named: 'releaseArtifactPath'),
+            patchArtifactPath: any(named: 'patchArtifactPath'),
+          ),
+        ).thenThrow(Exception('diff failed'));
+
+        await expectLater(
+          () => runWithOverrides(
+            () => patcher.createDiffBundle(
+              arch: Arch.x86_64,
+              releaseArtifactPath: 'release.so',
+              patchArtifactPath: patchArtifact.path,
+              progress: progress,
+            ),
+          ),
+          throwsA(
+            isA<ProcessExit>().having(
+              (e) => e.exitCode,
+              'exitCode',
+              ExitCode.software.code,
+            ),
+          ),
+        );
+        verify(() => progress.fail('Exception: diff failed')).called(1);
       });
     });
 

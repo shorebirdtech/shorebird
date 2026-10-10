@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
+import 'package:shorebird_cli/src/artifact_manager.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
@@ -246,6 +248,47 @@ More info: ${troubleshootingUrl.toLink()}.
     }
 
     return signature;
+  }
+
+  /// Diffs [patchArtifactPath] against [releaseArtifactPath] and describes
+  /// the result as the [PatchArtifactBundle] for [arch].
+  ///
+  /// The hash (and its signature) is of the full patch artifact, not of the
+  /// diff, since that is what the device has after applying the patch.
+  ///
+  /// If creating the diff fails, [progress] is failed with the error and the
+  /// command exits with [ExitCode.software].
+  Future<PatchArtifactBundle> createDiffBundle({
+    required Arch arch,
+    required String releaseArtifactPath,
+    required String patchArtifactPath,
+    required Progress progress,
+    String? podfileLockHash,
+  }) async {
+    final hash = sha256
+        .convert(await File(patchArtifactPath).readAsBytes())
+        .toString();
+    final hashSignature = await signHash(hash);
+
+    final String diffPath;
+    try {
+      diffPath = await artifactManager.createDiff(
+        releaseArtifactPath: releaseArtifactPath,
+        patchArtifactPath: patchArtifactPath,
+      );
+    } on Exception catch (error) {
+      progress.fail('$error');
+      throw ProcessExit(ExitCode.software.code);
+    }
+
+    return PatchArtifactBundle(
+      arch: arch.arch,
+      path: diffPath,
+      hash: hash,
+      size: await File(diffPath).length(),
+      hashSignature: hashSignature,
+      podfileLockHash: podfileLockHash,
+    );
   }
 
   /// The link percentage for the generated patch artifact if applicable.

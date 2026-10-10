@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
@@ -223,25 +222,12 @@ Please refer to ${link(uri: Uri.parse('https://github.com/shorebirdtech/shorebir
         skippedArchs.add(arch);
         continue;
       }
-      final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
-      final hashSignature = await signHash(hash);
-
-      try {
-        final diffPath = await artifactManager.createDiff(
-          releaseArtifactPath: releaseArtifactPath.value,
-          patchArtifactPath: patchArtifactPath,
-        );
-        patchArtifactBundles[releaseArtifactPath.key] = PatchArtifactBundle(
-          arch: arch.arch,
-          path: diffPath,
-          hash: hash,
-          size: await File(diffPath).length(),
-          hashSignature: hashSignature,
-        );
-      } on Exception catch (error) {
-        createDiffProgress.fail('$error');
-        throw ProcessExit(ExitCode.software.code);
-      }
+      patchArtifactBundles[arch] = await createDiffBundle(
+        arch: arch,
+        releaseArtifactPath: releaseArtifactPath.value,
+        patchArtifactPath: patchArtifactPath,
+        progress: createDiffProgress,
+      );
     }
     if (patchArtifactBundles.isEmpty) {
       createDiffProgress.fail(

@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
-import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive/archive.dart';
@@ -19,7 +17,6 @@ import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template windows_patcher}
@@ -88,9 +85,6 @@ class WindowsPatcher extends Patcher {
       'data',
       'app.so',
     );
-    final patchArtifact = File(patchArtifactPath);
-    final hash = sha256.convert(await patchArtifact.readAsBytes()).toString();
-
     final tempDir = Directory.systemTemp.createTempSync();
     final zipPath = p.join(tempDir.path, 'patch.zip');
     final zipFile = releaseArtifact.copySync(zipPath);
@@ -103,30 +97,15 @@ class WindowsPatcher extends Patcher {
     // build/windows/x64/runner/Release
     final appSoPath = p.join(tempDir.path, 'data', 'app.so');
 
-    final hashSignature = await signHash(hash);
-
-    final String diffPath;
-    try {
-      diffPath = await artifactManager.createDiff(
-        releaseArtifactPath: appSoPath,
-        patchArtifactPath: patchArtifactPath,
-      );
-    } on Exception catch (error) {
-      createDiffProgress.fail('$error');
-      throw ProcessExit(ExitCode.software.code);
-    }
-
+    final bundle = await createDiffBundle(
+      arch: Arch.x86_64,
+      releaseArtifactPath: appSoPath,
+      patchArtifactPath: patchArtifactPath,
+      progress: createDiffProgress,
+    );
     createDiffProgress.complete();
 
-    return {
-      Arch.x86_64: PatchArtifactBundle(
-        arch: Arch.x86_64.arch,
-        path: diffPath,
-        hash: hash,
-        size: File(diffPath).lengthSync(),
-        hashSignature: hashSignature,
-      ),
-    };
+    return {Arch.x86_64: bundle};
   }
 
   @override
