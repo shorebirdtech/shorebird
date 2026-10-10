@@ -1,6 +1,3 @@
-import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/json_output.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 
 /// Shared parsing for the patch number option that the `patches`
@@ -19,18 +16,11 @@ mixin PatchNumberArgument on ShorebirdCommand {
     final patchNumber = int.tryParse(arg);
     if (patchNumber != null) return (patchNumber: patchNumber, errorCode: null);
 
-    final hint = 'Patch numbers are integers, e.g. --$option 1.';
-    if (isJsonMode) {
-      emitJsonError(
-        code: JsonErrorCode.usageError,
-        message: '"$arg" is not a valid patch number.',
-        hint: hint,
-      );
-    } else {
-      logger
-        ..err('"$arg" is not a valid patch number')
-        ..info(hint);
-    }
-    return (patchNumber: null, errorCode: ExitCode.usage.code);
+    final errorCode = reportError(
+      message: '"$arg" is not a valid patch number',
+      jsonMessage: '"$arg" is not a valid patch number.',
+      hint: 'Patch numbers are integers, e.g. --$option 1.',
+    );
+    return (patchNumber: null, errorCode: errorCode);
   }
 }

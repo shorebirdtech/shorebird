@@ -55,12 +55,7 @@ class AppsRenameCommand extends ShorebirdCommand {
       const message =
           'App display name must be between 1 and '
           '${CommonArguments.appDisplayNameMaxLength} characters.';
-      if (isJsonMode) {
-        emitJsonError(code: JsonErrorCode.usageError, message: message);
-        return ExitCode.usage.code;
-      }
-      logger.err(message);
-      return ExitCode.usage.code;
+      return reportError(message: message);
     }
 
     final AppMetadata app;
@@ -79,12 +74,7 @@ class AppsRenameCommand extends ShorebirdCommand {
 
     if (app.displayName == displayName) {
       final message = 'App "$appId" is already named "$displayName".';
-      if (isJsonMode) {
-        emitJsonError(code: JsonErrorCode.usageError, message: message);
-        return ExitCode.usage.code;
-      }
-      logger.err(message);
-      return ExitCode.usage.code;
+      return reportError(message: message);
     }
 
     try {

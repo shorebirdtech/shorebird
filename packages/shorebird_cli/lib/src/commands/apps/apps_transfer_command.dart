@@ -54,18 +54,7 @@ class AppsTransferCommand extends ShorebirdCommand {
     if (organizationId == null) {
       final message = '"$orgIdArg" is not a valid organization id.';
       const hint = 'Organization ids are integers, e.g. --org-id 42.';
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message: message,
-          hint: hint,
-        );
-        return ExitCode.usage.code;
-      }
-      logger
-        ..err(message)
-        ..info(hint);
-      return ExitCode.usage.code;
+      return reportError(message: message, hint: hint);
     }
 
     final AppMetadata app;
@@ -91,18 +80,7 @@ class AppsTransferCommand extends ShorebirdCommand {
     if (membership == null) {
       final message = 'You are not a member of organization $organizationId.';
       const hint = 'Run: shorebird account orgs';
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message: message,
-          hint: hint,
-        );
-        return ExitCode.usage.code;
-      }
-      logger
-        ..err(message)
-        ..info(hint);
-      return ExitCode.usage.code;
+      return reportError(message: message, hint: hint);
     }
 
     final organizationName = membership.organization.name;

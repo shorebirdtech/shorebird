@@ -90,18 +90,10 @@ class ChannelsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
     if (channel == null) {
       final message = 'No channel named "$channelName" for app "$appId".';
       final available = channels.map((c) => c.name).join(', ');
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message: message,
-          hint: 'Available channels: $available',
-        );
-        return ExitCode.usage.code;
-      }
-      logger
-        ..err(message)
-        ..info('Available channels: $available');
-      return ExitCode.usage.code;
+      return reportError(
+        message: message,
+        hint: 'Available channels: $available',
+      );
     }
 
     final isDefaultTrack = _defaultTrackNames.contains(channelName);

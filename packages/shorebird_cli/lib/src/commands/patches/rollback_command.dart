@@ -145,15 +145,10 @@ class RollbackCommand extends ShorebirdCommand with PatchNumberArgument {
     }
 
     if (!changed && results['require-change'] as bool) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message: 'Patch $patchNumber is already rolled back.',
-        );
-        return ExitCode.usage.code;
-      }
-      logger.err('Patch $patchNumber is already rolled back');
-      return ExitCode.usage.code;
+      return reportError(
+        message: 'Patch $patchNumber is already rolled back',
+        jsonMessage: 'Patch $patchNumber is already rolled back.',
+      );
     }
 
     final rolledBackPatch = patch.copyWith(isRolledBack: true);
