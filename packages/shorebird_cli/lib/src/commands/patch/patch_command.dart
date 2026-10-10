@@ -314,6 +314,57 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
   /// process with success once the patch has been checked.
   @visibleForTesting
   Future<PublishedPatch> createPatch(Patcher patcher) async {
+    await _assertCanPatch(patcher);
+
+    await cache.updateAll();
+
+    final app = await codePushClientWrapper.getApp(appId: appId);
+
+    final resolved = await _resolveRelease(patcher);
+    final release = resolved.release;
+
+    assertReleaseContainsPlatform(release: release, patcher: patcher);
+    assertReleaseIsActive(release: release, patcher: patcher);
+
+    try {
+      await shorebirdFlutter.installRevision(revision: release.flutterRevision);
+    } on Exception {
+      throw ProcessExit(ExitCode.software.code);
+    }
+
+    final downloaded = await _downloadReleaseArtifacts(
+      patcher: patcher,
+      release: release,
+    );
+
+    await _configureObfuscation(
+      patcher: patcher,
+      release: release,
+      obfuscationMapFile: downloaded.obfuscationMapFile,
+    );
+
+    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
+      flutterRevisionOverride: release.flutterRevision,
+    );
+
+    return await runScoped(
+      () => _buildAndPublishPatch(
+        patcher: patcher,
+        app: app,
+        release: release,
+        existingPatchArtifact: resolved.patchArtifactFile,
+        inferredReleaseVersion: resolved.inferredReleaseVersion,
+        releaseArtifact: downloaded.releaseArtifact,
+        releaseArchive: downloaded.releaseArchive,
+        supplementDirectory: downloaded.supplementDirectory,
+      ),
+      values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
+    );
+  }
+
+  /// Checks that [patcher] can build a patch with the given arguments and
+  /// flavors, exiting otherwise.
+  Future<void> _assertCanPatch(Patcher patcher) async {
     await patcher.assertPreconditions();
     await patcher.assertArgsAreValid();
     assertSigningArgsValid();
@@ -326,11 +377,17 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Asset changes cannot be incl
     } on ValidationFailedException {
       throw ProcessExit(ExitCode.config.code);
     }
+  }
 
-    await cache.updateAll();
-
-    final app = await codePushClientWrapper.getApp(appId: appId);
-
+  /// Determines which release to patch.
+  ///
+  /// When the release version can't be determined any other way, the patch
+  /// is built first to read the version from it, so the built artifact is
+  /// returned as well.
+  Future<
+    ({Release release, File? patchArtifactFile, bool inferredReleaseVersion})
+  >
+  _resolveRelease(Patcher patcher) async {
     var inferredReleaseVersion = false;
     File? patchArtifactFile;
     final Release release;
@@ -381,15 +438,29 @@ Building with Flutter $flutterVersionString to determine the release version...
       );
     }
 
-    assertReleaseContainsPlatform(release: release, patcher: patcher);
-    assertReleaseIsActive(release: release, patcher: patcher);
+    return (
+      release: release,
+      patchArtifactFile: patchArtifactFile,
+      inferredReleaseVersion: inferredReleaseVersion,
+    );
+  }
 
-    try {
-      await shorebirdFlutter.installRevision(revision: release.flutterRevision);
-    } on Exception {
-      throw ProcessExit(ExitCode.software.code);
-    }
-
+  /// Downloads [release]'s primary artifact and, if the platform has one, its
+  /// supplement, which is extracted. Detects whether the release was built
+  /// with obfuscation from the supplement's obfuscation map.
+  Future<
+    ({
+      ReleaseArtifact releaseArtifact,
+      File releaseArchive,
+      Directory? supplementDirectory,
+      File? obfuscationMapFile,
+    })
+  >
+  _downloadReleaseArtifacts({
+    required Patcher patcher,
+    required Release release,
+  }) async {
+    final releasePlatform = patcher.releaseType.releasePlatform;
     final releaseArtifact = await codePushClientWrapper.getReleaseArtifact(
       appId: appId,
       releaseId: release.id,
@@ -435,6 +506,24 @@ Building with Flutter $flutterVersionString to determine the release version...
         );
       }
     }
+
+    return (
+      releaseArtifact: releaseArtifact,
+      releaseArchive: releaseArchive,
+      supplementDirectory: supplementDirectory,
+      obfuscationMapFile: obfuscationMapFile,
+    );
+  }
+
+  /// Configures [patcher] to build the patch with the same obfuscation as
+  /// [release], which has [obfuscationMapFile] if it was obfuscated, and sets
+  /// the extra Flutter build args that requires.
+  Future<void> _configureObfuscation({
+    required Patcher patcher,
+    required Release release,
+    required File? obfuscationMapFile,
+  }) async {
+    final releasePlatform = patcher.releaseType.releasePlatform;
 
     // If the user explicitly passed --obfuscate but the release has no
     // obfuscation map, the patch would be obfuscated against a non-obfuscated
@@ -530,128 +619,152 @@ Building with Flutter $flutterVersionString to determine the release version...
       );
     }
     patcher.extraBuildArgs = extraBuildArgs;
+  }
 
-    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
-      flutterRevisionOverride: release.flutterRevision,
+  /// Builds the patch with [release]'s Flutter revision (unless
+  /// [existingPatchArtifact] was already built with it), checks it against the
+  /// release, and uploads it. Must run with the release's Flutter revision in
+  /// scope.
+  ///
+  /// A dry run exits the process with success once the patch is checked.
+  Future<PublishedPatch> _buildAndPublishPatch({
+    required Patcher patcher,
+    required AppMetadata app,
+    required Release release,
+    required File? existingPatchArtifact,
+    required bool inferredReleaseVersion,
+    required ReleaseArtifact releaseArtifact,
+    required File releaseArchive,
+    required Directory? supplementDirectory,
+  }) async {
+    var patchArtifactFile = existingPatchArtifact;
+    await cache.updateAll();
+
+    // Set up build tracing before any flutter build / aot_tools /
+    // gen_snapshot call runs. Version-gated inside prepareBuildTrace —
+    // a no-op on older Flutter pins. Summary is written at the very
+    // end of createPatch, after aot_tools link and artifact uploads.
+    await artifactBuilder.prepareBuildTrace(
+      platform: patcher.releaseType.releasePlatform.name,
     );
 
-    return await runScoped(
-      () async {
-        await cache.updateAll();
-
-        // Set up build tracing before any flutter build / aot_tools /
-        // gen_snapshot call runs. Version-gated inside prepareBuildTrace —
-        // a no-op on older Flutter pins. Summary is written at the very
-        // end of createPatch, after aot_tools link and artifact uploads.
-        await artifactBuilder.prepareBuildTrace(
-          platform: patcher.releaseType.releasePlatform.name,
-        );
-
-        // Don't built the patch artifact twice with the same Flutter revision.
-        if (lastBuiltFlutterRevision != release.flutterRevision) {
-          final flutterVersionString = await shorebirdFlutter
-              .getVersionAndRevision();
-          logger.info('''
+    // Don't built the patch artifact twice with the same Flutter revision.
+    if (lastBuiltFlutterRevision != release.flutterRevision) {
+      final flutterVersionString = await shorebirdFlutter
+          .getVersionAndRevision();
+      logger.info('''
 Building patch with Flutter $flutterVersionString
 ''');
-          patchArtifactFile = await _tryBuildingArtifact<File>(
-            () => patcher.buildPatchArtifact(
-              releaseVersion: release.version,
-            ),
-          );
-        }
-
-        final diffStatus = await assertUnpatchableDiffs(
-          releaseArtifact: releaseArtifact,
-          releaseArchive: releaseArchive,
-          patchArchive: patchArtifactFile!,
-          patcher: patcher,
-        );
-        final patchArtifactBundles = await patcher.createPatchArtifacts(
-          appId: appId,
-          releaseId: release.id,
-          releaseArtifact: releaseArchive,
-          supplementDirectory: supplementDirectory,
-        );
-
-        final dryRun = results['dry-run'] == true;
-        if (dryRun) {
-          if (isJsonMode) {
-            emitJsonSuccess({
-              'dry_run': true,
-              'app_id': appId,
-              'platform': patcher.releaseType.releasePlatform.name,
-              'release_id': release.id,
-              'release_version': release.version,
-              'link_percentage': patcher.linkPercentage,
-            });
-          } else {
-            logger
-              ..info('No issues detected.')
-              ..info('The server may enforce additional checks.');
-          }
-          throw ProcessExit(ExitCode.success.code);
-        }
-
-        await logPatchSummary(
-          app: app,
+      patchArtifactFile = await _tryBuildingArtifact<File>(
+        () => patcher.buildPatchArtifact(
           releaseVersion: release.version,
-          patcher: patcher,
-          patchArtifactBundles: patchArtifactBundles,
-        );
+        ),
+      );
+    }
 
-        // Write the build-trace summary after all compile/link work has
-        // finished — the metadata upload is the last step and it carries
-        // this summary, so we finalize immediately before it. No-op when
-        // tracing wasn't set up (older Flutter pin).
-        artifactBuilder.writeBuildTraceSummary();
-
-        final baseMetadata = CreatePatchMetadata(
-          releasePlatform: patcher.releaseType.releasePlatform,
-          usedIgnoreAssetChangesFlag: allowAssetDiffs,
-          hasAssetChanges: diffStatus.hasAssetChanges,
-          usedIgnoreNativeChangesFlag: allowNativeDiffs,
-          hasNativeChanges: diffStatus.hasNativeChanges,
-          inferredReleaseVersion: inferredReleaseVersion,
-          isSigned:
-              results.wasParsed(CommonArguments.privateKeyArg.name) ||
-              results.wasParsed(CommonArguments.signCmd.name),
-          environment: BuildEnvironmentMetadata(
-            flutterRevision: shorebirdEnv.flutterRevision,
-            operatingSystem: platform.operatingSystem,
-            operatingSystemVersion: platform.operatingSystemVersion,
-            shorebirdVersion: packageVersion,
-            shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
-            usesShorebirdCodePushPackage:
-                shorebirdEnv.usesShorebirdCodePushPackage,
-          ),
-          // Attach the build-trace summary if the build produced one.
-          // Null for older Flutter pins without the --shorebird-trace
-          // flag or when trace parsing failed; uploader sends
-          // null-as-omitted.
-          buildTraceSummary: buildTraceSession.summary?.toJson(),
-        );
-        final updateMetadata = await patcher.updatedCreatePatchMetadata(
-          baseMetadata,
-        );
-
-        final patch = await patcher.uploadPatchArtifacts(
-          appId: appId,
-          releaseId: release.id,
-          metadata: updateMetadata.toJson(),
-          track: track,
-          artifacts: patchArtifactBundles,
-        );
-
-        return PublishedPatch(
-          platform: patcher.releaseType.releasePlatform,
-          release: release,
-          patch: patch,
-          linkPercentage: patcher.linkPercentage,
-        );
-      },
-      values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
+    final diffStatus = await assertUnpatchableDiffs(
+      releaseArtifact: releaseArtifact,
+      releaseArchive: releaseArchive,
+      patchArchive: patchArtifactFile!,
+      patcher: patcher,
     );
+    final patchArtifactBundles = await patcher.createPatchArtifacts(
+      appId: appId,
+      releaseId: release.id,
+      releaseArtifact: releaseArchive,
+      supplementDirectory: supplementDirectory,
+    );
+
+    _exitIfDryRun(patcher: patcher, release: release);
+
+    await logPatchSummary(
+      app: app,
+      releaseVersion: release.version,
+      patcher: patcher,
+      patchArtifactBundles: patchArtifactBundles,
+    );
+
+    // Write the build-trace summary after all compile/link work has
+    // finished — the metadata upload is the last step and it carries
+    // this summary, so we finalize immediately before it. No-op when
+    // tracing wasn't set up (older Flutter pin).
+    artifactBuilder.writeBuildTraceSummary();
+
+    final metadata = await _createPatchMetadata(
+      patcher: patcher,
+      diffStatus: diffStatus,
+      inferredReleaseVersion: inferredReleaseVersion,
+    );
+
+    final patch = await patcher.uploadPatchArtifacts(
+      appId: appId,
+      releaseId: release.id,
+      metadata: metadata.toJson(),
+      track: track,
+      artifacts: patchArtifactBundles,
+    );
+
+    return PublishedPatch(
+      platform: patcher.releaseType.releasePlatform,
+      release: release,
+      patch: patch,
+      linkPercentage: patcher.linkPercentage,
+    );
+  }
+
+  /// Reports a successful check and exits with success if this is a dry run.
+  void _exitIfDryRun({required Patcher patcher, required Release release}) {
+    final dryRun = results['dry-run'] == true;
+    if (!dryRun) return;
+
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'dry_run': true,
+        'app_id': appId,
+        'platform': patcher.releaseType.releasePlatform.name,
+        'release_id': release.id,
+        'release_version': release.version,
+        'link_percentage': patcher.linkPercentage,
+      });
+    } else {
+      logger
+        ..info('No issues detected.')
+        ..info('The server may enforce additional checks.');
+    }
+    throw ProcessExit(ExitCode.success.code);
+  }
+
+  /// The metadata uploaded with the patch.
+  Future<CreatePatchMetadata> _createPatchMetadata({
+    required Patcher patcher,
+    required DiffStatus diffStatus,
+    required bool inferredReleaseVersion,
+  }) {
+    final baseMetadata = CreatePatchMetadata(
+      releasePlatform: patcher.releaseType.releasePlatform,
+      usedIgnoreAssetChangesFlag: allowAssetDiffs,
+      hasAssetChanges: diffStatus.hasAssetChanges,
+      usedIgnoreNativeChangesFlag: allowNativeDiffs,
+      hasNativeChanges: diffStatus.hasNativeChanges,
+      inferredReleaseVersion: inferredReleaseVersion,
+      isSigned:
+          results.wasParsed(CommonArguments.privateKeyArg.name) ||
+          results.wasParsed(CommonArguments.signCmd.name),
+      environment: BuildEnvironmentMetadata(
+        flutterRevision: shorebirdEnv.flutterRevision,
+        operatingSystem: platform.operatingSystem,
+        operatingSystemVersion: platform.operatingSystemVersion,
+        shorebirdVersion: packageVersion,
+        shorebirdYaml: shorebirdEnv.getShorebirdYaml()!,
+        usesShorebirdCodePushPackage: shorebirdEnv.usesShorebirdCodePushPackage,
+      ),
+      // Attach the build-trace summary if the build produced one.
+      // Null for older Flutter pins without the --shorebird-trace
+      // flag or when trace parsing failed; uploader sends
+      // null-as-omitted.
+      buildTraceSummary: buildTraceSession.summary?.toJson(),
+    );
+    return patcher.updatedCreatePatchMetadata(baseMetadata);
   }
 
   /// Prompts the user for the specific release to patch.
