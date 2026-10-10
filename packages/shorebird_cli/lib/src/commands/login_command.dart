@@ -1,3 +1,4 @@
+// cspell:words sysexits TEMPFAIL
 import 'dart:async';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -26,6 +27,11 @@ class LoginCommand extends ShorebirdCommand {
 
   /// The flag that forces the device code login.
   static const deviceFlag = 'device';
+
+  /// sysexits EX_PROTOCOL: the remote system returned something that was
+  /// not possible during a protocol exchange. `ExitCode` has no constant for
+  /// it.
+  static const protocolExitCode = 76;
 
   @override
   String get description => 'Login as a new Shorebird user.';
@@ -61,7 +67,10 @@ class LoginCommand extends ShorebirdCommand {
               '${lightCyan.wrap('shorebird logout')} and then '
               '${lightCyan.wrap('shorebird login')}.',
             );
-          return ExitCode.tempFail.code;
+          // EX_PROTOCOL (sysexits): the service answered, and refused the
+          // request itself, so retrying unchanged won't help. Rate limiting
+          // and no answer stay EX_TEMPFAIL.
+          return protocolExitCode;
         }
         // The auth service could not answer, which says nothing about the
         // stored credentials. Discarding them here would log a user out for

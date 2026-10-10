@@ -341,7 +341,7 @@ Waiting for your authorization (the code expires in $expiry)...''';
 
         final result = await runWithOverrides(command.run);
 
-        expect(result, equals(ExitCode.tempFail.code));
+        expect(result, equals(LoginCommand.protocolExitCode));
         verify(
           () => progress.fail(
             'The Shorebird auth service refused to check your credentials '
