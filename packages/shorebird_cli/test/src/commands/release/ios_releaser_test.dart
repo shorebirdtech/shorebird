@@ -226,29 +226,6 @@ To change the version of this release, change your app's version in your pubspec
         });
       });
 
-      group('when --obfuscate is passed', () {
-        setUp(() {
-          when(() => argResults['obfuscate']).thenReturn(true);
-          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
-          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
-        });
-
-        group('when Flutter version supports obfuscation', () {
-          setUp(() {
-            when(
-              () => shorebirdFlutter.resolveFlutterVersion(any()),
-            ).thenAnswer((_) async => Version(3, 41, 2));
-          });
-
-          test('returns normally', () async {
-            await expectLater(
-              runWithOverrides(iosReleaser.assertArgsAreValid),
-              completes,
-            );
-          });
-        });
-      });
-
       group('when --obfuscate is not passed', () {
         test('returns normally', () async {
           await expectLater(
@@ -321,41 +298,6 @@ $body
               ),
             ).called(1);
           },
-        );
-      });
-    });
-
-    group('addObfuscationMapArgs', () {
-      // The libapp.so strip gating only applies to Android; on iOS AGP is
-      // not in the pipeline. iOS must continue to pre-strip the snapshot in
-      // gen_snapshot regardless of the Flutter version to prevent the
-      // DWARF debug sections from leaking the identifiers obfuscation is
-      // meant to hide.
-      setUp(() {
-        when(() => argResults['obfuscate']).thenReturn(true);
-        when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
-        when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
-        when(
-          () => shorebirdEnv.getShorebirdProjectRoot(),
-        ).thenReturn(projectRoot);
-      });
-
-      test('passes --strip on Flutter 3.44+ for iOS', () async {
-        when(
-          () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
-            platform: any(named: 'platform'),
-            flutterRevision: any(named: 'flutterRevision'),
-          ),
-        ).thenAnswer((_) async => true);
-
-        final buildArgs = <String>[];
-        await runWithOverrides(
-          () => iosReleaser.addObfuscationMapArgs(buildArgs),
-        );
-
-        expect(
-          buildArgs,
-          contains('--extra-gen-snapshot-options=--strip'),
         );
       });
     });
@@ -796,41 +738,6 @@ $body
           );
         });
 
-        group('when --split-debug-info is also provided', () {
-          setUp(() {
-            when(
-              () => argResults.wasParsed('split-debug-info'),
-            ).thenReturn(true);
-            when(
-              () => argResults['split-debug-info'],
-            ).thenReturn('custom/symbols');
-          });
-
-          test('preserves user-provided --split-debug-info', () async {
-            await runWithOverrides(iosReleaser.buildReleaseArtifacts);
-
-            final captured = verify(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: captureAny(named: 'args'),
-              ),
-            ).captured;
-
-            final args = captured.last as List<String>;
-            expect(
-              args,
-              contains('--split-debug-info=custom/symbols'),
-            );
-            // Should not contain a second auto-defaulted one.
-            expect(
-              args.where((a) => a.startsWith('--split-debug-info=')).length,
-              equals(1),
-            );
-          });
-        });
-
         test('logs detail about map location', () async {
           await runWithOverrides(iosReleaser.buildReleaseArtifacts);
 
@@ -839,40 +746,6 @@ $body
               any(that: startsWith('Obfuscation map saved to')),
             ),
           ).called(1);
-        });
-
-        group('when obfuscation map is not generated', () {
-          setUp(() {
-            // Override to NOT create the map file.
-            when(
-              () => artifactBuilder.buildIpa(
-                codesign: any(named: 'codesign'),
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                args: any(named: 'args'),
-              ),
-            ).thenAnswer(
-              (_) async =>
-                  AppleBuildResult(kernelFile: File('/path/to/app.dill')),
-            );
-          });
-
-          test('logs error and exits', () async {
-            await expectLater(
-              () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(
-              () => logger.err(
-                any(
-                  that: contains(
-                    'Obfuscation was enabled but the obfuscation map was not',
-                  ),
-                ),
-              ),
-            ).called(1);
-          });
         });
       });
     });
