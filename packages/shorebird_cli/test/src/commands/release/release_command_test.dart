@@ -441,18 +441,14 @@ void main() {
             throw ProcessExit(ExitCode.software.code);
           });
 
-          final captured = <String>[];
-          final exitCode = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJson(() => runWithOverrides(command.run)),
-            captured: captured,
           );
 
           expect(exitCode, equals(ExitCode.success.code));
-          expect(captured, hasLength(1));
-          final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
-          expect(envelope['status'], equals('success'));
+          expect(json['status'], equals('success'));
           expect(
-            (envelope['data'] as Map<String, dynamic>)['releases'],
+            (json['data'] as Map<String, dynamic>)['releases'],
             equals([release.toJson()]),
           );
         },
@@ -478,18 +474,14 @@ void main() {
           ),
         ).thenAnswer((_) async => finalized);
 
-        final captured = <String>[];
-        final exitCode = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJson(() => runWithOverrides(command.run)),
-          captured: captured,
         );
 
         expect(exitCode, equals(ExitCode.success.code));
-        expect(captured, hasLength(1));
-        final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
-        expect(envelope['status'], equals('success'));
+        expect(json['status'], equals('success'));
         expect(
-          envelope['data'],
+          json['data'],
           equals({
             'app_id': appId,
             'platforms': ['android'],
@@ -502,14 +494,9 @@ void main() {
         // Human progress lines are still logged; the runner routes them to
         // stderr in JSON mode. Here the logger is a mock, so the check is
         // that the command itself writes only the envelope.
-        final captured = <String>[];
-        await captureStdout(
+        await captureJson(
           () => runJson(() => runWithOverrides(command.run)),
-          captured: captured,
         );
-
-        expect(captured, hasLength(1));
-        expect(() => jsonDecode(captured.single), returnsNormally);
       });
 
       group('with --dry-run', () {

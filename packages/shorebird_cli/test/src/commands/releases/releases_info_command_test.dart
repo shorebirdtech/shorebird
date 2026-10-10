@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -261,8 +259,7 @@ void main() {
       });
 
       test('in --json mode, emits JSON error envelope', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runScoped(
             command.run,
             values: {
@@ -275,12 +272,9 @@ void main() {
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'error');
+        expect(exitCode, equals(ExitCode.software.code));
+        expect(json['status'], 'error');
       });
     });
 
@@ -299,16 +293,12 @@ void main() {
       }
 
       test('emits JSON success with release details', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonMode(command.run),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'success');
-        final data = decoded['data'] as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(json['status'], 'success');
+        final data = json['data'] as Map<String, dynamic>;
         expect(data['release'], isA<Map<String, dynamic>>());
         final releaseData = data['release'] as Map<String, dynamic>;
         expect(releaseData['version'], releaseVersion);

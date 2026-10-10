@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason_logger/mason_logger.dart';
@@ -120,8 +119,6 @@ void main() {
     });
 
     group('when --json is passed', () {
-      late List<String> stdoutOutput;
-
       R runJsonWithOverrides<R>(R Function() body) {
         return runScoped(
           body,
@@ -134,7 +131,6 @@ void main() {
       }
 
       setUp(() {
-        stdoutOutput = [];
         command = runJsonWithOverrides(FlutterVersionsListCommand.new);
       });
 
@@ -147,14 +143,11 @@ void main() {
           () => shorebirdFlutter.getVersions(),
         ).thenAnswer((_) async => versions);
 
-        final exitCode = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
         );
 
         expect(exitCode, equals(ExitCode.success.code));
-        expect(stdoutOutput, isNotEmpty);
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         expect(json['status'], equals('success'));
         final data = json['data'] as Map<String, dynamic>;
         expect(data['current_version'], equals('1.0.0'));
@@ -171,13 +164,11 @@ void main() {
           () => shorebirdFlutter.getVersions(),
         ).thenAnswer((_) async => versions);
 
-        final exitCode = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
         );
 
         expect(exitCode, equals(ExitCode.success.code));
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         expect(data['current_version'], isNull);
       });
@@ -190,13 +181,11 @@ void main() {
           () => shorebirdFlutter.getVersions(),
         ).thenThrow(Exception('network error'));
 
-        final exitCode = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
         );
 
         expect(exitCode, equals(ExitCode.software.code));
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         expect(json['status'], equals('error'));
         final error = json['error'] as Map<String, dynamic>;
         expect(error['code'], equals('fetch_failed'));
@@ -212,9 +201,8 @@ void main() {
           () => shorebirdFlutter.getVersions(),
         ).thenAnswer((_) async => ['1.0.0']);
 
-        await captureStdout(
+        await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
         );
 
         verifyNever(() => logger.progress(any()));

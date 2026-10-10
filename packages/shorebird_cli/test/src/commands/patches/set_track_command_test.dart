@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -432,8 +430,7 @@ void main() {
       });
 
       test('in --json mode, emits fetch_failed JSON error', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runScoped(
             command.run,
             values: {
@@ -446,14 +443,11 @@ void main() {
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'error');
+        expect(exitCode, equals(ExitCode.software.code));
+        expect(json['status'], 'error');
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'fetch_failed',
         );
       });
@@ -478,8 +472,7 @@ void main() {
       });
 
       test('in --json mode, emits software_error JSON error', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runScoped(
             command.run,
             values: {
@@ -492,14 +485,11 @@ void main() {
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'error');
+        expect(exitCode, equals(ExitCode.software.code));
+        expect(json['status'], 'error');
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'software_error',
         );
       });
@@ -522,16 +512,12 @@ void main() {
       test(
         'emits JSON success with release_version, patch_number, track',
         () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.success.code));
-          expect(captured, hasLength(1));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'success');
-          final data = decoded['data'] as Map<String, dynamic>;
+          expect(exitCode, equals(ExitCode.success.code));
+          expect(json['status'], 'success');
+          final data = json['data'] as Map<String, dynamic>;
           expect(data['release_version'], releaseVersion);
           expect(data['patch_number'], patchNumber);
           expect(data['track'], targetChannel.name);
@@ -549,17 +535,13 @@ void main() {
         });
 
         test('emits interactive_prompt_required error', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          expect(captured, hasLength(1));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
           expect(
-            (decoded['error'] as Map<String, dynamic>)['code'],
+            (json['error'] as Map<String, dynamic>)['code'],
             'interactive_prompt_required',
           );
         });
@@ -576,16 +558,13 @@ void main() {
         });
 
         test('emits JSON error envelope', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
           expect(
-            (decoded['error'] as Map<String, dynamic>)['code'],
+            (json['error'] as Map<String, dynamic>)['code'],
             'usage_error',
           );
         });
@@ -597,15 +576,12 @@ void main() {
         });
 
         test('emits usage_error envelope', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
-          final error = decoded['error'] as Map<String, dynamic>;
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
+          final error = json['error'] as Map<String, dynamic>;
           expect(error['code'], 'usage_error');
           expect(error['message'], '"one" is not a valid patch number.');
           expect(error['hint'], 'Patch numbers are integers, e.g. --patch 1.');
@@ -618,16 +594,13 @@ void main() {
         });
 
         test('emits usage_error envelope', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
           expect(
-            (decoded['error'] as Map<String, dynamic>)['code'],
+            (json['error'] as Map<String, dynamic>)['code'],
             'usage_error',
           );
         });
@@ -639,16 +612,13 @@ void main() {
         });
 
         test('emits usage_error envelope', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
           expect(
-            (decoded['error'] as Map<String, dynamic>)['code'],
+            (json['error'] as Map<String, dynamic>)['code'],
             'usage_error',
           );
         });
@@ -675,16 +645,13 @@ void main() {
         });
 
         test('emits usage_error envelope', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
           expect(
-            (decoded['error'] as Map<String, dynamic>)['code'],
+            (json['error'] as Map<String, dynamic>)['code'],
             'usage_error',
           );
         });
@@ -711,16 +678,13 @@ void main() {
         });
 
         test('emits usage_error envelope', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
           expect(
-            (decoded['error'] as Map<String, dynamic>)['code'],
+            (json['error'] as Map<String, dynamic>)['code'],
             'usage_error',
           );
         });

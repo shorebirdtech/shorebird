@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
@@ -430,7 +429,6 @@ Android Toolchain
 
     group('when --json is passed', () {
       late http.Client mockHttpClient;
-      late List<String> stdoutOutput;
 
       setUpAll(() {
         registerFallbackValue(Uri());
@@ -456,7 +454,6 @@ Android Toolchain
       }
 
       setUp(() {
-        stdoutOutput = [];
         mockHttpClient = MockHttpClient();
 
         when(() => mockHttpClient.get(any())).thenAnswer(
@@ -477,14 +474,11 @@ Android Toolchain
           () => shorebirdFlutter.getVersionString(),
         ).thenAnswer((_) async => flutterVersion);
 
-        final exitCode = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
         );
 
         expect(exitCode, equals(ExitCode.success.code));
-        expect(stdoutOutput, isNotEmpty);
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         expect(json['status'], equals('success'));
 
         final data = json['data'] as Map<String, dynamic>;
@@ -513,13 +507,11 @@ Android Toolchain
           () => shorebirdFlutter.getVersionString(),
         ).thenThrow(Exception('oops'));
 
-        final exitCode = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
         );
 
         expect(exitCode, equals(ExitCode.success.code));
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         expect(data['flutter_version'], isNull);
       });
@@ -537,12 +529,10 @@ Android Toolchain
         when(() => gradlew.exists(any())).thenReturn(true);
         when(() => gradlew.version(any())).thenAnswer((_) async => '8.0');
 
-        await captureStdout(
+        final json = (await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
-        );
+        )).json;
 
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         final toolchain = data['android_toolchain'] as Map<String, dynamic>;
         expect(toolchain['android_studio'], equals('/path/to/studio'));
@@ -566,12 +556,10 @@ Android Toolchain
           return http.Response('', 200);
         });
 
-        await captureStdout(
+        final json = (await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
-        );
+        )).json;
 
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         final network = (data['network'] as List<dynamic>)
             .cast<Map<String, dynamic>>();
@@ -590,12 +578,10 @@ Android Toolchain
           ],
         );
 
-        await captureStdout(
+        final json = (await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
-        );
+        )).json;
 
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         final validators = (data['validators'] as List<dynamic>)
             .cast<Map<String, dynamic>>();
@@ -614,12 +600,10 @@ Android Toolchain
         ).thenAnswer((_) async => '3.22.2');
         when(() => validator.canRunInCurrentContext()).thenReturn(false);
 
-        await captureStdout(
+        final json = (await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
-        );
+        )).json;
 
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         final validators = data['validators'] as List<dynamic>;
         expect(validators, isEmpty);
@@ -632,9 +616,8 @@ Android Toolchain
             () => shorebirdFlutter.getVersionString(),
           ).thenAnswer((_) async => '3.22.2');
 
-          await captureStdout(
+          await captureJson(
             () => runJsonWithOverrides(command.run),
-            captured: stdoutOutput,
           );
 
           verifyNever(() => networkChecker.checkReachability());
@@ -660,12 +643,10 @@ Android Toolchain
           () => networkChecker.performGCPDownloadSpeedTest(),
         ).thenAnswer((_) async => 4.56);
 
-        await captureStdout(
+        final json = (await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
-        );
+        )).json;
 
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         final speedTest = data['speed_test'] as Map<String, dynamic>;
         expect(speedTest['upload_megabytes_per_sec'], equals(1.23));
@@ -677,12 +658,10 @@ Android Toolchain
           () => shorebirdFlutter.getVersionString(),
         ).thenAnswer((_) async => '3.22.2');
 
-        await captureStdout(
+        final json = (await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
-        );
+        )).json;
 
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         expect(data.containsKey('speed_test'), isFalse);
       });
@@ -699,12 +678,10 @@ Android Toolchain
           () => networkChecker.performGCPDownloadSpeedTest(),
         ).thenThrow(Exception('download failed'));
 
-        await captureStdout(
+        final json = (await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
-        );
+        )).json;
 
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         final speedTest = data['speed_test'] as Map<String, dynamic>;
         expect(speedTest['upload_megabytes_per_sec'], isNull);
@@ -718,12 +695,10 @@ Android Toolchain
         when(() => gradlew.exists(any())).thenReturn(true);
         when(() => gradlew.version(any())).thenThrow(Exception('gradle fail'));
 
-        await captureStdout(
+        final json = (await captureJson(
           () => runJsonWithOverrides(command.run),
-          captured: stdoutOutput,
-        );
+        )).json;
 
-        final json = jsonDecode(stdoutOutput.first) as Map<String, dynamic>;
         final data = json['data'] as Map<String, dynamic>;
         final toolchain = data['android_toolchain'] as Map<String, dynamic>;
         expect(toolchain['gradle_version'], isNull);
