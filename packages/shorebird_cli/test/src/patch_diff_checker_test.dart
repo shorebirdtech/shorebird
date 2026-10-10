@@ -1,5 +1,7 @@
+// cspell:words Ljava LGreeter
 import 'dart:io';
 
+import 'package:dex/dex.dart';
 import 'package:http/http.dart' as http;
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -107,6 +109,114 @@ void main() {
           when(
             () => archiveDiffer.containsPotentiallyBreakingNativeDiffs(any()),
           ).thenReturn(true);
+        });
+
+        group('when the diff carries DEX results', () {
+          const dexPath = 'base/dex/classes.dex';
+
+          late AndroidFileSetDiff androidFileSetDiff;
+
+          setUp(() {
+            androidFileSetDiff = const AndroidFileSetDiff(
+              addedPaths: {},
+              removedPaths: {},
+              changedPaths: {dexPath},
+              dexDiffResults: {
+                dexPath: DexDiffResult(
+                  differences: [
+                    DexDifference(
+                      kind: DexDifferenceKind.bytecodeChanged,
+                      description:
+                          'LGreeter;: bytecode changed in '
+                          'LGreeter;.matches(Ljava/lang/String;)Z',
+                      codeDiff: DexCodeDiff(
+                        oldRegion: [
+                          DexCanonicalInstruction(
+                            address: 2,
+                            tokens: '8302,M:Ljava/lang/String;.equals,32,',
+                          ),
+                        ],
+                        newRegion: [
+                          DexCanonicalInstruction(
+                            address: 2,
+                            tokens:
+                                '8302,M:Ljava/lang/String;.equalsIgnoreCase,32,',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              },
+            );
+
+            when(
+              () => archiveDiffer.changedFiles(any(), any()),
+            ).thenAnswer((_) async => androidFileSetDiff);
+            when(
+              () => archiveDiffer.nativeFileSetDiff(any()),
+            ).thenReturn(androidFileSetDiff);
+          });
+
+          test('names the method and the differing instructions', () async {
+            await runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+              ),
+            );
+
+            verify(
+              () => logger.info(
+                any(
+                  that: allOf(
+                    contains('LGreeter;.matches(Ljava/lang/String;)Z'),
+                    contains('equalsIgnoreCase'),
+                  ),
+                ),
+              ),
+            ).called(1);
+          });
+
+          test('points at the flag when it was not passed', () async {
+            await runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+              ),
+            );
+
+            verify(
+              () => logger.info(
+                any(that: contains('Pass --show-dex-diff')),
+              ),
+            ).called(1);
+          });
+
+          test('does not point at the flag when it was passed', () async {
+            await runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+                showDexDiff: true,
+              ),
+            );
+
+            verifyNever(
+              () => logger.info(
+                any(that: contains('Pass --show-dex-diff')),
+              ),
+            );
+          });
         });
 
         test('logs warning', () async {

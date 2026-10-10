@@ -180,6 +180,9 @@ More info: ${troubleshootingUrl.toLink()}.
   /// Whether to allow changes in native code (--allow-native-diffs).
   bool get allowNativeDiffs => argResults['allow-native-diffs'] == true;
 
+  /// Whether to print every differing instruction (--show-dex-diff).
+  bool get showDexDiff => argResults['show-dex-diff'] == true;
+
   /// Returns a function that signs data, or null if no signing is configured.
   Future<String> Function(String)? _resolveSigner() {
     final privateKeyFile = argResults.file(CommonArguments.privateKeyArg.name);

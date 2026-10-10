@@ -98,6 +98,11 @@ To target the latest release (e.g. the release that was most recently updated) u
         help: allowAssetDiffsHelpText,
         negatable: false,
       )
+      ..addFlag(
+        'show-dex-diff',
+        help: showDexDiffHelpText,
+        negatable: false,
+      )
       ..addOption(
         'track',
         help: 'The track to publish the patch to.',
@@ -182,6 +187,11 @@ To target the latest release (e.g. the release that was most recently updated) u
   static final allowNativeDiffsHelpText = '''
 Patch even if native code diffs are detected.
 NOTE: this is ${styleBold.wrap('not')} recommended. Native code changes cannot be included in a patch and attempting to do so can cause your app to crash or behave unexpectedly.''';
+
+  /// Help text for the full DEX diff flag.
+  static const showDexDiffHelpText = '''
+Print every differing instruction when an Android patch is blocked on a native change.
+Without this, only the first few differing instructions per method are shown. Output contains your app's bytecode, including class and method names.''';
 
   /// Warning message for when asset diffs are detected.
   static final allowAssetDiffsHelpText = '''

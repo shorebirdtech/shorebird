@@ -75,6 +75,7 @@ class PatchDiffChecker {
     required bool allowAssetChanges,
     required bool allowNativeChanges,
     bool confirmNativeChanges = true,
+    bool showDexDiff = false,
   }) async {
     final progress = logger.progress(
       'Verifying patch can be applied to release',
@@ -116,14 +117,18 @@ class PatchDiffChecker {
                 .where((p) => p.endsWith('.dex'))) {
           final dexResult = contentDiffs.dexDiffResults[dexPath];
           if (dexResult != null) {
-            logger.info(yellow.wrap(dexResult.describe()));
+            logger.info(
+              yellow.wrap(dexResult.describe(showFullCodeDiff: showDexDiff)),
+            );
           }
         }
-        logger.info(
-          yellow.wrap(
-            '\nFor detailed DEX disassembly, run: dexdump -d <file>',
-          ),
-        );
+        if (!showDexDiff) {
+          logger.info(
+            yellow.wrap(
+              '\nPass --show-dex-diff to see every differing instruction.',
+            ),
+          );
+        }
       }
 
       // Name the dependencies whose versions moved, which usually explains a

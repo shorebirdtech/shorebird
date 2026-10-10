@@ -51,13 +51,89 @@ enum DexDifferenceKind {
 /// {@endtemplate}
 class DexDifference {
   /// {@macro dex_difference}
-  const DexDifference({required this.kind, required this.description});
+  const DexDifference({
+    required this.kind,
+    required this.description,
+    this.codeDiff,
+  });
 
   /// The classification of this difference.
   final DexDifferenceKind kind;
 
   /// A human-readable description of the difference.
   final String description;
+
+  /// Where the two method bodies disagree, set only on
+  /// [DexDifferenceKind.bytecodeChanged].
+  final DexCodeDiff? codeDiff;
+}
+
+/// {@template dex_code_diff}
+/// Where two code items for the same method disagree.
+///
+/// The regions are the instructions left after the matching head and tail are
+/// removed from both sides, so they are the narrowest window that accounts for
+/// the difference rather than a full body.
+/// {@endtemplate}
+class DexCodeDiff {
+  /// {@macro dex_code_diff}
+  const DexCodeDiff({
+    this.oldRegion = const [],
+    this.newRegion = const [],
+    this.sizeChange,
+    this.tryCatchChanged = false,
+  });
+
+  /// Instructions present in the release that the patch does not match.
+  final List<DexCanonicalInstruction> oldRegion;
+
+  /// Instructions present in the patch that the release does not match.
+  final List<DexCanonicalInstruction> newRegion;
+
+  /// Set when a register or argument count changed, which the instruction
+  /// regions cannot express.
+  final String? sizeChange;
+
+  /// Whether the try/catch table changed.
+  final bool tryCatchChanged;
+
+  /// Renders the difference as indented lines, oldest side first.
+  ///
+  /// [limit] caps the instructions shown per side. A null [limit] shows every
+  /// instruction.
+  String describe({int? limit}) {
+    final buffer = StringBuffer();
+
+    if (sizeChange != null) {
+      buffer.writeln('      $sizeChange');
+    }
+
+    void writeSide(String marker, List<DexCanonicalInstruction> region) {
+      final shown = limit == null || region.length <= limit
+          ? region
+          : region.take(limit).toList();
+      for (final instruction in shown) {
+        final address = instruction.address.toRadixString(16).padLeft(4, '0');
+        final tokens = instruction.tokens.endsWith(',')
+            ? instruction.tokens.substring(0, instruction.tokens.length - 1)
+            : instruction.tokens;
+        buffer.writeln('      $marker 0x$address  $tokens');
+      }
+      final hidden = region.length - shown.length;
+      if (hidden > 0) {
+        buffer.writeln('      $marker ... $hidden more');
+      }
+    }
+
+    writeSide('-', oldRegion);
+    writeSide('+', newRegion);
+
+    if (tryCatchChanged) {
+      buffer.writeln('      try/catch table changed');
+    }
+
+    return buffer.toString().trimRight();
+  }
 }
 
 /// {@template dex_diff_result}
@@ -84,28 +160,42 @@ class DexDiffResult {
   /// Whether all differences are safe to ignore.
   bool get isSafe => breakingDifferences.isEmpty;
 
+  /// Instructions shown per side for a changed method unless the caller asks
+  /// for the full diff.
+  static const defaultCodeDiffLimit = 4;
+
   /// A human-readable summary of the differences.
-  String describe() {
+  ///
+  /// A changed method body is followed by the instructions that differ. Set
+  /// [showFullCodeDiff] to show every differing instruction rather than the
+  /// first [defaultCodeDiffLimit] per side.
+  String describe({bool showFullCodeDiff = false}) {
     final buffer = StringBuffer();
     final safe = safeDifferences.toList();
     final breaking = breakingDifferences.toList();
+
+    void writeDifference(DexDifference diff) {
+      buffer.writeln('  - ${diff.description}');
+      final codeDiff = diff.codeDiff;
+      if (codeDiff == null) return;
+      final detail = codeDiff.describe(
+        limit: showFullCodeDiff ? null : defaultCodeDiffLimit,
+      );
+      if (detail.isNotEmpty) buffer.writeln(detail);
+    }
 
     if (safe.isNotEmpty) {
       buffer.writeln(
         'Safe differences (${safe.length}):',
       );
-      for (final diff in safe) {
-        buffer.writeln('  - ${diff.description}');
-      }
+      safe.forEach(writeDifference);
     }
 
     if (breaking.isNotEmpty) {
       buffer.writeln(
         'Breaking differences (${breaking.length}):',
       );
-      for (final diff in breaking) {
-        buffer.writeln('  - ${diff.description}');
-      }
+      breaking.forEach(writeDifference);
     }
 
     return buffer.toString().trimRight();
@@ -336,16 +426,16 @@ class DexDiffer {
       final newMethod = newMethods[entry.key];
       if (newMethod == null) continue; // caught structurally
 
-      final oldCode = entry.value.code;
-      final newCode = newMethod.code;
+      final codeDiff = _diffCodeItems(entry.value.code, newMethod.code);
 
-      if (!_codeItemsEqual(oldCode, newCode)) {
+      if (codeDiff != null) {
         differences.add(
           DexDifference(
             kind: DexDifferenceKind.bytecodeChanged,
             description:
                 '$className: bytecode changed in '
                 '${entry.key}',
+            codeDiff: codeDiff,
           ),
         );
       }
@@ -365,17 +455,77 @@ class DexDiffer {
     };
   }
 
-  static bool _codeItemsEqual(
+  /// Returns how two code items differ, or null when they are equal.
+  ///
+  /// The returned regions are what is left after the matching head and tail
+  /// are trimmed from both instruction lists, which is the narrowest window
+  /// that accounts for the difference.
+  static DexCodeDiff? _diffCodeItems(
     DexCodeItem? oldCode,
     DexCodeItem? newCode,
   ) {
-    if (oldCode == null && newCode == null) return true;
-    if (oldCode == null || newCode == null) return false;
+    if (oldCode == null && newCode == null) return null;
+    if (oldCode == null || newCode == null) {
+      return const DexCodeDiff(sizeChange: 'method body added or removed');
+    }
 
-    return oldCode.registersSize == newCode.registersSize &&
-        oldCode.insSize == newCode.insSize &&
-        oldCode.outsSize == newCode.outsSize &&
-        oldCode.canonicalBytecode == newCode.canonicalBytecode;
+    final sizeChange = _describeSizeChange(oldCode, newCode);
+    final tryCatchChanged =
+        oldCode.canonicalTryCatch != newCode.canonicalTryCatch;
+
+    final oldInstructions = oldCode.instructions;
+    final newInstructions = newCode.instructions;
+
+    var head = 0;
+    final shortest = oldInstructions.length < newInstructions.length
+        ? oldInstructions.length
+        : newInstructions.length;
+    while (head < shortest &&
+        oldInstructions[head].tokens == newInstructions[head].tokens) {
+      head++;
+    }
+
+    var tail = 0;
+    while (tail < shortest - head &&
+        oldInstructions[oldInstructions.length - 1 - tail].tokens ==
+            newInstructions[newInstructions.length - 1 - tail].tokens) {
+      tail++;
+    }
+
+    final oldRegion = oldInstructions.sublist(
+      head,
+      oldInstructions.length - tail,
+    );
+    final newRegion = newInstructions.sublist(
+      head,
+      newInstructions.length - tail,
+    );
+
+    if (oldRegion.isEmpty &&
+        newRegion.isEmpty &&
+        sizeChange == null &&
+        !tryCatchChanged) {
+      return null;
+    }
+
+    return DexCodeDiff(
+      oldRegion: oldRegion,
+      newRegion: newRegion,
+      sizeChange: sizeChange,
+      tryCatchChanged: tryCatchChanged,
+    );
+  }
+
+  static String? _describeSizeChange(DexCodeItem oldCode, DexCodeItem newCode) {
+    final changes = <String>[
+      if (oldCode.registersSize != newCode.registersSize)
+        'registers ${oldCode.registersSize} -> ${newCode.registersSize}',
+      if (oldCode.insSize != newCode.insSize)
+        'incoming args ${oldCode.insSize} -> ${newCode.insSize}',
+      if (oldCode.outsSize != newCode.outsSize)
+        'outgoing args ${oldCode.outsSize} -> ${newCode.outsSize}',
+    ];
+    return changes.isEmpty ? null : changes.join(', ');
   }
 
   // -- Member comparison (shared helper) ----------------------------------

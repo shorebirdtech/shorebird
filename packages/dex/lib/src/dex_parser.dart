@@ -751,7 +751,8 @@ class DexCodeItem {
     required this.registersSize,
     required this.insSize,
     required this.outsSize,
-    required this.canonicalBytecode,
+    required this.instructions,
+    required this.canonicalTryCatch,
   });
 
   /// Number of registers used by this code.
@@ -763,9 +764,42 @@ class DexCodeItem {
   /// Number of words of outgoing argument space.
   final int outsSize;
 
+  /// Canonical instructions in `insns` order.
+  ///
+  /// Held per instruction rather than as one string so a difference can be
+  /// reported against the instructions that carry it.
+  final List<DexCanonicalInstruction> instructions;
+
+  /// Canonical try/catch tokens, empty when the method has no try blocks.
+  final String canonicalTryCatch;
+
   /// Canonical string of instructions and try/catch with all pool
   /// indices resolved to string values.
-  final String canonicalBytecode;
+  String get canonicalBytecode {
+    final buf = StringBuffer();
+    for (final instruction in instructions) {
+      buf.write(instruction.tokens);
+    }
+    buf.write(canonicalTryCatch);
+    return buf.toString();
+  }
+}
+
+/// {@template dex_canonical_instruction}
+/// One instruction's canonical tokens, with every pool index resolved to the
+/// string value it names.
+/// {@endtemplate}
+class DexCanonicalInstruction {
+  /// {@macro dex_canonical_instruction}
+  const DexCanonicalInstruction({required this.address, required this.tokens});
+
+  /// Offset from the start of `insns`, in 16-bit code units.
+  final int address;
+
+  /// Comma-terminated canonical tokens for this instruction. Code units that
+  /// carry a pool reference appear as the resolved name, everything else as
+  /// the raw unit.
+  final String tokens;
 }
 
 /// Sentinel value for "no index" in DEX files.
@@ -1166,10 +1200,7 @@ class DexParser {
     // r.pos is now at the start of insns.
     final insnsOff = r.pos;
 
-    final buf = StringBuffer();
-
-    _canonicalizeInstructions(
-      buf,
+    final instructions = _canonicalizeInstructions(
       r.bytes,
       insnsOff,
       insnsSize,
@@ -1180,11 +1211,12 @@ class DexParser {
       methodIds,
     );
 
+    final tryCatchBuf = StringBuffer();
     if (triesSize > 0) {
       final pad = (insnsSize % 2 != 0) ? 2 : 0;
       final triesOff = insnsOff + insnsSize * 2 + pad;
       _canonicalizeTryCatch(
-        buf,
+        tryCatchBuf,
         r.bytes,
         triesOff,
         triesSize,
@@ -1196,7 +1228,8 @@ class DexParser {
       registersSize: registersSize,
       insSize: insSize,
       outsSize: outsSize,
-      canonicalBytecode: buf.toString(),
+      instructions: instructions,
+      canonicalTryCatch: tryCatchBuf.toString(),
     );
   }
 
@@ -1241,8 +1274,7 @@ class DexParser {
     return decoded;
   }
 
-  void _canonicalizeInstructions(
-    StringBuffer buf,
+  List<DexCanonicalInstruction> _canonicalizeInstructions(
     Uint8List bytes,
     int insnsOff,
     int insnsSize,
@@ -1251,10 +1283,11 @@ class DexParser {
     List<DexProtoId> protoIds,
     List<DexFieldId> fieldIds,
     List<DexMethodId> methodIds,
-  ) {
-    for (final insn in _decodeInstructions(bytes, insnsOff, insnsSize)) {
-      buf.write(
-        _canonicalizeInstruction(
+  ) => [
+    for (final insn in _decodeInstructions(bytes, insnsOff, insnsSize))
+      DexCanonicalInstruction(
+        address: insn.address,
+        tokens: _canonicalizeInstruction(
           insn,
           strings,
           typeDescriptors,
@@ -1262,9 +1295,8 @@ class DexParser {
           fieldIds,
           methodIds,
         ),
-      );
-    }
-  }
+      ),
+  ];
 
   /// The canonical token string for one decoded instruction, with every
   /// pool index resolved to its string value.

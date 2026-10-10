@@ -72,6 +72,7 @@ See more info about the issue ${link(uri: Uri.parse('https://github.com/shorebir
     archiveDiffer: const AndroidArchiveDiffer(),
     allowAssetChanges: allowAssetDiffs,
     allowNativeChanges: allowNativeDiffs,
+    showDexDiff: showDexDiff,
   );
 
   @override

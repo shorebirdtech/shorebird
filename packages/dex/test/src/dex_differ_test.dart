@@ -1,4 +1,4 @@
-// cspell:words Lcom Ljava
+// cspell:words Lcom Ljava LGreeter
 import 'dart:io';
 
 import 'package:dex/src/dex_differ.dart';
@@ -26,6 +26,83 @@ void main() {
         File(p.join(dexFixturesPath, name)).readAsBytesSync(),
       );
     }
+
+    group('code diff', () {
+      test('names the resolved method reference that changed', () {
+        final result = differ.diff(
+          parseDexFixture('pool_refs.dex'),
+          parseDexFixture('pool_refs_changed.dex'),
+        );
+
+        expect(result.breakingDifferences, hasLength(1));
+        final diff = result.breakingDifferences.single;
+        expect(diff.kind, DexDifferenceKind.bytecodeChanged);
+
+        final codeDiff = diff.codeDiff!;
+        expect(
+          codeDiff.oldRegion.map((i) => i.tokens).join(),
+          contains('M:Ljava/lang/String;.equals(Ljava/lang/Object;)Z'),
+        );
+        expect(
+          codeDiff.newRegion.map((i) => i.tokens).join(),
+          contains(
+            'M:Ljava/lang/String;.equalsIgnoreCase(Ljava/lang/String;)Z',
+          ),
+        );
+      });
+
+      test('trims the matching head and tail from both regions', () {
+        final result = differ.diff(
+          parseDexFixture('pool_refs.dex'),
+          parseDexFixture('pool_refs_changed.dex'),
+        );
+
+        final codeDiff = result.breakingDifferences.single.codeDiff!;
+        // Only the invoke differs; the field read and the return are shared.
+        expect(codeDiff.oldRegion, hasLength(1));
+        expect(codeDiff.newRegion, hasLength(1));
+      });
+
+      test('reports a register count change the regions cannot show', () {
+        const unchanged = [
+          DexCanonicalInstruction(address: 0, tokens: '14,'),
+        ];
+        final diff = const DexCodeDiff(
+          oldRegion: unchanged,
+          newRegion: unchanged,
+          sizeChange: 'registers 1 -> 2',
+        ).describe();
+
+        expect(diff, contains('registers 1 -> 2'));
+      });
+
+      test('caps instructions per side and counts the rest', () {
+        final region = [
+          for (var i = 0; i < 7; i++)
+            DexCanonicalInstruction(address: i, tokens: '$i,'),
+        ];
+
+        final capped = DexCodeDiff(oldRegion: region).describe(limit: 4);
+        expect(capped, contains('... 3 more'));
+        expect('- 0x'.allMatches(capped), hasLength(4));
+
+        final full = DexCodeDiff(oldRegion: region).describe();
+        expect(full, isNot(contains('more')));
+        expect('- 0x'.allMatches(full), hasLength(7));
+      });
+
+      test('showFullCodeDiff shows every differing instruction', () {
+        final result = differ.diff(
+          parseDexFixture('pool_refs.dex'),
+          parseDexFixture('pool_refs_changed.dex'),
+        );
+
+        expect(
+          result.describe(showFullCodeDiff: true),
+          contains('equalsIgnoreCase'),
+        );
+      });
+    });
 
     test('identical files produce empty diff', () {
       final result = differ.diff(baseDex, baseDex);
@@ -183,7 +260,8 @@ Breaking differences (1):
             '''
 Breaking differences (1):
   - Lcom/example/Foo;: bytecode changed in '''
-            'Lcom/example/Foo;.<init>()V',
+            'Lcom/example/Foo;.<init>()V\n'
+            '      + 0x0000  18',
           ),
         );
       });
