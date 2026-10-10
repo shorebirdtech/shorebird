@@ -42,9 +42,6 @@ class MacosPatcher extends Patcher
   String get _x64AotOutputPath =>
       p.join(shorebirdEnv.buildDirectory.path, 'out.x64.aot');
 
-  String get _appDillCopyPath =>
-      p.join(shorebirdEnv.buildDirectory.path, 'app.dill');
-
   @override
   ReleaseType get releaseType => ReleaseType.macos;
 
@@ -97,31 +94,20 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
       base64PublicKey: argResults.encodedPublicKey,
     );
 
-    if (splitDebugInfoPath != null) {
-      Directory(splitDebugInfoPath!).createSync(recursive: true);
-    }
-    await artifactBuilder.buildElfAotSnapshot(
+    await buildAppleElfAotSnapshot(
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _arm64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosArm64,
-      additionalArgs: [
-        ...ApplePatcherMixin.splitDebugInfoArgs(splitDebugInfoPath),
-        ...obfuscationGenSnapshotArgs,
-      ],
     );
 
     if (!File(_arm64AotOutputPath).existsSync()) {
       throw Exception('Failed to build arm64 AOT snapshot');
     }
 
-    await artifactBuilder.buildElfAotSnapshot(
+    await buildAppleElfAotSnapshot(
       appDillPath: macosBuildResult.kernelFile.path,
       outFilePath: _x64AotOutputPath,
       genSnapshotArtifact: ShorebirdArtifact.genSnapshotMacosX64,
-      additionalArgs: [
-        ...ApplePatcherMixin.splitDebugInfoArgs(splitDebugInfoPath),
-        ...obfuscationGenSnapshotArgs,
-      ],
     );
 
     if (!File(_x64AotOutputPath).existsSync()) {
@@ -130,7 +116,7 @@ For more information see: ${supportedFlutterVersionsUrl.toLink()}''');
 
     // Copy the kernel file to the build directory so that it can be used
     // to generate a patch.
-    macosBuildResult.kernelFile.copySync(_appDillCopyPath);
+    macosBuildResult.kernelFile.copySync(appDillCopyPath);
 
     final appPath = artifactManager.getMacOSAppDirectory(flavor: flavor)!.path;
     final tempDir = await Directory.systemTemp.createTemp();
