@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -369,8 +367,7 @@ void main() {
       });
 
       test('in --json mode, emits JSON error envelope', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runScoped(
             command.run,
             values: {
@@ -383,14 +380,11 @@ void main() {
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'error');
+        expect(exitCode, equals(ExitCode.software.code));
+        expect(json['status'], 'error');
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'fetch_failed',
         );
       });
@@ -411,16 +405,12 @@ void main() {
       }
 
       test('emits JSON success with patch details', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonMode(command.run),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'success');
-        final data = decoded['data'] as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(json['status'], 'success');
+        final data = json['data'] as Map<String, dynamic>;
         expect(data['patch'], isA<Map<String, dynamic>>());
         final patchData = data['patch'] as Map<String, dynamic>;
         expect(patchData['number'], patchNumber);
@@ -437,17 +427,13 @@ void main() {
         });
 
         test('emits JSON error envelope and returns usage exit code', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          expect(captured, hasLength(1));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
           expect(
-            (decoded['error'] as Map<String, dynamic>)['code'],
+            (json['error'] as Map<String, dynamic>)['code'],
             'usage_error',
           );
         });
@@ -459,15 +445,12 @@ void main() {
         });
 
         test('emits usage_error envelope', () async {
-          final captured = <String>[];
-          final result = await captureStdout(
+          final (:exitCode, :json) = await captureJson(
             () => runJsonMode(command.run),
-            captured: captured,
           );
-          expect(result, equals(ExitCode.usage.code));
-          final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-          expect(decoded['status'], 'error');
-          final error = decoded['error'] as Map<String, dynamic>;
+          expect(exitCode, equals(ExitCode.usage.code));
+          expect(json['status'], 'error');
+          final error = json['error'] as Map<String, dynamic>;
           expect(error['code'], 'usage_error');
           expect(error['message'], '"one" is not a valid patch number.');
         });

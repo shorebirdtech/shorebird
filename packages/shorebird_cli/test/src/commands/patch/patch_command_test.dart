@@ -1723,18 +1723,14 @@ void main() {
       });
 
       test('emits what was published', () async {
-        final captured = <String>[];
-        final exitCode = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJson(() => runWithOverrides(command.run)),
-          captured: captured,
         );
 
         expect(exitCode, equals(ExitCode.success.code));
-        expect(captured, hasLength(1));
-        final envelope = jsonDecode(captured.single) as Map<String, dynamic>;
-        expect(envelope['status'], equals('success'));
+        expect(json['status'], equals('success'));
         expect(
-          envelope['data'],
+          json['data'],
           equals({
             'app_id': appId,
             'track': 'stable',
