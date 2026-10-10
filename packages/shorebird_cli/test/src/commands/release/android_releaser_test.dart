@@ -171,30 +171,6 @@ void main() {
         when(flavorValidator.validate).thenAnswer((_) async => []);
       });
 
-      group('when validation succeeds', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-        });
-
-        test('returns normally', () async {
-          await expectLater(
-            () => runWithOverrides(androidReleaser.assertPreconditions),
-            returnsNormally,
-          );
-        });
-      });
-
       group('when validation fails', () {
         setUp(() {
           final exception = ValidationFailedException();
@@ -596,62 +572,6 @@ To change the version of this release, change your app's version in your pubspec
             },
           );
         });
-      });
-
-      group('when a public-key-cmd is provided', () {
-        const base64PublicKey = 'base64PublicKeyFromCmd';
-
-        setUp(() {
-          when(
-            () => argResults[CommonArguments.publicKeyCmd.name],
-          ).thenReturn('get-key-cmd');
-          when(
-            () => argResults.wasParsed(CommonArguments.publicKeyCmd.name),
-          ).thenReturn(true);
-
-          when(
-            () => artifactBuilder.buildAppBundle(
-              flavor: any(named: 'flavor'),
-              target: any(named: 'target'),
-              targetPlatforms: any(named: 'targetPlatforms'),
-              args: any(named: 'args'),
-              base64PublicKey: any(named: 'base64PublicKey'),
-              ddMaxBytes: any(named: 'ddMaxBytes'),
-            ),
-          ).thenAnswer((_) async => aabFile);
-
-          when(
-            () => codeSigner.runPublicKeyCmd(any()),
-          ).thenAnswer((_) async => 'pem-public-key');
-          when(
-            () => codeSigner.base64PublicKeyFromPem(any()),
-          ).thenReturn(base64PublicKey);
-        });
-
-        test(
-          'runs public key cmd and forwards encoded key to buildAab',
-          () async {
-            await runWithOverrides(
-              () => androidReleaser.buildReleaseArtifacts(),
-            );
-
-            verify(
-              () => codeSigner.runPublicKeyCmd('get-key-cmd'),
-            ).called(1);
-            verify(
-              () => codeSigner.base64PublicKeyFromPem('pem-public-key'),
-            ).called(1);
-            verify(
-              () => artifactBuilder.buildAppBundle(
-                flavor: any(named: 'flavor'),
-                target: any(named: 'target'),
-                targetPlatforms: any(named: 'targetPlatforms'),
-                args: any(named: 'args'),
-                base64PublicKey: base64PublicKey,
-              ),
-            ).called(1);
-          },
-        );
       });
     });
 

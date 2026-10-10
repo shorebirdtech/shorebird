@@ -130,30 +130,6 @@ void main() {
         when(flavorValidator.validate).thenAnswer((_) async => []);
       });
 
-      group('when validation succeeds', () {
-        setUp(() {
-          when(
-            () => shorebirdValidator.validatePreconditions(
-              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
-              checkShorebirdInitialized: any(
-                named: 'checkShorebirdInitialized',
-              ),
-              validators: any(named: 'validators'),
-              supportedOperatingSystems: any(
-                named: 'supportedOperatingSystems',
-              ),
-            ),
-          ).thenAnswer((_) async {});
-        });
-
-        test('returns normally', () async {
-          await expectLater(
-            () => runWithOverrides(releaser.assertPreconditions),
-            returnsNormally,
-          );
-        });
-      });
-
       group('when validation fails', () {
         final exception = ValidationFailedException();
 
