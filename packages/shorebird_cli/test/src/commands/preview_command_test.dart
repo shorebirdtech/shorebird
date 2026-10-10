@@ -645,6 +645,21 @@ void main() {
                 ),
               );
 
+              // Keystore arguments are checked before anything is fetched.
+              verifyNever(
+                () => codePushClientWrapper.getReleases(
+                  appId: any(named: 'appId'),
+                  sideloadableOnly: any(named: 'sideloadableOnly'),
+                ),
+              );
+              verifyNever(
+                () => codePushClientWrapper.getReleaseArtifact(
+                  appId: any(named: 'appId'),
+                  releaseId: any(named: 'releaseId'),
+                  arch: any(named: 'arch'),
+                  platform: any(named: 'platform'),
+                ),
+              );
               verifyNever(
                 () => bundletool.buildApks(
                   bundle: aabPath(),
