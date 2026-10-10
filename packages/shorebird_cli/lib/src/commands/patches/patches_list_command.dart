@@ -1,12 +1,10 @@
 import 'package:mason_logger/mason_logger.dart';
-import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
+import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 const _jsonExample =
     'shorebird patches list --release-version 1.0.0+1 --app-id '
@@ -16,7 +14,8 @@ const _jsonExample =
 /// `shorebird patches list`
 /// List patches for a release.
 /// {@endtemplate}
-class PatchesListCommand extends ShorebirdCommand with AppScopedCommand {
+class PatchesListCommand extends ShorebirdCommand
+    with AppScopedCommand, PatchLookup {
   /// {@macro patches_list_command}
   PatchesListCommand() {
     argParser.addOption(
@@ -47,27 +46,12 @@ class PatchesListCommand extends ShorebirdCommand with AppScopedCommand {
     final releaseVersion =
         results[CommonArguments.releaseVersionArg.name] as String;
 
-    final Release release;
-    final List<ReleasePatch> patches;
-    try {
-      release = await codePushClientWrapper.getRelease(
-        appId: appId,
-        releaseVersion: releaseVersion,
-      );
-      patches = await codePushClientWrapper.getReleasePatches(
-        appId: appId,
-        releaseId: release.id,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch patches for release "$releaseVersion".',
-        );
-        return e.exitCode;
-      }
-      rethrow;
-    }
+    final fetched = await fetchReleasePatches(
+      appId: appId,
+      releaseVersion: releaseVersion,
+    );
+    if (fetched.errorCode case final errorCode?) return errorCode;
+    final patches = fetched.patches;
 
     if (isJsonMode) {
       emitJsonSuccess({

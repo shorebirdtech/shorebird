@@ -1,6 +1,6 @@
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/config/config.dart';
@@ -15,7 +15,8 @@ import 'package:shorebird_cli/src/shorebird_validator.dart';
 /// {@template promote_command}
 /// Promotes a patch to the production channel.
 /// {@endtemplate}
-class PromoteCommand extends ShorebirdCommand with PatchNumberArgument {
+class PromoteCommand extends ShorebirdCommand
+    with PatchNumberArgument, PatchLookup {
   /// {@macro promote_command}
   PromoteCommand() {
     argParser
@@ -77,26 +78,17 @@ class PromoteCommand extends ShorebirdCommand with PatchNumberArgument {
     final flavor = results.findOption('flavor', argParser: argParser);
     final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
 
-    final release = await codePushClientWrapper.getRelease(
+    // --json was refused above, so a failed fetch is rethrown here.
+    final fetched = await fetchReleasePatches(
       appId: appId,
       releaseVersion: releaseVersion,
     );
-    final patches = await codePushClientWrapper.getReleasePatches(
-      appId: appId,
-      releaseId: release.id,
+    final (patch: patchToPromote, errorCode: lookupError) = findPatchOrReport(
+      patches: fetched.patches,
+      patchNumber: patchNumber!,
+      releaseVersion: releaseVersion,
     );
-    final patchToPromote = patches.firstWhereOrNull(
-      (patch) => patch.number == patchNumber,
-    );
-    if (patchToPromote == null) {
-      logger
-        ..err('No patch found with number $patchNumber')
-        ..info(
-          '''Available patches: ${patches.map((patch) => patch.number).join(', ')}''',
-        );
-
-      return ExitCode.usage.code;
-    }
+    if (patchToPromote == null) return lookupError!;
 
     if (patchToPromote.channel == DeploymentTrack.stable.channel) {
       logger.err('Patch ${patchToPromote.number} is already live');

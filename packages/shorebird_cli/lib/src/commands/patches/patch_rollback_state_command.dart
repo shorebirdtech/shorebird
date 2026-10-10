@@ -1,8 +1,7 @@
-import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:meta/meta.dart';
-import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
 import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
+import 'package:shorebird_cli/src/commands/patches/patch_lookup.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
@@ -10,7 +9,6 @@ import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
-import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
 /// {@template patch_rollback_state_command}
 /// Shared implementation of `shorebird patches rollback` and
@@ -18,7 +16,7 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// [targetIsRolledBack] and differ only in wording and the API call.
 /// {@endtemplate}
 abstract class PatchRollbackStateCommand extends ShorebirdCommand
-    with AppScopedCommand, PatchNumberArgument {
+    with AppScopedCommand, PatchNumberArgument, PatchLookup {
   /// {@macro patch_rollback_state_command}
   PatchRollbackStateCommand() {
     argParser
@@ -97,13 +95,18 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
     final (:patchNumber, errorCode: patchNumberError) = resolvePatchNumber();
     if (patchNumber == null) return patchNumberError!;
 
-    final lookup = await _findPatch(
+    final fetched = await fetchReleasePatches(
       appId: appId,
       releaseVersion: releaseVersion,
-      patchNumber: patchNumber,
     );
-    final (:release, :patch, errorCode: lookupError) = lookup;
-    if (lookupError != null) return lookupError;
+    if (fetched.errorCode case final errorCode?) return errorCode;
+
+    final (:patch, errorCode: lookupError) = findPatchOrReport(
+      patches: fetched.patches,
+      patchNumber: patchNumber,
+      releaseVersion: releaseVersion,
+    );
+    if (patch == null) return lookupError!;
 
     // Only the POST can say whether the patch changed: the read above can go
     // stale, and the server answers 304 when there was nothing to do.
@@ -111,8 +114,8 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
     try {
       changed = await changePatchState(
         appId: appId,
-        releaseId: release!.id,
-        patchId: patch!.id,
+        releaseId: fetched.release!.id,
+        patchId: patch.id,
         patchNumber: patch.number,
       );
     } on ProcessExit catch (e) {
@@ -156,55 +159,5 @@ abstract class PatchRollbackStateCommand extends ShorebirdCommand
     }
     formatPatchDetails(updatedPatch).forEach(logger.info);
     return ExitCode.success.code;
-  }
-
-  /// Fetches [releaseVersion] and finds patch [patchNumber] on it, reporting
-  /// the failure and returning an exit code when either is missing.
-  Future<({Release? release, ReleasePatch? patch, int? errorCode})> _findPatch({
-    required String appId,
-    required String releaseVersion,
-    required int patchNumber,
-  }) async {
-    final Release release;
-    final List<ReleasePatch> patches;
-    try {
-      release = await codePushClientWrapper.getRelease(
-        appId: appId,
-        releaseVersion: releaseVersion,
-      );
-      patches = await codePushClientWrapper.getReleasePatches(
-        appId: appId,
-        releaseId: release.id,
-      );
-    } on ProcessExit catch (e) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.fetchFailed,
-          message: 'Failed to fetch patches for release "$releaseVersion".',
-        );
-        return (release: null, patch: null, errorCode: e.exitCode);
-      }
-      rethrow;
-    }
-
-    final patch = patches.firstWhereOrNull((p) => p.number == patchNumber);
-    if (patch == null) {
-      if (isJsonMode) {
-        emitJsonError(
-          code: JsonErrorCode.usageError,
-          message:
-              'No patch found with number $patchNumber '
-              'for release "$releaseVersion".',
-        );
-      } else {
-        logger
-          ..err('No patch found with number $patchNumber')
-          ..info(
-            'Available patches: ${patches.map((p) => p.number).join(', ')}',
-          );
-      }
-      return (release: release, patch: null, errorCode: ExitCode.usage.code);
-    }
-    return (release: release, patch: patch, errorCode: null);
   }
 }
