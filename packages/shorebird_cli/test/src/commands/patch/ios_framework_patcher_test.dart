@@ -4,7 +4,7 @@ import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:platform/platform.dart';
+import 'package:platform/testing.dart';
 import 'package:scoped_deps/scoped_deps.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -22,6 +22,7 @@ import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/os/operating_system_interface.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
+import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
@@ -57,6 +58,7 @@ void main() {
     late ShorebirdLogger logger;
     late OperatingSystemInterface operatingSystemInterface;
     late PatchDiffChecker patchDiffChecker;
+    late TestNativePlatform nativePlatform;
     late Progress progress;
     late ShorebirdArtifacts shorebirdArtifacts;
     late ShorebirdProcess shorebirdProcess;
@@ -81,6 +83,7 @@ void main() {
           loggerRef.overrideWith(() => logger),
           osInterfaceRef.overrideWith(() => operatingSystemInterface),
           patchDiffCheckerRef.overrideWith(() => patchDiffChecker),
+          platformRef.overrideWith(() => nativePlatform),
           processRef.overrideWith(() => shorebirdProcess),
           shorebirdArtifactsRef.overrideWith(() => shorebirdArtifacts),
           shorebirdEnvRef.overrideWith(() => shorebirdEnv),
@@ -102,6 +105,7 @@ void main() {
 
     setUp(() {
       apple = MockApple();
+      nativePlatform = TestNativePlatform(environment: {});
       aotTools = MockAotTools();
       argParser = MockArgParser();
       argResults = MockArgResults();
@@ -698,6 +702,7 @@ void main() {
               releaseArtifact: any(named: 'releaseArtifact'),
               splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
               vmCodeFile: any(named: 'vmCodeFile'),
+              ddMaxBytes: any(named: 'ddMaxBytes'),
             ),
           ).thenAnswer(
             (_) async =>
@@ -821,6 +826,57 @@ void main() {
                   splitDebugInfoArgs: [],
                 ),
               ).called(1);
+            });
+
+            test('passes no ddMaxBytes to runLinker by default', () async {
+              await runWithOverrides(
+                () => patcher.createPatchArtifacts(
+                  appId: appId,
+                  releaseId: releaseId,
+                  releaseArtifact: releaseArtifactFile,
+                ),
+              );
+
+              final captured = verify(
+                () => apple.runLinker(
+                  kernelFile: any(named: 'kernelFile'),
+                  aotOutputFile: any(named: 'aotOutputFile'),
+                  releaseArtifact: any(named: 'releaseArtifact'),
+                  splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+                  vmCodeFile: any(named: 'vmCodeFile'),
+                  ddMaxBytes: captureAny(named: 'ddMaxBytes'),
+                ),
+              ).captured;
+              expect(captured, equals([null]));
+            });
+
+            group('when SHOREBIRD_PATCH_DD_MAX_BYTES is set', () {
+              setUp(() {
+                nativePlatform = TestNativePlatform(
+                  environment: {'SHOREBIRD_PATCH_DD_MAX_BYTES': '4096'},
+                );
+              });
+
+              test('passes ddMaxBytes to runLinker', () async {
+                await runWithOverrides(
+                  () => patcher.createPatchArtifacts(
+                    appId: appId,
+                    releaseId: releaseId,
+                    releaseArtifact: releaseArtifactFile,
+                  ),
+                );
+
+                verify(
+                  () => apple.runLinker(
+                    kernelFile: any(named: 'kernelFile'),
+                    aotOutputFile: any(named: 'aotOutputFile'),
+                    releaseArtifact: any(named: 'releaseArtifact'),
+                    splitDebugInfoArgs: any(named: 'splitDebugInfoArgs'),
+                    vmCodeFile: any(named: 'vmCodeFile'),
+                    ddMaxBytes: 4096,
+                  ),
+                ).called(1);
+              });
             });
 
             group('when obfuscationMapPath is set', () {
