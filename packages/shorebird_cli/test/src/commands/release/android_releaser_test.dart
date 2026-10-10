@@ -286,7 +286,7 @@ To change the version of this release, change your app's version in your pubspec
         });
       });
 
-      group('when --obfuscate is not passed', () {
+      group('when building an aab', () {
         setUp(() {
           when(() => argResults['artifact']).thenReturn('aab');
           when(() => argResults['split-per-abi']).thenReturn(false);
@@ -387,6 +387,80 @@ To change the version of this release, change your app's version in your pubspec
             () => artifactBuilder.buildApk(
               targetPlatforms: Arch.values,
               args: [],
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when --obfuscate is passed', () {
+        setUp(() {
+          when(() => argResults['obfuscate']).thenReturn(true);
+          when(() => argResults.wasParsed('obfuscate')).thenReturn(true);
+          when(() => shorebirdEnv.flutterRevision).thenReturn('deadbeef');
+          when(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: any(named: 'platform'),
+              flutterRevision: any(named: 'flutterRevision'),
+            ),
+          ).thenAnswer((_) async => false);
+          // Simulate the build creating the obfuscation map.
+          when(
+            () => artifactBuilder.buildAppBundle(
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              targetPlatforms: any(named: 'targetPlatforms'),
+              args: any(named: 'args'),
+            ),
+          ).thenAnswer((_) async {
+            File(
+                p.join(
+                  projectRoot.path,
+                  'build',
+                  'shorebird',
+                  'obfuscation_map.json',
+                ),
+              )
+              ..createSync(recursive: true)
+              ..writeAsStringSync('{}');
+            return aabFile;
+          });
+        });
+
+        test('injects --save-obfuscation-map into build args', () async {
+          await runWithOverrides(androidReleaser.buildReleaseArtifacts);
+
+          final args =
+              verify(
+                    () => artifactBuilder.buildAppBundle(
+                      flavor: any(named: 'flavor'),
+                      target: any(named: 'target'),
+                      targetPlatforms: any(named: 'targetPlatforms'),
+                      args: captureAny(named: 'args'),
+                    ),
+                  ).captured.single
+                  as List<String>;
+          expect(
+            args,
+            contains(
+              startsWith(
+                '--extra-gen-snapshot-options=--save-obfuscation-map=',
+              ),
+            ),
+          );
+          verify(
+            () => shorebirdFlutter.shouldPreStripLibappInGenSnapshot(
+              platform: ReleasePlatform.android,
+              flutterRevision: 'deadbeef',
+            ),
+          ).called(1);
+        });
+
+        test('logs detail about map location', () async {
+          await runWithOverrides(androidReleaser.buildReleaseArtifacts);
+
+          verify(
+            () => logger.detail(
+              any(that: startsWith('Obfuscation map saved to')),
             ),
           ).called(1);
         });
