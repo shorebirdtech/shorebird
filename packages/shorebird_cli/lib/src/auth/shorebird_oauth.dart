@@ -50,7 +50,7 @@ class ShorebirdAuthException implements Exception {
   /// is expired, revoked, or was issued to someone else (RFC 6749 section
   /// 5.2). The status code alone is not enough. A token endpoint also answers
   /// 4xx for rate limiting (429), for a malformed request (400
-  /// `invalid_request`, `unsupported_grant_type`), or for a misrouted one
+  /// `invalid_request`, `unsupported_grant_type`), or for the wrong method
   /// (405), none of which says anything about the credentials. A 5xx, or no
   /// answer at all, says the service is having a bad day. Reading any of
   /// those as a rejection would log a user out because they were rate limited
