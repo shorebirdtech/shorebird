@@ -1521,72 +1521,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ).called(1);
         });
 
-        test('exits with code 70 when artifact creation fails', () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(error);
-          setUpProjectRoot();
-
-          await expectLater(
-            () async => runWithOverrides(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                projectRoot: projectRoot.path,
-                aabPath: p.join(projectRoot.path, aabPath),
-                architectures: Arch.values,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail(any(that: contains(error)))).called(1);
-        });
-
-        test('exits with code 70 when aab artifact creation fails', () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath', that: endsWith('aab')),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(error);
-          setUpProjectRoot();
-
-          await expectLater(
-            () async => runWithOverrides(
-              () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                platform: releasePlatform,
-                projectRoot: projectRoot.path,
-                aabPath: p.join(projectRoot.path, aabPath),
-                architectures: Arch.values,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail(any(that: contains(error)))).called(1);
-        });
-
         test(
           'logs message when uploading release artifact that already exists',
           () async {
@@ -1625,41 +1559,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           },
         );
 
-        test('logs message when uploading aab that already exists', () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath', that: endsWith('.aab')),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(const CodePushConflictException(message: error));
-          setUpProjectRoot();
-
-          await runWithOverrides(
-            () async => codePushClientWrapper.createAndroidReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              platform: releasePlatform,
-              projectRoot: projectRoot.path,
-              aabPath: p.join(projectRoot.path, aabPath),
-              architectures: Arch.values,
-            ),
-          );
-
-          verify(
-            () => logger.info(
-              any(that: contains('aab artifact already exists, continuing...')),
-            ),
-          ).called(1);
-          verifyNever(() => progress.fail(error));
-        });
-
         test('completes successfully when all artifacts are created', () async {
           when(
             () => codePushClient.createReleaseArtifact(
@@ -1688,6 +1587,35 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
 
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
+          for (final arch in Arch.values) {
+            verify(
+              () => codePushClient.createReleaseArtifact(
+                appId: app.appId,
+                artifactPath: any(
+                  named: 'artifactPath',
+                  that: endsWith(p.join(arch.androidBuildPath, 'libapp.so')),
+                ),
+                releaseId: releaseId,
+                arch: arch.arch,
+                platform: releasePlatform,
+                hash: any(named: 'hash'),
+                canSideload: false,
+                podfileLockHash: null,
+              ),
+            ).called(1);
+          }
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              appId: app.appId,
+              artifactPath: p.join(projectRoot.path, aabPath),
+              releaseId: releaseId,
+              arch: 'aab',
+              platform: releasePlatform,
+              hash: any(named: 'hash'),
+              canSideload: true,
+              podfileLockHash: null,
+            ),
+          ).called(1);
         });
 
         test('completes successfully when a flavor is provided', () async {
@@ -1969,74 +1897,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           )..createSync(recursive: true);
         });
 
-        group('when release artifact already exists', () {
-          setUp(() {
-            when(
-              () => codePushClient.createReleaseArtifact(
-                artifactPath: any(named: 'artifactPath'),
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
-            ).thenThrow(
-              const CodePushConflictException(message: 'already exists'),
-            );
-          });
-
-          test('logs message and continues', () async {
-            await runWithOverrides(
-              () => codePushClientWrapper.createWindowsReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                releaseZipPath: releaseZip.path,
-              ),
-            );
-
-            verify(
-              () => logger.info(
-                any(that: contains('already exists, continuing...')),
-              ),
-            ).called(1);
-            verifyNever(() => progress.fail(any()));
-          });
-        });
-
-        group('when createReleaseArtifact fails', () {
-          setUp(() {
-            when(
-              () => codePushClient.createReleaseArtifact(
-                artifactPath: any(named: 'artifactPath'),
-                appId: any(named: 'appId'),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
-            ).thenThrow(Exception('something went wrong'));
-          });
-
-          test('exits with code 70', () async {
-            await expectLater(
-              () async => runWithOverrides(
-                () => codePushClientWrapper.createWindowsReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  releaseZipPath: releaseZip.path,
-                ),
-              ),
-              exitsWithCode(ExitCode.software),
-            );
-
-            verify(() => progress.fail(any())).called(1);
-          });
-        });
-
         group('when createReleaseArtifact succeeds', () {
           setUp(() {
             when(
@@ -2126,149 +1986,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ).thenAnswer((_) async {});
         });
 
-        test('exits with code 70 when artifact creation fails', () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(error);
-          setUpProjectRoot();
-
-          await expectLater(
-            () async => runWithOverrides(
-              () async =>
-                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                    appId: app.appId,
-                    releaseId: releaseId,
-                    platform: releasePlatform,
-                    aarPath: p.join(projectRoot.path, aarPath),
-                    extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-                    architectures: Arch.values,
-                  ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail(any(that: contains(error)))).called(1);
-        });
-
-        test('exits with code 70 when aar artifact creation fails', () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath', that: endsWith('aar')),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(error);
-          setUpProjectRoot();
-
-          await expectLater(
-            () async => runWithOverrides(
-              () async =>
-                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                    appId: app.appId,
-                    releaseId: releaseId,
-                    platform: releasePlatform,
-                    aarPath: p.join(projectRoot.path, aarPath),
-                    extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-                    architectures: Arch.values,
-                  ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail(any(that: contains(error)))).called(1);
-        });
-
-        test(
-          'logs message when uploading release artifact that already exists',
-          () async {
-            const error = 'something went wrong';
-            when(
-              () => codePushClient.createReleaseArtifact(
-                appId: any(named: 'appId'),
-                artifactPath: any(named: 'artifactPath'),
-                releaseId: any(named: 'releaseId'),
-                arch: any(named: 'arch'),
-                platform: any(named: 'platform'),
-                hash: any(named: 'hash'),
-                canSideload: any(named: 'canSideload'),
-                podfileLockHash: any(named: 'podfileLockHash'),
-              ),
-            ).thenThrow(const CodePushConflictException(message: error));
-            setUpProjectRoot();
-
-            await runWithOverrides(
-              () async =>
-                  codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                    appId: app.appId,
-                    releaseId: releaseId,
-                    platform: releasePlatform,
-                    aarPath: p.join(projectRoot.path, aarPath),
-                    extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-                    architectures: Arch.values,
-                  ),
-            );
-
-            // 1 for each arch, 1 for the aab
-            final numArtifactsUploaded = Arch.values.length + 1;
-            verify(
-              () => logger.info(any(that: contains('already exists'))),
-            ).called(numArtifactsUploaded);
-            verifyNever(() => progress.fail(error));
-          },
-        );
-
-        test('logs message when uploading aar that already exists', () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath', that: endsWith('.aar')),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(const CodePushConflictException(message: error));
-          setUpProjectRoot();
-
-          await runWithOverrides(
-            () async =>
-                codePushClientWrapper.createAndroidArchiveReleaseArtifacts(
-                  appId: app.appId,
-                  releaseId: releaseId,
-                  platform: releasePlatform,
-                  aarPath: p.join(projectRoot.path, aarPath),
-                  extractedAarDir: p.join(projectRoot.path, extractedAarPath),
-                  architectures: Arch.values,
-                ),
-          );
-
-          verify(
-            () => logger.info(
-              any(that: contains('aar artifact already exists, continuing...')),
-            ),
-          ).called(1);
-          verifyNever(() => progress.fail(error));
-        });
-
         test('completes successfully when all artifacts are created', () async {
           when(
             () => codePushClient.createReleaseArtifact(
@@ -2298,6 +2015,35 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
 
           verify(() => progress.complete()).called(1);
           verifyNever(() => progress.fail(any()));
+          for (final arch in Arch.values) {
+            verify(
+              () => codePushClient.createReleaseArtifact(
+                appId: app.appId,
+                artifactPath: any(
+                  named: 'artifactPath',
+                  that: endsWith(p.join(arch.androidBuildPath, 'libapp.so')),
+                ),
+                releaseId: releaseId,
+                arch: arch.arch,
+                platform: releasePlatform,
+                hash: any(named: 'hash'),
+                canSideload: false,
+                podfileLockHash: null,
+              ),
+            ).called(1);
+          }
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              appId: app.appId,
+              artifactPath: p.join(projectRoot.path, aarPath),
+              releaseId: releaseId,
+              arch: 'aar',
+              platform: releasePlatform,
+              hash: any(named: 'hash'),
+              canSideload: false,
+              podfileLockHash: null,
+            ),
+          ).called(1);
         });
 
         test('completes successfully when a flavor is provided', () async {
@@ -2375,124 +2121,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         ).thenAnswer((_) async {});
       });
 
-      test(
-        'exits with code 70 when xcarchive artifact creation fails',
-        () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(
-                named: 'artifactPath',
-                that: endsWith('.xcarchive.zip'),
-              ),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(error);
-          setUpProjectRoot();
-
-          await expectLater(
-            () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                xcarchivePath: p.join(projectRoot.path, xcarchivePath),
-                runnerPath: p.join(projectRoot.path, runnerPath),
-                isCodesigned: true,
-                podfileLockHash: podfileLockHash,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail(any(that: contains(error)))).called(1);
-        },
-      );
-
-      for (final (name, suffix) in [
-        ('xcarchive', '.xcarchive.zip'),
-        ('runner.app', 'runner.app.zip'),
-      ]) {
-        test('logs and continues when $name already exists', () async {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(named: 'artifactPath', that: endsWith(suffix)),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(const CodePushConflictException(message: 'exists'));
-          setUpProjectRoot();
-
-          await runWithOverrides(
-            () async => codePushClientWrapper.createIosReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
-              runnerPath: p.join(projectRoot.path, runnerPath),
-              isCodesigned: false,
-              podfileLockHash: podfileLockHash,
-            ),
-          );
-
-          verify(
-            () => logger.info(
-              any(that: contains('$name artifact already exists, continuing')),
-            ),
-          ).called(1);
-          verify(() => progress.complete()).called(1);
-          verifyNever(() => progress.fail(any()));
-        });
-      }
-
-      test(
-        'exits with code 70 when xcarchive artifact creation fails',
-        () async {
-          const error = 'something went wrong';
-          when(
-            () => codePushClient.createReleaseArtifact(
-              appId: any(named: 'appId'),
-              artifactPath: any(
-                named: 'artifactPath',
-                that: endsWith('runner.app.zip'),
-              ),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(error);
-          setUpProjectRoot();
-
-          await expectLater(
-            () async => runWithOverrides(
-              () async => codePushClientWrapper.createIosReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                xcarchivePath: p.join(projectRoot.path, xcarchivePath),
-                runnerPath: p.join(projectRoot.path, runnerPath),
-                isCodesigned: false,
-                podfileLockHash: podfileLockHash,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail(any(that: contains(error)))).called(1);
-        },
-      );
-
       test('completes successfully when artifact is created', () async {
         when(
           () => codePushClient.createReleaseArtifact(
@@ -2529,14 +2157,63 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               that: endsWith('.xcarchive.zip'),
             ),
             releaseId: releaseId,
-            arch: any(named: 'arch'),
-            platform: releasePlatform,
+            arch: 'xcarchive',
+            platform: ReleasePlatform.ios,
             hash: any(named: 'hash'),
-            canSideload: any(named: 'canSideload'),
+            canSideload: false,
+            podfileLockHash: podfileLockHash,
+          ),
+        ).called(1);
+        verify(
+          () => codePushClient.createReleaseArtifact(
+            appId: app.appId,
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('runner.app.zip'),
+            ),
+            releaseId: releaseId,
+            arch: 'runner',
+            platform: ReleasePlatform.ios,
+            hash: any(named: 'hash'),
+            canSideload: true,
             podfileLockHash: podfileLockHash,
           ),
         ).called(1);
       });
+
+      test(
+        'marks the runner as not sideloadable when not codesigned',
+        () async {
+          setUpProjectRoot();
+
+          await runWithOverrides(
+            () async => codePushClientWrapper.createIosReleaseArtifacts(
+              appId: app.appId,
+              releaseId: releaseId,
+              xcarchivePath: p.join(projectRoot.path, xcarchivePath),
+              runnerPath: p.join(projectRoot.path, runnerPath),
+              isCodesigned: false,
+              podfileLockHash: podfileLockHash,
+            ),
+          );
+
+          verify(
+            () => codePushClient.createReleaseArtifact(
+              appId: app.appId,
+              artifactPath: any(
+                named: 'artifactPath',
+                that: endsWith('runner.app.zip'),
+              ),
+              releaseId: releaseId,
+              arch: 'runner',
+              platform: ReleasePlatform.ios,
+              hash: any(named: 'hash'),
+              canSideload: false,
+              podfileLockHash: podfileLockHash,
+            ),
+          ).called(1);
+        },
+      );
     });
 
     group('createLinuxReleaseArtifacts', () {
@@ -2546,73 +2223,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         releaseBundle = Directory(
           p.join(projectRoot.path, 'path', 'to', 'bundle'),
         )..createSync(recursive: true);
-      });
-
-      group('when createReleaseArtifact fails', () {
-        setUp(() {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              artifactPath: any(named: 'artifactPath'),
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(Exception('something went wrong'));
-        });
-
-        test('exits with code 70', () async {
-          await expectLater(
-            () async => runWithOverrides(
-              () => codePushClientWrapper.createLinuxReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                bundle: releaseBundle,
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-
-          verify(() => progress.fail(any())).called(1);
-        });
-      });
-
-      group('when release artifact already exists', () {
-        setUp(() {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              artifactPath: any(named: 'artifactPath'),
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(const CodePushConflictException(message: 'exists'));
-        });
-
-        test('logs message and continues', () async {
-          await runWithOverrides(
-            () => codePushClientWrapper.createLinuxReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              bundle: releaseBundle,
-            ),
-          );
-
-          verify(
-            () => logger.info(
-              any(that: contains('bundle artifact already exists, continuing')),
-            ),
-          ).called(1);
-          verify(() => progress.complete()).called(1);
-          verifyNever(() => progress.fail(any()));
-        });
       });
 
       group('when createReleaseArtifact succeeds', () {
@@ -2692,65 +2302,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         setUpProjectRoot();
       });
 
-      test('exits with code 70 when creating app artifact fails', () async {
-        when(
-          () => codePushClient.createReleaseArtifact(
-            artifactPath: any(named: 'artifactPath'),
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            arch: any(named: 'arch'),
-            platform: any(named: 'platform'),
-            hash: any(named: 'hash'),
-            canSideload: any(named: 'canSideload'),
-            podfileLockHash: any(named: 'podfileLockHash'),
-          ),
-        ).thenThrow(Exception('oh no'));
-
-        await expectLater(
-          () async => runWithOverrides(
-            () => codePushClientWrapper.createMacosReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              appPath: p.join(projectRoot.path, appPath),
-              podfileLockHash: null,
-            ),
-          ),
-          exitsWithCode(ExitCode.software),
-        );
-      });
-
-      test('logs and continues when app artifact already exists', () async {
-        when(
-          () => codePushClient.createReleaseArtifact(
-            artifactPath: any(named: 'artifactPath'),
-            appId: any(named: 'appId'),
-            releaseId: any(named: 'releaseId'),
-            arch: any(named: 'arch'),
-            platform: any(named: 'platform'),
-            hash: any(named: 'hash'),
-            canSideload: any(named: 'canSideload'),
-            podfileLockHash: any(named: 'podfileLockHash'),
-          ),
-        ).thenThrow(const CodePushConflictException(message: 'exists'));
-
-        await runWithOverrides(
-          () => codePushClientWrapper.createMacosReleaseArtifacts(
-            appId: app.appId,
-            releaseId: releaseId,
-            appPath: p.join(projectRoot.path, appPath),
-            podfileLockHash: null,
-          ),
-        );
-
-        verify(
-          () => logger.info(
-            any(that: contains('app artifact already exists, continuing')),
-          ),
-        ).called(1);
-        verify(() => progress.complete()).called(1);
-        verifyNever(() => progress.fail(any()));
-      });
-
       test('completes successfully when release artifact is created', () async {
         await expectLater(
           runWithOverrides(
@@ -2758,11 +2309,26 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: app.appId,
               releaseId: releaseId,
               appPath: p.join(projectRoot.path, appPath),
-              podfileLockHash: null,
+              podfileLockHash: 'podfile-lock-hash',
             ),
           ),
           completes,
         );
+        verify(
+          () => codePushClient.createReleaseArtifact(
+            appId: app.appId,
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('Runner.app.zip'),
+            ),
+            releaseId: releaseId,
+            arch: 'app',
+            platform: ReleasePlatform.macos,
+            hash: any(named: 'hash'),
+            canSideload: true,
+            podfileLockHash: 'podfile-lock-hash',
+          ),
+        ).called(1);
       });
     });
 
@@ -2791,73 +2357,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         setUpProjectRoot();
       });
 
-      test(
-        'exits with code 70 when creating xcframework artifact fails',
-        () async {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              artifactPath: any(named: 'artifactPath'),
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(Exception('oh no'));
-
-          await expectLater(
-            () async => runWithOverrides(
-              () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
-                appId: app.appId,
-                releaseId: releaseId,
-                appFrameworkPath: p.join(projectRoot.path, frameworkPath),
-              ),
-            ),
-            exitsWithCode(ExitCode.software),
-          );
-        },
-      );
-
-      test(
-        'logs and continues when xcframework artifact already exists',
-        () async {
-          when(
-            () => codePushClient.createReleaseArtifact(
-              artifactPath: any(named: 'artifactPath'),
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-              arch: any(named: 'arch'),
-              platform: any(named: 'platform'),
-              hash: any(named: 'hash'),
-              canSideload: any(named: 'canSideload'),
-              podfileLockHash: any(named: 'podfileLockHash'),
-            ),
-          ).thenThrow(const CodePushConflictException(message: 'exists'));
-
-          await runWithOverrides(
-            () => codePushClientWrapper.createIosFrameworkReleaseArtifacts(
-              appId: app.appId,
-              releaseId: releaseId,
-              appFrameworkPath: p.join(projectRoot.path, frameworkPath),
-            ),
-          );
-
-          verify(
-            () => logger.info(
-              any(
-                that: contains(
-                  'xcframework artifact already exists, continuing',
-                ),
-              ),
-            ),
-          ).called(1);
-          verify(() => progress.complete()).called(1);
-          verifyNever(() => progress.fail(any()));
-        },
-      );
-
       test('completes successfully when release artifact is created', () async {
         await expectLater(
           runWithOverrides(
@@ -2869,6 +2368,18 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
           ),
           completes,
         );
+        verify(
+          () => codePushClient.createReleaseArtifact(
+            appId: app.appId,
+            artifactPath: any(named: 'artifactPath', that: endsWith('.zip')),
+            releaseId: releaseId,
+            arch: 'xcframework',
+            platform: ReleasePlatform.ios,
+            hash: any(named: 'hash'),
+            canSideload: false,
+            podfileLockHash: null,
+          ),
+        ).called(1);
       });
     });
 
@@ -2911,11 +2422,23 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
         }
       }
 
+      // Every release artifact upload goes through the same helper, so these
+      // tests cover the failure and conflict handling for every platform.
       test('exits with code 70 when creating the artifact fails', () async {
         stubCreateReleaseArtifact(Exception('oh no'));
 
         await expectLater(createSupplement, exitsWithCode(ExitCode.software));
-        verify(() => progress.fail(any())).called(1);
+        verify(
+          () => progress.fail(
+            any(
+              that: allOf(
+                startsWith('Error uploading supplement artifact ('),
+                endsWith('ios_supplement.zip): Exception: oh no'),
+              ),
+            ),
+          ),
+        ).called(1);
+        verifyNever(() => progress.complete());
       });
 
       test('logs and continues when the artifact already exists', () async {
@@ -2943,6 +2466,21 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
 
         verify(() => progress.complete()).called(1);
         verifyNever(() => progress.fail(any()));
+        verify(
+          () => codePushClient.createReleaseArtifact(
+            appId: app.appId,
+            artifactPath: any(
+              named: 'artifactPath',
+              that: endsWith('ios_supplement.zip'),
+            ),
+            releaseId: releaseId,
+            arch: 'ios_supplement',
+            platform: ReleasePlatform.ios,
+            hash: any(named: 'hash'),
+            canSideload: false,
+            podfileLockHash: null,
+          ),
+        ).called(1);
       });
     });
 
