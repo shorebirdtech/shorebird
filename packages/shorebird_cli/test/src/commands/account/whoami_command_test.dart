@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -229,8 +227,7 @@ void main() {
       });
 
       test('in --json mode, emits JSON error envelope', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runScoped(
             command.run,
             values: {
@@ -242,12 +239,9 @@ void main() {
               shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
             },
           ),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'error');
+        expect(exitCode, equals(ExitCode.software.code));
+        expect(json['status'], 'error');
       });
     });
 
@@ -265,16 +259,12 @@ void main() {
       }
 
       test('emits JSON success with projected user fields', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runJsonMode(command.run),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        expect(captured, hasLength(1));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect(decoded['status'], 'success');
-        final data = decoded['data'] as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
+        expect(json['status'], 'success');
+        final data = json['data'] as Map<String, dynamic>;
         final userData = data['user'] as Map<String, dynamic>;
         expect(userData['id'], 1);
         expect(userData['email'], 'user@example.com');
@@ -285,14 +275,11 @@ void main() {
       });
 
       test('does not leak protocol-internal fields', () async {
-        final captured = <String>[];
-        await captureStdout(
+        final json = (await captureJson(
           () => runJsonMode(command.run),
-          captured: captured,
-        );
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        )).json;
         final userData =
-            (decoded['data'] as Map<String, dynamic>)['user']
+            (json['data'] as Map<String, dynamic>)['user']
                 as Map<String, dynamic>;
         expect(userData.containsKey('stripe_customer_id'), isFalse);
         expect(userData.containsKey('jwt_issuer'), isFalse);

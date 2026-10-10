@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:args/args.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -104,13 +102,10 @@ void main() {
       });
 
       test('emits an empty list under --json', () async {
-        final captured = <String>[];
-        await captureStdout(
+        final json = (await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
-        );
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
-        expect((decoded['data'] as Map<String, dynamic>)['channels'], isEmpty);
+        )).json;
+        expect((json['data'] as Map<String, dynamic>)['channels'], isEmpty);
       });
     });
 
@@ -129,15 +124,12 @@ void main() {
       });
 
       test('emits a JSON error envelope in --json mode', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.software.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.software.code));
         expect(
-          (decoded['error'] as Map<String, dynamic>)['code'],
+          (json['error'] as Map<String, dynamic>)['code'],
           'fetch_failed',
         );
       });
@@ -145,15 +137,12 @@ void main() {
 
     group('--json', () {
       test('emits the channels', () async {
-        final captured = <String>[];
-        final result = await captureStdout(
+        final (:exitCode, :json) = await captureJson(
           () => runWithOverrides(command.run, jsonMode: true),
-          captured: captured,
         );
-        expect(result, equals(ExitCode.success.code));
-        final decoded = jsonDecode(captured.first) as Map<String, dynamic>;
+        expect(exitCode, equals(ExitCode.success.code));
         expect(
-          (decoded['data'] as Map<String, dynamic>)['channels'],
+          (json['data'] as Map<String, dynamic>)['channels'],
           equals([stableChannel.toJson(), qaChannel.toJson()]),
         );
       });
