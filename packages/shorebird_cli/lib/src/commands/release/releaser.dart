@@ -59,6 +59,22 @@ abstract class Releaser {
   /// Asserts that the combination arguments passed to the command are valid.
   Future<void> assertArgsAreValid();
 
+  /// Rejects `--release-version`, which is only valid for releases whose
+  /// version cannot be inferred from the built artifact (aar, ios-framework).
+  /// Call from [assertArgsAreValid] in releasers that read the version from
+  /// the built app.
+  void assertReleaseVersionFlagNotProvided() {
+    if (argResults.wasParsed('release-version')) {
+      logger.err(
+        '''
+The "--release-version" flag is only supported for aar and ios-framework releases.
+
+To change the version of this release, change your app's version in your pubspec.yaml.''',
+      );
+      throw ProcessExit(ExitCode.usage.code);
+    }
+  }
+
   /// Builds the release artifacts for the given platform. Returns the "primary"
   /// artifact for the platform (e.g. the AAB for Android, the IPA for iOS).
   Future<FileSystemEntity> buildReleaseArtifacts();

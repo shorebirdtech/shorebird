@@ -3,14 +3,13 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
 import 'package:shorebird_cli/src/archive_analysis/apple_archive_differ.dart';
+import 'package:shorebird_cli/src/commands/build_preconditions.dart';
 import 'package:shorebird_cli/src/commands/patch/patch.dart';
 import 'package:shorebird_cli/src/executables/xcodebuild.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/metadata/metadata.dart';
 import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/shorebird_env.dart';
-import 'package:shorebird_cli/src/shorebird_validator.dart';
-import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/validators/validators.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
@@ -46,18 +45,10 @@ mixin ApplePatcherMixin on Patcher {
   List<Validator> get applePlatformValidators;
 
   @override
-  Future<void> assertPreconditions() async {
-    try {
-      await shorebirdValidator.validatePreconditions(
-        checkShorebirdInitialized: true,
-        checkUserIsAuthenticated: true,
-        validators: applePlatformValidators,
-        supportedOperatingSystems: {NativePlatform.macOS},
-      );
-    } on PreconditionFailedException catch (error) {
-      throw ProcessExit(error.exitCode.code);
-    }
-  }
+  Future<void> assertPreconditions() => assertBuildPreconditions(
+    validators: applePlatformValidators,
+    supportedOperatingSystems: {NativePlatform.macOS},
+  );
 
   @override
   Future<CreatePatchMetadata> updatedCreatePatchMetadata(
