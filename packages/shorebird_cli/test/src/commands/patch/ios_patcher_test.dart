@@ -551,8 +551,6 @@ This may indicate that the patch contains native changes, which cannot be applie
             });
           });
         });
-
-        group('when release does not have podspec lock hash', () {});
       });
     });
 

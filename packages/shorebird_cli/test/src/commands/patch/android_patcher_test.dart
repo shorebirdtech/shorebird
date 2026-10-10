@@ -936,19 +936,6 @@ Looked in:
       );
     });
 
-    group('patchArtifactForDiffCheck', () {
-      late File aabFile;
-      setUp(() {
-        aabFile = File('');
-        when(
-          () => shorebirdAndroidArtifacts.findAab(
-            project: any(named: 'project'),
-            flavor: any(named: 'flavor'),
-          ),
-        ).thenReturn(aabFile);
-      });
-    });
-
     group('updatedCreatePatchMetadata', () {
       const allowAssetDiffs = false;
       const allowNativeDiffs = true;
