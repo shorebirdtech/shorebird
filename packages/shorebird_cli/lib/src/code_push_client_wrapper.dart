@@ -654,10 +654,7 @@ Looked in:
         uploadedArchCount++;
       } on CodePushConflictException catch (_) {
         uploadedArchCount++;
-        // Newlines are due to how logger.info interacts with logger.progress.
-        logger.info('''
-
-${arch.arch} artifact already exists, continuing...''');
+        _logExistingReleaseArtifact(arch.arch);
       } catch (error) {
         _handleErrorAndExit(
           error,
@@ -699,10 +696,7 @@ to the architectures your project actually builds.''',
         podfileLockHash: null,
       );
     } on CodePushConflictException catch (_) {
-      // Newlines are due to how logger.info interacts with logger.progress.
-      logger.info('''
-
-aab artifact already exists, continuing...''');
+      _logExistingReleaseArtifact('aab');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -736,10 +730,7 @@ aab artifact already exists, continuing...''');
         podfileLockHash: null,
       );
     } on CodePushConflictException catch (_) {
-      // Newlines are due to how logger.info interacts with logger.progress.
-      logger.info('''
-
-Windows release (exe) artifact already exists, continuing...''');
+      _logExistingReleaseArtifact('Windows release (exe)');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -784,10 +775,7 @@ Windows release (exe) artifact already exists, continuing...''');
           podfileLockHash: null,
         );
       } on CodePushConflictException catch (_) {
-        // Newlines are due to how logger.info interacts with logger.progress.
-        logger.info('''
-
-${arch.arch} artifact already exists, continuing...''');
+        _logExistingReleaseArtifact(arch.arch);
       } catch (error) {
         _handleErrorAndExit(
           error,
@@ -810,10 +798,7 @@ ${arch.arch} artifact already exists, continuing...''');
         podfileLockHash: null,
       );
     } on CodePushConflictException catch (_) {
-      // Newlines are due to how logger.info interacts with logger.progress.
-      logger.info('''
-
-aar artifact already exists, continuing...''');
+      _logExistingReleaseArtifact('aar');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -823,6 +808,19 @@ aar artifact already exists, continuing...''');
     }
 
     createArtifactProgress.complete();
+  }
+
+  /// Logs that the server already has the release artifact named [name].
+  ///
+  /// The server reuses the artifacts of a release that is not yet active, so a
+  /// retried release uploads over them rather than conflicting. A conflict
+  /// therefore only means the artifact was just created, and the release can
+  /// continue. Every platform handles it the same way.
+  void _logExistingReleaseArtifact(String name) {
+    // Newlines are due to how logger.info interacts with logger.progress.
+    logger.info('''
+
+$name artifact already exists, continuing...''');
   }
 
   /// Removes all .dylib files from the given .xcarchive to reduce the size of
@@ -861,6 +859,8 @@ aar artifact already exists, continuing...''');
         canSideload: true,
         podfileLockHash: null,
       );
+    } on CodePushConflictException catch (_) {
+      _logExistingReleaseArtifact('bundle');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -895,6 +895,8 @@ aar artifact already exists, continuing...''');
         canSideload: true,
         podfileLockHash: podfileLockHash,
       );
+    } on CodePushConflictException catch (_) {
+      _logExistingReleaseArtifact('app');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -932,6 +934,8 @@ aar artifact already exists, continuing...''');
         canSideload: false,
         podfileLockHash: podfileLockHash,
       );
+    } on CodePushConflictException catch (_) {
+      _logExistingReleaseArtifact('xcarchive');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -953,6 +957,8 @@ aar artifact already exists, continuing...''');
         canSideload: isCodesigned,
         podfileLockHash: podfileLockHash,
       );
+    } on CodePushConflictException catch (_) {
+      _logExistingReleaseArtifact('runner.app');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -987,6 +993,8 @@ aar artifact already exists, continuing...''');
         canSideload: false,
         podfileLockHash: null,
       );
+    } on CodePushConflictException catch (_) {
+      _logExistingReleaseArtifact('xcframework');
     } catch (error) {
       _handleErrorAndExit(
         error,
@@ -1029,6 +1037,8 @@ aar artifact already exists, continuing...''');
         // the podfile lock hash is not applicable here.
         podfileLockHash: null,
       );
+    } on CodePushConflictException catch (_) {
+      _logExistingReleaseArtifact('supplement');
     } catch (error) {
       _handleErrorAndExit(
         error,
