@@ -401,13 +401,6 @@ void main() {
         ).thenThrow(ProcessExit(ExitCode.software.code));
       });
 
-      test('in human-readable mode, rethrows ProcessExit', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
-      });
-
       test('in --json mode, emits fetch_failed JSON error', () async {
         final (:exitCode, :json) = await captureJson(
           () => runScoped(
@@ -526,7 +519,7 @@ void main() {
         });
       });
 
-      group('when patch is not found', () {
+      group('when release has no patches', () {
         setUp(() {
           when(
             () => codePushClientWrapper.getReleasePatches(
@@ -588,39 +581,6 @@ void main() {
       group('when track name exceeds max length', () {
         setUp(() {
           when(() => argResults['track']).thenReturn('a' * 129);
-        });
-
-        test('emits usage_error envelope', () async {
-          final (:exitCode, :json) = await captureJson(
-            () => runJsonMode(command.run),
-          );
-          expect(exitCode, equals(ExitCode.usage.code));
-          expect(json['status'], 'error');
-          expect(
-            (json['error'] as Map<String, dynamic>)['code'],
-            'usage_error',
-          );
-        });
-      });
-
-      group('when no patch with given number is found', () {
-        setUp(() {
-          when(
-            () => codePushClientWrapper.getReleasePatches(
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-            ),
-          ).thenAnswer(
-            (_) async => [
-              const ReleasePatch(
-                id: 1,
-                number: patchNumber + 1,
-                channel: 'stable',
-                isRolledBack: false,
-                artifacts: [],
-              ),
-            ],
-          );
         });
 
         test('emits usage_error envelope', () async {

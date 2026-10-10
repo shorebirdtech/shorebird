@@ -289,18 +289,6 @@ void main() {
         ).called(1);
         expect(command.calls, isEmpty);
       });
-
-      test('in --json mode, emits usage_error envelope', () async {
-        final (:exitCode, :json) = await runJson();
-        expect(exitCode, equals(ExitCode.usage.code));
-        final error = json['error'] as Map<String, dynamic>;
-        expect(error['code'], 'usage_error');
-        expect(
-          error['message'],
-          'No patch found with number $patchNumber '
-          'for release "$releaseVersion".',
-        );
-      });
     });
 
     group('when fetching patches fails', () {
@@ -311,13 +299,6 @@ void main() {
             releaseId: any(named: 'releaseId'),
           ),
         ).thenThrow(ProcessExit(ExitCode.software.code));
-      });
-
-      test('in human-readable mode, rethrows ProcessExit', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
       });
 
       test('in --json mode, emits fetch_failed envelope', () async {

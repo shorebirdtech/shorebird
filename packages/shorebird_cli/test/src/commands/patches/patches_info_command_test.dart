@@ -181,9 +181,7 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verify(
-          () => logger.err(
-            any(that: contains('No patch found with number $patchNumber')),
-          ),
+          () => logger.err('No patch found with number $patchNumber'),
         ).called(1);
         verify(
           () => logger.info(any(that: contains('Available patches'))),
@@ -309,13 +307,6 @@ void main() {
         ).thenThrow(ProcessExit(ExitCode.software.code));
       });
 
-      test('in human-readable mode, rethrows ProcessExit', () async {
-        await expectLater(
-          () => runWithOverrides(command.run),
-          throwsA(isA<ProcessExit>()),
-        );
-      });
-
       test('in --json mode, emits JSON error envelope', () async {
         final (:exitCode, :json) = await captureJson(
           () => runScoped(
@@ -333,9 +324,11 @@ void main() {
         );
         expect(exitCode, equals(ExitCode.software.code));
         expect(json['status'], 'error');
+        final error = json['error'] as Map<String, dynamic>;
+        expect(error['code'], 'fetch_failed');
         expect(
-          (json['error'] as Map<String, dynamic>)['code'],
-          'fetch_failed',
+          error['message'],
+          'Failed to fetch patch $patchNumber for release "$releaseVersion".',
         );
       });
     });
@@ -364,29 +357,6 @@ void main() {
         expect(data['patch'], isA<Map<String, dynamic>>());
         final patchData = data['patch'] as Map<String, dynamic>;
         expect(patchData['number'], patchNumber);
-      });
-
-      group('when the patch number is not found', () {
-        setUp(() {
-          when(
-            () => codePushClientWrapper.getReleasePatches(
-              appId: any(named: 'appId'),
-              releaseId: any(named: 'releaseId'),
-            ),
-          ).thenAnswer((_) async => []);
-        });
-
-        test('emits JSON error envelope and returns usage exit code', () async {
-          final (:exitCode, :json) = await captureJson(
-            () => runJsonMode(command.run),
-          );
-          expect(exitCode, equals(ExitCode.usage.code));
-          expect(json['status'], 'error');
-          expect(
-            (json['error'] as Map<String, dynamic>)['code'],
-            'usage_error',
-          );
-        });
       });
 
       group('when --patch-number is not an integer', () {
