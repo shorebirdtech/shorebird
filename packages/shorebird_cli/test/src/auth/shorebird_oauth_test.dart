@@ -13,8 +13,6 @@ import 'package:test/test.dart';
 
 import '../mocks.dart';
 
-class MockHttpClient extends Mock implements http.Client {}
-
 /// Builds a JWT string with the given [issuer] for testing.
 ///
 /// The token has a valid 3-part structure (header.payload.signature) that

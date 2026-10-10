@@ -10,14 +10,7 @@ import 'package:shorebird_cli/src/code_signer.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
 import 'package:test/test.dart';
 
-class MockShorebirdProcess extends Mock implements ShorebirdProcess {}
-
-class MockShorebirdProcessResult extends Mock
-    implements ShorebirdProcessResult {}
-
-class MockProcess extends Mock implements Process {}
-
-class MockIOSink extends Mock implements IOSink {}
+import 'mocks.dart';
 
 void main() {
   group(

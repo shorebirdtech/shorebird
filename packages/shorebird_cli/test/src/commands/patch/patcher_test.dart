@@ -17,9 +17,8 @@ import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.da
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 import 'package:test/test.dart';
 
+import '../../fakes.dart';
 import '../../mocks.dart';
-
-class FakeFile extends Fake implements File {}
 
 void main() {
   group(Patcher, () {
