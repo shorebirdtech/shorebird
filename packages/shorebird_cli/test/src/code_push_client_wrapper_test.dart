@@ -1992,7 +1992,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               () => codePushClientWrapper.createWindowsReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
-                projectRoot: projectRoot.path,
                 releaseZipPath: releaseZip.path,
               ),
             );
@@ -2028,7 +2027,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
                 () => codePushClientWrapper.createWindowsReleaseArtifacts(
                   appId: app.appId,
                   releaseId: releaseId,
-                  projectRoot: projectRoot.path,
                   releaseZipPath: releaseZip.path,
                 ),
               ),
@@ -2060,7 +2058,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               () async => codePushClientWrapper.createWindowsReleaseArtifacts(
                 appId: app.appId,
                 releaseId: releaseId,
-                projectRoot: projectRoot.path,
                 releaseZipPath: releaseZip.path,
               ),
             );
@@ -2679,7 +2676,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: app.appId,
               releaseId: releaseId,
               appPath: p.join(projectRoot.path, appPath),
-              isCodesigned: false,
               podfileLockHash: null,
             ),
           ),
@@ -2694,7 +2690,6 @@ You can manage this release in the ${link(uri: uri, message: 'Shorebird Console'
               appId: app.appId,
               releaseId: releaseId,
               appPath: p.join(projectRoot.path, appPath),
-              isCodesigned: false,
               podfileLockHash: null,
             ),
           ),

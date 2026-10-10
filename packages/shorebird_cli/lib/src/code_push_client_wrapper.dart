@@ -718,13 +718,11 @@ aab artifact already exists, continuing...''');
   Future<void> createWindowsReleaseArtifacts({
     required String appId,
     required int releaseId,
-    required String projectRoot,
     required String releaseZipPath,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
 
     try {
-      // logger.detail('Uploading artifact for $aabPath');
       await codePushClient.createReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
@@ -879,7 +877,6 @@ aar artifact already exists, continuing...''');
     required String appId,
     required int releaseId,
     required String appPath,
-    required bool isCodesigned,
     required String? podfileLockHash,
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');

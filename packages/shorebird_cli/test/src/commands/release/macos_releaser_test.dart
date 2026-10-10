@@ -746,7 +746,6 @@ To change the version of this release, change your app's version in your pubspec
             appId: any(named: 'appId'),
             releaseId: any(named: 'releaseId'),
             appPath: any(named: 'appPath'),
-            isCodesigned: any(named: 'isCodesigned'),
             podfileLockHash: any(named: 'podfileLockHash'),
           ),
         ).thenAnswer((_) async => {});
@@ -786,7 +785,6 @@ To change the version of this release, change your app's version in your pubspec
             appId: appId,
             releaseId: release.id,
             appPath: appDirectory.path,
-            isCodesigned: codesign,
             podfileLockHash:
                 '${sha256.convert(utf8.encode(podfileLockContent))}',
           ),
@@ -821,7 +819,6 @@ To change the version of this release, change your app's version in your pubspec
               appId: appId,
               releaseId: release.id,
               appPath: appDirectory.path,
-              isCodesigned: codesign,
               podfileLockHash:
                   '${sha256.convert(utf8.encode(podfileLockContent))}',
             ),

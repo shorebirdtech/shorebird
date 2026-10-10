@@ -102,7 +102,6 @@ To change the version of this release, change your app's version in your pubspec
     required Release release,
     required String appId,
   }) async {
-    final projectRoot = shorebirdEnv.getShorebirdProjectRoot()!;
     final releaseDir = artifactManager.getWindowsReleaseDirectory();
 
     if (!releaseDir.existsSync()) {
@@ -115,7 +114,6 @@ To change the version of this release, change your app's version in your pubspec
     await codePushClientWrapper.createWindowsReleaseArtifacts(
       appId: appId,
       releaseId: release.id,
-      projectRoot: projectRoot.path,
       releaseZipPath: zippedRelease.path,
     );
 

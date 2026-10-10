@@ -589,7 +589,6 @@ To change the version of this release, change your app's version in your pubspec
             () => codePushClientWrapper.createWindowsReleaseArtifacts(
               appId: any(named: 'appId'),
               releaseId: any(named: 'releaseId'),
-              projectRoot: any(named: 'projectRoot'),
               releaseZipPath: any(named: 'releaseZipPath'),
             ),
           ).thenAnswer((_) async {});
@@ -604,7 +603,6 @@ To change the version of this release, change your app's version in your pubspec
             () => codePushClientWrapper.createWindowsReleaseArtifacts(
               appId: appId,
               releaseId: releaseId,
-              projectRoot: projectRoot.path,
               releaseZipPath: any(named: 'releaseZipPath'),
             ),
           ).called(1);
