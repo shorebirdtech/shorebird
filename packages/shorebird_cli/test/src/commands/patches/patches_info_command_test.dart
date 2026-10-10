@@ -181,9 +181,7 @@ void main() {
         final result = await runWithOverrides(command.run);
         expect(result, equals(ExitCode.usage.code));
         verify(
-          () => logger.err(
-            any(that: contains('No patch found with number $patchNumber')),
-          ),
+          () => logger.err('No patch found with number $patchNumber'),
         ).called(1);
         verify(
           () => logger.info(any(that: contains('Available patches'))),
