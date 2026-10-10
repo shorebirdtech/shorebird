@@ -348,7 +348,35 @@ $error''');
   Future<Release> createRelease(Releaser releaser) async {
     await releaser.assertPreconditions();
     await assertArgsAreValid(releaser);
+    await _validateFlavors(releaser);
 
+    await cache.updateAll();
+
+    // This command handles logging, we don't need to provide our own
+    // progress, error logs, etc.
+    final app = await codePushClientWrapper.getApp(appId: appId);
+    final targetFlutterRevision = await _installTargetFlutter();
+    await _ensureRequestedVersionIsReleasable(
+      releaser: releaser,
+      flutterRevision: targetFlutterRevision,
+    );
+
+    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
+      flutterRevisionOverride: targetFlutterRevision,
+    );
+    return await runScoped(
+      () => _buildAndPublishRelease(
+        releaser: releaser,
+        app: app,
+        flutterRevision: targetFlutterRevision,
+      ),
+      values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
+    );
+  }
+
+  /// Exits with [ExitCode.config] if [flavor] doesn't match the project's
+  /// flavors for [releaser]'s platform.
+  Future<void> _validateFlavors(Releaser releaser) async {
     try {
       await shorebirdValidator.validateFlavors(
         flavorArg: flavor,
@@ -357,148 +385,185 @@ $error''');
     } on ValidationFailedException {
       throw ProcessExit(ExitCode.config.code);
     }
+  }
 
-    await cache.updateAll();
-
-    // This command handles logging, we don't need to provide our own
-    // progress, error logs, etc.
-    final app = await codePushClientWrapper.getApp(appId: appId);
+  /// Resolves the Flutter revision to release with, installs it, and returns
+  /// it.
+  Future<String> _installTargetFlutter() async {
     final targetFlutterRevision = await resolveTargetFlutterRevision();
     try {
       await shorebirdFlutter.installRevision(revision: targetFlutterRevision);
     } on Exception {
       throw ProcessExit(ExitCode.software.code);
     }
+    return targetFlutterRevision;
+  }
 
-    // If a user explicitly specified --build-name (and optionally
-    // --build-number), we ensure that the version is releasable to avoid
-    // unnecessarily waiting for a build.
-    if (buildName != null) {
-      final version = buildName!;
-      await ensureVersionIsReleasable(
-        version: buildNumber != null ? '$version+$buildNumber' : version,
-        flutterRevision: targetFlutterRevision,
-        releasePlatform: releaser.releaseType.releasePlatform,
+  /// If a user explicitly specified --build-name (and optionally
+  /// --build-number), we ensure that the version is releasable to avoid
+  /// unnecessarily waiting for a build.
+  Future<void> _ensureRequestedVersionIsReleasable({
+    required Releaser releaser,
+    required String flutterRevision,
+  }) async {
+    final version = buildName;
+    if (version == null) return;
+    await ensureVersionIsReleasable(
+      version: buildNumber != null ? '$version+$buildNumber' : version,
+      flutterRevision: flutterRevision,
+      releasePlatform: releaser.releaseType.releasePlatform,
+    );
+  }
+
+  /// Builds the release with [flutterRevision] and publishes it. Runs with
+  /// [shorebirdEnv] scoped to [flutterRevision].
+  Future<Release> _buildAndPublishRelease({
+    required Releaser releaser,
+    required AppMetadata app,
+    required String flutterRevision,
+  }) async {
+    await cache.updateAll();
+
+    // Set up build tracing for this platform before any flutter build /
+    // aot_tools / gen_snapshot call runs. Version-gated inside
+    // prepareBuildTrace — a no-op on older Flutter pins. Finalized at
+    // the end of finalizeRelease, after upload, so uploaded metadata
+    // reflects the whole command.
+    await artifactBuilder.prepareBuildTrace(
+      platform: releaser.releaseType.releasePlatform.name,
+    );
+
+    final releaseArtifact = await _buildReleaseArtifacts(releaser);
+    final releaseVersion = await releaser.getReleaseVersion(
+      releaseArtifactRoot: releaseArtifact,
+    );
+
+    // Ensure we can create a release from what we've built.
+    await ensureVersionIsReleasable(
+      version: releaseVersion,
+      flutterRevision: flutterRevision,
+      releasePlatform: releaser.releaseType.releasePlatform,
+    );
+
+    if (results['dry-run'] == true) {
+      _exitDryRun(
+        releaser: releaser,
+        releaseVersion: releaseVersion,
+        flutterRevision: flutterRevision,
       );
     }
 
-    final releaseFlutterShorebirdEnv = shorebirdEnv.copyWith(
-      flutterRevisionOverride: targetFlutterRevision,
+    await printReleaseSummary(
+      app: app,
+      releaseVersion: releaseVersion,
+      flutterVersion: flutterRevision,
+      releasePlatform: releaser.releaseType.releasePlatform,
     );
-    return await runScoped(
-      () async {
-        await cache.updateAll();
 
-        // Set up build tracing for this platform before any flutter build /
-        // aot_tools / gen_snapshot call runs. Version-gated inside
-        // prepareBuildTrace — a no-op on older Flutter pins. Finalized at
-        // the end of finalizeRelease, after upload, so uploaded metadata
-        // reflects the whole command.
-        await artifactBuilder.prepareBuildTrace(
-          platform: releaser.releaseType.releasePlatform.name,
-        );
+    final release = await _publishRelease(
+      releaser: releaser,
+      releaseVersion: releaseVersion,
+    );
+    return _refreshReleaseForJson(release);
+  }
 
-        final flutterVersionString = await shorebirdFlutter
-            .getVersionAndRevision();
-        logger.info(
-          '''Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString''',
-        );
-        final FileSystemEntity releaseArtifact;
-        try {
-          releaseArtifact = await releaser.buildReleaseArtifacts();
-        } on ArtifactBuildException catch (e) {
-          logger.err(e.message);
-          if (!e.fixRecommendation.isNullOrEmpty) {
-            logger.info(e.fixRecommendation);
-          }
-          throw ProcessExit(ExitCode.software.code);
-        } on Exception catch (e) {
-          logger.err('Failed to build release artifacts: $e');
-          throw ProcessExit(ExitCode.software.code);
-        }
+  /// Builds the release artifacts, exiting with [ExitCode.software] if the
+  /// build fails.
+  Future<FileSystemEntity> _buildReleaseArtifacts(Releaser releaser) async {
+    final flutterVersionString = await shorebirdFlutter.getVersionAndRevision();
+    logger.info(
+      '''Building ${releaser.artifactDisplayName} with Flutter $flutterVersionString''',
+    );
+    try {
+      return await releaser.buildReleaseArtifacts();
+    } on ArtifactBuildException catch (e) {
+      logger.err(e.message);
+      if (!e.fixRecommendation.isNullOrEmpty) {
+        logger.info(e.fixRecommendation);
+      }
+      throw ProcessExit(ExitCode.software.code);
+    } on Exception catch (e) {
+      logger.err('Failed to build release artifacts: $e');
+      throw ProcessExit(ExitCode.software.code);
+    }
+  }
 
-        final releaseVersion = await releaser.getReleaseVersion(
-          releaseArtifactRoot: releaseArtifact,
-        );
+  /// Reports that a dry run found no issues and exits with success.
+  Never _exitDryRun({
+    required Releaser releaser,
+    required String releaseVersion,
+    required String flutterRevision,
+  }) {
+    if (isJsonMode) {
+      emitJsonSuccess({
+        'dry_run': true,
+        'app_id': appId,
+        'platform': releaser.releaseType.releasePlatform.name,
+        'release_version': releaseVersion,
+        'flutter_revision': flutterRevision,
+      });
+    } else {
+      logger
+        ..info('No issues detected.')
+        ..info('The server may enforce additional checks.');
+    }
+    throw ProcessExit(ExitCode.success.code);
+  }
 
-        // Ensure we can create a release from what we've built.
-        await ensureVersionIsReleasable(
-          version: releaseVersion,
-          flutterRevision: targetFlutterRevision,
-          releasePlatform: releaser.releaseType.releasePlatform,
-        );
+  /// Creates or reuses the release for [releaseVersion], uploads its
+  /// artifacts, marks it active, and tells the user how to patch it.
+  Future<Release> _publishRelease({
+    required Releaser releaser,
+    required String releaseVersion,
+  }) async {
+    final release = await getOrCreateRelease(
+      version: releaseVersion,
+      releasePlatform: releaser.releaseType.releasePlatform,
+    );
+    await prepareRelease(release: release, releaser: releaser);
+    await releaser.uploadReleaseArtifacts(release: release, appId: appId);
+    await finalizeRelease(release: release, releaser: releaser);
 
-        final dryRun = results['dry-run'] == true;
-        if (dryRun) {
-          if (isJsonMode) {
-            emitJsonSuccess({
-              'dry_run': true,
-              'app_id': appId,
-              'platform': releaser.releaseType.releasePlatform.name,
-              'release_version': releaseVersion,
-              'flutter_revision': targetFlutterRevision,
-            });
-          } else {
-            logger
-              ..info('No issues detected.')
-              ..info('The server may enforce additional checks.');
-          }
-          throw ProcessExit(ExitCode.success.code);
-        }
-
-        await printReleaseSummary(
-          app: app,
-          releaseVersion: releaseVersion,
-          flutterVersion: targetFlutterRevision,
-          releasePlatform: releaser.releaseType.releasePlatform,
-        );
-
-        final release = await getOrCreateRelease(
-          version: releaseVersion,
-          releasePlatform: releaser.releaseType.releasePlatform,
-        );
-        await prepareRelease(release: release, releaser: releaser);
-        await releaser.uploadReleaseArtifacts(release: release, appId: appId);
-        await finalizeRelease(release: release, releaser: releaser);
-
-        logger
-          ..success('''
+    logger
+      ..success('''
 
 ✅ Published Release ${release.version}!''')
-          ..info(releaser.postReleaseInstructions);
+      ..info(releaser.postReleaseInstructions);
 
-        printPatchInstructions(
-          releaser: releaser,
-          releaseVersion: releaseVersion,
-          releaseType: releaser.releaseType,
-          flavor: flavor,
-          target: target,
-        );
-
-        // The Release in hand predates finalizeRelease, so its status for
-        // this platform still reads draft. A caller reading the envelope
-        // should see the release as it is now, which costs one fetch and is
-        // only paid when there is an envelope to fill.
-        //
-        // Best-effort, because by this point the release is published: a
-        // refresh that fails must not turn a run that succeeded into a
-        // failed one. getRelease would do exactly that -- it exits the
-        // process, and does it with a message about publishing patches,
-        // which is not what the user just ran. Falling back to the release
-        // in hand costs the envelope a stale status, no more.
-        if (!isJsonMode) return release;
-        try {
-          final refreshed = await codePushClientWrapper.maybeGetRelease(
-            appId: appId,
-            releaseVersion: release.version,
-          );
-          return refreshed ?? release;
-        } on Exception {
-          return release;
-        }
-      },
-      values: {shorebirdEnvRef.overrideWith(() => releaseFlutterShorebirdEnv)},
+    printPatchInstructions(
+      releaser: releaser,
+      releaseVersion: releaseVersion,
+      releaseType: releaser.releaseType,
+      flavor: flavor,
+      target: target,
     );
+    return release;
+  }
+
+  /// Returns [release] as it is now, for the JSON envelope.
+  ///
+  /// The Release in hand predates finalizeRelease, so its status for this
+  /// platform still reads draft. A caller reading the envelope should see the
+  /// release as it is now, which costs one fetch and is only paid when there
+  /// is an envelope to fill.
+  ///
+  /// Best-effort, because by this point the release is published: a refresh
+  /// that fails must not turn a run that succeeded into a failed one.
+  /// getRelease would do exactly that -- it exits the process, and does it
+  /// with a message about publishing patches, which is not what the user just
+  /// ran. Falling back to the release in hand costs the envelope a stale
+  /// status, no more.
+  Future<Release> _refreshReleaseForJson(Release release) async {
+    if (!isJsonMode) return release;
+    try {
+      final refreshed = await codePushClientWrapper.maybeGetRelease(
+        appId: appId,
+        releaseVersion: release.version,
+      );
+      return refreshed ?? release;
+    } on Exception {
+      return release;
+    }
   }
 
   /// Validates arguments that are common to all release types.
