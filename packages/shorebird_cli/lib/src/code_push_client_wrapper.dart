@@ -562,31 +562,17 @@ Looked in:
         missingArchPaths.add(artifactPath);
         continue;
       }
-      final hash = sha256.convert(await artifact.readAsBytes()).toString();
-      logger.detail('Uploading artifact for $artifactPath');
-
-      try {
-        await codePushClient.createReleaseArtifact(
-          appId: appId,
-          releaseId: releaseId,
-          artifactPath: artifact.path,
-          arch: arch.arch,
-          platform: platform,
-          hash: hash,
-          canSideload: false,
-          podfileLockHash: null,
-        );
-        uploadedArchCount++;
-      } on CodePushConflictException catch (_) {
-        uploadedArchCount++;
-        _logExistingReleaseArtifact(arch.arch);
-      } catch (error) {
-        _handleErrorAndExit(
-          error,
-          progress: createArtifactProgress,
-          message: 'Error uploading ${artifact.path}: $error',
-        );
-      }
+      await _uploadReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        file: artifact,
+        name: arch.arch,
+        arch: arch.arch,
+        platform: platform,
+        canSideload: false,
+        progress: createArtifactProgress,
+      );
+      uploadedArchCount++;
     }
 
     if (uploadedArchCount == 0) {
@@ -608,27 +594,16 @@ to the architectures your project actually builds.''',
       );
     }
 
-    try {
-      logger.detail('Uploading artifact for $aabPath');
-      await codePushClient.createReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        artifactPath: aabPath,
-        arch: 'aab',
-        platform: platform,
-        hash: sha256.convert(await File(aabPath).readAsBytes()).toString(),
-        canSideload: true,
-        podfileLockHash: null,
-      );
-    } on CodePushConflictException catch (_) {
-      _logExistingReleaseArtifact('aab');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
-        progress: createArtifactProgress,
-        message: 'Error uploading $aabPath: $error',
-      );
-    }
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: File(aabPath),
+      name: 'aab',
+      arch: 'aab',
+      platform: platform,
+      canSideload: true,
+      progress: createArtifactProgress,
+    );
 
     createArtifactProgress.complete();
   }
@@ -641,28 +616,16 @@ to the architectures your project actually builds.''',
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
 
-    try {
-      await codePushClient.createReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        artifactPath: releaseZipPath,
-        arch: primaryWindowsReleaseArtifactArch,
-        platform: ReleasePlatform.windows,
-        hash: sha256
-            .convert(await File(releaseZipPath).readAsBytes())
-            .toString(),
-        canSideload: true,
-        podfileLockHash: null,
-      );
-    } on CodePushConflictException catch (_) {
-      _logExistingReleaseArtifact('Windows release (exe)');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
-        progress: createArtifactProgress,
-        message: 'Error uploading: $error',
-      );
-    }
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: File(releaseZipPath),
+      name: 'Windows release (exe)',
+      arch: primaryWindowsReleaseArtifactArch,
+      platform: ReleasePlatform.windows,
+      canSideload: true,
+      progress: createArtifactProgress,
+    );
     createArtifactProgress.complete();
   }
 
@@ -684,68 +647,75 @@ to the architectures your project actually builds.''',
         arch.androidBuildPath,
         'libapp.so',
       );
-      final artifact = File(artifactPath);
-      final hash = sha256.convert(await artifact.readAsBytes()).toString();
-      logger.detail('Uploading artifact for $artifactPath');
-
-      try {
-        await codePushClient.createReleaseArtifact(
-          appId: appId,
-          releaseId: releaseId,
-          artifactPath: artifact.path,
-          arch: arch.arch,
-          platform: platform,
-          hash: hash,
-          canSideload: false,
-          podfileLockHash: null,
-        );
-      } on CodePushConflictException catch (_) {
-        _logExistingReleaseArtifact(arch.arch);
-      } catch (error) {
-        _handleErrorAndExit(
-          error,
-          progress: createArtifactProgress,
-          message: 'Error uploading ${artifact.path}: $error',
-        );
-      }
-    }
-
-    try {
-      logger.detail('Uploading artifact for $aarPath');
-      await codePushClient.createReleaseArtifact(
+      await _uploadReleaseArtifact(
         appId: appId,
         releaseId: releaseId,
-        artifactPath: aarPath,
-        arch: 'aar',
+        file: File(artifactPath),
+        name: arch.arch,
+        arch: arch.arch,
         platform: platform,
-        hash: sha256.convert(await File(aarPath).readAsBytes()).toString(),
         canSideload: false,
-        podfileLockHash: null,
-      );
-    } on CodePushConflictException catch (_) {
-      _logExistingReleaseArtifact('aar');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
         progress: createArtifactProgress,
-        message: 'Error uploading $aarPath: $error',
       );
     }
+
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: File(aarPath),
+      name: 'aar',
+      arch: 'aar',
+      platform: platform,
+      canSideload: false,
+      progress: createArtifactProgress,
+    );
 
     createArtifactProgress.complete();
   }
 
-  /// Logs that the server already has the release artifact named [name].
+  /// Uploads [file] as the [arch] release artifact for [platform], naming it
+  /// [name] in log and error messages.
   ///
   /// The server reuses the artifacts of a release that is not yet active, so a
   /// retried release uploads over them rather than conflicting. A conflict
   /// therefore only means the artifact was just created, and the release can
-  /// continue. Every platform handles it the same way.
-  void _logExistingReleaseArtifact(String name) {
-    // Newlines are due to how logger.info interacts with logger.progress.
-    logger.info('''
+  /// continue. Every platform handles it the same way. Any other failure fails
+  /// [progress] and exits.
+  Future<void> _uploadReleaseArtifact({
+    required String appId,
+    required int releaseId,
+    required File file,
+    required String name,
+    required String arch,
+    required ReleasePlatform platform,
+    required bool canSideload,
+    required Progress progress,
+    String? podfileLockHash,
+  }) async {
+    logger.detail('Uploading $name artifact from ${file.path}');
+    try {
+      await codePushClient.createReleaseArtifact(
+        appId: appId,
+        releaseId: releaseId,
+        artifactPath: file.path,
+        arch: arch,
+        platform: platform,
+        hash: sha256.convert(await file.readAsBytes()).toString(),
+        canSideload: canSideload,
+        podfileLockHash: podfileLockHash,
+      );
+    } on CodePushConflictException catch (_) {
+      // Newlines are due to how logger.info interacts with logger.progress.
+      logger.info('''
 
 $name artifact already exists, continuing...''');
+    } catch (error) {
+      _handleErrorAndExit(
+        error,
+        progress: progress,
+        message: 'Error uploading $name artifact (${file.path}): $error',
+      );
+    }
   }
 
   /// Removes all .dylib files from the given .xcarchive to reduce the size of
@@ -773,26 +743,16 @@ $name artifact already exists, continuing...''');
   }) async {
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final zippedBundle = await Directory(bundle.path).zipToTempFile();
-    try {
-      await codePushClient.createReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        artifactPath: zippedBundle.path,
-        arch: primaryLinuxReleaseArtifactArch,
-        platform: ReleasePlatform.linux,
-        hash: sha256.convert(await zippedBundle.readAsBytes()).toString(),
-        canSideload: true,
-        podfileLockHash: null,
-      );
-    } on CodePushConflictException catch (_) {
-      _logExistingReleaseArtifact('bundle');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
-        progress: createArtifactProgress,
-        message: 'Error uploading bundle: $error',
-      );
-    }
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: zippedBundle,
+      name: 'bundle',
+      arch: primaryLinuxReleaseArtifactArch,
+      platform: ReleasePlatform.linux,
+      canSideload: true,
+      progress: createArtifactProgress,
+    );
 
     createArtifactProgress.complete();
   }
@@ -809,26 +769,17 @@ $name artifact already exists, continuing...''');
     final zippedApp = File(p.join(tempDir.path, '${p.basename(appPath)}.zip'));
     await ditto.archive(source: appPath, destination: zippedApp.path);
 
-    try {
-      await codePushClient.createReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        artifactPath: zippedApp.path,
-        arch: 'app',
-        platform: ReleasePlatform.macos,
-        hash: sha256.convert(await zippedApp.readAsBytes()).toString(),
-        canSideload: true,
-        podfileLockHash: podfileLockHash,
-      );
-    } on CodePushConflictException catch (_) {
-      _logExistingReleaseArtifact('app');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
-        progress: createArtifactProgress,
-        message: 'Error uploading app: $error',
-      );
-    }
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: zippedApp,
+      name: 'app',
+      arch: 'app',
+      platform: ReleasePlatform.macos,
+      canSideload: true,
+      podfileLockHash: podfileLockHash,
+      progress: createArtifactProgress,
+    );
 
     createArtifactProgress.complete();
   }
@@ -848,49 +799,31 @@ $name artifact already exists, continuing...''');
       xcarchivePath: xcarchivePath,
     );
     final zippedArchive = await thinnedArchiveDirectory.zipToTempFile();
-    try {
-      await codePushClient.createReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        artifactPath: zippedArchive.path,
-        arch: 'xcarchive',
-        platform: ReleasePlatform.ios,
-        hash: sha256.convert(await zippedArchive.readAsBytes()).toString(),
-        canSideload: false,
-        podfileLockHash: podfileLockHash,
-      );
-    } on CodePushConflictException catch (_) {
-      _logExistingReleaseArtifact('xcarchive');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
-        progress: createArtifactProgress,
-        message: 'Error uploading xcarchive: $error',
-      );
-    }
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: zippedArchive,
+      name: 'xcarchive',
+      arch: 'xcarchive',
+      platform: ReleasePlatform.ios,
+      canSideload: false,
+      podfileLockHash: podfileLockHash,
+      progress: createArtifactProgress,
+    );
 
     final zippedRunner = await Directory(runnerPath).zipToTempFile();
-    try {
-      logger.detail('[archive] zipped runner.app to ${zippedRunner.path}');
-      await codePushClient.createReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        artifactPath: zippedRunner.path,
-        arch: 'runner',
-        platform: ReleasePlatform.ios,
-        hash: sha256.convert(await zippedRunner.readAsBytes()).toString(),
-        canSideload: isCodesigned,
-        podfileLockHash: podfileLockHash,
-      );
-    } on CodePushConflictException catch (_) {
-      _logExistingReleaseArtifact('runner.app');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
-        progress: createArtifactProgress,
-        message: 'Error uploading runner.app: $error',
-      );
-    }
+    logger.detail('[archive] zipped runner.app to ${zippedRunner.path}');
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: zippedRunner,
+      name: 'runner.app',
+      arch: 'runner',
+      platform: ReleasePlatform.ios,
+      canSideload: isCodesigned,
+      podfileLockHash: podfileLockHash,
+      progress: createArtifactProgress,
+    );
 
     createArtifactProgress.complete();
   }
@@ -905,28 +838,16 @@ $name artifact already exists, continuing...''');
     final createArtifactProgress = logger.progress('Uploading artifacts');
     final appFrameworkDirectory = Directory(appFrameworkPath);
     final zippedAppFrameworkFile = await appFrameworkDirectory.zipToTempFile();
-    try {
-      await codePushClient.createReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        artifactPath: zippedAppFrameworkFile.path,
-        arch: 'xcframework',
-        platform: ReleasePlatform.ios,
-        hash: sha256
-            .convert(await zippedAppFrameworkFile.readAsBytes())
-            .toString(),
-        canSideload: false,
-        podfileLockHash: null,
-      );
-    } on CodePushConflictException catch (_) {
-      _logExistingReleaseArtifact('xcframework');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
-        progress: createArtifactProgress,
-        message: 'Error uploading xcframework: $error',
-      );
-    }
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: zippedAppFrameworkFile,
+      name: 'xcframework',
+      arch: 'xcframework',
+      platform: ReleasePlatform.ios,
+      canSideload: false,
+      progress: createArtifactProgress,
+    );
 
     createArtifactProgress.complete();
   }
@@ -945,32 +866,21 @@ $name artifact already exists, continuing...''');
     final zippedSupplement = await Directory(
       supplementDirectoryPath,
     ).zipToTempFile(name: arch);
-    try {
-      await codePushClient.createReleaseArtifact(
-        appId: appId,
-        releaseId: releaseId,
-        artifactPath: zippedSupplement.path,
-        arch: arch,
-        platform: platform,
-        hash: sha256.convert(await zippedSupplement.readAsBytes()).toString(),
-        // Supplements are auxiliary snapshot metadata used during patching and
-        // can't produce a working app on their own, so sideloading isn't
-        // applicable.
-        canSideload: false,
-        // Supplement artifacts contain only Dart snapshot metadata (e.g. class
-        // tables, dispatch tables) and have no dependency on native pods, so
-        // the podfile lock hash is not applicable here.
-        podfileLockHash: null,
-      );
-    } on CodePushConflictException catch (_) {
-      _logExistingReleaseArtifact('supplement');
-    } catch (error) {
-      _handleErrorAndExit(
-        error,
-        progress: createSupplementProgress,
-        message: 'Error uploading supplement artifacts: $error',
-      );
-    }
+    await _uploadReleaseArtifact(
+      appId: appId,
+      releaseId: releaseId,
+      file: zippedSupplement,
+      name: 'supplement',
+      arch: arch,
+      platform: platform,
+      // Supplements are auxiliary snapshot metadata used during patching and
+      // can't produce a working app on their own, so sideloading isn't
+      // applicable. They contain only Dart snapshot metadata (e.g. class
+      // tables, dispatch tables) and have no dependency on native pods, so no
+      // podfile lock hash is passed either.
+      canSideload: false,
+      progress: createSupplementProgress,
+    );
     createSupplementProgress.complete();
   }
 
