@@ -17,4 +17,9 @@ javac --release 8 Greeter.java
 Then rename `classes.dex`, applying the `equalsIgnoreCase` edit for the second
 file. Built with javac 21 and d8 from build-tools 36.0.0.
 
+`dex/payloads.dex` is built the same way from `src/Payloads.java`. It carries a
+packed switch, a sparse switch and a fill-array-data block, so the
+pseudo-instruction payloads are exercised, plus a string constant containing a
+comma, which is what the canonical form has to escape.
+
 The other fixtures predate this file and their provenance is not recorded.

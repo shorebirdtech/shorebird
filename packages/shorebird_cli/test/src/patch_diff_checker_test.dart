@@ -115,6 +115,7 @@ void main() {
           const dexPath = 'base/dex/classes.dex';
 
           late AndroidFileSetDiff androidFileSetDiff;
+          late AndroidFileSetDiff androidFileSetDiffWithLiteral;
 
           setUp(() {
             androidFileSetDiff = const AndroidFileSetDiff(
@@ -141,6 +142,32 @@ void main() {
                             address: 2,
                             tokens:
                                 '8302,M:Ljava/lang/String;.equalsIgnoreCase,32,',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              },
+            );
+
+            androidFileSetDiffWithLiteral = const AndroidFileSetDiff(
+              addedPaths: {},
+              removedPaths: {},
+              changedPaths: {dexPath},
+              dexDiffResults: {
+                dexPath: DexDiffResult(
+                  differences: [
+                    DexDifference(
+                      kind: DexDifferenceKind.bytecodeChanged,
+                      description:
+                          'LGreeter;: bytecode changed in '
+                          'LGreeter;.secret()Ljava/lang/String;',
+                      codeDiff: DexCodeDiff(
+                        oldRegion: [
+                          DexCanonicalInstruction(
+                            address: 0,
+                            tokens: '26,S:super-secret-token,',
                           ),
                         ],
                       ),
@@ -181,7 +208,32 @@ void main() {
             ).called(1);
           });
 
-          test('points at the flag when it was not passed', () async {
+          test('does not point at the flag when nothing is hidden', () async {
+            await runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+              ),
+            );
+
+            verifyNever(
+              () => logger.info(
+                any(that: contains('Pass --show-dex-diff')),
+              ),
+            );
+          });
+
+          test('points at the flag when a literal was redacted', () async {
+            when(() => archiveDiffer.changedFiles(any(), any())).thenAnswer(
+              (_) async => androidFileSetDiffWithLiteral,
+            );
+            when(
+              () => archiveDiffer.nativeFileSetDiff(any()),
+            ).thenReturn(androidFileSetDiffWithLiteral);
+
             await runWithOverrides(
               () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
                 localArchive: localArtifact,
@@ -196,6 +248,32 @@ void main() {
               () => logger.info(
                 any(that: contains('Pass --show-dex-diff')),
               ),
+            ).called(1);
+          });
+
+          test('redacts a string literal on the default path', () async {
+            when(() => archiveDiffer.changedFiles(any(), any())).thenAnswer(
+              (_) async => androidFileSetDiffWithLiteral,
+            );
+            when(
+              () => archiveDiffer.nativeFileSetDiff(any()),
+            ).thenReturn(androidFileSetDiffWithLiteral);
+
+            await runWithOverrides(
+              () => patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
+                localArchive: localArtifact,
+                releaseArchive: releaseArtifact,
+                archiveDiffer: archiveDiffer,
+                allowAssetChanges: false,
+                allowNativeChanges: false,
+              ),
+            );
+
+            verifyNever(
+              () => logger.info(any(that: contains('super-secret-token'))),
+            );
+            verify(
+              () => logger.info(any(that: contains('S:<18 chars>'))),
             ).called(1);
           });
 

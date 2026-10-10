@@ -108,6 +108,7 @@ class PatchDiffChecker {
         );
 
       // Show detailed DEX diff information if available.
+      var dexDetailWasHidden = false;
       if (contentDiffs is AndroidFileSetDiff &&
           contentDiffs.dexDiffResults.isNotEmpty) {
         for (final dexPath
@@ -117,15 +118,17 @@ class PatchDiffChecker {
                 .where((p) => p.endsWith('.dex'))) {
           final dexResult = contentDiffs.dexDiffResults[dexPath];
           if (dexResult != null) {
+            if (dexResult.hasHiddenCodeDiff) dexDetailWasHidden = true;
             logger.info(
               yellow.wrap(dexResult.describe(showFullCodeDiff: showDexDiff)),
             );
           }
         }
-        if (!showDexDiff) {
+        if (!showDexDiff && dexDetailWasHidden) {
           logger.info(
             yellow.wrap(
-              '\nPass --show-dex-diff to see every differing instruction.',
+              '\nPass --show-dex-diff to see every differing instruction. '
+              "That output includes your app's string constants.",
             ),
           );
         }

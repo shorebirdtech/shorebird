@@ -190,8 +190,8 @@ NOTE: this is ${styleBold.wrap('not')} recommended. Native code changes cannot b
 
   /// Help text for the full DEX diff flag.
   static const showDexDiffHelpText = '''
-Print every differing instruction when an Android patch is blocked on a native change.
-Without this, only the first few differing instructions per method are shown. Output contains your app's bytecode, including class and method names.''';
+Print every differing instruction when native changes are detected in an Android patch.
+Without this, only the first few differing instructions per method are shown and string constants are replaced by their length. Output contains your app's bytecode, including class and method names.''';
 
   /// Warning message for when asset diffs are detected.
   static final allowAssetDiffsHelpText = '''

@@ -71,9 +71,11 @@ class DexDifference {
 /// {@template dex_code_diff}
 /// Where two code items for the same method disagree.
 ///
-/// The regions are the instructions left after the matching head and tail are
-/// removed from both sides, so they are the narrowest window that accounts for
-/// the difference rather than a full body.
+/// The regions span from the end of the longest common head to the start of
+/// the longest common tail, so two edits separated by unchanged instructions
+/// share one window covering the instructions between them. Both regions are
+/// empty when a method body was added or removed, where [sizeChange] carries
+/// the difference instead.
 /// {@endtemplate}
 class DexCodeDiff {
   /// {@macro dex_code_diff}
@@ -97,11 +99,22 @@ class DexCodeDiff {
   /// Whether the try/catch table changed.
   final bool tryCatchChanged;
 
+  /// Whether rendering with [limit] would hide an instruction.
+  bool exceeds(int limit) =>
+      oldRegion.length > limit || newRegion.length > limit;
+
+  /// Whether either region carries a resolved string literal.
+  bool get hasStringLiterals =>
+      oldRegion.any((i) => i.hasStringLiteral) ||
+      newRegion.any((i) => i.hasStringLiteral);
+
   /// Renders the difference as indented lines, oldest side first.
   ///
   /// [limit] caps the instructions shown per side. A null [limit] shows every
-  /// instruction.
-  String describe({int? limit}) {
+  /// instruction. A string literal is replaced by its length unless
+  /// [showStringLiterals] is set, because the literal is the app's own
+  /// constant and the caller has to ask for it.
+  String describe({int? limit, bool showStringLiterals = false}) {
     final buffer = StringBuffer();
 
     if (sizeChange != null) {
@@ -114,9 +127,12 @@ class DexCodeDiff {
           : region.take(limit).toList();
       for (final instruction in shown) {
         final address = instruction.address.toRadixString(16).padLeft(4, '0');
-        final tokens = instruction.tokens.endsWith(',')
-            ? instruction.tokens.substring(0, instruction.tokens.length - 1)
-            : instruction.tokens;
+        final rendered = showStringLiterals
+            ? instruction.tokens
+            : instruction.redactStringLiterals();
+        final tokens = rendered.endsWith(',')
+            ? rendered.substring(0, rendered.length - 1)
+            : rendered;
         buffer.writeln('      $marker 0x$address  $tokens');
       }
       final hidden = region.length - shown.length;
@@ -164,22 +180,48 @@ class DexDiffResult {
   /// for the full diff.
   static const defaultCodeDiffLimit = 4;
 
+  /// Changed methods detailed unless the caller asks for the full diff.
+  ///
+  /// A real native change can touch hundreds of methods, and a wall of output
+  /// is as unreadable as none.
+  static const defaultDetailedMethodLimit = 10;
+
+  /// Whether [describe] hides detail that the full diff would reveal.
+  bool get hasHiddenCodeDiff {
+    final detailed = differences.where((d) => d.codeDiff != null).toList();
+    return detailed.length > defaultDetailedMethodLimit ||
+        detailed.any(
+          (d) =>
+              d.codeDiff!.exceeds(defaultCodeDiffLimit) ||
+              d.codeDiff!.hasStringLiterals,
+        );
+  }
+
   /// A human-readable summary of the differences.
   ///
   /// A changed method body is followed by the instructions that differ. Set
-  /// [showFullCodeDiff] to show every differing instruction rather than the
-  /// first [defaultCodeDiffLimit] per side.
+  /// [showFullCodeDiff] to detail every changed method, show every differing
+  /// instruction, and print string literals rather than their length.
   String describe({bool showFullCodeDiff = false}) {
     final buffer = StringBuffer();
     final safe = safeDifferences.toList();
     final breaking = breakingDifferences.toList();
 
+    var detailed = 0;
+    var undetailed = 0;
+
     void writeDifference(DexDifference diff) {
       buffer.writeln('  - ${diff.description}');
       final codeDiff = diff.codeDiff;
       if (codeDiff == null) return;
+      if (!showFullCodeDiff && detailed >= defaultDetailedMethodLimit) {
+        undetailed++;
+        return;
+      }
+      detailed++;
       final detail = codeDiff.describe(
         limit: showFullCodeDiff ? null : defaultCodeDiffLimit,
+        showStringLiterals: showFullCodeDiff,
       );
       if (detail.isNotEmpty) buffer.writeln(detail);
     }
@@ -196,6 +238,10 @@ class DexDiffResult {
         'Breaking differences (${breaking.length}):',
       );
       breaking.forEach(writeDifference);
+    }
+
+    if (undetailed > 0) {
+      buffer.writeln('  ... $undetailed more changed methods not detailed');
     }
 
     return buffer.toString().trimRight();
@@ -456,10 +502,6 @@ class DexDiffer {
   }
 
   /// Returns how two code items differ, or null when they are equal.
-  ///
-  /// The returned regions are what is left after the matching head and tail
-  /// are trimmed from both instruction lists, which is the narrowest window
-  /// that accounts for the difference.
   static DexCodeDiff? _diffCodeItems(
     DexCodeItem? oldCode,
     DexCodeItem? newCode,
@@ -473,33 +515,31 @@ class DexDiffer {
     final tryCatchChanged =
         oldCode.canonicalTryCatch != newCode.canonicalTryCatch;
 
-    final oldInstructions = oldCode.instructions;
-    final newInstructions = newCode.instructions;
+    final oldCount = oldCode.instructionCount;
+    final newCount = newCode.instructionCount;
+    final shortest = oldCount < newCount ? oldCount : newCount;
 
     var head = 0;
-    final shortest = oldInstructions.length < newInstructions.length
-        ? oldInstructions.length
-        : newInstructions.length;
     while (head < shortest &&
-        oldInstructions[head].tokens == newInstructions[head].tokens) {
+        oldCode.tokensAt(head) == newCode.tokensAt(head)) {
       head++;
     }
 
     var tail = 0;
     while (tail < shortest - head &&
-        oldInstructions[oldInstructions.length - 1 - tail].tokens ==
-            newInstructions[newInstructions.length - 1 - tail].tokens) {
+        oldCode.tokensAt(oldCount - 1 - tail) ==
+            newCode.tokensAt(newCount - 1 - tail)) {
       tail++;
     }
 
-    final oldRegion = oldInstructions.sublist(
-      head,
-      oldInstructions.length - tail,
-    );
-    final newRegion = newInstructions.sublist(
-      head,
-      newInstructions.length - tail,
-    );
+    // Only the window is materialized, so a matching method allocates
+    // nothing beyond the comparison itself.
+    final oldRegion = [
+      for (var i = head; i < oldCount - tail; i++) oldCode.instructionAt(i),
+    ];
+    final newRegion = [
+      for (var i = head; i < newCount - tail; i++) newCode.instructionAt(i),
+    ];
 
     if (oldRegion.isEmpty &&
         newRegion.isEmpty &&

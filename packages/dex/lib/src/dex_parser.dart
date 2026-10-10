@@ -751,7 +751,9 @@ class DexCodeItem {
     required this.registersSize,
     required this.insSize,
     required this.outsSize,
-    required this.instructions,
+    required this.canonicalInstructions,
+    required this.instructionStarts,
+    required this.instructionAddresses,
     required this.canonicalTryCatch,
   });
 
@@ -764,30 +766,52 @@ class DexCodeItem {
   /// Number of words of outgoing argument space.
   final int outsSize;
 
-  /// Canonical instructions in `insns` order.
+  /// Every instruction's canonical tokens, concatenated in `insns` order.
   ///
-  /// Held per instruction rather than as one string so a difference can be
-  /// reported against the instructions that carry it.
-  final List<DexCanonicalInstruction> instructions;
+  /// One string per method rather than one per instruction. A large archive
+  /// holds a code item for every method of every class, so the per-instruction
+  /// boundaries live in [instructionStarts] instead of in objects of their own.
+  final String canonicalInstructions;
+
+  /// Offset into [canonicalInstructions] where each instruction's tokens
+  /// begin.
+  final Uint32List instructionStarts;
+
+  /// Each instruction's offset from the start of `insns`, in 16-bit code
+  /// units, parallel to [instructionStarts].
+  final Uint32List instructionAddresses;
 
   /// Canonical try/catch tokens, empty when the method has no try blocks.
   final String canonicalTryCatch;
 
-  /// Canonical string of instructions and try/catch with all pool
-  /// indices resolved to string values.
-  String get canonicalBytecode {
-    final buf = StringBuffer();
-    for (final instruction in instructions) {
-      buf.write(instruction.tokens);
-    }
-    buf.write(canonicalTryCatch);
-    return buf.toString();
-  }
+  /// How many instructions this code item holds.
+  int get instructionCount => instructionStarts.length;
+
+  /// Canonical tokens for the instruction at [index].
+  String tokensAt(int index) => canonicalInstructions.substring(
+    instructionStarts[index],
+    index + 1 < instructionStarts.length
+        ? instructionStarts[index + 1]
+        : canonicalInstructions.length,
+  );
+
+  /// The instruction at [index], materialized for reporting.
+  DexCanonicalInstruction instructionAt(int index) => DexCanonicalInstruction(
+    address: instructionAddresses[index],
+    tokens: tokensAt(index),
+  );
+
+  /// Canonical string of instructions and try/catch with pool indices
+  /// resolved to string values.
+  String get canonicalBytecode => canonicalInstructions + canonicalTryCatch;
 }
 
 /// {@template dex_canonical_instruction}
-/// One instruction's canonical tokens, with every pool index resolved to the
-/// string value it names.
+/// One instruction's canonical tokens.
+///
+/// String, type, field, method and proto indices are resolved to the value
+/// they name. Call-site and method-handle indices stay numeric, as `CS:<n>`
+/// and `MH:<n>`.
 /// {@endtemplate}
 class DexCanonicalInstruction {
   /// {@macro dex_canonical_instruction}
@@ -799,7 +823,41 @@ class DexCanonicalInstruction {
   /// Comma-terminated canonical tokens for this instruction. Code units that
   /// carry a pool reference appear as the resolved name, everything else as
   /// the raw unit.
+  ///
+  /// A string literal's content is percent-escaped, so no token ever contains
+  /// a comma and a consumer can split on one to reach a single token.
   final String tokens;
+
+  /// Whether [tokens] carries a resolved string literal.
+  bool get hasStringLiteral =>
+      tokens.startsWith(stringTokenPrefix) ||
+      tokens.contains(',$stringTokenPrefix');
+
+  /// Prefix marking a resolved string literal within [tokens].
+  static const stringTokenPrefix = 'S:';
+
+  /// [tokens] with every string literal replaced by its length.
+  ///
+  /// The literal is an app's own constant, so it stays out of any output that
+  /// was not explicitly asked for. The length is of the literal itself, not
+  /// of its escaped form.
+  String redactStringLiterals() {
+    if (!hasStringLiteral) return tokens;
+    return tokens
+        .split(',')
+        .map(
+          (token) => token.startsWith(stringTokenPrefix)
+              ? '$stringTokenPrefix<'
+                    '${_unescapeTokenValue(
+                      token.substring(stringTokenPrefix.length),
+                    ).length} chars>'
+              : token,
+        )
+        .join(',');
+  }
+
+  static String _unescapeTokenValue(String value) =>
+      value.replaceAll('%2C', ',').replaceAll('%25', '%');
 }
 
 /// Sentinel value for "no index" in DEX files.
@@ -1200,7 +1258,7 @@ class DexParser {
     // r.pos is now at the start of insns.
     final insnsOff = r.pos;
 
-    final instructions = _canonicalizeInstructions(
+    final canonical = _canonicalizeInstructions(
       r.bytes,
       insnsOff,
       insnsSize,
@@ -1228,7 +1286,9 @@ class DexParser {
       registersSize: registersSize,
       insSize: insSize,
       outsSize: outsSize,
-      instructions: instructions,
+      canonicalInstructions: canonical.tokens,
+      instructionStarts: canonical.starts,
+      instructionAddresses: canonical.addresses,
       canonicalTryCatch: tryCatchBuf.toString(),
     );
   }
@@ -1274,7 +1334,7 @@ class DexParser {
     return decoded;
   }
 
-  List<DexCanonicalInstruction> _canonicalizeInstructions(
+  _CanonicalInstructions _canonicalizeInstructions(
     Uint8List bytes,
     int insnsOff,
     int insnsSize,
@@ -1283,20 +1343,33 @@ class DexParser {
     List<DexProtoId> protoIds,
     List<DexFieldId> fieldIds,
     List<DexMethodId> methodIds,
-  ) => [
-    for (final insn in _decodeInstructions(bytes, insnsOff, insnsSize))
-      DexCanonicalInstruction(
-        address: insn.address,
-        tokens: _canonicalizeInstruction(
-          insn,
+  ) {
+    final decoded = _decodeInstructions(bytes, insnsOff, insnsSize);
+    final buf = StringBuffer();
+    final starts = Uint32List(decoded.length);
+    final addresses = Uint32List(decoded.length);
+
+    for (var i = 0; i < decoded.length; i++) {
+      starts[i] = buf.length;
+      addresses[i] = decoded[i].address;
+      buf.write(
+        _canonicalizeInstruction(
+          decoded[i],
           strings,
           typeDescriptors,
           protoIds,
           fieldIds,
           methodIds,
         ),
-      ),
-  ];
+      );
+    }
+
+    return _CanonicalInstructions(
+      tokens: buf.toString(),
+      starts: starts,
+      addresses: addresses,
+    );
+  }
 
   /// The canonical token string for one decoded instruction, with every
   /// pool index resolved to its string value.
@@ -1375,7 +1448,8 @@ class DexParser {
   ) {
     switch (pool) {
       case _PoolKind.string:
-        return 'S:${strings[index]}';
+        return '${DexCanonicalInstruction.stringTokenPrefix}'
+            '${_escapeTokenValue(strings[index])}';
       case _PoolKind.type:
         return 'T:${typeDescriptors[index]}';
       case _PoolKind.field:
@@ -1396,6 +1470,14 @@ class DexParser {
         return 'MH:$index';
     }
   }
+
+  /// Percent-escapes a resolved value so it carries no token separator.
+  ///
+  /// A string constant can hold any byte, including the comma the canonical
+  /// form separates tokens with, so without this a consumer cannot split
+  /// tokens apart and a redaction pass cannot find where a literal ends.
+  static String _escapeTokenValue(String value) =>
+      value.replaceAll('%', '%25').replaceAll(',', '%2C');
 
   void _canonicalizeTryCatch(
     StringBuffer buf,
@@ -1915,6 +1997,20 @@ class _BinaryReader {
 // =====================================================================
 // Opcode tables
 // =====================================================================
+
+/// The canonical form of one method's instructions, as one string plus the
+/// boundaries needed to address a single instruction within it.
+class _CanonicalInstructions {
+  const _CanonicalInstructions({
+    required this.tokens,
+    required this.starts,
+    required this.addresses,
+  });
+
+  final String tokens;
+  final Uint32List starts;
+  final Uint32List addresses;
+}
 
 /// One instruction, or one pseudo-instruction payload, as it sits in
 /// `insns` before any pool index is resolved.
