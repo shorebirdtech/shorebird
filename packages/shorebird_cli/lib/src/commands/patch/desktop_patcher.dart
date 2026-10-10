@@ -82,11 +82,11 @@ abstract class DesktopPatcher extends Patcher {
   @override
   Future<File> buildPatchArtifact({String? releaseVersion}) async {
     final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
-    final appDirectory = await buildApp(
+    final builtDirectory = await buildApp(
       args: buildArgs,
       base64PublicKey: argResults.encodedPublicKey,
     );
-    return appDirectory.zipToTempFile();
+    return builtDirectory.zipToTempFile();
   }
 
   @override
