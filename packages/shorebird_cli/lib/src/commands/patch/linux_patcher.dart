@@ -1,26 +1,19 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:platform/platform.dart';
-import 'package:shorebird_cli/src/archive/archive.dart';
 import 'package:shorebird_cli/src/archive_analysis/linux_bundle_differ.dart';
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
 import 'package:shorebird_cli/src/artifact_manager.dart';
-import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
-import 'package:shorebird_cli/src/commands/build_preconditions.dart';
-import 'package:shorebird_cli/src/commands/commands.dart';
+import 'package:shorebird_cli/src/commands/patch/desktop_patcher.dart';
 import 'package:shorebird_cli/src/doctor.dart';
-import 'package:shorebird_cli/src/extensions/arg_results.dart';
-import 'package:shorebird_cli/src/logging/logging.dart';
-import 'package:shorebird_cli/src/patch_diff_checker.dart';
 import 'package:shorebird_cli/src/platform/platform.dart';
 import 'package:shorebird_cli/src/release_type.dart';
-import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
+import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// {@template linux_patcher}
 /// Functions to create a linux patch.
 /// {@endtemplate}
-class LinuxPatcher extends Patcher {
+class LinuxPatcher extends DesktopPatcher {
   /// {@macro linux_patcher}
   LinuxPatcher({
     required super.argParser,
@@ -30,89 +23,45 @@ class LinuxPatcher extends Patcher {
   });
 
   @override
-  Future<void> assertPreconditions() => assertBuildPreconditions(
-    validators: doctor.linuxCommandValidators,
-    supportedOperatingSystems: {NativePlatform.linux},
-  );
-
-  @override
-  Future<DiffStatus> assertUnpatchableDiffs({
-    required ReleaseArtifact releaseArtifact,
-    required File releaseArchive,
-    required File patchArchive,
-  }) async {
-    return patchDiffChecker.confirmUnpatchableDiffsIfNecessary(
-      localArchive: patchArchive,
-      releaseArchive: releaseArchive,
-      archiveDiffer: const LinuxBundleDiffer(),
-      allowAssetChanges: allowAssetDiffs,
-      allowNativeChanges: allowNativeDiffs,
-    );
-  }
-
-  @override
-  Future<File> buildPatchArtifact({String? releaseVersion}) async {
-    final buildArgs = [...argResults.forwardedArgs, ...extraBuildArgs];
-    await artifactBuilder.buildLinuxApp(
-      target: target,
-      args: buildArgs,
-      base64PublicKey: argResults.encodedPublicKey,
-    );
-    return artifactManager.linuxBundleDirectory.zipToTempFile();
-  }
-
-  @override
-  Future<Map<Arch, PatchArtifactBundle>> createPatchArtifacts({
-    required String appId,
-    required int releaseId,
-    required File releaseArtifact,
-    Directory? supplementDirectory,
-  }) async {
-    final createDiffProgress = logger.progress('Creating patch artifacts');
-    final patchArtifactPath = p.join(
-      artifactManager.linuxBundleDirectory.path,
-      'lib',
-      'libapp.so',
-    );
-    final tempDir = Directory.systemTemp.createTempSync();
-    final zipPath = p.join(tempDir.path, 'patch.zip');
-    final zipFile = releaseArtifact.copySync(zipPath);
-    await artifactManager.extractZip(
-      zipFile: zipFile,
-      outputDirectory: tempDir,
-    );
-
-    // The release artifact is the zipped directory at
-    // build/linux/x64/release/bundle
-    final appSoPath = p.join(tempDir.path, 'lib', 'libapp.so');
-
-    final bundle = await createDiffBundle(
-      arch: Arch.x86_64,
-      releaseArtifactPath: appSoPath,
-      patchArtifactPath: patchArtifactPath,
-      progress: createDiffProgress,
-    );
-    createDiffProgress.complete();
-
-    return {Arch.x86_64: bundle};
-  }
-
-  @override
-  Future<String> extractReleaseVersionFromArtifact(File artifact) async {
-    final outputDirectory = Directory.systemTemp.createTempSync();
-    await artifactManager.extractZip(
-      zipFile: artifact,
-      outputDirectory: outputDirectory,
-    );
-    return linux.versionFromLinuxBundle(bundleRoot: outputDirectory);
-  }
-
-  @override
-  String get primaryReleaseArtifactArch => 'bundle';
+  String get primaryReleaseArtifactArch => primaryLinuxReleaseArtifactArch;
 
   @override
   String? get supplementaryReleaseArtifactArch => 'linux_supplement';
 
   @override
   ReleaseType get releaseType => ReleaseType.linux;
+
+  @override
+  List<Validator> get commandValidators => doctor.linuxCommandValidators;
+
+  @override
+  String get hostOperatingSystem => NativePlatform.linux;
+
+  @override
+  LinuxBundleDiffer get archiveDiffer => const LinuxBundleDiffer();
+
+  /// The release artifact is the zipped directory at
+  /// build/linux/x64/release/bundle.
+  @override
+  Directory get appDirectory => artifactManager.linuxBundleDirectory;
+
+  @override
+  List<String> get dartLibraryPathSegments => const ['lib', 'libapp.so'];
+
+  @override
+  Future<Directory> buildApp({
+    required List<String> args,
+    String? base64PublicKey,
+  }) async {
+    await artifactBuilder.buildLinuxApp(
+      target: target,
+      args: args,
+      base64PublicKey: base64PublicKey,
+    );
+    return appDirectory;
+  }
+
+  @override
+  Future<String> versionFromAppDirectory(Directory appDirectory) async =>
+      linux.versionFromLinuxBundle(bundleRoot: appDirectory);
 }
