@@ -1200,6 +1200,47 @@ class DexParser {
     );
   }
 
+  /// Splits `insns` into instructions without resolving anything.
+  ///
+  /// Pseudo-instruction payloads are returned whole, as a single entry
+  /// whose units carry no pool references.
+  static List<_DecodedInstruction> _decodeInstructions(
+    Uint8List bytes,
+    int insnsOff,
+    int insnsSize,
+  ) {
+    final decoded = <_DecodedInstruction>[];
+    var pos = 0;
+    while (pos < insnsSize) {
+      final unit = _readUint16(bytes, insnsOff + pos * 2);
+      final opcode = unit & 0xFF;
+
+      var size = _opcodeSizes[opcode];
+      var isPayload = false;
+      if (opcode == 0x00) {
+        final payloadSize = _payloadSize(bytes, insnsOff + pos * 2);
+        if (payloadSize > 0) {
+          size = payloadSize;
+          isPayload = true;
+        }
+      }
+
+      decoded.add(
+        _DecodedInstruction(
+          address: pos,
+          opcode: opcode,
+          units: [
+            for (var i = 0; i < size; i++)
+              _readUint16(bytes, insnsOff + (pos + i) * 2),
+          ],
+          isPayload: isPayload,
+        ),
+      );
+      pos += size;
+    }
+    return decoded;
+  }
+
   void _canonicalizeInstructions(
     StringBuffer buf,
     Uint8List bytes,
@@ -1211,72 +1252,84 @@ class DexParser {
     List<DexFieldId> fieldIds,
     List<DexMethodId> methodIds,
   ) {
-    var pos = 0;
-    while (pos < insnsSize) {
-      final unit = _readUint16(bytes, insnsOff + pos * 2);
-      final opcode = unit & 0xFF;
-
-      // Handle pseudo-instructions (payloads).
-      if (opcode == 0x00) {
-        final payloadSize = _payloadSize(bytes, insnsOff + pos * 2);
-        if (payloadSize > 0) {
-          for (var i = 0; i < payloadSize; i++) {
-            buf
-              ..write(
-                _readUint16(bytes, insnsOff + (pos + i) * 2),
-              )
-              ..write(',');
-          }
-          pos += payloadSize;
-          continue;
-        }
-      }
-
-      final size = _opcodeSizes[opcode];
-      final indexInfo = _opcodeIndexInfo[opcode];
-
-      for (var i = 0; i < size; i++) {
-        final u = _readUint16(bytes, insnsOff + (pos + i) * 2);
-        final ref = indexInfo?.refAt(i);
-        if (ref == null) {
-          buf
-            ..write(u)
-            ..write(',');
-        } else if (ref.is32Bit) {
-          final hi = _readUint16(bytes, insnsOff + (pos + i + 1) * 2);
-          final idx = u | (hi << 16);
-          buf
-            ..write(
-              _resolvePoolIndex(
-                idx,
-                ref.pool,
-                strings,
-                typeDescriptors,
-                protoIds,
-                fieldIds,
-                methodIds,
-              ),
-            )
-            ..write(',');
-          i++; // consumed the next unit
-        } else {
-          buf
-            ..write(
-              _resolvePoolIndex(
-                u,
-                ref.pool,
-                strings,
-                typeDescriptors,
-                protoIds,
-                fieldIds,
-                methodIds,
-              ),
-            )
-            ..write(',');
-        }
-      }
-      pos += size;
+    for (final insn in _decodeInstructions(bytes, insnsOff, insnsSize)) {
+      buf.write(
+        _canonicalizeInstruction(
+          insn,
+          strings,
+          typeDescriptors,
+          protoIds,
+          fieldIds,
+          methodIds,
+        ),
+      );
     }
+  }
+
+  /// The canonical token string for one decoded instruction, with every
+  /// pool index resolved to its string value.
+  String _canonicalizeInstruction(
+    _DecodedInstruction insn,
+    List<String> strings,
+    List<String> typeDescriptors,
+    List<DexProtoId> protoIds,
+    List<DexFieldId> fieldIds,
+    List<DexMethodId> methodIds,
+  ) {
+    final buf = StringBuffer();
+
+    if (insn.isPayload) {
+      for (final u in insn.units) {
+        buf
+          ..write(u)
+          ..write(',');
+      }
+      return buf.toString();
+    }
+
+    final indexInfo = _opcodeIndexInfo[insn.opcode];
+
+    for (var i = 0; i < insn.units.length; i++) {
+      final u = insn.units[i];
+      final ref = indexInfo?.refAt(i);
+      if (ref == null) {
+        buf
+          ..write(u)
+          ..write(',');
+      } else if (ref.is32Bit) {
+        final idx = u | (insn.units[i + 1] << 16);
+        buf
+          ..write(
+            _resolvePoolIndex(
+              idx,
+              ref.pool,
+              strings,
+              typeDescriptors,
+              protoIds,
+              fieldIds,
+              methodIds,
+            ),
+          )
+          ..write(',');
+        i++; // consumed the next unit
+      } else {
+        buf
+          ..write(
+            _resolvePoolIndex(
+              u,
+              ref.pool,
+              strings,
+              typeDescriptors,
+              protoIds,
+              fieldIds,
+              methodIds,
+            ),
+          )
+          ..write(',');
+      }
+    }
+
+    return buf.toString();
   }
 
   String _resolvePoolIndex(
@@ -1830,6 +1883,30 @@ class _BinaryReader {
 // =====================================================================
 // Opcode tables
 // =====================================================================
+
+/// One instruction, or one pseudo-instruction payload, as it sits in
+/// `insns` before any pool index is resolved.
+class _DecodedInstruction {
+  const _DecodedInstruction({
+    required this.address,
+    required this.opcode,
+    required this.units,
+    required this.isPayload,
+  });
+
+  /// Offset from the start of `insns`, in 16-bit code units.
+  final int address;
+
+  /// Low byte of the first code unit.
+  final int opcode;
+
+  /// The raw code units this instruction occupies.
+  final List<int> units;
+
+  /// Whether this is a payload, whose units are data rather than
+  /// operands and carry no pool references.
+  final bool isPayload;
+}
 
 /// Pool kinds for index references in instructions.
 enum _PoolKind {
