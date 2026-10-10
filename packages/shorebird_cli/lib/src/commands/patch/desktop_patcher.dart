@@ -22,6 +22,8 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// Subclasses supply only what differs per platform: how to build the app,
 /// where the build puts it, where the Dart library sits inside it, and how to
 /// read the version back out of a release.
+///
+/// macOS is not a [DesktopPatcher]; see `MacosPatcher` for why.
 /// {@endtemplate}
 abstract class DesktopPatcher extends Patcher {
   /// {@macro desktop_patcher}

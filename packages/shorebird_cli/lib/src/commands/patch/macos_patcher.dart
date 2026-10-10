@@ -22,6 +22,19 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 
 /// {@template macos_patcher}
 /// Functions to create and apply patches to a macOS release.
+///
+/// macOS is a desktop platform but deliberately not a [DesktopPatcher]: its
+/// patches are built the Apple way and share their code with iOS through
+/// [ApplePatcherMixin] instead. Unlike Linux and Windows, a macOS patch:
+///
+/// - covers two architectures (arm64 and x86_64), each with its own AOT
+///   snapshot built by `gen_snapshot`, rather than one x86_64 library taken
+///   from the `flutter build` output;
+/// - is diffed against a per-architecture diff base generated from the
+///   release by `analyze_snapshot`, rather than against the raw library in the
+///   release archive;
+/// - archives the app with `ditto` rather than `zip`, and checks the
+///   Podfile.lock hash and codesigning.
 /// {@endtemplate}
 class MacosPatcher extends Patcher
     with ApplePatcherMixin, ApplePodfileLockPatcherMixin {
