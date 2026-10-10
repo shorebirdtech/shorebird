@@ -4,6 +4,19 @@
 cspell:words pubspec erickzanardo xcframeworks cupertino codesign codecov rkishan appbundle proto tlsv kingdomseed Peetee Aditya serde bipatch GLES lipo impellerc cmdline symbolicate VoiceOver OverlayPortal Reorderable XCUITest
  -->
 
+## 1.6.127 (October 10, 2026)
+
+- 🐛 `shorebird login` no longer crashes with
+  `Bad state: read(ScopedRef<Browser>)` on 1.6.126.
+- 🐛 `shorebird patch linux` now runs the same checks as other platforms
+  (logged in, project initialized, `doctor`, host OS) before building.
+- 🐛 `shorebird patch linux` now builds with `--target` and arguments passed
+  after `--`, so the patch matches the release it targets.
+- 🐛 `shorebird doctor --verbose` no longer crashes when the Gradle version
+  lookup fails; it shows Gradle as not detected.
+- 🐛 `shorebird patches set-track` and `shorebird patches promote` report an
+  invalid patch number as a usage error instead of crashing.
+
 ## 1.6.126 (October 9, 2026)
 
 - 🐦 Flutter 3.47.7 / Dart 3.13.5 support
