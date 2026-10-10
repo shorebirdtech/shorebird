@@ -8,13 +8,12 @@ import 'package:shorebird_cli/src/artifact_builder/shorebird_tracer.dart';
 import 'package:shorebird_cli/src/http_client/tracing_client.dart';
 import 'package:test/test.dart';
 
-class _MockHttpClient extends Mock implements http.Client {}
-
-class _FakeBaseRequest extends Fake implements http.BaseRequest {}
+import '../fakes.dart';
+import '../mocks.dart';
 
 void main() {
   setUpAll(() {
-    registerFallbackValue(_FakeBaseRequest());
+    registerFallbackValue(FakeBaseRequest());
   });
 
   group(TracingClient, () {
@@ -28,7 +27,7 @@ void main() {
     );
 
     setUp(() {
-      inner = _MockHttpClient();
+      inner = MockHttpClient();
       tracer = ShorebirdTracer();
       client = TracingClient(httpClient: inner);
     });

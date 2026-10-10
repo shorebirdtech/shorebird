@@ -11,9 +11,8 @@ import 'package:shorebird_cli/src/extensions/arg_results.dart';
 import 'package:shorebird_cli/src/release_type.dart';
 import 'package:test/test.dart';
 
-class MockCodeSigner extends Mock implements CodeSigner {}
-
-class FakeFile extends Fake implements File {}
+import '../fakes.dart';
+import '../mocks.dart';
 
 void main() {
   setUpAll(() {
