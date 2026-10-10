@@ -142,37 +142,119 @@ This is only applicable when previewing Android releases.''',
       return error.exitCode.code;
     }
 
-    if (results.wasParsed('staging')) {
-      usageException(
-        'The --staging flag has been removed. Use --track=staging instead.',
-      );
-    }
+    _assertArgsAreValid();
 
-    final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
-    final String? appId;
-
-    final flavors = shorebirdYaml?.flavors;
-
-    if (results.wasParsed('app-id')) {
-      appId = results['app-id'] as String;
-    } else if (shorebirdYaml != null && flavors == null) {
-      appId = shorebirdYaml.appId;
-    } else if (shorebirdYaml != null && flavors != null) {
-      final flavorOptions = flavors.keys.toList();
-      final chosenFlavor = logger.chooseOne<String>(
-        'Which app flavor?',
-        choices: flavorOptions,
-      );
-      appId = flavors[chosenFlavor];
-    } else {
-      appId = await promptForApp();
-    }
-
+    final appId = await _resolveAppId();
     if (appId == null) {
       logger.info('No apps found');
       return ExitCode.success.code;
     }
 
+    final requestedPlatform = _requestedPlatform;
+    final resolved = await _resolveRelease(
+      appId: appId,
+      requestedPlatform: requestedPlatform,
+    );
+    if (resolved == null) return ExitCode.usage.code;
+
+    final releasePlatform = _resolvePlatform(
+      release: resolved.release,
+      allReleases: resolved.allReleases,
+      requestedPlatform: requestedPlatform,
+    );
+    if (releasePlatform == null) return ExitCode.usage.code;
+
+    return _installAndLaunch(
+      appId: appId,
+      release: resolved.release,
+      releasePlatform: releasePlatform,
+    );
+  }
+
+  /// The platform passed with `--platform`, if any.
+  ReleasePlatform? get _requestedPlatform {
+    final platformName = results['platform'] as String?;
+    return platformName != null
+        ? ReleasePlatform.values.byName(platformName)
+        : null;
+  }
+
+  /// Rejects invalid argument combinations before anything is fetched.
+  void _assertArgsAreValid() {
+    if (results.wasParsed('staging')) {
+      usageException(
+        'The --staging flag has been removed. Use --track=staging instead.',
+      );
+    }
+    _assertKeystoreArgsAreValid();
+  }
+
+  /// Validates the Android signing options (`--ks` and friends).
+  void _assertKeystoreArgsAreValid() {
+    final keystore = results['ks'] as String?;
+    if (keystore == null) return;
+
+    final keystorePassword = results['ks-pass'] as String?;
+    final keyPassword = results['ks-key-pass'] as String?;
+    final keyAlias = results['ks-key-alias'] as String?;
+
+    if (keystorePassword == null) {
+      usageException(
+        '--ks requires --ks-pass (e.g. --ks-pass=pass:<password> or '
+        '--ks-pass=file:<path>).',
+      );
+    }
+    if (keyAlias == null) {
+      usageException('--ks requires --ks-key-alias=<alias>.');
+    }
+
+    if (!keystorePassword.startsWith('pass:') &&
+        !keystorePassword.startsWith('file:')) {
+      usageException(
+        '--ks-pass must start with "pass:" or "file:" '
+        '(e.g. --ks-pass=pass:<password> or --ks-pass=file:<path>).',
+      );
+    }
+
+    if (keyPassword != null &&
+        !keyPassword.startsWith('pass:') &&
+        !keyPassword.startsWith('file:')) {
+      usageException(
+        '--ks-key-pass must start with "pass:" or "file:" '
+        '(e.g. --ks-key-pass=pass:<password> or --ks-key-pass=file:<path>).',
+      );
+    }
+  }
+
+  /// Determines which app to preview from `--app-id`, shorebird.yaml, or a
+  /// prompt. Returns null if the user has no apps.
+  Future<String?> _resolveAppId() async {
+    if (results.wasParsed('app-id')) return results['app-id'] as String;
+
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml();
+    if (shorebirdYaml == null) return promptForApp();
+
+    final flavors = shorebirdYaml.flavors;
+    if (flavors == null) return shorebirdYaml.appId;
+
+    final chosenFlavor = logger.chooseOne<String>(
+      'Which app flavor?',
+      choices: flavors.keys.toList(),
+    );
+    return flavors[chosenFlavor];
+  }
+
+  /// Chooses the release of [appId] to preview, from `--release-version` or a
+  /// prompt, limited to releases previewable on [requestedPlatform] if one
+  /// was passed.
+  ///
+  /// Also returns every release of [appId], including platforms that cannot
+  /// be previewed, for [_resolvePlatform]. Logs why and returns null when no
+  /// previewable release matches the arguments.
+  Future<({Release release, List<Release> allReleases})?> _resolveRelease({
+    required String appId,
+    required ReleasePlatform? requestedPlatform,
+  }) async {
     // The information if a platform is previewable or not is on
     // the artifacts, we would need to query for the artifacts for all platforms
     // in a release to be able to know if a platform is previewable or not.
@@ -196,21 +278,18 @@ This is only applicable when previewing Android releases.''',
       codePushClientWrapper.getReleases(appId: appId, sideloadableOnly: true),
     ).wait;
 
-    final maybePlatform = results['platform'] != null
-        ? ReleasePlatform.values.byName(results['platform'] as String)
-        : null;
     final platformReleases = sideloadableReleases
         .where(
           (r) =>
-              maybePlatform == null ||
-              r.activePlatforms.contains(maybePlatform),
+              requestedPlatform == null ||
+              r.activePlatforms.contains(requestedPlatform),
         )
         .toList();
 
     if (platformReleases.isEmpty) {
-      if (maybePlatform != null) {
+      if (requestedPlatform != null) {
         logger.err(
-          '''No previewable ${maybePlatform.displayName} releases found for app $appId.''',
+          '''No previewable ${requestedPlatform.displayName} releases found for app $appId.''',
         );
         if (sideloadableReleases.isNotEmpty) {
           final otherPlatforms = sideloadableReleases
@@ -223,7 +302,7 @@ This is only applicable when previewing Android releases.''',
           );
         } else {
           logger.info(
-            '''Create one with ${lightCyan.wrap('shorebird release ${maybePlatform.name}')}.''',
+            '''Create one with ${lightCyan.wrap('shorebird release ${requestedPlatform.name}')}.''',
           );
         }
       } else {
@@ -233,7 +312,7 @@ This is only applicable when previewing Android releases.''',
             '''Create one with ${lightCyan.wrap('shorebird release <platform>')}, or pass --app-id=<app-id> to preview a different app.''',
           );
       }
-      return ExitCode.usage.code;
+      return null;
     }
 
     final releaseVersion =
@@ -251,9 +330,22 @@ This is only applicable when previewing Android releases.''',
         ..info(
           '''Previewable versions: $versions. Pass one with --release-version=<version> or omit it to choose interactively.''',
         );
-      return ExitCode.usage.code;
+      return null;
     }
 
+    return (release: release, allReleases: allReleases);
+  }
+
+  /// Chooses the platform of [release] to preview: [requestedPlatform] if one
+  /// was passed, the only previewable platform, or a prompt.
+  ///
+  /// Logs why and returns null when none of the release's platforms can be
+  /// previewed from this machine.
+  ReleasePlatform? _resolvePlatform({
+    required Release release,
+    required List<Release> allReleases,
+    required ReleasePlatform? requestedPlatform,
+  }) {
     final availablePlatforms = release.activePlatforms
         .where((p) => supportedReleasePlatforms.contains(p))
         .toList();
@@ -267,12 +359,12 @@ This is only applicable when previewing Android releases.''',
           .join(', ');
       logger
         ..err(
-          '''Release $releaseVersion only has $activePlatformsString artifacts, which cannot be previewed from ${platform.operatingSystem}.''',
+          '''Release ${release.version} only has $activePlatformsString artifacts, which cannot be previewed from ${platform.operatingSystem}.''',
         )
         ..info(
           '''Platforms previewable from this machine: $supportedString. iOS releases can only be previewed from macOS.''',
         );
-      return ExitCode.usage.code;
+      return null;
     }
 
     final releaseWithAllPlatforms = allReleases.firstWhere(
@@ -281,20 +373,22 @@ This is only applicable when previewing Android releases.''',
     assertPreviewableReleases(
       releaseWithAllPlatforms: releaseWithAllPlatforms,
       release: release,
-      targetPlatform: maybePlatform,
+      targetPlatform: requestedPlatform,
     );
 
     // A --platform was already checked against the release's active
-    // platforms when filtering platformReleases above.
-    final ReleasePlatform releasePlatform;
-    if (maybePlatform != null) {
-      releasePlatform = maybePlatform;
-    } else if (availablePlatforms.length == 1) {
-      releasePlatform = availablePlatforms.first;
-    } else {
-      releasePlatform = promptForPlatform(availablePlatforms);
-    }
+    // platforms when choosing the release in _resolveRelease.
+    if (requestedPlatform != null) return requestedPlatform;
+    if (availablePlatforms.length == 1) return availablePlatforms.first;
+    return promptForPlatform(availablePlatforms);
+  }
 
+  /// Installs and launches [release] of [appId] on [releasePlatform].
+  Future<int> _installAndLaunch({
+    required String appId,
+    required Release release,
+    required ReleasePlatform releasePlatform,
+  }) {
     final deviceId = results['device-id'] as String?;
 
     return switch (releasePlatform) {
@@ -514,36 +608,6 @@ This is only applicable when previewing Android releases.''',
     final keystorePassword = results['ks-pass'] as String?;
     final keyPassword = results['ks-key-pass'] as String?;
     final keyAlias = results['ks-key-alias'] as String?;
-
-    // Ensure keystore options are valid.
-    if (keystore != null) {
-      if (keystorePassword == null) {
-        usageException(
-          '--ks requires --ks-pass (e.g. --ks-pass=pass:<password> or '
-          '--ks-pass=file:<path>).',
-        );
-      }
-      if (keyAlias == null) {
-        usageException('--ks requires --ks-key-alias=<alias>.');
-      }
-
-      if (!keystorePassword.startsWith('pass:') &&
-          !keystorePassword.startsWith('file:')) {
-        usageException(
-          '--ks-pass must start with "pass:" or "file:" '
-          '(e.g. --ks-pass=pass:<password> or --ks-pass=file:<path>).',
-        );
-      }
-
-      if (keyPassword != null &&
-          !keyPassword.startsWith('pass:') &&
-          !keyPassword.startsWith('file:')) {
-        usageException(
-          '--ks-key-pass must start with "pass:" or "file:" '
-          '(e.g. --ks-key-pass=pass:<password> or --ks-key-pass=file:<path>).',
-        );
-      }
-    }
 
     // getReleaseArtifact reports its own failure and throws ProcessExit.
     final releaseAabArtifact = await codePushClientWrapper.getReleaseArtifact(
