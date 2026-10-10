@@ -310,6 +310,19 @@ void main() {
       );
     });
 
+    test('carries the OAuth error of an unexpected refusal', () async {
+      await expectLater(
+        login(polls: [() => _oauthError('invalid_client')]),
+        throwsA(
+          isA<ShorebirdAuthException>().having(
+            (e) => e.oauthError,
+            'oauthError',
+            'invalid_client',
+          ),
+        ),
+      );
+    });
+
     test('throws on a network error while polling', () async {
       await expectLater(
         login(

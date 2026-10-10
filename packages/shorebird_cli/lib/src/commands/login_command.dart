@@ -41,6 +41,28 @@ class LoginCommand extends ShorebirdCommand {
       try {
         hasValidCredentials = await auth.hasValidCredentials();
       } on Exception catch (error) {
+        // An answer that is not `invalid_grant` says nothing about the stored
+        // credentials either, so keep them; but don't blame the network for
+        // an answer that arrived.
+        if (error is ShorebirdAuthException && error.isRateLimited) {
+          progress.fail('Too many requests, try again shortly.');
+          logger.detail('$error');
+          return ExitCode.tempFail.code;
+        }
+        if (error is ShorebirdAuthException && _isClientError(error)) {
+          progress.fail(
+            'The Shorebird auth service refused to check your credentials '
+            '(${_describeRefusal(error)}).',
+          );
+          logger
+            ..detail('$error')
+            ..info(
+              'If this keeps happening, run '
+              '${lightCyan.wrap('shorebird logout')} and then '
+              '${lightCyan.wrap('shorebird login')}.',
+            );
+          return ExitCode.tempFail.code;
+        }
         // The auth service could not answer, which says nothing about the
         // stored credentials. Discarding them here would log a user out for
         // running this off wifi.
@@ -153,4 +175,22 @@ and enter this code:
 Waiting for your authorization (the code expires in $minutes ${minutes == 1 ? 'minute' : 'minutes'})...''',
     );
   }
+}
+
+/// Whether the auth service answered [error]'s request with a 4xx.
+bool _isClientError(ShorebirdAuthException error) {
+  final status = error.statusCode;
+  return status != null && status >= 400 && status < 500;
+}
+
+/// What the auth service answered, as `status error: description`, leaving
+/// out whatever it did not send.
+String _describeRefusal(ShorebirdAuthException error) {
+  final code = error.oauthError;
+  final description = error.oauthErrorDescription;
+  return [
+    '${error.statusCode}',
+    if (code != null) ' $code',
+    if (code != null && description != null) ': $description',
+  ].join();
 }

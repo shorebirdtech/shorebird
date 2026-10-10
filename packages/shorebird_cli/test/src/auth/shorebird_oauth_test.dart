@@ -533,6 +533,45 @@ void main() {
       );
     });
 
+    test('carries the status and OAuth error of a refused exchange', () async {
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            'error': 'invalid_grant',
+            'error_description': 'Code already used',
+          }),
+          HttpStatus.badRequest,
+        ),
+      );
+
+      await expectLater(
+        obtainCredentialsViaLoopbackLogin(
+          httpClient: httpClient,
+          authBaseUrl: authBaseUrl,
+          userPrompt: (url) {
+            final loginUri = Uri.parse(url);
+            http.get(_redirectTo(loginUri, {'code': 'test_code'})).ignore();
+          },
+        ),
+        throwsA(
+          isA<ShorebirdAuthException>()
+              .having((e) => e.statusCode, 'statusCode', HttpStatus.badRequest)
+              .having((e) => e.oauthError, 'oauthError', 'invalid_grant')
+              .having(
+                (e) => e.oauthErrorDescription,
+                'description',
+                'Code already used',
+              ),
+        ),
+      );
+    });
+
     test('throws on timeout when no redirect arrives', () async {
       await expectLater(
         obtainCredentialsViaLoopbackLogin(
@@ -951,6 +990,39 @@ void main() {
       );
     });
 
+    test('carries the OAuth error of a refused refresh', () async {
+      when(
+        () => httpClient.post(
+          any(),
+          headers: any(named: 'headers'),
+          body: any(named: 'body'),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({'error': 'invalid_grant'}),
+          HttpStatus.badRequest,
+        ),
+      );
+
+      await expectLater(
+        refreshShorebirdCredentials(
+          oauth2.AccessCredentials(
+            AccessToken('Bearer', '', DateTime.timestamp()),
+            'sb_rt_revoked',
+            [],
+          ),
+          httpClient,
+          authBaseUrl: authBaseUrl,
+        ),
+        throwsA(
+          isA<ShorebirdAuthException>()
+              .having((e) => e.oauthError, 'oauthError', 'invalid_grant')
+              .having((e) => e.oauthErrorDescription, 'description', isNull)
+              .having((e) => e.isCredentialRejection, 'rejection', isTrue),
+        ),
+      );
+    });
+
     test('throws with message on network error', () async {
       when(
         () => httpClient.post(
@@ -1175,6 +1247,72 @@ void main() {
         exception.toString(),
         equals('ShorebirdAuthException: test error'),
       );
+    });
+
+    group('isCredentialRejection', () {
+      test('is true for invalid_grant', () {
+        const exception = ShorebirdAuthException(
+          'refused',
+          statusCode: HttpStatus.badRequest,
+          oauthError: 'invalid_grant',
+        );
+        expect(exception.isCredentialRejection, isTrue);
+      });
+
+      test('is false for other 4xx answers', () {
+        const rateLimited = ShorebirdAuthException(
+          'slow down',
+          statusCode: HttpStatus.tooManyRequests,
+          oauthError: 'rate_limited',
+        );
+        const notOAuth = ShorebirdAuthException(
+          'unauthorized',
+          statusCode: HttpStatus.unauthorized,
+        );
+        expect(rateLimited.isCredentialRejection, isFalse);
+        expect(notOAuth.isCredentialRejection, isFalse);
+      });
+
+      test('is false without an answer', () {
+        const exception = ShorebirdAuthException('no network');
+        expect(exception.isCredentialRejection, isFalse);
+      });
+    });
+
+    group('isRateLimited', () {
+      test('is true for rate_limited', () {
+        const exception = ShorebirdAuthException(
+          'slow down',
+          statusCode: HttpStatus.tooManyRequests,
+          oauthError: 'rate_limited',
+        );
+        expect(exception.isRateLimited, isTrue);
+      });
+
+      test('is true for a 429 that is not an OAuth error response', () {
+        const exception = ShorebirdAuthException(
+          'slow down',
+          statusCode: HttpStatus.tooManyRequests,
+        );
+        expect(exception.isRateLimited, isTrue);
+      });
+
+      test('is false for a 429 carrying another OAuth error', () {
+        const exception = ShorebirdAuthException(
+          'refused',
+          statusCode: HttpStatus.tooManyRequests,
+          oauthError: 'invalid_grant',
+        );
+        expect(exception.isRateLimited, isFalse);
+      });
+
+      test('is false for other answers', () {
+        const exception = ShorebirdAuthException(
+          'bad gateway',
+          statusCode: HttpStatus.badGateway,
+        );
+        expect(exception.isRateLimited, isFalse);
+      });
     });
   });
 }

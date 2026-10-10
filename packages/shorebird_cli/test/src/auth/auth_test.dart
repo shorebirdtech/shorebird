@@ -664,16 +664,63 @@ void main() {
         });
       });
 
-      // An expired or revoked refresh token comes back 400 `invalid_grant`.
+      // An expired or revoked refresh token comes back `invalid_grant`
+      // (RFC 6749 section 5.2).
       group('when the refresh is refused', () {
-        setUp(() {
-          writeCredentials();
-          answerRefreshWith(http.Response('invalid_grant', 400));
+        setUp(writeCredentials);
+
+        for (final status in [HttpStatus.badRequest, HttpStatus.unauthorized]) {
+          test('returns false for a $status invalid_grant', () async {
+            answerRefreshWith(
+              http.Response(jsonEncode({'error': 'invalid_grant'}), status),
+            );
+            auth = buildAuth();
+            expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+          });
+        }
+      });
+
+      // A 4xx that is not `invalid_grant` says nothing about the credentials.
+      group('when the auth service refuses the request itself', () {
+        setUp(writeCredentials);
+
+        Future<void> expectRethrows(http.Response response) async {
+          answerRefreshWith(response);
           auth = buildAuth();
+          await expectLater(
+            runWithOverrides(auth.hasValidCredentials),
+            throwsA(
+              isA<ShorebirdAuthException>().having(
+                (e) => e.statusCode,
+                'statusCode',
+                response.statusCode,
+              ),
+            ),
+          );
+        }
+
+        test('rethrows a 429 rate_limited', () async {
+          await expectRethrows(
+            http.Response(
+              jsonEncode({'error': 'rate_limited'}),
+              HttpStatus.tooManyRequests,
+            ),
+          );
         });
 
-        test('returns false', () async {
-          expect(await runWithOverrides(auth.hasValidCredentials), isFalse);
+        test('rethrows a 400 invalid_request', () async {
+          await expectRethrows(
+            http.Response(
+              jsonEncode({'error': 'invalid_request'}),
+              HttpStatus.badRequest,
+            ),
+          );
+        });
+
+        test('rethrows a 4xx that is not an OAuth error response', () async {
+          await expectRethrows(
+            http.Response('Unauthorized', HttpStatus.unauthorized),
+          );
         });
       });
 

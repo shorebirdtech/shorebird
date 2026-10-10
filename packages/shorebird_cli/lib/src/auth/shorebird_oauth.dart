@@ -15,7 +15,12 @@ import 'package:shorebird_cli/src/shorebird_env.dart';
 /// Exception thrown when the Shorebird auth flow fails.
 class ShorebirdAuthException implements Exception {
   /// Creates a [ShorebirdAuthException] with the given [message].
-  const ShorebirdAuthException(this.message, {this.statusCode});
+  const ShorebirdAuthException(
+    this.message, {
+    this.statusCode,
+    this.oauthError,
+    this.oauthErrorDescription,
+  });
 
   /// The error message.
   final String message;
@@ -27,16 +32,39 @@ class ShorebirdAuthException implements Exception {
   /// refresh token to send.
   final int? statusCode;
 
+  /// The `error` code of the auth service's RFC 6749 section 5.2 error
+  /// response, such as `invalid_grant`.
+  ///
+  /// Null when there was no answer, or the answer was not an OAuth error
+  /// response.
+  final String? oauthError;
+
+  /// The `error_description` accompanying [oauthError], where the auth
+  /// service sent one.
+  final String? oauthErrorDescription;
+
   /// Whether the auth service refused the credentials themselves, as opposed
   /// to failing to answer.
   ///
-  /// Only a 4xx says anything about the credentials. A 5xx, or no answer at
-  /// all, says the service is having a bad day; reading that as a rejection
-  /// would log a user out because their wifi dropped.
-  bool get isCredentialRejection {
-    final status = statusCode;
-    return status != null && status >= 400 && status < 500;
-  }
+  /// Only `invalid_grant` says that: the grant -- here, the refresh token --
+  /// is expired, revoked, or was issued to someone else (RFC 6749 section
+  /// 5.2). The status code alone is not enough. A token endpoint also answers
+  /// 4xx for rate limiting (429), for a malformed request (400
+  /// `invalid_request`, `unsupported_grant_type`), or for the wrong method
+  /// (405), none of which says anything about the credentials. A 5xx, or no
+  /// answer at all, says the service is having a bad day. Reading any of
+  /// those as a rejection would log a user out because they were rate limited
+  /// or their wifi dropped.
+  bool get isCredentialRejection => oauthError == 'invalid_grant';
+
+  /// Whether the auth service turned the request away for coming too often.
+  ///
+  /// Keys off the `rate_limited` error code, falling back to a bare 429 only
+  /// when the body is not an OAuth error response, as when a proxy in front
+  /// of the auth service does the limiting.
+  bool get isRateLimited =>
+      oauthError == 'rate_limited' ||
+      (oauthError == null && statusCode == HttpStatus.tooManyRequests);
 
   @override
   String toString() => 'ShorebirdAuthException: $message';
@@ -275,6 +303,7 @@ Future<oauth2.AccessCredentials> obtainCredentialsViaDeviceLogin({
           'The login request was denied. Run `shorebird login` again to start '
           'a new one.',
           statusCode: response.statusCode,
+          oauthError: error,
         );
       case 'expired_token':
         throw _deviceCodeExpired;
@@ -283,11 +312,13 @@ Future<oauth2.AccessCredentials> obtainCredentialsViaDeviceLogin({
           'The auth service no longer accepts this login request. Run '
           '`shorebird login` again to start a new one.',
           statusCode: response.statusCode,
+          oauthError: error,
         );
       default:
         throw ShorebirdAuthException(
           'Login failed (${response.statusCode}): ${response.body}',
           statusCode: response.statusCode,
+          oauthError: error,
         );
     }
   }
@@ -343,12 +374,19 @@ Future<DeviceAuthorization> _startDeviceAuthorization({
 
 /// The `error` of an RFC 6749 section 5.2 error response, or null when
 /// [body] is not one.
-String? _oauthError(String body) {
+String? _oauthError(String body) => _oauthErrorField(body, 'error');
+
+/// The `error_description` of an RFC 6749 section 5.2 error response, or null
+/// when [body] is not one or carries none.
+String? _oauthErrorDescription(String body) =>
+    _oauthErrorField(body, 'error_description');
+
+String? _oauthErrorField(String body, String field) {
   try {
     final json = jsonDecode(body);
     if (json is Map<String, dynamic>) {
-      final error = json['error'];
-      if (error is String) return error;
+      final value = json[field];
+      if (value is String) return value;
     }
   } on FormatException {
     // Not JSON; the caller reports the body as is.
@@ -554,11 +592,7 @@ Future<oauth2.AccessCredentials> _exchangeAuthCode({
     },
   );
 
-  if (response.statusCode != HttpStatus.ok) {
-    throw ShorebirdAuthException(
-      'Token exchange failed (${response.statusCode}): ${response.body}',
-    );
-  }
+  _throwUnlessOk(response, 'Token exchange failed');
 
   return _parseTokenResponse(response.body);
 }
@@ -613,13 +647,16 @@ oauth2.AccessCredentials _parseTokenResponse(String responseBody) {
   );
 }
 
-/// Throws a [ShorebirdAuthException] carrying the status and body of
-/// [response], prefixed with [failure], unless the auth service answered 200.
+/// Throws a [ShorebirdAuthException] carrying the status, OAuth `error` code
+/// and body of [response], prefixed with [failure], unless the auth service
+/// answered 200.
 void _throwUnlessOk(http.Response response, String failure) {
   if (response.statusCode != HttpStatus.ok) {
     throw ShorebirdAuthException(
       '$failure (${response.statusCode}): ${response.body}',
       statusCode: response.statusCode,
+      oauthError: _oauthError(response.body),
+      oauthErrorDescription: _oauthErrorDescription(response.body),
     );
   }
 }
