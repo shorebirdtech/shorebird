@@ -322,6 +322,8 @@ void main() {
         );
       });
 
+      tearDown(() => tempDir.deleteSync(recursive: true));
+
       Future<PatchArtifactBundle> runWithOverrides(
         Future<PatchArtifactBundle> Function() body,
       ) {
