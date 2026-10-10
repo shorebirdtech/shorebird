@@ -1,7 +1,7 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/confirm_name_argument.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
@@ -12,24 +12,17 @@ import 'package:shorebird_code_push_protocol/shorebird_code_push_protocol.dart';
 /// `shorebird apps delete`
 /// Permanently delete an app and every artifact belonging to it.
 /// {@endtemplate}
-class AppsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
+class AppsDeleteCommand extends ShorebirdCommand
+    with AppScopedCommand, ConfirmNameArgument {
   /// {@macro apps_delete_command}
   AppsDeleteCommand() {
-    argParser
-      ..addOption(
-        confirmNameArgName,
-        help:
-            "The app's current display name. Must match exactly, which is how "
-            'the delete is confirmed.',
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      );
+    argParser.addOption(
+      confirmNameArgName,
+      help:
+          "The app's current display name. Must match exactly, which is how "
+          'the delete is confirmed.',
+    );
+    addAppScopeOptions();
   }
 
   @override

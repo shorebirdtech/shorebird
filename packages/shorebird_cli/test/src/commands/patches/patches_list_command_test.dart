@@ -126,15 +126,6 @@ void main() {
         when(() => argResults['app-id']).thenReturn('explicit-app-id');
       });
 
-      test('does not require shorebird to be initialized', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-          ),
-        ).called(1);
-      });
-
       test('fetches patches for the explicit app id', () async {
         await runWithOverrides(command.run);
         verify(
@@ -147,16 +138,6 @@ void main() {
     });
 
     group('when --app-id is not provided', () {
-      test('requires shorebird to be initialized', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-            checkShorebirdInitialized: true,
-          ),
-        ).called(1);
-      });
-
       test('fetches patches using app id from shorebird.yaml', () async {
         await runWithOverrides(command.run);
         verify(
@@ -165,37 +146,6 @@ void main() {
             releaseVersion: releaseVersion,
           ),
         ).called(1);
-      });
-
-      group('when --flavor is provided', () {
-        const flavor = 'staging';
-        const flavoredAppId = 'flavored-app-id';
-        const flavoredYaml = ShorebirdYaml(
-          appId: appId,
-          flavors: {flavor: flavoredAppId},
-        );
-
-        setUp(() {
-          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(flavoredYaml);
-          when(() => argResults['flavor']).thenReturn(flavor);
-          when(() => argResults.wasParsed('flavor')).thenReturn(true);
-          when(
-            () => codePushClientWrapper.getRelease(
-              appId: flavoredAppId,
-              releaseVersion: releaseVersion,
-            ),
-          ).thenAnswer((_) async => release);
-        });
-
-        test('fetches patches for the flavored app id', () async {
-          await runWithOverrides(command.run);
-          verify(
-            () => codePushClientWrapper.getRelease(
-              appId: flavoredAppId,
-              releaseVersion: releaseVersion,
-            ),
-          ).called(1);
-        });
       });
     });
 

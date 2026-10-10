@@ -1,5 +1,6 @@
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -15,23 +16,15 @@ const _jsonExample =
 /// `shorebird patches list`
 /// List patches for a release.
 /// {@endtemplate}
-class PatchesListCommand extends ShorebirdCommand {
+class PatchesListCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro patches_list_command}
   PatchesListCommand() {
-    argParser
-      ..addOption(
-        CommonArguments.releaseVersionArg.name,
-        help: CommonArguments.patchReleaseVersionDescription,
-        mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to list patches for (e.g. "prod").',
-      );
+    argParser.addOption(
+      CommonArguments.releaseVersionArg.name,
+      help: CommonArguments.patchReleaseVersionDescription,
+      mandatory: true,
+    );
+    addAppScopeOptions();
   }
 
   @override

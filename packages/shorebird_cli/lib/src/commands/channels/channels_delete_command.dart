@@ -1,8 +1,8 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/confirm_name_argument.dart';
-import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/deployment_track.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -23,7 +23,8 @@ final _defaultTrackNames = <String>{
 /// `shorebird channels delete`
 /// Delete a channel from an app.
 /// {@endtemplate}
-class ChannelsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
+class ChannelsDeleteCommand extends ShorebirdCommand
+    with AppScopedCommand, ConfirmNameArgument {
   /// {@macro channels_delete_command}
   ChannelsDeleteCommand() {
     argParser
@@ -37,15 +38,8 @@ class ChannelsDeleteCommand extends ShorebirdCommand with ConfirmNameArgument {
         help:
             'The name of the channel again. Must match exactly, which is how '
             'the delete is confirmed.',
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
       );
+    addAppScopeOptions();
   }
 
   @override

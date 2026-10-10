@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
@@ -12,25 +13,17 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// `shorebird channels create`
 /// Create a channel an app can publish to.
 /// {@endtemplate}
-class ChannelsCreateCommand extends ShorebirdCommand {
+class ChannelsCreateCommand extends ShorebirdCommand with AppScopedCommand {
   /// {@macro channels_create_command}
   ChannelsCreateCommand() {
-    argParser
-      ..addOption(
-        'name',
-        help:
-            'The name of the channel to create (e.g. "qa"), up to '
-            '${CommonArguments.trackNameMaxLength} characters.',
-        mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      );
+    argParser.addOption(
+      'name',
+      help:
+          'The name of the channel to create (e.g. "qa"), up to '
+          '${CommonArguments.trackNameMaxLength} characters.',
+      mandatory: true,
+    );
+    addAppScopeOptions();
   }
 
   @override

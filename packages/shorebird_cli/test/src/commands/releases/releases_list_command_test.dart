@@ -117,15 +117,6 @@ void main() {
         when(() => argResults['app-id']).thenReturn('explicit-app-id');
       });
 
-      test('does not require shorebird to be initialized', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-          ),
-        ).called(1);
-      });
-
       test('fetches releases for the explicit app id', () async {
         await runWithOverrides(command.run);
         verify(
@@ -135,46 +126,11 @@ void main() {
     });
 
     group('when --app-id is not provided', () {
-      test('requires shorebird to be initialized', () async {
-        await runWithOverrides(command.run);
-        verify(
-          () => shorebirdValidator.validatePreconditions(
-            checkUserIsAuthenticated: true,
-            checkShorebirdInitialized: true,
-          ),
-        ).called(1);
-      });
-
       test('fetches releases using app id from shorebird.yaml', () async {
         await runWithOverrides(command.run);
         verify(
           () => codePushClientWrapper.getReleases(appId: appId),
         ).called(1);
-      });
-
-      group('when --flavor is provided', () {
-        const flavor = 'staging';
-        const flavoredAppId = 'flavored-app-id';
-        const flavoredYaml = ShorebirdYaml(
-          appId: appId,
-          flavors: {flavor: flavoredAppId},
-        );
-
-        setUp(() {
-          when(() => shorebirdEnv.getShorebirdYaml()).thenReturn(flavoredYaml);
-          when(() => argResults['flavor']).thenReturn(flavor);
-          when(() => argResults.wasParsed('flavor')).thenReturn(true);
-          when(
-            () => codePushClientWrapper.getReleases(appId: flavoredAppId),
-          ).thenAnswer((_) async => [release]);
-        });
-
-        test('fetches releases for the flavored app id', () async {
-          await runWithOverrides(command.run);
-          verify(
-            () => codePushClientWrapper.getReleases(appId: flavoredAppId),
-          ).called(1);
-        });
       });
     });
 

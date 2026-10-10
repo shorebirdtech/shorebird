@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:shorebird_cli/src/code_push_client_wrapper.dart';
+import 'package:shorebird_cli/src/commands/app_scoped_command.dart';
 import 'package:shorebird_cli/src/commands/patches/patch_number_argument.dart';
 import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/formatters/formatters.dart';
@@ -21,7 +22,8 @@ import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 /// shorebird patches rollback --release-version=1.0.0+1 --patch-number=1
 /// ```
 /// {@endtemplate}
-class RollbackCommand extends ShorebirdCommand with PatchNumberArgument {
+class RollbackCommand extends ShorebirdCommand
+    with AppScopedCommand, PatchNumberArgument {
   /// {@macro rollback_command}
   RollbackCommand() {
     argParser
@@ -34,23 +36,16 @@ class RollbackCommand extends ShorebirdCommand with PatchNumberArgument {
         'patch-number',
         help: 'The patch number to roll back (e.g. "1").',
         mandatory: true,
-      )
-      ..addOption(
-        CommonArguments.appIdArg.name,
-        help: CommonArguments.appIdArg.description,
-      )
-      ..addOption(
-        CommonArguments.flavorArg.name,
-        help: 'The product flavor to use (e.g. "prod").',
-      )
-      ..addFlag(
-        'require-change',
-        help:
-            'Exit with a non-zero status if the patch is already rolled back. '
-            'Without this flag, an already rolled-back patch is reported and '
-            'exits successfully.',
-        negatable: false,
       );
+    addAppScopeOptions();
+    argParser.addFlag(
+      'require-change',
+      help:
+          'Exit with a non-zero status if the patch is already rolled back. '
+          'Without this flag, an already rolled-back patch is reported and '
+          'exits successfully.',
+      negatable: false,
+    );
   }
 
   @override
