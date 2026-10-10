@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:path/path.dart' as p;
 import 'package:shorebird_cli/src/artifact_builder/artifact_builder.dart';
@@ -101,6 +102,7 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
     addSplitDebugInfoDefault(buildArgs);
     await addObfuscationMapArgs(buildArgs);
 
+    final buildStart = clock.now();
     await artifactBuilder.buildIpa(
       codesign: codesign,
       flavor: flavor,
@@ -143,14 +145,19 @@ If left checked, Xcode will rewrite the build number in the uploaded IPA, so the
     // so we must verify the .ipa was actually produced. Otherwise we would
     // report a successful release and point the user at an .ipa that does not
     // exist. See https://github.com/shorebirdtech/shorebird/issues/3807.
-    if (codesign && artifactManager.getIpa() == null) {
-      logger.err(
-        '''
+    // .ipa files from earlier builds stay in the export directory, so the
+    // newest one must also have been written since this build started.
+    if (codesign) {
+      final ipa = artifactManager.getIpa();
+      if (ipa == null || !ipa.lastModifiedSync().isAfter(buildStart)) {
+        logger.err(
+          '''
 Unable to find generated IPA. This usually means that the IPA export step of "flutter build ipa" failed (for example, due to a missing or invalid code signing certificate). Review the build output above for the underlying error.
 
 If you do not need a signed IPA (for example, you will sign the .xcarchive in Xcode), re-run this command with --no-codesign.''',
-      );
-      throw ProcessExit(ExitCode.software.code);
+        );
+        throw ProcessExit(ExitCode.software.code);
+      }
     }
 
     return xcarchiveDirectory;
@@ -202,15 +209,24 @@ If you do not need a signed IPA (for example, you will sign the .xcarchive in Xc
       artifactManager.getXcarchiveDirectory()!.path,
     );
     if (codesign) {
-      const ipaSearchString = 'build/ios/ipa/*.ipa';
+      // Older builds (e.g. other flavors) can still be in build/ios/ipa, so
+      // name the most recent .ipa rather than globbing the directory.
+      final ipaFile = artifactManager.getIpa();
+      final ipaPath = ipaFile != null
+          ? p.relative(ipaFile.path)
+          : 'build/ios/ipa/*.ipa';
+      // The name comes from the app's display name and may contain spaces.
+      final quotedIpaPath = ipaFile != null
+          ? "'${ipaPath.replaceAll("'", r"'\''")}'"
+          : ipaPath;
       return '''
 
 Your next step is to upload your app to App Store Connect.
 
 To upload to the App Store, do one of the following:
     1. Open ${lightCyan.wrap(relativeArchivePath)} in Xcode and use the "Distribute App" flow.
-    2. Drag and drop the ${lightCyan.wrap(ipaSearchString)} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
-    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $ipaSearchString --apiKey your_api_key --apiIssuer your_issuer_id')}.
+    2. Drag and drop the ${lightCyan.wrap(ipaPath)} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
+    3. Run ${lightCyan.wrap('xcrun altool --upload-app --type ios -f $quotedIpaPath --apiKey your_api_key --apiIssuer your_issuer_id')}.
        See "man altool" for details about how to authenticate with the App Store Connect API key.
 ''';
     } else {

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:clock/clock.dart';
 import 'package:crypto/crypto.dart';
 import 'package:mason_logger/mason_logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -390,9 +391,11 @@ $body
         when(
           () => artifactManager.getXcarchiveDirectory(),
         ).thenReturn(xcarchiveDirectory);
-        when(
-          () => artifactManager.getIpa(),
-        ).thenReturn(File(p.join(Directory.systemTemp.path, 'app.ipa')));
+        when(() => artifactManager.getIpa()).thenReturn(
+          File(p.join(Directory.systemTemp.createTempSync().path, 'app.ipa'))
+            ..createSync()
+            ..setLastModifiedSync(DateTime.now().add(const Duration(hours: 1))),
+        );
 
         when(
           () => codeSigner.base64PublicKeyFromPem(any()),
@@ -697,6 +700,65 @@ $body
               any(that: contains('Unable to find generated IPA')),
             ),
           ).called(1);
+        });
+      });
+
+      group('when codesigning and the ipa is older than the build', () {
+        setUp(() {
+          when(() => argResults['codesign']).thenReturn(true);
+          when(() => artifactManager.getIpa()).thenReturn(
+            File(p.join(Directory.systemTemp.createTempSync().path, 'old.ipa'))
+              ..createSync()
+              ..setLastModifiedSync(DateTime(2020)),
+          );
+        });
+
+        test('logs message and exits with code 70', () async {
+          await expectLater(
+            () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
+            exitsWithCode(ExitCode.software),
+          );
+
+          verify(
+            () => logger.err(
+              any(that: contains('Unable to find generated IPA')),
+            ),
+          ).called(1);
+        });
+      });
+
+      group('when codesigning and the ipa is written during the build', () {
+        late DateTime now;
+
+        setUp(() {
+          now = DateTime(2026, 10, 9);
+          when(() => argResults['codesign']).thenReturn(true);
+          when(() => artifactManager.getIpa()).thenReturn(
+            File(p.join(Directory.systemTemp.createTempSync().path, 'new.ipa'))
+              ..createSync()
+              ..setLastModifiedSync(DateTime(2026, 10, 9, 0, 2)),
+          );
+          when(
+            () => artifactBuilder.buildIpa(
+              codesign: any(named: 'codesign'),
+              flavor: any(named: 'flavor'),
+              target: any(named: 'target'),
+              args: any(named: 'args'),
+            ),
+          ).thenAnswer((_) async {
+            now = now.add(const Duration(minutes: 5));
+            return AppleBuildResult(kernelFile: File('/path/to/app.dill'));
+          });
+        });
+
+        test('returns the xcarchive path', () async {
+          expect(
+            await withClock(
+              Clock(() => now),
+              () => runWithOverrides(iosReleaser.buildReleaseArtifacts),
+            ),
+            equals(xcarchiveDirectory),
+          );
         });
       });
 
@@ -1184,6 +1246,45 @@ To upload to the App Store, do one of the following:
        See "man altool" for details about how to authenticate with the App Store Connect API key.
 '''),
           );
+        });
+
+        group('when the exported ipa is known', () {
+          String uploadSteps(String ipaName) {
+            final ipaPath = p.join('build', 'ios', 'ipa', ipaName);
+            when(() => artifactManager.getIpa()).thenReturn(
+              File(p.join(Directory.current.path, ipaPath)),
+            );
+            return runWithOverrides(() => iosReleaser.postReleaseInstructions);
+          }
+
+          test('names it in the upload steps', () {
+            final ipaPath = p.join('build', 'ios', 'ipa', 'My App.ipa');
+
+            expect(
+              uploadSteps('My App.ipa'),
+              equals('''
+
+Your next step is to upload your app to App Store Connect.
+
+To upload to the App Store, do one of the following:
+    1. Open ${lightCyan.wrap(p.relative(xcarchiveDirectory.path))} in Xcode and use the "Distribute App" flow.
+    2. Drag and drop the ${lightCyan.wrap(ipaPath)} bundle into the Apple Transporter macOS app (https://apps.apple.com/us/app/transporter/id1450874784).
+    3. Run ${lightCyan.wrap("xcrun altool --upload-app --type ios -f '$ipaPath' --apiKey your_api_key --apiIssuer your_issuer_id")}.
+       See "man altool" for details about how to authenticate with the App Store Connect API key.
+'''),
+            );
+          });
+
+          test('escapes single quotes in the altool command', () {
+            expect(
+              uploadSteps("Joe's App.ipa"),
+              contains(
+                lightCyan.wrap(
+                  r"xcrun altool --upload-app --type ios -f 'build/ios/ipa/Joe'\''s App.ipa' --apiKey your_api_key --apiIssuer your_issuer_id",
+                ),
+              ),
+            );
+          });
         });
       });
 
