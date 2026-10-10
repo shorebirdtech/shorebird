@@ -79,7 +79,11 @@ Engine • revision ${shorebirdEnv.shorebirdEngineRevision}''');
 
       String? gradlewVersion;
       if (gradlew.exists(Directory.current.path)) {
-        gradlewVersion = await gradlew.version(Directory.current.path);
+        try {
+          gradlewVersion = await gradlew.version(Directory.current.path);
+        } on Exception catch (error) {
+          logger.detail('Unable to determine Gradle version.\n$error');
+        }
       }
 
       output.writeln('''

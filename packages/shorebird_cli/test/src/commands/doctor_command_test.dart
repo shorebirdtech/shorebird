@@ -293,6 +293,31 @@ Android Toolchain
 '''),
           );
         });
+
+        group('when the gradle version lookup fails', () {
+          setUp(() {
+            when(
+              () => gradlew.version(any()),
+            ).thenThrow(Exception('gradle fail'));
+          });
+
+          test('reports gradle as not detected', () async {
+            await expectLater(runWithOverrides(command.run), completes);
+
+            final msg =
+                verify(() => logger.info(captureAny())).captured.first
+                    as String;
+            expect(
+              msg,
+              contains('  • Gradle: ${red.wrap('not detected')}'),
+            );
+            verify(
+              () => logger.detail(
+                any(that: contains('Unable to determine Gradle version.')),
+              ),
+            ).called(1);
+          });
+        });
       });
 
       group('when gcp upload speed test fails', () {
