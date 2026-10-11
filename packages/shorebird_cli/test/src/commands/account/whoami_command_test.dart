@@ -223,6 +223,40 @@ void main() {
       });
     });
 
+    group('when only the plan fetch fails', () {
+      setUp(() {
+        when(
+          () => codePushClientWrapper.getPlanLevel(),
+        ).thenThrow(ProcessExit(ExitCode.software.code));
+      });
+
+      test('in --json mode, emits fetch_failed envelope', () async {
+        final (:exitCode, :json) = await captureJson(
+          () => runScoped(
+            command.run,
+            values: {
+              codePushClientWrapperRef.overrideWith(
+                () => codePushClientWrapper,
+              ),
+              isJsonModeRef.overrideWith(() => true),
+              loggerRef.overrideWith(() => logger),
+              shorebirdValidatorRef.overrideWith(() => shorebirdValidator),
+            },
+          ),
+        );
+        expect(exitCode, equals(ExitCode.software.code));
+        expect(json['status'], 'error');
+        expect(
+          json['error'],
+          equals({
+            'code': 'fetch_failed',
+            'message': 'Failed to fetch account.',
+          }),
+        );
+        verify(() => codePushClientWrapper.getCurrentUser()).called(1);
+      });
+    });
+
     group('--json', () {
       R runJsonMode<R>(R Function() body) {
         return runScoped(
