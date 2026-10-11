@@ -47,8 +47,9 @@ mixin PatchLookup on ShorebirdCommand {
 
   /// Finds patch [patchNumber] among [patches] of release [releaseVersion].
   ///
-  /// When there is no such patch, reports it as a usage error (with the
-  /// available patch numbers as the hint) and returns its exit code.
+  /// When there is no such patch, reports it as a usage error and returns its
+  /// exit code: that the release has no patches at all, or else which patch
+  /// numbers it does have.
   ({ReleasePatch? patch, int? errorCode}) findPatchOrReport({
     required List<ReleasePatch> patches,
     required int patchNumber,
@@ -57,12 +58,19 @@ mixin PatchLookup on ShorebirdCommand {
     final patch = patches.firstWhereOrNull((p) => p.number == patchNumber);
     if (patch != null) return (patch: patch, errorCode: null);
 
+    if (patches.isEmpty) {
+      final errorCode = reportError(
+        message: 'No patches found for release "$releaseVersion".',
+      );
+      return (patch: null, errorCode: errorCode);
+    }
+
     final available = patches.map((p) => p.number).join(', ');
     final errorCode = reportError(
       message:
           'No patch found with number $patchNumber '
           'for release "$releaseVersion".',
-      hint: available.isEmpty ? null : 'Available patches: $available.',
+      hint: 'Available patches: $available.',
     );
     return (patch: null, errorCode: errorCode);
   }

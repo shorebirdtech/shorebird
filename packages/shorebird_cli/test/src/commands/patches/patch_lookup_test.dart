@@ -206,7 +206,7 @@ void main() {
           verify(() => logger.info('Available patches: 1, 2.')).called(1);
         });
 
-        test('gives no hint when the release has no patches', () {
+        test('says the release has no patches when there are none', () {
           final result = runWithOverrides(
             () => command.findPatchOrReport(
               patches: const [],
@@ -216,6 +216,9 @@ void main() {
           );
 
           expect(result.errorCode, equals(ExitCode.usage.code));
+          verify(
+            () => logger.err('No patches found for release "$releaseVersion".'),
+          ).called(1);
           verifyNever(() => logger.info(any()));
         });
 
