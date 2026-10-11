@@ -41,7 +41,7 @@ mixin AppScopedCommand on ShorebirdCommand {
         checkShorebirdInitialized: explicitAppId == null,
       );
     } on PreconditionFailedException catch (error) {
-      return (appId: '', errorCode: error.exitCode.code);
+      return (appId: '', errorCode: reportPreconditionFailure(error));
     }
     if (explicitAppId != null) return (appId: explicitAppId, errorCode: null);
 

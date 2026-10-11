@@ -679,13 +679,31 @@ void main() {
               flavorArg: any(named: 'flavorArg'),
               releasePlatform: any(named: 'releasePlatform'),
             ),
-          ).thenThrow(ValidationFailedException());
+          ).thenThrow(
+            ValidationFailedException(
+              message: 'Flavors are not supported on this platform.',
+            ),
+          );
         });
 
         test('exits with code 78 (config)', () async {
           await expectLater(
             () => runWithOverrides(command.run),
             exitsWithCode(ExitCode.config),
+          );
+        });
+
+        test('carries the flavor failure for the runner to report as '
+            'precondition_failed', () async {
+          await expectLater(
+            () => runWithOverrides(command.run),
+            throwsA(
+              isA<PreconditionFailedExit>().having(
+                (e) => e.failure.message,
+                'failure.message',
+                'Flavors are not supported on this platform.',
+              ),
+            ),
           );
         });
       });

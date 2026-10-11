@@ -70,7 +70,16 @@ void main() {
               supportedOperatingSystems: supportedOperatingSystems,
             ),
           ),
-          throwsA(isA<UnsupportedOperatingSystemException>()),
+          throwsA(
+            isA<UnsupportedOperatingSystemException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'This command is only supported on macos, windows '
+                      '(this machine is running linux).',
+                )
+                .having((e) => e.hint, 'hint', isNull),
+          ),
         );
         verify(
           () => logger.err(
@@ -88,7 +97,21 @@ void main() {
               checkUserIsAuthenticated: true,
             ),
           ),
-          throwsA(isA<UserNotAuthorizedException>()),
+          throwsA(
+            isA<UserNotAuthorizedException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'You must be logged in to run this command.',
+                )
+                .having(
+                  (e) => e.hint,
+                  'hint',
+                  'If you already have an account, run `shorebird login` to '
+                      "sign in. If you don't have a Shorebird account, go to "
+                      'https://console.shorebird.dev to create one.',
+                ),
+          ),
         );
         verifyInOrder([
           () => logger.err('You must be logged in to run this command.'),
@@ -118,7 +141,21 @@ void main() {
                       checkShorebirdInitialized: true,
                     ),
                   ),
-                  throwsA(isA<ShorebirdNotInitializedException>()),
+                  throwsA(
+                    isA<ShorebirdNotInitializedException>()
+                        .having(
+                          (e) => e.message,
+                          'message',
+                          'Unable to find shorebird.yaml. Are you in a '
+                              'shorebird app directory?',
+                        )
+                        .having(
+                          (e) => e.hint,
+                          'hint',
+                          'If you have not yet initialized your app, run '
+                              '`shorebird init` to get started.',
+                        ),
+                  ),
                 );
                 verifyInOrder([
                   () => logger.err(
@@ -150,7 +187,21 @@ void main() {
                       checkShorebirdInitialized: true,
                     ),
                   ),
-                  throwsA(isA<ShorebirdNotInitializedException>()),
+                  throwsA(
+                    isA<ShorebirdNotInitializedException>()
+                        .having(
+                          (e) => e.message,
+                          'message',
+                          'Your pubspec.yaml does not have shorebird.yaml as '
+                              'a flutter asset.',
+                        )
+                        .having(
+                          (e) => e.hint,
+                          'hint',
+                          'Add shorebird.yaml to the flutter assets in your '
+                              'pubspec.yaml.',
+                        ),
+                  ),
                 );
                 verifyInOrder([
                   () => logger.err(
@@ -184,7 +235,20 @@ To fix, update your pubspec.yaml to include the following:
               validators: [validator],
             ),
           ),
-          throwsA(isA<ValidationFailedException>()),
+          throwsA(
+            isA<ValidationFailedException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'Aborting due to validation errors. test issue',
+                )
+                .having(
+                  (e) => e.hint,
+                  'hint',
+                  '1 issue can be fixed automatically with '
+                      '`shorebird doctor --fix`.',
+                ),
+          ),
         );
         verify(() => validator.validate()).called(1);
         verify(
@@ -214,11 +278,74 @@ To fix, update your pubspec.yaml to include the following:
                 validators: [validator],
               ),
             ),
-            throwsA(isA<UnsupportedContextException>()),
+            throwsA(
+              isA<UnsupportedContextException>().having(
+                (e) => e.message,
+                'message',
+                errorMessage,
+              ),
+            ),
           );
           verify(() => logger.err(errorMessage)).called(1);
         },
       );
+
+      test('reports only the error issues, and no hint when none is '
+          'fixable', () async {
+        const issues = [
+          ValidationIssue(
+            message: 'a warning',
+            severity: ValidationIssueSeverity.warning,
+          ),
+          ValidationIssue(
+            message: 'first error.',
+            severity: ValidationIssueSeverity.error,
+          ),
+          ValidationIssue(
+            message: 'second error.',
+            severity: ValidationIssueSeverity.error,
+          ),
+        ];
+        when(() => validator.canRunInCurrentContext()).thenReturn(true);
+        when(() => validator.validate()).thenAnswer((_) async => issues);
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdValidator.validatePreconditions(
+              validators: [validator],
+            ),
+          ),
+          throwsA(
+            isA<ValidationFailedException>()
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'Aborting due to validation errors. first error. '
+                      'second error.',
+                )
+                .having((e) => e.hint, 'hint', isNull),
+          ),
+        );
+      });
+
+      test('uses a generic message when the validator gives no context '
+          'message', () async {
+        when(() => validator.canRunInCurrentContext()).thenReturn(false);
+        when(() => validator.incorrectContextMessage).thenReturn(null);
+        await expectLater(
+          runWithOverrides(
+            () => shorebirdValidator.validatePreconditions(
+              validators: [validator],
+            ),
+          ),
+          throwsA(
+            isA<UnsupportedContextException>().having(
+              (e) => e.message,
+              'message',
+              'This command cannot run in the current context.',
+            ),
+          ),
+        );
+      });
     });
 
     group('validateFlavors', () {
@@ -252,7 +379,20 @@ To fix, update your pubspec.yaml to include the following:
                     releasePlatform: ReleasePlatform.windows,
                   ),
                 ),
-                throwsA(isA<ValidationFailedException>()),
+                throwsA(
+                  isA<ValidationFailedException>()
+                      .having(
+                        (e) => e.message,
+                        'message',
+                        'Flavors are not supported on this platform.',
+                      )
+                      .having(
+                        (e) => e.hint,
+                        'hint',
+                        'Re-run this command without the --flavor argument. '
+                            'The app id test will be used.',
+                      ),
+                ),
               );
 
               verify(
@@ -346,7 +486,13 @@ The default app id test will be used. Pass --flavor=<name> to target a flavor.''
                     releasePlatform: ReleasePlatform.android,
                   ),
                 ),
-                throwsA(isA<ValidationFailedException>()),
+                throwsA(
+                  isA<ValidationFailedException>().having(
+                    (e) => e.message,
+                    'message',
+                    isNotEmpty,
+                  ),
+                ),
               );
             });
           });

@@ -11,6 +11,7 @@ import 'package:shorebird_cli/src/interactive_mode.dart' as interactive_mode;
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/logging.dart';
 import 'package:shorebird_cli/src/shorebird_cli_command_runner.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:shorebird_code_push_client/shorebird_code_push_client.dart';
 
@@ -207,6 +208,24 @@ abstract class ShorebirdCommand extends Command<int> {
     return exitCode ?? ExitCode.usage.code;
   }
 
+  /// Reports a failed precondition and returns its exit code.
+  ///
+  /// The explanation was already logged when [error] was thrown, so in human
+  /// mode there is nothing more to print. With `--json`, emits a
+  /// `precondition_failed` envelope carrying [error]'s message and hint, so a
+  /// caller reading only stdout learns why (logged out, not in a project,
+  /// ...), not just the exit code.
+  int reportPreconditionFailure(PreconditionFailedException error) {
+    if (isJsonMode) {
+      emitJsonError(
+        code: JsonErrorCode.preconditionFailed,
+        message: error.message,
+        hint: error.hint,
+      );
+    }
+    return error.exitCode.code;
+  }
+
   /// Runs [body], an API call (or a few) that reports its own failures by
   /// throwing [ProcessExit], and returns null if it succeeds.
   ///
@@ -227,6 +246,10 @@ abstract class ShorebirdCommand extends Command<int> {
     try {
       await body();
       return null;
+    } on PreconditionFailedExit {
+      // A failed precondition reports itself (as precondition_failed); don't
+      // relabel it as this call's error.
+      rethrow;
     } on ProcessExit catch (e) {
       if (!isJsonMode) rethrow;
       emitJsonError(code: code, message: message);

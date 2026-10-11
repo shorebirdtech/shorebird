@@ -17,6 +17,7 @@ import 'package:shorebird_cli/src/platform.dart';
 import 'package:shorebird_cli/src/shorebird_artifacts.dart';
 import 'package:shorebird_cli/src/shorebird_flutter.dart';
 import 'package:shorebird_cli/src/shorebird_process.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/shorebird_version.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/flutter_tools.dart';
 import 'package:shorebird_cli/src/version_info.dart';
@@ -288,9 +289,18 @@ class ShorebirdCliCommandRunner extends CompletionCommandRunner<int> {
         if (isJsonMode &&
             !envelope.written &&
             error.exitCode != ExitCode.success.code) {
+          // A failed precondition says why, not just that the process exited.
+          final failure = error is PreconditionFailedExit
+              ? error.failure
+              : null;
           JsonResult.error(
-            code: JsonErrorCode.processExit,
-            message: 'Process exited with code ${error.exitCode}.',
+            code: failure == null
+                ? JsonErrorCode.processExit
+                : JsonErrorCode.preconditionFailed,
+            message:
+                failure?.message ??
+                'Process exited with code ${error.exitCode}.',
+            hint: failure?.hint,
             command: commandName,
           ).write();
         }

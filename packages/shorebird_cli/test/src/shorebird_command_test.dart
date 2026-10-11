@@ -10,6 +10,7 @@ import 'package:shorebird_cli/src/common_arguments.dart';
 import 'package:shorebird_cli/src/json_output.dart';
 import 'package:shorebird_cli/src/logging/shorebird_logger.dart';
 import 'package:shorebird_cli/src/shorebird_command.dart';
+import 'package:shorebird_cli/src/shorebird_validator.dart';
 import 'package:shorebird_cli/src/third_party/flutter_tools/lib/src/base/process.dart';
 import 'package:test/test.dart';
 
@@ -301,6 +302,82 @@ void main() {
       });
     });
 
+    group('reportPreconditionFailure', () {
+      late ShorebirdLogger logger;
+
+      R runWithOverrides<R>(R Function() body, {required bool jsonMode}) {
+        return runScoped(
+          body,
+          values: {
+            isJsonModeRef.overrideWith(() => jsonMode),
+            loggerRef.overrideWith(() => logger),
+          },
+        );
+      }
+
+      setUp(() {
+        logger = MockShorebirdLogger();
+      });
+
+      test('in human mode, prints nothing more and returns the exit code', () {
+        final exitCode = runWithOverrides(
+          () => command.reportPreconditionFailure(UserNotAuthorizedException()),
+          jsonMode: false,
+        );
+
+        expect(exitCode, equals(ExitCode.noUser.code));
+        verifyZeroInteractions(logger);
+      });
+
+      test('in human mode, writes nothing to stdout', () async {
+        final captured = <String>[];
+        await captureStdout(
+          () async => runWithOverrides(
+            () => command.reportPreconditionFailure(
+              ShorebirdNotInitializedException(),
+            ),
+            jsonMode: false,
+          ),
+          captured: captured,
+        );
+        expect(captured, isEmpty);
+      });
+
+      final failures = <String, PreconditionFailedException>{
+        'logged out': UserNotAuthorizedException(),
+        'not initialized': ShorebirdNotInitializedException(),
+        'validators failed': ValidationFailedException(
+          message: 'Aborting due to validation errors. Missing thing.',
+          hint: '1 issue can be fixed automatically.',
+        ),
+        'unsupported OS': UnsupportedOperatingSystemException(
+          message: 'This command is only supported on macos.',
+        ),
+      };
+      for (final MapEntry(key: name, value: failure) in failures.entries) {
+        test('in JSON mode, emits precondition_failed for $name', () async {
+          final result = await captureJson(
+            () async => runWithOverrides(
+              () => command.reportPreconditionFailure(failure),
+              jsonMode: true,
+            ),
+          );
+
+          expect(result.exitCode, equals(failure.exitCode.code));
+          expect(result.json['status'], equals('error'));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'precondition_failed',
+              'message': failure.message,
+              if (failure.hint != null) 'hint': failure.hint,
+            }),
+          );
+          verifyNever(() => logger.err(any()));
+        });
+      }
+    });
+
     group('guardApiCall', () {
       late ShorebirdLogger logger;
 
@@ -396,6 +473,23 @@ void main() {
               captured: captured,
             ),
             throwsA(isA<Exception>()),
+          );
+          expect(captured, isEmpty);
+        });
+
+        test('rethrows a failed precondition rather than reporting it as '
+            'its own error', () async {
+          final failure = PreconditionFailedExit(UserNotAuthorizedException());
+          final captured = <String>[];
+          await expectLater(
+            captureStdout(
+              () => runWithOverrides(
+                () => guard(() async => throw failure),
+                jsonMode: true,
+              ),
+              captured: captured,
+            ),
+            throwsA(same(failure)),
           );
           expect(captured, isEmpty);
         });

@@ -82,6 +82,10 @@ enum JsonErrorCode {
   /// A network fetch or data retrieval failed.
   fetchFailed('fetch_failed'),
 
+  /// A precondition for running the command wasn't met: not logged in, not
+  /// in a Shorebird project, a doctor check failed, or an unsupported host.
+  preconditionFailed('precondition_failed'),
+
   /// The CLI required interactive input but no terminal/stdin was available
   /// (or the user passed `--json`).
   interactivePromptRequired('interactive_prompt_required');

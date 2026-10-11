@@ -382,8 +382,8 @@ $error''');
         flavorArg: flavor,
         releasePlatform: releaser.releaseType.releasePlatform,
       );
-    } on ValidationFailedException {
-      throw ProcessExit(ExitCode.config.code);
+    } on ValidationFailedException catch (e) {
+      throw PreconditionFailedExit(e);
     }
   }
 

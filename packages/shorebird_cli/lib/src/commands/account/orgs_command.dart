@@ -34,7 +34,7 @@ class OrgsCommand extends ShorebirdCommand {
         checkUserIsAuthenticated: true,
       );
     } on PreconditionFailedException catch (error) {
-      return error.exitCode.code;
+      return reportPreconditionFailure(error);
     }
 
     late final List<OrganizationMembership> memberships;

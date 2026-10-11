@@ -10,7 +10,8 @@ import 'package:shorebird_cli/src/validators/validators.dart';
 /// platform's doctor [validators] and, when given, requires the host to be one
 /// of [supportedOperatingSystems].
 ///
-/// Exits with the failing check's exit code.
+/// Exits with the failing check's exit code, by throwing a
+/// [PreconditionFailedExit].
 Future<void> assertBuildPreconditions({
   List<Validator> validators = const [],
   Set<String>? supportedOperatingSystems,
@@ -23,7 +24,7 @@ Future<void> assertBuildPreconditions({
       supportedOperatingSystems: supportedOperatingSystems,
     );
   } on PreconditionFailedException catch (e) {
-    throw ProcessExit(e.exitCode.code);
+    throw PreconditionFailedExit(e);
   }
 }
 

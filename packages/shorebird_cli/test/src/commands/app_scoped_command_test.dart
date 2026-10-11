@@ -122,6 +122,43 @@ void main() {
         expect(result, equals((appId: 'explicit-app-id', errorCode: null)));
       });
 
+      group('when a precondition fails', () {
+        setUp(() {
+          when(
+            () => shorebirdValidator.validatePreconditions(
+              checkUserIsAuthenticated: any(named: 'checkUserIsAuthenticated'),
+              checkShorebirdInitialized: any(
+                named: 'checkShorebirdInitialized',
+              ),
+            ),
+          ).thenThrow(UserNotAuthorizedException());
+        });
+
+        test('returns its exit code', () async {
+          final result = await runWithOverrides(commandWith([]).resolveAppId);
+          expect(result.errorCode, equals(ExitCode.noUser.code));
+        });
+
+        test('reports precondition_failed with --json', () async {
+          final result = await captureJson(() async {
+            final resolved = await runWithOverrides(
+              commandWith([]).resolveAppId,
+              jsonMode: true,
+            );
+            return resolved.errorCode!;
+          });
+          expect(result.exitCode, equals(ExitCode.noUser.code));
+          expect(
+            result.json['error'],
+            equals({
+              'code': 'precondition_failed',
+              'message': UserNotAuthorizedException().message,
+              'hint': UserNotAuthorizedException().hint,
+            }),
+          );
+        });
+      });
+
       group('when --flavor is not defined in shorebird.yaml', () {
         const message =
             'This project does not have a flavor named "missing". Pass one of: '
