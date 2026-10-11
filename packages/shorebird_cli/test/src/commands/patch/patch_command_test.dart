@@ -1273,37 +1273,64 @@ void main() {
         when(() => patcher.requiresReleaseVersionArg).thenReturn(true);
       });
 
-      test(
-        'exits with usage error before building when it is missing',
-        () async {
-          when(() => argResults.wasParsed('release-version')).thenReturn(false);
+      group('when it is missing', () {
+        setUp(() {
+          when(
+            () => argResults.wasParsed('release-version'),
+          ).thenReturn(false);
+        });
 
-          await expectLater(
-            () => runWithOverrides(command.run),
-            exitsWithCode(ExitCode.usage),
-          );
+        test('prompts for the release when running interactively', () async {
+          when(() => shorebirdEnv.canAcceptUserInput).thenReturn(true);
 
+          final exitCode = await runWithOverrides(command.run);
+
+          expect(exitCode, equals(ExitCode.success.code));
+          // The release comes from the release picker, not from guessing the
+          // version out of a speculative build.
           verify(
-            () => logger.err('Missing required argument: --release-version'),
+            () => codePushClientWrapper.getReleases(appId: appId),
           ).called(1);
-          verifyNever(
-            () => patcher.buildPatchArtifact(
-              releaseVersion: any(named: 'releaseVersion'),
-            ),
-          );
-        },
-      );
+          verifyNever(() => patcher.extractReleaseVersionFromArtifact(any()));
+        });
 
-      test('continues when it is provided', () async {
+        test(
+          'is a usage error before building when not interactive',
+          () async {
+            when(() => shorebirdEnv.canAcceptUserInput).thenReturn(false);
+
+            await expectLater(
+              runWithOverrides(() => command.createPatch(patcher)),
+              throwsA(
+                isA<UsageException>().having(
+                  (e) => e.message,
+                  'message',
+                  startsWith('Missing required argument: --release-version.'),
+                ),
+              ),
+            );
+            verifyNever(
+              () => patcher.buildPatchArtifact(
+                releaseVersion: any(named: 'releaseVersion'),
+              ),
+            );
+          },
+        );
+      });
+
+      test('uses it when it is provided', () async {
         when(() => argResults.wasParsed('release-version')).thenReturn(true);
         when(() => argResults['release-version']).thenReturn(releaseVersion);
 
         final exitCode = await runWithOverrides(command.run);
 
         expect(exitCode, equals(ExitCode.success.code));
-        verifyNever(
-          () => logger.err('Missing required argument: --release-version'),
-        );
+        verify(
+          () => codePushClientWrapper.getRelease(
+            appId: appId,
+            releaseVersion: releaseVersion,
+          ),
+        ).called(1);
       });
     });
 

@@ -1968,12 +1968,14 @@ Reason: Exited with code 70.'''),
           ),
         ).thenAnswer((_) async {
           final now = DateTime.now();
+          // The earlier file sorts second by name, so the test can't pass on
+          // directory listing order alone.
           secondAppDill =
-              File(p.join(projectRoot.path, '.dart_tool', 'b', 'app.dill'))
+              File(p.join(projectRoot.path, '.dart_tool', 'a', 'app.dill'))
                 ..createSync(recursive: true)
                 ..setLastModifiedSync(now.add(const Duration(seconds: 20)));
           firstAppDill =
-              File(p.join(projectRoot.path, '.dart_tool', 'a', 'app.dill'))
+              File(p.join(projectRoot.path, '.dart_tool', 'b', 'app.dill'))
                 ..createSync(recursive: true)
                 ..setLastModifiedSync(now.add(const Duration(seconds: 10)));
           return ExitCode.success.code;
