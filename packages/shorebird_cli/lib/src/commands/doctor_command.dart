@@ -138,6 +138,15 @@ Android Toolchain
   }
 
   Future<int> _runJson() async {
+    // Fixes log to the terminal as they run, so they can't be reported as
+    // structured data. Refuse rather than silently skip them.
+    if (results['fix'] == true) {
+      return reportError(
+        message: '--fix is not supported with --json.',
+        hint: 'Run `shorebird doctor --fix` without --json to apply fixes.',
+      );
+    }
+
     final flutterVersion = await tryGetFlutterVersion();
 
     String? javaVersion;
