@@ -331,6 +331,23 @@ void main() {
             });
           }
         });
+
+        test('leaves no temporary files behind', () async {
+          final expected = await differ.changedFiles(
+            baseIpaPath,
+            changedCarXcarchivePath,
+          );
+          final systemTemp = createSystemTemp();
+          late FileSetDiff fileSetDiff;
+          await runWithSystemTemp(systemTemp, () async {
+            fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedCarXcarchivePath,
+            );
+          });
+          expect(fileSetDiff.changedPaths, equals(expected.changedPaths));
+          expect(systemTemp.listSync(), isEmpty);
+        });
       });
 
       group('changedFiles', () {
@@ -455,6 +472,25 @@ void main() {
                 equals(diffOutput),
               );
             });
+          });
+
+          test('leaves no temporary files behind', () async {
+            final fileSetDiff = await differ.changedFiles(
+              baseIpaPath,
+              changedCarXcarchivePath,
+            );
+            final systemTemp = createSystemTemp();
+            await runWithSystemTemp(
+              systemTemp,
+              () => runWithOverrides(
+                () => differ.availableAssetDiffs(
+                  fileSetDiff: fileSetDiff,
+                  oldArchivePath: baseIpaPath,
+                  newArchivePath: changedCarXcarchivePath,
+                ),
+              ),
+            );
+            expect(systemTemp.listSync(), isEmpty);
           });
 
           test('releases the archives it reads', () async {
