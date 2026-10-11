@@ -70,4 +70,21 @@ extension AppIdExtension on ShorebirdYaml {
     if (flavor == null || flavors == null) return appId;
     return flavors![flavor] ?? appId;
   }
+
+  /// Why [flavor] can't be used with this project, or null if it can.
+  ///
+  /// [getAppId] falls back to the default app id for a flavor it doesn't
+  /// know, so a mistyped `--flavor` must be rejected with this before the
+  /// app id is used.
+  String? unknownFlavorError(String? flavor) {
+    if (flavor == null) return null;
+    final projectFlavors = flavors;
+    if (projectFlavors == null) {
+      return '''The project does not have any flavors defined (no "flavors" in shorebird.yaml), but --flavor was provided. Re-run without --flavor, or run "shorebird init" to detect flavors.''';
+    }
+    if (!projectFlavors.containsKey(flavor)) {
+      return '''This project does not have a flavor named "$flavor". Pass one of: ${projectFlavors.keys.join(', ')} (from "flavors" in shorebird.yaml).''';
+    }
+    return null;
+  }
 }

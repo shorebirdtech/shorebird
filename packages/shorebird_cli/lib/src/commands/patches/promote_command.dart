@@ -83,7 +83,10 @@ class PromoteCommand extends ShorebirdCommand
 
     final releaseVersion = results['release-version'] as String;
     final flavor = results.findOption('flavor', argParser: argParser);
-    final appId = shorebirdEnv.getShorebirdYaml()!.getAppId(flavor: flavor);
+    final shorebirdYaml = shorebirdEnv.getShorebirdYaml()!;
+    final flavorError = shorebirdYaml.unknownFlavorError(flavor);
+    if (flavorError != null) return reportError(message: flavorError);
+    final appId = shorebirdYaml.getAppId(flavor: flavor);
 
     // --json is refused above, so today a failed fetch is rethrown rather
     // than reported; the errorCode check keeps this in step with the other

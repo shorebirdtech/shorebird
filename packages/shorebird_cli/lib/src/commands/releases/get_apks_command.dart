@@ -80,6 +80,11 @@ class GetApksCommand extends ShorebirdCommand {
       return error.exitCode.code;
     }
 
+    final flavorError = shorebirdEnv.getShorebirdYaml()!.unknownFlavorError(
+      flavor,
+    );
+    if (flavorError != null) return reportError(message: flavorError);
+
     final Release release;
     if (results.wasParsed(CommonArguments.releaseVersionArg.name)) {
       final releaseVersion =
